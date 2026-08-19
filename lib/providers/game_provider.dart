@@ -331,6 +331,69 @@ C. ...
     }
   }
 
+  // ==================== 更多建议 ====================
+  Future<void> generateMoreSuggestions() async {
+    if (_deepSeek == null || _player == null || _isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final prompt = '''
+继续为当前情境生成新的行动建议。
+
+【当前情境】
+$_currentNarrative
+
+【世界状态】
+- 学年：${_worldState.academicYear}
+- 日期：${_worldState.month} ${_worldState.dayOfMonth}日
+- 玩家学院：${_player!.house ?? '未分院'}
+- 玩家年级：${_player!.grade ?? 1}
+
+请再提供 4 个与之前不同、且符合巫师校园生活常识的行动建议。
+要求：
+1. 建议要具体、可执行，不要笼统
+2. 与当前情境紧密相关
+3. 只输出建议，不要叙事
+
+格式：
+A. ...
+B. ...
+C. ...
+D. ...
+E. ...''';
+
+      final response = await _callDeepSeek(prompt);
+      _parseChoices(response);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void _parseChoices(String text) {
+    final parsed = <GameChoice>[];
+    for (final line in text.split('\n')) {
+      final trimmed = line.trim();
+      if (RegExp(r'^[A-E][\.\)]\s*').hasMatch(trimmed)) {
+        final action =
+            trimmed.replaceFirst(RegExp(r'^[A-E][\.\)]\s*'), '').trim();
+        if (action.isNotEmpty) {
+          parsed.add(GameChoice(text: action, action: action));
+        }
+      }
+    }
+    if (parsed.isEmpty) {
+      _error = '魔法没能想出更多建议，请再试一次';
+    } else {
+      _choices = parsed;
+    }
+  }
+
   // ==================== 分院仪式 ====================
   Future<Map<String, String>> sortPlayer() async {
     if (_player == null || _deepSeek == null) {

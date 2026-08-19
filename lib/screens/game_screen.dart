@@ -98,6 +98,7 @@ class _GameScreenState extends State<GameScreen>
             isLoading: gameProvider.isLoading,
             error: gameProvider.error,
             onChoice: _handleChoice,
+            onMoreSuggestions: () => gameProvider.generateMoreSuggestions(),
           ),
           _PeopleTab(gameProvider: gameProvider),
           _StatusTab(
@@ -139,6 +140,7 @@ class _NarrativeTab extends StatelessWidget {
   final bool isLoading;
   final String? error;
   final void Function(int) onChoice;
+  final VoidCallback? onMoreSuggestions;
 
   const _NarrativeTab({
     required this.narrative,
@@ -146,6 +148,7 @@ class _NarrativeTab extends StatelessWidget {
     required this.isLoading,
     this.error,
     required this.onChoice,
+    this.onMoreSuggestions,
   });
 
   @override
@@ -234,6 +237,25 @@ class _NarrativeTab extends StatelessWidget {
                 ),
               );
             }).toList(),
+
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: onMoreSuggestions,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFD3A625),
+                side: const BorderSide(color: Color(0xFFD3A625)),
+                minimumSize: const Size.fromHeight(44),
+              ),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: const Text('更多建议'),
+            ),
+            const SizedBox(height: 4),
+            const Center(
+              child: Text(
+                '让魔法再想出 4 个新的行动建议',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ),
           ],
 
           const SizedBox(height: 20),
