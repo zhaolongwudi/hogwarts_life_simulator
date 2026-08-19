@@ -4,11 +4,15 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final appProvider = AppProvider();
+  await appProvider.loadSettings();
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppProvider()),
-        ChangeNotifierProvider(create: (_) => GameProvider()),
+        ChangeNotifierProvider<AppProvider>.value(value: appProvider),
+        ChangeNotifierProvider<GameProvider>(
+          create: (_) => GameProvider(appProvider),
+        ),
       ],
       child: const HogwartsLifeSimulator(),
     ),

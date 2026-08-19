@@ -109,13 +109,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Text('显示模式',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          _buildModePicker(appProvider.displayMode),
+          _buildModePicker(appProvider.displayMode.name),
           const SizedBox(height: 24),
           
           const Text('身份模式',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          _buildModePicker(appProvider.identityMode,
+          _buildModePicker(appProvider.identityMode.name,
               modes: const [
                 ModeOption('原住民', 'native', '角色不知道自己是小说人物'),
                 ModeOption('穿越者', 'transmigration', '角色知道这是哈利·波特世界'),
@@ -125,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Text('时代背景',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          _buildEraPicker(appProvider.era),
+          _buildEraPicker(appProvider.era.name),
           const Divider(height: 40),
           
           const Text('危险操作',

@@ -64,7 +64,7 @@ class GameProvider extends ChangeNotifier {
       _player = Player(
         name: name,
         birthYear: _calculateBirthYear(),
-        bloodStatus: bloodStatus,
+        bloodType: bloodStatus,
         birthLocation: birthLocation,
         personalityTraits: personalityTraits,
       );
@@ -172,7 +172,7 @@ class GameProvider extends ChangeNotifier {
 【玩家信息】
 - 姓名：${_player!.name}
 - 年龄：11岁
-- 血统：${_player!.bloodStatus}
+- 血统：${_player!.bloodType}
 - 出生地：${_player!.birthLocation}
 - 性格：${_player!.personalityTraits.join(', ')}
 - 时代：${appProvider.era.name}
@@ -347,7 +347,7 @@ C. ...
 
 请为以下学生分院：
 - 姓名：${_player!.name}
-- 血统：${_player!.bloodStatus}
+- 血统：${_player!.bloodType}
 - 出生地：${_player!.birthLocation}
 - 性格：${_player!.personalityTraits.join(', ')}
 - 最看重的品质：${_getTopValues()}

@@ -34,6 +34,12 @@ class _IntroScreenState extends State<IntroScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _birthLocationController.text = '英国';
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _birthLocationController.dispose();
@@ -47,7 +53,9 @@ class _IntroScreenState extends State<IntroScreen> {
     await gameProvider.initializeGame(
       name: _nameController.text.trim(),
       bloodStatus: _bloodStatus,
-      birthLocation: _birthLocationController.text.trim() ?? '英国',
+      birthLocation: _birthLocationController.text.trim().isEmpty
+          ? '英国'
+          : _birthLocationController.text.trim(),
       personalityTraits: _selectedTraits,
     );
 
@@ -89,7 +97,6 @@ class _IntroScreenState extends State<IntroScreen> {
                   hintText: '例如：伦敦、爱丁堡、科茨沃尔德...',
                   prefixIcon: Icon(Icons.location_on),
                 ),
-                initialValue: '英国',
               ),
               const SizedBox(height: 24),
               

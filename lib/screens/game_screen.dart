@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/npc.dart';
+import '../models/player.dart';
+import '../models/world_state.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -301,7 +303,7 @@ class _PeopleTab extends StatelessWidget {
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text('${player.house ?? '未分院'} · 一年级'),
-                Text(_bloodStatusLabel(player.bloodStatus)),
+                Text(_bloodStatusLabel(player.bloodType)),
               ],
             ),
           ),
@@ -430,7 +432,7 @@ class _StatusTab extends StatelessWidget {
       children: [
         _buildSection('基本信息', [
           _buildRow('姓名', player!.name),
-          _buildRow('血统', _bloodStatusLabel(player!.bloodStatus)),
+          _buildRow('血统', _bloodStatusLabel(player!.bloodType)),
           _buildRow('出生地', player!.birthLocation),
           _buildRow('学院', player!.house ?? '未分院'),
           _buildRow('年级', '${player!.grade ?? 1}'),

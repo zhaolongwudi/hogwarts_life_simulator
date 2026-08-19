@@ -6,7 +6,6 @@ class Player {
   final String id;
   String name;
   final String birthYear;
-  static const String bloodStatus = ''; // 会在初始化时设置
   final String bloodType; // pureblood, halfblood, muggleborn, special
   final String birthLocation;
   final List<String> personalityTraits;
