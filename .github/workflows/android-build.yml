@@ -40,3 +40,12 @@ jobs:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
+
+      - name: Create GitHub Release
+        run: |
+          TAG="v1.0.0-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
+            --title "魔法人生模拟器 $TAG" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
