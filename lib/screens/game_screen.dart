@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_to_list_in_spreads, unnecessary_string_interpolations, prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
@@ -12,7 +14,8 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen>
+    with SingleTickerProviderStateMixin {
   final _bottomController = TextEditingController();
   TabController? _tabController;
 
@@ -216,7 +219,7 @@ class _NarrativeTab extends StatelessWidget {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              letters[idx] ?? '${idx + 1}',
+                              idx < letters.length ? letters[idx] : '${idx + 1}',
                               style: const TextStyle(color: Colors.white, fontSize: 12),
                             ),
                           ),
@@ -262,14 +265,14 @@ class _PeopleTab extends StatelessWidget {
                 n.isAlive &&
                 gameProvider.getViewableCharacter(n.id) != null)
             .take(10)
-            .map((n) => _buildNPCRow(n, player))
+            .map((n) => _buildNPCRow(context, n, player))
             .toList(),
         const SizedBox(height: 16),
         const Text('教授', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         ...gameProvider.npcRegistry.values
             .where((n) => n.grade == 0 && n.isAlive)
-            .map((n) => _buildNPCRow(n, player))
+            .map((n) => _buildNPCRow(context, n, player))
             .toList(),
       ],
     );
@@ -312,7 +315,7 @@ class _PeopleTab extends StatelessWidget {
     );
   }
 
-  Widget _buildNPCRow(NPC npc, Player player) {
+  Widget _buildNPCRow(BuildContext context, NPC npc, Player player) {
     final rel = player.relationships[npc.id];
     return ListTile(
       leading: CircleAvatar(

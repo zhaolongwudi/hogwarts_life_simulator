@@ -21,7 +21,6 @@ class GameProvider extends ChangeNotifier {
   String? _error;
   int _turnCount = 0;
   String? _systemPrompt;
-  String? _lastSlotId;
 
   Player? get player => _player;
   WorldState get worldState => _worldState;
@@ -482,7 +481,7 @@ ${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
   // ==================== 存档系统 ====================
   Future<void> quickSave() async {
     if (_player == null) return;
-    _lastSlotId = await _saveService.saveGame(
+    await _saveService.saveGame(
       player: _player!.toJson(),
       worldState: _worldState.toJson(),
       npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),

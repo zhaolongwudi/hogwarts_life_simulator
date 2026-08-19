@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-final _uuid = const Uuid();
+const _uuid = Uuid();
 
 class Player {
   final String id;

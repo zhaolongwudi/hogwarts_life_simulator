@@ -5,6 +5,8 @@
 
 # IDE and Editors
 **/.idea/
+**/*.iml
+**.iml
 **/.vscode/
 *.swp
 *.swo
