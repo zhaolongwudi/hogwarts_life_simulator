@@ -11,12 +11,16 @@ class AiConfig {
   final String model;
   final String apiKey;
   final String baseUrl;
+  final String chatPath;
+  final String modelsPath;
 
   const AiConfig({
     required this.provider,
     required this.model,
     required this.apiKey,
     required this.baseUrl,
+    this.chatPath = '/v1/chat/completions',
+    this.modelsPath = '/v1/models',
   });
 
   factory AiConfig.deepseek(String apiKey) => AiConfig(
@@ -31,13 +35,15 @@ class AiConfig {
         model: 'glm-4-flash',
         apiKey: apiKey,
         baseUrl: 'https://open.bigmodel.cn',
+        chatPath: '/api/paas/v4/chat/completions',
+        modelsPath: '/api/paas/v4/models',
       );
 
   factory AiConfig.agnes(String apiKey) => AiConfig(
         provider: AiProvider.agnes,
         model: 'agnes-2.5-flash',
         apiKey: apiKey,
-        baseUrl: 'https://apihub.agnes-ai.cn/v1',
+        baseUrl: 'https://apihub.agnes-ai.cn',
       );
 
   AiConfig copyWith({
@@ -45,11 +51,15 @@ class AiConfig {
     String? model,
     String? apiKey,
     String? baseUrl,
+    String? chatPath,
+    String? modelsPath,
   }) => AiConfig(
         provider: provider ?? this.provider,
         model: model ?? this.model,
         apiKey: apiKey ?? this.apiKey,
         baseUrl: baseUrl ?? this.baseUrl,
+        chatPath: chatPath ?? this.chatPath,
+        modelsPath: modelsPath ?? this.modelsPath,
       );
 }
 

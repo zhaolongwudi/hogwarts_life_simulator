@@ -25,7 +25,7 @@ class DeepSeekService {
   }) async {
     try {
       final response = await _dio.post(
-        '/v1/chat/completions',
+        config.chatPath,
         data: jsonEncode({
           'model': config.model,
           'messages': [
@@ -55,7 +55,7 @@ class DeepSeekService {
 
   Future<bool> checkConnection() async {
     try {
-      await _dio.get('/v1/models');
+      await _dio.get(config.modelsPath);
       return true;
     } catch (_) {
       return false;

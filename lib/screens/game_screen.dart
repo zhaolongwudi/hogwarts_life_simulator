@@ -28,12 +28,27 @@ class _GameScreenState extends State<GameScreen> {
   int _tokenUsage = 0;
   final _inputController = TextEditingController();
   final _menuController = TextEditingController();
+  final _scrollController = ScrollController();
+  String? _lastNarrative;
 
   @override
   void dispose() {
     _inputController.dispose();
     _menuController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _handleFreeAction() {
@@ -55,6 +70,12 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final gp = context.watch<GameProvider>();
+
+    // Auto-scroll to top when narrative changes
+    if (gp.currentNarrative != _lastNarrative) {
+      _lastNarrative = gp.currentNarrative;
+      _scrollToTop();
+    }
 
     if (gp.isInitializing) {
       return const Scaffold(
@@ -326,16 +347,17 @@ class _GameScreenState extends State<GameScreen> {
         _buildPanelEventTabs(),
         Expanded(
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_subTab == 0) ...[
-                  _buildPanelContent(player),
-                ] else ...[
                   _buildNarrativeText(gp),
                   const SizedBox(height: 12),
                   _buildChoiceList(gp),
+                ] else ...[
+                  _buildPanelContent(player),
                 ],
               ],
             ),
@@ -360,7 +382,6 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
           ),
-        _buildProgressButton(gp),
       ],
     );
   }
@@ -448,7 +469,7 @@ class _GameScreenState extends State<GameScreen> {
                   color: _subTab == 0 ? Theme.of(context).colorScheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('面板',
+                child: Text('事件',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _subTab == 0 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
@@ -466,7 +487,7 @@ class _GameScreenState extends State<GameScreen> {
                   color: _subTab == 1 ? Theme.of(context).colorScheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('事件',
+                child: Text('面板',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _subTab == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
@@ -678,37 +699,9 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildProgressButton(GameProvider gp) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: GestureDetector(
-        onTap: gp.isLoading ? null : () {},
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8A0A0),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.pink.withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('推进', style: TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600)),
-              Text('剧情', style: TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildBottomInput() {
+    final gp = context.watch<GameProvider>();
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
       decoration: BoxDecoration(
@@ -717,6 +710,40 @@ class _GameScreenState extends State<GameScreen> {
       ),
       child: Row(
         children: [
+          // 推进剧情按钮
+          GestureDetector(
+            onTap: gp.isLoading
+                ? null
+                : () {
+                    if (gp.choices.isNotEmpty) {
+                      gp.processChoice(gp.choices.first);
+                    }
+                  },
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: gp.isLoading ? const Color(0xFF484f58) : const Color(0xFFE8A0A0),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.pink.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('推进', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                  Text('剧情', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: () {
               setState(() {
