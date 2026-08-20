@@ -1,3 +1,9 @@
-// This file is intentionally left minimal.
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 // Plugin versions are managed in settings.gradle.
 // See https://docs.flutter.dev/to/review-gradle-config for more info.
