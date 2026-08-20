@@ -81,11 +81,6 @@ jobs:
         run: |
           echo "=== Gradle Wrapper Properties ==="
           cat android/gradle/wrapper/gradle-wrapper.properties
-          echo "=== Downloading Gradle distribution ==="
-          DISTRIBUTION_URL=$(grep 'distributionUrl' android/gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2-)
-          DISTRIBUTION_URL="https:${DISTRIBUTION_URL#https\\:}"
-          echo "URL: $DISTRIBUTION_URL"
-          curl -sI "$DISTRIBUTION_URL" | head -5
           echo "=== Gradle wrapper test ==="
           cd android && ./gradlew --version 2>&1 || echo "Gradle wrapper test failed"
           cd ..
@@ -97,17 +92,45 @@ jobs:
         run: flutter analyze
 
       - name: Build APK
+        id: build
         run: |
           echo "=== Flutter Doctor ==="
           flutter doctor -v
           echo "=== Flutter Version ==="
           flutter --version
-          echo "=== Gradle Wrapper ==="
+          echo "=== Gradle Wrapper Test ==="
           cd android && ./gradlew --version 2>&1 || true
           cd ..
           echo "=== Building APK ==="
-          flutter build apk --release
+          flutter build apk --release 2>&1 | tee build_output.log
+          echo "BUILD_EXIT_CODE=${PIPESTATUS[0]}" > build_result.txt
         timeout-minutes: 15
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ steps.bump.outputs.VERSION_NAME }}
+          path: |
+            build_output.log
+            build_result.txt
+          retention-days: 30
+
+      - name: Check build result
+        run: |
+          if [ -f build_result.txt ]; then
+            cat build_result.txt
+            EXIT_CODE=$(grep BUILD_EXIT_CODE build_result.txt | cut -d= -f2)
+            if [ "$EXIT_CODE" != "0" ]; then
+              echo "Build failed with exit code: $EXIT_CODE"
+              echo "=== Last 100 lines of build output ==="
+              tail -100 build_output.log
+              exit 1
+            fi
+          else
+            echo "No build result file found"
+            exit 1
+          fi
 
       - name: Rename APK
         run: |
