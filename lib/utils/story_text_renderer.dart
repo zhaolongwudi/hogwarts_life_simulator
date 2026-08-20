@@ -31,7 +31,7 @@ class StoryTextRenderer {
     '对角巷', '翻倒巷', '伦敦', '魔法部',
     '大礼堂', '天文塔', '拉文克劳塔', '格兰芬多塔', '斯莱特林地牢',
     '赫奇帕奇地下室', '黑湖', '禁林', '图书馆', '温室',
-    '魔药课教室', '魔咒教室', '变形课教室', '魔法防御术教室',
+    '魔药课教室', '魔咒教室', '变形课教室', '黑魔法防御术教室',
     '决斗俱乐部', '训练场', '海格的小屋', '魁地奇球场',
     '国王十字车站', '格里莫广场12号', '圣芒戈魔法伤病医院',
     '破釜酒吧', '古灵阁', '古灵阁巫师银行',
@@ -59,27 +59,33 @@ class StoryTextRenderer {
     '老魔杖', '接骨木魔杖', '紫杉木魔杖', '冬青木魔杖',
   ];
 
+  static const Color _narrationColor = Color(0xFFC9D1D9);
+  static const Color _dialogueColor = Color(0xFF58A6FF);
+  static const Color _characterColor = Color(0xFFE3B341);
+  static const Color _locationColor = Color(0xFF56D364);
+  static const Color _itemColor = Color(0xFFBC8CFF);
+
   static TextStyle _narrationStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: Color(0xFF4A3728),
+    fontSize: 15, height: 1.8, color: _narrationColor,
   );
 
   static TextStyle _dialogueStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: Color(0xFF1565C0),
+    fontSize: 15, height: 1.8, color: _dialogueColor,
     fontWeight: FontWeight.w500,
   );
 
   static TextStyle _characterStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: Color(0xFFB45309),
+    fontSize: 15, height: 1.8, color: _characterColor,
     fontWeight: FontWeight.w600,
   );
 
   static TextStyle _locationStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: Color(0xFF059669),
+    fontSize: 15, height: 1.8, color: _locationColor,
     fontWeight: FontWeight.w500,
   );
 
   static TextStyle _itemStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: Color(0xFF7C3AED),
+    fontSize: 15, height: 1.8, color: _itemColor,
     fontWeight: FontWeight.w500,
   );
 

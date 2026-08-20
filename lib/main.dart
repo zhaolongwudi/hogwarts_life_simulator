@@ -55,6 +55,7 @@ class HogwartsLifeSimulator extends StatelessWidget {
       primaryColor: gold,
       colorScheme: const ColorScheme.dark(
         primary: gold,
+        onPrimary: Color(0xFF0d1117),
         secondary: deepRed,
         surface: surface,
         onSurface: textPrimary,

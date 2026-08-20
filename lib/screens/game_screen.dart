@@ -223,8 +223,8 @@ class _GameScreenState extends State<GameScreen> {
         children: [
           Icon(Icons.bolt, size: 16, color: Theme.of(context).colorScheme.secondary),
           const SizedBox(width: 4),
-          Expanded(child: Text(names[label] ?? label, style: const TextStyle(fontSize: 12))),
-          Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          Expanded(child: Text(names[label] ?? label, style: const TextStyle(fontSize: 12, color: Color(0xFFE6EDF3)))),
+          Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
         ],
       ),
     );
@@ -251,9 +251,9 @@ class _GameScreenState extends State<GameScreen> {
         children: [
           Icon(Icons.bolt, size: 12, color: Theme.of(context).colorScheme.secondary),
           const SizedBox(width: 2),
-          Text(names[label] ?? label, style: const TextStyle(fontSize: 11)),
+          Text(names[label] ?? label, style: const TextStyle(fontSize: 11, color: Color(0xFFE6EDF3))),
           const SizedBox(width: 2),
-          Text('$value', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Text('$value', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
         ],
       ),
     );
@@ -453,7 +453,7 @@ class _GameScreenState extends State<GameScreen> {
       children: [
         Row(
           children: [
-            const Text('当前事件列表', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('当前事件列表', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -510,7 +510,7 @@ class _GameScreenState extends State<GameScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3))),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -545,7 +545,7 @@ class _GameScreenState extends State<GameScreen> {
         child: const Text(
           '等待开始...\n\n输入自由行动或选择一个选项开始你的霍格沃茨之旅。',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF8B7355)),
+          style: TextStyle(color: Color(0xFF8B949E)),
         ),
       );
     }
@@ -564,10 +564,10 @@ class _GameScreenState extends State<GameScreen> {
             spacing: 12,
             runSpacing: 4,
             children: [
-              _buildLegendItem(const Color(0xFFB45309), '人名'),
-              _buildLegendItem(const Color(0xFF1565C0), '对话'),
-              _buildLegendItem(const Color(0xFF059669), '地点'),
-              _buildLegendItem(const Color(0xFF7C3AED), '物品'),
+              _buildLegendItem(const Color(0xFFE3B341), '人名'),
+              _buildLegendItem(const Color(0xFF58A6FF), '对话'),
+              _buildLegendItem(const Color(0xFF56D364), '地点'),
+              _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
             ],
           ),
         ),
@@ -602,7 +602,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8B7355))),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
       ],
     );
   }
@@ -630,7 +630,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
               child: Text(
                 '${String.fromCharCode(65 + index)}. ${choice.text}',
-                style: const TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14, color: Color(0xFFE6EDF3)),
               ),
             ),
           );
@@ -706,9 +706,11 @@ class _GameScreenState extends State<GameScreen> {
                   Expanded(
                     child: TextField(
                       controller: _inputController,
+                      style: const TextStyle(color: Color(0xFFE6EDF3)),
                       decoration: const InputDecoration(
                         hintText: '输入自定义行动...',
-                        prefixIcon: Icon(Icons.auto_awesome, size: 20),
+                        hintStyle: TextStyle(color: Color(0xFF8B949E)),
+                        prefixIcon: Icon(Icons.auto_awesome, size: 20, color: Color(0xFF8B949E)),
                         isDense: true,
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 12),
@@ -753,8 +755,8 @@ class _GameScreenState extends State<GameScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF4A3728).withValues(alpha: 0.5),
-                Color(0xFF8B7355).withValues(alpha: 0.2),
+                const Color(0xFF161b22).withValues(alpha: 0.8),
+                const Color(0xFF0d1117).withValues(alpha: 0.5),
                 Theme.of(context).scaffoldBackgroundColor,
               ],
             ),
@@ -1156,7 +1158,7 @@ class _GameScreenState extends State<GameScreen> {
                       Expanded(
                         child: Text(
                           title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3)),
                         ),
                       ),
                       Container(
@@ -1226,7 +1228,7 @@ class _GameScreenState extends State<GameScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
                         if (isNearby) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -1777,19 +1779,19 @@ class _GameScreenState extends State<GameScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('AI 引擎', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('AI 引擎', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
                 const SizedBox(height: 12),
-                const Text('选择 AI 提供商', style: TextStyle(fontSize: 13)),
+                const Text('选择 AI 提供商', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
                 const SizedBox(height: 8),
                 _buildProviderPicker(appProvider),
                 const SizedBox(height: 12),
                 if (appProvider.availableModels.isNotEmpty) ...[
-                  const Text('选择模型', style: TextStyle(fontSize: 13)),
+                  const Text('选择模型', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
                   const SizedBox(height: 8),
                   _buildModelPicker(appProvider),
                   const SizedBox(height: 12),
                 ],
-                const Text('API Key', style: TextStyle(fontSize: 13)),
+                const Text('API Key', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
                 const SizedBox(height: 8),
                 _buildApiKeyInput(appProvider, gp),
               ],
@@ -1806,7 +1808,7 @@ class _GameScreenState extends State<GameScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('文字展示与阅读速度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('文字展示与阅读速度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
                 const SizedBox(height: 12),
                 Row(
                   children: [
