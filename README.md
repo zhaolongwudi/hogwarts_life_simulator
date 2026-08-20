@@ -138,6 +138,11 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.3.9 — 2026-08-20
+
+**📋 变更说明**
+fix: remove unnecessary foundation.dart import
+
 ### v0.3.8 — 2026-08-20
 
 fix: auto-save/auto-load game state - fix black screen on app restart
