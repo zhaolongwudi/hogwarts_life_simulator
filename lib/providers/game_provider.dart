@@ -359,16 +359,18 @@ class GameProvider extends ChangeNotifier {
 5. 不要让玩家自动成为主角
 6. 保持魔法氛围，但不夸大
 
-【输出格式】
+【输出格式 - 必须严格遵守】
 【叙事】
-（300-500字沉浸叙事，包含至少3个感官细节）
+（300-500字沉浸叙事，包含至少3个感官细节，详细描述主角收到霍格沃茨通知的情境、家庭反应、环境氛围等）
 
 【可选行动】
-A. （选项1）
-B. （选项2）
-C. （选项3）
-D. （选项4）
-【自由行动】（输入任何合理行为）''';
+A. （选项1 - 具体描述）
+B. （选项2 - 具体描述）
+C. （选项3 - 具体描述）
+D. （选项4 - 可选）
+【自由行动】（玩家可输入任何合理行为）
+
+⚠️ 叙事段是最重要的部分，必须有充足的内容描写。禁止只有选项没有叙事！''';
 
     if (_deepSeek == null) {
       _currentNarrative =
@@ -480,18 +482,30 @@ ${_getNearbyNPCs()}
 5. 时间自然推进，叙事开头附时间戳
 6. **必须**在叙事中体现玩家的【性格特质】和【血统】，让行为和对话符合其身份设定
 
-格式：
+【⚠️ 强制输出要求】
+你必须严格按照以下格式输出，**叙事部分不能为空**：
+1. 先写【叙事】段（200-400字），描述当前情境的详细叙事
+2. 再写【好感度变化】段（如果有变化）
+3. 最后写【可选行动】段，给出3-4个选项
+
+注意：叙事是最重要的部分，必须包含感官细节、环境描写和人物互动。
+禁止只有选项没有叙事！
+
+格式（必须严格遵守）：
 【叙事】
-（200-400字，含≥3感官细节）
+（200-400字，含≥3感官细节，描述发生了什么、环境如何、NPC反应如何）
 
 【好感度变化】
 NPC名: ±X（原因）
 
 【可选行动】
-A. ...
-B. ...
-C. ...
-【自由行动】...''';
+A. （选项1 - 具体行动描述）
+B. （选项2 - 具体行动描述）
+C. （选项3 - 具体行动描述）
+D. （选项4 - 可选）
+【自由行动】（玩家可输入任何合理行为）
+
+⚠️ 再次强调：【叙事】段必须有内容，不能为空。这是最重要的部分。''';
 
       final response = await _callDeepSeek(prompt);
       _parseResponse(response);
@@ -1300,13 +1314,16 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     _choices = [];
     bool inNarrative = false;
 
+    // Pass 1: Try structured parsing with explicit markers
     for (final line in lines) {
       final trimmed = line.trim();
       if (trimmed == '【叙事】') {
         inNarrative = true;
         continue;
       } else if (trimmed.startsWith('【可选行动】') ||
-          trimmed.startsWith('【自由行动】')) {
+          trimmed.startsWith('【自由行动】') ||
+          trimmed.startsWith('【好感度变化】') ||
+          trimmed.startsWith('【声望变化】')) {
         inNarrative = false;
         continue;
       }
@@ -1323,22 +1340,83 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       }
     }
 
+    // Pass 2: If narrative is empty or too short (< 20 chars), try
+    // to extract from raw text before choices
+    if (_currentNarrative.isEmpty || _currentNarrative.length < 20) {
+      _extractNarrativeFromRawText(text);
+    }
+
     _currentNarrative = _currentNarrative
         .replaceAll(RegExp(r'\n{3,}'), '\n\n')
         .trim();
 
-    // 解析好感度变化
+    // Pass 3: If still empty, generate a fallback narrative
+    if (_currentNarrative.isEmpty) {
+      _currentNarrative = _generateFallbackNarrative();
+    }
+
+    // Parse affection changes
     _parseAffectionChanges(text);
 
-    // 解析声望变化
+    // Parse reputation changes
     _parseReputationChanges(text);
 
     if (_choices.isEmpty) {
       _choices.add(GameChoice(text: '继续', action: '继续'));
     }
 
-    // 每轮检查NPC表白
+    // Check NPC confessions every turn
     checkNPCConfessions();
+  }
+
+  void _extractNarrativeFromRawText(String text) {
+    // Remove known metadata sections
+    var cleaned = text;
+
+    // Remove 【好感度变化】 section
+    cleaned = cleaned.replaceAllMapped(
+        RegExp(r'【好感度变化】[\s\S]*?(?=【|$)'), (m) => '');
+    // Remove 【声望变化】 section
+    cleaned = cleaned.replaceAllMapped(
+        RegExp(r'【声望变化】[\s\S]*?(?=【|$)'), (m) => '');
+
+    // Find where choices start (A. B. C. etc.)
+    final choiceMatch = RegExp(r'^[A-E][\.\)]\s', multiLine: true).firstMatch(cleaned);
+    if (choiceMatch != null) {
+      cleaned = cleaned.substring(0, choiceMatch.start);
+    } else {
+      // No choices found either - take first paragraph
+      cleaned = cleaned.split('\n\n').first;
+    }
+
+    // Remove any remaining section markers
+    cleaned = cleaned
+        .replaceAll(RegExp(r'【[^】]+】'), '')
+        .replaceAll(RegExp(r'\n{2,}'), '\n\n')
+        .trim();
+
+    if (cleaned.isNotEmpty && cleaned.length > 10) {
+      _currentNarrative = cleaned;
+    }
+  }
+
+  String _generateFallbackNarrative() {
+    final p = _player;
+    if (p == null) return '你站在霍格沃茨的走廊上，等待着下一段旅程。';
+
+    final location = _worldState.currentLocation ?? '霍格沃茨';
+    final time = _worldState.timestamp;
+    final weather = _worldState.weather ?? '晴朗';
+
+    final fallbacks = [
+      '📅 $time\n\n你在$location，感受着魔法世界的脉搏。周围的一切都在等待你的下一步行动。',
+      '📅 $time\n\n$location的空气中弥漫着魔法的气息。$weather的天气让人想继续探索这个奇妙的世界。',
+      '📅 $time\n\n作为一名${p.grade}年级的学生，你在$location经历着霍格沃茨的又一天。每件事都可能改变故事的走向。',
+      '📅 $time\n\n${p.name}，你身处$location。接下来会发生什么，完全取决于你的选择。',
+    ];
+
+    final idx = _turnCount % fallbacks.length;
+    return fallbacks[idx];
   }
 
   void _parseAffectionChanges(String text) {
