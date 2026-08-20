@@ -70,8 +70,8 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git pull --rebase origin main
             git commit -m "docs: sync changelog for v${{ steps.bump.outputs.VERSION_NAME }} [skip ci]"
+            git pull --rebase origin main || true
             git push origin main
             echo "✅ Changelog synced and pushed"
             echo "SYNCED=true" >> "$GITHUB_OUTPUT"
