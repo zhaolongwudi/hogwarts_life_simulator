@@ -1,5 +1,3 @@
-import 'npc_data.dart';
-
 /// 魔杖数据：依据设定文档「第六部分 · 魔杖系统」
 class WandData {
   final String id;

@@ -122,6 +122,8 @@
 **/.cache/
 **/tmp/
 **/temp/
+temp_extracted/
+workspace/
 
 # Dart
 **/.dart_tool/

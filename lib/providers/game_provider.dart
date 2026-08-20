@@ -8,6 +8,7 @@ import '../models/game_systems.dart';
 import '../data/course_data.dart';
 import '../data/wand_data.dart';
 import '../data/cg_data.dart';
+import '../data/npc_data.dart';
 import '../services/deepseek_service.dart';
 import '../services/save_service.dart';
 
@@ -1052,9 +1053,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   String _formatDate() {
     final t = _worldState.time;
     final year = t.year;
-    final month = _worldState.month ?? '九月';
+    final month = _worldState.month;
     final day = _worldState.dayOfMonth;
-    final weekday = _worldState.dayOfWeek ?? '周一';
+    final weekday = _worldState.dayOfWeek;
     final hour = t.hour.toString().padLeft(2, '0');
     final minute = t.minute.toString().padLeft(2, '0');
     return '📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]';
