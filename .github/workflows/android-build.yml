@@ -97,7 +97,7 @@ jobs:
         run: flutter analyze
 
       - name: Build APK
-        run: flutter build apk --release --android-skip-build-dependency-validation
+        run: flutter build apk --release
         timeout-minutes: 10
 
       - name: Rename APK
