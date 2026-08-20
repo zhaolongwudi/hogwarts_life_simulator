@@ -27,12 +27,36 @@ if grep -q "### v${VERSION}" "$README"; then
   exit 0
 fi
 
+DESCRIPTION=""
+
+# Priority 1: UPDATE_DESC.md file
 DESCRIPTION_FILE="$PROJECT_DIR/UPDATE_DESC.md"
 if [ -f "$DESCRIPTION_FILE" ] && [ -s "$DESCRIPTION_FILE" ]; then
   DESCRIPTION=$(cat "$DESCRIPTION_FILE")
   rm -f "$DESCRIPTION_FILE"
+# Priority 2: Command line argument
 elif [ -n "$*" ]; then
   DESCRIPTION="$*"
+# Priority 3: Auto-generate from git log (last commit)
+elif command -v git &> /dev/null && git -C "$PROJECT_DIR" rev-parse --git-dir &> /dev/null; then
+  LAST_COMMIT=$(git -C "$PROJECT_DIR" log -1 --format='%s' 2>/dev/null)
+  LAST_BODY=$(git -C "$PROJECT_DIR" log -1 --format='%b' 2>/dev/null)
+  if [ -n "$LAST_COMMIT" ]; then
+    DESCRIPTION="**📋 变更说明**
+$LAST_COMMIT
+"
+    if [ -n "$LAST_BODY" ]; then
+      # Take first 5 lines of body
+      BODY_LINES=$(echo "$LAST_BODY" | head -5)
+      if [ -n "$BODY_LINES" ]; then
+        DESCRIPTION="${DESCRIPTION}
+${BODY_LINES}"
+      fi
+    fi
+  else
+    DESCRIPTION="**🔧 代码更新**
+- 常规代码更新与优化"
+  fi
 else
   DESCRIPTION="**🔧 代码更新**
 - 常规代码更新与优化"
