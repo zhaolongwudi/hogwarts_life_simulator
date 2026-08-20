@@ -17,40 +17,63 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Fix game_provider.dart - remove unused import
+      - name: Fix files with Python
         run: |
-          sed -i "/import '..\/data\/npc_data.dart';/d" lib/providers/game_provider.dart
+          python3 << 'EOF'
+          import re
 
-      - name: Fix game_provider.dart - remove unused method
-        run: |
-          # 删除 _getPlayerGrade 方法（第317-322行）
-          sed -i '/^  int _getPlayerGrade() {$/,/^  }$/d' lib/providers/game_provider.dart
+          # 1. 修复 game_provider.dart
+          with open('lib/providers/game_provider.dart', 'r') as f:
+              content = f.read()
+          
+          # 删除未使用的 import
+          content = content.replace("import '../data/npc_data.dart';\n", "")
+          
+          # 删除 _getPlayerGrade 方法
+          content = re.sub(r'\n  int _getPlayerGrade\(\) \{[^}]+\}\n', '\n', content)
+          
+          # 在 CG 解锁注释前添加 formatDate 方法
+          format_method = '''
+  // ==================== 时间格式化 ====================
+  String _formatDate() {
+    final t = _worldState.time;
+    final year = t.year;
+    final month = _worldState.month ?? '九月';
+    final day = _worldState.dayOfMonth;
+    final weekday = _worldState.dayOfWeek ?? '周一';
+    final hour = t.hour.toString().padLeft(2, '0');
+    final minute = t.minute.toString().padLeft(2, '0');
+    return '📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]';
+  }
 
-      - name: Fix game_provider.dart - add formatDate method
-        run: |
-          # 在 CG 解锁注释前添加方法
-          sed -i '/\/\/ ==================== CG 解锁 ====================/i\
-  String _formatDate() {\
-    final t = _worldState.time;\
-    final year = t.year;\
-    final month = _worldState.month ?? '\''九月'\'';\
-    final day = _worldState.dayOfMonth;\
-    final weekday = _worldState.dayOfWeek ?? '\''周一'\'';\
-    final hour = t.hour.toString().padLeft(2, '\''0'\'');\
-    final minute = t.minute.toString().padLeft(2, '\''0'\'');\
-    return '\''📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]'\'';\
-  }\
-' lib/providers/game_provider.dart
-          # 替换调用
-          sed -i 's/_worldState.formatDate()/_formatDate()/g' lib/providers/game_provider.dart
-
-      - name: Fix game_screen.dart - unused variable
-        run: |
-          sed -i 's/final rel = player\.relationships/final _rel = player.relationships/g' lib/screens/game_screen.dart
-
-      - name: Fix intro_screen.dart - unused variable
-        run: |
-          sed -i 's/String? petId;/String? _petId;/' lib/screens/intro_screen.dart
+'''
+          content = content.replace(
+              '  // ==================== CG 解锁 ====================',
+              format_method + '  // ==================== CG 解锁 ===================='
+          )
+          
+          # 替换 formatDate 调用
+          content = content.replace('_worldState.formatDate()', '_formatDate()')
+          
+          with open('lib/providers/game_provider.dart', 'w') as f:
+              f.write(content)
+          
+          # 2. 修复 game_screen.dart
+          with open('lib/screens/game_screen.dart', 'r') as f:
+              content = f.read()
+          content = content.replace('final rel = player.relationships', 'final _rel = player.relationships')
+          with open('lib/screens/game_screen.dart', 'w') as f:
+              f.write(content)
+          
+          # 3. 修复 intro_screen.dart
+          with open('lib/screens/intro_screen.dart', 'r') as f:
+              content = f.read()
+          content = content.replace('String? petId;', 'String? _petId;')
+          with open('lib/screens/intro_screen.dart', 'w') as f:
+              f.write(content)
+          
+          print("✅ 修复完成！")
+          EOF
 
       - name: Run analyze
         run: flutter analyze
