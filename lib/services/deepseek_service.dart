@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import '../providers/app_provider.dart';
 
 class DeepSeekService {
-  final String apiKey;
+  final AiConfig config;
   final Dio _dio;
 
-  DeepSeekService({required this.apiKey})
+  DeepSeekService({required this.config})
       : _dio = Dio(BaseOptions(
-          baseUrl: 'https://api.deepseek.com',
+          baseUrl: config.baseUrl,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
+            'Authorization': 'Bearer ${config.apiKey}',
           },
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 60),
@@ -26,7 +27,7 @@ class DeepSeekService {
       final response = await _dio.post(
         '/v1/chat/completions',
         data: jsonEncode({
-          'model': 'deepseek-chat',
+          'model': config.model,
           'messages': [
             if (systemPrompt.isNotEmpty)
               {'role': 'system', 'content': systemPrompt},
@@ -41,7 +42,7 @@ class DeepSeekService {
       if (response.data['choices']?.isNotEmpty == true) {
         return response.data['choices'][0]['message']['content'] as String;
       }
-      throw Exception('Empty response from DeepSeek');
+      throw Exception('Empty response from AI');
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         throw Exception('API Key 无效，请检查设置');

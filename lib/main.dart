@@ -39,29 +39,96 @@ class HogwartsLifeSimulator extends StatelessWidget {
   }
 
   ThemeData _buildTheme() {
+    const kPrimary = Color(0xFF6B4423);
+    const kSecondary = Color(0xFFC9A86C);
+    const kBackground = Color(0xFFF5F0E8);
+    const kSurface = Color(0xFFFBF8F3);
+    const kCard = Color(0xFFFFFBF5);
+    const kText = Color(0xFF3D2914);
+    const kTextLight = Color(0xFF8B7355);
+    const kBorder = Color(0xFFE5D5C0);
+
     return ThemeData(
-      brightness: Brightness.dark,
-      primaryColor: const Color(0xFF740001),
-      scaffoldBackgroundColor: const Color(0xFF0d1117),
-      colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF740001),
-        secondary: Color(0xFFD3A625),
-        surface: Color(0xFF161b22),
-        onSurface: Color(0xFFe6edf3),
+      brightness: Brightness.light,
+      primaryColor: kPrimary,
+      scaffoldBackgroundColor: kBackground,
+      colorScheme: const ColorScheme.light(
+        primary: kPrimary,
+        secondary: kSecondary,
+        surface: kSurface,
+        onSurface: kText,
+        outline: kBorder,
       ),
       textTheme: const TextTheme(
         displayLarge: TextStyle(
           fontSize: 36,
           fontWeight: FontWeight.bold,
-          color: Color(0xFFD3A625),
+          color: kPrimary,
         ),
         headlineMedium: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w600,
-          color: Colors.white,
+          color: kText,
         ),
-        bodyLarge: TextStyle(fontSize: 16, color: Color(0xFFe6edf3)),
-        bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF8b949e)),
+        titleLarge: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: kText,
+        ),
+        bodyLarge: TextStyle(fontSize: 16, color: kText),
+        bodyMedium: TextStyle(fontSize: 14, color: kTextLight),
+        bodySmall: TextStyle(fontSize: 12, color: kTextLight),
+      ),
+      cardTheme: CardThemeData(
+        color: kCard,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: kBorder),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: kSurface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: kBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: kBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: kPrimary, width: 2),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kPrimary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        selectedItemColor: kPrimary,
+        unselectedItemColor: kTextLight,
+        backgroundColor: kSurface,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: kSurface,
+        foregroundColor: kText,
+        elevation: 1,
+        centerTitle: true,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: kBorder,
+        thickness: 1,
       ),
     );
   }

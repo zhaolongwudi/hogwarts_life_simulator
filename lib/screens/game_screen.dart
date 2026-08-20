@@ -1,13 +1,16 @@
-// ignore_for_file: unnecessary_to_list_in_spreads, unnecessary_string_interpolations, prefer_const_constructors
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
+import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
-import '../models/world_state.dart';
-import '../models/game_systems.dart';
-import '../data/course_data.dart';
+import 'settings_screen.dart';
+import 'phone_home_screen.dart';
+import 'world_map_screen.dart';
+import 'shop_inventory_screens.dart';
+import 'memory_screen.dart';
+import 'job_screen.dart';
+import 'other_screens.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -16,1110 +19,1941 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen>
-    with SingleTickerProviderStateMixin {
-  final _bottomController = TextEditingController();
-  TabController? _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 5, vsync: this);
-  }
+class _GameScreenState extends State<GameScreen> {
+  int _currentTab = 0;
+  int _subTab = 0;
+  bool _expandedStats = false;
+  bool _showStoryPanel = false;
+  int _tokenUsage = 0;
+  final _inputController = TextEditingController();
+  final _menuController = TextEditingController();
 
   @override
   void dispose() {
-    _bottomController.dispose();
-    _tabController?.dispose();
+    _inputController.dispose();
+    _menuController.dispose();
     super.dispose();
   }
 
-  void _handleChoice(int index) {
-    if (index < context.read<GameProvider>().choices.length) {
-      context
-          .read<GameProvider>()
-          .processChoice(context.read<GameProvider>().choices[index]);
-    }
-  }
-
   void _handleFreeAction() {
-    final action = _bottomController.text.trim();
+    final action = _inputController.text.trim();
     if (action.isEmpty) return;
     context.read<GameProvider>().processChoice(
           GameChoice(text: action, action: action),
         );
-    _bottomController.clear();
+    _inputController.clear();
   }
 
-  void _resolveConfession(GameProvider gp, bool accepted, String npcName) {
-    gp.resolveConfession(accepted, npcName);
+  void _handleChoice(int index) {
+    final gp = context.read<GameProvider>();
+    if (index < gp.choices.length) {
+      gp.processChoice(gp.choices[index]);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final gameProvider = context.watch<GameProvider>();
-    final player = gameProvider.player;
-
     return Scaffold(
-      appBar: AppBar(
-        title: _buildAppBarTitle(player, gameProvider),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: '快速存档',
-            onPressed: () async {
-              await gameProvider.quickSave();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('✅ 已快速存档')),
-                );
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: const Color(0xFFD3A625),
-          unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(icon: Icon(Icons.book), text: '叙事'),
-            Tab(icon: Icon(Icons.people), text: '人物'),
-            Tab(icon: Icon(Icons.person), text: '状态'),
-            Tab(icon: Icon(Icons.widgets), text: '系统'),
-            Tab(icon: Icon(Icons.map), text: '地图'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTopBar(),
+            Expanded(child: _buildTabContent()),
+            _currentTab == 0 ? _buildBottomInput() : const SizedBox.shrink(),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _NarrativeTab(
-            narrative: gameProvider.currentNarrative,
-            choices: gameProvider.choices,
-            isLoading: gameProvider.isLoading,
-            error: gameProvider.error,
-            notifications: gameProvider.notifications,
-            player: player,
-            gameProvider: gameProvider,
-            onChoice: _handleChoice,
-            onMoreSuggestions: () => gameProvider.generateMoreSuggestions(),
-            onResolveConfession: _resolveConfession,
-          ),
-          _PeopleTab(gameProvider: gameProvider),
-          _StatusTab(
-            player: player,
-            worldState: gameProvider.worldState,
-          ),
-          _SystemsTab(gameProvider: gameProvider),
-          _MapTab(gameProvider: gameProvider),
-        ],
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildTopBar() {
+    final gp = context.watch<GameProvider>();
+    final player = gp.player;
+    if (player == null) return const SizedBox.shrink();
+
+    final houseLabel = {
+      'Gryffindor': '格兰芬多',
+      'Slytherin': '斯莱特林',
+      'Ravenclaw': '拉文克劳',
+      'Hufflepuff': '赫奇帕奇',
+    }[player.house ?? ''] ?? '';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerTheme.color!)),
       ),
-      bottomNavigationBar: _BottomInputBar(
-        controller: _bottomController,
-        onSend: _handleFreeAction,
-        isLoading: gameProvider.isLoading,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary),
+                ),
+                child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(player.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        if (houseLabel.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$houseLabel · ${player.bloodType == 'pureblood' ? '纯血' : player.bloodType == 'halfblood' ? '混血' : '麻瓜'}',
+                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.bolt, size: 14, color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 2),
+                        Text('精力 ${player.energy}/5', style: const TextStyle(fontSize: 12)),
+                        const SizedBox(width: 12),
+                        Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 2),
+                        Text(gp.worldState.timestamp, style: const TextStyle(fontSize: 12)),
+                        const SizedBox(width: 12),
+                        Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 2),
+                        Text(gp.worldState.currentLocation ?? '未知', style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_drop_up),
+                tooltip: '展开属性',
+                onPressed: () {
+                  setState(() {
+                    _expandedStats = !_expandedStats;
+                  });
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: '存档',
+                onPressed: () async {
+                  await gp.quickSave();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ 已存档')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          if (_expandedStats) _buildStatsRow(player),
+        ],
       ),
     );
   }
 
-  Widget _buildAppBarTitle(Player? player, GameProvider gp) {
+  Widget _buildStatsRow(Player player) {
+    final attrs = player.attributes;
+    final primaryAttrs = attrs.entries.take(2).toList();
+    final secondaryAttrs = attrs.entries.skip(2).take(4).toList();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: primaryAttrs.map((e) => Expanded(child: _buildAttrCard(e.key, e.value))).toList(),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: secondaryAttrs.map((e) => Expanded(child: _buildAttrChip(e.key, e.value))).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttrCard(String label, int value) {
+    final names = {
+      'spell_understanding': '魔咒理解', 'transfiguration': '变形术', 'potions': '魔药',
+      'herbology': '草药学', 'dda': '黑魔法防御', 'flying': '飞行',
+      'theory': '理论', 'memory': '记忆', 'observation': '观察',
+      'magic_control': '魔法控制', 'reaction_time': '反应', 'emotional_stability': '情绪',
+      'creativity': '创造', 'social': '社交', 'courage': '勇气',
+      'caution': '谨慎', 'willpower': '意志', 'logic': '逻辑', 'intuition': '直觉',
+    };
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.bolt, size: 16, color: Theme.of(context).colorScheme.secondary),
+          const SizedBox(width: 4),
+          Expanded(child: Text(names[label] ?? label, style: const TextStyle(fontSize: 12))),
+          Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttrChip(String label, int value) {
+    final names = {
+      'spell_understanding': '魔咒', 'transfiguration': '变形', 'potions': '魔药',
+      'herbology': '草药', 'dda': '黑防', 'flying': '飞行',
+      'theory': '理论', 'memory': '记忆', 'observation': '观察',
+      'magic_control': '控魔', 'reaction_time': '反应', 'emotional_stability': '情绪',
+      'creativity': '创造', 'social': '社交', 'courage': '勇气',
+      'caution': '谨慎', 'willpower': '意志', 'logic': '逻辑', 'intuition': '直觉',
+    };
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bolt, size: 12, color: Theme.of(context).colorScheme.secondary),
+          const SizedBox(width: 2),
+          Text(names[label] ?? label, style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 2),
+          Text('$value', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent() {
+    switch (_currentTab) {
+      case 0:
+        return _buildNarrativeTab();
+      case 1:
+        return _buildPhoneTab();
+      case 2:
+        return _buildWorldTab();
+      case 3:
+        return _buildSettingsTab();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildNarrativeTab() {
+    final gp = context.watch<GameProvider>();
+    final player = gp.player;
+
+    if (player == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        _buildPanelEventTabs(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_subTab == 0) ...[
+                  _buildPanelContent(player),
+                ] else ...[
+                  _buildNarrativeText(gp),
+                  const SizedBox(height: 12),
+                  _buildChoiceList(gp),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (gp.isLoading)
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.pink.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(width: 8),
+                  Text('推进中...'),
+                ],
+              ),
+            ),
+          ),
+        _buildProgressButton(gp),
+      ],
+    );
+  }
+
+  Widget _buildPanelContent(Player player) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildCharacterPanel(player),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const WorldMapScreen()));
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.map, color: Theme.of(context).colorScheme.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('霍格沃茨魔法世界', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 2),
+                          Text('点击打开完整世界地图', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.primary),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildMapMiniTag('霍格沃茨', Icons.castle),
+                    const SizedBox(width: 8),
+                    _buildMapMiniTag('霍格莫德村', Icons.store),
+                    const SizedBox(width: 8),
+                    _buildMapMiniTag('对角巷', Icons.shopping_bag),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildEventList(),
+      ],
+    );
+  }
+
+  Widget _buildPanelEventTabs() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _subTab = 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _subTab == 0 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('面板',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _subTab == 0 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
+                      fontWeight: FontWeight.w600,
+                    )),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _subTab = 1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _subTab == 1 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('事件',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _subTab == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
+                      fontWeight: FontWeight.w600,
+                    )),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventList() {
+    final events = [
+      {'title': '特快列车上的初遇', 'time': '第1年·9月'},
+      {'title': '猫头鹰的意外', 'time': '第1年·9月'},
+      {'title': '红头发的热情', 'time': '第1年·9月'},
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          player?.name ?? '魔法人生',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Row(
+          children: [
+            const Text('当前事件列表', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.refresh, size: 16),
+                SizedBox(width: 4),
+                Text('重刷', style: TextStyle(fontSize: 12)),
+              ]),
+            ),
+          ],
         ),
-        Text(
-          '${gp.worldState.timestamp} · ${player?.house ?? '未分院'}',
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
+        const SizedBox(height: 4),
+        Text('可通过探索地图触发新的事件', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+        const SizedBox(height: 8),
+        ...events.map((e) => _buildEventCard(e['title']!, e['time']!)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(Icons.history, color: Theme.of(context).textTheme.bodyMedium!.color),
+            const SizedBox(width: 4),
+            Text('往期与已完结', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium!.color)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).dividerTheme.color,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('0', style: TextStyle(fontSize: 12)),
+            ),
+          ],
         ),
       ],
     );
   }
-}
 
-class _NarrativeTab extends StatefulWidget {
-  final String narrative;
-  final List<GameChoice> choices;
-  final bool isLoading;
-  final String? error;
-  final List<String> notifications;
-  final Player? player;
-  final GameProvider gameProvider;
-  final void Function(int) onChoice;
-  final VoidCallback? onMoreSuggestions;
-  final void Function(GameProvider, bool, String) onResolveConfession;
-
-  const _NarrativeTab({
-    required this.narrative,
-    required this.choices,
-    required this.isLoading,
-    this.error,
-    required this.notifications,
-    required this.player,
-    required this.gameProvider,
-    required this.onChoice,
-    this.onMoreSuggestions,
-    required this.onResolveConfession,
-  });
-
-  @override
-  State<_NarrativeTab> createState() => _NarrativeTabState();
-}
-
-class _NarrativeTabState extends State<_NarrativeTab>
-    with SingleTickerProviderStateMixin {
-  static const int _millisPerChar = 28;
-  static const int _maxMillis = 30000;
-
-  late final AnimationController _typeController;
-  final ScrollController _scrollController = ScrollController();
-  List<int> _chars = const [];
-  int _visibleCharCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _chars = widget.narrative.runes.toList();
-    _typeController = AnimationController(
-      vsync: this,
-      duration: _durationFor(_chars.length),
-    )..addListener(_onTypeTick);
-    if (_chars.isNotEmpty) _typeController.forward();
-  }
-
-  Duration _durationFor(int length) {
-    return Duration(
-      milliseconds: (length * _millisPerChar).clamp(200, _maxMillis).toInt(),
-    );
-  }
-
-  void _onTypeTick() {
-    final count = (_typeController.value * _chars.length).round();
-    if (count != _visibleCharCount) {
-      setState(() => _visibleCharCount = count);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    }
-  }
-
-  void _scrollToBottom() {
-    if (!_scrollController.hasClients) return;
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 60),
-      curve: Curves.easeOut,
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _NarrativeTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.narrative != widget.narrative) {
-      _chars = widget.narrative.runes.toList();
-      _visibleCharCount = 0;
-      _typeController.duration = _durationFor(_chars.length);
-      _typeController.value = 0;
-      if (_chars.isNotEmpty) _typeController.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _typeController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  String get _displayText {
-    if (_visibleCharCount >= _chars.length) return widget.narrative;
-    return String.fromCharCodes(_chars.take(_visibleCharCount));
-  }
-
-  /// 判断当前叙事是否包含待处理表白
-  bool get _isAwaitingConfession =>
-      widget.player?.loveState.awaitingConfession ?? false;
-
-  String? get _confessingNpc =>
-      widget.player?.loveState.consideringNpcName;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildEventCard(String title, String time) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Row(
         children: [
-          if (widget.error != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text('⚠️ ${widget.error}',
-                  style: const TextStyle(color: Colors.red)),
-            ),
-
-          if (widget.notifications.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1a2200),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFD3A625)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: widget.notifications
-                    .reversed
-                    .take(3)
-                    .map((n) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(n,
-                              style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFFD3A625))),
-                        ))
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161b22),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF30363d)),
-            ),
-            child: SelectableText(
-              widget.narrative.isEmpty ? '等待开始...' : _displayText,
-              style: const TextStyle(fontSize: 15, height: 1.6),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          if (widget.isLoading)
-            const Center(
-              child: Column(
-                children: [
-                  CircularProgressIndicator(color: Color(0xFFD3A625)),
-                  SizedBox(height: 12),
-                  Text('🪄 魔法正在运转...', style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-
-          if (_isAwaitingConfession && _confessingNpc != null)
-            _buildConfessionPanel(),
-
-          if (!widget.isLoading &&
-              !_isAwaitingConfession &&
-              widget.choices.isNotEmpty) ...[
-            const Text('可选行动：', style: TextStyle(fontSize: 14, color: Colors.grey)),
-            const SizedBox(height: 8),
-            ...widget.choices.map((c) {
-              final idx = widget.choices.indexOf(c);
-              final letters = ['A', 'B', 'C', 'D', 'E', 'F'];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Material(
-                  color: const Color(0xFF21262d),
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => widget.onChoice(idx),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF740001),
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              idx < letters.length ? letters[idx] : '${idx + 1}',
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(c.text, style: const TextStyle(fontSize: 14)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.schedule, size: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                    const SizedBox(width: 2),
+                    Text('时间: $time', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                  ],
                 ),
-              );
-            }).toList(),
-
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: widget.onMoreSuggestions,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFD3A625),
-                side: const BorderSide(color: Color(0xFFD3A625)),
-                minimumSize: const Size.fromHeight(44),
-              ),
-              icon: const Icon(Icons.auto_awesome, size: 18),
-              label: const Text('更多建议'),
-            ),
-            const SizedBox(height: 4),
-            const Center(
-              child: Text(
-                '让魔法再想出 4 个新的行动建议',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 20),
-          const Center(
-            child: Text(
-              '输入 /帮助 查看指令系统',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
+          Icon(Icons.bookmark_border, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
+          const SizedBox(width: 12),
+          Icon(Icons.edit, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right, size: 24, color: Theme.of(context).colorScheme.primary),
         ],
       ),
     );
   }
 
-  Widget _buildConfessionPanel() {
+  Widget _buildNarrativeText(GameProvider gp) {
+    final narrative = gp.currentNarrative;
+    if (narrative.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).dividerTheme.color!),
+        ),
+        child: const Text(
+          '等待开始...\n\n输入自由行动或选择一个选项开始你的霍格沃茨之旅。',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF8B7355)),
+        ),
+      );
+    }
+
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2a1f0e),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD3A625)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Text(
+        narrative,
+        style: const TextStyle(fontSize: 15, height: 1.8),
+      ),
+    );
+  }
+
+  Widget _buildChoiceList(GameProvider gp) {
+    if (gp.choices.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('可选行动', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        ...gp.choices.asMap().entries.map((entry) {
+          final index = entry.key;
+          final choice = entry.value;
+          return GestureDetector(
+            onTap: () => _handleChoice(index),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              ),
+              child: Text(
+                '${String.fromCharCode(65 + index)}. ${choice.text}',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildProgressButton(GameProvider gp) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: GestureDetector(
+        onTap: gp.isLoading ? null : () {},
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8A0A0),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.pink.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('推进', style: TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600)),
+              Text('剧情', style: TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomInput() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerTheme.color!)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showStoryPanel = !_showStoryPanel;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.menu, size: 22),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      decoration: const InputDecoration(
+                        hintText: '输入自定义行动...',
+                        prefixIcon: Icon(Icons.auto_awesome, size: 20),
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onSubmitted: (_) => _handleFreeAction(),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _handleFreeAction,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.send, size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhoneTab() {
+    final gp = context.watch<GameProvider>();
+    final player = gp.player;
+    final time = gp.worldState.time;
+    final hourStr = time.hour.toString().padLeft(2, '0');
+    final minStr = time.minute.toString().padLeft(2, '0');
+    final weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF4A3728).withValues(alpha: 0.5),
+                Color(0xFF8B7355).withValues(alpha: 0.2),
+                Theme.of(context).scaffoldBackgroundColor,
+              ],
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
+          child: Column(
+            children: [
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      '${time.month}月${time.day}日 ${weekdayNames[time.weekday]}',
+                      style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.85)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$hourStr:$minStr',
+                      style: const TextStyle(fontSize: 52, fontWeight: FontWeight.w200, color: Colors.white, height: 1.1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildCompactProfile(player),
+              const SizedBox(height: 12),
+              _buildCompactMusicPlayer(),
+              const SizedBox(height: 16),
+              _buildPhoneAppGrid(),
+              const SizedBox(height: 16),
+              _buildBottomQuickRow(),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneHomeScreen()));
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.phone_android, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('打开手机', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactProfile(Player? player) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+              ),
+            ),
+            child: Center(
+              child: Text(
+                player?.name.isNotEmpty == true ? player!.name[0] : '旅',
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(player?.name ?? '旅人', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                GestureDetector(
+                  onTap: () {},
+                  child: Text(
+                    '点击这里编辑你的个性签名',
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactMusicPlayer() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.music_note, color: Theme.of(context).colorScheme.primary, size: 22),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('背景音乐', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('游戏原声', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+              ],
+            ),
+          ),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhoneAppGrid() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildAppItem(Icons.phone_in_talk, '魔法通讯', Color(0xFF3B82F6), () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
+            }),
+            _buildAppItem(Icons.forum, '魔法论坛', Color(0xFFEF4444), () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ForumScreen()));
+            }),
+            _buildAppItem(Icons.edit_note, '查看日记', Color(0xFF8B5CF6), () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryScreen()));
+            }),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildAppItem(Icons.store_mall_directory, '魔法商店', Color(0xFFF59E0B), () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
+            }),
+            _buildAppItem(Icons.apps, '应用商店', Color(0xFF10B981), () {}),
+            _buildAppItem(Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), () {}),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppItem(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomQuickRow() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildQuickItem(Icons.account_balance_wallet, '你的背包', Color(0xFF3B82F6), () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
+          }),
+          _buildQuickItem(Icons.photo_album, '你的回忆', Color(0xFF8B5CF6), () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
+          }),
+          _buildQuickItem(Icons.work, '找点活干', Color(0xFF10B981), () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
+          }),
+          _buildQuickItem(Icons.settings, '设置', Color(0xFF6B7280), () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickItem(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 10)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorldTab() {
+    final gp = context.watch<GameProvider>();
+    final npcs = gp.npcRegistry.values.toList();
+    final nearby = npcs.where((n) => gp.isNearby(n.id)).toList();
+    final others = npcs.where((n) => !gp.isNearby(n.id)).toList();
+    final totalCount = npcs.length;
+    final unmetCount = npcs.where((n) => n.affection == 0 && !gp.isNearby(n.id)).length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildWorldHeader(totalCount, unmetCount),
+          const SizedBox(height: 12),
+          _buildWorldActionRow(),
+          const SizedBox(height: 12),
+          _buildNpcSection('未登场人物', others, true),
+          const SizedBox(height: 8),
+          _buildNpcSection('已登场人物', nearby, false),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorldHeader(int total, int unmet) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.public, color: Theme.of(context).colorScheme.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('世界', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(
+                  '第${_currentYear()}年·9月 · 已登场 ${total - unmet} 人 · 未登场 $unmet 人',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorldActionRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✨ 从收藏引入 NPC')),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.star_border, color: Theme.of(context).colorScheme.secondary, size: 18),
+                  const SizedBox(width: 6),
+                  Text('从收藏引入', style: TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✨ 新建 NPC')),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add, color: Theme.of(context).colorScheme.primary, size: 18),
+                  const SizedBox(width: 6),
+                  Text('新建 NPC', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNpcSection(String title, List<NPC> npcs, bool initiallyCollapsed) {
+    final isEmpty = npcs.isEmpty;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Column(
+        children: [
+          StatefulBuilder(
+            builder: (context, setInnerState) {
+              return GestureDetector(
+                onTap: () => setInnerState(() {}),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.keyboard_arrow_right, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${npcs.length}',
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          if (isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '暂无',
+                style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+              ),
+            )
+          else
+            ...npcs.map((npc) => _buildNpcDetailCard(npc)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNpcDetailCard(NPC npc) {
+    final gp = context.read<GameProvider>();
+    final isNearby = gp.isNearby(npc.id);
+    final relationLabel = _getRelationLabel(npc);
+    final hasAppearance = npc.appearance.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '💘 有人在向你表白',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD3A625)),
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        if (isNearby) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text('同地点', style: TextStyle(fontSize: 11, color: Colors.green)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(relationLabel, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                        const SizedBox(width: 3),
+                        Text(
+                          npc.currentLocation,
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (hasAppearance) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
+              child: Text(
+                npc.appearance,
+                style: TextStyle(fontSize: 13, height: 1.6, color: Theme.of(context).textTheme.bodyLarge!.color),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _getRelationLabel(NPC npc) {
+    if (npc.affection <= -30) return '敌对';
+    if (npc.affection <= -10) return '冷淡';
+    if (npc.affection <= 10) return '关系未明';
+    if (npc.affection <= 30) return '初识';
+    if (npc.affection <= 50) return '朋友';
+    if (npc.affection <= 70) return '好友';
+    if (npc.affection <= 90) return '亲密';
+    return '挚友';
+  }
+
+  int _currentYear() {
+    final gp = context.read<GameProvider>();
+    final yearStr = gp.worldState.academicYear;
+    try {
+      return int.parse(yearStr.split('-')[0]) - 1991 + 1;
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  Widget _buildCharacterPanel(Player? player) {
+    if (player == null) return const SizedBox.shrink();
+
+    final gp = context.read<GameProvider>();
+    final attributes = [
+      {'label': '容貌', 'value': 80, 'icon': Icons.face, 'color': Color(0xFFD97706)},
+      {'label': '体质', 'value': player.attributes['constitution'] ?? 50, 'icon': Icons.favorite, 'color': Color(0xFFDC2626)},
+      {'label': '智力', 'value': player.attributes['intelligence'] ?? 50, 'icon': Icons.psychology, 'color': Color(0xFF2563EB)},
+      {'label': '魅力', 'value': player.attributes['charisma'] ?? 50, 'icon': Icons.favorite_border, 'color': Color(0xFFDB2777)},
+      {'label': '体能', 'value': player.attributes['strength'] ?? 50, 'icon': Icons.fitness_center, 'color': Color(0xFF059669)},
+      {'label': '道德值', 'value': 50, 'icon': Icons.verified, 'color': Color(0xFF7C3AED)},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        player.name.isNotEmpty ? player.name[0] : '旅',
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                      ),
+                      child: const Icon(Icons.add, size: 12, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(player.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
+                              const SizedBox(width: 3),
+                              Text(
+                                '${player.house ?? ''} · ${player.bloodType == 'pureblood' ? '纯血' : player.bloodType == 'halfblood' ? '混血' : '麻瓜'}',
+                                style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Icon(Icons.bolt, size: 13, color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 3),
+                        Text('体力 ${player.energy}/5', style: const TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Icon(Icons.schedule, size: 13, color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 3),
+                        Text(gp.worldState.timestamp, style: const TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Icon(Icons.location_on, size: 13, color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            gp.worldState.currentLocation ?? '未知',
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _expandedStats = !_expandedStats;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _expandedStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildAttrBarCompact(attributes[0])),
+              const SizedBox(width: 10),
+              Expanded(child: _buildAttrBarCompact(attributes[1])),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (int i = 2; i < attributes.length; i++) ...[
+                if (i > 2) const SizedBox(width: 8),
+                Expanded(child: _buildAttrChipFull(attributes[i])),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttrChipFull(Map<String, dynamic> attr) {
+    final value = attr['value'] as int;
+    final color = attr['color'] as Color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(attr['icon'] as IconData, size: 13, color: color),
+              const SizedBox(width: 3),
+              Text(attr['label'] as String, style: const TextStyle(fontSize: 11)),
+              const Spacer(),
+              Text('$value', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: value / 100,
+              backgroundColor: color.withValues(alpha: 0.15),
+              valueColor: AlwaysStoppedAnimation(color),
+              minHeight: 2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttrBarCompact(Map<String, dynamic> attr) {
+    final value = attr['value'] as int;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(attr['icon'] as IconData, size: 14, color: attr['color'] as Color),
+              const SizedBox(width: 4),
+              Text(attr['label'] as String, style: const TextStyle(fontSize: 12)),
+              const Spacer(),
+              Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: value / 100,
+              backgroundColor: (attr['color'] as Color).withValues(alpha: 0.2),
+              valueColor: AlwaysStoppedAnimation(attr['color'] as Color),
+              minHeight: 3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapMiniTag(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsTopBar(GameProvider gp) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildTopBarAction(
+            icon: Icons.sync,
+            label: '同步剧本',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✨ 正在同步剧本...')),
+              );
+            },
+          ),
+          _buildTopBarAction(
+            icon: Icons.save,
+            label: '存读档',
+            onTap: () async {
+              await gp.quickSave();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ 已存档')),
+                );
+              }
+            },
+          ),
+          _buildTopBarAction(
+            icon: Icons.import_export,
+            label: '导入导出',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('📦 导入导出功能')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBarAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTokenUsageSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.bolt, size: 18, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 10),
+              const Text('Token 用量统计', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: ElevatedButton(
-                  onPressed: () => widget.onResolveConfession(
-                      widget.gameProvider, true, _confessingNpc!),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF740001),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text('接受这份心意'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => widget.onResolveConfession(
-                      widget.gameProvider, false, _confessingNpc!),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: const BorderSide(color: Colors.white24),
-                  ),
-                  child: const Text('婉拒'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PeopleTab extends StatelessWidget {
-  final GameProvider gameProvider;
-  const _PeopleTab({required this.gameProvider});
-
-  @override
-  Widget build(BuildContext context) {
-    final player = gameProvider.player;
-    if (player == null) return const Center(child: Text('请先创建角色'));
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildPlayerCard(player),
-        const SizedBox(height: 16),
-        const Text('同年级同学', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        ...gameProvider.npcRegistry.values
-            .where((n) =>
-                n.grade == player.grade &&
-                n.isAlive &&
-                gameProvider.getViewableCharacter(n.id) != null)
-            .take(10)
-            .map((n) => _buildNPCRow(context, n, player))
-            .toList(),
-        const SizedBox(height: 16),
-        const Text('教授', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        ...gameProvider.npcRegistry.values
-            .where((n) => n.grade == 0 && n.isAlive)
-            .map((n) => _buildNPCRow(context, n, player))
-            .toList(),
-      ],
-    );
-  }
-
-  Widget _buildPlayerCard(Player player) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161b22),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD3A625)),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: _getHouseColor(player.house ?? ''),
-            child: Text(
-              player.name.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
-                  fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(player.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('${player.house ?? '未分院'} · ${player.grade ?? 1}年级'),
-                Text(_bloodStatusLabel(player.bloodType)),
-                if (player.loveState.status != '单身')
-                  Text('💕 ${player.loveState.status}（${player.loveState.partnerName}）',
-                      style: const TextStyle(color: Color(0xFFD3A625))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNPCRow(BuildContext context, NPC npc, Player player) {
-    return ListTile(
-      leading: CircleAvatar(
-        radius: 20,
-        backgroundColor: _getHouseColor(npc.house),
-        child: Text(npc.name.substring(0, 1),
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
-      title: Text(npc.name),
-      subtitle: Text(
-          '${npc.house.isEmpty ? '教授' : npc.house} · 好感 ${npc.affection}（${npc.affectionStage}）'),
-      trailing: SizedBox(
-        width: 60,
-        child: LinearProgressIndicator(
-          value: (npc.affection + 100) / 200,
-          backgroundColor: Colors.grey[800],
-          valueColor: AlwaysStoppedAnimation(_relationColor(npc.affection)),
-        ),
-      ),
-      onTap: () => _showNPCDetail(context, npc),
-    );
-  }
-
-  void _showNPCDetail(BuildContext context, NPC npc) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: _getHouseColor(npc.house),
-                  child: Text(npc.name.substring(0, 1),
-                      style: const TextStyle(
-                          fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(npc.name,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text(npc.house.isEmpty ? '教授' : npc.house),
+                      Text('本月消耗', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                      const SizedBox(height: 4),
+                      Text('$_tokenUsage', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('Tokens', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('预计费用', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                      const SizedBox(height: 4),
+                      Text('\$${(_tokenUsage * 0.0001).toStringAsFixed(2)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('基于当前模型', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, size: 14),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '本应用使用本地 API Key 直接调用 AI 服务，不收取任何平台费用。实际费用取决于您选择的 AI 提供商的计费标准。',
+                    style: TextStyle(fontSize: 12),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _detailRow('好感度', '${npc.affection}（${npc.affectionStage}）'),
-            _detailRow('当前位置', npc.currentLocation),
-            _detailRow('性格', npc.personality.join(', ')),
-            if (npc.appearance.isNotEmpty) _detailRow('外貌', npc.appearance),
-            if (npc.sexOrientation != null)
-              _detailRow('性取向', npc.sexOrientation!),
-            if (npc.personalGoal != null) _detailRow('目标', npc.personalGoal!),
-            if (npc.giftPrefs.isNotEmpty)
-              _detailRow('喜欢的礼物', npc.giftPrefs.keys.take(3).join('、')),
-            _detailRow('学术声望', '${npc.reputation.academic}'),
-            _detailRow('战斗声望', '${npc.reputation.combat}'),
-            if (npc.isConsideringConfession)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('……他/她似乎正在酝酿着什么。',
-                    style: TextStyle(color: Color(0xFFD3A625))),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(label, style: const TextStyle(color: Colors.grey)),
           ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  Color _getHouseColor(String house) {
-    return switch (house.toLowerCase()) {
-      'gryffindor' => const Color(0xFF740001),
-      'slytherin' => const Color(0xFF1a472a),
-      'ravenclaw' => const Color(0xFF0e1a40),
-      'hufflepuff' => const Color(0xFFecbe22),
-      _ => Colors.grey,
-    };
-  }
-
-  Color _relationColor(int affection) {
-    return affection >= 85
-        ? const Color(0xFFD3A625)
-        : affection >= 50
-            ? Colors.green
-            : affection >= 30
-                ? Colors.yellow
-                : affection >= 0
-                    ? Colors.blueGrey
-                    : Colors.red;
-  }
-
-  String _bloodStatusLabel(String status) {
-    return {
-      'muggleborn': '麻瓜出身',
-      'halfblood': '混血',
-      'pureblood': '纯血',
-      'special': '特殊家庭',
-    }[status] ?? status;
-  }
-}
-
-class _StatusTab extends StatelessWidget {
-  final Player? player;
-  final WorldState worldState;
-  const _StatusTab({this.player, required this.worldState});
-
-  @override
-  Widget build(BuildContext context) {
-    if (player == null) return const Center(child: Text('请先创建角色'));
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildSection('基本信息', [
-          _buildRow('姓名', player!.name),
-          _buildRow('血统', _bloodStatusLabel(player!.bloodType)),
-          _buildRow('出生地', player!.birthLocation),
-          _buildRow('学院', player!.house ?? '未分院'),
-          _buildRow('年级', '${player!.grade ?? 1}'),
-          _buildRow('魔杖', player!.wandId ?? '未选择'),
-          _buildRow('恋爱', player!.loveState.status),
-        ]),
-        const SizedBox(height: 16),
-        _buildSection('生存状态', [
-          _buildRow('❤️ 生命', '${player!.health}/100'),
-          _buildRow('🔮 魔力', '${player!.magic}/100'),
-          _buildRow('🧠 精神力', '${player!.spirit}/100'),
-          _buildRow('🍗 饱食度', '${player!.satiety}/100'),
-          _buildRow('⚡ 精力', '${player!.energy}/100'),
-        ]),
-        const SizedBox(height: 16),
-        _buildSection('学院四维', [
-          _buildAttrRow('勇气', player!.houseDimensions['courage'] ?? 50),
-          _buildAttrRow('智慧', player!.houseDimensions['wisdom'] ?? 50),
-          _buildAttrRow('忠诚', player!.houseDimensions['loyalty'] ?? 50),
-          _buildAttrRow('野心', player!.houseDimensions['ambition'] ?? 50),
-        ]),
-        const SizedBox(height: 16),
-        _buildSection('属性（前10项）',
-            player!.attributes.entries.take(10).map((e) => _buildAttrRow(e.key, e.value)).toList()),
-        const SizedBox(height: 16),
-        _buildSection('声望', [
-          _buildRow('学术', '${player!.playerReputation.academic}'),
-          _buildRow('社交', '${player!.playerReputation.social}'),
-          _buildRow('战斗', '${player!.playerReputation.combat}'),
-          _buildRow('道德', '${player!.playerReputation.moral}'),
-          _buildRow('领导', '${player!.playerReputation.leadership}'),
-          _buildRow('黑魔法', '${player!.playerReputation.dark}'),
-          _buildRow('学院声望', '${player!.houseReputation}'),
-          _buildRow('魔法界声望', '${player!.wizardingReputation}'),
-          _buildRow('阵营声望', '${player!.factionReputation}'),
-        ]),
-        const SizedBox(height: 16),
-        _buildSection('世界状态', [
-          _buildRow('时间', worldState.timestamp),
-          _buildRow('学年', worldState.academicYear),
-          _buildRow('学期', _termLabel(worldState.term)),
-          _buildRow('世界线变动率',
-              '${(player!.worldLineDeviation * 100).toStringAsFixed(1)}%'),
-          if (worldState.specialMarkers.isNotEmpty)
-            _buildRow('特殊标记', worldState.specialMarkers.join(' ')),
-        ]),
-        const SizedBox(height: 16),
-        _buildSection('学院杯积分',
-            worldState.housePoints.entries.map((e) => _buildRow(_houseLabel(e.key), '${e.value}分')).toList()),
-        if (worldState.recentEvents.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildSection('最近事件',
-              worldState.recentEvents.map((e) => _buildRow('', e)).toList()),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(width: 100, child: Text(label, style: const TextStyle(color: Colors.grey))),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttrRow(String key, int value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          SizedBox(width: 120, child: Text(_attrLabel(key), style: const TextStyle(fontSize: 12))),
-          Expanded(
-            child: LinearProgressIndicator(
-              value: value / 100,
-              backgroundColor: Colors.grey[800],
-              valueColor: AlwaysStoppedAnimation(
-                value >= 70 ? const Color(0xFFD3A625) : Colors.blue,
+          const SizedBox(height: 10),
+          Text('上次本地自动备份 刚刚', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('📊 查看详细用量报表')),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.bar_chart, size: 18),
+                  SizedBox(width: 8),
+                  Text('用量明细', style: TextStyle(fontWeight: FontWeight.w500)),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text('$value', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-
-  String _attrLabel(String key) {
-    return {
-      'spell_understanding': '魔咒理解',
-      'transfiguration': '变形术',
-      'potions': '魔药',
-      'herbology': '草药学',
-      'dda': '黑魔法防御',
-      'flying': '飞行',
-      'theory': '理论知识',
-      'memory': '记忆力',
-      'observation': '观察力',
-      'magic_control': '魔法控制',
-      'reaction_time': '反应速度',
-      'emotional_stability': '情绪稳定',
-      'creativity': '创造力',
-      'social': '社交',
-      'courage': '勇气',
-      'caution': '谨慎',
-      'willpower': '意志',
-      'logic': '逻辑',
-      'intuition': '直觉',
-    }[key] ?? key;
-  }
-
-  String _bloodStatusLabel(String status) {
-    return {
-      'muggleborn': '麻瓜出身',
-      'halfblood': '混血',
-      'pureblood': '纯血',
-      'special': '特殊家庭',
-    }[status] ?? status;
-  }
-
-  String _termLabel(String term) {
-    return {
-      'first': '第一学期',
-      'second': '第二学期',
-      'third': '第三学期',
-      'summer': '暑假',
-    }[term] ?? term;
-  }
-
-  String _houseLabel(String house) {
-    return {
-      'Gryffindor': '格兰芬多',
-      'Slytherin': '斯莱特林',
-      'Ravenclaw': '拉文克劳',
-      'Hufflepuff': '赫奇帕奇',
-    }[house] ?? house;
-  }
-}
-
-class _SystemsTab extends StatelessWidget {
-  final GameProvider gameProvider;
-  const _SystemsTab({required this.gameProvider});
-
-  @override
-  Widget build(BuildContext context) {
-    final player = gameProvider.player;
-    if (player == null) return const Center(child: Text('请先创建角色'));
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildSection('课程', () => _coursePanel()),
-        const SizedBox(height: 16),
-        _buildSection('收藏', () => _collectionPanel(player)),
-        const SizedBox(height: 16),
-        _buildSection('日记 / CG图鉴', () => _cgPanel(player)),
-        const SizedBox(height: 16),
-        _buildSection('成就', () => _achievementPanel(player)),
-        const SizedBox(height: 16),
-        _buildSection('宠物', () => _petPanel(player)),
-        const SizedBox(height: 16),
-        _buildSection('信件', () => _letterPanel(player)),
-      ],
-    );
-  }
-
-  Widget _buildSection(String title, Widget Function() builder) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        builder(),
-      ],
-    );
-  }
-
-  Widget _coursePanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final c in requiredCourses) _courseRow(c),
-        const SizedBox(height: 8),
-        const Text('选修课（三年级起，至少选2门）',
-            style: TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 4),
-        for (final c in electiveCourses) _courseRow(c),
-      ],
-    );
-  }
-
-  Widget _courseRow(CourseData c) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Icon(
-            c.required ? Icons.menu_book : Icons.book_outlined,
-            size: 16,
-            color: c.required ? const Color(0xFFD3A625) : Colors.grey,
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(c.name, style: const TextStyle(fontSize: 13))),
-          Text(c.professor, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-
-  Widget _collectionPanel(Player player) {
-    if (player.collection.isEmpty) {
-      return const Text('暂无收藏品。在冒险中收集独特物品，如巧克力蛙画片、日记本等。',
-          style: TextStyle(fontSize: 13, color: Colors.grey));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: player.collection
-          .map((c) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text('· $c', style: const TextStyle(fontSize: 13)),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _cgPanel(Player player) {
-    final unlocked = player.cgRecords.values.toList();
-    if (unlocked.isEmpty) {
-      return const Text('暂无解锁CG。在关键剧情节点将解锁专属CG。',
-          style: TextStyle(fontSize: 13, color: Colors.grey));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('已解锁 ${unlocked.length}/36', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 4),
-        for (final c in unlocked)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text('📸 ${c.cgId} ${c.name}（${c.unlockedDate}）',
-                style: const TextStyle(fontSize: 13)),
-          ),
-      ],
-    );
-  }
-
-  Widget _achievementPanel(Player player) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: achievementCatalog.map((a) {
-        final has = player.achievements.contains(a.id);
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              Text(has ? '✅' : '🔒', style: const TextStyle(fontSize: 13)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${a.name}${has ? ' — ${a.description}' : ''}',
-                  style: TextStyle(
-                      fontSize: 13, color: has ? Colors.white : Colors.grey),
-                ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('💾 正在导出本地数据...')),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!),
               ),
-            ],
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.download, size: 18),
+                  SizedBox(width: 8),
+                  Text('导出存档数据', style: TextStyle(fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsTab() {
+    final appProvider = context.watch<AppProvider>();
+    final gp = context.read<GameProvider>();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSettingsTopBar(gp),
+          const SizedBox(height: 12),
+          _buildTokenUsageSection(),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('AI 引擎', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                const Text('选择 AI 提供商', style: TextStyle(fontSize: 13)),
+                const SizedBox(height: 8),
+                _buildProviderPicker(appProvider),
+                const SizedBox(height: 12),
+                if (appProvider.availableModels.isNotEmpty) ...[
+                  const Text('选择模型', style: TextStyle(fontSize: 13)),
+                  const SizedBox(height: 8),
+                  _buildModelPicker(appProvider),
+                  const SizedBox(height: 12),
+                ],
+                const Text('API Key', style: TextStyle(fontSize: 13)),
+                const SizedBox(height: 8),
+                _buildApiKeyInput(appProvider, gp),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('文字展示与阅读速度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Theme.of(context).colorScheme.primary),
+                        ),
+                        child: const Text('AI 输出优先', textAlign: TextAlign.center),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                        ),
+                        child: const Text('阅读优先', textAlign: TextAlign.center),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('阅读速度', style: TextStyle(fontSize: 13)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildSpeedChip('慢 10字/秒', false)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildSpeedChip('中 20字/秒', true)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildSpeedChip('快 30字/秒', false)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('危险操作', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+                const SizedBox(height: 8),
+                ListTile(
+                  title: const Text('清除 API Key'),
+                  subtitle: const Text('删除当前提供商的 API Key'),
+                  trailing: const Icon(Icons.delete, color: Colors.red),
+                  onTap: () {
+                    appProvider.clearApiKey();
+                  },
+                ),
+                ListTile(
+                  title: const Text('前往详细设置'),
+                  subtitle: const Text('显示模式、身份、时代背景等'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProviderPicker(AppProvider appProvider) {
+    final providers = [
+      ('DeepSeek', AiProvider.deepseek, 'https://platform.deepseek.com'),
+      ('智谱 AI', AiProvider.zhipu, 'https://open.bigmodel.cn'),
+      ('Agnes', AiProvider.agnes, 'https://apihub.agnes-ai.cn'),
+    ];
+
+    return Column(
+      children: providers.map((p) {
+        final isSelected = appProvider.aiProvider == p.$2;
+        return GestureDetector(
+          onTap: () => appProvider.setAiProvider(p.$2),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
+            ),
+            child: Row(
+              children: [
+                Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                    color: isSelected ? Theme.of(context).colorScheme.primary : null),
+                const SizedBox(width: 8),
+                Expanded(child: Text(p.$1, style: const TextStyle(fontWeight: FontWeight.w500))),
+                Text(p.$3, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
+              ],
+            ),
           ),
         );
       }).toList(),
     );
   }
 
-  Widget _petPanel(Player player) {
-    if (player.petName == null && player.petId == null) {
-      return const Text('你还没有宠物。可以去对角巷挑选一只猫头鹰、猫或蟾蜍。',
-          style: TextStyle(fontSize: 13, color: Colors.grey));
-    }
-    return Text('名字：${player.petName ?? '未命名'}｜羁绊：${player.petBond}/100',
-        style: const TextStyle(fontSize: 13));
-  }
-
-  Widget _letterPanel(Player player) {
-    if (player.letters.isEmpty) {
-      return const Text('暂无信件。', style: TextStyle(fontSize: 13, color: Colors.grey));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: player.letters
-          .map((l) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text('✉️ ${l.sender}（${l.date}）',
-                    style: const TextStyle(fontSize: 13)),
-              ))
-          .toList(),
+  Widget _buildModelPicker(AppProvider appProvider) {
+    return Wrap(
+      spacing: 8,
+      children: appProvider.availableModels.map((model) {
+        final isSelected = appProvider.aiModel == model;
+        return GestureDetector(
+          onTap: () => appProvider.setAiModel(model),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
+            ),
+            child: Text(model,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : null,
+                  fontSize: 13,
+                )),
+          ),
+        );
+      }).toList(),
     );
   }
-}
 
-class _MapTab extends StatelessWidget {
-  final GameProvider gameProvider;
-  const _MapTab({required this.gameProvider});
-
-  @override
-  Widget build(BuildContext context) {
-    final worldState = gameProvider.worldState;
-    return ListView(
-      padding: const EdgeInsets.all(16),
+  Widget _buildApiKeyInput(AppProvider appProvider, GameProvider gp) {
+    final controller = TextEditingController(text: appProvider.apiKey ?? '');
+    return Row(
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161b22),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF30363d)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('霍格沃茨',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('当前地点：${worldState.currentLocation ?? '九又四分之三站台'}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFFD3A625))),
-              const SizedBox(height: 12),
-              _placeRow(Icons.castle, '城堡主楼', '大礼堂、公共休息室、教室'),
-              _placeRow(Icons.local_library, '图书馆', '含禁书区'),
-              _placeRow(Icons.science, '地下教室', '魔药学、斯莱特林休息室'),
-              _placeRow(Icons.park, '禁林', '高年级或特定课程开放'),
-              _placeRow(Icons.sports_rugby, '魁地奇球场', ''),
-              _placeRow(Icons.storefront, '霍格莫德村', '周末开放'),
-              _placeRow(Icons.filter_drama, '天文塔', ''),
-            ],
+        Expanded(
+          child: TextField(
+            controller: controller,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'sk-...',
+              isDense: true,
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161b22),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF30363d)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('NPC位置',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ...gameProvider.npcRegistry.values
-                  .where((n) => n.isAlive)
-                  .take(8)
-                  .map((n) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Text('· ${n.name}：${n.currentLocation}',
-                            style: const TextStyle(fontSize: 13)),
-                      )),
-            ],
-          ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () async {
+            await appProvider.saveApiKey(controller.text.trim());
+            await gp.updateApiKey(controller.text.trim());
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✅ 已保存 API Key')),
+              );
+            }
+          },
+          child: const Text('保存'),
         ),
       ],
     );
   }
 
-  Widget _placeRow(IconData icon, String name, String desc) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.grey[400]),
-          const SizedBox(width: 10),
-          Text(name, style: const TextStyle(fontSize: 13)),
-          if (desc.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(desc,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ),
-          ],
-        ],
+  Widget _buildSpeedChip(String label, bool selected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
       ),
+      child: Text(label,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: selected ? Colors.white : null, fontSize: 13)),
     );
   }
-}
 
-class _BottomInputBar extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
-  final bool isLoading;
-
-  const _BottomInputBar({
-    required this.controller,
-    required this.onSend,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final bottomPad = media.viewInsets.bottom > 0
-        ? media.viewInsets.bottom
-        : media.padding.bottom;
-    return Container(
-      color: const Color(0xFF161b22),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(8, 8, 8, 8 + bottomPad),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  hintText: '输入自由行动或指令（/帮助）...',
-                  prefixIcon: Icon(Icons.sailing),
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => onSend(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send, color: Color(0xFFD3A625)),
-              onPressed: isLoading ? null : onSend,
-            ),
-          ],
-        ),
-      ),
+  Widget _buildBottomNav() {
+    return BottomNavigationBar(
+      currentIndex: _currentTab,
+      onTap: (index) => setState(() => _currentTab = index),
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '剧情'),
+        BottomNavigationBarItem(icon: Icon(Icons.phone_android), label: '手机'),
+        BottomNavigationBarItem(icon: Icon(Icons.public), label: '世界'),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
+      ],
     );
   }
 }

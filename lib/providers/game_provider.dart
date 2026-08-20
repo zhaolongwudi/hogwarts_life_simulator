@@ -48,13 +48,15 @@ class GameProvider extends ChangeNotifier {
   void _onApiKeyChange() => _updateClient();
 
   void _updateClient() {
-    if (appProvider.apiKey != null) {
-      _deepSeek = DeepSeekService(apiKey: appProvider.apiKey!);
+    if (appProvider.apiKey != null && appProvider.apiKey!.isNotEmpty) {
+      _deepSeek = DeepSeekService(config: appProvider.aiConfig);
     }
   }
 
   Future<void> updateApiKey(String key) async {
-    _deepSeek = DeepSeekService(apiKey: key);
+    if (key.isNotEmpty) {
+      _deepSeek = DeepSeekService(config: appProvider.aiConfig.copyWith(apiKey: key));
+    }
     notifyListeners();
   }
 
@@ -1219,6 +1221,24 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (npc.house == _player!.house) return true;
     if (npc.isCanon && _worldState.playerImpactScore > 0.5) return true;
     return false;
+  }
+
+  bool isNearby(String npcId) {
+    final npc = _npcRegistry[npcId];
+    if (npc == null || _player == null) return false;
+    return npc.currentLocation == (_worldState.currentLocation ?? '');
+  }
+
+  int getAffection(String npcId) {
+    final rel = _player?.relationships[npcId];
+    if (rel != null) return rel.level;
+    final npc = _npcRegistry[npcId];
+    return npc?.affection ?? 0;
+  }
+
+  void travelTo(String location) {
+    _worldState.currentLocation = location;
+    notifyListeners();
   }
 
   // ==================== 好感度操作（供UI调用） ====================
