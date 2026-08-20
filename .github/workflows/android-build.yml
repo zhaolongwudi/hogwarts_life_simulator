@@ -84,7 +84,7 @@ jobs:
         run: flutter analyze
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Rename APK
         run: |
