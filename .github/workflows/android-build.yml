@@ -97,8 +97,17 @@ jobs:
         run: flutter analyze
 
       - name: Build APK
-        run: flutter build apk --release
-        timeout-minutes: 10
+        run: |
+          echo "=== Flutter Doctor ==="
+          flutter doctor -v
+          echo "=== Flutter Version ==="
+          flutter --version
+          echo "=== Gradle Wrapper ==="
+          cd android && ./gradlew --version 2>&1 || true
+          cd ..
+          echo "=== Building APK ==="
+          flutter build apk --release
+        timeout-minutes: 15
 
       - name: Rename APK
         run: |
