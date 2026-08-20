@@ -5,7 +5,6 @@ import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/world_state.dart';
 import '../models/game_systems.dart';
-import '../data/npc_data.dart';
 import '../data/course_data.dart';
 import '../data/wand_data.dart';
 import '../data/cg_data.dart';
