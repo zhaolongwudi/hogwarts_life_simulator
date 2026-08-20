@@ -278,10 +278,11 @@ class _IntroScreenState extends State<IntroScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('创建你的魔法人生'),
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.colorScheme.surface,
         elevation: 0,
       ),
       body: Column(
@@ -830,24 +831,27 @@ class _IntroScreenState extends State<IntroScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? const Color(0xFF740001).withValues(alpha: 0.3) : const Color(0xFF21262d),
-        borderRadius: BorderRadius.circular(10),
+        color: selected
+            ? const Color(0xFF740001).withValues(alpha: 0.25)
+            : const Color(0xFF21262d),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d),
+                width: selected ? 1.5 : 1,
               ),
             ),
             child: Row(
               children: [
                 Icon(
                   selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                  color: selected ? const Color(0xFFD3A625) : Colors.grey,
+                  color: selected ? const Color(0xFFD3A625) : const Color(0xFF8B949E),
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -855,12 +859,18 @@ class _IntroScreenState extends State<IntroScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontSize: 14)),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: selected ? Colors.white : const Color(0xFFE6EDF3),
+                        ),
+                      ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
                         ),
                       ],
                     ],

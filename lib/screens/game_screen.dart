@@ -84,7 +84,7 @@ class _GameScreenState extends State<GameScreen> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerTheme.color!)),
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Column(
         children: [
@@ -95,7 +95,7 @@ class _GameScreenState extends State<GameScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                   border: Border.all(color: Theme.of(context).colorScheme.primary),
                 ),
                 child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
@@ -107,7 +107,8 @@ class _GameScreenState extends State<GameScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(player.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(player.name,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
                         if (houseLabel.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -127,17 +128,20 @@ class _GameScreenState extends State<GameScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.bolt, size: 14, color: Theme.of(context).colorScheme.secondary),
+                        Icon(Icons.bolt, size: 14, color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 2),
-                        Text('精力 ${player.energy}/5', style: const TextStyle(fontSize: 12)),
+                        Text('精力 ${player.energy}/5',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
                         const SizedBox(width: 12),
-                        Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.secondary),
+                        Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 2),
-                        Text(gp.worldState.timestamp, style: const TextStyle(fontSize: 12)),
+                        Text(gp.worldState.timestamp,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
                         const SizedBox(width: 12),
-                        Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.secondary),
+                        Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 2),
-                        Text(gp.worldState.currentLocation ?? '未知', style: const TextStyle(fontSize: 12)),
+                        Text(gp.worldState.currentLocation ?? '未知',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
                       ],
                     ),
                   ],

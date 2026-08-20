@@ -11,66 +11,57 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final appProvider = context.watch<AppProvider>();
     final gameProvider = context.watch<GameProvider>();
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0d1117), Color(0xFF161b22)],
-              ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0d1117), Color(0xFF161b22)],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildHeader(theme),
+                const SizedBox(height: 40),
+                _buildBadge(theme),
+                const SizedBox(height: 30),
+                if (appProvider.isGameStarted && gameProvider.player != null)
+                  _buildGameStatus(gameProvider, theme),
+                const Spacer(),
+                _buildActions(context, theme),
+                const SizedBox(height: 30),
+                Text(
+                  'v1.0.0 | AI Powered',
+                  style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF8B949E)),
+                ),
+              ],
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  _buildHeader(),
-                  const SizedBox(height: 40),
-                  _buildBadge(),
-                  const SizedBox(height: 30),
-                  if (appProvider.isGameStarted && gameProvider.player != null)
-                    _buildGameStatus(gameProvider),
-                  const Spacer(),
-                  _buildActions(context),
-                  const SizedBox(height: 30),
-                  Text(
-                    'v1.0.0 | DeepSeek Powered',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white38,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
-        const Text(
+        Text(
           '魔法人生模拟器',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFD3A625),
-            letterSpacing: 2,
-          ),
+          style: theme.textTheme.displayLarge?.copyWith(
+                fontSize: 32,
+                letterSpacing: 2,
+              ),
         ),
         const SizedBox(height: 8),
-        Text(
-          'Hogwarts Life Simulator',
-          style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-        ),
+        Text('Hogwarts Life Simulator',
+            style: theme.textTheme.bodySmall?.copyWith(fontSize: 14)),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -79,24 +70,25 @@ class HomePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFF740001)),
           ),
-          child: const Text(
+          child: Text(
             '✨ 你的魔法人生 awaits',
-            style: TextStyle(fontSize: 12, color: Color(0xFFD3A625)),
+            style: theme.textTheme.labelMedium?.copyWith(
+                  color: const Color(0xFFD3A625),
+                  fontSize: 12,
+                ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBadge() {
+  Widget _buildBadge(ThemeData theme) {
     return Container(
       width: 140,
       height: 140,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          colors: [Color(0xFF2a1f0e), Color(0xFF1a1508)],
-        ),
+        gradient: const RadialGradient(colors: [Color(0xFF2a1f0e), Color(0xFF1a1508)]),
         border: Border.all(color: const Color(0xFFD3A625), width: 3),
         boxShadow: [
           BoxShadow(
@@ -106,21 +98,17 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(
-        Icons.auto_awesome,
-        size: 70,
-        color: Color(0xFFD3A625),
-      ),
+      child: const Icon(Icons.auto_awesome, size: 70, color: Color(0xFFD3A625)),
     );
   }
 
-  Widget _buildGameStatus(GameProvider gp) {
+  Widget _buildGameStatus(GameProvider gp, ThemeData theme) {
     final player = gp.player!;
-    return Card(
-      color: const Color(0xFF161b22).withValues(alpha: 0.9),
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF30363d)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -133,11 +121,7 @@ class HomePage extends StatelessWidget {
                   backgroundColor: _getHouseColor(player.house ?? ''),
                   child: Text(
                     player.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -145,41 +129,36 @@ class HomePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        player.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFD3A625),
-                        ),
-                      ),
-                      Text(
-                        '${player.house ?? '未分院'} · ${gp.worldState.academicYear}',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
+                      Text(player.name,
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+                      Text('${player.house ?? '未分院'} · ${gp.worldState.academicYear}',
+                          style: theme.textTheme.bodySmall),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF21262d),
+                    color: const Color(0xFF0d1117),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: theme.dividerColor),
                   ),
-                  child: Text(
-                    '第 ${gp.turnCount} 回合',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
+                  child: Text('第 ${gp.turnCount} 回合',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
                 ),
               ],
             ),
-            const Divider(color: Color(0xFF30363d)),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(height: 1),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem('📅', '${gp.worldState.month} ${gp.worldState.dayOfMonth}日'),
-                _buildStatItem('🏛️', player.house ?? '待分院'),
-                _buildStatItem('❤️', '${player.health}%'),
+                _buildStatItem('📅', '${gp.worldState.month} ${gp.worldState.dayOfMonth}日', theme),
+                _buildStatItem('🏛️', player.house ?? '待分院', theme),
+                _buildStatItem('❤️', '${player.health}%', theme),
               ],
             ),
           ],
@@ -188,22 +167,23 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String icon, String value) {
+  Widget _buildStatItem(String icon, String value, ThemeData theme) {
     return Column(
       children: [
         Text(icon, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(value, style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildActions(BuildContext context) {
+  Widget _buildActions(BuildContext context, ThemeData theme) {
     final appProvider = context.read<AppProvider>();
     return Column(
       children: [
         _buildActionButton(
           context,
+          theme,
           icon: '⚡',
           title: appProvider.isGameStarted ? '继续冒险' : '开始新人生',
           subtitle: appProvider.isGameStarted
@@ -217,6 +197,7 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 12),
         _buildActionButton(
           context,
+          theme,
           icon: '📚',
           title: '存档 / 读档',
           subtitle: '管理你的游戏进度',
@@ -228,6 +209,7 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 12),
         _buildActionButton(
           context,
+          theme,
           icon: '⚙️',
           title: '设置',
           subtitle: 'API Key、显示模式、时代选择',
@@ -238,20 +220,24 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildActionButton(
-    BuildContext context, {
+    BuildContext context,
+    ThemeData theme, {
     required String icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     return Material(
-      color: const Color(0xFF21262d),
+      color: theme.cardColor,
       borderRadius: BorderRadius.circular(16),
-      elevation: 2,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.dividerColor),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
             children: [
@@ -261,22 +247,14 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                    Text(subtitle, style: theme.textTheme.bodySmall),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
             ],
           ),
         ),
