@@ -343,6 +343,7 @@ class _IntroScreenState extends State<IntroScreen> {
   }
 
   Widget _buildNavButtons() {
+    final canProceed = _canProceed();
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -363,18 +364,37 @@ class _IntroScreenState extends State<IntroScreen> {
             Expanded(
               flex: 2,
               child: ElevatedButton(
-                onPressed: _next,
+                onPressed: canProceed ? _next : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF740001),
+                  backgroundColor: canProceed ? const Color(0xFF740001) : const Color(0xFF484f58),
+                  disabledBackgroundColor: const Color(0xFF484f58),
                   minimumSize: const Size.fromHeight(48),
                 ),
-                child: Text(_step == 12 ? '🪄 开启魔法人生' : '下一步'),
+                child: Text(
+                  _step == 12 ? '🪄 开启魔法人生' : '下一步',
+                  style: TextStyle(color: canProceed ? Colors.white : Colors.white38),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  bool _canProceed() {
+    switch (_step) {
+      case 1:
+        return _nameController.text.trim().isNotEmpty;
+      case 5:
+        return _selectedChildhood.length >= 3;
+      case 6:
+        return _selectedTraits.length >= 3;
+      case 8:
+        return _selectedWandId != null;
+      default:
+        return true;
+    }
   }
 
   // ==================== 第一轮 · 时代 ====================
@@ -419,15 +439,18 @@ class _IntroScreenState extends State<IntroScreen> {
           Wrap(
             spacing: 8,
             children: _genderOptions.map((g) {
+              final selected = _gender == g;
               return FilterChip(
-                label: Text(g),
-                selected: _gender == g,
+                label: Text(g, style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                selected: selected,
                 onSelected: (_) => setState(() {
                   _gender = g;
                   _sexOrientation = g == '男' ? '女' : '男';
                 }),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFF740001),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               );
             }).toList(),
           ),
@@ -437,12 +460,15 @@ class _IntroScreenState extends State<IntroScreen> {
           Wrap(
             spacing: 8,
             children: ['女', '男', '双性'].map((s) {
+              final selected = _sexOrientation == s;
               return FilterChip(
-                label: Text(s),
-                selected: _sexOrientation == s,
+                label: Text(s, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                selected: selected,
                 onSelected: (_) => setState(() => _sexOrientation = s),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               );
             }).toList(),
           ),
@@ -483,12 +509,15 @@ class _IntroScreenState extends State<IntroScreen> {
           Wrap(
             spacing: 8,
             children: _bloodOptions.map((val) {
+              final selected = _bloodStatus == val;
               return FilterChip(
-                label: Text(_bloodLabels[val]!),
-                selected: _bloodStatus == val,
+                label: Text(_bloodLabels[val]!, style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                selected: selected,
                 onSelected: (_) => setState(() => _bloodStatus = val),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFF740001),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               );
             }).toList(),
           ),
@@ -520,7 +549,10 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _childhoodOptions.map((c) {
               final selected = _selectedChildhood.contains(c);
               return FilterChip(
-                label: Text(c),
+                label: Text(
+                  c,
+                  style: TextStyle(color: selected ? Colors.black : Colors.white70),
+                ),
                 selected: selected,
                 onSelected: (v) {
                   setState(() {
@@ -533,6 +565,8 @@ class _IntroScreenState extends State<IntroScreen> {
                 },
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               );
             }).toList(),
           ),
@@ -560,7 +594,19 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _traits.map((trait) {
               final selected = _selectedTraits.contains(trait);
               return FilterChip(
-                label: Text(trait),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (selected) ...[
+                      const Icon(Icons.check, size: 16, color: Colors.black),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      trait,
+                      style: TextStyle(color: selected ? Colors.black : Colors.white70),
+                    ),
+                  ],
+                ),
                 selected: selected,
                 onSelected: (v) {
                   setState(() {
@@ -573,6 +619,8 @@ class _IntroScreenState extends State<IntroScreen> {
                 },
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               );
             }).toList(),
           ),

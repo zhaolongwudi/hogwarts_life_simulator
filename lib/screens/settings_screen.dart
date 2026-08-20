@@ -61,28 +61,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('DeepSeek API',
+          const Text('AI 服务配置',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('在 https://platform.deepseek.com 获取 API Key（免费领取）',
-              style: TextStyle(color: Colors.grey)),
+          _buildProviderPicker(appProvider.aiProvider.name),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _keyController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    hintText: 'sk-...',
-                    prefixIcon: Icon(Icons.key),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(onPressed: _saveKey, child: const Text('保存')),
-            ],
-          ),
+          _buildApiKeyInput(appProvider),
+          const SizedBox(height: 8),
+          _buildModelPicker(appProvider),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -196,6 +182,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildProviderPicker(String current) {
+    final providers = const [
+      _ProviderOption('DeepSeek', 'deepseek', 'https://platform.deepseek.com'),
+      _ProviderOption('智谱 AI', 'zhipu', 'https://open.bigmodel.cn'),
+      _ProviderOption('Agnes', 'agnes', 'https://apihub.agnes-ai.cn'),
+    ];
+    return Column(
+      children: providers.map((p) {
+        final isSelected = p.value == current;
+        return ListTile(
+          title: Text(p.label),
+          subtitle: Text(p.url, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          leading: Radio<String>(
+            // ignore: deprecated_member_use
+            value: p.value,
+            // ignore: deprecated_member_use
+            groupValue: current,
+            // ignore: deprecated_member_use
+            onChanged: (v) {
+              if (v != null) {
+                _switchProvider(v);
+              }
+            },
+          ),
+          selected: isSelected,
+          onTap: () => _switchProvider(p.value),
+        );
+      }).toList(),
+    );
+  }
+
+  void _switchProvider(String value) {
+    final provider = AiProvider.values.firstWhere(
+      (e) => e.name == value,
+    );
+    context.read<AppProvider>().setAiProvider(provider);
+    final savedKey = context.read<AppProvider>().apiKeys[value];
+    if (savedKey != null) {
+      _keyController.text = savedKey;
+    } else {
+      _keyController.clear();
+    }
+    setState(() => _connectionStatus = null);
+  }
+
+  Widget _buildApiKeyInput(AppProvider appProvider) {
+    final hint = appProvider.aiProvider == AiProvider.deepseek
+        ? 'sk-...'
+        : appProvider.aiProvider == AiProvider.zhipu
+            ? '智谱 API Key'
+            : 'Agnes API Key';
+    final url = appProvider.aiProvider == AiProvider.deepseek
+        ? 'https://platform.deepseek.com'
+        : appProvider.aiProvider == AiProvider.zhipu
+            ? 'https://open.bigmodel.cn'
+            : 'https://apihub.agnes-ai.cn';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('在 $url 获取 API Key',
+            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _keyController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  prefixIcon: const Icon(Icons.key),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(onPressed: _saveKey, child: const Text('保存')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModelPicker(AppProvider appProvider) {
+    final models = appProvider.availableModels;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('模型', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          children: models.map((m) {
+            final selected = appProvider.aiModel == m;
+            return FilterChip(
+              label: Text(m),
+              selected: selected,
+              onSelected: (_) => appProvider.setAiModel(m),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildModePicker(String current,
       {List<ModeOption>? modes,
       Set<String>? disabled,
@@ -267,4 +358,11 @@ class EraOption {
   final String value;
   final String desc;
   const EraOption(this.label, this.value, this.desc);
+}
+
+class _ProviderOption {
+  final String label;
+  final String value;
+  final String url;
+  const _ProviderOption(this.label, this.value, this.url);
 }

@@ -373,8 +373,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         final isSelected = _selectedLocation == loc['name'];
         final isBranch = loc['branch'] == true;
         return Positioned(
-          left: MediaQuery.of(context).size.width * x - 40,
-          top: MediaQuery.of(context).size.height * y - 25,
+          left: MediaQuery.of(context).size.width * x - 30,
+          top: MediaQuery.of(context).size.height * y - 18,
           child: GestureDetector(
             onTap: () {
               if (isBranch) {
@@ -387,55 +387,49 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: isBranch ? 10 : 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : isBranch
-                              ? const Color(0xFFD97706)
-                              : Colors.grey.shade400,
-                      width: isSelected || isBranch ? 2 : 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                    padding: EdgeInsets.symmetric(horizontal: isBranch ? 6 : 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : isBranch
+                                ? const Color(0xFFD97706)
+                                : Colors.grey.shade400,
+                        width: isSelected || isBranch ? 1.5 : 0.5,
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isBranch) ...[
-                        Icon(Icons.subdirectory_arrow_right, size: 12, color: const Color(0xFFD97706)),
-                        const SizedBox(width: 2),
-                      ],
-                      Flexible(
-                        child: Text(
-                          loc['name'] as String,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected || isBranch ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : isBranch
-                                    ? const Color(0xFFD97706)
-                                    : Colors.black87,
-                            overflow: TextOverflow.ellipsis,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isBranch) ...[
+                          Icon(Icons.subdirectory_arrow_right, size: 10, color: const Color(0xFFD97706)),
+                          const SizedBox(width: 1),
+                        ],
+                        Flexible(
+                          child: Text(
+                            loc['name'] as String,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: isSelected || isBranch ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : isBranch
+                                      ? const Color(0xFFD97706)
+                                      : Colors.black87,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 2),
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 22,
+                  height: 22,
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Theme.of(context).colorScheme.primary
@@ -449,19 +443,19 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           : isBranch
                               ? const Color(0xFFD97706)
                               : Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
-                      width: 2,
+                      width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
                   child: Icon(
                     isBranch ? Icons.subdirectory_arrow_right : Icons.location_on,
-                    size: 18,
+                    size: 14,
                     color: isSelected || isBranch ? Colors.white : Theme.of(context).colorScheme.primary,
                   ),
                 ),
