@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'app_provider.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
@@ -27,6 +28,7 @@ class GameProvider extends ChangeNotifier {
   String _currentNarrative = '';
   List<GameChoice> _choices = [];
   bool _isLoading = false;
+  bool _isInitializing = false;
   String? _error;
   int _turnCount = 0;
   String? _systemPrompt;
@@ -37,6 +39,7 @@ class GameProvider extends ChangeNotifier {
   String get currentNarrative => _currentNarrative;
   List<GameChoice> get choices => _choices;
   bool get isLoading => _isLoading;
+  bool get isInitializing => _isInitializing;
   String? get error => _error;
   int get turnCount => _turnCount;
   Map<String, NPC> get npcRegistry => _npcRegistry;
@@ -46,6 +49,62 @@ class GameProvider extends ChangeNotifier {
     chatService = NpcChatService(appProvider: appProvider);
     _updateClient();
     appProvider.addListener(_onApiKeyChange);
+    if (appProvider.isGameStarted) {
+      _isInitializing = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _tryAutoLoad();
+      });
+    }
+  }
+
+  Future<void> _tryAutoLoad() async {
+    if (!appProvider.isGameStarted) return;
+    final data = await _saveService.loadAutoSave();
+    if (data == null) {
+      _isInitializing = false;
+      appProvider.setGameStarted(false);
+      notifyListeners();
+      return;
+    }
+    try {
+      _player = Player.fromJson(data['player'] as Map<String, dynamic>);
+      _worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
+      _systemPrompt = _buildSystemPrompt();
+      _npcRegistry.clear();
+      (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
+        _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
+      });
+      _currentNarrative = data['narrative'] as String? ?? '';
+      _choices = (data['choices'] as List<dynamic>?)
+          ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
+          .toList() ?? [];
+      _turnCount = data['turn_count'] as int? ?? 0;
+      _isInitializing = false;
+      debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合');
+      notifyListeners();
+    } catch (e) {
+      _isInitializing = false;
+      debugPrint('❌ 自动存档加载失败: $e');
+      appProvider.setGameStarted(false);
+      _error = '存档加载失败: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<void> _autoSave() async {
+    if (_player == null) return;
+    try {
+      await _saveService.autoSave(
+        player: _player!.toJson(),
+        worldState: _worldState.toJson(),
+        npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
+        narrative: _currentNarrative,
+        choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
+        turnCount: _turnCount,
+      );
+    } catch (e) {
+      debugPrint('❌ 自动存档失败: $e');
+    }
   }
 
   void _onApiKeyChange() {
@@ -64,6 +123,7 @@ class GameProvider extends ChangeNotifier {
     if (npc == null) return;
     npc.affection = (npc.affection + change).clamp(-100, 100);
     notifyListeners();
+    _autoSave();
   }
 
   Future<void> updateApiKey(String key) async {
@@ -232,6 +292,7 @@ class GameProvider extends ChangeNotifier {
       appProvider.setGameStarted(true);
       _isLoading = false;
       notifyListeners();
+      _autoSave();
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -406,6 +467,7 @@ D. （选项4 - 可选）
       final handled = _handleLocalCommand(action);
       if (handled) {
         notifyListeners();
+        _autoSave();
         return;
       }
     }
@@ -513,6 +575,7 @@ D. （选项4 - 可选）
       _updateNPCsFromAction(action);
       _isLoading = false;
       notifyListeners();
+      _autoSave();
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -1657,12 +1720,14 @@ ${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
     (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
       _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
     });
-    _currentNarrative = data['narrative'] as String;
-    _choices = (data['choices'] as List<dynamic>)
-        .map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
-        .toList();
+    _currentNarrative = data['narrative'] as String? ?? '';
+    _choices = (data['choices'] as List<dynamic>?)
+        ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
+        .toList() ?? [];
     _turnCount = data['turn_count'] as int? ?? 0;
+    appProvider.setGameStarted(true);
     notifyListeners();
+    _autoSave();
   }
 
   Future<List<Map<String, dynamic>>> listSaves() async {
@@ -1758,6 +1823,7 @@ ${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
 
   @override
   void dispose() {
+    _autoSave();
     appProvider.removeListener(_onApiKeyChange);
     super.dispose();
   }

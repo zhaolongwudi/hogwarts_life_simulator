@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 class SaveService {
   static const String _keyPrefix = 'hogwarts_save_';
   static const String _metaKey = 'hogwarts_save_meta';
+  static const String autoSaveSlotId = 'auto_save';
   final _uuid = const Uuid();
 
   Future<String> saveGame({
@@ -83,5 +84,42 @@ class SaveService {
       existing.add(entry);
     }
     await prefs.setString(_metaKey, jsonEncode(existing));
+  }
+
+  Future<String> autoSave({
+    required Map<String, dynamic> player,
+    required Map<String, dynamic> worldState,
+    required Map<String, dynamic> npcRegistry,
+    required String narrative,
+    required List<dynamic> choices,
+    required int turnCount,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    const slotId = autoSaveSlotId;
+    final key = '$_keyPrefix$slotId';
+
+    final saveData = {
+      'save_version': 2,
+      'player': player,
+      'world_state': worldState,
+      'npc_registry': npcRegistry,
+      'narrative': narrative,
+      'choices': choices,
+      'turn_count': turnCount,
+      'saved_at': DateTime.now().toIso8601String(),
+      'slot_name': '自动存档',
+    };
+
+    await prefs.setString(key, jsonEncode(saveData));
+    await _updateMeta(prefs, slotId, '自动存档', DateTime.now());
+    return slotId;
+  }
+
+  Future<Map<String, dynamic>?> loadAutoSave() async {
+    return loadGame(autoSaveSlotId);
+  }
+
+  Future<void> clearAutoSave() async {
+    await deleteSave(autoSaveSlotId);
   }
 }

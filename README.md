@@ -138,6 +138,18 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.3.8 — 2026-08-20
+
+fix: auto-save/auto-load game state - fix black screen on app restart
+
+- Add autoSave/loadAutoSave/clearAutoSave to SaveService
+- Add auto-load in GameProvider constructor when isGameStarted=true
+- Add auto-save after initializeGame, processChoice, loadFromSave
+- Add auto-save on NPC affection change and app dispose
+- Add isInitializing state to show loading indicator
+- Update GameScreen to show loading/error states during init
+- Fix null-safety for narrative/choices in loadFromSave
+
 ### v0.3.7 — 2026-08-20
 
 fix: sync README.md with latest features and fix changelog automation

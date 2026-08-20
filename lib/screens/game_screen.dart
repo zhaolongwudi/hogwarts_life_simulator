@@ -54,6 +54,45 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gp = context.watch<GameProvider>();
+
+    if (gp.isInitializing) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在加载存档...', style: TextStyle(color: Color(0xFF8B949E))),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (gp.player == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Color(0xFF8B949E)),
+              const SizedBox(height: 16),
+              Text(gp.error ?? '没有找到存档', style: const TextStyle(color: Color(0xFF8B949E))),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('返回首页'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
