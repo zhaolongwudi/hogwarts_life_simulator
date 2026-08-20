@@ -5,6 +5,9 @@ import 'memory_screen.dart';
 import 'job_screen.dart';
 import 'other_screens.dart';
 import 'shop_inventory_screens.dart';
+import 'settings_screen.dart';
+import 'save_load_screen.dart';
+import 'world_map_screen.dart';
 
 class PhoneHomeScreen extends StatefulWidget {
   const PhoneHomeScreen({super.key});
@@ -47,9 +50,9 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                   const SizedBox(height: 12),
                   _buildMusicPlayer(),
                   const SizedBox(height: 16),
-                  _buildAppGrid(),
+                  _buildAppGrid(gp),
                   const SizedBox(height: 24),
-                  _buildBottomQuickApps(),
+                  _buildBottomQuickApps(gp),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -58,7 +61,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
           Positioned(
             right: 16,
             top: MediaQuery.of(context).padding.top + 60,
-            child: _buildAiFloatingButton(),
+            child: _buildAiFloatingButton(gp),
           ),
         ],
       ),
@@ -185,16 +188,66 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Text(
-                      '点击这里编辑你的个性签名',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).textTheme.bodyMedium!.color,
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD3A625).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.bolt, size: 12, color: Color(0xFFD3A625)),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${player?.energy ?? 5}/5',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFFD3A625), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('💰', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${player?.gold ?? 0}',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('⭐', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${context.read<GameProvider>().turnCount}回合',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF8B5CF6), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -243,74 +296,46 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD3A625), Color(0xFF740001)],
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.music_note, color: Theme.of(context).colorScheme.primary),
+                  child: const Icon(Icons.music_note, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('背景音乐', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                      const Text('霍格沃茨城堡',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                       const SizedBox(height: 2),
-                      Text('游戏原声', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                      Text('海德薇主题曲 · 游戏原声',
+                          style: TextStyle(
+                              fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
                     ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('🔊', style: TextStyle(fontSize: 14)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
-              children: [
-                const Text('0:00', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: 0.3,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const Text('0:00', style: TextStyle(fontSize: 11, color: Colors.grey)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildMusicBtn(Icons.shuffle),
-                const SizedBox(width: 20),
-                _buildMusicBtn(Icons.skip_previous),
                 const SizedBox(width: 16),
+                _buildMusicBtn(Icons.skip_previous),
+                const SizedBox(width: 12),
                 GestureDetector(
                   onTap: () => setState(() => _isPlaying = !_isPlaying),
                   child: Container(
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFD3A625), Color(0xFFB8860B)],
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -320,10 +345,10 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 _buildMusicBtn(Icons.skip_next),
-                const SizedBox(width: 20),
-                _buildMusicBtn(Icons.repeat),
+                const SizedBox(width: 16),
+                _buildMusicBtn(Icons.favorite_outline),
               ],
             ),
           ],
@@ -334,8 +359,8 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
 
   Widget _buildMusicBtn(IconData icon) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.1),
         shape: BoxShape.circle,
@@ -344,7 +369,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
     );
   }
 
-  Widget _buildAppGrid() {
+  Widget _buildAppGrid(GameProvider gp) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -352,41 +377,60 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildAppItem(Icons.phone_in_talk, '魔法通讯', Color(0xFF3B82F6), onTap: () {
+              _buildAppItem(Icons.message, '魔法通讯', Color(0xFF3B82F6), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
               }),
               _buildAppItem(Icons.forum, '魔法论坛', Color(0xFFEF4444), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ForumScreen()));
               }),
-              _buildAppItem(Icons.edit_note, '查看日记', Color(0xFF8B5CF6), onTap: () {
+              _buildAppItem(Icons.edit_note, '我的日记', Color(0xFF8B5CF6), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryScreen()));
               }),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildAppItem(Icons.store_mall_directory, '魔法商店', Color(0xFFF59E0B), onTap: () {
+              _buildAppItem(Icons.store_mall_directory, '对角巷', Color(0xFFF59E0B), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
               }),
-              _buildAppItem(Icons.apps, '应用商店', Color(0xFF10B981), onTap: () {
-                _showComingSoonDialog();
+              _buildAppItem(Icons.public, '世界地图', Color(0xFF10B981), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const WorldMapScreen()));
               }),
-              _buildAppItem(Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), onTap: () {
+              _buildAppItem(Icons.auto_awesome, '平行世界', Color(0xFFEC4899), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
               }),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildAppItem(Icons.favorite, '姻缘一线牵\n红娘', Color(0xFFF43F5E), onTap: () {
+              _buildAppItem(Icons.favorite, '姻缘红娘', Color(0xFFF43F5E), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
               }),
-              Container(width: 80),
-              Container(width: 80),
+              _buildAppItem(Icons.work, '找工作', Color(0xFF06B6D4), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
+              }),
+              _buildAppItem(Icons.photo_album, '相册回忆', Color(0xFFA855F7), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
+              }),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildAppItem(Icons.save, '存档管理', Color(0xFF84CC16), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SaveLoadScreen()));
+              }),
+              _buildAppItem(Icons.inventory_2, '我的背包', Color(0xFFEAB308), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
+              }),
+              _buildAppItem(Icons.settings, '设置', Color(0xFF6B7280), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              }),
             ],
           ),
         ],
@@ -401,18 +445,22 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: color.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
             child: Icon(icon, color: color, size: 28),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             label,
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
         ],
@@ -420,27 +468,12 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
     );
   }
 
-  void _showComingSoonDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('敬请期待'),
-        content: const Text('应用商店正在开发中，更多魔法应用即将上线！'),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomQuickApps() {
+  Widget _buildBottomQuickApps(GameProvider gp) {
+    final player = gp.player;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(20),
@@ -448,53 +481,75 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
             color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildQuickApp(Icons.account_balance_wallet, '你的背包', Color(0xFF3B82F6), onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
-            }),
-            _buildQuickApp(Icons.photo_album, '你的回忆', Color(0xFF8B5CF6), onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
-            }),
-            _buildQuickApp(Icons.work, '找点活干', Color(0xFF10B981), onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
-            }),
-            _buildQuickApp(Icons.settings, '设置', Color(0xFF6B7280), onTap: () {}),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 10),
+              child: Row(
+                children: [
+                  Text(
+                    '📊 当前状态',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).textTheme.bodyMedium!.color,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            _buildStatTile('🏠 当前位置', gp.worldState.currentLocation ?? '霍格沃茨', null),
+            _buildStatTile('🏫 学年学期', gp.worldState.academicYear, null),
+            _buildStatTile('👨‍👩‍👧‍👦 NPC 数量', '${gp.npcRegistry.length} 个角色', null),
+            _buildStatTile('💬 已完成事件', '${gp.turnCount} 个回合', null),
+            _buildStatTile(
+                '❤️ 最高好感', gp.npcRegistry.values.isNotEmpty
+                    ? '${gp.npcRegistry.values.reduce((a, b) => a.affection > b.affection ? a : b).name} (${gp.npcRegistry.values.map((e) => e.affection).fold<int>(0, (a, b) => a > b ? a : b)})'
+                    : '暂无',
+                Colors.pink),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildQuickApp(IconData icon, String label, Color color, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildStatTile(String label, String value, Color? accent) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
+          SizedBox(
+            width: 92,
+            child: Text(label,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
           ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                color: accent ?? const Color(0xFFE6EDF3),
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAiFloatingButton() {
+  Widget _buildAiFloatingButton(GameProvider gp) {
+    final npcCount = gp.npcRegistry.length;
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
+      },
       child: Container(
-        width: 56,
-        height: 56,
+        width: 54,
+        height: 54,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -505,7 +560,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
           boxShadow: [
             BoxShadow(
               color: Colors.blue.withValues(alpha: 0.4),
-              blurRadius: 16,
+              blurRadius: 14,
               offset: const Offset(0, 4),
             ),
           ],
@@ -513,22 +568,28 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(Icons.auto_awesome, color: Colors.white, size: 28),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text('11', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+            const Icon(Icons.chat, color: Colors.white, size: 26),
+            if (npcCount > 0)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  constraints: const BoxConstraints(minWidth: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${npcCount > 99 ? '99+' : npcCount}',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

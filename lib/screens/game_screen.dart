@@ -24,7 +24,6 @@ class _GameScreenState extends State<GameScreen> {
   int _currentTab = 0;
   int _subTab = 0;
   bool _expandedStats = false;
-  bool _showStoryPanel = false;
   int _tokenUsage = 0;
   final _inputController = TextEditingController();
   final _menuController = TextEditingController();
@@ -146,174 +145,82 @@ class _GameScreenState extends State<GameScreen> {
         color: Theme.of(context).colorScheme.surface,
         border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary),
-                ),
-                child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              border: Border.all(color: Theme.of(context).colorScheme.primary),
+            ),
+            child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 22),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(player.name,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
-                        if (houseLabel.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '$houseLabel · ${player.bloodType == 'pureblood' ? '纯血' : player.bloodType == 'halfblood' ? '混血' : '麻瓜'}',
-                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.bolt, size: 14, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 2),
-                        Text('精力 ${player.energy}/5',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-                        const SizedBox(width: 12),
-                        Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 2),
-                        Text(gp.worldState.timestamp,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-                        const SizedBox(width: 12),
-                        Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 2),
-                        Text(gp.worldState.currentLocation ?? '未知',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-                      ],
+                    Text(player.name,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                    if (houseLabel.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          houseLabel,
+                          style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(Icons.bolt, size: 12, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 2),
+                    Text('${player.energy}/5',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+                    const SizedBox(width: 8),
+                    Icon(Icons.schedule, size: 12, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: Text(gp.worldState.timestamp,
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1),
                     ),
                   ],
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.arrow_drop_up),
-                tooltip: '展开属性',
-                onPressed: () {
-                  setState(() {
-                    _expandedStats = !_expandedStats;
-                  });
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.save),
-                tooltip: '存档',
-                onPressed: () async {
-                  await gp.quickSave();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ 已存档')),
-                    );
-                  }
-                },
-              ),
-            ],
+              ],
+            ),
           ),
-          if (_expandedStats) _buildStatsRow(player),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsRow(Player player) {
-    final attrs = player.attributes;
-    final primaryAttrs = attrs.entries.take(2).toList();
-    final secondaryAttrs = attrs.entries.skip(2).take(4).toList();
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: primaryAttrs.map((e) => Expanded(child: _buildAttrCard(e.key, e.value))).toList(),
+          GestureDetector(
+            onTap: () async {
+              await gp.quickSave();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ 已存档'), duration: Duration(seconds: 1)),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.save, size: 20, color: Theme.of(context).colorScheme.primary),
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: secondaryAttrs.map((e) => Expanded(child: _buildAttrChip(e.key, e.value))).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttrCard(String label, int value) {
-    final names = {
-      'spell_understanding': '魔咒理解', 'transfiguration': '变形术', 'potions': '魔药',
-      'herbology': '草药学', 'dda': '黑魔法防御', 'flying': '飞行',
-      'theory': '理论', 'memory': '记忆', 'observation': '观察',
-      'magic_control': '魔法控制', 'reaction_time': '反应', 'emotional_stability': '情绪',
-      'creativity': '创造', 'social': '社交', 'courage': '勇气',
-      'caution': '谨慎', 'willpower': '意志', 'logic': '逻辑', 'intuition': '直觉',
-    };
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.bolt, size: 16, color: Theme.of(context).colorScheme.secondary),
-          const SizedBox(width: 4),
-          Expanded(child: Text(names[label] ?? label, style: const TextStyle(fontSize: 12, color: Color(0xFFE6EDF3)))),
-          Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttrChip(String label, int value) {
-    final names = {
-      'spell_understanding': '魔咒', 'transfiguration': '变形', 'potions': '魔药',
-      'herbology': '草药', 'dda': '黑防', 'flying': '飞行',
-      'theory': '理论', 'memory': '记忆', 'observation': '观察',
-      'magic_control': '控魔', 'reaction_time': '反应', 'emotional_stability': '情绪',
-      'creativity': '创造', 'social': '社交', 'courage': '勇气',
-      'caution': '谨慎', 'willpower': '意志', 'logic': '逻辑', 'intuition': '直觉',
-    };
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.bolt, size: 12, color: Theme.of(context).colorScheme.secondary),
-          const SizedBox(width: 2),
-          Text(names[label] ?? label, style: const TextStyle(fontSize: 11, color: Color(0xFFE6EDF3))),
-          const SizedBox(width: 2),
-          Text('$value', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
         ],
       ),
     );
@@ -744,22 +651,6 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _showStoryPanel = !_showStoryPanel;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.menu, size: 22),
-            ),
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -855,27 +746,6 @@ class _GameScreenState extends State<GameScreen> {
               _buildPhoneAppGrid(),
               const SizedBox(height: 16),
               _buildBottomQuickRow(),
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneHomeScreen()));
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.phone_android, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text('打开手机', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ),
               const SizedBox(height: 80),
             ],
           ),
@@ -1366,14 +1236,7 @@ class _GameScreenState extends State<GameScreen> {
     if (player == null) return const SizedBox.shrink();
 
     final gp = context.read<GameProvider>();
-    final attributes = [
-      {'label': '容貌', 'value': 80, 'icon': Icons.face, 'color': Color(0xFFD97706)},
-      {'label': '体质', 'value': player.attributes['constitution'] ?? 50, 'icon': Icons.favorite, 'color': Color(0xFFDC2626)},
-      {'label': '智力', 'value': player.attributes['intelligence'] ?? 50, 'icon': Icons.psychology, 'color': Color(0xFF2563EB)},
-      {'label': '魅力', 'value': player.attributes['charisma'] ?? 50, 'icon': Icons.favorite_border, 'color': Color(0xFFDB2777)},
-      {'label': '体能', 'value': player.attributes['strength'] ?? 50, 'icon': Icons.fitness_center, 'color': Color(0xFF059669)},
-      {'label': '道德值', 'value': 50, 'icon': Icons.verified, 'color': Color(0xFF7C3AED)},
-    ];
+    final loc = gp.worldState.currentLocation ?? '';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1386,6 +1249,7 @@ class _GameScreenState extends State<GameScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Stack(
                 children: [
@@ -1405,20 +1269,6 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
-                      ),
-                      child: const Icon(Icons.add, size: 12, color: Colors.white),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(width: 12),
@@ -1429,91 +1279,137 @@ class _GameScreenState extends State<GameScreen> {
                     Row(
                       children: [
                         Text(player.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
-                              const SizedBox(width: 3),
-                              Text(
-                                '${player.house ?? ''} · ${player.bloodType == 'pureblood' ? '纯血' : player.bloodType == 'halfblood' ? '混血' : '麻瓜'}',
-                                style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        Icon(Icons.bolt, size: 13, color: Theme.of(context).colorScheme.secondary),
-                        const SizedBox(width: 3),
-                        Text('体力 ${player.energy}/5', style: const TextStyle(fontSize: 12)),
-                        const SizedBox(width: 10),
-                        Icon(Icons.schedule, size: 13, color: Theme.of(context).colorScheme.secondary),
-                        const SizedBox(width: 3),
-                        Text(gp.worldState.timestamp, style: const TextStyle(fontSize: 12)),
-                        const SizedBox(width: 10),
-                        Icon(Icons.location_on, size: 13, color: Theme.of(context).colorScheme.secondary),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            gp.worldState.currentLocation ?? '未知',
-                            style: const TextStyle(fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      '📍 $loc',
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '💰 ${player.gold} 金加隆 · 🎯 第${_turnCount(gp)}回合',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _expandedStats = !_expandedStats;
-                  });
-                },
+                onTap: () => setState(() => _expandedStats = !_expandedStats),
                 child: Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    _expandedStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    size: 18,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _expandedStats ? '收起' : '属性',
+                        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                      ),
+                      Icon(
+                        _expandedStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildAttrBarCompact(attributes[0])),
-              const SizedBox(width: 10),
-              Expanded(child: _buildAttrBarCompact(attributes[1])),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              for (int i = 2; i < attributes.length; i++) ...[
-                if (i > 2) const SizedBox(width: 8),
-                Expanded(child: _buildAttrChipFull(attributes[i])),
-              ],
-            ],
-          ),
+          _buildAttributesSection(player),
         ],
       ),
+    );
+  }
+
+  int _turnCount(GameProvider gp) => gp.turnCount;
+
+  Widget _buildAttributesSection(Player player) {
+    final basic = [
+      {'label': '容貌', 'value': player.looks ?? 80, 'icon': Icons.face, 'color': const Color(0xFFD97706)},
+      {'label': '体质', 'value': player.attributes['constitution'] ?? 50, 'icon': Icons.favorite, 'color': const Color(0xFFDC2626)},
+      {'label': '智力', 'value': player.attributes['intelligence'] ?? 50, 'icon': Icons.psychology, 'color': const Color(0xFF2563EB)},
+      {'label': '魅力', 'value': player.attributes['charisma'] ?? 50, 'icon': Icons.favorite_border, 'color': const Color(0xFFDB2777)},
+      {'label': '体能', 'value': player.attributes['strength'] ?? 50, 'icon': Icons.fitness_center, 'color': const Color(0xFF059669)},
+      {'label': '道德', 'value': player.morality ?? 50, 'icon': Icons.verified, 'color': const Color(0xFF7C3AED)},
+    ];
+
+    if (_expandedStats) {
+      final advanced = [
+        {'label': '魔咒', 'value': player.attributes['spell_understanding'] ?? 50, 'color': const Color(0xFF3B82F6)},
+        {'label': '变形', 'value': player.attributes['transfiguration'] ?? 50, 'color': const Color(0xFF8B5CF6)},
+        {'label': '魔药', 'value': player.attributes['potions'] ?? 50, 'color': const Color(0xFF10B981)},
+        {'label': '草药', 'value': player.attributes['herbology'] ?? 50, 'color': const Color(0xFF84CC16)},
+        {'label': '黑防', 'value': player.attributes['dda'] ?? 50, 'color': const Color(0xFFEF4444)},
+        {'label': '飞行', 'value': player.attributes['flying'] ?? 50, 'color': const Color(0xFF0EA5E9)},
+        {'label': '勇气', 'value': player.attributes['courage'] ?? 50, 'color': const Color(0xFFF59E0B)},
+        {'label': '意志', 'value': player.attributes['willpower'] ?? 50, 'color': const Color(0xFF6366F1)},
+        {'label': '创造', 'value': player.attributes['creativity'] ?? 50, 'color': const Color(0xFFEC4899)},
+        {'label': '社交', 'value': player.attributes['social'] ?? 50, 'color': const Color(0xFF14B8A6)},
+        {'label': '观察', 'value': player.attributes['observation'] ?? 50, 'color': const Color(0xFF06B6D4)},
+        {'label': '逻辑', 'value': player.attributes['logic'] ?? 50, 'color': const Color(0xFFA855F7)},
+      ];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildAttrBarCompact(basic[0])),
+              const SizedBox(width: 10),
+              Expanded(child: _buildAttrBarCompact(basic[1])),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _buildAttrBarCompact(basic[2])),
+              const SizedBox(width: 10),
+              Expanded(child: _buildAttrBarCompact(basic[3])),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _buildAttrBarCompact(basic[4])),
+              const SizedBox(width: 10),
+              Expanded(child: _buildAttrBarCompact(basic[5])),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text('📚 课程属性', style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: advanced.map((a) => _buildAttrChipFull(a)).toList(),
+          ),
+        ],
+      );
+    }
+
+    // Collapsed view: compact 3 basic attribute highlights
+    return Row(
+      children: [
+        for (int i = 0; i < basic.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: _buildAttrChipFull(basic[i])),
+        ],
+      ],
     );
   }
 
