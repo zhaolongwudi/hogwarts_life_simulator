@@ -11,12 +11,14 @@ import '../data/cg_data.dart';
 import '../data/npc_data.dart';
 import '../services/deepseek_service.dart';
 import '../services/save_service.dart';
+import '../services/npc_chat_service.dart';
 
 class GameProvider extends ChangeNotifier {
   final AppProvider appProvider;
   DeepSeekService? _deepSeek;
   final SaveService _saveService = SaveService();
   final Random _random = Random();
+  late final NpcChatService chatService;
 
   Player? _player;
   WorldState _worldState = WorldState();
@@ -41,16 +43,27 @@ class GameProvider extends ChangeNotifier {
   List<String> get notifications => List.unmodifiable(_notifications);
 
   GameProvider(this.appProvider) {
+    chatService = NpcChatService(appProvider: appProvider);
     _updateClient();
     appProvider.addListener(_onApiKeyChange);
   }
 
-  void _onApiKeyChange() => _updateClient();
+  void _onApiKeyChange() {
+    _updateClient();
+    chatService.refreshClient();
+  }
 
   void _updateClient() {
     if (appProvider.apiKey != null && appProvider.apiKey!.isNotEmpty) {
       _deepSeek = DeepSeekService(config: appProvider.aiConfig);
     }
+  }
+
+  void updateNpcAffection(String npcId, int change) {
+    final npc = _npcRegistry[npcId];
+    if (npc == null) return;
+    npc.affection = (npc.affection + change).clamp(-100, 100);
+    notifyListeners();
   }
 
   Future<void> updateApiKey(String key) async {

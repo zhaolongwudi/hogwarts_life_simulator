@@ -370,15 +370,21 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
               _buildAppItem(Icons.store_mall_directory, '魔法商店', Color(0xFFF59E0B), onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
               }),
-              _buildAppItem(Icons.apps, '应用商店', Color(0xFF10B981), onTap: () {}),
-              _buildAppItem(Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), onTap: () {}),
+              _buildAppItem(Icons.apps, '应用商店', Color(0xFF10B981), onTap: () {
+                _showComingSoonDialog();
+              }),
+              _buildAppItem(Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
+              }),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildAppItem(Icons.favorite, '姻缘一线牵\n红娘', Color(0xFFF43F5E), onTap: () {}),
+              _buildAppItem(Icons.favorite, '姻缘一线牵\n红娘', Color(0xFFF43F5E), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
+              }),
               Container(width: 80),
               Container(width: 80),
             ],
@@ -408,6 +414,22 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
             label,
             style: const TextStyle(fontSize: 12),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showComingSoonDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('敬请期待'),
+        content: const Text('应用商店正在开发中，更多魔法应用即将上线！'),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('知道了'),
           ),
         ],
       ),
