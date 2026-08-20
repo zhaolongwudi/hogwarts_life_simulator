@@ -24,18 +24,30 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Bump version
-        run: bash scripts/bump_version.sh
-
-      - name: Commit bumped version
+      - name: Bump version for build
+        id: bump
         run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git add pubspec.yaml
-          git commit -m "chore: bump version to ${VERSION_NAME} [skip ci]"
-          git push origin main
-        env:
-          VERSION_NAME: ${{ env.VERSION_NAME }}
+          PUB="pubspec.yaml"
+          CURRENT=$(grep '^version:' "$PUB" | awk '{print $2}')
+          BASE=$(echo "$CURRENT" | cut -d+ -f1)
+          BUILD=$(echo "$CURRENT" | cut -d+ -f2)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          if [ "$PATCH" -ge 9 ]; then
+            PATCH=0
+            MINOR=$((MINOR + 1))
+          else
+            PATCH=$((PATCH + 1))
+          fi
+          if [ "$MINOR" -ge 10 ]; then
+            MINOR=0
+            MAJOR=$((MAJOR + 1))
+          fi
+          BUILD=$((BUILD + 1))
+          NEW="${MAJOR}.${MINOR}.${PATCH}+${BUILD}"
+          sed -i "s/^version: .*/version: $NEW/" "$PUB"
+          echo "NEW_VERSION=${MAJOR}.${MINOR}.${PATCH}+${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_NAME=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+          echo "Version bumped: $CURRENT -> $NEW"
 
       - name: Install Dependencies
         run: flutter pub get
@@ -48,23 +60,21 @@ jobs:
 
       - name: Rename APK
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/HogwartLige-${VERSION_NAME}.apk
-        env:
-          VERSION_NAME: ${{ env.VERSION_NAME }}
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HogwartLige-${{ env.VERSION_NAME }}
-          path: build/app/outputs/flutter-apk/HogwartLige-${{ env.VERSION_NAME }}.apk
+          name: HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}
+          path: build/app/outputs/flutter-apk/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk
           retention-days: 30
 
       - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION_NAME="${{ steps.bump.outputs.VERSION_NAME }}"
           gh release create "v${VERSION_NAME}" \
             build/app/outputs/flutter-apk/HogwartLige-${VERSION_NAME}.apk \
             --title "HogwartLige v${VERSION_NAME}" \
             --generate-notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION_NAME: ${{ env.VERSION_NAME }}
