@@ -86,8 +86,21 @@ jobs:
       - name: Build APK
         id: build
         run: |
-          flutter build apk --release 2>&1 | tee build_output.log
-          echo "BUILD_EXIT_CODE=${PIPESTATUS[0]}" > build_result.txt
+          flutter build apk --release 2>&1 | tee build_output.log || true
+          # If flutter can't find APK, try building with Gradle directly
+          APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "Flutter build didn't produce APK, trying Gradle directly..."
+            cd android && ./gradlew assembleRelease 2>&1 | tee -a ../build_output.log
+            cd ..
+            APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
+          fi
+          if [ -n "$APK_PATH" ]; then
+            echo "BUILD_EXIT_CODE=0" > build_result.txt
+            echo "APK_PATH=$APK_PATH" >> build_result.txt
+          else
+            echo "BUILD_EXIT_CODE=1" > build_result.txt
+          fi
         timeout-minutes: 20
 
       - name: Upload build logs
@@ -103,25 +116,13 @@ jobs:
       - name: Check build result and locate APK
         id: apk
         run: |
-          if [ -f build_result.txt ]; then
-            EXIT_CODE=$(grep BUILD_EXIT_CODE build_result.txt | cut -d= -f2)
-            if [ "$EXIT_CODE" != "0" ]; then
-              echo "Build failed with exit code: $EXIT_CODE"
-              tail -100 build_output.log
-              exit 1
-            fi
-          else
-            echo "No build result file found"
+          EXIT_CODE=$(grep BUILD_EXIT_CODE build_result.txt | cut -d= -f2)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Build failed with exit code: $EXIT_CODE"
+            tail -100 build_output.log
             exit 1
           fi
-          # Search for APK in all possible output locations
-          APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "APK not found! Searching for any APK..."
-            find . -name "*.apk" -type f 2>/dev/null
-            exit 1
-          fi
-          echo "Found APK at: $APK_PATH"
+          APK_PATH=$(grep APK_PATH build_result.txt | cut -d= -f2)
           echo "APK_PATH=$APK_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
