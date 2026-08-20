@@ -27,22 +27,26 @@ class WorldState {
     this.dayOfMonth = 1,
     this.dayOfWeek = 'Tuesday',
     this.era = 'harry_same',
-    this.housePoints = const {
-      'Gryffindor': 350,
-      'Slytherin': 350,
-      'Ravenclaw': 350,
-      'Hufflepuff': 350,
-    },
-    this.recentEvents = const [],
+    Map<String, int>? housePoints,
+    List<String>? recentEvents,
     this.playerImpactScore = 0.0,
     GameTime? time,
     this.timeFlowMode = 'normal',
-    this.specialMarkers = const [],
+    List<String>? specialMarkers,
     this.currentLocation,
     this.weather,
     this.timelineChanges = 0,
-    this.timelineBranches = const [],
-  }) : time = time ?? GameTime();
+    List<String>? timelineBranches,
+  })  : time = time ?? GameTime(),
+        housePoints = Map<String, int>.from(housePoints ?? const {
+          'Gryffindor': 350,
+          'Slytherin': 350,
+          'Ravenclaw': 350,
+          'Hufflepuff': 350,
+        }),
+        recentEvents = List<String>.from(recentEvents ?? const []),
+        specialMarkers = List<String>.from(specialMarkers ?? const []),
+        timelineBranches = List<String>.from(timelineBranches ?? const []);
 
   /// 当前时间戳字符串
   String get timestamp => time.format();

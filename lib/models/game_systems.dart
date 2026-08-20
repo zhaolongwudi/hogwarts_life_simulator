@@ -403,8 +403,8 @@ class LoveState {
     this.partnerName,
     this.awaitingConfession = false,
     this.consideringNpcName,
-    this.history = const [],
-  });
+    List<Map<String, String>>? history,
+  }) : history = List<Map<String, String>>.from(history ?? const []);
 
   Map<String, dynamic> toJson() => {
         'status': status,
