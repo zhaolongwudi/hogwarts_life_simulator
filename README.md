@@ -138,6 +138,10 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.3.7 — 2026-08-20
+
+fix: sync README.md with latest features and fix changelog automation
+
 ### v0.3.6 — 2026-08-20
 
 feat: auto-sync changelog to README + comprehensive README update
