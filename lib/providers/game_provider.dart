@@ -1058,7 +1058,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     final weekday = _worldState.dayOfWeek;
     final hour = t.hour.toString().padLeft(2, '0');
     final minute = t.minute.toString().padLeft(2, '0');
-    return '📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]';
+    return '📅 $year年$month$day日，$weekday，[$hour:$minute]';
   }
 
 
