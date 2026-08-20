@@ -138,6 +138,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.4.0 — 2026-08-20
+
+**📋 变更说明**
+feat: UI layout improvements + AI provider fix + changelog script enhancement
+
+- Swap 事件/面板 tab order (事件 first)
+- Auto-scroll to top on narrative update
+- Move 推进剧情 button to left of input box
+- Fix 智谱 AI baseUrl (use /api/paas/v4/ path)
+- Fix Agnes AI baseUrl (remove duplicate /v1)
+
 ### v0.3.9 — 2026-08-20
 
 **📋 变更说明**
