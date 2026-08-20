@@ -719,7 +719,7 @@ class _StatusTab extends StatelessWidget {
         ]),
         const SizedBox(height: 16),
         _buildSection('学院杯积分',
-            worldState.housePoints.entries.map((e) => _buildRow(e.key, '${e.value}分')).toList()),
+            worldState.housePoints.entries.map((e) => _buildRow(_houseLabel(e.key), '${e.value}分')).toList()),
         if (worldState.recentEvents.isNotEmpty) ...[
           const SizedBox(height: 16),
           _buildSection('最近事件',
@@ -815,6 +815,15 @@ class _StatusTab extends StatelessWidget {
       'third': '第三学期',
       'summer': '暑假',
     }[term] ?? term;
+  }
+
+  String _houseLabel(String house) {
+    return {
+      'Gryffindor': '格兰芬多',
+      'Slytherin': '斯莱特林',
+      'Ravenclaw': '拉文克劳',
+      'Hufflepuff': '赫奇帕奇',
+    }[house] ?? house;
   }
 }
 

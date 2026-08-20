@@ -406,16 +406,14 @@ D. （选项4）
 【当前情境】
 $_currentNarrative
 
-【玩家行动】
-$action
-
-【世界状态】
-- 时间：${_worldState.timestamp}
-- 学年：${_worldState.academicYear}
-- 玩家学院：${_player!.house ?? '未分院'}
-- 玩家年级：${_player!.grade ?? 1}
+【玩家档案】
+- 姓名：${_player!.name}
+- 血统：${_bloodStatusLabel(_player!.bloodType)}
+- 性格特质：${_player!.personalityTraits.isEmpty ? '（未设定）' : _player!.personalityTraits.join('、')}
+- 外貌：${_player!.appearance ?? '（未设定）'}
+- 学院：${_player!.house ?? '未分院'}
+- 年级：${_player!.grade ?? 1}
 - 世界线变动率：${(_player!.worldLineDeviation * 100).toStringAsFixed(1)}%
-- 当前地点：${_worldState.currentLocation ?? '未知'}
 
 【玩家状态】
 - 生命：${_player!.health}/100
@@ -426,8 +424,26 @@ $action
 - 恋爱状态：${_player!.loveState.status}
 ${_player!.loveState.status != '单身' ? '- 恋爱对象：${_player!.loveState.partnerName}' : ''}
 
-【玩家属性（前8项）】
-${_player!.attributes.entries.take(8).map((e) => '- ${_attrLabel(e.key)}: ${e.value}').join('\n')}
+【核心属性】
+${_player!.attributes.entries.map((e) => '- ${_attrLabel(e.key)}: ${e.value}').join('\n')}
+
+【已学魔咒】
+${_player!.learnedSpells.isEmpty ? '（尚未学会任何魔咒）' : _player!.learnedSpells.entries.map((e) => '- ${e.key} (Lv.${e.value.level})').join('\n')}
+
+【物品栏】
+${_player!.inventory.isEmpty ? '（背包空空如也）' : _player!.inventory.map((e) => '- ${e.name}${e.description.isNotEmpty ? '（${e.description}）' : ''}').join('\n')}
+
+【学院积分】
+- ${_worldState.housePoints.entries.map((e) => '${_houseLabel(e.key)}: ${e.value}分').join(' | ')}
+
+【玩家行动】
+$action
+
+【时间与地点】
+- 时间：${_worldState.timestamp}
+- 学年：${_worldState.academicYear}
+- 当前地点：${_worldState.currentLocation ?? '未知'}
+- 天气：${_worldState.weather ?? '晴朗'}
 
 【重要NPC关系】
 ${_formatAffections()}
@@ -447,6 +463,7 @@ ${_getNearbyNPCs()}
 3. 不强行把玩家塞进原著事件
 4. 如果玩家远离事件，就正常过校园生活
 5. 时间自然推进，叙事开头附时间戳
+6. **必须**在叙事中体现玩家的【性格特质】和【血统】，让行为和对话符合其身份设定
 
 格式：
 【叙事】
@@ -1600,6 +1617,15 @@ ${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
       'logic': '逻辑',
       'intuition': '直觉',
     }[key] ?? key;
+  }
+
+  String _houseLabel(String house) {
+    return {
+      'Gryffindor': '格兰芬多',
+      'Slytherin': '斯莱特林',
+      'Ravenclaw': '拉文克劳',
+      'Hufflepuff': '赫奇帕奇',
+    }[house] ?? house;
   }
 
   String _termLabel(String term) {
