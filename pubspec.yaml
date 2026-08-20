@@ -1,7 +1,7 @@
 name: hogwarts_life_simulator
-description: 哈利·波特魔法人生模拟器 - DeepSeek AI 驱动
+description: HogwartLige - 霍格沃茨AI人生模拟器
 publish_to: 'none'
-version: 0.0.6+6
+version: 0.0.7+7
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

@@ -94,7 +94,7 @@ class _GameScreenState extends State<GameScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   border: Border.all(color: Theme.of(context).colorScheme.primary),
                 ),
                 child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
@@ -112,7 +112,7 @@ class _GameScreenState extends State<GameScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -303,7 +303,7 @@ class _GameScreenState extends State<GameScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.pink.withOpacity(0.15),
+                color: Colors.pink.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
@@ -346,7 +346,7 @@ class _GameScreenState extends State<GameScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(Icons.map, color: Theme.of(context).colorScheme.primary),
@@ -603,7 +603,7 @@ class _GameScreenState extends State<GameScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.pink.withOpacity(0.3),
+                color: Colors.pink.withValues(alpha: 0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -673,7 +673,7 @@ class _GameScreenState extends State<GameScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.send, size: 20),
@@ -705,8 +705,8 @@ class _GameScreenState extends State<GameScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF4A3728).withOpacity(0.5),
-                Color(0xFF8B7355).withOpacity(0.2),
+                Color(0xFF4A3728).withValues(alpha: 0.5),
+                Color(0xFF8B7355).withValues(alpha: 0.2),
                 Theme.of(context).scaffoldBackgroundColor,
               ],
             ),
@@ -721,7 +721,7 @@ class _GameScreenState extends State<GameScreen> {
                   children: [
                     Text(
                       '${time.month}月${time.day}日 ${weekdayNames[time.weekday]}',
-                      style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85)),
+                      style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.85)),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -747,7 +747,7 @@ class _GameScreenState extends State<GameScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.9),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
@@ -772,9 +772,9 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.92),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withOpacity(0.3)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -820,9 +820,9 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withOpacity(0.2)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -830,7 +830,7 @@ class _GameScreenState extends State<GameScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(Icons.music_note, color: Theme.of(context).colorScheme.primary, size: 22),
@@ -901,7 +901,7 @@ class _GameScreenState extends State<GameScreen> {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 26),
@@ -917,9 +917,9 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.92),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withOpacity(0.2)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -951,7 +951,7 @@ class _GameScreenState extends State<GameScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 22),
@@ -1003,7 +1003,7 @@ class _GameScreenState extends State<GameScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.public, color: Theme.of(context).colorScheme.primary),
@@ -1066,9 +1066,9 @@ class _GameScreenState extends State<GameScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1114,7 +1114,7 @@ class _GameScreenState extends State<GameScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -1155,7 +1155,7 @@ class _GameScreenState extends State<GameScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1166,7 +1166,7 @@ class _GameScreenState extends State<GameScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 28),
@@ -1184,7 +1184,7 @@ class _GameScreenState extends State<GameScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.12),
+                              color: Colors.green.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Text('同地点', style: TextStyle(fontSize: 11, color: Colors.green)),
@@ -1317,7 +1317,7 @@ class _GameScreenState extends State<GameScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
@@ -1368,7 +1368,7 @@ class _GameScreenState extends State<GameScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).dividerTheme.color!.withOpacity(0.3),
+                    color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -1427,7 +1427,7 @@ class _GameScreenState extends State<GameScreen> {
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: value / 100,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation(color),
               minHeight: 2,
             ),
@@ -1462,7 +1462,7 @@ class _GameScreenState extends State<GameScreen> {
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: value / 100,
-              backgroundColor: (attr['color'] as Color).withOpacity(0.2),
+              backgroundColor: (attr['color'] as Color).withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation(attr['color'] as Color),
               minHeight: 3,
             ),
@@ -1476,7 +1476,7 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1549,7 +1549,7 @@ class _GameScreenState extends State<GameScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
@@ -1578,7 +1578,7 @@ class _GameScreenState extends State<GameScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.bolt, size: 18, color: Theme.of(context).colorScheme.primary),
@@ -1635,7 +1635,7 @@ class _GameScreenState extends State<GameScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Row(
@@ -1766,7 +1766,7 @@ class _GameScreenState extends State<GameScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: Theme.of(context).colorScheme.primary),
                         ),
@@ -1855,7 +1855,7 @@ class _GameScreenState extends State<GameScreen> {
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Theme.of(context).scaffoldBackgroundColor,
+              color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
             ),

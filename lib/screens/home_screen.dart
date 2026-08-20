@@ -75,7 +75,7 @@ class HomePage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF740001).withOpacity(0.2),
+            color: const Color(0xFF740001).withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFF740001)),
           ),
@@ -100,7 +100,7 @@ class HomePage extends StatelessWidget {
         border: Border.all(color: const Color(0xFFD3A625), width: 3),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD3A625).withOpacity(0.3),
+            color: const Color(0xFFD3A625).withValues(alpha: 0.3),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -117,7 +117,7 @@ class HomePage extends StatelessWidget {
   Widget _buildGameStatus(GameProvider gp) {
     final player = gp.player!;
     return Card(
-      color: const Color(0xFF161b22).withOpacity(0.9),
+      color: const Color(0xFF161b22).withValues(alpha: 0.9),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: Color(0xFF30363d)),

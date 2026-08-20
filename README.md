@@ -1,40 +1,147 @@
-# 魔法人生模拟器 (Hogwarts Life Simulator)
+# HogwartLige
 
-哈利·波特魔法人生模拟器 —— 高自由度巫师人生模拟 Flutter App，由 DeepSeek AI 驱动。
+> 霍格沃茨 AI 人生模拟器 · 由多模型 AI 驱动的文字冒险游戏
 
-## 功能特性
+**HogwartLige** 是一款基于 Flutter 构建的高自由度霍格沃茨人生模拟器。你将作为一名巫师踏入魔法世界，从分院帽仪式开始，经历课堂学习、社交互动、剧情事件，最终成长为一名合格的巫师。所有剧情、对话和事件均由 AI 实时生成，每一次选择都会影响你的命运。
 
-- 自由创建巫师角色：姓名、出生地、血统、性格特质
-- 4 种时代背景：掠夺者时代 / 第一次巫师战争 / 哈利同期 / 战后时代
-- 原著角色 NPC：哈利、赫敏、罗恩、邓布利多、斯内普等，各有独立人生与性格
-- DeepSeek AI 实时叙事：每次行动生成剧情、影响属性与关系
-- 分院帽仪式、奥利凡德魔杖店
-- 本地存档 / 读档（多槽位）
-- 3 种显示模式：魔法手账 / 简洁 / 沉浸
+## ✨ 核心特性
 
-## 环境要求
+### 🎭 角色系统
+- **自由创建巫师**：姓名、血统（纯血/混血/麻瓜）、学院、出生地、性格特质
+- **六大核心属性**：容貌、体质、智力、魅力、体能、道德值
+- **动态关系网络**：与 NPC 互动改变好感度（敌对 → 冷淡 → 初识 → 朋友 → 亲密 → 挚友）
 
-- Flutter >= 3.16.0（Dart SDK >= 3.2.0）
-- DeepSeek API Key（可在 https://platform.deepseek.com 免费获取）
+### 🌍 世界探索
+- **霍格沃茨地图**：大礼堂、天文台、黑湖、禁林、地下室、图书馆
+- **霍格莫德村**：蜂蜜公爵、三把扫帚、佐科笑话店、霍格莫德车站等
+- **动态 NPC**：14+ 原著角色，各有独立性格、位置和行为
 
-## 快速开始
+### 🤖 AI 驱动叙事
+- **支持多模型**：DeepSeek、智谱 AI（Zhipu）、Agnes-2.5-flash
+- **实时剧情生成**：每次行动都由 AI 生成独特叙事
+- **自定义行动**：自由输入想法，AI 即时响应
+- **上下文记忆**：AI 会记住你的选择和关系变化
+
+### 📱 四大功能模块
+| 模块 | 说明 |
+|------|------|
+| 📖 剧情 | AI 叙事文本 + 选项 + 属性面板 |
+| 📱 手机 | 魔法通讯、魔法论坛、日记、商店 |
+| 🌍 世界 | NPC 关系网、世界地图、位置导航 |
+| ⚙️ 设置 | AI 引擎配置、阅读速度、Token 统计 |
+
+### 🎮 辅助系统
+- **回忆系统**：章节时间线、收藏、CG 画廊
+- **职业系统**：找点活干、赚取加隆、消耗体力
+- **魔法商店**：淘货、卖闲置、魔法道具
+- **本地存档**：自动存档 + 手动存档 + 数据导出
+
+## 🛠 技术栈
+
+| 类别 | 技术 |
+|------|------|
+| 框架 | Flutter 3.16.0+ |
+| 语言 | Dart 3.2.0+ |
+| 状态管理 | Provider |
+| 本地存储 | SharedPreferences |
+| AI 引擎 | DeepSeek / Zhipu / Agnes |
+| 构建 | GitHub Actions（自动版本递增） |
+
+## 🚀 快速开始
+
+### 环境要求
+- [Flutter SDK](https://docs.flutter.dev/get-started) >= 3.16.0
+- JDK 17（用于 Android 构建）
+- 至少一个 AI 提供商的 API Key
+
+### 安装运行
 
 ```bash
+# 克隆项目
+git clone https://github.com/zhaolongwudi/hogwarts_life_simulator.git
+cd hogwarts_life_simulator
+
+# 安装依赖
 flutter pub get
+
+# 运行（需连接设备或模拟器）
 flutter run
 ```
 
-首次进入请在「设置」中填入 DeepSeek API Key。
+### 配置 AI
 
-## 自动构建
+首次运行后，在 **设置** 页面配置 AI 引擎：
+1. 选择 AI 提供商（DeepSeek / 智谱AI / Agnes）
+2. 填入 API Key
+3. 选择模型
+4. 开始你的魔法之旅
 
-`.github/workflows/android-build.yml` 会在每次推送到 `main` 分支时自动构建 release APK，
-构建产物可在 Actions 页面的 `release-apk` Artifact 中下载。
+## 📦 构建 APK
 
-## 构建 Android APK（本地）
+### 本地构建
 
 ```bash
 flutter build apk --release
 ```
 
-输出位于 `build/app/outputs/flutter-apk/app-release.apk`。
+### CI 自动构建
+
+推送代码到 `main` 分支后，GitHub Actions 会自动：
+1. **自动递增版本号**（0.0.6 → 0.0.7 → ... → 0.0.10 → 0.1.0）
+2. 运行 `flutter analyze` 代码检查
+3. 构建 release APK
+4. 重命名为 `HogwartLige-{版本号}.apk`
+5. 上传为 GitHub Release 资产
+
+下载最新版本：[Releases 页面](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases)
+
+## 🔐 隐私说明
+
+- 本应用**完全本地运行**，AI API Key 仅存储在本地设备
+- 不收集任何用户数据，不进行远程上报
+- 所有存档数据保存在本地 SharedPreferences
+- 实际 AI 服务费用由您选择的提供商收取
+
+## 📝 更新日志
+
+### v0.0.6 — 2026-08-20
+
+**✨ 全新玩法系统**
+- 🌍 **世界 Tab 重构**：NPC 卡片显示完整描述文本、关系状态、同地点标签；已登场/未登场折叠分区；收藏引入和新建 NPC 按钮
+- 👤 **角色属性面板**：头像+按钮、属性进度条+数值显示、学院/血统标签、位置信息
+- 📖 **剧情 Tab**：面板/事件 Tab 切换、左侧菜单按钮、底部胶囊输入栏
+- ⚙️ **设置 Tab 增强**：同步剧本/存读档/导入导出按钮
+- 📊 **Token 用量统计**：显示本月消耗、预计费用、本地 API Key 直连说明
+- 📱 **手机主界面**：实时时钟、玩家头像、音乐播放器、功能图标网格
+- 📖 **回忆系统**：章节时间线、收藏、CG 画廊
+- 💼 **职业系统**：5 种岗位、体力/金币管理、AI 智能推荐
+- 🗺 **世界地图**：霍格沃茨+霍格莫德村地图、地点卡片、Canvas 自定义地图
+- 🪄 **魔法通讯/论坛/日记**：联系人列表、分类帖子、日记条目
+
+**🔧 技术改进**
+- 支持三模型：DeepSeek / 智谱AI / Agnes-2.5-flash
+- 修复 Flutter 3.16 兼容性（withOpacity、CardTheme）
+- 自动版本号递增（Patch 满 10 进 Minor，Minor 满 10 进 Major）
+- APK 重命名为 HogwartLige-{版本号}.apk
+- App 名称改为 HogwartLige
+
+### v0.0.5 — 2026-08-19
+
+**🛠 Bug 修复与优化**
+- 修复 Provider 状态管理错误
+- 修复 NPC 数据未定义问题
+- 修复 UI 组件兼容性问题（Badge、icons、Path API）
+- 优化 Provider 存储逻辑
+
+### v0.0.4 — 2026-08-18
+
+**🎨 初始界面实现**
+- 底部 4 Tab 导航（剧情/手机/世界/设置）
+- 温暖羊皮纸风格主题
+- 事件卡片样式实现
+
+---
+
+## 📄 开源协议
+
+本项目仅供学习和交流使用。

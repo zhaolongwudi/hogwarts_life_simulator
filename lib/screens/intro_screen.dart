@@ -782,7 +782,7 @@ class _IntroScreenState extends State<IntroScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? const Color(0xFF740001).withOpacity(0.3) : const Color(0xFF21262d),
+        color: selected ? const Color(0xFF740001).withValues(alpha: 0.3) : const Color(0xFF21262d),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),

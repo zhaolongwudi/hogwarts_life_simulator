@@ -22,8 +22,20 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.16.0'
           cache: true
+
+      - name: Bump version
+        run: bash scripts/bump_version.sh
+
+      - name: Commit bumped version
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${VERSION_NAME} [skip ci]"
+          git push origin main
+        env:
+          VERSION_NAME: ${{ env.VERSION_NAME }}
 
       - name: Install Dependencies
         run: flutter pub get
@@ -34,18 +46,25 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
+      - name: Rename APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/HogwartLige-${VERSION_NAME}.apk
+        env:
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: HogwartLige-${{ env.VERSION_NAME }}
+          path: build/app/outputs/flutter-apk/HogwartLige-${{ env.VERSION_NAME }}.apk
           retention-days: 30
 
       - name: Create GitHub Release
         run: |
-          TAG="v1.0.0-$(date +%Y%m%d-%H%M%S)"
-          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
-            --title "魔法人生模拟器 $TAG" \
+          gh release create "v${VERSION_NAME}" \
+            build/app/outputs/flutter-apk/HogwartLige-${VERSION_NAME}.apk \
+            --title "HogwartLige v${VERSION_NAME}" \
             --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NAME: ${{ env.VERSION_NAME }}
