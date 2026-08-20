@@ -11,6 +11,7 @@ import 'shop_inventory_screens.dart';
 import 'memory_screen.dart';
 import 'job_screen.dart';
 import 'other_screens.dart';
+import '../utils/story_text_renderer.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -545,17 +546,60 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Text(
-        narrative,
-        style: const TextStyle(fontSize: 15, height: 1.8),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Theme.of(context).dividerTheme.color!),
+          ),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              _buildLegendItem(const Color(0xFFB45309), '人名'),
+              _buildLegendItem(const Color(0xFF1565C0), '对话'),
+              _buildLegendItem(const Color(0xFF059669), '地点'),
+              _buildLegendItem(const Color(0xFF7C3AED), '物品'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Theme.of(context).dividerTheme.color!),
+          ),
+          child: RichText(
+            text: TextSpan(
+              children: StoryTextRenderer.parse(narrative),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8B7355))),
+      ],
     );
   }
 
