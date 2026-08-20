@@ -125,7 +125,7 @@ class _ShopScreenState extends State<ShopScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(item['icon'] as IconData, color: Theme.of(context).colorScheme.primary),
@@ -226,7 +226,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Badge(
@@ -312,7 +312,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: (item['color'] as Color).withValues(alpha: 0.15),
+              color: (item['color'] as Color).withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(item['icon'] as IconData, color: item['color'] as Color, size: 24),

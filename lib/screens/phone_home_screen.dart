@@ -30,8 +30,8 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF4A3728).withValues(alpha: 0.6),
-                  Color(0xFF8B7355).withValues(alpha: 0.3),
+                  Color(0xFF4A3728).withOpacity(0.6),
+                  Color(0xFF8B7355).withOpacity(0.3),
                   Theme.of(context).scaffoldBackgroundColor,
                 ],
               ),
@@ -82,7 +82,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                 '${time.month}月${time.day}日 ${weekdayNames[time.weekday]}',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: Colors.white.withOpacity(0.85),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -110,10 +110,10 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.92),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3),
+            color: Theme.of(context).dividerTheme.color!.withOpacity(0.3),
           ),
         ),
         child: Row(
@@ -137,7 +137,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
+                    color: Colors.black.withOpacity(0.15),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -172,7 +172,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -229,10 +229,10 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.85),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
+            color: Theme.of(context).dividerTheme.color!.withOpacity(0.2),
           ),
         ),
         child: Column(
@@ -243,7 +243,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.music_note, color: Theme.of(context).colorScheme.primary),
@@ -262,7 +262,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
+                    color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text('🔊', style: TextStyle(fontSize: 14)),
@@ -278,7 +278,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                     margin: const EdgeInsets.symmetric(horizontal: 8),
                     height: 3,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3),
+                      color: Theme.of(context).dividerTheme.color!.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: FractionallySizedBox(
@@ -337,7 +337,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.1),
+        color: Theme.of(context).dividerTheme.color!.withOpacity(0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(icon, size: 18, color: Theme.of(context).textTheme.bodyMedium!.color),
@@ -398,7 +398,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: color, size: 28),
@@ -420,10 +420,10 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.92),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
+            color: Theme.of(context).dividerTheme.color!.withOpacity(0.2),
           ),
         ),
         child: Row(
@@ -455,7 +455,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -482,7 +482,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.withValues(alpha: 0.4),
+              color: Colors.blue.withOpacity(0.4),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),

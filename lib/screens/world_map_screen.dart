@@ -92,7 +92,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -126,7 +126,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
+                    color: Theme.of(context).dividerTheme.color!.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.keyboard_arrow_up, size: 20),
@@ -195,7 +195,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +214,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: value / 100,
-              backgroundColor: (attr['color'] as Color).withValues(alpha: 0.2),
+              backgroundColor: (attr['color'] as Color).withOpacity(0.2),
               valueColor: AlwaysStoppedAnimation(attr['color'] as Color),
               minHeight: 4,
             ),
@@ -231,7 +231,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3)),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -251,9 +251,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF87CEEB).withValues(alpha: 0.6),
-            Color(0xFF90EE90).withValues(alpha: 0.3),
-            Color(0xFF228B22).withValues(alpha: 0.4),
+            Color(0xFF87CEEB).withOpacity(0.6),
+            Color(0xFF90EE90).withOpacity(0.3),
+            Color(0xFF228B22).withOpacity(0.4),
           ],
         ),
       ),
@@ -281,7 +281,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
@@ -317,7 +317,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withOpacity(0.2),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -344,7 +344,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
+          color: Colors.white.withOpacity(0.9),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Theme.of(context).dividerTheme.color!),
         ),
@@ -390,12 +390,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.97),
+          color: Colors.white.withOpacity(0.97),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Theme.of(context).dividerTheme.color!),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -410,7 +410,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(loc['icon'] as IconData, color: Theme.of(context).colorScheme.primary),
@@ -521,7 +521,7 @@ class MapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Color(0xFF228B22).withValues(alpha: 0.3)
+      ..color = Color(0xFF228B22).withOpacity(0.3)
       ..style = PaintingStyle.fill;
 
     final path1 = Path()
@@ -542,7 +542,7 @@ class MapPainter extends CustomPainter {
     canvas.drawPath(path2, paint);
 
     final waterPaint = Paint()
-      ..color = Color(0xFF4169E1).withValues(alpha: 0.3)
+      ..color = Color(0xFF4169E1).withOpacity(0.3)
       ..style = PaintingStyle.fill;
 
     final waterPath = Path()

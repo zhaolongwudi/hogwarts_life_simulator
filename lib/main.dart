@@ -79,7 +79,7 @@ class HogwartsLifeSimulator extends StatelessWidget {
         bodyMedium: TextStyle(fontSize: 14, color: kTextLight),
         bodySmall: TextStyle(fontSize: 12, color: kTextLight),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: kCard,
         elevation: 2,
         shape: RoundedRectangleBorder(
