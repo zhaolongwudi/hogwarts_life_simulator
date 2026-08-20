@@ -1,45 +1,67 @@
-#!/bin/bash
+name: Fix Flutter Analysis
 
-echo "🔧 开始修复 Flutter Analyze 错误..."
+on:
+  workflow_dispatch:
 
-# ==================== 修复 1: wand_data.dart ====================
-echo "✅ 修复 1/4: wand_data.dart - 删除未使用的 import"
-sed -i "1d" lib/data/wand_data.dart
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-# ==================== 修复 2: game_provider.dart ====================
-echo "✅ 修复 2/4: game_provider.dart - 删除未使用的 import"
-sed -i "/import '..\/data\/npc_data.dart';/d" lib/providers/game_provider.dart
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
 
-echo "✅ 修复 3/4: game_provider.dart - 删除未使用的方法 _getPlayerGrade"
-sed -i '/int _getPlayerGrade() {/,/^  }$/d' lib/providers/game_provider.dart
+      - name: Get dependencies
+        run: flutter pub get
 
-echo "✅ 修复 4/4: game_provider.dart - 添加 formatDate 方法并修复调用"
-sed -i '/\/\/ ==================== CG 解锁 ====================/a\
-String _formatDate() {\
-  final t = _worldState.time;\
-  final year = t.year;\
-  final month = _worldState.month ?? '\''九月'\'';\
-  final day = _worldState.dayOfMonth;\
-  final weekday = _worldState.dayOfWeek ?? '\''周一'\'';\
-  final hour = t.hour.toString().padLeft(2, '\''0'\'');\
-  final minute = t.minute.toString().padLeft(2, '\''0'\'');\
-  return '\''📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]'\'';\
-}\
-' lib/providers/game_provider.dart
+      - name: Fix wand_data.dart - remove unused import
+        run: |
+          sed -i "1d" lib/data/wand_data.dart
 
-# 修复调用处
-sed -i 's/_worldState.formatDate()/_formatDate()/g' lib/providers/game_provider.dart
+      - name: Fix game_provider.dart - remove unused import
+        run: |
+          sed -i "/import '..\/data\/npc_data.dart';/d" lib/providers/game_provider.dart
 
-# ==================== 修复 5: game_screen.dart ====================
-echo "✅ 修复 5/5: game_screen.dart - 修复未使用变量 rel"
-sed -i 's/final rel = player.relationships/final _rel = player.relationships/g' lib/screens/game_screen.dart
+      - name: Fix game_provider.dart - remove unused method
+        run: |
+          sed -i '/int _getPlayerGrade() {/,/^  }$/d' lib/providers/game_provider.dart
 
-# ==================== 修复 6: intro_screen.dart ====================
-echo "✅ 修复 6/6: intro_screen.dart - 修复未使用变量 petId"
-sed -i 's/String? petId;/String? _petId;/g' lib/screens/intro_screen.dart
+      - name: Fix game_provider.dart - add formatDate method
+        run: |
+          cat >> lib/providers/game_provider.dart << 'EOF'
 
-echo ""
-echo "🎉 修复完成！"
-echo ""
-echo "运行 flutter analyze 验证："
-flutter analyze
+// ==================== 时间格式化 ====================
+String _formatDate() {
+  final t = _worldState.time;
+  final year = t.year;
+  final month = _worldState.month ?? '九月';
+  final day = _worldState.dayOfMonth;
+  final weekday = _worldState.dayOfWeek ?? '周一';
+  final hour = t.hour.toString().padLeft(2, '0');
+  final minute = t.minute.toString().padLeft(2, '0');
+  return '📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]';
+}
+EOF
+          sed -i 's/_worldState.formatDate()/_formatDate()/g' lib/providers/game_provider.dart
+
+      - name: Fix game_screen.dart - unused variable
+        run: |
+          sed -i 's/final rel = player\.relationships/final _rel = player.relationships/g' lib/screens/game_screen.dart
+
+      - name: Fix intro_screen.dart - unused variable
+        run: |
+          sed -i 's/String? petId;/String? _petId;/g' lib/screens/intro_screen.dart
+
+      - name: Run analyze
+        run: flutter analyze
+
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "fix: resolve flutter analyze errors" || echo "No changes to commit"
+          git push
