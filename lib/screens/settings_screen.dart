@@ -212,7 +212,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: Text(m.label),
           subtitle: Text(m.desc),
           value: m.value,
+          // ignore: deprecated_member_use
           groupValue: current,
+          // ignore: deprecated_member_use
           onChanged: isDisabled ? null : (v) => onSelect?.call(v!),
           contentPadding: EdgeInsets.zero,
         );
@@ -235,7 +237,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: Text(e.label),
           subtitle: Text(e.desc),
           value: e.value,
+          // ignore: deprecated_member_use
           groupValue: current,
+          // ignore: deprecated_member_use
           onChanged: (v) {
             if (v == 'dumbledore') context.read<AppProvider>().setEra(Era.dumbledore);
             else if (v == 'marauders') context.read<AppProvider>().setEra(Era.marauders);

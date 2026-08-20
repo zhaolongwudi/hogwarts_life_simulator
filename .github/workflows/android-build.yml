@@ -5,12 +5,21 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -48,6 +57,25 @@ jobs:
           echo "NEW_VERSION=${MAJOR}.${MINOR}.${PATCH}+${BUILD}" >> "$GITHUB_OUTPUT"
           echo "VERSION_NAME=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
           echo "Version bumped: $CURRENT -> $NEW"
+
+      - name: Sync changelog to README
+        id: sync
+        run: |
+          chmod +x scripts/sync_changelog.sh
+          bash scripts/sync_changelog.sh
+          git add README.md pubspec.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            echo "SYNCED=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git pull --rebase origin main
+            git commit -m "docs: sync changelog for v${{ steps.bump.outputs.VERSION_NAME }} [skip ci]"
+            git push origin main
+            echo "✅ Changelog synced and pushed"
+            echo "SYNCED=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install Dependencies
         run: flutter pub get

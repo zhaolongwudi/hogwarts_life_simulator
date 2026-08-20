@@ -129,13 +129,6 @@ class StoryTextRenderer {
       if (token.text.isNotEmpty) tokens.add(token);
     }
 
-    bool isInDialogue(int pos) {
-      for (final range in dialogueRanges) {
-        if (pos >= range.start && pos < range.end) return true;
-      }
-      return false;
-    }
-
     StringBuffer currentNarration = StringBuffer();
 
     void flushNarration() {
@@ -178,7 +171,6 @@ class StoryTextRenderer {
 
   static List<_Token> _splitNarration(String text) {
     final tokens = <_Token>[];
-    final remaining = StringBuffer(text);
     final replacements = <_Replacement>[];
 
     for (final name in _characterNames) {
@@ -236,8 +228,6 @@ class StoryTextRenderer {
         case _TokenType.item:
           tokens.add(_ItemToken(rep.word));
           break;
-        default:
-          tokens.add(_NarrationToken(rep.word));
       }
       pos = rep.start + rep.word.length;
     }
