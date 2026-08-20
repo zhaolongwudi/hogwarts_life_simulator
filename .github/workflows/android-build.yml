@@ -77,14 +77,6 @@ jobs:
             echo "SYNCED=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Verify Gradle setup
-        run: |
-          echo "=== Gradle Wrapper Properties ==="
-          cat android/gradle/wrapper/gradle-wrapper.properties
-          echo "=== Gradle wrapper test ==="
-          cd android && ./gradlew --version 2>&1 || echo "Gradle wrapper test failed"
-          cd ..
-
       - name: Install Dependencies
         run: flutter pub upgrade && flutter pub get
 
@@ -94,9 +86,7 @@ jobs:
       - name: Build APK
         id: build
         run: |
-          flutter clean
-          flutter pub get
-          flutter build apk --release --verbose 2>&1 | tee build_output.log
+          flutter build apk --release 2>&1 | tee build_output.log
           echo "BUILD_EXIT_CODE=${PIPESTATUS[0]}" > build_result.txt
         timeout-minutes: 20
 
@@ -110,14 +100,13 @@ jobs:
             build_result.txt
           retention-days: 30
 
-      - name: Check build result
+      - name: Check build result and locate APK
+        id: apk
         run: |
           if [ -f build_result.txt ]; then
-            cat build_result.txt
             EXIT_CODE=$(grep BUILD_EXIT_CODE build_result.txt | cut -d= -f2)
             if [ "$EXIT_CODE" != "0" ]; then
               echo "Build failed with exit code: $EXIT_CODE"
-              echo "=== Last 100 lines of build output ==="
               tail -100 build_output.log
               exit 1
             fi
@@ -125,16 +114,28 @@ jobs:
             echo "No build result file found"
             exit 1
           fi
+          # Search for APK in all possible output locations
+          APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "APK not found! Searching for any APK..."
+            find . -name "*.apk" -type f 2>/dev/null
+            exit 1
+          fi
+          echo "Found APK at: $APK_PATH"
+          echo "APK_PATH=$APK_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk
+          APK_PATH="${{ steps.apk.outputs.APK_PATH }}"
+          APK_DIR=$(dirname "$APK_PATH")
+          cp "$APK_PATH" "$APK_DIR/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk"
+          echo "RENAMED_APK=$APK_DIR/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk" >> "$GITHUB_ENV"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}
-          path: build/app/outputs/flutter-apk/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk
+          path: ${{ env.RENAMED_APK }}
           retention-days: 30
 
       - name: Create GitHub Release
@@ -143,6 +144,6 @@ jobs:
         run: |
           VERSION_NAME="${{ steps.bump.outputs.VERSION_NAME }}"
           gh release create "v${VERSION_NAME}" \
-            build/app/outputs/flutter-apk/HogwartLige-${VERSION_NAME}.apk \
+            "${{ env.RENAMED_APK }}" \
             --title "HogwartLige v${VERSION_NAME}" \
             --generate-notes
