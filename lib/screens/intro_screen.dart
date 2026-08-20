@@ -237,7 +237,6 @@ class _IntroScreenState extends State<IntroScreen> {
     appProvider.setEra(eraMap[_eraIndex]);
 
     String? petName;
-    String? petId;
     if (_petId != null && _petName == null) {
       switch (_petId) {
         case 'owl':
