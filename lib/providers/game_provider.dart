@@ -313,12 +313,7 @@ class GameProvider extends ChangeNotifier {
     };
   }
 
-  int _getPlayerGrade() {
-    return switch (appProvider.era) {
-      Era.dumbledore || Era.marauders => 1,
-      _ => 1,
-    };
-  }
+  
 
   // ==================== 生成开场场景 ====================
   Future<void> _generateOpeningScene() async {
@@ -1053,6 +1048,18 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     }
     _choices = [GameChoice(text: '继续', action: '继续')];
   }
+  // ==================== 时间格式化 ====================
+  String _formatDate() {
+    final t = _worldState.time;
+    final year = t.year;
+    final month = _worldState.month ?? '九月';
+    final day = _worldState.dayOfMonth;
+    final weekday = _worldState.dayOfWeek ?? '周一';
+    final hour = t.hour.toString().padLeft(2, '0');
+    final minute = t.minute.toString().padLeft(2, '0');
+    return '📅 ${year}年${month}${day}日，${weekday}，[${hour}:${minute}]';
+  }
+
 
   // ==================== CG 解锁 ====================
   void _unlockCG(CgDef? cg) {
@@ -1062,7 +1069,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     p.cgRecords[cg.id] = CgRecord(
       cgId: cg.id,
       name: cg.name,
-      unlockedDate: _worldState.formatDate(),
+      unlockedDate: _formatDate(),
       chapter: cg.chapter,
     );
     _notifications.add('📸 解锁CG：${cg.name}');
