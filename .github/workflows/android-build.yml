@@ -77,6 +77,19 @@ jobs:
             echo "SYNCED=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify Gradle setup
+        run: |
+          echo "=== Gradle Wrapper Properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
+          echo "=== Downloading Gradle distribution ==="
+          DISTRIBUTION_URL=$(grep 'distributionUrl' android/gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2-)
+          DISTRIBUTION_URL="https:${DISTRIBUTION_URL#https\\:}"
+          echo "URL: $DISTRIBUTION_URL"
+          curl -sI "$DISTRIBUTION_URL" | head -5
+          echo "=== Gradle wrapper test ==="
+          cd android && ./gradlew --version 2>&1 || echo "Gradle wrapper test failed"
+          cd ..
+
       - name: Install Dependencies
         run: flutter pub get
 
@@ -85,6 +98,7 @@ jobs:
 
       - name: Build APK
         run: flutter build apk --release --android-skip-build-dependency-validation
+        timeout-minutes: 10
 
       - name: Rename APK
         run: |
