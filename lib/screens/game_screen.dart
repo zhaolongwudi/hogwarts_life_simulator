@@ -530,7 +530,7 @@ class _PeopleTab extends StatelessWidget {
   }
 
   Widget _buildNPCRow(BuildContext context, NPC npc, Player player) {
-    final rel = player.relationships[npc.id];
+    final _rel = player.relationships[npc.id];
     return ListTile(
       leading: CircleAvatar(
         radius: 20,
