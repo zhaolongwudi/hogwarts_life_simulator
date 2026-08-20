@@ -94,17 +94,11 @@ jobs:
       - name: Build APK
         id: build
         run: |
-          echo "=== Flutter Doctor ==="
-          flutter doctor -v
-          echo "=== Flutter Version ==="
-          flutter --version
-          echo "=== Gradle Wrapper Test ==="
-          cd android && ./gradlew --version 2>&1 || true
-          cd ..
-          echo "=== Building APK ==="
-          flutter build apk --release 2>&1 | tee build_output.log
+          flutter clean
+          flutter pub get
+          flutter build apk --release --verbose 2>&1 | tee build_output.log
           echo "BUILD_EXIT_CODE=${PIPESTATUS[0]}" > build_result.txt
-        timeout-minutes: 15
+        timeout-minutes: 20
 
       - name: Upload build logs
         if: always()
