@@ -32,7 +32,7 @@ class AiConfig {
 
   factory AiConfig.zhipu(String apiKey) => AiConfig(
         provider: AiProvider.zhipu,
-        model: 'glm-4-flash',
+        model: 'glm-4.7-flash',
         apiKey: apiKey,
         baseUrl: 'https://open.bigmodel.cn',
         chatPath: '/api/paas/v4/chat/completions',
@@ -111,7 +111,7 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.deepseek:
         return ['deepseek-chat', 'deepseek-reasoner'];
       case AiProvider.zhipu:
-        return ['glm-4-flash', 'glm-4', 'glm-4-long'];
+        return ['glm-4.7-flash', 'glm-4-flash', 'glm-4', 'glm-4-long'];
       case AiProvider.agnes:
         return ['agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
     }
@@ -167,7 +167,7 @@ class AppProvider extends ChangeNotifier {
     if (key != null) _apiKey = key;
     final defaults = {
       AiProvider.deepseek: 'deepseek-chat',
-      AiProvider.zhipu: 'glm-4-flash',
+      AiProvider.zhipu: 'glm-4.7-flash',
       AiProvider.agnes: 'agnes-2.5-flash',
     };
     _aiModel = defaults[provider]!;
