@@ -142,6 +142,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.4.7 — 2026-08-21
+
+**📋 变更说明**
+fix: 修正Agnes AI的baseUrl域名
+
+根据官方文档 https://www.agnes-ai.cn/zh-Hans/docs/agnes-25-flash:
+- baseUrl: apihub.agnes-ai.cn → api.agnes-ai.cn
+- chatPath/modelsPath使用默认/v1路径，与DeepSeek一致
+- 设置页展示URL同步更新
+
 ### v0.4.6 — 2026-08-21
 
 **📋 变更说明**
