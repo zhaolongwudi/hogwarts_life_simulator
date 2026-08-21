@@ -13,6 +13,7 @@ class AiConfig {
   final String baseUrl;
   final String chatPath;
   final String modelsPath;
+  final String? balancePath;
 
   const AiConfig({
     required this.provider,
@@ -21,6 +22,7 @@ class AiConfig {
     required this.baseUrl,
     this.chatPath = '/v1/chat/completions',
     this.modelsPath = '/v1/models',
+    this.balancePath,
   });
 
   factory AiConfig.deepseek(String apiKey) => AiConfig(
@@ -28,6 +30,7 @@ class AiConfig {
         model: 'deepseek-v4-flash',
         apiKey: apiKey,
         baseUrl: 'https://api.deepseek.com',
+        balancePath: '/v1/balance',
       );
 
   factory AiConfig.zhipu(String apiKey) => AiConfig(
@@ -37,6 +40,7 @@ class AiConfig {
         baseUrl: 'https://open.bigmodel.cn',
         chatPath: '/api/paas/v4/chat/completions',
         modelsPath: '/api/paas/v4/models',
+        balancePath: '/api/monitor/usage/quota/limit',
       );
 
   factory AiConfig.agnes(String apiKey) => AiConfig(
@@ -53,6 +57,7 @@ class AiConfig {
     String? baseUrl,
     String? chatPath,
     String? modelsPath,
+    String? balancePath,
   }) => AiConfig(
         provider: provider ?? this.provider,
         model: model ?? this.model,
@@ -60,6 +65,7 @@ class AiConfig {
         baseUrl: baseUrl ?? this.baseUrl,
         chatPath: chatPath ?? this.chatPath,
         modelsPath: modelsPath ?? this.modelsPath,
+        balancePath: balancePath ?? this.balancePath,
       );
 }
 

@@ -34,6 +34,16 @@ class GameProvider extends ChangeNotifier {
   String? _systemPrompt;
   final List<String> _notifications = [];
 
+  int _totalPromptTokens = 0;
+  int _totalCompletionTokens = 0;
+  int _totalTokens = 0;
+  int _apiCalls = 0;
+
+  int get totalPromptTokens => _totalPromptTokens;
+  int get totalCompletionTokens => _totalCompletionTokens;
+  int get totalTokens => _totalTokens;
+  int get apiCalls => _apiCalls;
+
   Player? get player => _player;
   WorldState get worldState => _worldState;
   String get currentNarrative => _currentNarrative;
@@ -1490,12 +1500,18 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   // ==================== DeepSeek 调用 ====================
   Future<String> _callDeepSeek(String prompt) async {
     if (_deepSeek == null) throw Exception('API Key 未设置');
-    return await _deepSeek!.chat(
+    final result = await _deepSeek!.chatComplete(
       prompt: prompt,
       systemPrompt: _systemPrompt ?? '',
       temperature: 0.8,
       maxTokens: 6000,
     );
+    _totalPromptTokens += result.usage.promptTokens;
+    _totalCompletionTokens += result.usage.completionTokens;
+    _totalTokens += result.usage.totalTokens;
+    _apiCalls++;
+    notifyListeners();
+    return result.content;
   }
 
   // ==================== 解析响应 ====================
@@ -1926,6 +1942,19 @@ ${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
   Future<double?> get balance async {
     if (_deepSeek == null) return null;
     return await _deepSeek!.getBalance();
+  }
+
+  Future<Map<String, dynamic>?> get quotaInfo async {
+    if (_deepSeek == null) return null;
+    return await _deepSeek!.getQuotaInfo();
+  }
+
+  void resetTokenUsage() {
+    _totalPromptTokens = 0;
+    _totalCompletionTokens = 0;
+    _totalTokens = 0;
+    _apiCalls = 0;
+    notifyListeners();
   }
 
   // ==================== 辅助方法 ====================

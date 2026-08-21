@@ -18,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _checking = false;
   String? _connectionStatus;
   double? _balance;
+  Map<String, dynamic>? _quotaInfo;
 
   @override
   void initState() {
@@ -49,17 +50,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _checking = true;
       _connectionStatus = null;
+      _balance = null;
+      _quotaInfo = null;
     });
 
-    final connected = await context.read<GameProvider>().checkConnection();
-    if (connected) {
-      final bal = await context.read<GameProvider>().balance;
-      setState(() {
-        _connectionStatus = '✅ 连接成功';
-        _balance = bal;
-      });
-    } else {
-      setState(() => _connectionStatus = '❌ 连接失败，请检查 API Key');
+    try {
+      final gp = context.read<GameProvider>();
+      final connected = await gp.checkConnection();
+      if (connected) {
+        setState(() => _connectionStatus = '✅ 连接成功');
+        final bal = await gp.balance;
+        if (bal != null) {
+          setState(() => _balance = bal);
+        }
+        final quota = await gp.quotaInfo;
+        if (quota != null) {
+          setState(() => _quotaInfo = quota);
+        }
+      } else {
+        setState(() => _connectionStatus = '❌ 连接失败，请检查 API Key 和 Base URL');
+      }
+    } catch (e) {
+      setState(() => _connectionStatus = '❌ 错误: $e');
     }
     setState(() => _checking = false);
   }
@@ -100,12 +112,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: _connectionStatus!.startsWith('✅') ? Colors.green : Colors.red)),
             ],
           ),
-          if (_balance != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text('余额: \$${_balance!.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.grey)),
+          if (_balance != null || _quotaInfo != null)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C232D),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF30363D)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_balance != null)
+                    Text('💰 账户余额: ¥${_balance!.toStringAsFixed(2)}',
+                        style: const TextStyle(color: Color(0xFFD3A625), fontWeight: FontWeight.w600)),
+                  if (_balance != null && _quotaInfo != null)
+                    const SizedBox(height: 8),
+                  if (_quotaInfo != null) ...[
+                    _buildQuotaInfo(),
+                  ],
+                ],
+              ),
             ),
+          const SizedBox(height: 12),
+          _buildTokenUsage(),
           const Divider(height: 40),
           
           const Text('显示模式',
@@ -519,6 +550,150 @@ class EraOption {
   final String value;
   final String desc;
   const EraOption(this.label, this.value, this.desc);
+}
+
+  Widget _buildQuotaInfo() {
+    if (_quotaInfo == null) return const SizedBox.shrink();
+    final limits = _quotaInfo!['limits'] as List?;
+    if (limits == null || limits.isEmpty) return const SizedBox.shrink();
+
+    final items = <Widget>[];
+    for (final limit in limits) {
+      if (limit is Map<String, dynamic>) {
+        final type = limit['type'] as String? ?? '';
+        final percentage = limit['percentage'] as num? ?? 0;
+        final label = type == 'TOKENS_LIMIT' ? 'Token额度' : type == 'TIME_LIMIT' ? '时间额度' : type;
+        items.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)))),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (percentage / 100).clamp(0.0, 1.0),
+                      backgroundColor: const Color(0xFF30363D),
+                      valueColor: AlwaysStoppedAnimation(
+                        percentage > 80 ? Colors.red : percentage > 50 ? Colors.orange : Colors.green,
+                      ),
+                      minHeight: 6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 40,
+                  child: Text('${percentage.toStringAsFixed(0)}%',
+                      style: TextStyle(fontSize: 12, color: percentage > 80 ? Colors.red : Colors.white, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('📊 额度使用情况', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
+        const SizedBox(height: 6),
+        ...items,
+      ],
+    );
+  }
+
+  Widget _buildTokenUsage() {
+    final gp = context.watch<GameProvider>();
+    final hasData = gp.apiCalls > 0;
+    final tokens = gp.totalTokens;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('📈 Token 使用统计',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+              const Spacer(),
+              if (hasData)
+                TextButton(
+                  onPressed: () {
+                    gp.resetTokenUsage();
+                    setState(() {});
+                  },
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('重置', style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!hasData)
+            const Text('暂无数据，开始游戏后将自动统计',
+                style: TextStyle(fontSize: 12, color: Color(0xFF8B949E)))
+          else ...[
+            _buildStatRow('API 调用次数', '${gp.apiCalls} 次', const Color(0xFF3B82F6)),
+            const SizedBox(height: 6),
+            _buildStatRow('输入 Token', _formatNumber(gp.totalPromptTokens), const Color(0xFF8B5CF6)),
+            const SizedBox(height: 6),
+            _buildStatRow('输出 Token', _formatNumber(gp.totalCompletionTokens), const Color(0xFF10B981)),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD3A625).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('总消耗', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
+                  Text(_formatNumber(tokens),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFFC9D1D9))),
+          ],
+        ),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+      ],
+    );
+  }
+
+  String _formatNumber(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(2)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return n.toString();
+  }
+
 }
 
 class _ProviderOption {
