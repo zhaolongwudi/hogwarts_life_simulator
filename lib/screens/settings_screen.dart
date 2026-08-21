@@ -200,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final providers = const [
       _ProviderOption('DeepSeek', 'deepseek', 'https://platform.deepseek.com'),
       _ProviderOption('智谱 AI', 'zhipu', 'https://open.bigmodel.cn'),
-      _ProviderOption('Agnes', 'agnes', 'https://apihub.agnes-ai.cn'),
+      _ProviderOption('Agnes', 'agnes', 'https://www.agnes-ai.cn'),
     ];
     return Column(
       children: providers.map((p) {
@@ -257,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? 'https://platform.deepseek.com'
         : appProvider.aiProvider == AiProvider.zhipu
             ? 'https://open.bigmodel.cn'
-            : 'https://apihub.agnes-ai.cn';
+            : 'https://www.agnes-ai.cn';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -43,7 +43,7 @@ class AiConfig {
         provider: AiProvider.agnes,
         model: 'agnes-2.5-flash',
         apiKey: apiKey,
-        baseUrl: 'https://apihub.agnes-ai.cn',
+        baseUrl: 'https://api.agnes-ai.cn',
       );
 
   AiConfig copyWith({
