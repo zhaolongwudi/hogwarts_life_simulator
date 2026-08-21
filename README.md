@@ -142,6 +142,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.6 — 2026-08-21
+
+**📋 变更说明**
+fix: 第二轮修复 - P1/P2全面清理
+
+P1 修复:
+- 自由输入防重入: _handleFreeAction添加isLoading检查, onSubmitted和发送按钮loading时禁用
+- 版本号对齐: v0.5.3 -> v0.5.5 匹配pubspec
+- month字段: world_state默认值从'September'改为'9月', _formatDate改用time.month数字
+- 手机屏负年级: 改用era映射起始年代, 正确计算各时代学年级数
+
 ### v0.5.5 — 2026-08-21
 
 **📋 变更说明**
