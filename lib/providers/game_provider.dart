@@ -1609,7 +1609,11 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     }
 
     _worldState.housePoints = Map<String, int>.fromEntries(
-      _worldState.housePoints.entries.map((e) => MapEntry(e.key, (e.value + _random.nextInt(5) - 2).clamp(0, 9999)),
+      _worldState.housePoints.entries.map((e) {
+        final raw = e.value + _random.nextInt(5) - 2;
+        final newValue = raw.clamp(0, 9999).toInt();
+        return MapEntry(e.key, newValue);
+      }),
     );
 
     _notifications.add('🌍 $event');

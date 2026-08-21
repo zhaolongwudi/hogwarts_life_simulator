@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
-import '../models/player.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
