@@ -628,105 +628,131 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildBottomInput() {
     final gp = context.watch<GameProvider>();
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(top: BorderSide(color: Theme.of(context).dividerTheme.color!)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: gp.isLoading
-                    ? null
-                    : () {
-                        if (gp.choices.isNotEmpty) {
-                          gp.processChoice(gp.choices.first);
-                        }
-                      },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: gp.isLoading ? const Color(0xFF484f58) : const Color(0xFFE8A0A0),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.pink.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('推进', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
-                      Text('剧情', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Theme.of(context).dividerTheme.color!),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _inputController,
-                          style: const TextStyle(color: Color(0xFFE6EDF3)),
-                          decoration: const InputDecoration(
-                            hintText: '输入行动或 /命令...',
-                            hintStyle: TextStyle(color: Color(0xFF8B949E)),
-                            prefixIcon: Icon(Icons.auto_awesome, size: 20, color: Color(0xFF8B949E)),
-                            isDense: true,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onSubmitted: gp.isLoading ? null : (_) => _handleFreeAction(),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: gp.isLoading ? null : _handleFreeAction,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.send, size: 20),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: () => _showCommandMenu(),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD3A625).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
-                  ),
-                  child: const Icon(Icons.terminal, size: 20, color: Color(0xFFD3A625)),
-                ),
-              ),
-            ],
+        color: const Color(0xFF161B22),
+        border: Border(top: BorderSide(color: const Color(0xFF30363D))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            // 推进剧情按钮
+            GestureDetector(
+              onTap: gp.isLoading
+                  ? null
+                  : () {
+                      if (gp.choices.isNotEmpty) {
+                        gp.processChoice(gp.choices.first);
+                      }
+                    },
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: gp.isLoading ? const Color(0xFF374151) : const Color(0xFFD3A625),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    if (!gp.isLoading)
+                      BoxShadow(
+                        color: const Color(0xFFD3A625).withValues(alpha: 0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                  ],
+                ),
+                child: gp.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF8B949E),
+                        ),
+                      )
+                    : const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.skip_next, size: 18, color: Color(0xFF1C232D)),
+                          SizedBox(height: 2),
+                          Text(
+                            '推进',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Color(0xFF1C232D),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // 输入框
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF21262D),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFF30363D)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _inputController,
+                        style: const TextStyle(color: Color(0xFFE6EDF3), fontSize: 14),
+                        decoration: const InputDecoration(
+                          hintText: '输入行动或 /命令',
+                          hintStyle: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          isDense: true,
+                        ),
+                        onSubmitted: gp.isLoading ? null : (_) => _handleFreeAction(),
+                      ),
+                    ),
+                    // 发送按钮
+                    GestureDetector(
+                      onTap: gp.isLoading ? null : _handleFreeAction,
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFD3A625),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.send, size: 16, color: Color(0xFF1C232D)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 命令按钮
+            GestureDetector(
+              onTap: () => _showCommandMenu(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF21262D),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF30363D)),
+                ),
+                child: const Icon(Icons.terminal, size: 20, color: Color(0xFFD3A625)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
