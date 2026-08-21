@@ -142,6 +142,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.1 — 2026-08-21
+
+**📋 变更说明**
+fix: CI修复 - 7个analyze错误
+
+1. player.dart: 添加jobHistory初始化
+2. game_provider.dart: 修复Era类型转换，添加_parseEra方法
+3. game_provider.dart: 修复monthNames作用域问题(移到if块外层)
+4. game_provider.dart: 删除未使用的_playerGold方法
+5. other_screens.dart: 添加_isAnalyzing状态变量
+
 ### v0.6.0 — 2026-08-21
 
 **📋 变更说明**
