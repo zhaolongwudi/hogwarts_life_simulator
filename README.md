@@ -142,6 +142,14 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.2 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复最后2个analyze错误
+
+1. game_provider.dart: 修复clamp类型转换问题，添加.toInt()确保返回int
+2. shop_inventory_screens.dart: 移除未使用的player.dart导入
+
 ### v0.6.1 — 2026-08-21
 
 **📋 变更说明**
