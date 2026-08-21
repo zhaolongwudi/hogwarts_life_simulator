@@ -179,6 +179,14 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.4 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复nightly.link URL格式
+
+正确格式: nightly.link/{owner}/{repo}/workflows/{workflow_name}/{branch}/{artifact}.zip
+之前缺少 workflows/android-build/main/ 路径段
+
 ### v0.6.3 — 2026-08-21
 
 **📋 变更说明**
