@@ -1815,7 +1815,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
     String key = 'default';
     final loc = location.toLowerCase();
-    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('教室')) key = 'classroom';
+    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('讲堂')) key = 'classroom';
     if (loc.contains('大礼堂') || loc.contains('great hall')) key = 'great_hall';
     if (loc.contains('图书馆') || loc.contains('library')) key = 'library';
     if (loc.contains('走廊') || loc.contains('corridor')) key = 'corridor';
@@ -1907,7 +1907,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
   String _computeHouseLocal() {
     final traits = _player!.personalityTraits.join(' ');
-    final attributes = _player!.attributes;
+    final dims = _player!.houseDimensions;
 
     // 学院倾向优先
     final pref = _player!.housePreference;
@@ -1944,11 +1944,11 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       if (traits.contains(t)) scores['Hufflepuff'] = (scores['Hufflepuff'] ?? 0) + 2;
     }
 
-    // 基于属性
-    final courage = attributes['勇气'] ?? attributes['courage'] ?? 0;
-    final ambition = attributes['野心'] ?? attributes['ambition'] ?? 0;
-    final wisdom = attributes['智慧'] ?? attributes['wisdom'] ?? 0;
-    final loyalty = attributes['忠诚'] ?? attributes['loyalty'] ?? 0;
+    // 基于学院四维（houseDimensions）
+    final courage = dims['courage'] ?? 50;
+    final ambition = dims['ambition'] ?? 50;
+    final wisdom = dims['wisdom'] ?? 50;
+    final loyalty = dims['loyalty'] ?? 50;
     scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + courage;
     scores['Slytherin'] = (scores['Slytherin'] ?? 0) + ambition;
     scores['Ravenclaw'] = (scores['Ravenclaw'] ?? 0) + wisdom;
@@ -1961,8 +1961,8 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
     // 血统背景
     final blood = _player!.bloodType;
-    if (blood == '纯血') scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 1;
-    if (blood == '麻瓜出身') scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 1;
+    if (blood == 'pureblood') scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 1;
+    if (blood == 'muggleborn') scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 1;
 
     // 如果都是0，默认可变随机
     final maxScore = scores.values.reduce((a, b) => a > b ? a : b);
@@ -2026,10 +2026,10 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (options.isEmpty) return {};
 
     final personality = _player!.personalityTraits.join(' ');
-    final attributes = _player!.attributes;
+    final dims = _player!.houseDimensions;
 
     // 根据玩家特质为每根魔杖打分
-    final scored = <Map<String, dynamic>, double>{};
+    final scored = <String, double>{};
     for (final wand in options) {
       double score = 0.0;
       final suit = (wand['suitType'] ?? '') as String;
@@ -2061,25 +2061,30 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       if (core == '龙心脏腱索') score += 1;
       if (core == '凤凰羽毛') score += 1;
 
-      // 属性加成
-      final courage = attributes['勇气'] ?? attributes['courage'] ?? 0;
-      final ambition = attributes['野心'] ?? attributes['ambition'] ?? 0;
-      final wisdom = attributes['智慧'] ?? attributes['wisdom'] ?? 0;
-      final loyalty = attributes['忠诚'] ?? attributes['loyalty'] ?? 0;
+      // 学院四维加成
+      final courage = dims['courage'] ?? 50;
+      final ambition = dims['ambition'] ?? 50;
+      final wisdom = dims['wisdom'] ?? 50;
+      final loyalty = dims['loyalty'] ?? 50;
 
       if (wood == '冬青木' || wood == '橡木') score += courage * 0.05;
       if (wood == '紫杉木' || wood == '榆木') score += ambition * 0.05;
       if (wood == '葡萄藤木' || wood == '枫木') score += wisdom * 0.05;
       if (wood == '樱桃木' || wood == '雪松木' || wood == '柳木') score += loyalty * 0.05;
 
-      scored[wand] = score;
+      final wid = wand['id'] ?? wand['name'] ?? '';
+      scored[wid] = score;
     }
 
     // 选最高分，同分随机
     final maxScore = scored.values.isEmpty ? 0.0 : scored.values.reduce((a, b) => a > b ? a : b);
     final candidates = scored.keys.where((w) => scored[w] == maxScore).toList();
     candidates.shuffle(_random);
-    return candidates.first;
+    final bestId = candidates.first;
+    for (final wand in options) {
+      if ((wand['id'] ?? wand['name']) == bestId) return wand;
+    }
+    return options.first;
   }
 
   String _generateWandNarrative(Map<String, dynamic> wand) {

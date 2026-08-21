@@ -84,21 +84,6 @@ class DeepSeekService {
     }
   }
 
-  Future<String> chat({
-    required String prompt,
-    String systemPrompt = '',
-    double temperature = 0.8,
-    int maxTokens = 4096,
-  }) async {
-    final result = await chatComplete(
-      prompt: prompt,
-      systemPrompt: systemPrompt,
-      temperature: temperature,
-      maxTokens: maxTokens,
-    );
-    return result.content;
-  }
-
   Future<String> chatWithMessages({
     required List<Map<String, dynamic>> messages,
     double temperature = 0.8,

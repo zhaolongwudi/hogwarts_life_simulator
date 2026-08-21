@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class StoryTextRenderer {
-  // ====== 解析缓存（key=文本hash，避免重复 tokenize） ======
-  static final Map<int, List<TextSpan>> _cache = {};
+  // ====== 解析缓存（key=文本内容，避免 hash 冲突） ======
+  static final Map<String, List<TextSpan>> _cache = {};
   static const int _maxCacheSize = 32;
 
   static final List<String> _characterNames = [
@@ -96,8 +96,7 @@ class StoryTextRenderer {
   static List<TextSpan> parse(String text) {
     if (text.isEmpty) return [];
 
-    final key = text.hashCode;
-    final cached = _cache[key];
+    final cached = _cache[text];
     if (cached != null) return cached;
 
     final spans = <TextSpan>[];
@@ -120,7 +119,7 @@ class StoryTextRenderer {
     if (_cache.length >= _maxCacheSize) {
       _cache.clear();
     }
-    _cache[key] = spans;
+    _cache[text] = spans;
     return spans;
   }
 
