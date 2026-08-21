@@ -179,6 +179,15 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.7.6 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复flutter analyze报告的3个错误
+
+- phone_home_screen.dart: 添加shop_inventory_screens.dart导入(InventoryScreen)
+- settings_screen.dart: 添加deepseek_service.dart导入(DeepSeekService)
+- ai_router.dart: 移除不可达的switch default分支
+
 ### v0.7.5 — 2026-08-21
 
 **📋 变更说明**
