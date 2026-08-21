@@ -3,11 +3,8 @@ import 'package:provider/provider.dart';
 import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import 'memory_screen.dart';
-import 'job_screen.dart';
 import 'other_screens.dart';
-import 'shop_inventory_screens.dart';
-import 'save_load_screen.dart';
-import 'world_map_screen.dart';
+import 'settings_screen.dart';
 
 class PhoneHomeScreen extends StatefulWidget {
   const PhoneHomeScreen({super.key});
@@ -375,6 +372,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
 
   Widget _buildAppGrid(GameProvider gp) {
     final apps = [
+      // 通讯与社交类（手机核心功能）
       _AppItem(Icons.message, '魔法通讯', Color(0xFF3B82F6), () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
       }),
@@ -384,29 +382,21 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       _AppItem(Icons.edit_note, '我的日记', Color(0xFF8B5CF6), () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryScreen()));
       }),
-      _AppItem(Icons.store_mall_directory, '对角巷', Color(0xFFF59E0B), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
+      _AppItem(Icons.favorite, '姻缘红娘', Color(0xFFF43F5E), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
       }),
-      _AppItem(Icons.public, '世界地图', Color(0xFF10B981), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const WorldMapScreen()));
+      // 状态与数据类
+      _AppItem(Icons.photo_album, '相册回忆', Color(0xFFA855F7), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
+      }),
+      _AppItem(Icons.inventory_2, '我的背包', Color(0xFFEAB308), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
       }),
       _AppItem(Icons.auto_awesome, '平行世界', Color(0xFFEC4899), () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
       }),
-      _AppItem(Icons.favorite, '姻缘红娘', Color(0xFFF43F5E), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
-      }),
-      _AppItem(Icons.work, '找工作', Color(0xFF06B6D4), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
-      }),
-      _AppItem(Icons.photo_album, '相册回忆', Color(0xFFA855F7), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
-      }),
-      _AppItem(Icons.save, '存档管理', Color(0xFF84CC16), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const SaveLoadScreen()));
-      }),
-      _AppItem(Icons.inventory_2, '我的背包', Color(0xFFEAB308), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
+      _AppItem(Icons.settings, '设置', Color(0xFF6B7280), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
       }),
     ];
 

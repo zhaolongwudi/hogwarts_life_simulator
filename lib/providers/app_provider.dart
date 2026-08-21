@@ -8,26 +8,26 @@ enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
 enum AiProvider { deepseek, zhipu, agnes, sensenova }
 
 // 场景 → 提供商名 的默认路由
-// 策略：付费模型(DeepSeek)用于核心主剧情，免费模型用于摘要/NPC，DeepSeek作为最终兜底
+// 策略：智谱AI用于主剧情（中文质量最好），SenseNova用于摘要（Token效率最高），Agnes用于NPC聊天（响应最快）
 const Map<AiScene, String> kDefaultRoute = {
-  AiScene.narrative: 'deepseek',   // 主剧情：付费高质量
-  AiScene.summary: 'sensenova',    // 摘要：免费长上下文
-  AiScene.npcChat: 'agnes',        // NPC聊天：免费响应快
+  AiScene.narrative: 'zhipu',      // 主剧情：智谱中文质量最好
+  AiScene.summary: 'sensenova',    // 摘要：商汤Token效率最高(省60%)
+  AiScene.npcChat: 'agnes',        // NPC聊天：Agnes响应速度最快
 };
 
 // 场景简介（显示在设置页）
 const Map<AiScene, String> kSceneDescriptions = {
-  AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。这是核心功能，建议使用付费高质量模型。',
-  AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。可使用免费模型，效果差异不大。',
-  AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。推荐免费模型，节省主模型配额。',
+  AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。这是核心功能，推荐使用智谱AI（中文质量最好）或DeepSeek。',
+  AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。推荐使用SenseNova（Token效率最高，省60%）。',
+  AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。推荐使用Agnes（响应速度最快）。',
 };
 
 // 提供商简介
 const Map<AiProvider, String> kProviderDescriptions = {
-  AiProvider.deepseek: '付费模型。高质量长文本叙事，中文表现优秀，支持 deepseek-v4-flash/pro/reasoner 等模型。适合主剧情生成。',
-  AiProvider.zhipu: '免费模型。智谱AI，glm-4.7-flash 中文自然度好，有免费额度。适合作为备用。',
-  AiProvider.agnes: '免费模型。Agnes-2.5-flash，响应速度快，适合NPC短对话场景。',
-  AiProvider.sensenova: '免费模型。SenseNova·商汤日日新，256K长上下文，适合摘要/压缩任务。',
+  AiProvider.deepseek: '付费模型。高质量长文本叙事，中文表现优秀，支持 deepseek-v4-flash/pro/reasoner 等模型。可作为主剧情和备用模型。',
+  AiProvider.zhipu: '免费模型。智谱AI，glm-4.7-flash 中文自然度最好，200K上下文，永久免费无Token上限。适合主剧情生成。注意：免费版限1个并发。',
+  AiProvider.agnes: '免费模型。Agnes-2.5-flash，响应速度最快（<1s首字），256K上下文。适合NPC短对话。注意：免费版限20 RPM。',
+  AiProvider.sensenova: '免费模型。SenseNova·商汤日日新，256K长上下文，Token效率最高（省60%）。适合摘要/压缩任务。注意：每5小时1500次配额。',
 };
 
 // 场景中文名
