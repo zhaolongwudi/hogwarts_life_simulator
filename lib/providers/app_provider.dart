@@ -30,7 +30,7 @@ class AiConfig {
         model: 'deepseek-v4-flash',
         apiKey: apiKey,
         baseUrl: 'https://api.deepseek.com',
-        balancePath: '/v1/balance',
+        balancePath: '/user/balance',
       );
 
   factory AiConfig.zhipu(String apiKey) => AiConfig(

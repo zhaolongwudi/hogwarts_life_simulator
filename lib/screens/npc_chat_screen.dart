@@ -24,8 +24,9 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
   void initState() {
     super.initState();
     _chatService = context.read<GameProvider>().chatService;
-    _loadHistory();
-    _sendInitialGreeting();
+    _loadHistory().then((_) {
+      _sendInitialGreeting();
+    });
   }
 
   Future<void> _loadHistory() async {
@@ -73,12 +74,13 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
     _scrollToBottom();
 
     try {
+      final historyForApi = _messages.length > 1 ? _messages.sublist(0, _messages.length - 1) : <ChatMessage>[];
       final response = await _chatService.chatWithNPC(
         npc: widget.npc,
         player: player,
         worldState: gp.worldState,
         userMessage: text,
-        history: _messages,
+        history: historyForApi,
       );
 
       if (mounted) {

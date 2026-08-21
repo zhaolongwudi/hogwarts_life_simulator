@@ -175,7 +175,14 @@ class DeepSeekService {
       final data = response.data;
 
       if (config.provider == AiProvider.deepseek) {
-        return (data['total_balance'] as num?)?.toDouble();
+        final infos = data['balance_infos'] as List?;
+        if (infos != null && infos.isNotEmpty) {
+          final first = infos.first as Map<String, dynamic>;
+          final bal = first['total_balance'];
+          if (bal is num) return bal.toDouble();
+          if (bal is String) return double.tryParse(bal);
+        }
+        return null;
       } else if (config.provider == AiProvider.zhipu) {
         final balance = data['data']?['balance'] ?? data['balance'];
         if (balance is num) return balance.toDouble();

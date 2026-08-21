@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import 'memory_screen.dart';
 import 'job_screen.dart';
@@ -496,13 +497,22 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
             _buildStatTile('💬 已完成事件', '${gp.turnCount} 个回合', null),
             _buildStatTile(
                 '❤️ 最高好感', gp.npcRegistry.values.isNotEmpty
-                    ? '${gp.npcRegistry.values.reduce((a, b) => a.affection > b.affection ? a : b).name} (${gp.npcRegistry.values.map((e) => e.affection).fold<int>(0, (a, b) => a > b ? a : b)})'
+                    ? _getHighestAffectionLabel(gp.npcRegistry.values)
                     : '暂无',
                 Colors.pink),
           ],
         ),
       ),
     );
+  }
+
+  String _getHighestAffectionLabel(Iterable<NPC> npcs) {
+    if (npcs.isEmpty) return '暂无';
+    NPC best = npcs.first;
+    for (final n in npcs) {
+      if (n.affection > best.affection) best = n;
+    }
+    return '${best.name} (${best.affection})';
   }
 
   Widget _buildStatTile(String label, String value, Color? accent) {

@@ -25,8 +25,18 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 
   Future<void> _loadSaves() async {
     setState(() => _isLoading = true);
-    _saves = await context.read<GameProvider>().listSaves();
-    setState(() => _isLoading = false);
+    try {
+      _saves = await context.read<GameProvider>().listSaves();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('加载存档失败: $e')),
+        );
+      }
+    }
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _saveCurrentGame() async {
@@ -39,27 +49,49 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 
     final gp = context.read<GameProvider>();
     setState(() => _isLoading = true);
-    await gp.quickSave();
-    setState(() => _isLoading = false);
-    if (mounted) {
+    try {
+      await gp.quickSave();
+      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ 已保存')),
       );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _loadSave(String slotId) async {
-    await context.read<GameProvider>().loadFromSave(slotId);
-    if (mounted) {
+    try {
+      await context.read<GameProvider>().loadFromSave(slotId);
+      if (!mounted) return;
       Navigator.pop(context);
       Navigator.pushReplacementNamed(context, '/game');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载存档失败: $e')),
+      );
     }
   }
 
   Future<void> _deleteSave(String slotId) async {
-    await context.read<GameProvider>().deleteSave(slotId);
-    await _loadSaves();
+    try {
+      await context.read<GameProvider>().deleteSave(slotId);
+      await _loadSaves();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除存档失败: $e')),
+      );
+    }
   }
 
   @override

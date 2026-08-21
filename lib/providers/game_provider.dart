@@ -1220,6 +1220,10 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (p == null || p.loveState.status != '单身') return;
     if (p.loveState.awaitingConfession) return;
 
+    for (final n in _npcRegistry.values) {
+      n.isConsideringConfession = false;
+    }
+
     // 候选：好感≥85、未表白过、性取向匹配（未指定取向的NPC可向任意性别表白）
     final candidates = _npcRegistry.values.where((n) {
       if (!n.isAlive || n.affection < 85 || n.confessed) return false;

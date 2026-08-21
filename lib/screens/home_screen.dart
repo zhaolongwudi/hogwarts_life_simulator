@@ -38,7 +38,7 @@ class HomePage extends StatelessWidget {
                 _buildActions(context, theme),
                 const SizedBox(height: 30),
                 Text(
-                  'v1.0.0 | AI Powered',
+                  'v0.5.3 | AI Powered',
                   style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF8B949E)),
                 ),
               ],
@@ -120,7 +120,7 @@ class HomePage extends StatelessWidget {
                   radius: 24,
                   backgroundColor: _getHouseColor(player.house ?? ''),
                   child: Text(
-                    player.name.substring(0, 1).toUpperCase(),
+                    player.name.isNotEmpty ? player.name.substring(0, 1).toUpperCase() : '?',
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),

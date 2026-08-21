@@ -880,5 +880,7 @@ class MapAreaPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant MapAreaPainter oldDelegate) {
+    return oldDelegate.area != area || oldDelegate.subArea != subArea;
+  }
 }

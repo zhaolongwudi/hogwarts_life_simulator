@@ -609,7 +609,10 @@ class _ForumScreenState extends State<ForumScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                contentController.dispose();
+                Navigator.pop(ctx);
+              },
               child: const Text('取消'),
             ),
             ElevatedButton(
@@ -627,6 +630,7 @@ class _ForumScreenState extends State<ForumScreen> {
                       'liked': false,
                     });
                   });
+                  contentController.dispose();
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('发布成功！')),
@@ -652,7 +656,6 @@ class DiaryScreen extends StatefulWidget {
 
 class _DiaryScreenState extends State<DiaryScreen> {
   final List<Map<String, dynamic>> _entries = [];
-  final List<TextEditingController> _controllers = [];
 
   @override
   void initState() {
@@ -860,7 +863,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                titleController.dispose();
+                contentController.dispose();
+                Navigator.pop(ctx);
+              },
               child: const Text('取消'),
             ),
             ElevatedButton(
@@ -877,6 +884,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       'isGenerated': false,
                     });
                   });
+                  titleController.dispose();
+                  contentController.dispose();
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('日记已保存')),
@@ -899,9 +908,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
     super.dispose();
   }
 }
@@ -1110,7 +1116,11 @@ class _ParallelWorldScreenState extends State<ParallelWorldScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                titleController.dispose();
+                descController.dispose();
+                Navigator.pop(ctx);
+              },
               child: const Text('取消'),
             ),
             ElevatedButton(
@@ -1123,6 +1133,8 @@ class _ParallelWorldScreenState extends State<ParallelWorldScreen> {
                       'icon': selectedIcon,
                     });
                   });
+                  titleController.dispose();
+                  descController.dispose();
                   Navigator.pop(ctx);
                 }
               },
