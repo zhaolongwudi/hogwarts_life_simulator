@@ -378,7 +378,6 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         return Stack(
           clipBehavior: Clip.none,
           children: locations.asMap().entries.map((entry) {
-            final index = entry.key;
             final loc = entry.value;
             final x = loc['x'] as double;
             final y = loc['y'] as double;
