@@ -21,7 +21,7 @@ class DeepSeekService {
     required String prompt,
     String systemPrompt = '',
     double temperature = 0.8,
-    int maxTokens = 2000,
+    int maxTokens = 4096,
   }) async {
     try {
       final response = await _dio.post(

@@ -1494,7 +1494,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       prompt: prompt,
       systemPrompt: _systemPrompt ?? '',
       temperature: 0.8,
-      maxTokens: 2000,
+      maxTokens: 6000,
     );
   }
 
@@ -1553,7 +1553,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     _parseReputationChanges(text);
 
     if (_choices.isEmpty) {
-      _choices.add(GameChoice(text: '继续', action: '继续'));
+      _choices.addAll(_generateFallbackChoices());
     }
 
     // Check NPC confessions every turn
@@ -1608,6 +1608,57 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
     final idx = _turnCount % fallbacks.length;
     return fallbacks[idx];
+  }
+
+  List<GameChoice> _generateFallbackChoices() {
+    final location = _worldState.currentLocation ?? '霍格沃茨';
+    final p = _player;
+    final grade = p?.grade ?? 1;
+
+    final locationChoices = {
+      '霍格沃茨': [
+        ('去教室上课', '前往教室学习'),
+        ('在走廊散步', '在走廊里走动'),
+        ('去大礼堂', '前往大礼堂'),
+        ('找朋友聊天', '与朋友交谈'),
+      ],
+      '霍格莫德村': [
+        ('去三把扫帚酒吧', '前往三把扫帚'),
+        ('逛蜂蜜公爵糖果店', '去糖果店'),
+        ('拜访邮局', '去邮局寄信'),
+        ('返回霍格沃茨', '回到学校'),
+      ],
+      '对角巷': [
+        ('去魔杖店', '前往奥利凡德'),
+        ('逛魔法部', '去魔法部'),
+        ('去古灵阁', '去古灵阁银行'),
+        ('返回霍格沃茨', '回到学校'),
+      ],
+      '禁林': [
+        ('小心深入探索', '深入禁林'),
+        ('观察神奇生物', '观察生物'),
+        ('原路返回', '返回安全区'),
+        ('寻找光源', '寻找光源'),
+      ],
+    };
+
+    final options = locationChoices[location] ?? [
+      ('继续前进', '继续探索'),
+      ('仔细观察', '观察周围'),
+      ('与人交谈', '和周围的人交流'),
+      ('返回原地', '回到之前的位置'),
+    ];
+
+    final idx = _turnCount % options.length;
+    final rotated = [
+      options[idx],
+      options[(idx + 1) % options.length],
+      options[(idx + 2) % options.length],
+    ];
+
+    return rotated
+        .map((e) => GameChoice(text: e.$1, action: e.$2))
+        .toList();
   }
 
   void _parseAffectionChanges(String text) {
