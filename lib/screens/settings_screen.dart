@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../services/ai_router.dart';
+import '../services/deepseek_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

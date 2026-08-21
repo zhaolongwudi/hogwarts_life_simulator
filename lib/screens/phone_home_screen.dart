@@ -5,6 +5,7 @@ import '../providers/game_provider.dart';
 import 'memory_screen.dart';
 import 'other_screens.dart';
 import 'settings_screen.dart';
+import 'shop_inventory_screens.dart';
 
 class PhoneHomeScreen extends StatefulWidget {
   const PhoneHomeScreen({super.key});

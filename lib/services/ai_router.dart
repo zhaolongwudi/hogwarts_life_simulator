@@ -184,7 +184,6 @@ class AiRouter {
         );
 
       case AiProvider.deepseek:
-      default:
         // DeepSeek：付费模型无限制
         return service.chatComplete(
           prompt: prompt,
