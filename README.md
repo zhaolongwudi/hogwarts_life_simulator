@@ -142,6 +142,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.4 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复分院/魔杖数据源错误、缓存key碰撞、重复条件等严重bug
+
+- _computeHouseLocal/_computeWandLocal: 数据源从 attributes 改为 houseDimensions
+- _computeHouseLocal: 血统判断从中文标签改为英文key (pureblood/muggleborn)
+- _computeWandLocal: Map作key改为 wand['id'] 作key，稳定性提升
+- _generateLocalSuggestions: 消除重复的'教室'条件，改为'讲堂'
+- StoryTextRenderer: 缓存key从hashCode改为文本内容本身，避免碰撞
+
 ### v0.5.3 — 2026-08-21
 
 **📋 变更说明**
