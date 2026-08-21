@@ -39,8 +39,11 @@ class GameProvider extends ChangeNotifier {
   bool _isInitializing = false;
   String? _error;
   int _turnCount = 0;
+  String _lastPlayerAction = '';
   String? _systemPrompt;
   final List<String> _notifications = [];
+  Future<void>? _pendingSave;
+  bool _saveScheduled = false;
 
   int _totalPromptTokens = 0;
   int _totalCompletionTokens = 0;
@@ -111,18 +114,27 @@ class GameProvider extends ChangeNotifier {
 
   Future<void> _autoSave() async {
     if (_player == null) return;
-    try {
-      await _saveService.autoSave(
-        player: _player!.toJson(),
-        worldState: _worldState.toJson(),
-        npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
-        narrative: _currentNarrative,
-        choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
-        turnCount: _turnCount,
-      );
-    } catch (e) {
-      debugPrint('❌ 自动存档失败: $e');
-    }
+    if (_saveScheduled) return;
+    _saveScheduled = true;
+
+    _pendingSave = () async {
+      try {
+        await Future.delayed(const Duration(milliseconds: 300));
+        await _saveService.autoSave(
+          player: _player!.toJson(),
+          worldState: _worldState.toJson(),
+          npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
+          narrative: _currentNarrative,
+          choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
+          turnCount: _turnCount,
+        );
+      } catch (e) {
+        debugPrint('❌ 自动存档失败: $e');
+      } finally {
+        _saveScheduled = false;
+      }
+    }();
+    await _pendingSave;
   }
 
   void _onApiKeyChange() {
@@ -153,7 +165,8 @@ class GameProvider extends ChangeNotifier {
 
   // ==================== 系统提示词（精简版世界观 + 核心法则 + AI禁令 + 叙事风格） ====================
   String _buildSystemPrompt() {
-    final eraName = _eraLabel(appProvider.era);
+    final effectiveEra = _worldState.era.isNotEmpty ? _worldState.era : appProvider.era;
+    final eraName = _eraLabel(effectiveEra);
     final worldRules = kUseCompactWorldRules ? kWorldRulesCompact : kWorldRulesPrompt;
     return '''你是【哈利·波特·魔法纪元·世界模拟系统】，负责维护原著优先级别、魔法、血统、家族、魔法部、霍格沃茨、神奇生物、黑巫师、预言、历史、时间、因果。而玩家负责自己的人生。
 
@@ -542,6 +555,7 @@ D. （可选）
 
     _isLoading = true;
     _turnCount++;
+    _lastPlayerAction = action;
     notifyListeners();
 
     try {
@@ -756,9 +770,17 @@ D. （可选）
       case '好感':
       case 'affection':
         if (parts.length >= 4) {
-          final npc = _npcRegistry.values
-              .firstWhere((n) => n.name.contains(parts[2]),
-                  orElse: () => _npcRegistry[parts[2]] ?? _npcRegistry.values.first);
+          final nameKey = parts[2];
+          NPC? npc;
+          for (final n in _npcRegistry.values) {
+            if (n.name.contains(nameKey)) { npc = n; break; }
+          }
+          npc ??= _npcRegistry[nameKey];
+          if (npc == null) {
+            final allNames = _npcRegistry.values.map((n) => n.name).join('、');
+            _currentNarrative = '未找到NPC "$nameKey"。可用：$allNames';
+            break;
+          }
           final delta = int.tryParse(parts[3]);
           if (delta != null) {
             npc.affection = (npc.affection + delta).clamp(-100, 100);
@@ -1304,7 +1326,8 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   String _formatDate() {
     final t = _worldState.time;
     final year = t.year;
-    final month = _worldState.month;
+    final months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    final month = (t.month >= 1 && t.month <= 12) ? months[t.month - 1] : '${t.month}月';
     final day = _worldState.dayOfMonth;
     final weekday = _worldState.dayOfWeek;
     final hour = t.hour.toString().padLeft(2, '0');
@@ -1576,8 +1599,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       _choices.addAll(_generateFallbackChoices());
     }
 
-    // Check NPC confessions every turn
-    checkNPCConfessions();
+    if (_turnCount % 5 == 0 || _lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'))) {
+      checkNPCConfessions();
+    }
   }
 
   void _extractNarrativeFromRawText(String text) {

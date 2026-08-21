@@ -261,12 +261,16 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
 
   int _currentYear() {
     final gp = context.read<GameProvider>();
-    final yearStr = gp.worldState.academicYear;
-    try {
-      return int.parse(yearStr.split('-')[0]) - 1991 + 1;
-    } catch (_) {
-      return 1;
-    }
+    final era = gp.worldState.era;
+    final year = gp.worldState.time.year;
+    final startYear = {
+      'dumbledore': 1892,
+      'marauders': 1971,
+      'first_war': 1978,
+      'harry_same': 1991,
+      'post_war': 1998,
+    }[era] ?? 1991;
+    return year - startYear + 1;
   }
 
   String _currentMonth() {

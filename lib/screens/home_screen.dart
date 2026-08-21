@@ -38,7 +38,7 @@ class HomePage extends StatelessWidget {
                 _buildActions(context, theme),
                 const SizedBox(height: 30),
                 Text(
-                  'v0.5.3 | AI Powered',
+                  'v0.5.5 | AI Powered',
                   style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF8B949E)),
                 ),
               ],

@@ -1157,12 +1157,13 @@ class MatchmakerScreen extends StatefulWidget {
 
 class _MatchmakerScreenState extends State<MatchmakerScreen> {
   List<Map<String, dynamic>> _matches = [];
-  bool _isAnalyzing = false;
 
   @override
   void initState() {
     super.initState();
-    _analyzeMatches();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _analyzeMatches();
+    });
   }
 
   void _analyzeMatches() {
@@ -1171,7 +1172,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
 
     final candidates = npcs.where((n) => n.grade > 0).toList();
 
-    _matches = [];
+    final matches = <Map<String, dynamic>>[];
     for (int i = 0; i < candidates.length; i++) {
       for (int j = i + 1; j < candidates.length; j++) {
         final a = candidates[i];
@@ -1195,7 +1196,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
         }
 
         if (score >= 25) {
-          _matches.add({
+          matches.add({
             'npcA': a,
             'npcB': b,
             'score': score,
@@ -1205,7 +1206,12 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
       }
     }
 
-    _matches.sort((a, b) => b['score'].compareTo(a['score']));
+    matches.sort((a, b) => b['score'].compareTo(a['score']));
+    if (mounted) {
+      setState(() {
+        _matches = matches;
+      });
+    }
   }
 
   String _generateReason(NPC a, NPC b, int score) {

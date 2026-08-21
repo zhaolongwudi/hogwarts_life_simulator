@@ -131,7 +131,6 @@ class StoryTextRenderer {
       RegExp(r'「[^」]*」'),
       RegExp(r'"[^"]*"'),
       RegExp(r'『[^』]*』'),
-      RegExp(r'"[^"]*"'),
     ];
 
     final dialogueRanges = <_Range>[];

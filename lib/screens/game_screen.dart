@@ -50,9 +50,11 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleFreeAction() {
+    final gp = context.read<GameProvider>();
+    if (gp.isLoading) return;
     final action = _inputController.text.trim();
     if (action.isEmpty) return;
-    context.read<GameProvider>().processChoice(
+    gp.processChoice(
           GameChoice(text: action, action: action),
         );
     _inputController.clear();
@@ -673,11 +675,11 @@ class _GameScreenState extends State<GameScreen> {
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(vertical: 12),
                           ),
-                          onSubmitted: (_) => _handleFreeAction(),
+                          onSubmitted: gp.isLoading ? null : (_) => _handleFreeAction(),
                         ),
                       ),
                       GestureDetector(
-                        onTap: _handleFreeAction,
+                        onTap: gp.isLoading ? null : _handleFreeAction,
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(

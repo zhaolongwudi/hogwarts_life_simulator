@@ -23,7 +23,7 @@ class WorldState {
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
-    this.month = 'September',
+    this.month = '9月',
     this.dayOfMonth = 1,
     this.dayOfWeek = 'Tuesday',
     this.era = 'harry_same',
