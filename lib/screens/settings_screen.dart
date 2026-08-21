@@ -256,6 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _ProviderOption('DeepSeek', 'deepseek', 'https://platform.deepseek.com'),
       _ProviderOption('智谱 AI', 'zhipu', 'https://open.bigmodel.cn'),
       _ProviderOption('Agnes', 'agnes', 'https://www.agnes-ai.cn'),
+      _ProviderOption('SenseNova·商汤日日新', 'sensenova', 'https://platform.sensenova.cn'),
     ];
     return Column(
       children: providers.map((p) {
@@ -307,12 +308,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? 'sk-...'
         : appProvider.aiProvider == AiProvider.zhipu
             ? '智谱 API Key'
-            : 'Agnes API Key';
+            : appProvider.aiProvider == AiProvider.sensenova
+                ? 'SenseNova API Key（sk-开头）'
+                : 'Agnes API Key';
     final url = appProvider.aiProvider == AiProvider.deepseek
         ? 'https://platform.deepseek.com'
         : appProvider.aiProvider == AiProvider.zhipu
             ? 'https://open.bigmodel.cn'
-            : 'https://www.agnes-ai.cn';
+            : appProvider.aiProvider == AiProvider.sensenova
+                ? 'https://platform.sensenova.cn/docs'
+                : 'https://www.agnes-ai.cn';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

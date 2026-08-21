@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 enum DisplayMode { magazine, compact, immersive }
 enum IdentityMode { native, transmigration }
 enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
-enum AiProvider { deepseek, zhipu, agnes }
+enum AiProvider { deepseek, zhipu, agnes, sensenova }
 
 class AiConfig {
   final AiProvider provider;
@@ -48,6 +48,17 @@ class AiConfig {
         model: 'agnes-2.5-flash',
         apiKey: apiKey,
         baseUrl: 'https://api.agnes-ai.cn',
+      );
+
+  /// 商汤日日新 SenseNova（platform.sensenova.cn）
+  /// 平台公测版使用 OpenAI 兼容端点：https://token.sensenova.cn/v1
+  /// 鉴权：Bearer sk-xxx（在 console → API Keys 页面创建）
+  /// 备注：公测期间余额仅在控制台页面展示，暂无公开余额查询API。
+  factory AiConfig.sensenova(String apiKey) => AiConfig(
+        provider: AiProvider.sensenova,
+        model: 'sensenova-6.7-flash-lite',
+        apiKey: apiKey,
+        baseUrl: 'https://token.sensenova.cn',
       );
 
   AiConfig copyWith({
@@ -109,6 +120,11 @@ class AppProvider extends ChangeNotifier {
           model: _aiModel,
           baseUrl: customBaseUrl,
         );
+      case AiProvider.sensenova:
+        return AiConfig.sensenova(key).copyWith(
+          model: _aiModel,
+          baseUrl: customBaseUrl,
+        );
     }
   }
 
@@ -120,6 +136,15 @@ class AppProvider extends ChangeNotifier {
         return ['glm-4.7-flash', 'glm-4-flash', 'glm-4', 'glm-4-long'];
       case AiProvider.agnes:
         return ['agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
+      case AiProvider.sensenova:
+        // 平台公测版模型（参考 https://platform.sensenova.cn/docs）
+        // sensenova-u1-fast 是信息图生成专用模型，不走 chat completions，
+        // 但用户想通过自定义模型名调用时可以手动输入。
+        return [
+          'sensenova-6.7-flash-lite', // 主力：256K上下文+多模态+Tool Calls
+          'deepseek-v4-flash',         // SenseNova平台上也提供（公测白嫖配额）
+          'sensenova-u1-fast',         // 信息图生成（chat接口不适用时保留模型项）
+        ];
     }
   }
 
@@ -131,6 +156,8 @@ class AppProvider extends ChangeNotifier {
         return '智谱 AI';
       case AiProvider.agnes:
         return 'Agnes';
+      case AiProvider.sensenova:
+        return 'SenseNova·商汤日日新';
     }
   }
 
@@ -144,7 +171,7 @@ class AppProvider extends ChangeNotifier {
     _aiProvider = AiProvider.values[prefs.getInt('ai_provider') ?? 0];
     _aiModel = prefs.getString('ai_model') ?? 'deepseek-v4-flash';
 
-    final providers = ['deepseek', 'zhipu', 'agnes'];
+    final providers = ['deepseek', 'zhipu', 'agnes', 'sensenova'];
     for (final p in providers) {
       final key = prefs.getString('api_key_$p');
       if (key != null) _apiKeys[p] = key;
@@ -175,6 +202,7 @@ class AppProvider extends ChangeNotifier {
       AiProvider.deepseek: 'deepseek-v4-flash',
       AiProvider.zhipu: 'glm-4.7-flash',
       AiProvider.agnes: 'agnes-2.5-flash',
+      AiProvider.sensenova: 'sensenova-6.7-flash-lite',
     };
     _aiModel = defaults[provider]!;
     final prefs = await SharedPreferences.getInstance();

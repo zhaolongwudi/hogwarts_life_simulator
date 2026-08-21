@@ -241,6 +241,10 @@ class DeepSeekService {
         return null;
       } else if (config.provider == AiProvider.agnes) {
         return null;
+      } else if (config.provider == AiProvider.sensenova) {
+        // SenseNova（platform.sensenova.cn）公测期间无公开余额查询API，
+        // 额度仅在控制台页面展示。如需查询请登录 https://platform.sensenova.cn/
+        return null;
       }
       return null;
     } catch (_) {
