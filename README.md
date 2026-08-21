@@ -142,6 +142,15 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.4.8 — 2026-08-21
+
+**📋 变更说明**
+feat: 智谱AI添加免费GLM-4.7-Flash模型
+
+- 可用模型列表新增 glm-4.7-flash（200K上下文，免费）
+- 切换到智谱时默认选中 glm-4.7-flash
+- AiConfig.zhipu 默认模型同步更新
+
 ### v0.4.7 — 2026-08-21
 
 **📋 变更说明**
