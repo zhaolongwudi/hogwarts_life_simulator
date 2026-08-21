@@ -179,6 +179,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.7 — 2026-08-21
+
+**📋 变更说明**
+修复(CI): 删除token优化遗留的未引用函数（修flutter analyze）
+
+- _buildPetDescription 被 _buildPetDescriptionShort 替换后未删除
+- _kyuubiPetDescription 随上者同被替换
+- _houseLabel 在 buildPrompt 移除学院积分显示后无任何引用
+
+推送前自检流程：
+
 ### v0.6.6 — 2026-08-21
 
 **📋 变更说明**
