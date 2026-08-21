@@ -179,6 +179,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.7.0 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复flutter analyze报告的6个问题
+
+问题修复:
+- ai_router.dart: 修复systemPrompt类型不匹配(String?→String)
+- ai_router.dart: 修复checkBalance方法名错误(getBalance)
+- ai_router.dart: 移除重复/不必要的deepseek_service.dart导入
+- npc_chat_service.dart: 移除未使用的deepseek_service.dart导入
+
 ### v0.6.9 — 2026-08-21
 
 **📋 变更说明**
