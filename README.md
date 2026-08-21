@@ -142,6 +142,11 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.4.6 — 2026-08-21
+
+**📋 变更说明**
+fix: 移除未使用的index变量消除flutter analyze警告
+
 ### v0.4.5 — 2026-08-21
 
 **📋 变更说明**
