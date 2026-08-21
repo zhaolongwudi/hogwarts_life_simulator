@@ -179,6 +179,26 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.9.0 — 2026-08-21
+
+**🤖 AI路由与性能优化**
+- 调整默认AI路由配置：智谱AI→主剧情，SenseNova→摘要，Agnes→NPC聊天
+- 添加ZhipuConcurrencyQueue：智谱并发队列（限1个并发）防止冲突
+- 添加AgnesRateLimiter：Agnes速率限制器（限20 RPM）防止超限
+- 添加SenseNovaQuotaManager：SenseNova配额管理器（每5小时1500次）
+- 添加ResponseCache：响应缓存机制（5分钟有效期，减少重复调用）
+- 优化降级策略：智谱→SenseNova→Agnes→DeepSeek
+
+**📱 手机模块优化**
+- 精简手机应用网格：移除非通讯类功能（商店/地图/存档/打工）
+- 保留核心功能：通讯、论坛、日记、红娘、背包、相册、平行世界、设置
+- 统一设置入口：手机内直接跳转到SettingsScreen
+
+**🔧 技术改进**
+- 更新提供商简介：添加详细限制说明（并发数/RPM/配额）
+- 更新场景描述：推荐最优模型选择和使用场景
+- 所有AI调用自动应用速率限制保护
+
 ### v0.7.3 — 2026-08-21
 
 **📋 变更说明**
