@@ -166,64 +166,29 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ==================== 系统提示词（精简版世界观 + 核心法则 + AI禁令 + 叙事风格） ====================
+  // ==================== 系统提示词（精简版世界观 + 核心框架） ====================
   String _buildSystemPrompt() {
     final effectiveEra = _worldState.era.isNotEmpty ? _worldState.era : appProvider.era.name;
     final eraName = _eraLabel(_parseEra(effectiveEra));
     final worldRules = kUseCompactWorldRules ? kWorldRulesCompact : kWorldRulesPrompt;
-    return '''你是【哈利·波特·魔法纪元·世界模拟系统】，负责维护原著优先级别、魔法、血统、家族、魔法部、霍格沃茨、神奇生物、黑巫师、预言、历史、时间、因果。而玩家负责自己的人生。
+    return '''你是【哈利·波特·魔法纪元】叙事系统，以原著七部为正典，维护魔法世界的规则、历史、人物与因果。玩家只是一名普通巫师，负责自己的人生选择。
 
 $worldRules
 
-【当前时代】$eraName
+【时代】$eraName
 
-【七大核心法则】
-1. 玩家是普通学生，不是天选之人：不因玩家身份自动获得特殊待遇。
-2. 自由选择与后果：玩家可以做出任何选择，但每个选择都必须带来合理且持久的后果。
-3. 信息受限原则：NPC与玩家只能知晓其合理接触范围内可以获得的信息；秘密必须通过探索、对话、推理逐步揭示。
-4. 时间流逝一致性：每回合消耗合理时间，不同活动时间成本不同；时间推进必须清晰标注（📅 [年份]年[月]月[日]日，[星期X]，[时段] [时:分]）。
-5. NPC独立人格：每个NPC都有独立人生、目标、喜怒哀乐，不围着玩家转。
-6. 生命与历史敬畏：重大事件（死亡、背叛、战争）不可轻率发生，一旦发生不可轻易逆转。
-7. 魔法世界首先是生活：课堂、友谊、三餐、散步都是重要内容，不只是战斗副本。
+【五条核心规则】
+1. 玩家非天选之人：不因身份获特殊待遇，无默认传奇血统/圣器/预言。
+2. 选择即后果：每个选择带来合理且持久的影响；不强迫玩家卷入原著事件。
+3. 信息有限：不得直接透露NPC内心、未来或秘密；不替玩家做决定或说话。
+4. 世界真实运行：NPC具独立人格，重大事件（死亡/战争/表白）须有铺垫，不OOC。
+5. 生活优先：魔法世界首先是课堂/三餐/友谊/散步，不只是战斗副本。
 
-【AI 十二条禁令】
-1. 严禁替玩家做决定或假设玩家行动。
-2. 严禁替玩家说话，玩家对话必须通过选择或自由输入进行。
-3. 严禁无铺垫地推进重大剧情（死亡/战争/表白等）。
-4. 严禁强制玩家加入原著事件；玩家可以选择远离。
-5. 严禁直接透露NPC内心或未来信息，除非通过合理途径得知。
-6. 严禁编造玩家未拥有的物品、技能、记忆或关系。
-7. 严禁让玩家或NPC瞬间满级、无敌或拥有无限资源。
-8. 严禁性描写或过度露骨内容；恋爱描写止于亲吻与拥抱。
-9. 严禁让原著角色OOC（脱离性格）。
-10. 严禁跳过玩家的选择直接"安排好结局"。
-11. 严禁在未触发条件时解锁CG或达成恋爱关系。
-12. 严禁回复超出叙事范围的元信息。
-
-【叙事风格】
-- 如J.K.罗琳：富有画面感、幽默、细腻，兼具温暖与悬疑。
-- 每段叙事至少包含3个感官细节（视觉、听觉、嗅觉、触觉、味觉）。
-- 使用「【叙事】」「【可选行动】」「【自由行动】」的结构化输出。
-- 叙事长度：推进事件200-400字；关键事件（战斗/表白/重大发现）400-600字。
-- 时间推进后，叙事开头附上时间戳。
-
-【时间系统】
-- 每回合行动消耗合理时间（对话10分钟，一餐30分钟，一节课90分钟，自习120分钟，魁地奇训练120分钟，霍格莫德一日游300分钟，禁林探索180分钟，一夜睡眠480分钟）。
-- 时段：晨间/上午/午间/下午/黄昏/晚间/深夜。
-
-【好感度系统】
-- 范围-100~+100。阶段：死敌(-100~-81)/宿怨(-80~-51)/反感(-50~-21)/冷漠(-20~-10)/中立(-9~+9)/好感(+10~+29)/友好(+30~+49)/信任(+50~+69)/亲密(+70~+84)/深爱(+85~+94)/灵魂伴侣(+95~+100)。
-- 变化规则：日常对话+1~2，冲突-3~-1；送礼/事件梯度递增（一般礼物+1~3，喜欢+5~8，挚爱+10~15；中等事件+4~8；重大事件+10~20；极端事件+20~30；背叛-30~-15）。
-- 在叙事中自然体现好感变化，并在每轮更新【好感度变化】小节。
-
-【指令系统】
-玩家输入 /状态 /时间 /地图 /通知 /帮助 /关系 /恋爱 /声望 /课程 /收藏 /日记 /档案 /成就 /宠物 /信 /血缘 /联动 /世界演化 /cheat 等指令时由本地系统处理，不需要生成叙事。
-
-【防过度热闹协议】
-禁止每个月都有黑魔头/魂器/死亡圣器/魔法战争。魔法世界也必须拥有大量普通生活。
-
-【防主角光环协议】
-玩家没有默认传奇血统、死亡圣器、预言、强大魔杖。除非通过真实行动获得。''';
+【叙事要求】
+- 画面感如J.K.罗琳，每段含≥3感官细节；普通叙事200-400字，关键事件400-600字。
+- 开头附时间戳📅；好感变化须写入【好感度变化】小节。
+- 严格按【叙事】→【好感度变化】→【可选行动】→【自由行动】结构输出。
+- 恋爱止于亲吻拥抱，不得性描写；不编造玩家未拥有的物品技能关系。''';
   }
 
   String _eraLabel(Era era) {
@@ -234,6 +199,18 @@ $worldRules
       Era.harry_same => '子世代（1991-1998）：哈利·波特在霍格沃茨的求学时期。',
       Era.post_war => '现代（2020+）：战后重建的魔法世界，阿不思·波特与斯科皮·马尔福的时代。',
       Era.random => '随机时代：由叙事开始时随机决定。',
+    };
+  }
+
+  /// 短版时代描述（节省 token。系统提示词和开场叙事中使用）
+  String _eraLabelShort(Era era) {
+    return switch (era) {
+      Era.dumbledore => '邓布利多时代 1892（少年邓布利多求学）',
+      Era.marauders => '亲世代 1971（掠夺者同窗）',
+      Era.first_war => '一战末期 1976（伏地魔崛起）',
+      Era.harry_same => '子世代 1991（哈利入学）',
+      Era.post_war => '战后 2020（阿不思·波特时代）',
+      Era.random => '随机时代',
     };
   }
 
@@ -433,58 +410,50 @@ $worldRules
     final p = _player!;
     final wandData = p.wandId != null ? wandById(p.wandId!) : null;
     final wandInfo = wandData != null
-        ? '${wandData.name}（${wandData.wood}·${wandData.core}·${wandData.length}，适合${wandData.suitType}）'
-        : '玩家自选的魔杖';
+        ? '${wandData.name}（${wandData.wood}·${wandData.core}·${wandData.length}）'
+        : '尚未选择的魔杖';
 
-    final petInfo = _buildPetDescription(p);
+    final petInfo = _buildPetDescriptionShort(p);
     final startPoint = _buildStartPointNarrative();
 
-    final prompt = '''你是【哈利·波特·魔法纪元·世界模拟系统】的叙事者，风格如J.K.罗琳。
+    // 只收集已设定字段，减少 token 噪声
+    final profile = <String>[];
+    profile.add('姓名：${p.name}｜11岁｜${_bloodStatusLabel(p.bloodType)}｜${p.birthLocation}');
+    if (p.personalityTraits.isNotEmpty) profile.add('性格：${p.personalityTraits.join('、')}');
+    if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) profile.add('出身：${p.birthIdentity}');
+    if (p.appearance != null && p.appearance!.isNotEmpty) profile.add('外貌：${p.appearance}');
+    if (p.familyBackground != null && p.familyBackground!.isNotEmpty) profile.add('家族：${p.familyBackground}');
+    if (p.childhoodExperiences.isNotEmpty) profile.add('童年：${p.childhoodExperiences.join('；')}');
+    if (p.beliefs != null && p.beliefs!.isNotEmpty) profile.add('信念：${p.beliefs}');
+    if (p.magicAptitude != null && p.magicAptitude!.isNotEmpty) profile.add('资质：${p.magicAptitude}');
+    if (p.initialTalent != null && p.initialTalent!.isNotEmpty) profile.add('天赋：${p.initialTalent}');
+    if (p.housePreference != null && p.housePreference!.isNotEmpty) profile.add('学院倾向：${p.housePreference}');
+    profile.add('时代：${_eraLabelShort(appProvider.era)}');
+    profile.add('魔杖：$wandInfo');
+    profile.add('宠物：$petInfo');
 
-【玩家档案 - 必须全部融入叙事】
-- 姓名：${p.name}
-- 年龄：11岁
-- 血统：${_bloodStatusLabel(p.bloodType)}
-- 出生身份：${p.birthIdentity ?? '未设定'}
-- 出生地：${p.birthLocation}
-- 性格：${p.personalityTraits.join(', ')}
-- 时代：${_eraLabel(appProvider.era)}
-- 外貌：${p.appearance ?? '自行合理描述'}
-- 家族背景：${p.familyBackground ?? '未设定'}
-- 童年经历：${p.childhoodExperiences.isEmpty ? '无特殊经历' : p.childhoodExperiences.join('；')}
-- 信仰：${p.beliefs ?? '未设定'}
-- 魔法资质：${p.magicAptitude ?? '普通'}
-- 初始天赋：${p.initialTalent ?? '未设定'}
-- 学院倾向：${p.housePreference ?? '系统判定'}
-- 政治倾向：${p.politicalTendency ?? '未设定'}
-- 模拟风格：${p.simulationStyle ?? '混合模式'}
-- 魔杖：$wandInfo
-- 宠物：$petInfo
+    final prompt = '''【哈利·波特·魔法纪元】开场叙事。以J.K.罗琳风格，融入3+感官细节。
+
+【玩家】
+${profile.join('\n')}
 
 【剧情起点】$startPoint
 
-【生成规则 - 必须全部遵守】
-1. **必须**在叙事中自然融入：玩家的血统、家族背景、童年经历、魔杖、宠物
-2. 宠物 $petInfo 必须在开场叙事中出现，描述玩家与它的关系
-3. 魔杖 $wandInfo 必须被提及，比如作为生日礼物、家族传承或斜角巷的收获
-4. 必须体现玩家的【性格特质】和【信仰】
-5. 麻瓜出身：展示普通家庭日常生活，魔法觉醒的意外事件
-6. 魔法/纯血家庭：巫师家庭日常，可能有家族传统或期望
-7. 哑炮/默然者/狼人等特殊血统：展示其特殊处境
-8. 只展示角色合理知道的信息
-9. 不要让玩家自动成为主角
-10. 根据模拟风格调整叙事基调
-11. 保持魔法氛围，融入至少3个感官细节
+【规则】
+- 自然融入血统、家族、童年、魔杖、宠物（宠物与魔杖必须出现）
+- 体现性格与信念；麻瓜出身展示日常魔法觉醒，纯血/巫师家庭展示传统
+- 不自动成为主角；只写角色合理知道的信息
+- 300-500字，开头附📅时间戳
 
-【输出格式 - 严格遵守】
+【输出格式】
 【叙事】
-（300-500字沉浸叙事，融入上述所有玩家设定，包含≥3个感官细节）
+（正文）
 
 【可选行动】
 A. （选项1）
 B. （选项2）
 C. （选项3）
-D. （可选）
+
 【自由行动】''';
 
     if (_deepSeek == null) {
@@ -508,6 +477,21 @@ D. （可选）
           '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
       _choices = [GameChoice(text: '继续', action: '继续')];
       notifyListeners();
+    }
+  }
+
+  // ==================== 开场辅助：宠物描述（短版，省token） ====================
+  String _buildPetDescriptionShort(Player p) {
+    final petId = p.petId;
+    final petName = p.petName ?? '';
+    if (petId == null) return '未饲养';
+    switch (petId) {
+      case 'owl': return '$petName（猫头鹰·聪明忠诚）';
+      case 'cat': return '$petName（猫·神秘敏感）';
+      case 'toad': return '$petName（蟾蜍·传统伴侣）';
+      case 'rat': return '$petName（老鼠·机灵小巧）';
+      case 'kyuubi': return '绯月（九尾灵狐·东方青丘祥瑞，可化人形·幻术/灵视·完全效忠）';
+      default: return '$petName（特殊伙伴）';
     }
   }
 
@@ -571,75 +555,36 @@ D. （可选）
     notifyListeners();
 
     String buildPrompt() {
-      final attributesStr = _player!.attributes.entries
-          .where((e) => e.value != 0)
-          .map((e) => '${_attrLabel(e.key)}:${e.value}')
-          .join(', ');
+      final p = _player!;
+      final context = _truncateNarrativeContext(_currentNarrative, 400);
+      final statusTag = _buildStatusTag(p);
+      final extra = _buildCriticalContext(action);
 
-      String spellsStr = _player!.learnedSpells.isEmpty
-          ? '无'
-          : _player!.learnedSpells.entries
-              .take(8)
-              .map((e) => '${e.key}(Lv${e.value.level})')
-              .join(', ');
-      if (_player!.learnedSpells.length > 8) {
-        spellsStr += ' 等${_player!.learnedSpells.length}个';
-      }
+      return '''【情境】
+$context
 
-      String invStr = _player!.inventory.isEmpty
-          ? '空'
-          : _player!.inventory.take(10).map((e) => e.name).join(', ');
-      if (_player!.inventory.length > 10) invStr += ' 等${_player!.inventory.length}件';
+【玩家】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜性格：${p.personalityTraits.isEmpty ? '未设定' : p.personalityTraits.join('、')}
+${p.magicAptitude ?? '普通'}天赋｜倾向：${p.politicalTendency ?? '未设定'}｜$statusTag
 
-      final npcStr = _formatAffections(maxEntries: 6);
-      final recentEventsStr = _worldState.recentEvents.isEmpty
-          ? '无'
-          : _worldState.recentEvents.take(3).join('；');
+【当前】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}｜${_worldState.weather ?? '晴朗'}
 
-      return '''继续游戏叙事。
-
-【情境】
-$_currentNarrative
-
-【玩家】${_player!.name}｜${_bloodStatusLabel(_player!.bloodType)}｜${_player!.house ?? '未分院'}｜${_player!.grade}年级
-性格：${_player!.personalityTraits.isEmpty ? '未设定' : _player!.personalityTraits.join('、')}
-${_player!.magicAptitude ?? '普通'}天赋｜倾向：${_player!.politicalTendency ?? '未设定'}
-状态 HP:${_player!.health}/MP:${_player!.magic}/SP:${_player!.spirit}/精力:${_player!.energy}
-属性：$attributesStr
-魔咒：$spellsStr
-物品：$invStr
-
-【当前】${_worldState.timestamp}｜学年${_worldState.academicYear}｜${_worldState.currentLocation ?? '未知'}｜${_worldState.weather ?? '晴朗'}
-学院积分：${_worldState.housePoints.entries.map((e) => '${_houseLabel(e.key)}${e.value}').join('·')}
-
-【关系】$npcStr
-【事件】$recentEventsStr
-
-【玩家行动】
+${extra.isNotEmpty ? extra + '\n' : ''}【行动】
 $action
 
-【要求】
-1. 叙事 200-400字，必须包含≥3个感官细节
-2. 开头附时间戳
-3. 体现玩家【性格特质】和【血统】
-4. NPC有独立人格，不围着玩家转
-5. 每回合更新【好感度变化】小节（对话+1~2，冲突-3~-1，事件梯度）
-6. 不强行把玩家塞进原著事件
-
-【输出格式 - 必须严格】
+【输出】
 【叙事】
-（200-400字，含≥3感官细节）
+（200-400字，≥3感官细节，开头附时间戳，体现玩家性格与血统，NPC具独立人格）
 
 【好感度变化】
 NPC名: ±X（原因）
 
 【可选行动】
-A. （具体行动）
-B. （具体行动）
-C. （具体行动）
+A. （具体）
+B. （具体）
+C. （具体）
 D. （可选）
 
-【自由行动】（玩家可输入任何合理行为）''';
+【自由行动】''';
     }
 
     try {
@@ -1983,6 +1928,83 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     return rotated
         .map((e) => GameChoice(text: e.$1, action: e.$2))
         .toList();
+  }
+
+  // ==================== Token 优化：上下文截断 + 状态精简 ====================
+
+  /// 截断叙事上下文，只保留末尾 maxChars 字，保证连贯性同时控制 token
+  String _truncateNarrativeContext(String narrative, int maxChars) {
+    if (narrative.length <= maxChars) return narrative;
+    final cut = narrative.length - maxChars;
+    return '…（前情略）${narrative.substring(cut)}';
+  }
+
+  /// 只在状态异常时输出状态标签（HP低/MP低/精力低/受伤），正常则不写
+  String _buildStatusTag(Player p) {
+    final tags = <String>[];
+    if (p.health <= 30) tags.add('HP低:${p.health}');
+    if (p.magic <= 20) tags.add('MP低:${p.magic}');
+    if (p.energy <= 20) tags.add('精力低:${p.energy}');
+    if (p.injuries.isNotEmpty) {
+      tags.add(p.injuries.take(2).join('、'));
+    }
+    if (tags.isEmpty) return '状态良好';
+    return tags.join('｜');
+  }
+
+  /// 根据行动关键词，只在关键剧情节点临时注入相关上下文（平时不注入）
+  String _buildCriticalContext(String action) {
+    final p = _player;
+    if (p == null) return '';
+    final a = action.toLowerCase();
+    final parts = <String>[];
+
+    // 战斗 / 冲突 → 注入关键属性、魔咒、HP
+    if (a.contains(RegExp(r'(战斗|决斗|攻击|防御|反抗|战斗|对抗|咒语|咒|黑魔法|施展|施法|魔杖|打|杀|伤害|保护|救)'))) {
+      final combatAttrs = p.attributes.entries
+          .where((e) => e.value != 0)
+          .take(4)
+          .map((e) => '${_attrLabel(e.key)}:${e.value}')
+          .join(' ');
+      if (combatAttrs.isNotEmpty) parts.add('【战斗】属性 $combatAttrs');
+      if (p.learnedSpells.isNotEmpty) {
+        final spells = p.learnedSpells.entries.take(5).map((e) => e.key).join('、');
+        parts.add('已知魔咒 $spells');
+      }
+      parts.add('HP:${p.health} MP:${p.magic}');
+    }
+
+    // 学业 / 考试 → 注入属性和学年
+    if (a.contains(RegExp(r'(上课|考试|测验|作业|魔药|变形|魔咒|草药|黑魔法防御|天文|占卜|古代魔文|OWL|NEWT|写|论文|复习|学习)'))) {
+      final study = p.attributes.entries
+          .where((e) => const {'智慧', '魔力', '勤奋', '创造力'}.contains(_attrLabel(e.key)))
+          .where((e) => e.value != 0)
+          .map((e) => '${_attrLabel(e.key)}:${e.value}')
+          .join(' ');
+      if (study.isNotEmpty) parts.add('【学业】$study');
+    }
+
+    // 社交 / 约会 / 表白 → 注入涉及的NPC好感
+    if (a.contains(RegExp(r'(约会|见面|聊天|对话|邀|陪|一起|独处|表白|感情|心动|爱|吻|拥抱|找|跟|和|与|问)'))) {
+      final affs = _formatAffections(maxEntries: 3);
+      if (affs.isNotEmpty && !affs.contains('暂无深入关系')) parts.add('【关系】$affs');
+    }
+
+    // 购物 / 交易 → 注入金币
+    if (a.contains(RegExp(r'(买|卖|购|商店|购物|花钱|付钱|交易|古灵阁|存取)'))) {
+      parts.add('【经济】加隆:${p.galleons}｜银行:${p.bankGalleons}');
+      if (p.inventory.isNotEmpty) {
+        final inv = p.inventory.take(5).map((e) => e.name).join('、');
+        parts.add('背包 $inv');
+      }
+    }
+
+    // 事件：最多1条近期动态（平时不写3条）
+    if (_worldState.recentEvents.isNotEmpty) {
+      parts.add('【世界】${_worldState.recentEvents.first}');
+    }
+
+    return parts.join('\n');
   }
 
   void _parseAffectionChanges(String text) {
