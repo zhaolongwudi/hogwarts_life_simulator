@@ -142,6 +142,11 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.2 — 2026-08-21
+
+**📋 变更说明**
+Merge branch 'main' of https://github.com/zhaolongwudi/hogwarts_life_simulator
+
 ### v0.5.1 — 2026-08-21
 
 **📋 变更说明**
