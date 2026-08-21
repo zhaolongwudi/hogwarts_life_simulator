@@ -72,6 +72,7 @@ class AppProvider extends ChangeNotifier {
   AiProvider _aiProvider = AiProvider.deepseek;
   String _aiModel = 'deepseek-chat';
   Map<String, String> _apiKeys = {};
+  Map<String, String> _baseUrls = {};
 
   String? get apiKey => _apiKey;
   bool get isGameStarted => _isGameStarted;
@@ -81,16 +82,27 @@ class AppProvider extends ChangeNotifier {
   AiProvider get aiProvider => _aiProvider;
   String get aiModel => _aiModel;
   Map<String, String> get apiKeys => Map.unmodifiable(_apiKeys);
+  Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
 
   AiConfig get aiConfig {
     final key = _apiKeys[_aiProvider.name] ?? _apiKey ?? '';
+    final customBaseUrl = _baseUrls[_aiProvider.name];
     switch (_aiProvider) {
       case AiProvider.deepseek:
-        return AiConfig.deepseek(key).copyWith(model: _aiModel);
+        return AiConfig.deepseek(key).copyWith(
+          model: _aiModel,
+          baseUrl: customBaseUrl,
+        );
       case AiProvider.zhipu:
-        return AiConfig.zhipu(key).copyWith(model: _aiModel);
+        return AiConfig.zhipu(key).copyWith(
+          model: _aiModel,
+          baseUrl: customBaseUrl,
+        );
       case AiProvider.agnes:
-        return AiConfig.agnes(key).copyWith(model: _aiModel);
+        return AiConfig.agnes(key).copyWith(
+          model: _aiModel,
+          baseUrl: customBaseUrl,
+        );
     }
   }
 
@@ -130,6 +142,8 @@ class AppProvider extends ChangeNotifier {
     for (final p in providers) {
       final key = prefs.getString('api_key_$p');
       if (key != null) _apiKeys[p] = key;
+      final url = prefs.getString('base_url_$p');
+      if (url != null && url.isNotEmpty) _baseUrls[p] = url;
     }
 
     final currentKey = _apiKeys[_aiProvider.name];
@@ -170,6 +184,21 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setBaseUrl(String url) async {
+    if (url.trim().isEmpty) {
+      _baseUrls.remove(_aiProvider.name);
+    } else {
+      _baseUrls[_aiProvider.name] = url.trim();
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (url.trim().isEmpty) {
+      await prefs.remove('base_url_${_aiProvider.name}');
+    } else {
+      await prefs.setString('base_url_${_aiProvider.name}', url.trim());
+    }
+    notifyListeners();
+  }
+
   void setGameStarted(bool started) {
     _isGameStarted = started;
     SharedPreferences.getInstance().then((prefs) => prefs.setBool('game_started', started));
@@ -203,9 +232,11 @@ class AppProvider extends ChangeNotifier {
   void clearApiKey() {
     _apiKey = null;
     _apiKeys.remove(_aiProvider.name);
+    _baseUrls.remove(_aiProvider.name);
     SharedPreferences.getInstance().then((prefs) {
       prefs.remove('api_key');
       prefs.remove('api_key_${_aiProvider.name}');
+      prefs.remove('base_url_${_aiProvider.name}');
     });
     notifyListeners();
   }

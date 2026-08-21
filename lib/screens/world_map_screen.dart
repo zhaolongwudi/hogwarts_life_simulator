@@ -366,104 +366,131 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
   Widget _buildLocationMarkers() {
     final locations = _currentLocations;
-    return Stack(
-      children: locations.map((loc) {
-        final x = loc['x'] as double;
-        final y = loc['y'] as double;
-        final isSelected = _selectedLocation == loc['name'];
-        final isBranch = loc['branch'] == true;
-        return Positioned(
-          left: MediaQuery.of(context).size.width * x - 30,
-          top: MediaQuery.of(context).size.height * y - 18,
-          child: GestureDetector(
-            onTap: () {
-              if (isBranch) {
-                _enterSubArea(loc['name'] as String);
-              } else {
-                setState(() => _selectedLocation = loc['name']);
-              }
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                    padding: EdgeInsets.symmetric(horizontal: isBranch ? 6 : 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : isBranch
-                                ? const Color(0xFFD97706)
-                                : Colors.grey.shade400,
-                        width: isSelected || isBranch ? 1.5 : 0.5,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isBranch) ...[
-                          Icon(Icons.subdirectory_arrow_right, size: 10, color: const Color(0xFFD97706)),
-                          const SizedBox(width: 1),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mapWidth = constraints.maxWidth;
+        final mapHeight = constraints.maxHeight;
+
+        final headerOffset = 90.0;
+        final bottomOffset = 120.0;
+        final usableHeight = mapHeight - headerOffset - bottomOffset;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: locations.asMap().entries.map((entry) {
+            final index = entry.key;
+            final loc = entry.value;
+            final x = loc['x'] as double;
+            final y = loc['y'] as double;
+            final isSelected = _selectedLocation == loc['name'];
+            final isBranch = loc['branch'] == true;
+
+            final adjustedY = headerOffset + (y * usableHeight);
+            final left = mapWidth * x - 30;
+            final top = adjustedY - 24;
+
+            return Positioned(
+              left: left,
+              top: top,
+              child: GestureDetector(
+                onTap: () {
+                  if (isBranch) {
+                    _enterSubArea(loc['name'] as String);
+                  } else {
+                    setState(() => _selectedLocation = loc['name']);
+                  }
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: isBranch ? 6 : 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFD3A625)
+                              : isBranch
+                                  ? const Color(0xFFD97706)
+                                  : const Color(0xFF8B949E),
+                          width: isSelected || isBranch ? 1.5 : 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
-                        Flexible(
-                          child: Text(
-                            loc['name'] as String,
-                            maxLines: 1,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: isSelected || isBranch ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : isBranch
-                                      ? const Color(0xFFD97706)
-                                      : Colors.black87,
-                              overflow: TextOverflow.ellipsis,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isBranch) ...[
+                            Icon(Icons.subdirectory_arrow_right, size: 11, color: const Color(0xFFD97706)),
+                            const SizedBox(width: 2),
+                          ],
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 70),
+                            child: Text(
+                              loc['name'] as String,
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected || isBranch ? FontWeight.w700 : FontWeight.w600,
+                                color: isSelected
+                                    ? const Color(0xFFB8860B)
+                                    : isBranch
+                                        ? const Color(0xFFD97706)
+                                        : const Color(0xFF1F2937),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 2),
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : isBranch
-                            ? const Color(0xFFD97706)
-                            : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : isBranch
-                              ? const Color(0xFFD97706)
-                              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    isBranch ? Icons.subdirectory_arrow_right : Icons.location_on,
-                    size: 14,
-                    color: isSelected || isBranch ? Colors.white : Theme.of(context).colorScheme.primary,
-                  ),
+                    ),
+                    const SizedBox(height: 3),
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFD3A625)
+                            : isBranch
+                                ? const Color(0xFFD97706)
+                                : Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFB8860B)
+                              : isBranch
+                                  ? const Color(0xFFB45309)
+                                  : const Color(0xFFD3A625),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isBranch ? Icons.subdirectory_arrow_right : Icons.location_on,
+                        size: 14,
+                        color: isSelected || isBranch ? Colors.white : const Color(0xFFD3A625),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 

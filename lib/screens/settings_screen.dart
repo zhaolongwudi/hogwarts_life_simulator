@@ -14,6 +14,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _keyController = TextEditingController();
+  final _baseUrlController = TextEditingController();
   bool _checking = false;
   String? _connectionStatus;
   double? _balance;
@@ -23,6 +24,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final appProvider = context.read<AppProvider>();
     _keyController.text = appProvider.apiKey ?? '';
+    final customUrl = appProvider.baseUrls[appProvider.aiProvider.name];
+    if (customUrl != null) {
+      _baseUrlController.text = customUrl;
+    }
+  }
+
+  @override
+  void dispose() {
+    _keyController.dispose();
+    _baseUrlController.dispose();
+    super.dispose();
   }
 
   Future<void> _saveKey() async {
@@ -67,7 +79,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildProviderPicker(appProvider.aiProvider.name),
           const SizedBox(height: 12),
           _buildApiKeyInput(appProvider),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          _buildBaseUrlInput(appProvider),
+          const SizedBox(height: 12),
           _buildModelPicker(appProvider),
           const SizedBox(height: 12),
           Row(
@@ -224,6 +238,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else {
       _keyController.clear();
     }
+    final savedUrl = context.read<AppProvider>().baseUrls[value];
+    if (savedUrl != null) {
+      _baseUrlController.text = savedUrl;
+    } else {
+      _baseUrlController.clear();
+    }
     setState(() => _connectionStatus = null);
   }
 
@@ -259,6 +279,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(width: 8),
             ElevatedButton(onPressed: _saveKey, child: const Text('保存')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBaseUrlInput(AppProvider appProvider) {
+    final defaultUrl = appProvider.aiConfig.baseUrl;
+    final hasCustomUrl = appProvider.baseUrls.containsKey(appProvider.aiProvider.name);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('自定义 API 地址',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            if (hasCustomUrl)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('自定义',
+                    style: TextStyle(fontSize: 11, color: Colors.orange)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+            '默认: $defaultUrl\n如使用代理或自建服务可修改此项',
+            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _baseUrlController,
+                decoration: const InputDecoration(
+                  hintText: 'https://api.example.com',
+                  prefixIcon: Icon(Icons.link),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () async {
+                final url = _baseUrlController.text.trim();
+                await appProvider.setBaseUrl(url);
+                if (mounted) {
+                  setState(() {});
+                }
+              },
+              child: const Text('保存'),
+            ),
           ],
         ),
       ],

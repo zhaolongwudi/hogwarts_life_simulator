@@ -614,80 +614,206 @@ class _GameScreenState extends State<GameScreen> {
         color: Theme.of(context).colorScheme.surface,
         border: Border(top: BorderSide(color: Theme.of(context).dividerTheme.color!)),
       ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              GestureDetector(
+                onTap: gp.isLoading
+                    ? null
+                    : () {
+                        if (gp.choices.isNotEmpty) {
+                          gp.processChoice(gp.choices.first);
+                        }
+                      },
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: gp.isLoading ? const Color(0xFF484f58) : const Color(0xFFE8A0A0),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.pink.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('推进', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                      Text('剧情', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _inputController,
+                          style: const TextStyle(color: Color(0xFFE6EDF3)),
+                          decoration: const InputDecoration(
+                            hintText: '输入行动或 /命令...',
+                            hintStyle: TextStyle(color: Color(0xFF8B949E)),
+                            prefixIcon: Icon(Icons.auto_awesome, size: 20, color: Color(0xFF8B949E)),
+                            isDense: true,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onSubmitted: (_) => _handleFreeAction(),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _handleFreeAction,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.send, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => _showCommandMenu(),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD3A625).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
+                  ),
+                  child: const Icon(Icons.terminal, size: 20, color: Color(0xFFD3A625)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCommandMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161B22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade600,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('⚡ 指令系统',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+              const SizedBox(height: 4),
+              const Text('在输入框输入 / 开头的命令即可触发',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              const SizedBox(height: 16),
+              _buildCommandItem('/帮助', '显示所有可用命令', Icons.help),
+              _buildCommandItem('/状态', '查看角色完整属性', Icons.person),
+              _buildCommandItem('/时间', '查看当前日期时间', Icons.schedule),
+              _buildCommandItem('/地图', '快速跳转地图', Icons.map),
+              _buildCommandItem('/关系', '查看NPC关系', Icons.people),
+              _buildCommandItem('/恋爱', '查看恋爱状态', Icons.favorite),
+              _buildCommandItem('/声望', '查看声望值', Icons.emoji_events),
+              _buildCommandItem('/cheat', '打开作弊面板', Icons.bug_report),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _inputController.text = '/帮助';
+                    _handleFreeAction();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD3A625),
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text('查看完整命令列表'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommandItem(String command, String description, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          // 推进剧情按钮
-          GestureDetector(
-            onTap: gp.isLoading
-                ? null
-                : () {
-                    if (gp.choices.isNotEmpty) {
-                      gp.processChoice(gp.choices.first);
-                    }
-                  },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: gp.isLoading ? const Color(0xFF484f58) : const Color(0xFFE8A0A0),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.pink.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('推进', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
-                  Text('剧情', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
-                ],
-              ),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFD3A625).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: const Color(0xFFD3A625)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(command,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3))),
+                const SizedBox(height: 2),
+                Text(description,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              _inputController.text = command;
+              _handleFreeAction();
+            },
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                color: const Color(0xFFD3A625).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      style: const TextStyle(color: Color(0xFFE6EDF3)),
-                      decoration: const InputDecoration(
-                        hintText: '输入自定义行动...',
-                        hintStyle: TextStyle(color: Color(0xFF8B949E)),
-                        prefixIcon: Icon(Icons.auto_awesome, size: 20, color: Color(0xFF8B949E)),
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onSubmitted: (_) => _handleFreeAction(),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _handleFreeAction,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.send, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-              ),
+              child: const Icon(Icons.play_arrow, size: 18, color: Color(0xFFD3A625)),
             ),
           ),
         ],
@@ -1343,18 +1469,18 @@ class _GameScreenState extends State<GameScreen> {
 
     if (_expandedStats) {
       final advanced = [
-        {'label': '魔咒', 'value': player.attributes['spell_understanding'] ?? 50, 'color': const Color(0xFF3B82F6)},
-        {'label': '变形', 'value': player.attributes['transfiguration'] ?? 50, 'color': const Color(0xFF8B5CF6)},
-        {'label': '魔药', 'value': player.attributes['potions'] ?? 50, 'color': const Color(0xFF10B981)},
-        {'label': '草药', 'value': player.attributes['herbology'] ?? 50, 'color': const Color(0xFF84CC16)},
-        {'label': '黑防', 'value': player.attributes['dda'] ?? 50, 'color': const Color(0xFFEF4444)},
-        {'label': '飞行', 'value': player.attributes['flying'] ?? 50, 'color': const Color(0xFF0EA5E9)},
-        {'label': '勇气', 'value': player.attributes['courage'] ?? 50, 'color': const Color(0xFFF59E0B)},
-        {'label': '意志', 'value': player.attributes['willpower'] ?? 50, 'color': const Color(0xFF6366F1)},
-        {'label': '创造', 'value': player.attributes['creativity'] ?? 50, 'color': const Color(0xFFEC4899)},
-        {'label': '社交', 'value': player.attributes['social'] ?? 50, 'color': const Color(0xFF14B8A6)},
-        {'label': '观察', 'value': player.attributes['observation'] ?? 50, 'color': const Color(0xFF06B6D4)},
-        {'label': '逻辑', 'value': player.attributes['logic'] ?? 50, 'color': const Color(0xFFA855F7)},
+        {'label': '魔咒', 'value': player.attributes['spell_understanding'] ?? 50, 'icon': Icons.auto_awesome, 'color': const Color(0xFF3B82F6)},
+        {'label': '变形', 'value': player.attributes['transfiguration'] ?? 50, 'icon': Icons.transform, 'color': const Color(0xFF8B5CF6)},
+        {'label': '魔药', 'value': player.attributes['potions'] ?? 50, 'icon': Icons.science, 'color': const Color(0xFF10B981)},
+        {'label': '草药', 'value': player.attributes['herbology'] ?? 50, 'icon': Icons.local_florist, 'color': const Color(0xFF84CC16)},
+        {'label': '黑防', 'value': player.attributes['dda'] ?? 50, 'icon': Icons.shield, 'color': const Color(0xFFEF4444)},
+        {'label': '飞行', 'value': player.attributes['flying'] ?? 50, 'icon': Icons.flight, 'color': const Color(0xFF0EA5E9)},
+        {'label': '勇气', 'value': player.attributes['courage'] ?? 50, 'icon': Icons.bolt, 'color': const Color(0xFFF59E0B)},
+        {'label': '意志', 'value': player.attributes['willpower'] ?? 50, 'icon': Icons.self_improvement, 'color': const Color(0xFF6366F1)},
+        {'label': '创造', 'value': player.attributes['creativity'] ?? 50, 'icon': Icons.psychology_alt, 'color': const Color(0xFFEC4899)},
+        {'label': '社交', 'value': player.attributes['social'] ?? 50, 'icon': Icons.people_alt, 'color': const Color(0xFF14B8A6)},
+        {'label': '观察', 'value': player.attributes['observation'] ?? 50, 'icon': Icons.visibility, 'color': const Color(0xFF06B6D4)},
+        {'label': '逻辑', 'value': player.attributes['logic'] ?? 50, 'icon': Icons.analytics, 'color': const Color(0xFFA855F7)},
       ];
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1362,23 +1488,19 @@ class _GameScreenState extends State<GameScreen> {
           Row(
             children: [
               Expanded(child: _buildAttrBarCompact(basic[0])),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(child: _buildAttrBarCompact(basic[1])),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
+              const SizedBox(width: 8),
               Expanded(child: _buildAttrBarCompact(basic[2])),
-              const SizedBox(width: 10),
-              Expanded(child: _buildAttrBarCompact(basic[3])),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
+              Expanded(child: _buildAttrBarCompact(basic[3])),
+              const SizedBox(width: 8),
               Expanded(child: _buildAttrBarCompact(basic[4])),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(child: _buildAttrBarCompact(basic[5])),
             ],
           ),
@@ -1386,28 +1508,43 @@ class _GameScreenState extends State<GameScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
+              color: const Color(0xFFD3A625).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('📚 课程属性', style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), fontWeight: FontWeight.w600)),
+            child: const Text('📚 课程属性', style: TextStyle(fontSize: 11, color: Color(0xFFD3A625), fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 8,
+            runSpacing: 8,
             children: advanced.map((a) => _buildAttrChipFull(a)).toList(),
           ),
         ],
       );
     }
 
-    // Collapsed view: compact 3 basic attribute highlights
-    return Row(
+    // Collapsed view: 2-row grid for basic attributes
+    return Column(
       children: [
-        for (int i = 0; i < basic.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(child: _buildAttrChipFull(basic[i])),
-        ],
+        Row(
+          children: [
+            Expanded(child: _buildAttrChipFull(basic[0])),
+            const SizedBox(width: 8),
+            Expanded(child: _buildAttrChipFull(basic[1])),
+            const SizedBox(width: 8),
+            Expanded(child: _buildAttrChipFull(basic[2])),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _buildAttrChipFull(basic[3])),
+            const SizedBox(width: 8),
+            Expanded(child: _buildAttrChipFull(basic[4])),
+            const SizedBox(width: 8),
+            Expanded(child: _buildAttrChipFull(basic[5])),
+          ],
+        ),
       ],
     );
   }
@@ -1418,8 +1555,9 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF1C232D),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1428,19 +1566,20 @@ class _GameScreenState extends State<GameScreen> {
             children: [
               Icon(attr['icon'] as IconData, size: 13, color: color),
               const SizedBox(width: 3),
-              Text(attr['label'] as String, style: const TextStyle(fontSize: 11)),
-              const Spacer(),
-              Text('$value', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text(attr['label'] as String, style: const TextStyle(fontSize: 11, color: Color(0xFFC9D1D9))),
+              ),
+              Text('$value', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: value / 100,
               backgroundColor: color.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation(color),
-              minHeight: 2,
+              minHeight: 3,
             ),
           ),
         ],
@@ -1450,31 +1589,34 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildAttrBarCompact(Map<String, dynamic> attr) {
     final value = attr['value'] as int;
+    final color = attr['color'] as Color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF1C232D),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(attr['icon'] as IconData, size: 14, color: attr['color'] as Color),
+              Icon(attr['icon'] as IconData, size: 14, color: color),
               const SizedBox(width: 4),
-              Text(attr['label'] as String, style: const TextStyle(fontSize: 12)),
-              const Spacer(),
-              Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text(attr['label'] as String, style: const TextStyle(fontSize: 12, color: Color(0xFFC9D1D9))),
+              ),
+              Text('$value', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: value / 100,
-              backgroundColor: (attr['color'] as Color).withValues(alpha: 0.2),
-              valueColor: AlwaysStoppedAnimation(attr['color'] as Color),
+              backgroundColor: color.withValues(alpha: 0.2),
+              valueColor: AlwaysStoppedAnimation(color),
               minHeight: 3,
             ),
           ),

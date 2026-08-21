@@ -370,70 +370,55 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
   }
 
   Widget _buildAppGrid(GameProvider gp) {
+    final apps = [
+      _AppItem(Icons.message, '魔法通讯', Color(0xFF3B82F6), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
+      }),
+      _AppItem(Icons.forum, '魔法论坛', Color(0xFFEF4444), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ForumScreen()));
+      }),
+      _AppItem(Icons.edit_note, '我的日记', Color(0xFF8B5CF6), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryScreen()));
+      }),
+      _AppItem(Icons.store_mall_directory, '对角巷', Color(0xFFF59E0B), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
+      }),
+      _AppItem(Icons.public, '世界地图', Color(0xFF10B981), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const WorldMapScreen()));
+      }),
+      _AppItem(Icons.auto_awesome, '平行世界', Color(0xFFEC4899), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
+      }),
+      _AppItem(Icons.favorite, '姻缘红娘', Color(0xFFF43F5E), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
+      }),
+      _AppItem(Icons.work, '找工作', Color(0xFF06B6D4), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
+      }),
+      _AppItem(Icons.photo_album, '相册回忆', Color(0xFFA855F7), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
+      }),
+      _AppItem(Icons.save, '存档管理', Color(0xFF84CC16), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const SaveLoadScreen()));
+      }),
+      _AppItem(Icons.inventory_2, '我的背包', Color(0xFFEAB308), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
+      }),
+      _AppItem(Icons.settings, '设置', Color(0xFF6B7280), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+      }),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildAppItem(Icons.message, '魔法通讯', Color(0xFF3B82F6), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
-              }),
-              _buildAppItem(Icons.forum, '魔法论坛', Color(0xFFEF4444), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ForumScreen()));
-              }),
-              _buildAppItem(Icons.edit_note, '我的日记', Color(0xFF8B5CF6), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryScreen()));
-              }),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildAppItem(Icons.store_mall_directory, '对角巷', Color(0xFFF59E0B), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
-              }),
-              _buildAppItem(Icons.public, '世界地图', Color(0xFF10B981), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const WorldMapScreen()));
-              }),
-              _buildAppItem(Icons.auto_awesome, '平行世界', Color(0xFFEC4899), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
-              }),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildAppItem(Icons.favorite, '姻缘红娘', Color(0xFFF43F5E), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
-              }),
-              _buildAppItem(Icons.work, '找工作', Color(0xFF06B6D4), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
-              }),
-              _buildAppItem(Icons.photo_album, '相册回忆', Color(0xFFA855F7), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
-              }),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildAppItem(Icons.save, '存档管理', Color(0xFF84CC16), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SaveLoadScreen()));
-              }),
-              _buildAppItem(Icons.inventory_2, '我的背包', Color(0xFFEAB308), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
-              }),
-              _buildAppItem(Icons.settings, '设置', Color(0xFF6B7280), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-              }),
-            ],
-          ),
-        ],
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 4,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 8,
+        childAspectRatio: 0.78,
+        children: apps.map((a) => _buildAppItem(a.icon, a.label, a.color, onTap: a.onTap)).toList(),
       ),
     );
   }
@@ -441,27 +426,35 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
   Widget _buildAppItem(IconData icon, String label, Color color, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: color.withValues(alpha: 0.3),
-                width: 1,
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 64),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
+              child: Icon(icon, color: color, size: 28),
             ),
-            child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
+          SizedBox(
+            height: 28,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -594,4 +587,13 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       ),
     );
   }
+}
+
+class _AppItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _AppItem(this.icon, this.label, this.color, this.onTap);
 }
