@@ -1500,6 +1500,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     } else if (action.contains('探索') || action.contains('闲逛') || action.contains('散步')) {
       minutes = 60;
     }
+
+    final oldMonth = _worldState.time.month;
+    final oldYear = _worldState.time.year;
     _worldState.time.advanceMinutes(minutes);
 
     // 深夜触发满月标记
@@ -1516,16 +1519,12 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
     _runConsistencyChecks();
 
-    _checkMonthlyEvolution(minutes);
+    _checkMonthlyEvolution(oldMonth, oldYear);
   }
 
-  void _checkMonthlyEvolution(int minutes) {
-    final oldMonth = _worldState.time.month;
-    final oldYear = _worldState.time.year;
-    _worldState.time.advanceMinutes(minutes);
+  void _checkMonthlyEvolution(int oldMonth, int oldYear) {
     final newMonth = _worldState.time.month;
     final newYear = _worldState.time.year;
-
     if (newMonth != oldMonth || newYear != oldYear) {
       _generateMonthlyEvent(newMonth, newYear);
     }

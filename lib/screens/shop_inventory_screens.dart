@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/game_provider.dart';
+import '../models/player.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -61,7 +64,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 const SizedBox(width: 8),
                 const Text('加隆余额', style: TextStyle(fontSize: 13)),
                 const Spacer(),
-                Text('${gp._player?.galleons ?? 0}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                Text('${gp.player?.galleons ?? 0}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -169,7 +172,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   );
                 } else {
                   final price = item['price'] as int? ?? 5;
-                  final invIndex = gp._player?.inventory.indexWhere((e) => e.name == item['name']) ?? -1;
+                  final invIndex = gp.player?.inventory.indexWhere((e) => e.name == item['name']) ?? -1;
                   if (invIndex >= 0) {
                     gp.sellItem(invIndex, price);
                     ScaffoldMessenger.of(context).showSnackBar(

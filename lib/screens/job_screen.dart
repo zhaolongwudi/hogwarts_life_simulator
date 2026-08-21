@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
+import '../models/game_systems.dart';
 
 class JobScreen extends StatefulWidget {
   const JobScreen({super.key});
@@ -127,13 +128,19 @@ class _JobScreenState extends State<JobScreen> {
   }
 
   Widget _buildStatusCards(player) {
+    final gp = context.read<GameProvider>();
+    final ws = gp.worldState;
+    final grade = player?.grade ?? 1;
+    final monthLabel = GameTime.months[ws.time.month - 1];
+    final location = ws.currentLocation ?? '霍格沃茨';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '国王十字车站 · 第1年·9月',
+            '$location · 第${grade}年·$monthLabel',
             style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
           ),
           const SizedBox(height: 8),
@@ -151,7 +158,7 @@ class _JobScreenState extends State<JobScreen> {
               Expanded(
                 child: _buildStatusCard(
                   '钱包余额',
-                  '50',
+                  '${player?.galleons ?? 0}',
                   Icons.account_balance_wallet,
                   Colors.green,
                 ),
