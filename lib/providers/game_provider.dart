@@ -41,6 +41,7 @@ class GameProvider extends ChangeNotifier {
   int _turnCount = 0;
   String _lastPlayerAction = '';
   String? _systemPrompt;
+  String _loadingStage = '';
   final List<String> _notifications = [];
   Future<void>? _pendingSave;
   bool _saveScheduled = false;
@@ -54,6 +55,7 @@ class GameProvider extends ChangeNotifier {
   int get totalCompletionTokens => _totalCompletionTokens;
   int get totalTokens => _totalTokens;
   int get apiCalls => _apiCalls;
+  String get loadingStage => _loadingStage;
 
   Player? get player => _player;
   WorldState get worldState => _worldState;
@@ -558,10 +560,10 @@ D. （可选）
     _isLoading = true;
     _turnCount++;
     _lastPlayerAction = action;
+    _loadingStage = '正在构建请求...';
     notifyListeners();
 
-    try {
-      // 精简后的 prompt：只发关键状态，减少 token
+    String buildPrompt() {
       final attributesStr = _player!.attributes.entries
           .where((e) => e.value != 0)
           .map((e) => '${_attrLabel(e.key)}:${e.value}')
@@ -587,7 +589,7 @@ D. （可选）
           ? '无'
           : _worldState.recentEvents.take(3).join('；');
 
-      final prompt = '''继续游戏叙事。
+      return '''继续游戏叙事。
 
 【情境】
 $_currentNarrative
@@ -631,15 +633,35 @@ C. （具体行动）
 D. （可选）
 
 【自由行动】（玩家可输入任何合理行为）''';
+    }
 
-      final response = await _callDeepSeek(prompt);
+    try {
+      final prompt = buildPrompt();
+      _loadingStage = '正在生成剧情...';
+      notifyListeners();
+
+      String response;
+      try {
+        response = await _callDeepSeek(prompt);
+      } catch (e) {
+        _loadingStage = '请求失败，正在重试...';
+        notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 500));
+        response = await _callDeepSeek(prompt);
+      }
+
+      _loadingStage = '正在解析回应...';
+      notifyListeners();
+
       _parseResponse(response);
       _advanceTimeForAction(action);
       _updateNPCsFromAction(action);
+      _loadingStage = '';
       _isLoading = false;
       notifyListeners();
       _autoSave();
     } catch (e) {
+      _loadingStage = '';
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -944,9 +966,82 @@ D. （可选）
   }
 
   int _playerGold() {
-    // 金加隆暂以背包中是否拥有金币物品判定
-    final hasGold = _player?.inventory.any((e) => e.name.contains('加隆') || e.name.contains('金币')) ?? false;
-    return hasGold ? 1 : 0;
+    return _player?.galleons ?? 0;
+  }
+
+  int get totalWealth {
+    final p = _player;
+    if (p == null) return 0;
+    return p.galleons + p.bankGalleons;
+  }
+
+  bool purchaseItem(String itemName, int price) {
+    final p = _player;
+    if (p == null) return false;
+    if (p.galleons < price) return false;
+    p.galleons -= price;
+    p.inventory.add(InventoryItem(id: DateTime.now().millisecondsSinceEpoch.toString(), name: itemName, description: '购买的$itemName'));
+    _notifications.add('💰 购买了 $itemName，花费 $price 加隆');
+    notifyListeners();
+    _autoSave();
+    return true;
+  }
+
+  bool sellItem(int index, int price) {
+    final p = _player;
+    if (p == null) return false;
+    if (index < 0 || index >= p.inventory.length) return false;
+    final item = p.inventory.removeAt(index);
+    p.galleons += price;
+    _notifications.add('💰 出售了 ${item.name}，获得 $price 加隆');
+    notifyListeners();
+    _autoSave();
+    return true;
+  }
+
+  bool depositToBank(int amount) {
+    final p = _player;
+    if (p == null || amount <= 0) return false;
+    if (p.galleons < amount) return false;
+    p.galleons -= amount;
+    p.bankGalleons += amount;
+    _notifications.add('🏦 存入古灵阁 $amount 加隆');
+    notifyListeners();
+    _autoSave();
+    return true;
+  }
+
+  bool withdrawFromBank(int amount) {
+    final p = _player;
+    if (p == null || amount <= 0) return false;
+    if (p.bankGalleons < amount) return false;
+    p.bankGalleons -= amount;
+    p.galleons += amount;
+    _notifications.add('🏦 从古灵阁取出 $amount 加隆');
+    notifyListeners();
+    _autoSave();
+    return true;
+  }
+
+  int acceptJob(String jobId) {
+    const jobs = {
+      'flourish_blotts': 15,
+      'apothecary': 25,
+      'gringotts': 30,
+      'honeydukes': 12,
+      'quills': 18,
+    };
+    final pay = jobs[jobId] ?? 10;
+    final p = _player;
+    if (p == null) return 0;
+    p.galleons += pay;
+    p.jobHistory.add('$jobId: +$pay加隆 (${_worldState.time.month}月${_worldState.time.day}日)');
+    _worldState.time.advanceMinutes(240);
+    p.energy = (p.energy - 15).clamp(0, 100);
+    _notifications.add('💼 打工完成（$jobId），获得 $pay 加隆');
+    notifyListeners();
+    _autoSave();
+    return pay;
   }
 
   // ==================== 指令格式化 ====================
@@ -965,7 +1060,7 @@ D. （可选）
       ..writeln('【所在地】${w.currentLocation ?? '未知'}')
       ..writeln('【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
       ..writeln('【职业】${p.initialTalent ?? '学生'}')
-      ..writeln('【财富】💰 ${_playerGold()}金加隆')
+      ..writeln('【财富】💰 ${p.galleons}金加隆 · 🏦 ${p.bankGalleons}古灵阁')
       ..writeln('【家庭】${p.familyBackground ?? '未设定'}')
       ..writeln('【社会地位】学院声望${p.houseReputation} · 魔法界声望${p.wizardingReputation} · 阵营声望${p.factionReputation}')
       ..writeln()
@@ -1418,6 +1513,127 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     _worldState.dayOfMonth = _worldState.time.day;
     _worldState.dayOfWeek = GameTime.weekdays[_worldState.time.weekday];
     _worldState.month = GameTime.months[_worldState.time.month - 1];
+
+    _runConsistencyChecks();
+
+    _checkMonthlyEvolution(minutes);
+  }
+
+  void _checkMonthlyEvolution(int minutes) {
+    final oldMonth = _worldState.time.month;
+    final oldYear = _worldState.time.year;
+    _worldState.time.advanceMinutes(minutes);
+    final newMonth = _worldState.time.month;
+    final newYear = _worldState.time.year;
+
+    if (newMonth != oldMonth || newYear != oldYear) {
+      _generateMonthlyEvent(newMonth, newYear);
+    }
+  }
+
+  void _generateMonthlyEvent(int month, int year) {
+    final templates = <String, List<String>>{
+      'ministry': [
+        '魔法部宣布了新一轮的魔法教育改革方案，涉及到所有魔法学校的课程调整。',
+        '魔法部对黑魔法防御术进行了专项检查，霍格沃茨的师资队伍通过了严格审核。',
+        '魔法部发布了新的禁咒名单，三种黑魔法被列入最高级别管制。',
+        '魔法部与妖精家族达成了新的古灵阁运营协议，加强了对魔法经济的监管。',
+      ],
+      'hogwarts': [
+        '霍格沃茨宣布了本学期的魁地奇比赛安排，各院队长已经开始紧张训练。',
+        '霍格沃茨图书馆收到了一批珍贵的古籍捐赠，其中包括几本失传已久的魔法著作。',
+        '霍格沃茨的幽灵们最近异常活跃，据说地下室里传来了奇怪的声响。',
+        '霍格沃茨大礼堂进行了季节性装饰，墙壁上挂满了与当前月份相关的魔法旗帜。',
+      ],
+      'economy': [
+        '古灵阁的金币汇率本月波动较大，加隆对英镑的比值创下了近年来的新高。',
+        '魔法药品市场供应紧张，几种常用药水的价格上涨了约15%。',
+        '魔法物品交易会在对角巷举行，吸引了来自全国各地的巫师商人。',
+        '由于天气原因，猫头鹰邮递的效率有所下降，信件送达时间延迟了1-2天。',
+      ],
+      'dark': [
+        '黑巫师的活动在欧洲大陆有所增加，魔法部派遣了更多的傲罗前往边境地区。',
+        '一座废弃的城堡被黑巫师占据，魔法界对此高度关注。',
+        '有关黑魔法社团的传闻在学生中流传，霍格沃茨加强了夜间巡逻。',
+        '魔法部截获了一批非法交易的魔法生物，其中包括几只受保护的独角兽幼崽。',
+      ],
+      'creature': [
+        '禁林中的独角兽族群迁徙了新的领地，生物学家对此进行了密切观察。',
+        '一只罕见的凤凰在霍格沃茨上空出现了数天，引发了学生们的热烈讨论。',
+        '家养小精灵权益促进会（S.P.E.W.）发起了新一轮的签名请愿活动。',
+        '挪威脊背龙的幼崽在冰岛被发现，生物学家正在研究它的生活习性。',
+      ],
+    };
+
+    final pool = <String>[];
+    final monthKey = _monthSeasonKey(month);
+    pool.addAll(templates[monthKey] ?? []);
+    pool.addAll(templates['ministry']!);
+    pool.addAll(templates['hogwarts']!);
+    pool.addAll(templates['economy']!);
+    if (_random.nextDouble() < 0.3) pool.addAll(templates['dark']!);
+    if (_random.nextDouble() < 0.4) pool.addAll(templates['creature']!);
+
+    pool.shuffle(_random);
+    final event = '【${year}年${month}月·月度世界演化】${pool.first}';
+
+    _worldState.recentEvents.insert(0, event);
+    if (_worldState.recentEvents.length > 50) {
+      _worldState.recentEvents.removeLast();
+    }
+
+    _worldState.housePoints = Map<String, int>.fromEntries(
+      _worldState.housePoints.entries.map((e) => MapEntry(e.key, (e.value + _random.nextInt(5) - 2).clamp(0, 9999)),
+    );
+
+    _notifications.add('🌍 $event');
+  }
+
+  String _monthSeasonKey(int month) {
+    if (month >= 3 && month <= 5) return 'creature';
+    if (month >= 6 && month <= 8) return 'dark';
+    if (month >= 9 && month <= 11) return 'hogwarts';
+    return 'ministry';
+  }
+
+  void _runConsistencyChecks() {
+    final p = _player;
+    if (p == null) return;
+    final issues = <String>[];
+
+    p.health = p.health.clamp(0, 100);
+    p.magic = p.magic.clamp(0, 100);
+    p.spirit = p.spirit.clamp(0, 100);
+    p.satiety = p.satiety.clamp(0, 100);
+    p.energy = p.energy.clamp(0, 100);
+
+    for (final npc in _npcRegistry.values) {
+      npc.affection = npc.affection.clamp(-100, 100);
+      if (!npc.isAlive && p.relationships.containsKey(npc.id)) {
+        issues.add('NPC "${npc.name}" 已死亡但仍在关系列表中');
+      }
+    }
+
+    final year = _worldState.time.year;
+    if (year < 1890 || year > 2100) {
+      issues.add('年份异常: $year');
+    }
+    final month = _worldState.time.month;
+    if (month < 1 || month > 12) {
+      _worldState.time.month = month.clamp(1, 12);
+      issues.add('月份越界，已修正');
+    }
+
+    for (final entry in p.houseDimensions.entries) {
+      if (entry.value < 0) {
+        p.houseDimensions[entry.key] = 0;
+        issues.add('学院四维 "${entry.key}" 负值，已归零');
+      }
+    }
+
+    if (issues.isNotEmpty) {
+      _notifications.add('⚠️ 状态自修复：${issues.join('；')}');
+    }
   }
 
   void _fastForwardTime(int days) {
@@ -2186,15 +2402,21 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     );
   }
 
+  static const int _saveVersion = 2;
+
   Future<void> loadFromSave(String slotId) async {
     final data = await _saveService.loadGame(slotId);
     if (data == null) return;
+
+    final version = data['save_version'] as int? ?? 1;
+    _migrateSave(data, version);
 
     _player = Player.fromJson(data['player'] as Map<String, dynamic>);
     _worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
     _systemPrompt = _buildSystemPrompt();
     _npcRegistry.clear();
-    (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
+    final npcMap = data['npc_registry'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    npcMap.forEach((k, v) {
       _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
     });
     _currentNarrative = data['narrative'] as String? ?? '';
@@ -2202,9 +2424,43 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
         ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
         .toList() ?? [];
     _turnCount = data['turn_count'] as int? ?? 0;
+    _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();
     _autoSave();
+  }
+
+  void _migrateSave(Map<String, dynamic> data, int version) {
+    if (version < 2) {
+      final ws = data['world_state'] as Map<String, dynamic>?;
+      if (ws != null) {
+        final oldMonth = ws['month'] as String?;
+        if (oldMonth != null) {
+          final monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          final idx = monthNames.indexOf(oldMonth);
+          if (idx >= 0) {
+            ws['month'] = GameTime.months[idx];
+            debugPrint('存档迁移: month "$oldMonth" -> "${ws['month']}"');
+          }
+        }
+        if (!ws.containsKey('time')) {
+          debugPrint('存档迁移: 从旧字段推导 time 字段');
+          final yearStr = ws['academic_year'] ?? '1991-1992';
+          final yearMatch = RegExp(r'^(\d{4})').firstMatch(yearStr.toString());
+          final year = yearMatch != null ? int.tryParse(yearMatch.group(1)!) ?? 1991 : 1991;
+          final monthIdx = monthNames.indexOf(ws['month'] as String? ?? '') + 1;
+          ws['time'] = {
+            'year': year,
+            'month': monthIdx > 0 ? monthIdx : 9,
+            'day': ws['day_of_month'] as int? ?? 1,
+            'weekday': 2,
+            'hour': 9,
+            'minute': 0,
+          };
+        }
+      }
+      data['save_version'] = _saveVersion;
+    }
   }
 
   Future<List<Map<String, dynamic>>> listSaves() async {

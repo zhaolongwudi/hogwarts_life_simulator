@@ -53,6 +53,9 @@ class Player {
   final Map<String, CgRecord> cgRecords; // 已解锁CG
   final List<String> achievements; // 已解锁成就
   bool boneMode; // 骨科模式
+  int galleons; // 加隆余额（魔法货币）
+  int bankGalleons; // 古灵阁存储
+  final List<String> jobHistory; // 打工历史
   final List<String> bloodRelatives; // 血缘亲属NPC名
   final List<Letter> letters; // 信件
   final List<String> rumors; // 舆论传闻
@@ -105,6 +108,9 @@ class Player {
     Map<String, CgRecord>? cgRecords,
     List<String>? achievements,
     this.boneMode = false,
+    this.galleons = 500,
+    this.bankGalleons = 0,
+    List<String>? jobHistory,
     List<String>? bloodRelatives,
     List<Letter>? letters,
     List<String>? rumors,
@@ -210,6 +216,9 @@ class Player {
         'cg_records': cgRecords.map((k, v) => MapEntry(k, v.toJson())),
         'achievements': achievements,
         'bone_mode': boneMode,
+        'galleons': galleons,
+        'bank_galleons': bankGalleons,
+        'job_history': jobHistory,
         'blood_relatives': bloodRelatives,
         'letters': letters.map((e) => e.toJson()).toList(),
         'rumors': rumors,
@@ -271,6 +280,9 @@ class Player {
             {},
         achievements: List<String>.from(json['achievements'] ?? []),
         boneMode: json['bone_mode'] ?? false,
+        galleons: json['galleons'] ?? 500,
+        bankGalleons: json['bank_galleons'] ?? 0,
+        jobHistory: List<String>.from(json['job_history'] ?? []),
         bloodRelatives: List<String>.from(json['blood_relatives'] ?? []),
         letters: (json['letters'] as List<dynamic>?)
                 ?.map((e) => Letter.fromJson(e))

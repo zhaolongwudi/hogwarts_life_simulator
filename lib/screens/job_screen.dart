@@ -313,8 +313,10 @@ class _JobScreenState extends State<JobScreen> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
+                    final gp = context.read<GameProvider>();
+                    final pay = gp.acceptJob(job['id'] as String? ?? 'unknown');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('已接受岗位: ${job['title']}')),
+                      SnackBar(content: pay > 0 ? Text('完成岗位 ${job['title']}，获得 $pay 加隆') : const Text('打工失败')),
                     );
                   },
                   child: const Text('接受', style: TextStyle(fontSize: 13)),

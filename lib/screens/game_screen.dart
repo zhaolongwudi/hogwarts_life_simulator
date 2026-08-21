@@ -275,17 +275,34 @@ class _GameScreenState extends State<GameScreen> {
           Padding(
             padding: const EdgeInsets.all(8),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.pink.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  SizedBox(width: 8),
-                  Text('推进中...'),
+                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: 10),
+                  Text(
+                    gp.loadingStage.isNotEmpty ? gp.loadingStage : '推进中...',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  if (gp.totalTokens > 0) ...[
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4A5568),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${gp.totalTokens} tokens',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFA0AEC0)),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

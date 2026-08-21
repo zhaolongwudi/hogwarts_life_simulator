@@ -61,7 +61,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 const SizedBox(width: 8),
                 const Text('加隆余额', style: TextStyle(fontSize: 13)),
                 const Spacer(),
-                const Text('50', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                Text('${gp._player?.galleons ?? 0}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -160,9 +160,27 @@ class _ShopScreenState extends State<ShopScreen> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(isBuy ? '已购买 ${item['name']}' : '已上架 ${item['name']}')),
-                );
+                final gp = context.read<GameProvider>();
+                if (isBuy) {
+                  final price = item['price'] as int? ?? 10;
+                  final ok = gp.purchaseItem(item['name'] as String? ?? '未知物品', price);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(ok ? '已购买 ${item['name']} (花费 $price 加隆)' : '加隆不足！需要 $price 加隆')),
+                  );
+                } else {
+                  final price = item['price'] as int? ?? 5;
+                  final invIndex = gp._player?.inventory.indexWhere((e) => e.name == item['name']) ?? -1;
+                  if (invIndex >= 0) {
+                    gp.sellItem(invIndex, price);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('已出售 ${item['name']} (获得 $price 加隆)')),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('背包中没有此物品')),
+                    );
+                  }
+                }
               },
               child: Text(isBuy ? '+ 买入' : '出售', style: const TextStyle(fontSize: 13)),
             ),
