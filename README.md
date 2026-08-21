@@ -179,6 +179,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.7.8 — 2026-08-21
+
+**📋 变更说明**
+fix: 优化剧情连贯性和token显示
+
+问题修复:
+1. Token显示: 从累计token改为显示单回合token(lastRoundTokens)
+2. 剧情过短: 恢复prompt输出要求从200-300字增加到400-600字
+3. 上下文不足: 近期剧情保留从150字增加到400字
+4. 缺少NPC互动: 添加_buildSceneContext显示当前场景NPC信息
+
 ### v0.7.7 — 2026-08-21
 
 **📋 变更说明**
