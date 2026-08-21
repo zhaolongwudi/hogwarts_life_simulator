@@ -142,6 +142,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.1 — 2026-08-21
+
+**📋 变更说明**
+feat: 完善token统计、余额查询和连接测试功能
+
+1. 连接测试修复：
+- 改用真实chat-completion请求测试连接（发送"Hi, reply with OK."）
+- 替代之前的GET /models端点（智谱/Agnes可能不支持）
+- 更好的错误处理和状态码识别
+
 ### v0.5.0 — 2026-08-21
 
 **📋 变更说明**
