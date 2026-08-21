@@ -38,22 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _saveKey() async {
-    final key = _keyController.text.trim();
-    if (key.isEmpty) {
-      return;
-    }
-    await context.read<AppProvider>().saveApiKey(key);
-    if (!mounted) {
-      return;
-    }
-    await context.read<GameProvider>().updateApiKey(key);
-    if (!mounted) {
-      return;
-    }
-    setState(() => _connectionStatus = null);
-  }
-
   Future<void> _checkConnection() async {
     setState(() {
       _checking = true;
@@ -590,7 +574,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFFD3A625).withOpacity(0.2)
+                        ? const Color(0xFFD3A625).withValues(alpha: 0.2)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../providers/app_provider.dart';
 import 'deepseek_service.dart';
-import 'deepseek_service.dart' show ChatResult;
 
 enum AiScene { narrative, summary, npcChat }
 
@@ -108,7 +107,7 @@ class AiRouter {
       try {
         return await service.chatComplete(
           prompt: prompt,
-          systemPrompt: systemPrompt,
+          systemPrompt: systemPrompt ?? '',
           temperature: temperature,
           maxTokens: maxTokens,
         );
@@ -124,11 +123,11 @@ class AiRouter {
     throw Exception('所有AI服务均不可用');
   }
 
-  Future<int?> checkBalance(AiProvider provider) async {
+  Future<double?> checkBalance(AiProvider provider) async {
     final service = _services[provider];
     if (service == null) return null;
     try {
-      return await service.checkBalance();
+      return await service.getBalance();
     } catch (e) {
       return null;
     }

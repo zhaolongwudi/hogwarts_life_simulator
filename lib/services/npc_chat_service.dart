@@ -5,7 +5,6 @@ import '../models/npc.dart';
 import '../models/player.dart';
 import '../models/world_state.dart';
 import '../providers/app_provider.dart';
-import 'deepseek_service.dart';
 import 'ai_router.dart';
 
 class ChatMessage {
