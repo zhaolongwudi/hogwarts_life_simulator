@@ -142,6 +142,15 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.4.9 — 2026-08-21
+
+**📋 变更说明**
+feat: DeepSeek更新为V4系列模型
+
+- 新增 deepseek-v4-flash（1M上下文，默认）和 deepseek-v4-pro
+- 保留旧模型名 deepseek-chat/deepseek-reasoner（兼容至2026/07/24）
+- 默认模型从 deepseek-chat 切换为 deepseek-v4-flash
+
 ### v0.4.8 — 2026-08-21
 
 **📋 变更说明**
