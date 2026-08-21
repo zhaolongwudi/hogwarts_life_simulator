@@ -138,7 +138,10 @@ class AppProvider extends ChangeNotifier {
   Map<String, String> get apiKeys => Map.unmodifiable(_apiKeys);
   Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
   Map<String, String> get models => Map.unmodifiable(_models);
+  Map<String, String> get providerModels => Map.unmodifiable(_models);
   Map<AiScene, String> get sceneRoute => Map.unmodifiable(_sceneRoute);
+
+  String providerModel(AiProvider p) => _models[p.name] ?? _defaultModel(p);
 
   AiProvider providerForScene(AiScene scene) {
     final name = _sceneRoute[scene] ?? kDefaultRoute[scene]!;
@@ -391,6 +394,16 @@ class AppProvider extends ChangeNotifier {
       prefs.remove('api_key');
       prefs.remove('api_key_${_aiProvider.name}');
       prefs.remove('base_url_${_aiProvider.name}');
+    });
+    notifyListeners();
+  }
+
+  void clearApiKeyFor(AiProvider p) {
+    _apiKeys.remove(p.name);
+    _baseUrls.remove(p.name);
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('api_key_${p.name}');
+      prefs.remove('base_url_${p.name}');
     });
     notifyListeners();
   }

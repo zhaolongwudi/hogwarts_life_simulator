@@ -13,77 +13,121 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _keyController = TextEditingController();
-  final _baseUrlController = TextEditingController();
-  bool _checking = false;
-  String? _connectionStatus;
-  double? _balance;
-  Map<String, dynamic>? _quotaInfo;
+  final _keyControllers = <AiProvider, TextEditingController>{};
+  final _modelControllers = <AiProvider, TextEditingController>{};
+  bool _testing = false;
+  final _testResults = <AiProvider, String>{};
+  final _testSuccess = <AiProvider, bool>{};
 
   @override
   void initState() {
     super.initState();
     final appProvider = context.read<AppProvider>();
-    _keyController.text = appProvider.apiKey ?? '';
-    final customUrl = appProvider.baseUrls[appProvider.aiProvider.name];
-    if (customUrl != null) {
-      _baseUrlController.text = customUrl;
+    for (final p in AiProvider.values) {
+      _keyControllers[p] = TextEditingController(text: appProvider.apiKeys[p.name] ?? '');
+      _modelControllers[p] = TextEditingController(text: appProvider.providerModel(p));
     }
   }
 
   @override
   void dispose() {
-    _keyController.dispose();
-    _baseUrlController.dispose();
+    for (final c in _keyControllers.values) {
+      c.dispose();
+    }
+    for (final c in _modelControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _checkConnection() async {
+  Future<void> _saveKeyAndModel(AiProvider p) async {
+    final key = _keyControllers[p]!.text.trim();
+    final model = _modelControllers[p]!.text.trim();
+    final appProvider = context.read<AppProvider>();
+
+    if (key.isNotEmpty) {
+      final savedKeys = Map<String, String>.from(appProvider.apiKeys);
+      savedKeys[p.name] = key;
+      await SharedPreferences.getInstance().then((prefs) async {
+        await prefs.setString('api_key_${p.name}', key);
+      });
+    }
+
+    if (model.isNotEmpty) {
+      final savedModels = Map<String, String>.from(appProvider.providerModels);
+      savedModels[p.name] = model;
+      await SharedPreferences.getInstance().then((prefs) async {
+        await prefs.setString('provider_model_${p.name}', model);
+      });
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _testConnection(AiProvider p) async {
     setState(() {
-      _checking = true;
-      _connectionStatus = null;
-      _balance = null;
-      _quotaInfo = null;
+      _testing = true;
+      _testResults[p] = '测试中...';
+      _testSuccess[p] = false;
     });
 
     try {
-      final gp = context.read<GameProvider>();
-      final connected = await gp.checkConnection();
-      if (!mounted) {
-        return;
-      }
-      if (connected) {
-        setState(() => _connectionStatus = '✅ 连接成功');
-        final bal = await gp.balance;
-        if (!mounted) {
-          return;
-        }
-        if (bal != null) {
-          setState(() => _balance = bal);
-        }
-        final quota = await gp.quotaInfo;
-        if (!mounted) {
-          return;
-        }
-        if (quota != null) {
-          setState(() => _quotaInfo = quota);
-        }
-      } else {
-        if (!mounted) {
-          return;
-        }
-        setState(() => _connectionStatus = '❌ 连接失败，请检查 API Key 和 Base URL');
-      }
+      final service = DeepSeekService(
+        config: AiConfig(
+          provider: p,
+          apiKey: _keyControllers[p]!.text.trim(),
+          baseUrl: defaultBaseUrl(p),
+          chatPath: '/chat/completions',
+          model: _modelControllers[p]!.text.trim().isEmpty
+              ? defaultModel(p)
+              : _modelControllers[p]!.text.trim(),
+        ),
+      );
+      final connected = await service.checkConnection();
+      if (!mounted) return;
+      setState(() {
+        _testResults[p] = connected ? '✅ 连接成功' : '❌ 连接失败';
+        _testSuccess[p] = connected;
+      });
     } catch (e) {
-      if (!mounted) {
-        return;
+      if (!mounted) return;
+      setState(() {
+        _testResults[p] = '❌ $e';
+        _testSuccess[p] = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _testing = false);
       }
-      setState(() => _connectionStatus = '❌ 错误: $e');
     }
-    if (!mounted) {
-      return;
+  }
+
+  String defaultBaseUrl(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return 'https://api.deepseek.com';
+      case AiProvider.zhipu:
+        return 'https://open.bigmodel.cn';
+      case AiProvider.agnes:
+        return 'https://apihub.agnes-ai.cn';
+      case AiProvider.sensenova:
+        return 'https://platform.sensenova.cn';
     }
-    setState(() => _checking = false);
+  }
+
+  String defaultModel(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return 'deepseek-v4-flash';
+      case AiProvider.zhipu:
+        return 'glm-4.7-flash';
+      case AiProvider.agnes:
+        return 'agnes-2.5-flash';
+      case AiProvider.sensenova:
+        return 'SenseNova-N8';
+    }
   }
 
   @override
@@ -91,69 +135,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final appProvider = context.watch<AppProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(
+        title: const Text('设置'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         children: [
-          const Text('AI 服务配置',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          _buildProviderPicker(appProvider.aiProvider.name),
+          const Text('🤖 AI 服务配置',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 4),
+          const Text('选择并配置您的 AI 提供商',
+              style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
           const SizedBox(height: 12),
-          _buildApiKeyInput(appProvider),
-          const SizedBox(height: 12),
-          _buildBaseUrlInput(appProvider),
-          const SizedBox(height: 12),
-          _buildModelPicker(appProvider),
-          const SizedBox(height: 12),
+          ...AiProvider.values.map((p) => _buildProviderCard(p, appProvider)),
+          const SizedBox(height: 16),
           _buildSceneRouting(appProvider),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: _checking ? null : _checkConnection,
-                child: _checking
-                    ? const SizedBox(
-                        width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('测试连接'),
-              ),
-              const SizedBox(width: 12),
-              if (_connectionStatus != null)
-                Text(_connectionStatus!,
-                    style: TextStyle(
-                        color: _connectionStatus!.startsWith('✅') ? Colors.green : Colors.red)),
-            ],
-          ),
-          if (_balance != null || _quotaInfo != null)
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1C232D),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF30363D)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_balance != null)
-                    Text('💰 账户余额: ¥${_balance!.toStringAsFixed(2)}',
-                        style: const TextStyle(color: Color(0xFFD3A625), fontWeight: FontWeight.w600)),
-                  if (_balance != null && _quotaInfo != null)
-                    const SizedBox(height: 8),
-                  if (_quotaInfo != null) ...[
-                    _buildQuotaInfo(),
-                  ],
-                ],
-              ),
-            ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildTokenUsage(),
-          const Divider(height: 40),
-          
-          const Text('显示模式',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          const Text('📺 显示模式',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 4),
+          const Text('选择游戏界面的显示风格',
+              style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+          const SizedBox(height: 12),
           _buildModePicker(appProvider.displayMode.name,
               disabled: appProvider.identityMode == IdentityMode.transmigration
                   ? const {'magazine'}
@@ -164,10 +173,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 else context.read<AppProvider>().setDisplayMode(DisplayMode.immersive);
               }),
           const SizedBox(height: 24),
-          
-          const Text('身份模式',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const Text('🎭 身份模式',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 4),
+          const Text('选择玩家在游戏中的身份定位',
+              style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+          const SizedBox(height: 12),
           _buildModePicker(appProvider.identityMode.name,
               modes: const [
                 ModeOption('原住民', 'native', '角色不知道自己是小说人物'),
@@ -189,303 +200,235 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           const SizedBox(height: 24),
-          
-          const Text('时代背景',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const Text('⏳ 时代背景',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 4),
+          const Text('选择游戏开始的时代',
+              style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+          const SizedBox(height: 12),
           _buildEraPicker(appProvider.era.name),
-          const Divider(height: 40),
-          
-          const Text('危险操作',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
-          const SizedBox(height: 8),
-          ListTile(
-            title: const Text('清除 API Key'),
-            subtitle: const Text('删除本地保存的 API Key'),
-            trailing: const Icon(Icons.delete, color: Colors.red),
-            onTap: () {
-              appProvider.clearApiKey();
-              _keyController.clear();
-            },
-          ),
-          ListTile(
-            title: const Text('开始新游戏'),
-            subtitle: const Text('重置当前游戏进度'),
-            trailing: const Icon(Icons.refresh, color: Colors.orange),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('确认？'),
-                  content: const Text('所有进度将被清除，确定继续？'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-                    ElevatedButton(
-                      onPressed: () {
-                        appProvider.setGameStarted(false);
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text('确认'),
-                    ),
-                  ],
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF252C36),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF374151)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('⚠️ 危险操作',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+                const SizedBox(height: 8),
+                ListTile(
+                  title: const Text('清除所有 API Key'),
+                  subtitle: const Text('删除本地保存的所有 AI 提供商 Key'),
+                  trailing: const Icon(Icons.delete, color: Colors.red),
+                  onTap: () {
+                    for (final p in AiProvider.values) {
+                      context.read<AppProvider>().clearApiKeyFor(p);
+                      _keyControllers[p]!.clear();
+                    }
+                    setState(() {});
+                  },
                 ),
-              );
-            },
+                ListTile(
+                  title: const Text('开始新游戏'),
+                  subtitle: const Text('重置当前游戏进度'),
+                  trailing: const Icon(Icons.refresh, color: Colors.orange),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('确认？'),
+                        content: const Text('所有进度将被清除，确定继续？'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+                          ElevatedButton(
+                            onPressed: () {
+                              appProvider.setGameStarted(false);
+                              Navigator.pop(context);
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            child: const Text('确认'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  Widget _buildProviderPicker(String current) {
-    final providers = const [
-      _ProviderOption('DeepSeek', 'deepseek', 'https://platform.deepseek.com'),
-      _ProviderOption('智谱 AI', 'zhipu', 'https://open.bigmodel.cn'),
-      _ProviderOption('Agnes', 'agnes', 'https://www.agnes-ai.cn'),
-      _ProviderOption('SenseNova·商汤日日新', 'sensenova', 'https://platform.sensenova.cn'),
-    ];
-    return Column(
-      children: providers.map((p) {
-        final isSelected = p.value == current;
-        return ListTile(
-          title: Text(p.label),
-          subtitle: Text(p.url, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          leading: Radio<String>(
-            // ignore: deprecated_member_use
-            value: p.value,
-            // ignore: deprecated_member_use
-            groupValue: current,
-            // ignore: deprecated_member_use
-            onChanged: (v) {
-              if (v != null) {
-                _switchProvider(v);
-              }
-            },
+  Widget _buildProviderCard(AiProvider p, AppProvider appProvider) {
+    final hasKey = appProvider.hasKey(p);
+    final desc = kProviderDescriptions[p] ?? '';
+    final testResult = _testResults[p];
+    final testSuccess = _testSuccess[p];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252C36),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: hasKey ? const Color(0xFF10B981) : const Color(0xFF374151),
+            width: hasKey ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  providerNameLabel(p),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ),
+              if (hasKey)
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, size: 14, color: Color(0xFF10B981)),
+                    SizedBox(width: 4),
+                    Text('已配置', style: TextStyle(fontSize: 11, color: Color(0xFF10B981))),
+                  ],
+                )
+              else
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, size: 14, color: Colors.orange),
+                    SizedBox(width: 4),
+                    Text('未配置', style: TextStyle(fontSize: 11, color: Colors.orange)),
+                  ],
+                ),
+            ],
           ),
-          selected: isSelected,
-          onTap: () => _switchProvider(p.value),
-        );
-      }).toList(),
-    );
-  }
-
-  void _switchProvider(String value) {
-    final provider = AiProvider.values.firstWhere(
-      (e) => e.name == value,
-    );
-    context.read<AppProvider>().setAiProvider(provider);
-    final savedKey = context.read<AppProvider>().apiKeys[value];
-    if (savedKey != null) {
-      _keyController.text = savedKey;
-    } else {
-      _keyController.clear();
-    }
-    final savedUrl = context.read<AppProvider>().baseUrls[value];
-    if (savedUrl != null) {
-      _baseUrlController.text = savedUrl;
-    } else {
-      _baseUrlController.clear();
-    }
-    setState(() => _connectionStatus = null);
-  }
-
-  Widget _buildApiKeyInput(AppProvider appProvider) {
-    final controllers = <AiProvider, TextEditingController>{};
-    for (final p in AiProvider.values) {
-      final key = appProvider.apiKeys[p.name] ?? '';
-      controllers[p] = TextEditingController(text: key);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('API Key 配置（可同时配置多个）',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        ...AiProvider.values.map((p) {
-          final ctrl = controllers[p]!;
-          final hint = {
-            AiProvider.deepseek: 'sk-... (付费)',
-            AiProvider.zhipu: '智谱 API Key (免费)',
-            AiProvider.agnes: 'Agnes API Key (免费)',
-            AiProvider.sensenova: 'SenseNova API Key (免费, sk-开头)',
-          }[p] ?? 'API Key';
-          final url = {
-            AiProvider.deepseek: 'platform.deepseek.com',
-            AiProvider.zhipu: 'open.bigmodel.cn',
-            AiProvider.agnes: 'www.agnes-ai.cn',
-            AiProvider.sensenova: 'platform.sensenova.cn',
-          }[p] ?? '';
-          final desc = kProviderDescriptions[p] ?? '';
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF252C36),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: appProvider.hasKey(p)
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFF374151)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        providerNameLabel(p),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (appProvider.hasKey(p))
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check_circle, size: 14, color: Color(0xFF10B981)),
-                          SizedBox(width: 4),
-                          Text('已配置', style: TextStyle(fontSize: 11, color: Color(0xFF10B981))),
-                        ],
-                      )
-                    else
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.error_outline, size: 14, color: Colors.orange),
-                          SizedBox(width: 4),
-                          Text('未配置', style: TextStyle(fontSize: 11, color: Colors.orange)),
-                        ],
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(desc,
-                    style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11, height: 1.3)),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: ctrl,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: hint,
-                          helperText: '获取地址: $url',
-                          helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 36,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final key = ctrl.text.trim();
-                          if (key.isEmpty) return;
-                          final savedKeys = Map<String, String>.from(appProvider.apiKeys);
-                          savedKeys[p.name] = key;
-                          await SharedPreferences.getInstance().then((prefs) async {
-                            await prefs.setString('api_key_${p.name}', key);
-                          });
-                          if (mounted) {
-                            setState(() {});
-                          }
-                        },
-                        child: const Text('保存', style: TextStyle(fontSize: 12)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildBaseUrlInput(AppProvider appProvider) {
-    final defaultUrl = appProvider.aiConfig.baseUrl;
-    final hasCustomUrl = appProvider.baseUrls.containsKey(appProvider.aiProvider.name);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('自定义 API 地址',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            if (hasCustomUrl)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text('自定义',
-                    style: TextStyle(fontSize: 11, color: Colors.orange)),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-            '默认: $defaultUrl\n如使用代理或自建服务可修改此项',
-            style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _baseUrlController,
-                decoration: const InputDecoration(
-                  hintText: 'https://api.example.com',
-                  prefixIcon: Icon(Icons.link),
-                  border: OutlineInputBorder(),
+          const SizedBox(height: 4),
+          Text(desc,
+              style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11.5, height: 1.4)),
+          const SizedBox(height: 8),
+          Text('API Key',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _keyControllers[p]!,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'sk-...',
+                    helperText: '获取地址: ${defaultBaseUrl(p)}',
+                    helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () async {
-                final url = _baseUrlController.text.trim();
-                await appProvider.setBaseUrl(url);
-                if (mounted) {
-                  setState(() {});
-                }
-              },
-              child: const Text('保存'),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: () => _saveKeyAndModel(p),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD3A625),
+                    foregroundColor: const Color(0xFF1C232D),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: const Size(0, 40),
+                  ),
+                  child: const Text('保存', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('模型（可选覆盖默认）',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _modelControllers[p]!,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: defaultModel(p),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 40,
+                child: OutlinedButton(
+                  onPressed: _testing ? null : () => _testConnection(p),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFD3A625)),
+                    foregroundColor: const Color(0xFFD3A625),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: const Size(0, 40),
+                  ),
+                  child: _testing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD3A625)),
+                        )
+                      : const Text('测试', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+          if (testResult != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: (testSuccess ?? false)
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : Colors.red.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    (testSuccess ?? false) ? Icons.check_circle : Icons.error,
+                    size: 14,
+                    color: (testSuccess ?? false) ? const Color(0xFF10B981) : Colors.red,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      testResult,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: (testSuccess ?? false) ? const Color(0xFF10B981) : Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModelPicker(AppProvider appProvider) {
-    final models = appProvider.availableModels;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('模型', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Wrap(
-          spacing: 8,
-          children: models.map((m) {
-            final selected = appProvider.aiModel == m;
-            return FilterChip(
-              label: Text(m),
-              selected: selected,
-              onSelected: (_) => appProvider.setAiModel(m),
-            );
-          }).toList(),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -505,15 +448,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Icon(Icons.hub, color: Color(0xFFD3A625), size: 20),
               const SizedBox(width: 8),
               const Expanded(
-                child: Text('多模型路由配置',
+                child: Text('🔀 多模型路由配置',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          const Text('为不同场景分配 AI 提供商，实现最优成本与效果',
+              style: TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+          const SizedBox(height: 10),
+          ...AiScene.values.map((scene) => _buildSceneRow(scene, appProvider)),
           const SizedBox(height: 8),
-          ...AiScene.values.map((scene) {
-            return _buildSceneRow(scene, appProvider);
-          }),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF30363D)),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('📊 场景预估',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
+                SizedBox(height: 6),
+                Text('• 主剧情: 1500-3000 token/回合 | 约8次/游戏小时',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4)),
+                Text('• 摘要压缩: 800-1200 token/次 | 每10回合触发1次',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4)),
+                Text('• NPC聊天: 300-800 token/次 | 按需调用',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -524,6 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final description = kSceneDescriptions[scene] ?? '';
     final label = kSceneLabels[scene] ?? scene.name;
     final hasKey = appProvider.hasKey(provider);
+    final info = _sceneInfo(scene);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -553,10 +521,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(fontSize: 11, color: Colors.orange)),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(description,
                         style: const TextStyle(
                             color: Color(0xFF8B949E), fontSize: 11, height: 1.3)),
+                    const SizedBox(height: 2),
+                    Text(info,
+                        style: const TextStyle(
+                            color: Color(0xFFD3A625), fontSize: 10.5, height: 1.3)),
                   ],
                 ),
               ),
@@ -611,6 +583,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  String _sceneInfo(AiScene scene) {
+    switch (scene) {
+      case AiScene.narrative:
+        return '≈1500-3000 token/回合 · 约8次/小时';
+      case AiScene.summary:
+        return '≈800-1200 token/次 · 每10回合1次';
+      case AiScene.npcChat:
+        return '≈300-800 token/次 · 按需调用';
+    }
   }
 
   String providerNameLabel(AiProvider p) {
@@ -768,59 +751,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildQuotaInfo() {
-    if (_quotaInfo == null) return const SizedBox.shrink();
-    final limits = _quotaInfo!['limits'] as List?;
-    if (limits == null || limits.isEmpty) return const SizedBox.shrink();
-
-    final items = <Widget>[];
-    for (final limit in limits) {
-      if (limit is Map<String, dynamic>) {
-        final type = limit['type'] as String? ?? '';
-        final percentage = limit['percentage'] as num? ?? 0;
-        final label = type == 'TOKENS_LIMIT' ? 'Token额度' : type == 'TIME_LIMIT' ? '时间额度' : type;
-        items.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              children: [
-                SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)))),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: (percentage / 100).clamp(0.0, 1.0),
-                      backgroundColor: const Color(0xFF30363D),
-                      valueColor: AlwaysStoppedAnimation(
-                        percentage > 80 ? Colors.red : percentage > 50 ? Colors.orange : Colors.green,
-                      ),
-                      minHeight: 6,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 40,
-                  child: Text('${percentage.toStringAsFixed(0)}%',
-                      style: TextStyle(fontSize: 12, color: percentage > 80 ? Colors.red : Colors.white, fontWeight: FontWeight.w600)),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('📊 额度使用情况', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
-        const SizedBox(height: 6),
-        ...items,
-      ],
-    );
-  }
-
   Widget _buildTokenUsage() {
     final gp = context.watch<GameProvider>();
     final hasData = gp.apiCalls > 0;
@@ -838,6 +768,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Row(
             children: [
+              const Icon(Icons.bar_chart, color: Color(0xFFD3A625), size: 18),
+              const SizedBox(width: 6),
               const Text('📈 Token 使用统计',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
               const Spacer(),
@@ -909,7 +841,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return n.toString();
   }
-
 }
 
 class ModeOption {
@@ -924,11 +855,4 @@ class EraOption {
   final String value;
   final String desc;
   const EraOption(this.label, this.value, this.desc);
-}
-
-class _ProviderOption {
-  final String label;
-  final String value;
-  final String url;
-  const _ProviderOption(this.label, this.value, this.url);
 }

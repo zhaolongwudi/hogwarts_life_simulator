@@ -2117,7 +2117,13 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       currentIndex: _currentTab,
-      onTap: (index) => setState(() => _currentTab = index),
+      onTap: (index) {
+        if (index == 3) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+        } else {
+          setState(() => _currentTab = index);
+        }
+      },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '剧情'),
         BottomNavigationBarItem(icon: Icon(Icons.phone_android), label: '手机'),
