@@ -94,9 +94,14 @@ flutter build apk --release
 推送代码到 `main` 分支后，GitHub Actions 会自动：
 1. 运行 `flutter analyze` 代码检查
 2. 构建 release APK
-3. 上传为 GitHub Release 资产
+3. 上传到 nightly.link 和 GitHub Releases
 
-下载最新版本：[Releases 页面](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases)
+### 下载地址
+
+| 来源 | 链接 | 说明 |
+|------|------|------|
+| nightly.link | [下载最新版 APK](https://nightly.link/zhaolongwudi/hogwarts_life_simulator/HogwartLige-nightly.zip) | 免登录直接下载，每次构建自动更新 |
+| GitHub Releases | [历史版本](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases) | 所有版本归档 |
 
 ---
 

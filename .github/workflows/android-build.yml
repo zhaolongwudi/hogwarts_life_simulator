@@ -139,6 +139,23 @@ jobs:
           path: ${{ env.RENAMED_APK }}
           retention-days: 30
 
+      - name: Upload APK to nightly.link
+        uses: actions/upload-artifact@v4
+        with:
+          name: HogwartLige-nightly
+          path: ${{ env.RENAMED_APK }}
+          retention-days: 7
+
+      - name: Output download links
+        run: |
+          echo "## 📱 下载地址" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "** nightly.link（免登录直接下载最新版）**" >> $GITHUB_STEP_SUMMARY
+          echo "https://nightly.link/zhaolongwudi/hogwarts_life_simulator/HogwartLige-nightly.zip" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "** GitHub Releases（历史版本）**" >> $GITHUB_STEP_SUMMARY
+          echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases" >> $GITHUB_STEP_SUMMARY
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
