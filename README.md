@@ -179,6 +179,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.3 — 2026-08-21
+
+**📋 变更说明**
+ci: 添加 nightly.link 自动上传和下载地址
+
+- 工作流新增 nightly.link 上传步骤（固定artifact名 HogwartLige-nightly）
+- 每次构建后自动生成免登录下载链接
+- GitHub Actions Summary 输出下载地址
+- README 新增下载地址表格（nightly.link + GitHub Releases）
+
 ### v0.6.2 — 2026-08-21
 
 **📋 变更说明**
