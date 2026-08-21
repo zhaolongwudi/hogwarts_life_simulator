@@ -32,6 +32,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gp = context.read<GameProvider>();
     return Scaffold(
       appBar: AppBar(title: const Text('魔法商店')),
       body: Column(

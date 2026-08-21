@@ -1121,6 +1121,7 @@ class MatchmakerScreen extends StatefulWidget {
 
 class _MatchmakerScreenState extends State<MatchmakerScreen> {
   List<Map<String, dynamic>> _matches = [];
+  bool _isAnalyzing = false;
 
   @override
   void initState() {
@@ -1131,6 +1132,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
   }
 
   void _analyzeMatches() {
+    setState(() => _isAnalyzing = true);
     final gp = context.read<GameProvider>();
     final npcs = gp.npcRegistry.values.toList();
 
@@ -1174,6 +1176,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
     if (mounted) {
       setState(() {
         _matches = matches;
+        _isAnalyzing = false;
       });
     }
   }

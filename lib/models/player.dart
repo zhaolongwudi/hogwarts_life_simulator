@@ -130,7 +130,8 @@ class Player {
         achievements = List<String>.from(achievements ?? const []),
         bloodRelatives = List<String>.from(bloodRelatives ?? const []),
         letters = List<Letter>.from(letters ?? const []),
-        rumors = List<String>.from(rumors ?? const []);
+        rumors = List<String>.from(rumors ?? const []),
+        jobHistory = List<String>.from(jobHistory ?? const []);
 
   static const Map<String, int> _defaultAttributes = {
     'spell_understanding': 50,

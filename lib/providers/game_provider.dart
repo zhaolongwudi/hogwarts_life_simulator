@@ -168,8 +168,8 @@ class GameProvider extends ChangeNotifier {
 
   // ==================== 系统提示词（精简版世界观 + 核心法则 + AI禁令 + 叙事风格） ====================
   String _buildSystemPrompt() {
-    final effectiveEra = _worldState.era.isNotEmpty ? _worldState.era : appProvider.era;
-    final eraName = _eraLabel(effectiveEra);
+    final effectiveEra = _worldState.era.isNotEmpty ? _worldState.era : appProvider.era.name;
+    final eraName = _eraLabel(_parseEra(effectiveEra));
     final worldRules = kUseCompactWorldRules ? kWorldRulesCompact : kWorldRulesPrompt;
     return '''你是【哈利·波特·魔法纪元·世界模拟系统】，负责维护原著优先级别、魔法、血统、家族、魔法部、霍格沃茨、神奇生物、黑巫师、预言、历史、时间、因果。而玩家负责自己的人生。
 
@@ -235,6 +235,13 @@ $worldRules
       Era.post_war => '现代（2020+）：战后重建的魔法世界，阿不思·波特与斯科皮·马尔福的时代。',
       Era.random => '随机时代：由叙事开始时随机决定。',
     };
+  }
+
+  Era _parseEra(String eraStr) {
+    return Era.values.firstWhere(
+      (e) => e.name == eraStr.toLowerCase(),
+      orElse: () => Era.marauders,
+    );
   }
 
   // ==================== 初始化游戏 ====================
@@ -963,10 +970,6 @@ D. （可选）
     } catch (_) {
       return 11;
     }
-  }
-
-  int _playerGold() {
-    return _player?.galleons ?? 0;
   }
 
   int get totalWealth {
@@ -2464,9 +2467,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (version < 2) {
       final ws = data['world_state'] as Map<String, dynamic>?;
       if (ws != null) {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         final oldMonth = ws['month'] as String?;
         if (oldMonth != null) {
-          final monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
           final idx = monthNames.indexOf(oldMonth);
           if (idx >= 0) {
             ws['month'] = GameTime.months[idx];
