@@ -142,6 +142,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.8 — 2026-08-21
+
+**📋 变更说明**
+feat: Loading UX + 一致性校验 + 存档迁移 + 月度演化 + 经济系统
+
+Loading UX (game_screen + game_provider):
+- 分阶段 loading 文案: 构建请求 → 生成剧情 → 解析回应
+- Loading 条实时显示 token 消耗
+- API 失败自动重试一次 (500ms 延迟)
+
 ### v0.5.7 — 2026-08-21
 
 **📋 变更说明**
