@@ -154,8 +154,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     if (!_isInSubArea) {
       final areas = _mapData.keys.toList();
       return Positioned(
-        right: 16,
-        bottom: 110,
+        right: 12,
+        bottom: 220,
         child: GestureDetector(
           onTap: () {
             final idx = areas.indexOf(_currentArea);
@@ -169,18 +169,25 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             }
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.chevron_right, size: 16),
+                const Icon(Icons.chevron_right, size: 18, color: Color(0xFFB8860B)),
                 const SizedBox(width: 4),
-                Text('大世界', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary)),
+                const Text('大世界', style: TextStyle(fontSize: 14, color: Color(0xFFB8860B), fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -297,9 +304,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               GestureDetector(
                                 onTap: () => _backToParent(),
                                 child: Text(_parentArea ?? '',
-                                    style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.primary)),
+                                    style: const TextStyle(fontSize: 16, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w500)),
                               ),
-                              const Icon(Icons.chevron_right, size: 16),
+                              const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8B949E)),
                             ],
                             Flexible(
                               child: Text(
@@ -328,7 +335,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.edit, size: 20),
+                      child: const Icon(Icons.edit, size: 20, color: Color(0xFFD3A625)),
                     ),
                   ),
                 ],
@@ -371,8 +378,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         final mapWidth = constraints.maxWidth;
         final mapHeight = constraints.maxHeight;
 
-        final headerOffset = 90.0;
-        final bottomOffset = 120.0;
+        final headerOffset = 100.0;
+        final bottomOffset = 140.0;
         final usableHeight = mapHeight - headerOffset - bottomOffset;
 
         return Stack(
@@ -385,8 +392,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             final isBranch = loc['branch'] == true;
 
             final adjustedY = headerOffset + (y * usableHeight);
-            final left = mapWidth * x - 30;
-            final top = adjustedY - 24;
+            final left = mapWidth * x - 32;
+            final top = adjustedY - 26;
 
             return Positioned(
               left: left,
@@ -403,22 +410,22 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: isBranch ? 6 : 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
                               ? const Color(0xFFD3A625)
                               : isBranch
                                   ? const Color(0xFFD97706)
-                                  : const Color(0xFF8B949E),
-                          width: isSelected || isBranch ? 1.5 : 0.8,
+                                  : const Color(0xFF3E5B4A),
+                          width: isSelected || isBranch ? 2 : 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 6,
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -427,16 +434,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isBranch) ...[
-                            Icon(Icons.subdirectory_arrow_right, size: 11, color: const Color(0xFFD97706)),
-                            const SizedBox(width: 2),
+                            const Icon(Icons.subdirectory_arrow_right, size: 12, color: Color(0xFFD97706)),
+                            const SizedBox(width: 3),
                           ],
                           ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 70),
+                            constraints: const BoxConstraints(maxWidth: 80),
                             child: Text(
                               loc['name'] as String,
                               maxLines: 1,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: isSelected || isBranch ? FontWeight.w700 : FontWeight.w600,
                                 color: isSelected
                                     ? const Color(0xFFB8860B)
@@ -450,10 +457,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Container(
-                      width: 24,
-                      height: 24,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFFD3A625)
@@ -471,15 +478,15 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 6,
+                            color: Colors.black.withValues(alpha: 0.22),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Icon(
                         isBranch ? Icons.subdirectory_arrow_right : Icons.location_on,
-                        size: 14,
+                        size: 15,
                         color: isSelected || isBranch ? Colors.white : const Color(0xFFD3A625),
                       ),
                     ),
@@ -496,16 +503,21 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   void _enterSubArea(String subAreaName) {
     if (_subAreas.containsKey(subAreaName)) {
       setState(() {
-        _parentArea = _currentArea;
+        _parentArea = _currentSubArea ?? _currentArea;
         _currentSubArea = subAreaName;
         _selectedLocation = null;
       });
-    } else if (_subAreas.containsKey('翻倒巷') && subAreaName == '翻倒巷入口') {
+    } else if (_subAreas.containsKey('翻倒巷') &&
+        (subAreaName == '翻倒巷入口' || subAreaName == '翻倒巷')) {
       setState(() {
         _parentArea = _currentSubArea ?? _currentArea;
         _currentSubArea = '翻倒巷';
         _selectedLocation = null;
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"$subAreaName" 区域地图暂未开放')),
+      );
     }
   }
 
@@ -515,9 +527,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     final areas = _mapData.keys.toList();
     final idx = areas.indexOf(_currentArea);
     return Positioned(
-      bottom: 110,
-      left: 16,
-      right: 80,
+      bottom: 100,
+      left: 12,
+      right: 100,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -526,50 +538,72 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               if (idx > 0) setState(() => _currentArea = areas[idx - 1]);
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFF3E5B4A).withValues(alpha: 0.4)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.chevron_left, size: 18),
-                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_left, size: 20, color: Color(0xFF3E5B4A)),
+                  const SizedBox(width: 6),
                   Text(areas.isEmpty ? '' : areas[(idx - 1 + areas.length) % areas.length],
-                      style: const TextStyle(fontSize: 13)),
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Theme.of(context).colorScheme.primary),
+              color: Colors.white.withValues(alpha: 0.97),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Text(_currentArea,
-                style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFB8860B))),
           ),
           GestureDetector(
             onTap: () {
               if (idx < areas.length - 1) setState(() => _currentArea = areas[idx + 1]);
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFF3E5B4A).withValues(alpha: 0.4)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(areas.isNotEmpty ? areas[(idx + 1) % areas.length] : '', style: const TextStyle(fontSize: 13)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right, size: 18),
+                  Text(areas.isNotEmpty ? areas[(idx + 1) % areas.length] : '',
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right, size: 20, color: Color(0xFF3E5B4A)),
                 ],
               ),
             ),
@@ -588,132 +622,170 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
     final isBranch = loc['branch'] == true;
 
-    return Positioned(
-      left: 12,
-      right: 12,
-      top: 120,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.97),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Theme.of(context).dividerTheme.color!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+    return Stack(
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedLocation = null),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.25),
             ),
-          ],
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: (isBranch ? const Color(0xFFD97706) : Theme.of(context).colorScheme.primary)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    isBranch ? Icons.subdirectory_arrow_right : loc['icon'] as IconData,
-                    color: isBranch ? const Color(0xFFD97706) : Theme.of(context).colorScheme.primary,
-                    size: 22,
-                  ),
+        Positioned(
+          left: 12,
+          right: 12,
+          top: 120,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.98),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.3), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: (isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A))
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isBranch ? Icons.subdirectory_arrow_right : loc['icon'] as IconData,
+                        color: isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(loc['name'] as String,
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          ),
-                          if (isBranch)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD97706).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(loc['name'] as String,
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
                               ),
-                              child: const Text('子地图',
-                                  style: TextStyle(fontSize: 10, color: Color(0xFFD97706))),
-                            ),
+                              if (isBranch)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text('子地图',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(loc['desc'] as String,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF5A6B4A)),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
                         ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(loc['desc'] as String,
-                          style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _selectedLocation = null),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, size: 18, color: Color(0xFF6B7280)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(isBranch ? Icons.map : Icons.flag, size: 18, color: isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isBranch ? '点击进入子地图探索更多地点' : '前往此地并开始你的冒险',
+                          style: TextStyle(fontSize: 13, color: isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A)),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => setState(() => _selectedLocation = null),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      shape: BoxShape.circle,
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 46,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF3E5B4A),
+                            side: const BorderSide(color: Color(0xFF3E5B4A), width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => setState(() => _selectedLocation = null),
+                          child: const Text('关闭', style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
                     ),
-                    child: const Icon(Icons.close, size: 18),
-                  ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 46,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isBranch ? const Color(0xFFD97706) : const Color(0xFFD3A625),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 22),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                        ),
+                        onPressed: () {
+                          if (isBranch) {
+                            _enterSubArea(loc['name'] as String);
+                          } else {
+                            gp.travelTo(loc['name'] as String);
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: Text(isBranch ? '进入子地图' : '前往此地',
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).dividerTheme.color!),
-                    ),
-                    child: Text(
-                      isBranch ? '点击进入子地图探索更多' : '直接前往或输入想去此地做的事',
-                      style: const TextStyle(fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 44,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isBranch ? const Color(0xFFD97706) : Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      if (isBranch) {
-                        _enterSubArea(loc['name'] as String);
-                      } else {
-                        gp.travelTo(loc['name'] as String);
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: Text(isBranch ? '进入' : '直接前往',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -731,19 +803,24 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             }
           },
           child: Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Colors.white.withValues(alpha: 0.95),
               shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF3E5B4A).withValues(alpha: 0.5), width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-            child: Icon(_isInSubArea ? Icons.subdirectory_arrow_left : Icons.arrow_back, size: 22),
+            child: Icon(
+              _isInSubArea ? Icons.subdirectory_arrow_left : Icons.arrow_back,
+              size: 24,
+              color: const Color(0xFF2C4A3A),
+            ),
           ),
         ),
       ),
@@ -756,10 +833,17 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       left: 0,
       right: 0,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          border: Border(top: BorderSide(color: Theme.of(context).dividerTheme.color!)),
+          color: Colors.white.withValues(alpha: 0.97),
+          border: Border(top: BorderSide(color: const Color(0xFFD3A625).withValues(alpha: 0.4), width: 2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Row(
@@ -777,7 +861,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   Widget _buildBottomNavItem(IconData icon, String label, bool isActive) {
-    final color = isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).textTheme.bodyMedium!.color;
+    final activeColor = const Color(0xFFD3A625);
+    final inactiveColor = const Color(0xFF3E5B4A);
     return GestureDetector(
       onTap: () {
         if (label != '世界') Navigator.pop(context);
@@ -785,9 +870,17 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 11)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isActive ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: isActive ? activeColor : inactiveColor, size: 26),
+          ),
+          const SizedBox(height: 3),
+          Text(label,
+              style: TextStyle(color: isActive ? activeColor : inactiveColor, fontSize: 13, fontWeight: isActive ? FontWeight.w700 : FontWeight.w600)),
         ],
       ),
     );
@@ -801,10 +894,28 @@ class MapAreaPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final groundPaint = Paint()
-      ..color = Color(0xFF5A6B4A).withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
+    switch (subArea ?? area) {
+      case '对角巷':
+        _paintDiagonAlley(canvas, size);
+        break;
+      case '翻倒巷':
+        _paintKnockturnAlley(canvas, size);
+        break;
+      default:
+        _paintArea(canvas, size);
+    }
+  }
 
+  void _paintArea(Canvas canvas, Size size) {
+    final groundColor = area == '伦敦'
+        ? const Color(0xFFA0825A).withValues(alpha: 0.25)
+        : area == '住宅区'
+            ? const Color(0xFFB8A88A).withValues(alpha: 0.3)
+            : area == '霍格莫德村'
+                ? const Color(0xFF8FA07A).withValues(alpha: 0.3)
+                : const Color(0xFF5A6B4A).withValues(alpha: 0.3);
+
+    final groundPaint = Paint()..color = groundColor..style = PaintingStyle.fill;
     final path1 = Path()
       ..moveTo(size.width * 0.15, size.height * 0.25)
       ..quadraticBezierTo(size.width * 0.35, size.height * 0.15, size.width * 0.55, size.height * 0.20)
@@ -815,10 +926,12 @@ class MapAreaPainter extends CustomPainter {
       ..close();
     canvas.drawPath(path1, groundPaint);
 
-    final hillPaint = Paint()
-      ..color = Color(0xFF3E5B4A).withValues(alpha: 0.25)
-      ..style = PaintingStyle.fill;
-
+    final hillColor = area == '霍格莫德村'
+        ? const Color(0xFF5A6B50).withValues(alpha: 0.25)
+        : area == '住宅区'
+            ? const Color(0xFF8A9A7B).withValues(alpha: 0.2)
+            : const Color(0xFF3E5B4A).withValues(alpha: 0.25);
+    final hillPaint = Paint()..color = hillColor..style = PaintingStyle.fill;
     final hillPath = Path()
       ..moveTo(size.width * 0.05, size.height * 0.55)
       ..quadraticBezierTo(size.width * 0.25, size.height * 0.48, size.width * 0.45, size.height * 0.55)
@@ -829,23 +942,21 @@ class MapAreaPainter extends CustomPainter {
       ..close();
     canvas.drawPath(hillPath, hillPaint);
 
-    final waterPaint = Paint()
-      ..color = Color(0xFF4A6B8A).withValues(alpha: 0.35)
-      ..style = PaintingStyle.fill;
-
-    final waterPath = Path()
-      ..moveTo(size.width * 0.50, size.height * 0.62)
-      ..quadraticBezierTo(size.width * 0.65, size.height * 0.60, size.width * 0.75, size.height * 0.68)
-      ..lineTo(size.width * 0.70, size.height * 0.78)
-      ..quadraticBezierTo(size.width * 0.55, size.height * 0.82, size.width * 0.45, size.height * 0.75)
-      ..close();
-    canvas.drawPath(waterPath, waterPaint);
+    if (area != '伦敦') {
+      final waterPaint = Paint()..color = const Color(0xFF4A6B8A).withValues(alpha: 0.35)..style = PaintingStyle.fill;
+      final waterPath = Path()
+        ..moveTo(size.width * 0.50, size.height * 0.62)
+        ..quadraticBezierTo(size.width * 0.65, size.height * 0.60, size.width * 0.75, size.height * 0.68)
+        ..lineTo(size.width * 0.70, size.height * 0.78)
+        ..quadraticBezierTo(size.width * 0.55, size.height * 0.82, size.width * 0.45, size.height * 0.75)
+        ..close();
+      canvas.drawPath(waterPath, waterPaint);
+    }
 
     final pathPaint = Paint()
-      ..color = Color(0xFFC4A574).withValues(alpha: 0.4)
+      ..color = area == '伦敦' ? const Color(0xFF8A7B5A).withValues(alpha: 0.5) : const Color(0xFFC4A574).withValues(alpha: 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-
     canvas.drawPath(
       Path()
         ..moveTo(size.width * 0.20, size.height * 0.30)
@@ -854,28 +965,111 @@ class MapAreaPainter extends CustomPainter {
       pathPaint,
     );
 
-    final treePaint = Paint()
-      ..color = Color(0xFF2D3E2A).withValues(alpha: 0.4)
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 12; i++) {
-      final tx = (i * 0.083 + 0.05) * size.width;
-      final ty = (0.75 + (i % 3) * 0.04) * size.height;
-      canvas.drawCircle(Offset(tx, ty), 8 + (i % 3).toDouble() * 3, treePaint);
+    if (area != '伦敦') {
+      final treePaint = Paint()..color = const Color(0xFF2D3E2A).withValues(alpha: 0.4)..style = PaintingStyle.fill;
+      for (int i = 0; i < 12; i++) {
+        final tx = (i * 0.083 + 0.05) * size.width;
+        final ty = (0.75 + (i % 3) * 0.04) * size.height;
+        canvas.drawCircle(Offset(tx, ty), 8 + (i % 3).toDouble() * 3, treePaint);
+      }
+    } else {
+      final buildingPaint = Paint()..color = const Color(0xFF8A7B5A).withValues(alpha: 0.35)..style = PaintingStyle.fill;
+      for (int i = 0; i < 8; i++) {
+        final bx = (i * 0.12 + 0.08) * size.width;
+        final bw = size.width * 0.06;
+        final bh = size.height * (0.15 + (i % 3) * 0.08);
+        canvas.drawRect(Rect.fromLTWH(bx, size.height * 0.55 - bh, bw, bh), buildingPaint);
+      }
     }
 
-    if (subArea == '翻倒巷') {
-      final darkPaint = Paint()
-        ..color = Color(0xFF1A1520).withValues(alpha: 0.5)
-        ..style = PaintingStyle.fill;
+    if (area == '住宅区') {
+      final housePaint = Paint()..color = const Color(0xFFB88A6A).withValues(alpha: 0.3)..style = PaintingStyle.fill;
+      for (int i = 0; i < 6; i++) {
+        final hx = (i * 0.16 + 0.1) * size.width;
+        final hy = size.height * (0.78 + (i % 2) * 0.05);
+        canvas.drawRect(Rect.fromLTWH(hx, hy, size.width * 0.08, size.height * 0.06), housePaint);
+        final roofPaint = Paint()..color = const Color(0xFF8A5A3A).withValues(alpha: 0.3)..style = PaintingStyle.fill;
+        canvas.drawPath(
+          Path()
+            ..moveTo(hx - size.width * 0.01, hy)
+            ..lineTo(hx + size.width * 0.04, hy - size.height * 0.03)
+            ..lineTo(hx + size.width * 0.09, hy)
+            ..close(),
+          roofPaint,
+        );
+      }
+    }
 
-      final darkPath = Path()
-        ..moveTo(size.width * 0.20, size.height * 0.35)
-        ..quadraticBezierTo(size.width * 0.40, size.height * 0.30, size.width * 0.60, size.height * 0.40)
-        ..lineTo(size.width * 0.70, size.height * 0.65)
-        ..quadraticBezierTo(size.width * 0.50, size.height * 0.75, size.width * 0.30, size.height * 0.70)
-        ..close();
-      canvas.drawPath(darkPath, darkPaint);
+    if (area == '霍格莫德村') {
+      final snowPaint = Paint()..color = const Color(0xFFFFFF).withValues(alpha: 0.2)..style = PaintingStyle.fill;
+      for (int i = 0; i < 20; i++) {
+        final sx = (i * 0.05 + 0.02) * size.width;
+        final sy = (i * 0.047 + 0.03) * size.height;
+        canvas.drawCircle(Offset(sx, sy), 2 + (i % 3).toDouble(), snowPaint);
+      }
+    }
+  }
+
+  void _paintDiagonAlley(Canvas canvas, Size size) {
+    final groundPaint = Paint()..color = const Color(0xFF8A7B5A).withValues(alpha: 0.4)..style = PaintingStyle.fill;
+    final groundPath = Path()
+      ..moveTo(size.width * 0.05, size.height * 0.3)
+      ..lineTo(size.width * 0.95, size.height * 0.3)
+      ..lineTo(size.width * 0.95, size.height * 0.85)
+      ..lineTo(size.width * 0.05, size.height * 0.85)
+      ..close();
+    canvas.drawPath(groundPath, groundPaint);
+
+    final roadPaint = Paint()..color = const Color(0xFF6B5B3A).withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 8;
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width * 0.05, size.height * 0.55)
+        ..lineTo(size.width * 0.95, size.height * 0.55),
+      roadPaint,
+    );
+
+    final shopPaint = Paint()..color = const Color(0xFFC4A574).withValues(alpha: 0.35)..style = PaintingStyle.fill;
+    for (int i = 0; i < 8; i++) {
+      final sx = (i * 0.12 + 0.06) * size.width;
+      final sy = size.height * 0.35;
+      final sw = size.width * 0.08;
+      final sh = size.height * 0.18;
+      canvas.drawRect(Rect.fromLTWH(sx, sy, sw, sh), shopPaint);
+    }
+  }
+
+  void _paintKnockturnAlley(Canvas canvas, Size size) {
+    final groundPaint = Paint()..color = const Color(0xFF2A2530).withValues(alpha: 0.5)..style = PaintingStyle.fill;
+    final groundPath = Path()
+      ..moveTo(size.width * 0.1, size.height * 0.35)
+      ..quadraticBezierTo(size.width * 0.3, size.height * 0.30, size.width * 0.5, size.height * 0.40)
+      ..lineTo(size.width * 0.70, size.height * 0.70)
+      ..quadraticBezierTo(size.width * 0.50, size.height * 0.80, size.width * 0.30, size.height * 0.75)
+      ..close();
+    canvas.drawPath(groundPath, groundPaint);
+
+    final wallPaint = Paint()..color = const Color(0xFF1A1520).withValues(alpha: 0.6)..style = PaintingStyle.fill;
+    final wallPath = Path()
+      ..moveTo(size.width * 0.05, size.height * 0.85)
+      ..lineTo(size.width * 0.05, size.height * 0.25)
+      ..quadraticBezierTo(size.width * 0.25, size.height * 0.20, size.width * 0.45, size.height * 0.30)
+      ..lineTo(size.width * 0.50, size.height * 0.85)
+      ..close();
+    canvas.drawPath(wallPath, wallPaint);
+
+    final wallPath2 = Path()
+      ..moveTo(size.width * 0.95, size.height * 0.85)
+      ..lineTo(size.width * 0.95, size.height * 0.35)
+      ..quadraticBezierTo(size.width * 0.75, size.height * 0.30, size.width * 0.55, size.height * 0.45)
+      ..lineTo(size.width * 0.50, size.height * 0.85)
+      ..close();
+    canvas.drawPath(wallPath2, wallPaint);
+
+    final glowPaint = Paint()..color = const Color(0xFF8B4A2A).withValues(alpha: 0.2)..style = PaintingStyle.fill;
+    for (int i = 0; i < 5; i++) {
+      final gx = (i * 0.2 + 0.15) * size.width;
+      final gy = (0.55 + (i % 2) * 0.15) * size.height;
+      canvas.drawCircle(Offset(gx, gy), 15 + (i % 3).toDouble() * 5, glowPaint);
     }
   }
 

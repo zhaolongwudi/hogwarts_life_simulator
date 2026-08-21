@@ -52,6 +52,7 @@ class SaveService {
     required List<dynamic> choices,
     required int turnCount,
     String? slotName,
+    Map<String, dynamic>? extraData,
   }) async {
     final slotId = slotName ?? _uuid.v4().substring(0, 8);
     final saveData = {
@@ -64,6 +65,7 @@ class SaveService {
       'turn_count': turnCount,
       'saved_at': DateTime.now().toIso8601String(),
       'slot_name': slotName ?? '自动存档',
+      if (extraData != null) 'extra_data': extraData,
     };
 
     final savePath = await _getSavePath(slotId);
@@ -129,6 +131,7 @@ class SaveService {
     required String narrative,
     required List<dynamic> choices,
     required int turnCount,
+    Map<String, dynamic>? extraData,
   }) async {
     const slotId = autoSaveSlotId;
     final saveData = {
@@ -141,6 +144,7 @@ class SaveService {
       'turn_count': turnCount,
       'saved_at': DateTime.now().toIso8601String(),
       'slot_name': '自动存档',
+      if (extraData != null) 'extra_data': extraData,
     };
 
     final savePath = await _getSavePath(slotId);

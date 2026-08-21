@@ -11,12 +11,14 @@ import '../data/cg_data.dart';
 import '../data/npc_data.dart';
 import '../data/world_rules.dart';
 import '../services/deepseek_service.dart';
+import '../services/deepseek_service.dart' show ChatResult;
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
+import '../services/ai_router.dart';
 
 class GameProvider extends ChangeNotifier {
   final AppProvider appProvider;
-  DeepSeekService? _deepSeek;
+  AiRouter? _router;
   final SaveService _saveService = SaveService();
   final Random _random = Random();
   late final NpcChatService chatService;
@@ -34,6 +36,8 @@ class GameProvider extends ChangeNotifier {
   final Map<String, NPC> _npcRegistry = {};
 
   String _currentNarrative = '';
+  String _narrativeSummary = '';
+  String _pendingSummary = '';
   List<GameChoice> _choices = [];
   bool _isLoading = false;
   bool _isInitializing = false;
@@ -102,6 +106,9 @@ class GameProvider extends ChangeNotifier {
           ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
           .toList() ?? [];
       _turnCount = data['turn_count'] as int? ?? 0;
+      final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
+      _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
+      _pendingSummary = extraData['pending_summary'] as String? ?? '';
       _isInitializing = false;
       debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合');
       notifyListeners();
@@ -129,6 +136,10 @@ class GameProvider extends ChangeNotifier {
           narrative: _currentNarrative,
           choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
           turnCount: _turnCount,
+          extraData: {
+            'narrative_summary': _narrativeSummary,
+            'pending_summary': _pendingSummary,
+          },
         );
       } catch (e) {
         debugPrint('❌ 自动存档失败: $e');
@@ -145,9 +156,18 @@ class GameProvider extends ChangeNotifier {
   }
 
   void _updateClient() {
-    if (appProvider.apiKey != null && appProvider.apiKey!.isNotEmpty) {
-      _deepSeek = DeepSeekService(config: appProvider.aiConfig);
+    final config = AiRouterConfig(
+      narrativeProvider: appProvider.providerForScene(AiScene.narrative),
+      summaryProvider: appProvider.providerForScene(AiScene.summary),
+      npcChatProvider: appProvider.providerForScene(AiScene.npcChat),
+    );
+    final router = AiRouter(config);
+    for (final p in AiProvider.values) {
+      if (appProvider.hasKey(p)) {
+        router.register(appProvider.configForProvider(p));
+      }
     }
+    _router = router;
   }
 
   void updateNpcAffection(String npcId, int change) {
@@ -160,35 +180,35 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> updateApiKey(String key) async {
-    if (key.isNotEmpty) {
-      _deepSeek = DeepSeekService(config: appProvider.aiConfig.copyWith(apiKey: key));
-    }
+    _updateClient();
+    chatService.refreshClient();
     notifyListeners();
   }
 
-  // ==================== 系统提示词（精简版世界观 + 核心框架） ====================
+  // ==================== 系统提示词（精简版 + 玩家档案嵌入） ====================
   String _buildSystemPrompt() {
+    final p = _player;
     final effectiveEra = _worldState.era.isNotEmpty ? _worldState.era : appProvider.era.name;
-    final eraName = _eraLabel(_parseEra(effectiveEra));
-    final worldRules = kUseCompactWorldRules ? kWorldRulesCompact : kWorldRulesPrompt;
-    return '''你是【哈利·波特·魔法纪元】叙事系统，以原著七部为正典，维护魔法世界的规则、历史、人物与因果。玩家只是一名普通巫师，负责自己的人生选择。
+    final eraName = _eraLabelShort(_parseEra(effectiveEra));
 
-$worldRules
+    final profile = p != null
+        ? '【玩家档案】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜${p.magicAptitude ?? '普通'}天赋\n'
+        : '';
 
-【时代】$eraName
+    return '''你是【哈利·波特·魔法纪元】叙事AI。以原著七部为正典。
 
-【五条核心规则】
-1. 玩家非天选之人：不因身份获特殊待遇，无默认传奇血统/圣器/预言。
-2. 选择即后果：每个选择带来合理且持久的影响；不强迫玩家卷入原著事件。
-3. 信息有限：不得直接透露NPC内心、未来或秘密；不替玩家做决定或说话。
-4. 世界真实运行：NPC具独立人格，重大事件（死亡/战争/表白）须有铺垫，不OOC。
-5. 生活优先：魔法世界首先是课堂/三餐/友谊/散步，不只是战斗副本。
+$profile
+【世界五层】麻瓜｜巫师社会｜霍格沃茨｜禁地｜超自然
+【九大支柱】学校/魔法部/纯血家族/保密法/商业/神奇生物/黑巫师/国际/预言
 
-【叙事要求】
-- 画面感如J.K.罗琳，每段含≥3感官细节；普通叙事200-400字，关键事件400-600字。
-- 开头附时间戳📅；好感变化须写入【好感度变化】小节。
-- 严格按【叙事】→【好感度变化】→【可选行动】→【自由行动】结构输出。
-- 恋爱止于亲吻拥抱，不得性描写；不编造玩家未拥有的物品技能关系。''';
+【叙事规则】
+1. 玩家普通人，选择即后果，NPC有独立人格
+2. 不透露NPC内心，不替玩家说话
+3. 200-300字叙事，≥3感官细节，📅时间戳开头
+4. 格式：叙事→好感变化→可选行动→自由行动
+5. 恋爱止于拥抱，不编造未拥有的物品/关系
+
+【时代】$eraName''';
   }
 
   String _eraLabel(Era era) {
@@ -432,31 +452,21 @@ $worldRules
     profile.add('魔杖：$wandInfo');
     profile.add('宠物：$petInfo');
 
-    final prompt = '''【哈利·波特·魔法纪元】开场叙事。以J.K.罗琳风格，融入3+感官细节。
+    final prompt = '''【开场叙事】J.K.罗琳风格，3+感官细节。
 
-【玩家】
-${profile.join('\n')}
+【玩家资料】
+${profile.join('｜')}
 
-【剧情起点】$startPoint
+【起始场景】$startPoint
 
-【规则】
-- 自然融入血统、家族、童年、魔杖、宠物（宠物与魔杖必须出现）
-- 体现性格与信念；麻瓜出身展示日常魔法觉醒，纯血/巫师家庭展示传统
-- 不自动成为主角；只写角色合理知道的信息
-- 300-500字，开头附📅时间戳
+【要求】300-400字，📅时间戳开头，自然融入魔杖/宠物/血统，体现性格。
 
-【输出格式】
-【叙事】
-（正文）
-
-【可选行动】
-A. （选项1）
-B. （选项2）
-C. （选项3）
-
+【格式】
+【叙事】（正文）
+【可选行动】A/B/C（具体）
 【自由行动】''';
 
-    if (_deepSeek == null) {
+    if (_router == null || !_router!.hasNarrativeService) {
       _currentNarrative =
           '${p.name}，你在${p.birthLocation}长大，等待来自霍格沃茨的信已经等了很久。\n\n📅 ${_worldState.timestamp}\n\n魔法世界的大门即将为你打开。';
       _choices = [
@@ -469,7 +479,8 @@ C. （选项3）
 
     try {
       final response = await _callDeepSeek(prompt);
-      _parseResponse(response);
+      _parseResponse(response.content);
+      _accumulateForSummary(_currentNarrative);
       notifyListeners();
     } catch (e) {
       _error = e.toString();
@@ -522,7 +533,7 @@ C. （选项3）
       }
     }
 
-    if (_deepSeek == null) return;
+    if (_router == null || !_router!.hasNarrativeService) return;
 
     _isLoading = true;
     _turnCount++;
@@ -532,35 +543,32 @@ C. （选项3）
 
     String buildPrompt() {
       final p = _player!;
-      final context = _truncateNarrativeContext(_currentNarrative, 400);
+
+      final contextBuffer = StringBuffer();
+      if (_narrativeSummary.isNotEmpty) {
+        contextBuffer.write('【前情摘要】\n$_narrativeSummary\n\n');
+      }
+      final recent = _truncateNarrativeContext(_currentNarrative, 150);
+      contextBuffer.write('【近期】\n$recent');
+
+      final context = contextBuffer.toString();
       final statusTag = _buildStatusTag(p);
       final extra = _buildCriticalContext(action);
 
       return '''【情境】
 $context
 
-【玩家】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜性格：${p.personalityTraits.isEmpty ? '未设定' : p.personalityTraits.join('、')}
-${p.magicAptitude ?? '普通'}天赋｜倾向：${p.politicalTendency ?? '未设定'}｜$statusTag
-
-【当前】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}｜${_worldState.weather ?? '晴朗'}
+【状态】$statusTag
+【当前】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}
 
 ${extra.isNotEmpty ? extra + '\n' : ''}【行动】
 $action
 
-【输出】
-【叙事】
-（200-400字，≥3感官细节，开头附时间戳，体现玩家性格与血统，NPC具独立人格）
-
-【好感度变化】
-NPC名: ±X（原因）
-
-【可选行动】
-A. （具体）
-B. （具体）
-C. （具体）
-D. （可选）
-
-【自由行动】''';
+【输出要求】
+1. 叙事:200-300字，≥3感官细节，开头📅时间戳
+2. 好感变化:NPC名:±X(原因)
+3. 可选行动:A/B/C/D（具体选项）
+4. 自由行动''';
     }
 
     try {
@@ -570,20 +578,32 @@ D. （可选）
 
       String response;
       try {
-        response = await _callDeepSeek(prompt);
+        response = (await _callDeepSeek(prompt)).content;
       } catch (e) {
         _loadingStage = '请求失败，正在重试...';
         notifyListeners();
         await Future.delayed(const Duration(milliseconds: 500));
-        response = await _callDeepSeek(prompt);
+        response = (await _callDeepSeek(prompt)).content;
       }
 
       _loadingStage = '正在解析回应...';
       notifyListeners();
 
       _parseResponse(response);
+      _accumulateForSummary(_currentNarrative);
       _advanceTimeForAction(action);
       _updateNPCsFromAction(action);
+
+      if (_turnCount % 10 == 0 && _pendingSummary.isNotEmpty) {
+        _loadingStage = '正在整理剧情摘要...';
+        notifyListeners();
+        try {
+          await _summarizeNarrative();
+        } catch (e) {
+          debugPrint('摘要生成失败(不影响游戏): $e');
+        }
+      }
+
       _loadingStage = '';
       _isLoading = false;
       notifyListeners();
@@ -1727,20 +1747,21 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   }
 
   // ==================== DeepSeek 调用 ====================
-  Future<String> _callDeepSeek(String prompt) async {
-    if (_deepSeek == null) throw Exception('API Key 未设置');
-    final result = await _deepSeek!.chatComplete(
+  Future<ChatResult> _callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
+    if (_router == null) throw Exception('AI 服务未初始化');
+    final result = await _router!.chatComplete(
+      scene: scene,
       prompt: prompt,
       systemPrompt: _systemPrompt ?? '',
-      temperature: 0.8,
-      maxTokens: 6000,
+      temperature: 0.85,
+      maxTokens: 2000,
     );
     _totalPromptTokens += result.usage.promptTokens;
     _totalCompletionTokens += result.usage.completionTokens;
     _totalTokens += result.usage.totalTokens;
     _apiCalls++;
     notifyListeners();
-    return result.content;
+    return result;
   }
 
   // ==================== 解析响应 ====================
@@ -1915,6 +1936,42 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     return '…（前情略）${narrative.substring(cut)}';
   }
 
+  // ==================== 剧情摘要机制：每10回合压缩历史 ====================
+
+  void _accumulateForSummary(String newNarrative) {
+    _pendingSummary += '$newNarrative\n';
+  }
+
+  Future<void> _summarizeNarrative() async {
+    if (_pendingSummary.length < 50) {
+      _pendingSummary = '';
+      return;
+    }
+
+    final prompt = '''请将以下剧情内容压缩成5-8句话的摘要，保留关键事件、NPC互动、重要转折和玩家状态变化。用第三人称。
+
+【前情摘要】
+${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
+
+【新剧情】
+$_pendingSummary
+
+请输出合并后的完整摘要(不超过300字)：''';
+
+    try {
+      final result = await _callDeepSeek(
+        prompt,
+        scene: AiScene.summary,
+      );
+
+      _narrativeSummary = result.content.trim();
+      _pendingSummary = '';
+      debugPrint('✅ 剧情摘要已更新 (${_narrativeSummary.length}字)');
+    } catch (e) {
+      debugPrint('❌ 摘要生成失败: $e');
+    }
+  }
+
   /// 只在状态异常时输出状态标签（HP低/MP低/精力低/受伤），正常则不写
   String _buildStatusTag(Player p) {
     final tags = <String>[];
@@ -1935,52 +1992,47 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     final a = action.toLowerCase();
     final parts = <String>[];
 
-    // 战斗 / 冲突 → 注入关键属性、魔咒、HP
-    if (a.contains(RegExp(r'(战斗|决斗|攻击|防御|反抗|战斗|对抗|咒语|咒|黑魔法|施展|施法|魔杖|打|杀|伤害|保护|救)'))) {
+    // 战斗/冲突 → 注入关键属性、魔咒、HP
+    if (a.contains(RegExp(r'(战斗|决斗|攻击|防御|施展咒语|施法|黑魔法|施咒|念咒|反击)'))) {
       final combatAttrs = p.attributes.entries
           .where((e) => e.value != 0)
-          .take(4)
+          .take(3)
           .map((e) => '${_attrLabel(e.key)}:${e.value}')
           .join(' ');
-      if (combatAttrs.isNotEmpty) parts.add('【战斗】属性 $combatAttrs');
+      if (combatAttrs.isNotEmpty) parts.add('【战斗】$combatAttrs');
       if (p.learnedSpells.isNotEmpty) {
-        final spells = p.learnedSpells.entries.take(5).map((e) => e.key).join('、');
-        parts.add('已知魔咒 $spells');
+        final spells = p.learnedSpells.entries.take(3).map((e) => e.key).join('、');
+        parts.add('魔咒:$spells');
       }
       parts.add('HP:${p.health} MP:${p.magic}');
     }
 
-    // 学业 / 考试 → 注入属性和学年
-    if (a.contains(RegExp(r'(上课|考试|测验|作业|魔药|变形|魔咒|草药|黑魔法防御|天文|占卜|古代魔文|OWL|NEWT|写|论文|复习|学习)'))) {
+    // 学业/考试 → 注入相关属性
+    if (a.contains(RegExp(r'(上课|考试|测验|作业|复习|学习|论文|写论文|做功课)'))) {
       final study = p.attributes.entries
-          .where((e) => const {'智慧', '魔力', '勤奋', '创造力'}.contains(_attrLabel(e.key)))
+          .where((e) => const {'智慧', '魔力', '勤奋'}.contains(_attrLabel(e.key)))
           .where((e) => e.value != 0)
           .map((e) => '${_attrLabel(e.key)}:${e.value}')
           .join(' ');
       if (study.isNotEmpty) parts.add('【学业】$study');
     }
 
-    // 社交 / 约会 / 表白 → 注入涉及的NPC好感
-    if (a.contains(RegExp(r'(约会|见面|聊天|对话|邀|陪|一起|独处|表白|感情|心动|爱|吻|拥抱|找|跟|和|与|问)'))) {
-      final affs = _formatAffections(maxEntries: 3);
+    // 社交/对话 → 注入最多2个相关NPC好感
+    if (a.contains(RegExp(r'(约会|表白|心动|拥抱|接吻|单独见面|私聊)'))) {
+      final affs = _formatAffections(maxEntries: 2);
       if (affs.isNotEmpty && !affs.contains('暂无深入关系')) parts.add('【关系】$affs');
     }
 
-    // 购物 / 交易 → 注入金币
-    if (a.contains(RegExp(r'(买|卖|购|商店|购物|花钱|付钱|交易|古灵阁|存取)'))) {
-      parts.add('【经济】加隆:${p.galleons}｜银行:${p.bankGalleons}');
+    // 购物/交易 → 注入金币和前3背包物品
+    if (a.contains(RegExp(r'(购买|出售|购物|交易|取钱|存钱|存取古灵阁)'))) {
+      parts.add('【经济】加隆:${p.galleons} 银行:${p.bankGalleons}');
       if (p.inventory.isNotEmpty) {
-        final inv = p.inventory.take(5).map((e) => e.name).join('、');
-        parts.add('背包 $inv');
+        final inv = p.inventory.take(3).map((e) => e.name).join('、');
+        parts.add('背包:$inv');
       }
     }
 
-    // 事件：最多1条近期动态（平时不写3条）
-    if (_worldState.recentEvents.isNotEmpty) {
-      parts.add('【世界】${_worldState.recentEvents.first}');
-    }
-
-    return parts.join('\n');
+    return parts.isNotEmpty ? '【状态】\n${parts.join('\n')}' : '';
   }
 
   void _parseAffectionChanges(String text) {
@@ -2434,6 +2486,10 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
       turnCount: _turnCount,
       slotName: '快速存档',
+      extraData: {
+        'narrative_summary': _narrativeSummary,
+        'pending_summary': _pendingSummary,
+      },
     );
   }
 
@@ -2459,6 +2515,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
         ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
         .toList() ?? [];
     _turnCount = data['turn_count'] as int? ?? 0;
+    final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
+    _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
+    _pendingSummary = extraData['pending_summary'] as String? ?? '';
     _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();
@@ -2508,18 +2567,24 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
   // ==================== API 检查 ====================
   Future<bool> checkConnection() async {
-    if (_deepSeek == null) return false;
-    return await _deepSeek!.checkConnection();
+    if (_router == null) return false;
+    final provider = appProvider.aiProvider;
+    return await _router!.checkBalance(provider) != null ||
+        appProvider.hasKey(provider);
   }
 
   Future<double?> get balance async {
-    if (_deepSeek == null) return null;
-    return await _deepSeek!.getBalance();
+    if (_router == null) return null;
+    final provider = appProvider.aiProvider;
+    return await _router!.checkBalance(provider) as double?;
   }
 
   Future<Map<String, dynamic>?> get quotaInfo async {
-    if (_deepSeek == null) return null;
-    return await _deepSeek!.getQuotaInfo();
+    if (_router == null) return null;
+    final provider = appProvider.aiProvider;
+    final service = _router!.getService(provider);
+    if (service == null) return null;
+    return await service.getQuotaInfo();
   }
 
   void resetTokenUsage() {

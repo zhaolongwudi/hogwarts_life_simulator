@@ -1,10 +1,45 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/ai_router.dart';
 
 enum DisplayMode { magazine, compact, immersive }
 enum IdentityMode { native, transmigration }
 enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
 enum AiProvider { deepseek, zhipu, agnes, sensenova }
+
+// 场景 → 提供商名 的默认路由
+// 策略：付费模型(DeepSeek)用于核心主剧情，免费模型用于摘要/NPC，DeepSeek作为最终兜底
+const Map<AiScene, String> kDefaultRoute = {
+  AiScene.narrative: 'deepseek',   // 主剧情：付费高质量
+  AiScene.summary: 'sensenova',    // 摘要：免费长上下文
+  AiScene.npcChat: 'agnes',        // NPC聊天：免费响应快
+};
+
+// 场景简介（显示在设置页）
+const Map<AiScene, String> kSceneDescriptions = {
+  AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。这是核心功能，建议使用付费高质量模型。',
+  AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。可使用免费模型，效果差异不大。',
+  AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。推荐免费模型，节省主模型配额。',
+};
+
+// 提供商简介
+const Map<AiProvider, String> kProviderDescriptions = {
+  AiProvider.deepseek: '付费模型。高质量长文本叙事，中文表现优秀，支持 deepseek-v4-flash/pro/reasoner 等模型。适合主剧情生成。',
+  AiProvider.zhipu: '免费模型。智谱AI，glm-4.7-flash 中文自然度好，有免费额度。适合作为备用。',
+  AiProvider.agnes: '免费模型。Agnes-2.5-flash，响应速度快，适合NPC短对话场景。',
+  AiProvider.sensenova: '免费模型。SenseNova·商汤日日新，256K长上下文，适合摘要/压缩任务。',
+};
+
+// 场景中文名
+const Map<AiScene, String> kSceneLabels = {
+  AiScene.narrative: '主剧情生成',
+  AiScene.summary: '剧情摘要压缩',
+  AiScene.npcChat: 'NPC独立聊天',
+};
+
+List<AiProvider> get allProviders => AiProvider.values;
+
+String providerName(AiProvider p) => p.name;
 
 class AiConfig {
   final AiProvider provider;
@@ -90,6 +125,8 @@ class AppProvider extends ChangeNotifier {
   String _aiModel = 'deepseek-chat';
   Map<String, String> _apiKeys = {};
   Map<String, String> _baseUrls = {};
+  Map<String, String> _models = {};
+  Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
 
   String? get apiKey => _apiKey;
   bool get isGameStarted => _isGameStarted;
@@ -100,6 +137,48 @@ class AppProvider extends ChangeNotifier {
   String get aiModel => _aiModel;
   Map<String, String> get apiKeys => Map.unmodifiable(_apiKeys);
   Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
+  Map<String, String> get models => Map.unmodifiable(_models);
+  Map<AiScene, String> get sceneRoute => Map.unmodifiable(_sceneRoute);
+
+  AiProvider providerForScene(AiScene scene) {
+    final name = _sceneRoute[scene] ?? kDefaultRoute[scene]!;
+    return AiProvider.values.firstWhere(
+      (p) => p.name == name,
+      orElse: () => AiProvider.deepseek,
+    );
+  }
+
+  AiConfig configForProvider(AiProvider provider) {
+    final key = _apiKeys[provider.name] ?? '';
+    final model = _models[provider.name] ?? _defaultModel(provider);
+    final customBaseUrl = _baseUrls[provider.name];
+    switch (provider) {
+      case AiProvider.deepseek:
+        return AiConfig.deepseek(key).copyWith(model: model, baseUrl: customBaseUrl);
+      case AiProvider.zhipu:
+        return AiConfig.zhipu(key).copyWith(model: model, baseUrl: customBaseUrl);
+      case AiProvider.agnes:
+        return AiConfig.agnes(key).copyWith(model: model, baseUrl: customBaseUrl);
+      case AiProvider.sensenova:
+        return AiConfig.sensenova(key).copyWith(model: model, baseUrl: customBaseUrl);
+    }
+  }
+
+  bool hasKey(AiProvider provider) =>
+      _apiKeys.containsKey(provider.name) && _apiKeys[provider.name]!.isNotEmpty;
+
+  String _defaultModel(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.deepseek:
+        return 'deepseek-v4-flash';
+      case AiProvider.zhipu:
+        return 'glm-4.7-flash';
+      case AiProvider.agnes:
+        return 'agnes-2.5-flash';
+      case AiProvider.sensenova:
+        return 'sensenova-6.7-flash-lite';
+    }
+  }
 
   AiConfig get aiConfig {
     final key = _apiKeys[_aiProvider.name] ?? _apiKey ?? '';
@@ -177,10 +256,20 @@ class AppProvider extends ChangeNotifier {
       if (key != null) _apiKeys[p] = key;
       final url = prefs.getString('base_url_$p');
       if (url != null && url.isNotEmpty) _baseUrls[p] = url;
+      final model = prefs.getString('model_$p');
+      if (model != null && model.isNotEmpty) _models[p] = model;
     }
 
     final currentKey = _apiKeys[_aiProvider.name];
     if (currentKey != null) _apiKey = currentKey;
+
+    // Load scene routes
+    for (final scene in AiScene.values) {
+      final saved = prefs.getString('scene_route_${scene.name}');
+      if (saved != null && saved.isNotEmpty) {
+        _sceneRoute[scene] = saved;
+      }
+    }
 
     notifyListeners();
   }
@@ -261,6 +350,37 @@ class AppProvider extends ChangeNotifier {
     _era = era;
     SharedPreferences.getInstance().then((prefs) => prefs.setInt('era', era.index));
     notifyListeners();
+  }
+
+  Future<void> setSceneRoute(AiScene scene, AiProvider provider) async {
+    _sceneRoute[scene] = provider.name;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('scene_route_${scene.name}', provider.name);
+    notifyListeners();
+  }
+
+  Future<void> setModelForProvider(AiProvider provider, String model) async {
+    _models[provider.name] = model;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('model_${provider.name}', model);
+    if (_aiProvider == provider) {
+      _aiModel = model;
+      await prefs.setString('ai_model', model);
+    }
+    notifyListeners();
+  }
+
+  List<String> availableModelsFor(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.deepseek:
+        return ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'];
+      case AiProvider.zhipu:
+        return ['glm-4.7-flash', 'glm-4.7', 'glm-4-flash', 'glm-4', 'glm-4-long'];
+      case AiProvider.agnes:
+        return ['agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
+      case AiProvider.sensenova:
+        return ['sensenova-6.7-flash-lite', 'deepseek-v4-flash'];
+    }
   }
 
   void clearApiKey() {

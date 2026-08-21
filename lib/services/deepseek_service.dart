@@ -42,10 +42,10 @@ class DeepSeekService {
   static String normalizeBaseUrl(String url) {
     var u = url.trim();
     if (u.endsWith('/')) u = u.substring(0, u.length - 1);
-    // 如果 baseUrl 末尾带 /v1 或 /v2 或 /v3 版本号，去掉它
-    final versionSuffix = RegExp(r'/v\d+$');
-    if (versionSuffix.hasMatch(u)) {
-      u = u.replaceFirst(versionSuffix, '');
+    // 只去除末尾 /v1 版本号，保留 /v2, /v3, /v4 等（这些可能是实际API路径）
+    final v1Suffix = RegExp(r'/v1$');
+    if (v1Suffix.hasMatch(u)) {
+      u = u.replaceFirst(v1Suffix, '');
     }
     return u;
   }

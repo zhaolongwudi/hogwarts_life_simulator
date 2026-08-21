@@ -6,6 +6,7 @@ import '../models/player.dart';
 import '../models/world_state.dart';
 import '../providers/app_provider.dart';
 import 'deepseek_service.dart';
+import 'ai_router.dart';
 
 class ChatMessage {
   final String role;
@@ -33,7 +34,7 @@ class ChatMessage {
 
 class NpcChatService {
   final AppProvider appProvider;
-  DeepSeekService? _deepSeek;
+  AiRouter? _router;
   final Map<String, List<ChatMessage>> _conversationCache = {};
 
   NpcChatService({required this.appProvider}) {
@@ -41,9 +42,18 @@ class NpcChatService {
   }
 
   void _initClient() {
-    if (appProvider.apiKey != null && appProvider.apiKey!.isNotEmpty) {
-      _deepSeek = DeepSeekService(config: appProvider.aiConfig);
+    final config = AiRouterConfig(
+      narrativeProvider: appProvider.providerForScene(AiScene.narrative),
+      summaryProvider: appProvider.providerForScene(AiScene.summary),
+      npcChatProvider: appProvider.providerForScene(AiScene.npcChat),
+    );
+    final router = AiRouter(config);
+    for (final p in AiProvider.values) {
+      if (appProvider.hasKey(p)) {
+        router.register(appProvider.configForProvider(p));
+      }
     }
+    _router = router;
   }
 
   void refreshClient() => _initClient();
@@ -56,34 +66,33 @@ class NpcChatService {
     List<ChatMessage>? history,
   }) async {
     _initClient();
-    if (_deepSeek == null) {
+    if (_router == null) {
       return _generateLocalResponse(npc, userMessage);
     }
 
     final systemPrompt = _buildNpcSystemPrompt(npc, player, worldState);
-    final messages = <Map<String, dynamic>>[];
-
-    if (systemPrompt.isNotEmpty) {
-      messages.add({'role': 'system', 'content': systemPrompt});
-    }
+    final promptBuffer = StringBuffer();
+    promptBuffer.writeln(systemPrompt);
 
     if (history != null && history.isNotEmpty) {
       final recent = history.length > 20 ? history.sublist(history.length - 20) : history;
       for (final msg in recent) {
-        messages.add({'role': msg.role, 'content': msg.content});
+        promptBuffer.writeln('${msg.role.toUpperCase()}: ${msg.content}');
       }
     }
 
-    messages.add({'role': 'user', 'content': userMessage});
+    promptBuffer.writeln('USER: $userMessage');
+    promptBuffer.write('ASSISTANT: ');
 
     try {
-      final response = await _deepSeek!.chatWithMessages(
-        messages: messages,
+      final response = await _router!.chatComplete(
+        scene: AiScene.npcChat,
+        prompt: promptBuffer.toString(),
         temperature: 0.9,
         maxTokens: 500,
       );
 
-      final responseText = response.replaceFirst(RegExp(r'^[\*\[]'), '').trim();
+      final responseText = response.content.replaceFirst(RegExp(r'^[\*\[]'), '').trim();
       return responseText;
     } catch (e) {
       return _generateLocalResponse(npc, userMessage);

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
+import '../services/ai_router.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -119,6 +121,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildBaseUrlInput(appProvider),
           const SizedBox(height: 12),
           _buildModelPicker(appProvider),
+          const SizedBox(height: 12),
+          _buildSceneRouting(appProvider),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -304,43 +308,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildApiKeyInput(AppProvider appProvider) {
-    final hint = appProvider.aiProvider == AiProvider.deepseek
-        ? 'sk-...'
-        : appProvider.aiProvider == AiProvider.zhipu
-            ? '智谱 API Key'
-            : appProvider.aiProvider == AiProvider.sensenova
-                ? 'SenseNova API Key（sk-开头）'
-                : 'Agnes API Key';
-    final url = appProvider.aiProvider == AiProvider.deepseek
-        ? 'https://platform.deepseek.com'
-        : appProvider.aiProvider == AiProvider.zhipu
-            ? 'https://open.bigmodel.cn'
-            : appProvider.aiProvider == AiProvider.sensenova
-                ? 'https://platform.sensenova.cn/docs'
-                : 'https://www.agnes-ai.cn';
+    final controllers = <AiProvider, TextEditingController>{};
+    for (final p in AiProvider.values) {
+      final key = appProvider.apiKeys[p.name] ?? '';
+      controllers[p] = TextEditingController(text: key);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('在 $url 获取 API Key',
-            style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _keyController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: hint,
-                  prefixIcon: const Icon(Icons.key),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
+        const Text('API Key 配置（可同时配置多个）',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        ...AiProvider.values.map((p) {
+          final ctrl = controllers[p]!;
+          final hint = {
+            AiProvider.deepseek: 'sk-... (付费)',
+            AiProvider.zhipu: '智谱 API Key (免费)',
+            AiProvider.agnes: 'Agnes API Key (免费)',
+            AiProvider.sensenova: 'SenseNova API Key (免费, sk-开头)',
+          }[p] ?? 'API Key';
+          final url = {
+            AiProvider.deepseek: 'platform.deepseek.com',
+            AiProvider.zhipu: 'open.bigmodel.cn',
+            AiProvider.agnes: 'www.agnes-ai.cn',
+            AiProvider.sensenova: 'platform.sensenova.cn',
+          }[p] ?? '';
+          final desc = kProviderDescriptions[p] ?? '';
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF252C36),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: appProvider.hasKey(p)
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFF374151)),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(onPressed: _saveKey, child: const Text('保存')),
-          ],
-        ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        providerNameLabel(p),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    if (appProvider.hasKey(p))
+                      const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, size: 14, color: Color(0xFF10B981)),
+                          SizedBox(width: 4),
+                          Text('已配置', style: TextStyle(fontSize: 11, color: Color(0xFF10B981))),
+                        ],
+                      )
+                    else
+                      const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline, size: 14, color: Colors.orange),
+                          SizedBox(width: 4),
+                          Text('未配置', style: TextStyle(fontSize: 11, color: Colors.orange)),
+                        ],
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(desc,
+                    style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11, height: 1.3)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: ctrl,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: hint,
+                          helperText: '获取地址: $url',
+                          helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 36,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final key = ctrl.text.trim();
+                          if (key.isEmpty) return;
+                          final savedKeys = Map<String, String>.from(appProvider.apiKeys);
+                          savedKeys[p.name] = key;
+                          await SharedPreferences.getInstance().then((prefs) async {
+                            await prefs.setString('api_key_${p.name}', key);
+                          });
+                          if (mounted) {
+                            setState(() {});
+                          }
+                        },
+                        child: const Text('保存', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -422,6 +503,143 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildSceneRouting(AppProvider appProvider) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C232D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.hub, color: Color(0xFFD3A625), size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('多模型路由配置',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...AiScene.values.map((scene) {
+            return _buildSceneRow(scene, appProvider);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSceneRow(AiScene scene, AppProvider appProvider) {
+    final provider = appProvider.providerForScene(scene);
+    final description = kSceneDescriptions[scene] ?? '';
+    final label = kSceneLabels[scene] ?? scene.name;
+    final hasKey = appProvider.hasKey(provider);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252C36),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF374151)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(label,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 6),
+                        if (!hasKey)
+                          const Text('未配置Key',
+                              style: TextStyle(fontSize: 11, color: Colors.orange)),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(description,
+                        style: const TextStyle(
+                            color: Color(0xFF8B949E), fontSize: 11, height: 1.3)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            children: AiProvider.values.map((p) {
+              final selected = provider == p;
+              final hasP = appProvider.hasKey(p);
+              return GestureDetector(
+                onTap: () => appProvider.setSceneRoute(scene, p),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFFD3A625).withOpacity(0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFFD3A625)
+                          : (hasP
+                              ? const Color(0xFF4B5563)
+                              : const Color(0xFF374151)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        providerNameLabel(p),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: selected
+                              ? const Color(0xFFD3A625)
+                              : (hasP ? Colors.white : const Color(0xFF6B7280)),
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                      if (!hasP) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.lock, size: 11, color: Color(0xFF6B7280)),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String providerNameLabel(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return 'DeepSeek';
+      case AiProvider.zhipu:
+        return '智谱';
+      case AiProvider.agnes:
+        return 'Agnes';
+      case AiProvider.sensenova:
+        return 'SenseNova';
+    }
   }
 
   Widget _buildModePicker(String current,

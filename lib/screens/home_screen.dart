@@ -35,6 +35,8 @@ class HomePage extends StatelessWidget {
                 const SizedBox(height: 30),
                 if (appProvider.isGameStarted && gameProvider.player != null)
                   _buildGameStatus(gameProvider, theme),
+                const SizedBox(height: 20),
+                _buildUpdateLog(theme),
                 const Spacer(),
                 _buildActions(context, theme),
                 const SizedBox(height: 30),
@@ -175,6 +177,72 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 4),
         Text(value, style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
       ],
+    );
+  }
+
+  Widget _buildUpdateLog(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C232D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, size: 16, color: Color(0xFFD3A625)),
+              const SizedBox(width: 6),
+              const Text(
+                '重要更新',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFD3A625)),
+              ),
+              const Spacer(),
+              Text(
+                'v0.5.7',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildUpdateItem('🎮', '多AI模型路由', '支持同时搭配DeepSeek/智谱/Agnes/商汤，按场景分配'),
+          _buildUpdateItem('💰', '经济系统', '古灵阁存取、打工挣钱、商店购买'),
+          _buildUpdateItem('📊', 'Token用量监控', '实时显示消耗，优化体验'),
+          _buildUpdateItem('🗺️', '地图UI优化', '按钮对比度提升，地点背景多样化'),
+          _buildUpdateItem('💡', 'Token消耗优化', '上下文压缩+摘要机制，节省成本'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpdateItem(String icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3)),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

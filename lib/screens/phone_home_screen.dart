@@ -6,7 +6,6 @@ import 'memory_screen.dart';
 import 'job_screen.dart';
 import 'other_screens.dart';
 import 'shop_inventory_screens.dart';
-import 'settings_screen.dart';
 import 'save_load_screen.dart';
 import 'world_map_screen.dart';
 
@@ -408,9 +407,6 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
       }),
       _AppItem(Icons.inventory_2, '我的背包', Color(0xFFEAB308), () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
-      }),
-      _AppItem(Icons.settings, '设置', Color(0xFF6B7280), () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
       }),
     ];
 

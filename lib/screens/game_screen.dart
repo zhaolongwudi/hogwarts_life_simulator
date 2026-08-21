@@ -1063,9 +1063,6 @@ class _GameScreenState extends State<GameScreen> {
           _buildQuickItem(Icons.work, '找点活干', Color(0xFF10B981), () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
           }),
-          _buildQuickItem(Icons.settings, '设置', Color(0xFF6B7280), () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-          }),
         ],
       ),
     );
@@ -2016,6 +2013,7 @@ class _GameScreenState extends State<GameScreen> {
       ('DeepSeek', AiProvider.deepseek, 'https://platform.deepseek.com'),
       ('智谱 AI', AiProvider.zhipu, 'https://open.bigmodel.cn'),
       ('Agnes', AiProvider.agnes, 'https://apihub.agnes-ai.cn'),
+      ('商汤日日新', AiProvider.sensenova, 'https://platform.sensenova.cn'),
     ];
 
     return Column(
