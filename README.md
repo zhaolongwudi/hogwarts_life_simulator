@@ -179,6 +179,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.8 — 2026-08-21
+
+**📋 变更说明**
+feat(AI提供商): 新增商汤日日新SenseNova接入
+
+SenseNova (platform.sensenova.cn) 平台公测版：
+- OpenAI兼容协议，Base URL：https://token.sensenova.cn（经normalizeBaseUrl自动去重/v1）
+- 鉴权：Bearer sk-xxx
+- 默认模型：sensenova-6.7-flash-lite (256K上下文+多模态+Tool Calls)
+- 备选模型：deepseek-v4-flash / sensenova-u1-fast（出图专用，chat不适用）
+
 ### v0.6.7 — 2026-08-21
 
 **📋 变更说明**
