@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../data/wand_data.dart';
-import '../data/world_rules.dart';
 
 /// 十三轮初始设定流程
 class IntroScreen extends StatefulWidget {

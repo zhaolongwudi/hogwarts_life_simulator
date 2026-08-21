@@ -5,7 +5,6 @@ import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
 import 'settings_screen.dart';
-import 'phone_home_screen.dart';
 import 'world_map_screen.dart';
 import 'shop_inventory_screens.dart';
 import 'memory_screen.dart';
@@ -1290,7 +1289,7 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '💰 ${player.gold} 金加隆 · 🎯 第${_turnCount(gp)}回合',
+                      '💰 ${gp.player?.inventory.isNotEmpty == true ? '有' : '无'}资产 · 🎯 第${_turnCount(gp)}回合',
                       style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
                     ),
                   ],
@@ -1334,12 +1333,12 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildAttributesSection(Player player) {
     final basic = [
-      {'label': '容貌', 'value': player.looks ?? 80, 'icon': Icons.face, 'color': const Color(0xFFD97706)},
+      {'label': '容貌', 'value': player.attributes['looks'] ?? 80, 'icon': Icons.face, 'color': const Color(0xFFD97706)},
       {'label': '体质', 'value': player.attributes['constitution'] ?? 50, 'icon': Icons.favorite, 'color': const Color(0xFFDC2626)},
       {'label': '智力', 'value': player.attributes['intelligence'] ?? 50, 'icon': Icons.psychology, 'color': const Color(0xFF2563EB)},
       {'label': '魅力', 'value': player.attributes['charisma'] ?? 50, 'icon': Icons.favorite_border, 'color': const Color(0xFFDB2777)},
       {'label': '体能', 'value': player.attributes['strength'] ?? 50, 'icon': Icons.fitness_center, 'color': const Color(0xFF059669)},
-      {'label': '道德', 'value': player.morality ?? 50, 'icon': Icons.verified, 'color': const Color(0xFF7C3AED)},
+      {'label': '道德', 'value': player.attributes['morality'] ?? 50, 'icon': Icons.verified, 'color': const Color(0xFF7C3AED)},
     ];
 
     if (_expandedStats) {

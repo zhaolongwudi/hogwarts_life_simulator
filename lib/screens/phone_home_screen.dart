@@ -469,7 +469,6 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
   }
 
   Widget _buildBottomQuickApps(GameProvider gp) {
-    final player = gp.player;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
