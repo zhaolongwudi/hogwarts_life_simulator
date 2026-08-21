@@ -1478,6 +1478,30 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     }
   }
 
+  void _checkWorldChangerAchievement() {
+    final p = _player;
+    if (p == null) return;
+    if (p.worldLineDeviation >= 0.1) {
+      _unlockAchievement('world_changer');
+    }
+  }
+
+  void _checkWarHeroAchievement() {
+    final p = _player;
+    if (p == null) return;
+    final combat = p.playerReputation.get('combat');
+    if (combat >= 80) {
+      _unlockAchievement('war_hero');
+    }
+  }
+
+  void _incrementWorldLineDeviation(double delta) {
+    final p = _player;
+    if (p == null) return;
+    p.worldLineDeviation = (p.worldLineDeviation + delta).clamp(0.0, 1.0);
+    _checkWorldChangerAchievement();
+  }
+
   // ==================== 时间推进 ====================
   void _advanceTimeForAction(String action) {
     int minutes = 15;
@@ -1854,6 +1878,13 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     }
 
     _checkSkillAchievements();
+    _checkWorldChangerAchievement();
+    _checkWarHeroAchievement();
+
+    // 每10回合增加少量世界线变动率
+    if (_turnCount % 10 == 0) {
+      _incrementWorldLineDeviation(0.005);
+    }
   }
 
   void _extractNarrativeFromRawText(String text) {

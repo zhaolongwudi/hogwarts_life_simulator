@@ -204,19 +204,89 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   String _filter = '全部';
 
-  final List<Map<String, dynamic>> _items = [
-    {'name': '旧魔杖', 'icon': Icons.corporate_fare, 'category': '武器', 'desc': '入门级魔杖', 'count': 1, 'color': Colors.amber},
-    {'name': '巧克力蛙', 'icon': Icons.person, 'category': '食品', 'desc': '霍格沃茨最受欢迎的零食', 'count': 3, 'color': Colors.brown},
-    {'name': '羽毛笔', 'icon': Icons.edit, 'category': '文具', 'desc': '提升写作体验', 'count': 2, 'color': Colors.blue},
-    {'name': '活力药剂', 'icon': Icons.local_drink, 'category': '药水', 'desc': '恢复精力', 'count': 1, 'color': Colors.green},
-    {'name': '比比多味豆', 'icon': Icons.cake, 'category': '食品', 'desc': '各种奇怪的味道', 'count': 10, 'color': Colors.pink},
-    {'name': '水晶瓶', 'icon': Icons.local_drink, 'category': '材料', 'desc': '存放药水用', 'count': 5, 'color': Colors.purple},
-  ];
+  IconData _getItemIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'food':
+      case '食品':
+        return Icons.restaurant;
+      case 'potion':
+      case '药水':
+        return Icons.science;
+      case 'wand':
+      case '武器':
+        return Icons.auto_awesome;
+      case 'spell':
+      case '魔咒':
+        return Icons.emoji_symbols;
+      case 'material':
+      case '材料':
+        return Icons.category;
+      case 'tool':
+      case '工具':
+        return Icons.build;
+      case 'book':
+      case '书籍':
+        return Icons.menu_book;
+      case 'clothing':
+      case '服装':
+        return Icons.checkroom;
+      default:
+        return Icons.inventory_2;
+    }
+  }
+
+  Color _getItemColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'food':
+      case '食品':
+        return Colors.brown;
+      case 'potion':
+      case '药水':
+        return Colors.green;
+      case 'wand':
+      case '武器':
+        return Colors.amber;
+      case 'spell':
+      case '魔咒':
+        return Colors.purple;
+      case 'material':
+      case '材料':
+        return Colors.blue;
+      case 'tool':
+      case '工具':
+        return Colors.orange;
+      case 'book':
+      case '书籍':
+        return Colors.teal;
+      case 'clothing':
+      case '服装':
+        return Colors.pink;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  List<Map<String, dynamic>> _getDynamicItems() {
+    final gp = context.read<GameProvider>();
+    final inventory = gp.player?.inventory ?? [];
+    return inventory.asMap().entries.map((entry) {
+      final item = entry.value;
+      return {
+        'name': item.name,
+        'icon': _getItemIcon(item.type),
+        'category': item.type,
+        'desc': item.description.isNotEmpty ? item.description : item.type,
+        'count': 1,
+        'color': _getItemColor(item.type),
+      };
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final categories = ['全部', '武器', '食品', '文具', '药水', '材料'];
-    final filtered = _filter == '全部' ? _items : _items.where((i) => i['category'] == _filter).toList();
+    final items = _getDynamicItems();
+    final filtered = _filter == '全部' ? items : items.where((i) => i['category'] == _filter).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('你的背包')),
@@ -251,7 +321,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Badge(
-                    label: Text('${_items.length}'),
+                    label: Text('${items.length}'),
                     child: Icon(Icons.inventory_2, color: Theme.of(context).colorScheme.primary),
                   ),
                 ),

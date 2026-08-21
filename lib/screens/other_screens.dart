@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import 'npc_chat_screen.dart';
+import '../utils/ui_helpers.dart';
 
 // ==================== 魔法通讯 ====================
 class CommunicationScreen extends StatefulWidget {
@@ -138,8 +139,8 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
   }
 
   Widget _buildContactTile(NPC npc) {
-    final houseColor = _getHouseColor(npc.house);
-    final affLevel = _getAffectionLevel(npc.affection);
+    final houseColor = UiHelpers.getHouseColor(npc.house);
+    final affLevel = UiHelpers.getAffectionLabel(npc.affection);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -200,7 +201,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                         affLevel,
                         style: TextStyle(
                           fontSize: 12,
-                          color: _getAffectionColor(npc.affection),
+                          color: UiHelpers.getAffectionColor(npc.affection),
                         ),
                       ),
                     ],
@@ -216,7 +217,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
   }
 
   Widget _buildAffectionBadge(int affection) {
-    final color = _getAffectionColor(affection);
+    final color = UiHelpers.getAffectionColor(affection);
     final icon = affection >= 50 ? Icons.favorite : affection >= 0 ? Icons.sentiment_satisfied : Icons.sentiment_dissatisfied;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -258,7 +259,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
               final npc = npcs[index];
               return ListTile(
                 title: Text(npc.name),
-                subtitle: Text(_getAffectionLevel(npc.affection)),
+                subtitle: Text(UiHelpers.getAffectionLabel(npc.affection)),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -272,43 +273,6 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
         ),
       ),
     );
-  }
-
-  Color _getHouseColor(String house) {
-    switch (house) {
-      case 'Gryffindor':
-        return const Color(0xFF740001);
-      case 'Slytherin':
-        return const Color(0xFF1A472A);
-      case 'Ravenclaw':
-        return const Color(0xFF0E1A40);
-      case 'Hufflepuff':
-        return const Color(0xFFECB939);
-      default:
-        return const Color(0xFF8B949E);
-    }
-  }
-
-  String _getAffectionLevel(int affection) {
-    if (affection >= 95) return '灵魂伴侣 💞';
-    if (affection >= 85) return '深爱 ❤️';
-    if (affection >= 70) return '亲密 💕';
-    if (affection >= 50) return '信任 😊';
-    if (affection >= 30) return '友好 🙂';
-    if (affection >= 10) return '好感 😃';
-    if (affection >= -9) return '中立 😐';
-    if (affection >= -20) return '冷漠 😶';
-    if (affection >= -50) return '反感 😒';
-    if (affection >= -80) return '宿怨 😠';
-    return '死敌 💀';
-  }
-
-  Color _getAffectionColor(int affection) {
-    if (affection >= 70) return Colors.pink;
-    if (affection >= 30) return Colors.green;
-    if (affection >= -9) return Colors.grey;
-    if (affection >= -50) return Colors.orange;
-    return Colors.red;
   }
 }
 
@@ -1355,7 +1319,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: _getScoreColor(score),
+                          color: UiHelpers.getScoreColor(score),
                         ),
                       ),
                       const Icon(Icons.favorite, size: 16, color: Colors.pink),
@@ -1393,7 +1357,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
   }
 
   Widget _buildPersonChip(NPC npc) {
-    final houseColor = _getHouseColor(npc.house);
+    final houseColor = UiHelpers.getHouseColor(npc.house);
     return Column(
       children: [
         Container(
@@ -1429,26 +1393,5 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
           ),
       ],
     );
-  }
-
-  Color _getHouseColor(String house) {
-    switch (house) {
-      case 'Gryffindor':
-        return const Color(0xFF740001);
-      case 'Slytherin':
-        return const Color(0xFF1A472A);
-      case 'Ravenclaw':
-        return const Color(0xFF0E1A40);
-      case 'Hufflepuff':
-        return const Color(0xFFECB939);
-      default:
-        return const Color(0xFF8B949E);
-    }
-  }
-
-  Color _getScoreColor(int score) {
-    if (score >= 50) return Colors.red;
-    if (score >= 35) return Colors.pink;
-    return Colors.orange;
   }
 }

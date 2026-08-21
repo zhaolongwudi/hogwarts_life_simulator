@@ -1,5 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures, prefer_const_declarations
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -40,11 +38,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveKey() async {
     final key = _keyController.text.trim();
-    if (key.isEmpty) return;
+    if (key.isEmpty) {
+      return;
+    }
     await context.read<AppProvider>().saveApiKey(key);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     await context.read<GameProvider>().updateApiKey(key);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _connectionStatus = null);
   }
 
@@ -59,28 +63,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final gp = context.read<GameProvider>();
       final connected = await gp.checkConnection();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (connected) {
         setState(() => _connectionStatus = '✅ 连接成功');
         final bal = await gp.balance;
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         if (bal != null) {
           setState(() => _balance = bal);
         }
         final quota = await gp.quotaInfo;
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         if (quota != null) {
           setState(() => _quotaInfo = quota);
         }
       } else {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() => _connectionStatus = '❌ 连接失败，请检查 API Key 和 Base URL');
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _connectionStatus = '❌ 错误: $e');
     }
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _checking = false);
   }
 

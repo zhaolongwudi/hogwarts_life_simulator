@@ -1,5 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures, avoid_unnecessary_containers
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -242,7 +240,9 @@ class _IntroScreenState extends State<IntroScreen> {
   }
 
   void _next() {
-    if (!_validateCurrentStep()) return;
+    if (!_validateCurrentStep()) {
+      return;
+    }
     if (_step < 12) {
       setState(() => _step++);
       _pageController.nextPage(

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import '../services/npc_chat_service.dart';
+import '../utils/ui_helpers.dart';
 
 class NpcChatScreen extends StatefulWidget {
   final NPC npc;
@@ -149,7 +150,7 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
   @override
   Widget build(BuildContext context) {
     final npc = widget.npc;
-    final houseColor = _getHouseColor(npc.house);
+    final houseColor = UiHelpers.getHouseColor(npc.house);
 
     return Scaffold(
       appBar: AppBar(
@@ -180,8 +181,8 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
                 children: [
                   Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   Text(
-                    _getAffectionLabel(npc.affection),
-                    style: TextStyle(fontSize: 12, color: _getAffectionColor(npc.affection)),
+                    UiHelpers.getAffectionLabel(npc.affection),
+                    style: TextStyle(fontSize: 12, color: UiHelpers.getAffectionColor(npc.affection)),
                   ),
                 ],
               ),
@@ -247,7 +248,7 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
 
   Widget _buildMessageBubble(ChatMessage message, NPC npc) {
     final isUser = message.role == 'user';
-    final houseColor = _getHouseColor(npc.house);
+    final houseColor = UiHelpers.getHouseColor(npc.house);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -357,43 +358,6 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
         ),
       ),
     );
-  }
-
-  Color _getHouseColor(String house) {
-    switch (house) {
-      case 'Gryffindor':
-        return const Color(0xFF740001);
-      case 'Slytherin':
-        return const Color(0xFF1A472A);
-      case 'Ravenclaw':
-        return const Color(0xFF0E1A40);
-      case 'Hufflepuff':
-        return const Color(0xFFECB939);
-      default:
-        return const Color(0xFFD3A625);
-    }
-  }
-
-  String _getAffectionLabel(int affection) {
-    if (affection >= 95) return '灵魂伴侣 💞';
-    if (affection >= 85) return '深爱 ❤️';
-    if (affection >= 70) return '亲密 💕';
-    if (affection >= 50) return '信任 😊';
-    if (affection >= 30) return '友好 🙂';
-    if (affection >= 10) return '好感 😃';
-    if (affection >= -9) return '中立 😐';
-    if (affection >= -20) return '冷漠 😶';
-    if (affection >= -50) return '反感 😒';
-    if (affection >= -80) return '宿怨 😠';
-    return '死敌 💀';
-  }
-
-  Color _getAffectionColor(int affection) {
-    if (affection >= 70) return Colors.pink;
-    if (affection >= 30) return Colors.green;
-    if (affection >= -9) return Colors.grey;
-    if (affection >= -50) return Colors.orange;
-    return Colors.red;
   }
 
   @override

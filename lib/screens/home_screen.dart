@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../screens/save_load_screen.dart';
+import '../utils/ui_helpers.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -118,7 +119,7 @@ class HomePage extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: _getHouseColor(player.house ?? ''),
+                  backgroundColor: UiHelpers.getHouseColor(player.house ?? ''),
                   child: Text(
                     player.name.isNotEmpty ? player.name.substring(0, 1).toUpperCase() : '?',
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
@@ -260,15 +261,5 @@ class HomePage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _getHouseColor(String house) {
-    return switch (house.toLowerCase()) {
-      'gryffindor' => const Color(0xFF740001),
-      'slytherin' => const Color(0xFF1a472a),
-      'ravenclaw' => const Color(0xFF0e1a40),
-      'hufflepuff' => const Color(0xFFecbe22),
-      _ => Colors.grey,
-    };
   }
 }
