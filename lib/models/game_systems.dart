@@ -77,6 +77,9 @@ class GameTime {
     return datePart;
   }
 
+  /// 仅格式化时间部分（小时:分钟）
+  String get formattedTime => '$hour:${minute.toString().padLeft(2, '0')}';
+
   /// 简略日期
   String formatDate() => '$year年$month月$day日';
 

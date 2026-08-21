@@ -289,7 +289,7 @@ class _GameScreenState extends State<GameScreen> {
                     gp.loadingStage.isNotEmpty ? gp.loadingStage : '推进中...',
                     style: const TextStyle(fontSize: 13),
                   ),
-                  if (gp.totalTokens > 0) ...[
+                  if (gp.lastRoundTokens > 0) ...[
                     const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -298,7 +298,7 @@ class _GameScreenState extends State<GameScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${gp.totalTokens} tokens',
+                        '${gp.lastRoundTokens} tokens',
                         style: const TextStyle(fontSize: 11, color: Color(0xFFA0AEC0)),
                       ),
                     ),

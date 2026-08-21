@@ -53,11 +53,13 @@ class GameProvider extends ChangeNotifier {
   int _totalPromptTokens = 0;
   int _totalCompletionTokens = 0;
   int _totalTokens = 0;
+  int _lastRoundTokens = 0;
   int _apiCalls = 0;
 
   int get totalPromptTokens => _totalPromptTokens;
   int get totalCompletionTokens => _totalCompletionTokens;
   int get totalTokens => _totalTokens;
+  int get lastRoundTokens => _lastRoundTokens;
   int get apiCalls => _apiCalls;
   String get loadingStage => _loadingStage;
 
@@ -548,27 +550,37 @@ ${profile.join('｜')}
       if (_narrativeSummary.isNotEmpty) {
         contextBuffer.write('【前情摘要】\n$_narrativeSummary\n\n');
       }
-      final recent = _truncateNarrativeContext(_currentNarrative, 150);
-      contextBuffer.write('【近期】\n$recent');
+      final recent = _truncateNarrativeContext(_currentNarrative, 400);
+      contextBuffer.write('【近期剧情】\n$recent');
 
       final context = contextBuffer.toString();
       final statusTag = _buildStatusTag(p);
       final extra = _buildCriticalContext(action);
+      final sceneInfo = _buildSceneContext();
 
-      return '''【情境】
+      return '''【世界上下文】
 $context
 
-【状态】$statusTag
-【当前】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}
+【玩家状态】$statusTag
+【当前场景】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}
+$sceneInfo
 
-${extra.isNotEmpty ? extra + '\n' : ''}【行动】
+${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $action
 
-【输出要求】
-1. 叙事:200-300字，≥3感官细节，开头📅时间戳
+【写作要求】
+1. 叙事要求:400-600字，详细描写：
+   - 环境氛围（声音、气味、光线等3-5种感官细节）
+   - NPC的言行举止、表情反应、对话交流
+   - 玩家的心理活动、情绪变化
+   - 重要物品/事件的细节描写
+   - 场景氛围的变化和渲染
+
 2. 好感变化:NPC名:±X(原因)
-3. 可选行动:A/B/C/D（具体选项）
-4. 自由行动''';
+
+3. 可选行动:A/B/C/D（具体选项，各选项体现不同性格/策略）
+
+4. 可选行动:''';
     }
 
     try {
@@ -1759,6 +1771,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     _totalPromptTokens += result.usage.promptTokens;
     _totalCompletionTokens += result.usage.completionTokens;
     _totalTokens += result.usage.totalTokens;
+    _lastRoundTokens = result.usage.totalTokens;
     _apiCalls++;
     notifyListeners();
     return result;
@@ -2033,6 +2046,41 @@ $_pendingSummary
     }
 
     return parts.isNotEmpty ? '【状态】\n${parts.join('\n')}' : '';
+  }
+
+  /// 构建场景上下文信息（当前存在的NPC、时间提示等）
+  String _buildSceneContext() {
+    final parts = <String>[];
+    final npcsHere = npcsInCurrentLocation();
+    if (npcsHere.isNotEmpty) {
+      final npcNames = npcsHere.map((n) {
+        final status = n.isAlive ? '好感${n.affection}' : '';
+        return '${n.name}($status)';
+      }).join('、');
+      parts.add('【在场NPC】$npcNames');
+    }
+
+    final hour = _worldState.time.hour;
+    final timeDesc = hour >= 22 || hour < 6 ? '深夜' : 
+                     hour >= 18 ? '夜晚' : 
+                     hour >= 14 ? '下午' : 
+                     hour >= 10 ? '上午' : '清晨';
+    parts.add('【时间氛围】$timeDesc（${_worldState.time.formattedTime}）');
+
+    if (_player!.energy < 30) {
+      parts.add('【提示】玩家精力较低，建议休息');
+    }
+
+    return parts.join('\n');
+  }
+
+  /// 获取当前场景中的NPC
+  List<NPC> npcsInCurrentLocation() {
+    final location = _worldState.currentLocation;
+    if (location == null || location.isEmpty) return [];
+    return _npcRegistry.where((npc) {
+      return npc.currentLocation?.toLowerCase().contains(location.toLowerCase()) ?? false;
+    }).toList();
   }
 
   void _parseAffectionChanges(String text) {
