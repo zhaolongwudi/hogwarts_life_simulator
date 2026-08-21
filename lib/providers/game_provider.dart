@@ -152,6 +152,7 @@ class GameProvider extends ChangeNotifier {
     final npc = _npcRegistry[npcId];
     if (npc == null) return;
     npc.affection = (npc.affection + change).clamp(-100, 100);
+    _checkAffectionAchievements(npc);
     notifyListeners();
     _autoSave();
   }
@@ -313,6 +314,7 @@ $worldRules
       await _generateOpeningScene();
 
       appProvider.setGameStarted(true);
+      _unlockAchievement('first_letter');
       _isLoading = false;
       notifyListeners();
       _autoSave();
@@ -1307,6 +1309,8 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       });
       _unlockCG(cgById('CG-010'));
       _unlockCG(cgById('CG-CF-001'));
+      _unlockAchievement('first_confession');
+      _unlockAchievement('in_love');
       _notifications.add('💕 你与${npc.name}开始了恋爱！');
       _currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
@@ -1348,6 +1352,35 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       chapter: cg.chapter,
     );
     _notifications.add('📸 解锁CG：${cg.name}');
+  }
+
+  void _unlockAchievement(String id) {
+    final p = _player;
+    if (p == null) return;
+    if (p.achievements.contains(id)) return;
+    final ach = achievementCatalog.firstWhere(
+      (a) => a.id == id,
+      orElse: () => Achievement(id: id, name: id, description: ''),
+    );
+    p.achievements.add(id);
+    _notifications.add('🏆 解锁成就：${ach.name}');
+  }
+
+  void _checkAffectionAchievements(NPC npc) {
+    if (npc.affection >= 20) {
+      _unlockAchievement('first_friend');
+    }
+  }
+
+  void _checkSkillAchievements() {
+    final p = _player;
+    if (p == null) return;
+    for (final s in p.learnedSpells.values) {
+      if (s.level >= 90) {
+        _unlockAchievement('honor_student');
+        return;
+      }
+    }
   }
 
   // ==================== 时间推进 ====================
@@ -1416,6 +1449,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     for (final npc in _npcRegistry.values) {
       if (npc.affection > 0 && _random.nextDouble() < 0.05) {
         npc.affection = (npc.affection + 1).clamp(-100, 100);
+        _checkAffectionAchievements(npc);
       }
     }
 
@@ -1503,6 +1537,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     npc.affection = (npc.affection + delta).clamp(-100, 100);
     _checkLocks(npc);
     _syncRelationshipLevel(npc);
+    _checkAffectionAchievements(npc);
     notifyListeners();
   }
 
@@ -1602,6 +1637,8 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (_turnCount % 5 == 0 || _lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'))) {
       checkNPCConfessions();
     }
+
+    _checkSkillAchievements();
   }
 
   void _extractNarrativeFromRawText(String text) {
@@ -1713,6 +1750,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
         npc.affection = (npc.affection + delta).clamp(-100, 100);
         _checkLocks(npc);
         _syncRelationshipLevel(npc);
+        _checkAffectionAchievements(npc);
       }
     }
   }
@@ -1922,6 +1960,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       final house = _computeHouseLocal();
       final narrative = _generateSortingNarrative(house);
       _player!.house = house;
+      _unlockAchievement('sorted');
 
       _isLoading = false;
       notifyListeners();
@@ -2038,6 +2077,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     try {
       final selected = _computeWandLocal(options);
       _player!.wandId = selected['id'] as String?;
+      _unlockAchievement('first_wand');
       final narrative = _generateWandNarrative(selected);
 
       _isLoading = false;

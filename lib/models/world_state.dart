@@ -9,11 +9,11 @@ class WorldState {
   String era;
   Map<String, int> housePoints;
   List<String> recentEvents;
-  double playerImpactScore;
+  double playerImpactScore; // 预留字段: 设计钩子, 达到0.5+时原著NPC对玩家可见, 当前未实现写入
 
   // ====== 设定文档扩展字段 ======
   GameTime time; // 完整时间系统
-  String timeFlowMode; // 时间流速: normal/story/fast
+  String timeFlowMode; // 预留字段: 设计钩子, normal/story/fast, 当前仅显示不影响时间推进
   final List<String> specialMarkers; // 特殊标记: ⏳命运时刻/🌙满月/📜考试周/🎄圣诞/⚡事件触发
   String? currentLocation;
   String? weather;
