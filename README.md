@@ -100,7 +100,7 @@ flutter build apk --release
 
 | 来源 | 链接 | 说明 |
 |------|------|------|
-| nightly.link | [下载最新版 APK](https://nightly.link/zhaolongwudi/hogwarts_life_simulator/HogwartLige-nightly.zip) | 免登录直接下载，每次构建自动更新 |
+| nightly.link | [下载最新版 APK](https://nightly.link/zhaolongwudi/hogwarts_life_simulator/workflows/android-build/main/HogwartLige-nightly.zip) | 免登录直接下载，每次构建自动更新 |
 | GitHub Releases | [历史版本](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases) | 所有版本归档 |
 
 ---
