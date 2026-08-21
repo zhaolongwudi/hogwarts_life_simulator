@@ -179,6 +179,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.6 — 2026-08-21
+
+**📋 变更说明**
+修复(AI连接): Base URL路径重复/测试连接无详细错误
+
+根因分析：
+1. 三个服务商 Base URL 风格冲突：
+   - DeepSeek/Zhipu 官方文档风格：BASE不带/v1 (https://api.deepseek.com) + chatPath=/v1/chat/completions ✓
+   - Agnes 官方文档风格：BASE带/v1 (https://api.agnes-ai.cn/v1) + chatPath=/v1/... ✗
+   → 导致Agnes用户按官网填后最终请求 /v1/v1/chat/completions 404
+
 ### v0.6.5 — 2026-08-21
 
 **📋 变更说明**
