@@ -2576,7 +2576,7 @@ $_pendingSummary
   Future<double?> get balance async {
     if (_router == null) return null;
     final provider = appProvider.aiProvider;
-    return await _router!.checkBalance(provider) as double?;
+    return await _router!.checkBalance(provider);
   }
 
   Future<Map<String, dynamic>?> get quotaInfo async {
