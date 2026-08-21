@@ -80,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           provider: p,
           apiKey: _keyControllers[p]!.text.trim(),
           baseUrl: defaultBaseUrl(p),
-          chatPath: '/chat/completions',
+          chatPath: defaultChatPath(p),
           model: _modelControllers[p]!.text.trim().isEmpty
               ? defaultModel(p)
               : _modelControllers[p]!.text.trim(),
@@ -112,9 +112,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case AiProvider.zhipu:
         return 'https://open.bigmodel.cn';
       case AiProvider.agnes:
-        return 'https://apihub.agnes-ai.cn';
+        return 'https://api.agnes-ai.cn';
       case AiProvider.sensenova:
-        return 'https://platform.sensenova.cn';
+        return 'https://token.sensenova.cn';
+    }
+  }
+
+  String defaultChatPath(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+      case AiProvider.agnes:
+      case AiProvider.sensenova:
+        return '/v1/chat/completions';
+      case AiProvider.zhipu:
+        return '/api/paas/v4/chat/completions';
     }
   }
 
@@ -127,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case AiProvider.agnes:
         return 'agnes-2.5-flash';
       case AiProvider.sensenova:
-        return 'SenseNova-N8';
+        return 'sensenova-6.7-flash-lite';
     }
   }
 

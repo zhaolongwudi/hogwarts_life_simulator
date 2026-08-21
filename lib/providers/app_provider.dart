@@ -83,17 +83,17 @@ class AiConfig {
         model: 'agnes-2.5-flash',
         apiKey: apiKey,
         baseUrl: 'https://api.agnes-ai.cn',
+        chatPath: '/v1/chat/completions',
       );
 
-  /// 商汤日日新 SenseNova（platform.sensenova.cn）
-  /// 平台公测版使用 OpenAI 兼容端点：https://token.sensenova.cn/v1
-  /// 鉴权：Bearer sk-xxx（在 console → API Keys 页面创建）
-  /// 备注：公测期间余额仅在控制台页面展示，暂无公开余额查询API。
+  /// 商汤日日新 SenseNova
+  /// 正确端点: https://token.sensenova.cn/v1/chat/completions
   factory AiConfig.sensenova(String apiKey) => AiConfig(
         provider: AiProvider.sensenova,
         model: 'sensenova-6.7-flash-lite',
         apiKey: apiKey,
         baseUrl: 'https://token.sensenova.cn',
+        chatPath: '/v1/chat/completions',
       );
 
   AiConfig copyWith({
