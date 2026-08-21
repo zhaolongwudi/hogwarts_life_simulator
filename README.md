@@ -179,6 +179,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.7.7 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复三家AI提供商的API端点配置错误
+
+问题分析:
+1. 智谱AI (405错误):
+   - 原因: 测试连接时使用了错误的路径 /chat/completions
+   - 修复: 智谱需要使用 /api/paas/v4/chat/completions
+
 ### v0.7.6 — 2026-08-21
 
 **📋 变更说明**
