@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../data/wand_data.dart';
+import '../data/world_rules.dart';
 
 /// 十三轮初始设定流程
 class IntroScreen extends StatefulWidget {
@@ -28,22 +29,34 @@ class _IntroScreenState extends State<IntroScreen> {
     '第六轮 · 性格特质',
     '第七轮 · 信仰与价值观',
     '第八轮 · 魔杖',
-    '第九轮 · 天赋专精',
+    '第九轮 · 天赋与资质',
     '第十轮 · 宠物',
     '第十一轮 · 好友关系',
     '第十二轮 · 剧情起点',
     '第十三轮 · 最终确认',
   ];
 
-  // 1. 时代
-  int _eraIndex = 2;
-  static const List<String> _eraOptions = ['邓布利多时代', '亲世代', '子世代', '现代', '随机'];
+  // 1. 时代（第75章启动界面 · 8个时代选项）
+  int _eraIndex = 4;
+  static const List<String> _eraOptions = [
+    '霍格沃茨建校早期',
+    '中世纪猎巫时期',
+    '格林德沃崛起时代',
+    '第一次巫师战争',
+    '第二次巫师战争',
+    '战后重建时代',
+    '现代巫师社会',
+    '自定义时代',
+  ];
   static const List<String> _eraDescriptions = [
-    '1892-1899 · 少年邓布利多与格林德沃',
-    '1971-1978 · 掠夺者四人组时代',
-    '1991-1998 · 哈利·波特求学时代',
-    '2020+ · 战后重建的魔法世界',
-    '随机时代，充满惊喜',
+    '约990年 · 四位创始人建校时代',
+    '1692年前后 · 《国际保密法》实施',
+    '1920s-1945 · 格林德沃席卷欧洲',
+    '1970s · 伏地魔崛起，社会紧张',
+    '1995-1998 · 伏地魔复活，全面战争',
+    '1998-2010s · 战后重建，新秩序建立',
+    '2020+ · 阿不思·波特时代',
+    '由玩家自定义时代背景',
   ];
 
   // 2. 姓名与身份
@@ -63,23 +76,45 @@ class _IntroScreenState extends State<IntroScreen> {
     '银白色头发，异色瞳，神秘气质',
   ];
 
-  // 4. 家族与血统
+  // 4. 家族与血统（第75章 · 11个血统选项）
   String _bloodStatus = 'muggleborn';
   String _familyBackground = '出生于普通麻瓜家庭';
-  static const List<String> _bloodOptions = ['muggleborn', 'halfblood', 'pureblood', 'special'];
+  static const List<String> _bloodOptions = [
+    'muggleborn', 'halfblood', 'pureblood_side', 'pureblood_sacred',
+    'squib', 'obscurial', 'veela', 'werewolf', 'half_giant', 'muggle_family', 'custom',
+  ];
   static const Map<String, String> _bloodLabels = {
     'muggleborn': '麻瓜出身',
-    'halfblood': '混血',
-    'pureblood': '纯血',
-    'special': '特殊家庭',
+    'halfblood': '混血巫师',
+    'pureblood_side': '纯血旁支',
+    'pureblood_sacred': '神圣二十八族',
+    'squib': '哑炮',
+    'obscurial': '默然者（高风险）',
+    'veela': '混血媚娃',
+    'werewolf': '狼人',
+    'half_giant': '半巨人',
+    'muggle_family': '麻瓜家庭',
+    'custom': '自定义',
   };
-  static const List<String> _familyOptions = [
-    '出生于普通麻瓜家庭，父母都是医生',
-    '母亲是巫师，父亲是麻瓜',
-    '传承已久的纯血家族，家规森严',
-    '父母都是强大巫师，家族在魔法部有影响力',
-    '孤儿，在孤儿院长大',
-    '出生于魔法家庭，但家境普通',
+  static const Map<String, String> _bloodDescriptions = {
+    'muggleborn': '父母均为麻瓜，十一岁前对魔法世界一无所知',
+    'halfblood': '父母一方巫师一方麻瓜，魔法能力未必弱于纯血',
+    'pureblood_side': '纯血家族非核心成员，有姓氏便利也背负期望',
+    'pureblood_sacred': '古老纯血家族核心成员，拥有财富与人脉',
+    'squib': '出生于巫师家庭但无法使用魔法，地位尴尬',
+    'obscurial': '幼年压抑魔法诞生的危险黑暗力量，极高不稳定',
+    'veela': '拥有媚娃血统，外貌魅惑但面临偏见',
+    'werewolf': '被狼人咬伤，满月变形，面临严重就业歧视',
+    'half_giant': '巨人血统，体型庞大力量惊人，被主流社会排斥',
+    'muggle_family': '完全的麻瓜家庭，若非巫师则与魔法无关',
+    'custom': '由玩家自定义血统与出身',
+  };
+  // 出生身份（第75章）
+  String _birthIdentity = '普通巫师家庭';
+  static const List<String> _birthIdentityOptions = [
+    '普通巫师家庭', '麻瓜家庭', '孤儿', '纯血没落家族',
+    '纯血豪门', '魔法部官员家庭', '傲罗家庭', '教授家庭',
+    '古灵阁妖精契约相关', '圣芒戈治疗师家庭', '自定义',
   ];
 
   // 5. 童年经历（选3项）
@@ -129,6 +164,50 @@ class _IntroScreenState extends State<IntroScreen> {
     '魁地奇天赋',
     '心灵与直觉天赋',
     '领导力天赋',
+  ];
+
+  // 9b. 魔法资质（第75章）
+  String _magicAptitude = '良好';
+  static const List<String> _magicAptitudeOptions = [
+    '哑炮·无魔法天赋',
+    '普通',
+    '良好',
+    '优秀',
+    '特殊（易容马格斯/蛇佬腔/预言天分/变形天赋/大脑封闭术天赋）',
+    '随机',
+  ];
+
+  // 9c. 学院倾向（第75章）
+  String _housePreference = '系统判定';
+  static const List<String> _housePreferenceOptions = [
+    '系统判定',
+    '格兰芬多（勇气·胆识·骑士精神）',
+    '斯莱特林（野心·血统·精明·意志）',
+    '拉文克劳（智慧·知识·创造力·好奇）',
+    '赫奇帕奇（忠诚·勤勉·公平·坚韧）',
+    '未入学/成年/其他学校',
+  ];
+
+  // 9d. 初始政治倾向（第75章）
+  String _politicalTendency = '血统平等';
+  static const List<String> _politicalOptions = [
+    '血统平等',
+    '纯血保守',
+    '中立投机',
+    '凤凰社支持',
+    '食死徒同情',
+    '自由独立',
+  ];
+
+  // 9e. 模拟风格（第75章）
+  String _simulationStyle = '混合模式';
+  static const List<String> _simulationStyleOptions = [
+    '极度现实',
+    '经典校园冒险',
+    '史诗巫师战争',
+    '黑暗奇幻',
+    '日常人生',
+    '混合模式',
   ];
 
   // 10. 宠物
@@ -227,12 +306,16 @@ class _IntroScreenState extends State<IntroScreen> {
     final gameProvider = context.read<GameProvider>();
     final appProvider = context.read<AppProvider>();
 
+    // 时代映射（第75章8选项 → Era枚举）
     const eraMap = [
-      Era.dumbledore,
-      Era.marauders,
-      Era.harry_same,
-      Era.post_war,
-      Era.random,
+      Era.dumbledore,       // 霍格沃茨建校早期 → 映射到最早的可用时代
+      Era.dumbledore,       // 中世纪猎巫时期
+      Era.dumbledore,       // 格林德沃崛起时代
+      Era.first_war,        // 第一次巫师战争
+      Era.harry_same,       // 第二次巫师战争
+      Era.post_war,         // 战后重建时代
+      Era.post_war,         // 现代巫师社会
+      Era.random,           // 自定义时代
     ];
     appProvider.setEra(eraMap[_eraIndex]);
 
@@ -269,6 +352,11 @@ class _IntroScreenState extends State<IntroScreen> {
       petId: _petId,
       petName: petName,
       initialTalent: _talent,
+      magicAptitude: _magicAptitude,
+      housePreference: _housePreference,
+      politicalTendency: _politicalTendency,
+      simulationStyle: _simulationStyle,
+      birthIdentity: _birthIdentity,
     );
 
     if (mounted) {
@@ -505,10 +593,11 @@ class _IntroScreenState extends State<IntroScreen> {
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('血统', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('血统/出身', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
+            runSpacing: 8,
             children: _bloodOptions.map((val) {
               final selected = _bloodStatus == val;
               return FilterChip(
@@ -522,15 +611,48 @@ class _IntroScreenState extends State<IntroScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
-          const Text('家族背景', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          for (final f in _familyOptions)
-            _buildRadioCard(
-              title: f,
-              selected: _familyBackground == f,
-              onTap: () => setState(() => _familyBackground = f),
+          if (_bloodDescriptions[_bloodStatus] != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD3A625).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Color(0xFFD3A625)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _bloodDescriptions[_bloodStatus]!,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFD3A625)),
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
+          const SizedBox(height: 24),
+          const Text('出生身份', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _birthIdentityOptions.map((val) {
+              final selected = _birthIdentity == val;
+              return FilterChip(
+                label: Text(val, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                selected: selected,
+                onSelected: (_) => setState(() => _birthIdentity = val),
+                backgroundColor: const Color(0xFF21262d),
+                selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );
@@ -677,17 +799,105 @@ class _IntroScreenState extends State<IntroScreen> {
   // ==================== 第九轮 · 天赋专精 ====================
   Widget _buildTalentStep() {
     return _buildStepShell(
-      '天赋专精',
-      '你与生俱来的闪光点。',
+      '天赋与资质',
+      '你的天赋、魔法资质、学院倾向与政治立场。',
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          for (final t in _talentOptions)
-            _buildRadioCard(
-              title: t,
-              selected: _talent == t,
-              onTap: () => setState(() => _talent = t),
-            ),
+          const Text('天赋专精', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _talentOptions.map((t) {
+              final selected = _talent == t;
+              return FilterChip(
+                label: Text(t, style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                selected: selected,
+                onSelected: (_) => setState(() => _talent = t),
+                backgroundColor: const Color(0xFF21262d),
+                selectedColor: const Color(0xFF740001),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          const Text('魔法资质', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _magicAptitudeOptions.map((a) {
+              final selected = _magicAptitude == a;
+              return FilterChip(
+                label: Text(a, style: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 12)),
+                selected: selected,
+                onSelected: (_) => setState(() => _magicAptitude = a),
+                backgroundColor: const Color(0xFF21262d),
+                selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          const Text('学院倾向', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _housePreferenceOptions.map((h) {
+              final selected = _housePreference == h;
+              return FilterChip(
+                label: Text(h, style: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 12)),
+                selected: selected,
+                onSelected: (_) => setState(() => _housePreference = h),
+                backgroundColor: const Color(0xFF21262d),
+                selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          const Text('初始政治倾向', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _politicalOptions.map((p) {
+              final selected = _politicalTendency == p;
+              return FilterChip(
+                label: Text(p, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                selected: selected,
+                onSelected: (_) => setState(() => _politicalTendency = p),
+                backgroundColor: const Color(0xFF21262d),
+                selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          const Text('模拟风格', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _simulationStyleOptions.map((s) {
+              final selected = _simulationStyle == s;
+              return FilterChip(
+                label: Text(s, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                selected: selected,
+                onSelected: (_) => setState(() => _simulationStyle = s),
+                backgroundColor: const Color(0xFF21262d),
+                selectedColor: const Color(0xFFD3A625),
+                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );
@@ -768,13 +978,17 @@ class _IntroScreenState extends State<IntroScreen> {
           _buildSummaryRow('姓名', _nameController.text.trim()),
           _buildSummaryRow('性别', _gender),
           _buildSummaryRow('血统', _bloodLabels[_bloodStatus]!),
-          _buildSummaryRow('家族', _familyBackground),
+          _buildSummaryRow('出生身份', _birthIdentity),
           _buildSummaryRow('外貌', _appearance),
           _buildSummaryRow('童年', _selectedChildhood.join('；')),
           _buildSummaryRow('性格', _selectedTraits.join('、')),
           _buildSummaryRow('信仰', _beliefs),
           _buildSummaryRow('魔杖', wand?.name ?? '未选择'),
           _buildSummaryRow('天赋', _talent),
+          _buildSummaryRow('魔法资质', _magicAptitude),
+          _buildSummaryRow('学院倾向', _housePreference),
+          _buildSummaryRow('政治倾向', _politicalTendency),
+          _buildSummaryRow('模拟风格', _simulationStyle),
           _buildSummaryRow('宠物', _petName ?? '无'),
           _buildSummaryRow('好友', _friendChoice),
           _buildSummaryRow('起点', _startPoint),

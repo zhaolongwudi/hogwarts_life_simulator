@@ -37,6 +37,11 @@ class Player {
   final List<String> childhoodExperiences; // 童年经历
   String? beliefs; // 信仰与价值观
   String? initialTalent; // 初始天赋专精
+  String? magicAptitude; // 魔法资质（第75章）
+  String? housePreference; // 学院倾向（第75章）
+  String? politicalTendency; // 初始政治倾向（第75章）
+  String? simulationStyle; // 模拟风格（第75章）
+  String? birthIdentity; // 出生身份（第75章）
   String? petName;
   int petBond; // 宠物羁绊
   LoveState loveState; // 恋爱状态
@@ -84,6 +89,11 @@ class Player {
     List<String>? childhoodExperiences,
     this.beliefs,
     this.initialTalent,
+    this.magicAptitude,
+    this.housePreference,
+    this.politicalTendency,
+    this.simulationStyle,
+    this.birthIdentity,
     this.petName,
     this.petBond = 0,
     LoveState? loveState,

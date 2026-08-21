@@ -9,6 +9,7 @@ import '../data/course_data.dart';
 import '../data/wand_data.dart';
 import '../data/cg_data.dart';
 import '../data/npc_data.dart';
+import '../data/world_rules.dart';
 import '../services/deepseek_service.dart';
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
@@ -132,10 +133,14 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ==================== 系统提示词（七大法则 + AI禁令 + 自检阵列 + 叙事风格 + 指令系统） ====================
+  // ==================== 系统提示词（终极整合版世界观 + 七大法则 + AI禁令 + 自检阵列 + 叙事风格 + 指令系统） ====================
   String _buildSystemPrompt() {
     final eraName = _eraLabel(appProvider.era);
-    return '''你是《霍格沃兹人生模拟器》的主持者与叙事者，世界设定依据完整最终典藏版设定文档。
+    return '''你是【哈利·波特·魔法纪元·世界模拟系统】，负责维护原著优先级别、魔法、血统、家族、魔法部、霍格沃茨、神奇生物、黑巫师、预言、历史、时间、因果。而玩家负责自己的人生。
+
+$kWorldRulesPrompt
+
+【当前时代】$eraName
 
 【七大核心法则】
 1. 玩家是普通学生，不是天选之人：不因玩家身份自动获得特殊待遇或优待。
@@ -205,8 +210,20 @@ class GameProvider extends ChangeNotifier {
 - 恋爱声望影响：同学院+2~5；跨学院-5~-3；跨血统-10~-5；跨阵营-15~-8；师生恋-25~-15。
 
 【指令系统】（玩家可随时输入，本地解析，不消耗魔法回合）
-/状态 /时间 /地图 /通知 /帮助 /关系 /恋爱 /声望 /课程 /收藏 /日记 /档案 /成就 /宠物 /信 /新NPC /血缘 /联动 /cheat
-玩家输入这些指令时由本地系统直接处理并返回信息，不需要你生成叙事。''';
+/状态 /时间 /地图 /通知 /帮助 /关系 /恋爱 /声望 /课程 /收藏 /日记 /档案 /成就 /宠物 /信 /新NPC /血缘 /联动 /世界演化 /cheat
+玩家输入这些指令时由本地系统直接处理并返回信息，不需要你生成叙事。
+
+【月度世界演化提醒】
+每个回合(通常为一个月)，你应在叙事中自然融入世界动态：魔法部、战争/黑巫师、霍格沃茨、神奇生物、经济、国际、你所在地区、你能获知的传闻。世界继续向前，玩家不参与世界照样发展。
+
+【防过度热闹协议】
+禁止每个月都有黑魔头/魂器/死亡圣器/魔法战争。魔法世界也必须拥有大量普通生活：上课、做魔药、打魁地奇、去霍格莫德、喝黄油啤酒。
+
+【防主角光环协议】
+玩家没有默认传奇血统、死亡圣器、预言、强大魔杖。除非通过真实行动获得。
+
+【AI自检系统】
+每满15轮执行完整强制自检，输出【剧情快照】和【人设OOC自检报告】，校验：人物行为是否偏离设定、魔法规则是否被破坏、历史时间线是否错误、玩家信息是否被提前泄露。校验完毕后等待玩家指令。''';
   }
 
   String _eraLabel(Era era) {
@@ -239,6 +256,11 @@ class GameProvider extends ChangeNotifier {
     Map<String, int>? attributes,
     Map<String, int>? houseDimensions,
     String? initialTalent,
+    String? magicAptitude,
+    String? housePreference,
+    String? politicalTendency,
+    String? simulationStyle,
+    String? birthIdentity,
   }) async {
     _isLoading = true;
     _error = null;
@@ -270,6 +292,11 @@ class GameProvider extends ChangeNotifier {
         attributes: attributes,
         houseDimensions: houseDimensions,
         initialTalent: initialTalent,
+        magicAptitude: magicAptitude,
+        housePreference: housePreference,
+        politicalTendency: politicalTendency,
+        simulationStyle: simulationStyle,
+        birthIdentity: birthIdentity,
       );
 
       _worldState = WorldState(
@@ -397,12 +424,13 @@ class GameProvider extends ChangeNotifier {
 
     final p = _player!;
     final prompt = '''
-你是《哈利·波特》世界的叙事者，风格如J.K.罗琳。
+你是【哈利·波特·魔法纪元·世界模拟系统】的叙事者，风格如J.K.罗琳。
 
 【玩家信息】
 - 姓名：${p.name}
 - 年龄：11岁
 - 血统：${_bloodStatusLabel(p.bloodType)}
+- 出生身份：${p.birthIdentity ?? '未设定'}
 - 出生地：${p.birthLocation}
 - 性格：${p.personalityTraits.join(', ')}
 - 时代：${_eraLabel(appProvider.era)}
@@ -410,14 +438,21 @@ class GameProvider extends ChangeNotifier {
 - 家族背景：${p.familyBackground ?? '（未设定）'}
 - 童年经历：${p.childhoodExperiences.isEmpty ? '（未设定）' : p.childhoodExperiences.join('；')}
 - 信仰：${p.beliefs ?? '（未设定）'}
+- 魔法资质：${p.magicAptitude ?? '普通'}
+- 学院倾向：${p.housePreference ?? '系统判定'}
+- 政治倾向：${p.politicalTendency ?? '未设定'}
+- 模拟风格：${p.simulationStyle ?? '混合模式'}
 
 【生成规则】
 1. 麻瓜出身：展示普通家庭日常生活，魔法觉醒的意外事件，收到霍格沃茨通知书时的震惊
 2. 魔法家庭：巫师家庭日常生活，对魔法世界的熟悉感
 3. 纯血家庭：可能有的家族传统或压力，家族期望
-4. 只展示角色合理知道的信息
-5. 不要让玩家自动成为主角
-6. 保持魔法氛围，但不夸大
+4. 哑炮/默然者/狼人等特殊血统：根据设定文档第七至十章的规则，展示其特殊处境与社会偏见
+5. 只展示角色合理知道的信息
+6. 不要让玩家自动成为主角（防主角光环协议）
+7. 保持魔法氛围，但不夸大
+8. 根据模拟风格调整叙事基调（极度现实/经典校园冒险/史诗巫师战争/黑暗奇幻/日常人生/混合模式）
+9. 参考时代背景锚定原著历史事件与人物状态
 
 【输出格式 - 必须严格遵守】
 【叙事】
@@ -487,10 +522,14 @@ $_currentNarrative
 【玩家档案】
 - 姓名：${_player!.name}
 - 血统：${_bloodStatusLabel(_player!.bloodType)}
+- 出生身份：${_player!.birthIdentity ?? '未设定'}
 - 性格特质：${_player!.personalityTraits.isEmpty ? '（未设定）' : _player!.personalityTraits.join('、')}
 - 外貌：${_player!.appearance ?? '（未设定）'}
 - 学院：${_player!.house ?? '未分院'}
 - 年级：${_player!.grade ?? 1}
+- 魔法资质：${_player!.magicAptitude ?? '普通'}
+- 政治倾向：${_player!.politicalTendency ?? '未设定'}
+- 模拟风格：${_player!.simulationStyle ?? '混合模式'}
 - 世界线变动率：${(_player!.worldLineDeviation * 100).toStringAsFixed(1)}%
 
 【玩家状态】
@@ -535,13 +574,16 @@ ${_worldState.recentEvents.isEmpty ? '暂无记录' : _worldState.recentEvents.m
 【附近NPC】
 ${_getNearbyNPCs()}
 
-请生成行动的后果和新的选项。严格遵守七大法则与AI禁令。保持：
+请生成行动的后果和新的选项。严格遵守终极原则与AI禁令。保持：
 1. 只有玩家合理能经历的事情发生
 2. NPC有自己的人生，可主动行动
 3. 不强行把玩家塞进原著事件
 4. 如果玩家远离事件，就正常过校园生活
 5. 时间自然推进，叙事开头附时间戳
 6. **必须**在叙事中体现玩家的【性格特质】和【血统】，让行为和对话符合其身份设定
+7. 适当融入月度世界演化信息（魔法部/黑巫师/霍格沃茨/神奇生物/经济/国际/你所在地区的动态或传闻）
+8. 遵守防过度热闹协议：不要每个月都有黑魔头/魂器/死亡圣器/魔法战争
+9. 遵守防主角光环协议：玩家没有默认传奇血统/死亡圣器/预言/强大魔杖
 
 【⚠️ 强制输出要求】
 你必须严格按照以下格式输出，**叙事部分不能为空**：
@@ -674,6 +716,11 @@ D. （选项4 - 可选）
         _currentNarrative = '【联动系统】\n当前时代：${_eraLabel(appProvider.era)}\n'
             '联动系统允许你在特定节点与其他时代剧情产生关联（例如在子世代时遇到亲世代留下的物品或信件）。\n'
             '当前已触发的联动痕迹：\n${_worldState.timelineBranches.isEmpty ? '暂无。' : _worldState.timelineBranches.map((b) => '· $b').join('\n')}';
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/世界演化':
+        _currentNarrative = _formatWorldEvolution();
         _choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
@@ -855,17 +902,42 @@ D. （选项4 - 可选）
     ];
   }
 
+  int _calculateAge() {
+    final p = _player;
+    if (p == null) return 11;
+    try {
+      final birthYear = int.parse(p.birthYear);
+      return _worldState.time.year - birthYear;
+    } catch (_) {
+      return 11;
+    }
+  }
+
+  int _playerGold() {
+    // 金加隆暂以背包中是否拥有金币物品判定
+    final hasGold = _player?.inventory.any((e) => e.name.contains('加隆') || e.name.contains('金币')) ?? false;
+    return hasGold ? 1 : 0;
+  }
+
   // ==================== 指令格式化 ====================
   String _formatStatus() {
     final p = _player!;
+    final w = _worldState;
     final buf = StringBuffer()
-      ..writeln('【角色状态】')
-      ..writeln('姓名：${p.name}')
-      ..writeln('性别：${p.gender.isEmpty ? '未设定' : p.gender}')
-      ..writeln('血统：${_bloodStatusLabel(p.bloodType)}')
-      ..writeln('学院：${p.house ?? '未分院'}')
-      ..writeln('年级：${p.grade ?? 1}年级')
-      ..writeln('外貌：${p.appearance ?? '未设定'}')
+      ..writeln('╔══════════════════════════════════════╗')
+      ..writeln('  《哈利·波特·魔法纪元·人生状态》')
+      ..writeln('╚══════════════════════════════════════╝')
+      ..writeln()
+      ..writeln('【时间】${w.timestamp}')
+      ..writeln('【年龄】${_calculateAge()}岁')
+      ..writeln('【血统】${_bloodStatusLabel(p.bloodType)}')
+      ..writeln('【身份】${p.birthIdentity ?? '未设定'}')
+      ..writeln('【所在地】${w.currentLocation ?? '未知'}')
+      ..writeln('【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
+      ..writeln('【职业】${p.initialTalent ?? '学生'}')
+      ..writeln('【财富】💰 ${_playerGold()}金加隆')
+      ..writeln('【家庭】${p.familyBackground ?? '未设定'}')
+      ..writeln('【社会地位】学院声望${p.houseReputation} · 魔法界声望${p.wizardingReputation} · 阵营声望${p.factionReputation}')
       ..writeln()
       ..writeln('【生存状态】')
       ..writeln('❤️ 生命：${p.health}/100')
@@ -874,12 +946,21 @@ D. （选项4 - 可选）
       ..writeln('🍗 饱食度：${p.satiety}/100')
       ..writeln('⚡ 精力：${p.energy}/100')
       ..writeln()
+      ..writeln('【魔法能力】')
+      ..writeln('魔法资质：${p.magicAptitude ?? '普通'}')
+      ..writeln('主修天赋：${p.initialTalent ?? '未设定'}')
+      ..writeln('已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒' : '${p.learnedSpells.length}个咒语'}')
+      ..writeln()
       ..writeln('【学院四维】')
       ..writeln('勇气：${p.houseDimensions['courage']}  智慧：${p.houseDimensions['wisdom']}')
       ..writeln('忠诚：${p.houseDimensions['loyalty']}  野心：${p.houseDimensions['ambition']}')
       ..writeln()
+      ..writeln('【政治倾向】${p.politicalTendency ?? '未设定'}')
+      ..writeln('【模拟风格】${p.simulationStyle ?? '混合模式'}')
       ..writeln('【恋爱状态】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}')
-      ..writeln('【世界线变动率】${(p.worldLineDeviation * 100).toStringAsFixed(1)}%');
+      ..writeln('【世界线变动率】${(p.worldLineDeviation * 100).toStringAsFixed(1)}%')
+      ..writeln()
+      ..writeln('【当前目标】${p.currentGoal ?? '尚未设定目标'}');
     return buf.toString();
   }
 
@@ -1064,6 +1145,54 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       return '【血缘】\n未设定血缘亲属关系。三代内血亲不可攻略（除非开启骨科模式）。';
     }
     return '【血缘】\n${_player!.bloodRelatives.join('、')}\n${_player!.boneMode ? '（骨科模式已开启，禁忌限制解除）' : '（三代内血亲不可攻略）'}';
+  }
+
+  /// 月度世界演化报告（第47章）
+  String _formatWorldEvolution() {
+    final w = _worldState;
+    final eraName = _eraLabel(appProvider.era);
+    final buf = StringBuffer()
+      ..writeln('╔══════════════════════════════════════╗')
+      ..writeln('  《月度世界演化报告》')
+      ..writeln('╚══════════════════════════════════════╝')
+      ..writeln()
+      ..writeln('【当前时代】$eraName')
+      ..writeln('【时间】${w.timestamp}')
+      ..writeln('【学年】${w.academicYear}')
+      ..writeln()
+      ..writeln('【九大文明支柱状态】');
+    for (int i = 0; i < kCivilizationPillars.length; i++) {
+      buf.writeln('  ${i + 1}. ${kCivilizationPillars[i]}');
+    }
+    buf
+      ..writeln()
+      ..writeln('【世界五层结构】');
+    for (final layer in kWorldLayers) {
+      buf.writeln('  $layer');
+    }
+    buf
+      ..writeln()
+      ..writeln('【区域危险度】');
+    for (final zone in kDangerZones) {
+      buf.writeln('  $zone');
+    }
+    buf
+      ..writeln()
+      ..writeln('【货币体系】$kCurrencyRate')
+      ..writeln()
+      ..writeln('【当前地点】${w.currentLocation ?? '未知'}')
+      ..writeln('【天气】${w.weather ?? '晴朗'}')
+      ..writeln()
+      ..writeln('【近期世界事件】')
+      ..writeln(w.recentEvents.isEmpty ? '暂无记录' : w.recentEvents.map((e) => '· $e').join('\n'))
+      ..writeln()
+      ..writeln('【世界线变动率】${(_player?.worldLineDeviation ?? 0) * 100}%')
+      ..writeln()
+      ..writeln('【终极原则】');
+    for (final principle in kUltimatePrinciples) {
+      buf.writeln('  $principle');
+    }
+    return buf.toString();
   }
 
   String _formatAffections() {
@@ -1764,9 +1893,18 @@ ${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
   String _bloodStatusLabel(String status) {
     return {
       'muggleborn': '麻瓜出身',
-      'halfblood': '混血',
+      'halfblood': '混血巫师',
       'pureblood': '纯血',
+      'pureblood_side': '纯血旁支',
+      'pureblood_sacred': '神圣二十八族',
       'special': '特殊家庭',
+      'squib': '哑炮',
+      'obscurial': '默然者',
+      'veela': '混血媚娃',
+      'werewolf': '狼人',
+      'half_giant': '半巨人',
+      'muggle_family': '麻瓜家庭',
+      'custom': '自定义',
     }[status] ?? status;
   }
 
