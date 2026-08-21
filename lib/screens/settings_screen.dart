@@ -536,21 +536,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }).toList(),
     );
   }
-}
-
-class ModeOption {
-  final String label;
-  final String value;
-  final String desc;
-  const ModeOption(this.label, this.value, this.desc);
-}
-
-class EraOption {
-  final String label;
-  final String value;
-  final String desc;
-  const EraOption(this.label, this.value, this.desc);
-}
 
   Widget _buildQuotaInfo() {
     if (_quotaInfo == null) return const SizedBox.shrink();
@@ -694,6 +679,20 @@ class EraOption {
     return n.toString();
   }
 
+}
+
+class ModeOption {
+  final String label;
+  final String value;
+  final String desc;
+  const ModeOption(this.label, this.value, this.desc);
+}
+
+class EraOption {
+  final String label;
+  final String value;
+  final String desc;
+  const EraOption(this.label, this.value, this.desc);
 }
 
 class _ProviderOption {

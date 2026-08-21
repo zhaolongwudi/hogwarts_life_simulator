@@ -551,7 +551,7 @@ D. （可选）
           .map((e) => '${_attrLabel(e.key)}:${e.value}')
           .join(', ');
 
-      final spellsStr = _player!.learnedSpells.isEmpty
+      String spellsStr = _player!.learnedSpells.isEmpty
           ? '无'
           : _player!.learnedSpells.entries
               .take(8)
@@ -561,7 +561,7 @@ D. （可选）
         spellsStr += ' 等${_player!.learnedSpells.length}个';
       }
 
-      final invStr = _player!.inventory.isEmpty
+      String invStr = _player!.inventory.isEmpty
           ? '空'
           : _player!.inventory.take(10).map((e) => e.name).join(', ');
       if (_player!.inventory.length > 10) invStr += ' 等${_player!.inventory.length}件';
@@ -1620,8 +1620,6 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
   List<GameChoice> _generateFallbackChoices() {
     final location = _worldState.currentLocation ?? '霍格沃茨';
-    final p = _player;
-    final grade = p?.grade ?? 1;
 
     final locationChoices = {
       '霍格沃茨': [
@@ -1730,7 +1728,6 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   }
 
   List<GameChoice> _generateLocalSuggestions() {
-    final time = _worldState.timestamp;
     final location = _worldState.currentLocation ?? '霍格沃茨';
     final house = _player!.house ?? '';
     final personality = _player!.personalityTraits;
@@ -2170,18 +2167,6 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   }
 
   // ==================== 辅助方法 ====================
-  String _getNearbyNPCs() {
-    final sameHouse = _npcRegistry.values
-        .where((n) =>
-            n.house == _player!.house && n.grade == _player!.grade && n.isAlive)
-        .toList();
-    if (sameHouse.isEmpty) return '暂无同年级同学院的同学';
-    return sameHouse
-        .take(5)
-        .map((n) => '- ${n.name} (${n.currentLocation})')
-        .join('\n');
-  }
-
   String _bloodStatusLabel(String status) {
     return {
       'muggleborn': '麻瓜出身',
