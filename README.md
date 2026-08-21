@@ -142,6 +142,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.9 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复时间重复推进、私有变量访问及硬编码等问题
+
+1. 修复 _checkMonthlyEvolution 中重复调用 advanceMinutes 导致时间成本翻倍
+2. 修复 shop_inventory 和 shop_inventory_screens 中访问私有变量问题
+3. 修复 job_screen 中硬编码的余额和位置信息，改为动态读取
+4. 统一版本号显示与 pubspec.yaml 保持一致
+5. 添加必要的 import 语句
+
 ### v0.5.8 — 2026-08-21
 
 **📋 变更说明**
