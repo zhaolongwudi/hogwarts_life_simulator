@@ -142,6 +142,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.6.0 — 2026-08-21
+
+**📋 变更说明**
+refactor: 代码优化与功能完善
+
+1. 提取公共工具类UiHelpers，消除3个文件中的重复代码(_getHouseColor/_getAffectionLabel/_getAffectionColor)
+2. 补齐成就触发点：
+   - world_changer: 世界线变动率达到10%时解锁
+   - war_hero: 战斗声望达到80时解锁
+   - 每10回合自动增加少量世界线变动率
+
 ### v0.5.9 — 2026-08-21
 
 **📋 变更说明**
