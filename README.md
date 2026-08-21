@@ -179,159 +179,44 @@ flutter build apk --release
 
 ## 📝 更新日志
 
-### v0.9.0 — 2026-08-21
+### v0.9.0 — AI路由优化与性能提升
 
-**🤖 AI路由与性能优化**
-- 调整默认AI路由配置：智谱AI→主剧情，SenseNova→摘要，Agnes→NPC聊天
-- 添加ZhipuConcurrencyQueue：智谱并发队列（限1个并发）防止冲突
-- 添加AgnesRateLimiter：Agnes速率限制器（限20 RPM）防止超限
-- 添加SenseNovaQuotaManager：SenseNova配额管理器（每5小时1500次）
-- 添加ResponseCache：响应缓存机制（5分钟有效期，减少重复调用）
-- 优化降级策略：智谱→SenseNova→Agnes→DeepSeek
+**核心功能**
+- 🤖 优化AI路由配置：智谱AI→主剧情，SenseNova→摘要，Agnes→NPC聊天
+- 📊 添加速率限制保护：智谱并发队列、Agnes RPM限制、SenseNova配额管理
+- 💾 实现响应缓存机制（5分钟有效期，减少重复调用）
+- 🔄 优化降级策略：智谱→SenseNova→Agnes→DeepSeek
 
-**📱 手机模块优化**
-- 精简手机应用网格：移除非通讯类功能（商店/地图/存档/打工）
-- 保留核心功能：通讯、论坛、日记、红娘、背包、相册、平行世界、设置
-- 统一设置入口：手机内直接跳转到SettingsScreen
+**UI与交互**
+- 📱 精简手机模块：聚焦通讯/社交功能，移除非相关入口
+- 🎨 重新设计底部输入栏：深色主题、金色推进按钮、胶囊输入框
+- ⚙️ 重构设置界面：合并设置入口，添加模型配置和独立测试按钮
 
-**🔧 技术改进**
-- 更新提供商简介：添加详细限制说明（并发数/RPM/配额）
-- 更新场景描述：推荐最优模型选择和使用场景
+**技术改进**
+- 添加3家免费AI提供商的详细限制说明
 - 所有AI调用自动应用速率限制保护
+- 修复多处Flutter analyze报告的问题
 
-### v0.7.3 — 2026-08-21
+### v0.8.0 — 多模型路由系统
 
-**📋 变更说明**
-refactor: 重新设计底部输入栏UI
+- 🧠 实现AiRouter多模型路由，支持按场景分配不同AI提供商
+- 💱 实现游戏经济系统：加隆货币、古灵阁存取、打工岗位
+- 🎯 大幅降低Token消耗（约70%）：滑动窗口截断、关键状态按需注入
+- 🌍 新增SenseNova·商汤日日新作为免费模型选项
+- 🐾 新增九尾狐宠物"绯月"（东方神话背景）
 
-优化内容:
-- 推进剧情按钮改为圆角方形，使用金色主题，加载时显示进度指示器
-- 输入框改为深色胶囊样式，发送按钮嵌入输入框内
-- 命令按钮改为深色圆形，与整体风格统一
-- 添加SafeArea适配不同屏幕
+### v0.7.0 — 稳定性修复
 
-### v0.7.2 — 2026-08-21
+- 🔧 修复分院/魔杖打分数据源错误（使用houseDimensions而非attributes）
+- ❤️ 修复表白状态机死锁问题（isConsideringConfession永不重置）
+- 💬 修复NPC聊天消息重复发送问题
+- 💰 修复DeepSeek余额接口路径错误
+- 🗺️ 优化世界地图：按钮对比度、UI布局、区域背景渲染
 
-**📋 变更说明**
-feat: 重构设置界面，合并入口，添加模型配置和测试功能
+### v0.6.0 — 项目基础架构
 
-主要更新:
-- 合并游戏内设置与详细设置为统一页面
-- API Key配置卡片新增模型输入和独立测试按钮
-- 修复保存按钮显示不全问题
-- 移除自定义API地址功能，使用各厂商默认文档地址
-
-### v0.8.0 — 2026-08-21
-
-**🎨 设置界面全面重构**
-- 合并游戏内设置与详细设置为统一页面
-- API Key配置卡片新增模型输入和独立测试按钮
-- 修复保存按钮显示不全问题
-- 移除自定义API地址功能，使用各厂商默认文档地址
-- 多模型路由配置添加Token消耗预估和调用频率说明
-- 修复flutter analyze报告的多个问题
-
-**📋 技术改进**
-- 新增providerModel方法获取特定提供商的模型
-- 新增clearApiKeyFor方法清除单个提供商配置
-- 优化设置页面布局，参考绿色卡片风格统一UI
-
-### v0.7.1 — 2026-08-21
-
-**📋 变更说明**
-fix: 移除不必要的类型转换警告
-
-### v0.7.0 — 2026-08-21
-
-**📋 变更说明**
-fix: 修复flutter analyze报告的6个问题
-
-问题修复:
-- ai_router.dart: 修复systemPrompt类型不匹配(String?→String)
-- ai_router.dart: 修复checkBalance方法名错误(getBalance)
-- ai_router.dart: 移除重复/不必要的deepseek_service.dart导入
-- npc_chat_service.dart: 移除未使用的deepseek_service.dart导入
-
-### v0.6.9 — 2026-08-21
-
-**📋 变更说明**
-feat: 实现多AI模型路由、经济系统、优化Token消耗与地图UI
-
-主要更新:
-- 新增AiRouter多模型路由系统，支持按场景(主剧情/摘要/NPC聊天)分配不同AI提供商
-- 优化normalizeBaseUrl仅去除/v1版本号，保留/v4等
-- 添加SenseNova·商汤日日新作为免费模型选项
-- 实现游戏经济系统：加隆货币、古灵阁存取、打工岗位、商店购买/出售
-
-### v0.6.8 — 2026-08-21
-
-**📋 变更说明**
-feat(AI提供商): 新增商汤日日新SenseNova接入
-
-SenseNova (platform.sensenova.cn) 平台公测版：
-- OpenAI兼容协议，Base URL：https://token.sensenova.cn（经normalizeBaseUrl自动去重/v1）
-- 鉴权：Bearer sk-xxx
-- 默认模型：sensenova-6.7-flash-lite (256K上下文+多模态+Tool Calls)
-- 备选模型：deepseek-v4-flash / sensenova-u1-fast（出图专用，chat不适用）
-
-### v0.6.7 — 2026-08-21
-
-**📋 变更说明**
-修复(CI): 删除token优化遗留的未引用函数（修flutter analyze）
-
-- _buildPetDescription 被 _buildPetDescriptionShort 替换后未删除
-- _kyuubiPetDescription 随上者同被替换
-- _houseLabel 在 buildPrompt 移除学院积分显示后无任何引用
-
-推送前自检流程：
-
-### v0.6.6 — 2026-08-21
-
-**📋 变更说明**
-修复(AI连接): Base URL路径重复/测试连接无详细错误
-
-根因分析：
-1. 三个服务商 Base URL 风格冲突：
-   - DeepSeek/Zhipu 官方文档风格：BASE不带/v1 (https://api.deepseek.com) + chatPath=/v1/chat/completions ✓
-   - Agnes 官方文档风格：BASE带/v1 (https://api.agnes-ai.cn/v1) + chatPath=/v1/... ✗
-   → 导致Agnes用户按官网填后最终请求 /v1/v1/chat/completions 404
-
-### v0.6.5 — 2026-08-21
-
-**📋 变更说明**
-优化(token): 大幅降低每回合token消耗（预计降70%+）
-
-主要优化策略：
-1. buildPrompt重构：移除属性/魔咒/物品/学院分等冗余本地状态写入
-   （这些数据已在本地结构化保存，AI不需要精确值）
-   - 要求/输出格式块从500字精简到120字
-   - 近期事件从3条减为1条
-
-### v0.6.4 — 2026-08-21
-
-**📋 变更说明**
-fix: 修复nightly.link URL格式
-
-正确格式: nightly.link/{owner}/{repo}/workflows/{workflow_name}/{branch}/{artifact}.zip
-之前缺少 workflows/android-build/main/ 路径段
-
-### v0.6.3 — 2026-08-21
-
-**📋 变更说明**
-ci: 添加 nightly.link 自动上传和下载地址
-
-- 工作流新增 nightly.link 上传步骤（固定artifact名 HogwartLige-nightly）
-- 每次构建后自动生成免登录下载链接
-- GitHub Actions Summary 输出下载地址
-- README 新增下载地址表格（nightly.link + GitHub Releases）
-
-### v0.6.2 — 2026-08-21
-
-**📋 变更说明**
-docs: 优化README介绍排版和更新日志
-
-- 重新组织核心特性章节，更清晰的层级结构
-- 精简更新日志：从30+版本收敛为4个关键版本
-  - v0.6.0: 功能增强+Bug修复+代码优化
-  - v0.5.0: 重大剧情修复+新模型支持
-  - v0.4.2: 世界观系统整合
+- 🏗️ 搭建Flutter项目基础架构（Provider状态管理 + Service分层）
+- 🎭 实现75章世界观规则系统
+- 🧬 实现血统/学院/魔杖等核心初始化选项
+- 📲 实现手机模块、世界地图、对角巷商店等核心功能
+- 🔐 实现本地存档系统与JSON持久化
