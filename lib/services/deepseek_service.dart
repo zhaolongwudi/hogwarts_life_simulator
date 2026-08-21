@@ -99,6 +99,35 @@ class DeepSeekService {
     return result.content;
   }
 
+  Future<String> chatWithMessages({
+    required List<Map<String, dynamic>> messages,
+    double temperature = 0.8,
+    int maxTokens = 4096,
+  }) async {
+    try {
+      final response = await _dio.post(
+        config.chatPath,
+        data: jsonEncode({
+          'model': config.model,
+          'messages': messages,
+          'temperature': temperature,
+          'max_tokens': maxTokens,
+          'stream': false,
+        }),
+      );
+
+      final data = response.data;
+      final content = data['choices']?[0]['message']['content'] as String? ?? '';
+      if (content.isEmpty) {
+        throw Exception('Empty response from AI');
+      }
+      return content;
+    } on DioException catch (e) {
+      _handleError(e);
+      rethrow;
+    }
+  }
+
   void _handleError(DioException e) {
     final statusCode = e.response?.statusCode;
     final body = e.response?.data;

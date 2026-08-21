@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 class StoryTextRenderer {
+  // ====== 解析缓存（key=文本hash，避免重复 tokenize） ======
+  static final Map<int, List<TextSpan>> _cache = {};
+  static const int _maxCacheSize = 32;
+
   static final List<String> _characterNames = [
     '哈利·波特', '赫敏·格兰杰', '罗恩·韦斯莱', '纳威·隆巴顿',
     '拉文德·布朗', '西莫·斐尼甘', '帕瓦蒂·帕蒂尔', '迪安·托马斯',
@@ -92,6 +96,10 @@ class StoryTextRenderer {
   static List<TextSpan> parse(String text) {
     if (text.isEmpty) return [];
 
+    final key = text.hashCode;
+    final cached = _cache[key];
+    if (cached != null) return cached;
+
     final spans = <TextSpan>[];
     final tokens = _tokenize(text);
 
@@ -109,6 +117,10 @@ class StoryTextRenderer {
       }
     }
 
+    if (_cache.length >= _maxCacheSize) {
+      _cache.clear();
+    }
+    _cache[key] = spans;
     return spans;
   }
 
@@ -178,13 +190,24 @@ class StoryTextRenderer {
   static List<_Token> _splitNarration(String text) {
     final tokens = <_Token>[];
     final replacements = <_Replacement>[];
+    final coveredRanges = <_Range>{};
+
+    void addReplacement(int start, String word, _TokenType type) {
+      final range = _Range(start, start + word.length, word);
+      final overlap = coveredRanges.any((r) =>
+          range.start < r.end && range.end > r.start);
+      if (!overlap) {
+        coveredRanges.add(range);
+        replacements.add(_Replacement(start, word, type));
+      }
+    }
 
     for (final name in _characterNames) {
       int idx = 0;
       while (true) {
         idx = text.indexOf(name, idx);
         if (idx == -1) break;
-        replacements.add(_Replacement(idx, name, _TokenType.character));
+        addReplacement(idx, name, _TokenType.character);
         idx += name.length;
       }
     }
@@ -194,11 +217,7 @@ class StoryTextRenderer {
       while (true) {
         idx = text.indexOf(loc, idx);
         if (idx == -1) break;
-        final alreadyCovered = replacements.any((r) =>
-            idx >= r.start && idx < r.start + r.word.length);
-        if (!alreadyCovered) {
-          replacements.add(_Replacement(idx, loc, _TokenType.location));
-        }
+        addReplacement(idx, loc, _TokenType.location);
         idx += loc.length;
       }
     }
@@ -208,11 +227,7 @@ class StoryTextRenderer {
       while (true) {
         idx = text.indexOf(item, idx);
         if (idx == -1) break;
-        final alreadyCovered = replacements.any((r) =>
-            idx >= r.start && idx < r.start + r.word.length);
-        if (!alreadyCovered) {
-          replacements.add(_Replacement(idx, item, _TokenType.item));
-        }
+        addReplacement(idx, item, _TokenType.item);
         idx += item.length;
       }
     }

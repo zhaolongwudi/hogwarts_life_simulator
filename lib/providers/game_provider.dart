@@ -21,6 +21,14 @@ class GameProvider extends ChangeNotifier {
   final Random _random = Random();
   late final NpcChatService chatService;
 
+  // ====== 预编译正则（避免循环内重复编译） ======
+  static final _reChoiceOption = RegExp(r'^[A-E][\.\)]\s*');
+  static final _reMultiNewline = RegExp(r'\n{3,}');
+  static final _reAffectionSection = RegExp(r'【好感度变化】[\s\S]*?(?=【|$)');
+  static final _reReputationSection = RegExp(r'【声望变化】[\s\S]*?(?=【|$)');
+  static final _reChoiceMultiLine = RegExp(r'^[A-E][\.\)]\s', multiLine: true);
+  static final _reSectionMarkers = RegExp(r'【[^】]+】');
+
   Player? _player;
   WorldState _worldState = WorldState();
   final Map<String, NPC> _npcRegistry = {};
@@ -143,22 +151,23 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ==================== 系统提示词（终极整合版世界观 + 七大法则 + AI禁令 + 自检阵列 + 叙事风格 + 指令系统） ====================
+  // ==================== 系统提示词（精简版世界观 + 核心法则 + AI禁令 + 叙事风格） ====================
   String _buildSystemPrompt() {
     final eraName = _eraLabel(appProvider.era);
+    final worldRules = kUseCompactWorldRules ? kWorldRulesCompact : kWorldRulesPrompt;
     return '''你是【哈利·波特·魔法纪元·世界模拟系统】，负责维护原著优先级别、魔法、血统、家族、魔法部、霍格沃茨、神奇生物、黑巫师、预言、历史、时间、因果。而玩家负责自己的人生。
 
-$kWorldRulesPrompt
+$worldRules
 
 【当前时代】$eraName
 
 【七大核心法则】
-1. 玩家是普通学生，不是天选之人：不因玩家身份自动获得特殊待遇或优待。
+1. 玩家是普通学生，不是天选之人：不因玩家身份自动获得特殊待遇。
 2. 自由选择与后果：玩家可以做出任何选择，但每个选择都必须带来合理且持久的后果。
 3. 信息受限原则：NPC与玩家只能知晓其合理接触范围内可以获得的信息；秘密必须通过探索、对话、推理逐步揭示。
-4. 时间流逝一致性：每回合消耗合理时间，不同活动时间成本不同；时间推进必须清晰标注（格式：📅 [年份]年[月]月[日]日，[星期X]，[时段] [时:分]）。
-5. NPC独立人格：每个NPC都有独立人生、目标、喜怒哀乐，不围着玩家转；NPC会主动行动（如考虑表白、离开、结仇）。
-6. 生命与历史敬畏：重大事件（死亡、背叛、战争）不可轻率发生，一旦发生不可轻易逆转；死亡需要合理铺垫与明确描写。
+4. 时间流逝一致性：每回合消耗合理时间，不同活动时间成本不同；时间推进必须清晰标注（📅 [年份]年[月]月[日]日，[星期X]，[时段] [时:分]）。
+5. NPC独立人格：每个NPC都有独立人生、目标、喜怒哀乐，不围着玩家转。
+6. 生命与历史敬畏：重大事件（死亡、背叛、战争）不可轻率发生，一旦发生不可轻易逆转。
 7. 魔法世界首先是生活：课堂、友谊、三餐、散步都是重要内容，不只是战斗副本。
 
 【AI 十二条禁令】
@@ -173,30 +182,14 @@ $kWorldRulesPrompt
 9. 严禁让原著角色OOC（脱离性格）。
 10. 严禁跳过玩家的选择直接"安排好结局"。
 11. 严禁在未触发条件时解锁CG或达成恋爱关系。
-12. 严禁回复超出叙事范围的元信息，如系统提示、代码等。
-
-【十二层自检阵列】（每轮输出前逐层自检）
-1. 是否符合七大法则？
-2. 是否违反任何一条AI禁令？
-3. 是否存在信息越权（NPC知道不该知道的）？
-4. 时间流速是否与行动匹配？
-5. 玩家选择是否被忠实执行并产生后果？
-6. NPC行动是否保持独立人格？
-7. 好感度变化是否符合规则表（对话1-2，冲突-3~-1，送礼/中等事件/重大事件梯度递增）？
-8. 声望变化是否合理（行为-声望映射）？
-9. 恋爱剧情是否达到触发条件（好感≥85等）？
-10. 是否泄露了玩家不可能知道的信息？
-11. 事件是否会影响世界线（需要时更新世界线变动率）？
-12. 叙事是否包含≥3个感官细节（视觉/听觉/嗅觉/触觉/味觉）？
+12. 严禁回复超出叙事范围的元信息。
 
 【叙事风格】
 - 如J.K.罗琳：富有画面感、幽默、细腻，兼具温暖与悬疑。
 - 每段叙事至少包含3个感官细节（视觉、听觉、嗅觉、触觉、味觉）。
 - 使用「【叙事】」「【可选行动】」「【自由行动】」的结构化输出。
 - 叙事长度：推进事件200-400字；关键事件（战斗/表白/重大发现）400-600字。
-- 时间推进后，在叙事开头附上时间戳：📅 [年份]年[月]月[日]日，[星期X]，[时段] [时:分]。
-
-【当前时代】$eraName
+- 时间推进后，叙事开头附上时间戳。
 
 【时间系统】
 - 每回合行动消耗合理时间（对话10分钟，一餐30分钟，一节课90分钟，自习120分钟，魁地奇训练120分钟，霍格莫德一日游300分钟，禁林探索180分钟，一夜睡眠480分钟）。
@@ -204,36 +197,17 @@ $kWorldRulesPrompt
 
 【好感度系统】
 - 范围-100~+100。阶段：死敌(-100~-81)/宿怨(-80~-51)/反感(-50~-21)/冷漠(-20~-10)/中立(-9~+9)/好感(+10~+29)/友好(+30~+49)/信任(+50~+69)/亲密(+70~+84)/深爱(+85~+94)/灵魂伴侣(+95~+100)。
-- 变化规则：日常对话友好+1~2，冲突-3~-1；赠送一般礼物+1~3，喜欢+5~8，挚爱+10~15；中等事件+4~8；重大事件+10~20；极端事件+20~30；背叛/欺骗-30~-15。
-- 好感锁：信任锁(好感50且共同经历1次)、情感锁(好感70且暧昧期≥2周)、阵营锁(好感70且阵营相同或理解)、创伤锁(解除需触发治愈剧情)。被锁定时好感无法突破该等级。
+- 变化规则：日常对话+1~2，冲突-3~-1；送礼/事件梯度递增（一般礼物+1~3，喜欢+5~8，挚爱+10~15；中等事件+4~8；重大事件+10~20；极端事件+20~30；背叛-30~-15）。
 - 在叙事中自然体现好感变化，并在每轮更新【好感度变化】小节。
 
-【NPC表白机制】（NPC主动，玩家只选择接受/拒绝）
-- 触发条件：好感≥85、处于暧昧阶段≥2周、浪漫事件≥2、NPC性格权重符合其特质。
-- 表白场景需有铺垫：会在表白前1-2轮提示"XX似乎在酝酿着什么"。
-- 表白时NPC主动发起，玩家仅从「接受」/「婉拒」中选择，不接受则关系保持，可再追求。
-- 达成恋爱后：开启恋爱专属剧情，好感上限提升至100，亲密行动解锁。
-
-【声望系统】
-- NPC六维声望：学术/社交/战斗/道德/领导/黑魔法（0-100）。
-- 玩家声望：学院声望、魔法界声望、阵营声望。
-- 恋爱声望影响：同学院+2~5；跨学院-5~-3；跨血统-10~-5；跨阵营-15~-8；师生恋-25~-15。
-
-【指令系统】（玩家可随时输入，本地解析，不消耗魔法回合）
-/状态 /时间 /地图 /通知 /帮助 /关系 /恋爱 /声望 /课程 /收藏 /日记 /档案 /成就 /宠物 /信 /新NPC /血缘 /联动 /世界演化 /cheat
-玩家输入这些指令时由本地系统直接处理并返回信息，不需要你生成叙事。
-
-【月度世界演化提醒】
-每个回合(通常为一个月)，你应在叙事中自然融入世界动态：魔法部、战争/黑巫师、霍格沃茨、神奇生物、经济、国际、你所在地区、你能获知的传闻。世界继续向前，玩家不参与世界照样发展。
+【指令系统】
+玩家输入 /状态 /时间 /地图 /通知 /帮助 /关系 /恋爱 /声望 /课程 /收藏 /日记 /档案 /成就 /宠物 /信 /血缘 /联动 /世界演化 /cheat 等指令时由本地系统处理，不需要生成叙事。
 
 【防过度热闹协议】
-禁止每个月都有黑魔头/魂器/死亡圣器/魔法战争。魔法世界也必须拥有大量普通生活：上课、做魔药、打魁地奇、去霍格莫德、喝黄油啤酒。
+禁止每个月都有黑魔头/魂器/死亡圣器/魔法战争。魔法世界也必须拥有大量普通生活。
 
 【防主角光环协议】
-玩家没有默认传奇血统、死亡圣器、预言、强大魔杖。除非通过真实行动获得。
-
-【AI自检系统】
-每满15轮执行完整强制自检，输出【剧情快照】和【人设OOC自检报告】，校验：人物行为是否偏离设定、魔法规则是否被破坏、历史时间线是否错误、玩家信息是否被提前泄露。校验完毕后等待玩家指令。''';
+玩家没有默认传奇血统、死亡圣器、预言、强大魔杖。除非通过真实行动获得。''';
   }
 
   String _eraLabel(Era era) {
@@ -433,10 +407,17 @@ $kWorldRulesPrompt
     if (_player == null) return;
 
     final p = _player!;
-    final prompt = '''
-你是【哈利·波特·魔法纪元·世界模拟系统】的叙事者，风格如J.K.罗琳。
+    final wandData = p.wandId != null ? wandById(p.wandId!) : null;
+    final wandInfo = wandData != null
+        ? '${wandData.name}（${wandData.wood}·${wandData.core}·${wandData.length}，适合${wandData.suitType}）'
+        : '玩家自选的魔杖';
 
-【玩家信息】
+    final petInfo = _buildPetDescription(p);
+    final startPoint = _buildStartPointNarrative();
+
+    final prompt = '''你是【哈利·波特·魔法纪元·世界模拟系统】的叙事者，风格如J.K.罗琳。
+
+【玩家档案 - 必须全部融入叙事】
 - 姓名：${p.name}
 - 年龄：11岁
 - 血统：${_bloodStatusLabel(p.bloodType)}
@@ -444,38 +425,43 @@ $kWorldRulesPrompt
 - 出生地：${p.birthLocation}
 - 性格：${p.personalityTraits.join(', ')}
 - 时代：${_eraLabel(appProvider.era)}
-- 外貌：${p.appearance ?? '（未设定，自行合理描述）'}
-- 家族背景：${p.familyBackground ?? '（未设定）'}
-- 童年经历：${p.childhoodExperiences.isEmpty ? '（未设定）' : p.childhoodExperiences.join('；')}
-- 信仰：${p.beliefs ?? '（未设定）'}
+- 外貌：${p.appearance ?? '自行合理描述'}
+- 家族背景：${p.familyBackground ?? '未设定'}
+- 童年经历：${p.childhoodExperiences.isEmpty ? '无特殊经历' : p.childhoodExperiences.join('；')}
+- 信仰：${p.beliefs ?? '未设定'}
 - 魔法资质：${p.magicAptitude ?? '普通'}
+- 初始天赋：${p.initialTalent ?? '未设定'}
 - 学院倾向：${p.housePreference ?? '系统判定'}
 - 政治倾向：${p.politicalTendency ?? '未设定'}
 - 模拟风格：${p.simulationStyle ?? '混合模式'}
+- 魔杖：$wandInfo
+- 宠物：$petInfo
 
-【生成规则】
-1. 麻瓜出身：展示普通家庭日常生活，魔法觉醒的意外事件，收到霍格沃茨通知书时的震惊
-2. 魔法家庭：巫师家庭日常生活，对魔法世界的熟悉感
-3. 纯血家庭：可能有的家族传统或压力，家族期望
-4. 哑炮/默然者/狼人等特殊血统：根据设定文档第七至十章的规则，展示其特殊处境与社会偏见
-5. 只展示角色合理知道的信息
-6. 不要让玩家自动成为主角（防主角光环协议）
-7. 保持魔法氛围，但不夸大
-8. 根据模拟风格调整叙事基调（极度现实/经典校园冒险/史诗巫师战争/黑暗奇幻/日常人生/混合模式）
-9. 参考时代背景锚定原著历史事件与人物状态
+【剧情起点】$startPoint
 
-【输出格式 - 必须严格遵守】
+【生成规则 - 必须全部遵守】
+1. **必须**在叙事中自然融入：玩家的血统、家族背景、童年经历、魔杖、宠物
+2. 宠物 $petInfo 必须在开场叙事中出现，描述玩家与它的关系
+3. 魔杖 $wandInfo 必须被提及，比如作为生日礼物、家族传承或斜角巷的收获
+4. 必须体现玩家的【性格特质】和【信仰】
+5. 麻瓜出身：展示普通家庭日常生活，魔法觉醒的意外事件
+6. 魔法/纯血家庭：巫师家庭日常，可能有家族传统或期望
+7. 哑炮/默然者/狼人等特殊血统：展示其特殊处境
+8. 只展示角色合理知道的信息
+9. 不要让玩家自动成为主角
+10. 根据模拟风格调整叙事基调
+11. 保持魔法氛围，融入至少3个感官细节
+
+【输出格式 - 严格遵守】
 【叙事】
-（300-500字沉浸叙事，包含至少3个感官细节，详细描述主角收到霍格沃茨通知的情境、家庭反应、环境氛围等）
+（300-500字沉浸叙事，融入上述所有玩家设定，包含≥3个感官细节）
 
 【可选行动】
-A. （选项1 - 具体描述）
-B. （选项2 - 具体描述）
-C. （选项3 - 具体描述）
-D. （选项4 - 可选）
-【自由行动】（玩家可输入任何合理行为）
-
-⚠️ 叙事段是最重要的部分，必须有充足的内容描写。禁止只有选项没有叙事！''';
+A. （选项1）
+B. （选项2）
+C. （选项3）
+D. （可选）
+【自由行动】''';
 
     if (_deepSeek == null) {
       _currentNarrative =
@@ -501,6 +487,42 @@ D. （选项4 - 可选）
     }
   }
 
+  // ==================== 开场辅助：宠物描述 ====================
+  String _buildPetDescription(Player p) {
+    final petId = p.petId;
+    final petName = p.petName ?? '';
+
+    if (petId == null) return '未饲养宠物';
+
+    final petData = {
+      'owl': '$petName（送信、探索的好伙伴，聪明独立）',
+      'cat': '$petName（神秘独立的小巫师，偶尔能预知危险）',
+      'toad': '$petName（传统而忠诚的伙伴）',
+      'rat': '$petName（小巧机灵，好奇心旺盛）',
+      'kyuubi': _kyuubiPetDescription(),
+    };
+
+    return petData[petId] ?? '$petName（玩家的特殊伙伴）';
+  }
+
+  String _kyuubiPetDescription() {
+    return '''九尾灵狐「绯月」（取自东方古国传说。传说中九尾狐乃青丘山上的祥瑞，化为人形时倾国倾城。
+    她与玩家缔结契约后完全听命，擅长幻术、感知力极强，能化成人形陪伴左右。
+    性格：温柔、忠诚、聪慧，对主人言听计从。能力：幻术/魅惑/预知/灵视''';
+  }
+
+  // ==================== 开场辅助：剧情起点 ====================
+  String _buildStartPointNarrative() {
+    // 可根据玩家选择或默认生成
+    final starts = [
+      '故事从你收到霍格沃茨录取通知书的那一刻开始——那只迟来的猫头鹰终于叩响了你的窗。',
+      '故事从你站在九又四分之三站台前开始——蒸汽火车冒着白烟等待着你。',
+      '故事从你第一次踏入霍格沃茨大礼堂开始——金色的烛光在长桌上方摇曳。',
+      '故事从分院仪式前夜开始——你躺在床上翻来覆去，想着明天会被分到哪个学院。',
+    ];
+    return starts[_random.nextInt(starts.length)];
+  }
+
   // ==================== 处理选择 / 指令 ====================
   Future<void> processChoice(GameChoice choice) async {
     if (_player == null) return;
@@ -523,102 +545,76 @@ D. （选项4 - 可选）
     notifyListeners();
 
     try {
-      final prompt = '''
-继续游戏叙事。
+      // 精简后的 prompt：只发关键状态，减少 token
+      final attributesStr = _player!.attributes.entries
+          .where((e) => e.value != 0)
+          .map((e) => '${_attrLabel(e.key)}:${e.value}')
+          .join(', ');
 
-【当前情境】
+      final spellsStr = _player!.learnedSpells.isEmpty
+          ? '无'
+          : _player!.learnedSpells.entries
+              .take(8)
+              .map((e) => '${e.key}(Lv${e.value.level})')
+              .join(', ');
+      if (_player!.learnedSpells.length > 8) {
+        spellsStr += ' 等${_player!.learnedSpells.length}个';
+      }
+
+      final invStr = _player!.inventory.isEmpty
+          ? '空'
+          : _player!.inventory.take(10).map((e) => e.name).join(', ');
+      if (_player!.inventory.length > 10) invStr += ' 等${_player!.inventory.length}件';
+
+      final npcStr = _formatAffections(maxEntries: 6);
+      final recentEventsStr = _worldState.recentEvents.isEmpty
+          ? '无'
+          : _worldState.recentEvents.take(3).join('；');
+
+      final prompt = '''继续游戏叙事。
+
+【情境】
 $_currentNarrative
 
-【玩家档案】
-- 姓名：${_player!.name}
-- 血统：${_bloodStatusLabel(_player!.bloodType)}
-- 出生身份：${_player!.birthIdentity ?? '未设定'}
-- 性格特质：${_player!.personalityTraits.isEmpty ? '（未设定）' : _player!.personalityTraits.join('、')}
-- 外貌：${_player!.appearance ?? '（未设定）'}
-- 学院：${_player!.house ?? '未分院'}
-- 年级：${_player!.grade ?? 1}
-- 魔法资质：${_player!.magicAptitude ?? '普通'}
-- 政治倾向：${_player!.politicalTendency ?? '未设定'}
-- 模拟风格：${_player!.simulationStyle ?? '混合模式'}
-- 世界线变动率：${(_player!.worldLineDeviation * 100).toStringAsFixed(1)}%
+【玩家】${_player!.name}｜${_bloodStatusLabel(_player!.bloodType)}｜${_player!.house ?? '未分院'}｜${_player!.grade}年级
+性格：${_player!.personalityTraits.isEmpty ? '未设定' : _player!.personalityTraits.join('、')}
+${_player!.magicAptitude ?? '普通'}天赋｜倾向：${_player!.politicalTendency ?? '未设定'}
+状态 HP:${_player!.health}/MP:${_player!.magic}/SP:${_player!.spirit}/精力:${_player!.energy}
+属性：$attributesStr
+魔咒：$spellsStr
+物品：$invStr
 
-【玩家状态】
-- 生命：${_player!.health}/100
-- 魔力：${_player!.magic}/100
-- 精神力：${_player!.spirit}/100
-- 饱食度：${_player!.satiety}/100
-- 精力：${_player!.energy}/100
-- 恋爱状态：${_player!.loveState.status}
-${_player!.loveState.status != '单身' ? '- 恋爱对象：${_player!.loveState.partnerName}' : ''}
+【当前】${_worldState.timestamp}｜学年${_worldState.academicYear}｜${_worldState.currentLocation ?? '未知'}｜${_worldState.weather ?? '晴朗'}
+学院积分：${_worldState.housePoints.entries.map((e) => '${_houseLabel(e.key)}${e.value}').join('·')}
 
-【核心属性】
-${_player!.attributes.entries.map((e) => '- ${_attrLabel(e.key)}: ${e.value}').join('\n')}
-
-【已学魔咒】
-${_player!.learnedSpells.isEmpty ? '（尚未学会任何魔咒）' : _player!.learnedSpells.entries.map((e) => '- ${e.key} (Lv.${e.value.level})').join('\n')}
-
-【物品栏】
-${_player!.inventory.isEmpty ? '（背包空空如也）' : _player!.inventory.map((e) => '- ${e.name}${e.description.isNotEmpty ? '（${e.description}）' : ''}').join('\n')}
-
-【学院积分】
-- ${_worldState.housePoints.entries.map((e) => '${_houseLabel(e.key)}: ${e.value}分').join(' | ')}
+【关系】$npcStr
+【事件】$recentEventsStr
 
 【玩家行动】
 $action
 
-【时间与地点】
-- 时间：${_worldState.timestamp}
-- 学年：${_worldState.academicYear}
-- 当前地点：${_worldState.currentLocation ?? '未知'}
-- 天气：${_worldState.weather ?? '晴朗'}
+【要求】
+1. 叙事 200-400字，必须包含≥3个感官细节
+2. 开头附时间戳
+3. 体现玩家【性格特质】和【血统】
+4. NPC有独立人格，不围着玩家转
+5. 每回合更新【好感度变化】小节（对话+1~2，冲突-3~-1，事件梯度）
+6. 不强行把玩家塞进原著事件
 
-【重要NPC关系】
-${_formatAffections()}
-
-【好感度变化提醒】
-根据玩家本轮行动，依据好感度变化规则表更新相关NPC好感度（对话1-2，冲突-3~-1，送礼/事件梯度递增），并在输出中附上【好感度变化】小节。
-
-【原著事件提醒】
-${_worldState.recentEvents.isEmpty ? '暂无记录' : _worldState.recentEvents.map((e) => '- $e').join('\n')}
-
-【附近NPC】
-${_getNearbyNPCs()}
-
-请生成行动的后果和新的选项。严格遵守终极原则与AI禁令。保持：
-1. 只有玩家合理能经历的事情发生
-2. NPC有自己的人生，可主动行动
-3. 不强行把玩家塞进原著事件
-4. 如果玩家远离事件，就正常过校园生活
-5. 时间自然推进，叙事开头附时间戳
-6. **必须**在叙事中体现玩家的【性格特质】和【血统】，让行为和对话符合其身份设定
-7. 适当融入月度世界演化信息（魔法部/黑巫师/霍格沃茨/神奇生物/经济/国际/你所在地区的动态或传闻）
-8. 遵守防过度热闹协议：不要每个月都有黑魔头/魂器/死亡圣器/魔法战争
-9. 遵守防主角光环协议：玩家没有默认传奇血统/死亡圣器/预言/强大魔杖
-
-【⚠️ 强制输出要求】
-你必须严格按照以下格式输出，**叙事部分不能为空**：
-1. 先写【叙事】段（200-400字），描述当前情境的详细叙事
-2. 再写【好感度变化】段（如果有变化）
-3. 最后写【可选行动】段，给出3-4个选项
-
-注意：叙事是最重要的部分，必须包含感官细节、环境描写和人物互动。
-禁止只有选项没有叙事！
-
-格式（必须严格遵守）：
+【输出格式 - 必须严格】
 【叙事】
-（200-400字，含≥3感官细节，描述发生了什么、环境如何、NPC反应如何）
+（200-400字，含≥3感官细节）
 
 【好感度变化】
 NPC名: ±X（原因）
 
 【可选行动】
-A. （选项1 - 具体行动描述）
-B. （选项2 - 具体行动描述）
-C. （选项3 - 具体行动描述）
-D. （选项4 - 可选）
-【自由行动】（玩家可输入任何合理行为）
+A. （具体行动）
+B. （具体行动）
+C. （具体行动）
+D. （可选）
 
-⚠️ 再次强调：【叙事】段必须有内容，不能为空。这是最重要的部分。''';
+【自由行动】（玩家可输入任何合理行为）''';
 
       final response = await _callDeepSeek(prompt);
       _parseResponse(response);
@@ -1205,13 +1201,17 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     return buf.toString();
   }
 
-  String _formatAffections() {
-    final list = _npcRegistry.values
-        .where((n) => n.affection.abs() >= 30 || _player!.relationships.containsKey(n.id))
-        .toList()
-      ..sort((a, b) => b.affection.compareTo(a.affection));
+  String _formatAffections({int maxEntries = 8}) {
+    final list = _player == null
+        ? const <NPC>[]
+        : _npcRegistry.values
+            .where((n) => n.affection.abs() >= 30 || _player!.relationships.containsKey(n.id))
+            .toList()
+          ..sort((a, b) => b.affection.compareTo(a.affection));
     if (list.isEmpty) return '暂无深入关系';
-    return list.take(8).map((n) => '- ${n.name} (${n.affectionStage}): ${n.affection}').join('\n');
+    final entries = list.take(maxEntries).map((n) => '${n.name}(${n.affection})').join('、');
+    if (list.length > maxEntries) return '$entries 等${list.length}人';
+    return entries;
   }
 
   // ==================== NPC 主动表白机制 ====================
@@ -1538,9 +1538,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
         if (trimmed.isNotEmpty) {
           _currentNarrative += '$trimmed\n';
         }
-      } else if (RegExp(r'^[A-E][\.\)]\s*').hasMatch(trimmed)) {
+      } else if (_reChoiceOption.hasMatch(trimmed)) {
         final action =
-            trimmed.replaceFirst(RegExp(r'^[A-E][\.\)]\s*'), '').trim();
+            trimmed.replaceFirst(_reChoiceOption, '').trim();
         if (action.isNotEmpty) {
           _choices.add(GameChoice(text: action, action: action));
         }
@@ -1554,7 +1554,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     }
 
     _currentNarrative = _currentNarrative
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .replaceAll(_reMultiNewline, '\n\n')
         .trim();
 
     // Pass 3: If still empty, generate a fallback narrative
@@ -1577,28 +1577,20 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   }
 
   void _extractNarrativeFromRawText(String text) {
-    // Remove known metadata sections
     var cleaned = text;
 
-    // Remove 【好感度变化】 section
-    cleaned = cleaned.replaceAllMapped(
-        RegExp(r'【好感度变化】[\s\S]*?(?=【|$)'), (m) => '');
-    // Remove 【声望变化】 section
-    cleaned = cleaned.replaceAllMapped(
-        RegExp(r'【声望变化】[\s\S]*?(?=【|$)'), (m) => '');
+    cleaned = cleaned.replaceAllMapped(_reAffectionSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(_reReputationSection, (m) => '');
 
-    // Find where choices start (A. B. C. etc.)
-    final choiceMatch = RegExp(r'^[A-E][\.\)]\s', multiLine: true).firstMatch(cleaned);
+    final choiceMatch = _reChoiceMultiLine.firstMatch(cleaned);
     if (choiceMatch != null) {
       cleaned = cleaned.substring(0, choiceMatch.start);
     } else {
-      // No choices found either - take first paragraph
       cleaned = cleaned.split('\n\n').first;
     }
 
-    // Remove any remaining section markers
     cleaned = cleaned
-        .replaceAll(RegExp(r'【[^】]+】'), '')
+        .replaceAll(_reSectionMarkers, '')
         .replaceAll(RegExp(r'\n{2,}'), '\n\n')
         .trim();
 
@@ -1714,41 +1706,21 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     }
   }
 
-  // ==================== 更多建议 ====================
+  // ==================== 更多建议（本地生成，不消耗 token） ====================
   Future<void> generateMoreSuggestions() async {
-    if (_deepSeek == null || _player == null || _isLoading) return;
+    if (_player == null || _isLoading) return;
 
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final prompt = '''
-继续为当前情境生成新的行动建议。
-
-【当前情境】
-$_currentNarrative
-
-【世界状态】
-- 时间：${_worldState.timestamp}
-- 玩家学院：${_player!.house ?? '未分院'}
-- 玩家年级：${_player!.grade ?? 1}
-
-请再提供 4 个与之前不同、且符合巫师校园生活常识的行动建议。
-要求：
-1. 建议要具体、可执行，不要笼统
-2. 与当前情境紧密相关
-3. 只输出建议，不要叙事
-
-格式：
-A. ...
-B. ...
-C. ...
-D. ...
-E. ...''';
-
-      final response = await _callDeepSeek(prompt);
-      _parseChoices(response);
+      final suggestions = _generateLocalSuggestions();
+      if (suggestions.isEmpty) {
+        _error = '暂时想不出更多建议，请继续';
+      } else {
+        _choices = suggestions;
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -1757,26 +1729,162 @@ E. ...''';
     }
   }
 
-  void _parseChoices(String text) {
-    final parsed = <GameChoice>[];
-    for (final line in text.split('\n')) {
-      final trimmed = line.trim();
-      if (RegExp(r'^[A-E][\.\)]\s*').hasMatch(trimmed)) {
-        final action =
-            trimmed.replaceFirst(RegExp(r'^[A-E][\.\)]\s*'), '').trim();
-        if (action.isNotEmpty) {
-          parsed.add(GameChoice(text: action, action: action));
-        }
+  List<GameChoice> _generateLocalSuggestions() {
+    final time = _worldState.timestamp;
+    final location = _worldState.currentLocation ?? '霍格沃茨';
+    final house = _player!.house ?? '';
+    final personality = _player!.personalityTraits;
+    final narrativeLower = _currentNarrative.toLowerCase();
+
+    final bucket = <String, List<String>>{
+      'classroom': [
+        '认真听教授讲课并做笔记',
+        '举手回答教授的提问',
+        '与邻座同学小声讨论课堂内容',
+        '对教授的讲解提出疑问',
+        '利用上课时间偷偷翻阅其他书籍',
+      ],
+      'great_hall': [
+        '前往大礼堂享用早餐',
+        '与舍友讨论今天的课程安排',
+        '观察四周的同学和幽灵',
+        '向魁地奇球队的同学打听训练情况',
+        '阅读《预言家日报》了解近期新闻',
+      ],
+      'library': [
+        '查阅相关资料完成作业',
+        '在禁书区寻找有趣的书',
+        '与图书馆管理员交流',
+        '研究某门学科的进阶内容',
+        '整理笔记并复习重点',
+      ],
+      'corridor': [
+        '在走廊上与同学闲聊',
+        '前往下一节课的教室',
+        '观察走廊上的画像与装饰物',
+        '和路过的幽灵打声招呼',
+        '去盥洗室整理一下',
+      ],
+      'outside': [
+        '在草坪上晒太阳放松',
+        '观看魁地奇球队训练',
+        '探索城堡周围的小径',
+        '和朋友一起散步聊天',
+        '观察禁林边缘的动植物',
+      ],
+      'common_room': [
+        '在公共休息室与舍友聊天',
+        '练习今天所学的魔咒',
+        '整理物品与学习资料',
+        '玩一局巫师棋放松',
+        '写一封家书',
+      ],
+      'forbidden_forest': [
+        '小心翼翼地探索森林边缘',
+        '寻找稀有草药',
+        '观察神奇生物的踪迹',
+        '沿原路返回，避免深入',
+        '留下标记以便返回',
+      ],
+      'diagon_alley': [
+        '前往魔杖店/书店/药店采购',
+        '在三把扫帚喝一杯黄油啤酒',
+        '逛逛恶作剧商店淘点新奇货',
+        '打听最新的魔法界传闻',
+        '留意周围可疑的人物',
+      ],
+      'hospital': [
+        '去医疗翼探望受伤的同学',
+        '向庞弗雷夫人请教健康问题',
+        '领取常用的治疗药水',
+        '在医疗翼休息片刻',
+        '了解常见伤病的处理方法',
+      ],
+      'duel_club': [
+        '报名加入决斗俱乐部',
+        '观摩高年级学生的切磋',
+        '与同学进行安全的练习',
+        '向助教请教防御技巧',
+        '研究非战斗类的实用魔咒',
+      ],
+      'default': [
+        '继续前进，看看会发生什么',
+        '观察周围环境，留意细节',
+        '与附近的NPC交流',
+        '回到熟悉的地方',
+        '尝试一个新的地点',
+      ],
+    };
+
+    String key = 'default';
+    final loc = location.toLowerCase();
+    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('教室')) key = 'classroom';
+    if (loc.contains('大礼堂') || loc.contains('great hall')) key = 'great_hall';
+    if (loc.contains('图书馆') || loc.contains('library')) key = 'library';
+    if (loc.contains('走廊') || loc.contains('corridor')) key = 'corridor';
+    if (loc.contains('城堡外') || loc.contains('outside') || loc.contains('草坪')) key = 'outside';
+    if (loc.contains('公共休息室') || loc.contains('common')) key = 'common_room';
+    if (loc.contains('禁林') || loc.contains('forbidden')) key = 'forbidden_forest';
+    if (loc.contains('对角巷') || loc.contains('diagon')) key = 'diagon_alley';
+    if (loc.contains('医疗翼') || loc.contains('hospital')) key = 'hospital';
+    if (loc.contains('决斗') || loc.contains('duel')) key = 'duel_club';
+
+    // 情境追加：根据叙事关键词添加专属建议
+    final extra = <String>[];
+    if (narrativeLower.contains('魁地奇') || narrativeLower.contains('quidditch')) {
+      extra.addAll([
+        '前往魁地奇球场观看或加入训练',
+        '与球队队员交谈获取赛事信息',
+      ]);
+    }
+    if (narrativeLower.contains('食堂') || narrativeLower.contains('餐') || narrativeLower.contains('food')) {
+      extra.addAll(['前往厨房准备一些食物', '请家养小精灵帮忙准备餐点']);
+    }
+    if (narrativeLower.contains('黑魔法') || narrativeLower.contains('dark')) {
+      extra.addAll(['向教授请教防御方法', '了解相关历史背景']);
+    }
+    if (narrativeLower.contains('课') || narrativeLower.contains('homework')) {
+      extra.addAll(['集中精力完成作业', '请同学帮忙讲解难点']);
+    }
+    if (narrativeLower.contains('朋友') || narrativeLower.contains('friend')) {
+      extra.addAll(['邀请朋友一起活动', '与朋友分享最近的见闻']);
+    }
+    if (house.isNotEmpty) {
+      extra.add('参加${house}学院的活动');
+      extra.add('为${house}学院的荣誉加分');
+    }
+    for (final t in personality) {
+      if (t.contains('勇敢') || t.contains('勇气')) extra.add('勇敢地面对当前的挑战');
+      if (t.contains('聪明') || t.contains('智慧')) extra.add('冷静分析当前局势');
+      if (t.contains('忠诚')) extra.add('坚定地支持朋友');
+      if (t.contains('野心') || t.contains('ambitious')) extra.add('把握机会证明自己');
+    }
+
+    final pool = <String>[...?bucket[key], ...extra];
+    // 去重并打乱
+    final seen = <String>{};
+    final deduped = pool.where((s) {
+      final key = s.replaceAll(RegExp(r'\s+'), '');
+      if (seen.contains(key)) return false;
+      seen.add(key);
+      return true;
+    }).toList();
+    deduped.shuffle(_random);
+
+    final result = <GameChoice>[];
+    for (int i = 0; i < deduped.length && result.length < 4; i++) {
+      result.add(GameChoice(text: deduped[i], action: deduped[i]));
+    }
+    if (result.length < 2) {
+      for (final s in bucket['default']!) {
+        if (result.length >= 4) break;
+        result.add(GameChoice(text: s, action: s));
       }
     }
-    if (parsed.isEmpty) {
-      _error = '魔法没能想出更多建议，请再试一次';
-    } else {
-      _choices = parsed;
-    }
+    return result;
   }
 
-  // ==================== 分院仪式 ====================
+  // ==================== 分院仪式（本地逻辑，不消耗 token） ====================
   Future<Map<String, String>> sortPlayer() async {
     if (_player == null) {
       return {'house': 'Gryffindor', 'narrative': ''};
@@ -1786,40 +1894,13 @@ E. ...''';
     notifyListeners();
 
     try {
-      if (_deepSeek == null) {
-        final house = _player!.recommendedHouse;
-        _player!.house = house;
-        _isLoading = false;
-        notifyListeners();
-        return {
-          'house': house,
-          'narrative': '分院帽在你的头顶停留片刻，轻声低语……最终它大声宣布：$house！'
-        };
-      }
-
-      final prompt = '''
-你是霍格沃茨的分院帽。
-
-请为以下学生分院：
-- 姓名：${_player!.name}
-- 血统：${_player!.bloodType}
-- 出生地：${_player!.birthLocation}
-- 性格：${_player!.personalityTraits.join(', ')}
-- 最看重的品质：${_getTopValues()}
-
-请给出：
-1. 分院帽的内心独白（思考该学生的特质）
-2. 最终的学院决定
-
-注意：分院要考虑学生的选择、价值观、潜在能力，不只是刻板印象。''';
-
-      final response = await _callDeepSeek(prompt);
-      final house = _extractHouse(response);
+      final house = _computeHouseLocal();
+      final narrative = _generateSortingNarrative(house);
       _player!.house = house;
 
       _isLoading = false;
       notifyListeners();
-      return {'house': house, 'narrative': response};
+      return {'house': house, 'narrative': narrative};
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -1827,25 +1908,100 @@ E. ...''';
     }
   }
 
-  String _getTopValues() {
-    final sorted = _player!.attributes.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    return sorted.take(3).map((e) => e.key).join(', ');
-  }
+  String _computeHouseLocal() {
+    final traits = _player!.personalityTraits.join(' ');
+    final attributes = _player!.attributes;
 
-  String _extractHouse(String text) {
-    final houseMap = {
-      '格兰芬多': 'Gryffindor',
-      '斯莱特林': 'Slytherin',
-      '拉文克劳': 'Ravenclaw',
-      '赫奇帕奇': 'Hufflepuff',
-    };
-    for (final entry in houseMap.entries) {
-      if (text.contains(entry.key)) return entry.value;
+    // 学院倾向优先
+    final pref = _player!.housePreference;
+    if (pref != null && pref != '系统判定') {
+      if (pref.contains('格兰芬多')) return 'Gryffindor';
+      if (pref.contains('斯莱特林')) return 'Slytherin';
+      if (pref.contains('拉文克劳')) return 'Ravenclaw';
+      if (pref.contains('赫奇帕奇')) return 'Hufflepuff';
     }
-    return 'Gryffindor';
+
+    final scores = <String, int>{
+      'Gryffindor': 0,
+      'Slytherin': 0,
+      'Ravenclaw': 0,
+      'Hufflepuff': 0,
+    };
+
+    // 基于性格特质
+    final gryffindorTraits = ['勇敢', '勇气', '无畏', '热情', '骑士', '正义'];
+    final slytherinTraits = ['野心', '精明', '狡猾', '意志', '血统', '领导'];
+    final ravenclawTraits = ['智慧', '聪明', '好奇', '知识', '创造', '学习'];
+    final hufflepuffTraits = ['忠诚', '勤勉', '公平', '坚韧', '正直', '耐心'];
+
+    for (final t in gryffindorTraits) {
+      if (traits.contains(t)) scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 2;
+    }
+    for (final t in slytherinTraits) {
+      if (traits.contains(t)) scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 2;
+    }
+    for (final t in ravenclawTraits) {
+      if (traits.contains(t)) scores['Ravenclaw'] = (scores['Ravenclaw'] ?? 0) + 2;
+    }
+    for (final t in hufflepuffTraits) {
+      if (traits.contains(t)) scores['Hufflepuff'] = (scores['Hufflepuff'] ?? 0) + 2;
+    }
+
+    // 基于属性
+    final courage = attributes['勇气'] ?? attributes['courage'] ?? 0;
+    final ambition = attributes['野心'] ?? attributes['ambition'] ?? 0;
+    final wisdom = attributes['智慧'] ?? attributes['wisdom'] ?? 0;
+    final loyalty = attributes['忠诚'] ?? attributes['loyalty'] ?? 0;
+    scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + courage;
+    scores['Slytherin'] = (scores['Slytherin'] ?? 0) + ambition;
+    scores['Ravenclaw'] = (scores['Ravenclaw'] ?? 0) + wisdom;
+    scores['Hufflepuff'] = (scores['Hufflepuff'] ?? 0) + loyalty;
+
+    // 政治倾向加分
+    final pol = _player!.politicalTendency ?? '';
+    if (pol.contains('纯血')) scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 1;
+    if (pol.contains('平等') || pol.contains('凤凰社')) scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 1;
+
+    // 血统背景
+    final blood = _player!.bloodType;
+    if (blood == '纯血') scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 1;
+    if (blood == '麻瓜出身') scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 1;
+
+    // 如果都是0，默认可变随机
+    final maxScore = scores.values.reduce((a, b) => a > b ? a : b);
+    if (maxScore == 0) {
+      final houses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
+      return houses[_random.nextInt(4)];
+    }
+
+    // 最高分校，但加入少量随机扰动（防止同质化）
+    final candidates = scores.entries.where((e) => e.value == maxScore).toList();
+    candidates.shuffle(_random);
+    return candidates.first.key;
   }
 
-  // ==================== 魔杖选择 ====================
+  String _generateSortingNarrative(String house) {
+    final houseName = switch (house) {
+      'Gryffindor' => '格兰芬多',
+      'Slytherin' => '斯莱特林',
+      'Ravenclaw' => '拉文克劳',
+      'Hufflepuff' => '赫奇帕奇',
+      _ => '格兰芬多',
+    };
+
+    final thoughts = [
+      '嗯……有意思。这个孩子有${_player!.personalityTraits.join('、')}的特质。',
+      '让我想想……勇敢？智慧？忠诚？野心？',
+      '这很有趣，真的很有趣。',
+      '决定了——',
+    ];
+    thoughts.shuffle(_random);
+
+    return '分院帽在你的头顶停留了片刻，轻声低语：「${thoughts.join(' ')}」\n\n'
+        '最终它大声宣布：**$houseName**！';
+  }
+
+  // ==================== 魔杖选择（本地逻辑，不消耗 token） ====================
   Future<Map<String, dynamic>> selectWand(List<Map<String, dynamic>> options) async {
     if (_player == null) {
       return {'selected': options.first, 'narrative': ''};
@@ -1855,39 +2011,95 @@ E. ...''';
     notifyListeners();
 
     try {
-      if (_deepSeek == null) {
-        final selected = options[(_random.nextInt(options.length))];
-        _player!.wandId = selected['id'] as String?;
-        _isLoading = false;
-        notifyListeners();
-        return {'selected': selected, 'narrative': ''};
-      }
-
-      final prompt = '''
-你是奥利凡德魔杖店的主人。
-
-玩家信息：
-- 姓名：${_player!.name}
-- 性格：${_player!.personalityTraits.join(', ')}
-
-可用魔杖：
-${options.map((w) => '- ${w['name']}: ${w['description']}').join('\n')}
-
-请推荐最适合的魔杖并说明原因。''';
-
-      final response = await _callDeepSeek(prompt);
-      final idx = int.tryParse(response.replaceAll(RegExp(r'[^\d]'), '')) ?? 1;
-      final selected = options[(idx - 1).clamp(0, options.length - 1)];
+      final selected = _computeWandLocal(options);
       _player!.wandId = selected['id'] as String?;
+      final narrative = _generateWandNarrative(selected);
 
       _isLoading = false;
       notifyListeners();
-      return {'selected': selected, 'narrative': response};
+      return {'selected': selected, 'narrative': narrative};
     } catch (e) {
       _isLoading = false;
       notifyListeners();
       return {'selected': options.first, 'narrative': ''};
     }
+  }
+
+  Map<String, dynamic> _computeWandLocal(List<Map<String, dynamic>> options) {
+    if (options.isEmpty) return {};
+
+    final personality = _player!.personalityTraits.join(' ');
+    final attributes = _player!.attributes;
+
+    // 根据玩家特质为每根魔杖打分
+    final scored = <Map<String, dynamic>, double>{};
+    for (final wand in options) {
+      double score = 0.0;
+      final suit = (wand['suitType'] ?? '') as String;
+      final desc = (wand['description'] ?? '') as String;
+      final wood = (wand['wood'] ?? '') as String;
+      final core = (wand['core'] ?? '') as String;
+
+      final combined = '$suit $desc $wood $core';
+
+      // 性格匹配
+      final traitKeywords = <String, int>{
+        '勇敢': 2, '勇气': 2, '无畏': 2,
+        '野心': 2, '精明': 2, '领导': 2,
+        '智慧': 2, '聪明': 2, '好奇': 2,
+        '忠诚': 2, '正直': 2, '勤勉': 2,
+        '温柔': 1, '善良': 1, '慷慨': 1,
+        '狡猾': 1, '意志': 1, '坚强': 1,
+        '创造': 1, '学习': 1, '知识': 1,
+        '坚韧': 1, '耐心': 1, '公平': 1,
+      };
+      for (final entry in traitKeywords.entries) {
+        if (personality.contains(entry.key) && combined.contains(entry.key)) {
+          score += entry.value;
+        }
+      }
+
+      // 杖芯属性
+      if (core == '独角兽毛') score += 1;
+      if (core == '龙心脏腱索') score += 1;
+      if (core == '凤凰羽毛') score += 1;
+
+      // 属性加成
+      final courage = attributes['勇气'] ?? attributes['courage'] ?? 0;
+      final ambition = attributes['野心'] ?? attributes['ambition'] ?? 0;
+      final wisdom = attributes['智慧'] ?? attributes['wisdom'] ?? 0;
+      final loyalty = attributes['忠诚'] ?? attributes['loyalty'] ?? 0;
+
+      if (wood == '冬青木' || wood == '橡木') score += courage * 0.05;
+      if (wood == '紫杉木' || wood == '榆木') score += ambition * 0.05;
+      if (wood == '葡萄藤木' || wood == '枫木') score += wisdom * 0.05;
+      if (wood == '樱桃木' || wood == '雪松木' || wood == '柳木') score += loyalty * 0.05;
+
+      scored[wand] = score;
+    }
+
+    // 选最高分，同分随机
+    final maxScore = scored.values.isEmpty ? 0.0 : scored.values.reduce((a, b) => a > b ? a : b);
+    final candidates = scored.keys.where((w) => scored[w] == maxScore).toList();
+    candidates.shuffle(_random);
+    return candidates.first;
+  }
+
+  String _generateWandNarrative(Map<String, dynamic> wand) {
+    final name = wand['name'] ?? '未知魔杖';
+    final wood = wand['wood'] ?? '';
+    final core = wand['core'] ?? '';
+    final len = wand['length'] ?? '';
+    final suit = wand['suitType'] ?? '';
+
+    final lines = [
+      '奥利凡德先生用他那双近乎透明的眼睛凝视着你，片刻后低语：「有意思……很是有意思。」',
+      '他在一排排积满灰尘的魔杖盒前缓缓踱步，抽出一根又一根——',
+      '最终，当一根触碰到你指尖的瞬间，它迸发出一簇暖金色的火花，空气中响起一声清脆的共鸣。',
+      '「$name，$wood，$core，$len。」他轻声介绍，「这根魔杖适合$suit的人。」',
+      '你握着它，感到一股熟悉的力量在掌心流淌。',
+    ];
+    return lines.join('\n\n');
   }
 
   // ==================== 存档系统 ====================

@@ -63,6 +63,10 @@ class NpcChatService {
     final systemPrompt = _buildNpcSystemPrompt(npc, player, worldState);
     final messages = <Map<String, dynamic>>[];
 
+    if (systemPrompt.isNotEmpty) {
+      messages.add({'role': 'system', 'content': systemPrompt});
+    }
+
     if (history != null && history.isNotEmpty) {
       final recent = history.length > 20 ? history.sublist(history.length - 20) : history;
       for (final msg in recent) {
@@ -73,9 +77,8 @@ class NpcChatService {
     messages.add({'role': 'user', 'content': userMessage});
 
     try {
-      final response = await _deepSeek!.chat(
-        prompt: jsonEncode(messages),
-        systemPrompt: systemPrompt,
+      final response = await _deepSeek!.chatWithMessages(
+        messages: messages,
         temperature: 0.9,
         maxTokens: 500,
       );
@@ -160,7 +163,7 @@ class NpcChatService {
     ];
 
     final list = responses[npc.house] ?? staffResponses;
-    final idx = message.hashCode.abs() % list.length;
+    final idx = (message.hashCode & 0x7fffffff) % list.length;
     return list[idx];
   }
 

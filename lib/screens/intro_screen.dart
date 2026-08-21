@@ -217,6 +217,7 @@ class _IntroScreenState extends State<IntroScreen> {
     '猫（神秘而独立）',
     '蟾蜍（传统而忠诚）',
     '老鼠（小巧机灵）',
+    '九尾灵狐·绯月（东方传说，可化人形，倾国倾城，听命于你）',
     '不养宠物',
   ];
 
@@ -332,6 +333,9 @@ class _IntroScreenState extends State<IntroScreen> {
           break;
         case 'rat':
           petName = '老鼠';
+          break;
+        case 'kyuubi':
+          petName = '绯月';
           break;
       }
     }
@@ -916,7 +920,7 @@ class _IntroScreenState extends State<IntroScreen> {
               selected: _petId == _petOptionIds[i],
               onTap: () => setState(() {
                 _petId = _petOptionIds[i];
-                _petName = i == 4 ? null : _petOptions[i].split('（').first;
+                _petName = i == 5 ? null : _petOptions[i].split('（').first;
               }),
             ),
         ],
@@ -924,7 +928,7 @@ class _IntroScreenState extends State<IntroScreen> {
     );
   }
 
-  static const List<String?> _petOptionIds = ['owl', 'cat', 'toad', 'rat', null];
+  static const List<String?> _petOptionIds = ['owl', 'cat', 'toad', 'rat', 'kyuubi', null];
 
   // ==================== 第十一轮 · 好友关系 ====================
   Widget _buildFriendStep() {
