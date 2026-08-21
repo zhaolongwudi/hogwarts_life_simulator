@@ -142,6 +142,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.7 — 2026-08-21
+
+**📋 变更说明**
+feat: 成就解锁系统 + 死字段清理
+
+成就解锁 (game_provider.dart):
+- 新增 _unlockAchievement() 方法, 带重复解锁保护和通知
+- 新增 _checkAffectionAchievements(NPC) 好感度成就检查
+- 新增 _checkSkillAchievements() 技能成就检查
+- 成就触发点:
+
 ### v0.5.6 — 2026-08-21
 
 **📋 变更说明**
