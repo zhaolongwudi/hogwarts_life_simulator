@@ -1,12 +1,48 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 class SaveService {
-  static const String _keyPrefix = 'hogwarts_save_';
-  static const String _metaKey = 'hogwarts_save_meta';
+  static const String _savesDir = 'saves';
+  static const String _metaFileName = 'save_meta.json';
   static const String autoSaveSlotId = 'auto_save';
   final _uuid = const Uuid();
+
+  Future<String> _getSavesDir() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final savesDir = Directory('${dir.path}/$_savesDir');
+    if (!await savesDir.exists()) {
+      await savesDir.create(recursive: true);
+    }
+    return savesDir.path;
+  }
+
+  Future<String> _getMetaPath() async {
+    return '${await _getSavesDir()}/$_metaFileName';
+  }
+
+  Future<String> _getSavePath(String slotId) async {
+    return '${await _getSavesDir()}/$slotId.json';
+  }
+
+  Future<List<Map<String, dynamic>>> _readMeta() async {
+    final path = await _getMetaPath();
+    final file = File(path);
+    if (!await file.exists()) return [];
+    try {
+      final content = await file.readAsString();
+      return List<Map<String, dynamic>>.from(jsonDecode(content));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> _writeMeta(List<Map<String, dynamic>> meta) async {
+    final path = await _getMetaPath();
+    final file = File(path);
+    await file.writeAsString(jsonEncode(meta), encoding: utf8);
+  }
 
   Future<String> saveGame({
     required Map<String, dynamic> player,
@@ -17,10 +53,7 @@ class SaveService {
     required int turnCount,
     String? slotName,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
     final slotId = slotName ?? _uuid.v4().substring(0, 8);
-    final key = '$_keyPrefix$slotId';
-
     final saveData = {
       'save_version': 2,
       'player': player,
@@ -33,44 +66,47 @@ class SaveService {
       'slot_name': slotName ?? '自动存档',
     };
 
-    await prefs.setString(key, jsonEncode(saveData));
-    await _updateMeta(prefs, slotId, slotName ?? '自动存档', DateTime.now());
+    final savePath = await _getSavePath(slotId);
+    await File(savePath).writeAsString(jsonEncode(saveData), encoding: utf8);
+
+    await _updateMeta(slotId, slotName ?? '自动存档', DateTime.now());
     return slotId;
   }
 
   Future<Map<String, dynamic>?> loadGame(String slotId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString('$_keyPrefix$slotId');
-    if (data == null) return null;
+    final path = await _getSavePath(slotId);
+    final file = File(path);
+    if (!await file.exists()) return null;
     try {
-      return jsonDecode(data) as Map<String, dynamic>;
+      final content = await file.readAsString(encoding: utf8);
+      return jsonDecode(content) as Map<String, dynamic>;
     } catch (e) {
       return null;
     }
   }
 
   Future<List<Map<String, dynamic>>> listSaves() async {
-    final prefs = await SharedPreferences.getInstance();
-    final meta = prefs.getString(_metaKey);
-    if (meta == null) return [];
-    try {
-      return List<Map<String, dynamic>>.from(jsonDecode(meta));
-    } catch (e) {
-      return [];
-    }
+    return _readMeta();
   }
 
   Future<bool> deleteSave(String slotId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_keyPrefix$slotId');
-    final meta = await listSaves();
-    final updated = meta.where((s) => s['id'] != slotId).toList();
-    await prefs.setString(_metaKey, jsonEncode(updated));
-    return true;
+    try {
+      final path = await _getSavePath(slotId);
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+      final meta = await _readMeta();
+      final updated = meta.where((s) => s['id'] != slotId).toList();
+      await _writeMeta(updated);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
-  Future<void> _updateMeta(SharedPreferences prefs, String id, String name, DateTime savedAt) async {
-    final existing = await listSaves();
+  Future<void> _updateMeta(String id, String name, DateTime savedAt) async {
+    final existing = await _readMeta();
     final entry = {
       'id': id,
       'name': name,
@@ -83,7 +119,7 @@ class SaveService {
     } else {
       existing.add(entry);
     }
-    await prefs.setString(_metaKey, jsonEncode(existing));
+    await _writeMeta(existing);
   }
 
   Future<String> autoSave({
@@ -94,10 +130,7 @@ class SaveService {
     required List<dynamic> choices,
     required int turnCount,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
     const slotId = autoSaveSlotId;
-    final key = '$_keyPrefix$slotId';
-
     final saveData = {
       'save_version': 2,
       'player': player,
@@ -110,8 +143,9 @@ class SaveService {
       'slot_name': '自动存档',
     };
 
-    await prefs.setString(key, jsonEncode(saveData));
-    await _updateMeta(prefs, slotId, '自动存档', DateTime.now());
+    final savePath = await _getSavePath(slotId);
+    await File(savePath).writeAsString(jsonEncode(saveData), encoding: utf8);
+    await _updateMeta(slotId, '自动存档', DateTime.now());
     return slotId;
   }
 
