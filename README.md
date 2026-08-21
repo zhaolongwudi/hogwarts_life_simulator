@@ -142,6 +142,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.5.5 — 2026-08-21
+
+**📋 变更说明**
+fix: 全面修复P0-P2功能缺陷
+
+P0 严重修复:
+- NPC聊天消息重复: 传递history时排除刚追加的userMessage
+- 表白状态机: 每轮clear所有isConsideringConfession标记, 防止永不重置
+- DeepSeek余额: 路径从/v1/balance修正为/user/balance, 解析改为balance_infos[0].total_balance
+
 ### v0.5.4 — 2026-08-21
 
 **📋 变更说明**
