@@ -36,9 +36,29 @@ class DeepSeekService {
   final AiConfig config;
   final Dio _dio;
 
+  /// 规范化 baseUrl：去除末尾 /v1 前缀（因为 chatPath/balancePath 通常已经以 /v1/ 开头）
+  /// 避免 Agnes 等官方文档风格 "https://api.agnes-ai.cn/v1" + chatPath="/v1/..."
+  /// 导致变成 /v1/v1/chat/completions 404
+  static String normalizeBaseUrl(String url) {
+    var u = url.trim();
+    if (u.endsWith('/')) u = u.substring(0, u.length - 1);
+    // 如果 baseUrl 末尾带 /v1 或 /v2 或 /v3 版本号，去掉它
+    final versionSuffix = RegExp(r'/v\d+$');
+    if (versionSuffix.hasMatch(u)) {
+      u = u.replaceFirst(versionSuffix, '');
+    }
+    return u;
+  }
+
+  /// 规范化 path：保证以 / 开头
+  static String normalizePath(String path) {
+    if (path.startsWith('/')) return path;
+    return '/$path';
+  }
+
   DeepSeekService({required this.config})
       : _dio = Dio(BaseOptions(
-          baseUrl: config.baseUrl,
+          baseUrl: normalizeBaseUrl(config.baseUrl),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ${config.apiKey}',
@@ -55,7 +75,7 @@ class DeepSeekService {
   }) async {
     try {
       final response = await _dio.post(
-        config.chatPath,
+        normalizePath(config.chatPath),
         data: jsonEncode({
           'model': config.model,
           'messages': [
@@ -91,7 +111,7 @@ class DeepSeekService {
   }) async {
     try {
       final response = await _dio.post(
-        config.chatPath,
+        normalizePath(config.chatPath),
         data: jsonEncode({
           'model': config.model,
           'messages': messages,
@@ -140,10 +160,11 @@ class DeepSeekService {
     }
   }
 
+  /// 测试连接。成功返回 true，失败抛出带具体原因的 Exception（404/401/429/500/超时）
   Future<bool> checkConnection() async {
     try {
       final response = await _dio.post(
-        config.chatPath,
+        normalizePath(config.chatPath),
         data: jsonEncode({
           'model': config.model,
           'messages': [
@@ -155,15 +176,43 @@ class DeepSeekService {
       );
       return response.data['choices']?.isNotEmpty == true;
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        return false;
+      final statusCode = e.response?.statusCode;
+      final body = e.response?.data;
+      // 先尝试提取服务商返回的错误 message
+      String detail = '';
+      if (body is Map<String, dynamic>) {
+        final err = body['error'];
+        if (err is Map<String, dynamic>) {
+          detail = err['message'] as String? ?? '';
+        } else if (err is String) {
+          detail = err;
+        }
       }
-      if (e.response?.statusCode != null && e.response!.statusCode! < 500) {
-        return false;
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception('连接超时（${config.baseUrl}），请检查网络或 Base URL');
       }
-      return false;
-    } catch (_) {
-      return false;
+      if (e.type == DioExceptionType.connectionError) {
+        throw Exception('无法连接到 ${config.baseUrl}，请检查 Base URL 或网络');
+      }
+      if (statusCode == 401 || statusCode == 403) {
+        throw Exception('认证失败：API Key 无效（HTTP $statusCode）${detail.isNotEmpty ? ' - $detail' : ''}');
+      }
+      if (statusCode == 404) {
+        final full = '${normalizeBaseUrl(config.baseUrl)}${normalizePath(config.chatPath)}';
+        throw Exception('端点不存在 (404)：最终请求路径 $full，请检查 Base URL 与服务商是否匹配');
+      }
+      if (statusCode == 429) {
+        throw Exception('请求过于频繁（HTTP 429），请稍后重试${detail.isNotEmpty ? ' - $detail' : ''}');
+      }
+      if (statusCode == 400) {
+        throw Exception('请求参数错误（HTTP 400）${detail.isNotEmpty ? '：$detail' : '，可能模型名与服务商不匹配'}');
+      }
+      if (statusCode != null && statusCode >= 500) {
+        throw Exception('服务商服务器错误（HTTP $statusCode）${detail.isNotEmpty ? ' - $detail' : ''}');
+      }
+      rethrow;
     }
   }
 
@@ -171,7 +220,7 @@ class DeepSeekService {
     final path = config.balancePath;
     if (path == null) return null;
     try {
-      final response = await _dio.get(path);
+      final response = await _dio.get(normalizePath(path));
       final data = response.data;
 
       if (config.provider == AiProvider.deepseek) {
@@ -203,7 +252,7 @@ class DeepSeekService {
     final path = config.balancePath;
     if (path == null) return null;
     try {
-      final response = await _dio.get(path);
+      final response = await _dio.get(normalizePath(path));
       if (config.provider == AiProvider.zhipu) {
         final data = response.data['data'] as Map<String, dynamic>?;
         return data;
