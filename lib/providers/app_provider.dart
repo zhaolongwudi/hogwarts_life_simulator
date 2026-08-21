@@ -25,7 +25,7 @@ class AiConfig {
 
   factory AiConfig.deepseek(String apiKey) => AiConfig(
         provider: AiProvider.deepseek,
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         apiKey: apiKey,
         baseUrl: 'https://api.deepseek.com',
       );
@@ -109,7 +109,7 @@ class AppProvider extends ChangeNotifier {
   List<String> get availableModels {
     switch (_aiProvider) {
       case AiProvider.deepseek:
-        return ['deepseek-chat', 'deepseek-reasoner'];
+        return ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'];
       case AiProvider.zhipu:
         return ['glm-4.7-flash', 'glm-4-flash', 'glm-4', 'glm-4-long'];
       case AiProvider.agnes:
@@ -136,7 +136,7 @@ class AppProvider extends ChangeNotifier {
     _identityMode = IdentityMode.values[prefs.getInt('identity_mode') ?? 0];
     _era = Era.values[prefs.getInt('era') ?? 2];
     _aiProvider = AiProvider.values[prefs.getInt('ai_provider') ?? 0];
-    _aiModel = prefs.getString('ai_model') ?? 'deepseek-chat';
+    _aiModel = prefs.getString('ai_model') ?? 'deepseek-v4-flash';
 
     final providers = ['deepseek', 'zhipu', 'agnes'];
     for (final p in providers) {
@@ -166,7 +166,7 @@ class AppProvider extends ChangeNotifier {
     final key = _apiKeys[provider.name];
     if (key != null) _apiKey = key;
     final defaults = {
-      AiProvider.deepseek: 'deepseek-chat',
+      AiProvider.deepseek: 'deepseek-v4-flash',
       AiProvider.zhipu: 'glm-4.7-flash',
       AiProvider.agnes: 'agnes-2.5-flash',
     };
