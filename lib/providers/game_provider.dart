@@ -495,30 +495,6 @@ C. （选项3）
     }
   }
 
-  // ==================== 开场辅助：宠物描述 ====================
-  String _buildPetDescription(Player p) {
-    final petId = p.petId;
-    final petName = p.petName ?? '';
-
-    if (petId == null) return '未饲养宠物';
-
-    final petData = {
-      'owl': '$petName（送信、探索的好伙伴，聪明独立）',
-      'cat': '$petName（神秘独立的小巫师，偶尔能预知危险）',
-      'toad': '$petName（传统而忠诚的伙伴）',
-      'rat': '$petName（小巧机灵，好奇心旺盛）',
-      'kyuubi': _kyuubiPetDescription(),
-    };
-
-    return petData[petId] ?? '$petName（玩家的特殊伙伴）';
-  }
-
-  String _kyuubiPetDescription() {
-    return '''九尾灵狐「绯月」（取自东方古国传说。传说中九尾狐乃青丘山上的祥瑞，化为人形时倾国倾城。
-    她与玩家缔结契约后完全听命，擅长幻术、感知力极强，能化成人形陪伴左右。
-    性格：温柔、忠诚、聪慧，对主人言听计从。能力：幻术/魅惑/预知/灵视''';
-  }
-
   // ==================== 开场辅助：剧情起点 ====================
   String _buildStartPointNarrative() {
     // 可根据玩家选择或默认生成
@@ -2595,15 +2571,6 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       'logic': '逻辑',
       'intuition': '直觉',
     }[key] ?? key;
-  }
-
-  String _houseLabel(String house) {
-    return {
-      'Gryffindor': '格兰芬多',
-      'Slytherin': '斯莱特林',
-      'Ravenclaw': '拉文克劳',
-      'Hufflepuff': '赫奇帕奇',
-    }[house] ?? house;
   }
 
   String _termLabel(String term) {
