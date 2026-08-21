@@ -138,6 +138,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v0.4.3 — 2026-08-21
+
+**📋 变更说明**
+fix: 修复flutter analyze 6个错误
+
+- 移除game_screen.dart未使用的phone_home_screen.dart导入
+- 修复player.gold→使用inventory判断资产
+- 修复player.looks→player.attributes['looks']
+- 修复player.morality→player.attributes['morality']
+- 移除intro_screen.dart未使用的world_rules.dart导入
+
 ### v0.4.2 — 2026-08-21
 
 **📋 变更说明**
