@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.0.5 — 2026-08-22
+
+**📋 变更说明**
+fix: 修复审查发现的所有问题
+
+- P0: game_screen.dart _buildApiKeyInput controller泄漏
+  将内联创建的TextEditingController提取为_ApiKeyInput StatefulWidget
+  在initState创建、dispose释放，不再每次build泄漏
+
+- P1: 实现playerImpactScore写入逻辑
+
 ### v1.0.4 — 2026-08-22
 
 **📋 变更说明**
