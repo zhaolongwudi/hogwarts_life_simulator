@@ -11,6 +11,7 @@ import 'memory_screen.dart';
 import 'job_screen.dart';
 import 'other_screens.dart';
 import '../utils/story_text_renderer.dart';
+import '../utils/ui_helpers.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -1176,19 +1177,22 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildWorldTab() {
     final gp = context.watch<GameProvider>();
     final npcs = gp.npcRegistry.values.toList();
-    final nearby = npcs.where((n) => gp.isNearby(n.id) || n.affection > 0 || n.recentEvents.isNotEmpty).toList();
-    final others = npcs.where((n) => !nearby.contains(n)).toList();
+    // 登场判定改为 introduced 字段（剧情中出现、好感变化才标记）
+    final appeared = npcs.where((n) => n.introduced).toList()
+      ..sort((a, b) => b.affection.compareTo(a.affection));
+    final others = npcs.where((n) => !n.introduced).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildWorldHeader(nearby.length, others.length),
+          _buildWorldHeader(appeared.length, others.length),
           const SizedBox(height: 12),
           _buildWorldActionRow(),
           const SizedBox(height: 12),
-          _buildNpcSection('🌟 已登场人物', nearby, false),
+          _buildNpcSection('🌟 已登场人物', appeared, false),
           const SizedBox(height: 8),
           _buildNpcSection('👥 未登场/未结识', others, true),
           const SizedBox(height: 24),
@@ -1295,107 +1299,154 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildNpcSection(String title, List<NPC> npcs, bool initiallyCollapsed) {
     final isEmpty = npcs.isEmpty;
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Column(
-        children: [
-          StatefulBuilder(
-            builder: (context, setInnerState) {
-              return GestureDetector(
-                onTap: () => setInnerState(() {}),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Icon(Icons.keyboard_arrow_right, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3)),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${npcs.length}',
-                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+    return StatefulBuilder(
+      builder: (context, setInnerState) {
+        // Stateful 变量：控制列表是否折叠
+        final collapsed = ValueNotifier<bool>(initiallyCollapsed);
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Theme.of(context).dividerTheme.color!),
           ),
-          if (isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '暂无',
-                style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+          child: Column(
+            children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: collapsed,
+                builder: (context, isCollapsed, _) {
+                  return GestureDetector(
+                    onTap: () => collapsed.value = !collapsed.value,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          AnimatedRotation(
+                            turns: isCollapsed ? 0 : 0.25,
+                            duration: const Duration(milliseconds: 150),
+                            child: Icon(Icons.keyboard_arrow_right, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3)),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${npcs.length}',
+                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-            )
-          else
-            ...npcs.map((npc) => _buildNpcDetailCard(npc)),
-        ],
-      ),
+              if (isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    '暂无',
+                    style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+                  ),
+                )
+              else
+                ValueListenableBuilder<bool>(
+                  valueListenable: collapsed,
+                  builder: (context, isCollapsed, _) {
+                    if (isCollapsed) return const SizedBox.shrink();
+                    // 登场列表如果 > 15 人：分页/限制首次显示数量，避免过长
+                    final displayList = initiallyCollapsed
+                        ? npcs // 未登场：本来就折叠，展开就全显示
+                        : (npcs.length > 15 ? npcs.take(15).toList() : npcs);
+                    return Column(
+                      children: [
+                        ...displayList.map((npc) => _buildNpcDetailCard(npc)),
+                        if (!initiallyCollapsed && npcs.length > 15)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                            child: GestureDetector(
+                              onTap: () {
+                                // 显示更多：用dialog或者直接展开——这里用SnackBar告知数量
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('还有 ${npcs.length - 15} 位，可在剧情中结识后查看')),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '… 还有 ${npcs.length - 15} 人未显示',
+                                    style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                      ],
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildNpcDetailCard(NPC npc) {
     final gp = context.read<GameProvider>();
     final isNearby = gp.isNearby(npc.id);
-    final hasAppeared = isNearby || npc.affection > 0 || npc.recentEvents.isNotEmpty;
+    final hasAppeared = npc.introduced; // 用显式 introduced 字段
     final relationLabel = _getRelationLabel(npc);
-    final hasAppearance = npc.appearance.isNotEmpty;
     final hasRecentEvents = npc.recentEvents.isNotEmpty;
-    final houseLabel = {
-      'Gryffindor': '格兰芬多',
-      'Slytherin': '斯莱特林',
-      'Ravenclaw': '拉文克劳',
-      'Hufflepuff': '赫奇帕奇',
-      'staff': '教职工',
-    }[npc.house] ?? '';
-    final gradeLabel = npc.grade == 0 ? '教职工' : '${npc.grade}年级';
+    final roleTags = UiHelpers.npcRoleTags(npc);
+    final houseColor = _getHouseColor(npc.house);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10), // 压缩纵向高度
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 头像
               Container(
-                width: 50,
-                height: 50,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: _getHouseColor(npc.house).withValues(alpha: 0.15),
+                  color: houseColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
-                  border: Border.all(color: _getHouseColor(npc.house).withValues(alpha: 0.5)),
+                  border: Border.all(color: houseColor.withValues(alpha: 0.5)),
                 ),
                 child: Center(
                   child: Text(
                     npc.name.isNotEmpty ? npc.name[0] : '?',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _getHouseColor(npc.house)),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: houseColor),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
+              // 信息区
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1403,142 +1454,100 @@ class _GameScreenState extends State<GameScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                          child: Text(npc.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
                           decoration: BoxDecoration(
                             color: hasAppeared ? Colors.green.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             hasAppeared ? '已登场' : '未登场',
-                            style: TextStyle(fontSize: 11, color: hasAppeared ? Colors.green : Colors.grey),
+                            style: TextStyle(fontSize: 10.5, color: hasAppeared ? Colors.green : Colors.grey, fontWeight: FontWeight.w600),
                           ),
                         ),
                         if (isNearby) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: Colors.blue.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('同地点', style: TextStyle(fontSize: 11, color: Colors.blue)),
+                            child: const Text('同地点', style: TextStyle(fontSize: 10.5, color: Colors.blue, fontWeight: FontWeight.w600)),
                           ),
                         ],
                         if (npc.isConsideringConfession) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('酝酿中', style: TextStyle(fontSize: 11, color: Color(0xFFEF4444))),
+                            child: const Text('酝酿中', style: TextStyle(fontSize: 10.5, color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
                           ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(relationLabel, style: TextStyle(fontSize: 12, color: _getAffectionColor(npc.affection), fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 8),
-                        Text('好感 ${npc.affection > 0 ? '+' : ''}${npc.affection}', style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        if (houseLabel.isNotEmpty) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: _getHouseColor(npc.house).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(houseLabel, style: TextStyle(fontSize: 11, color: _getHouseColor(npc.house))),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(gradeLabel, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                        Text(relationLabel, style: TextStyle(fontSize: 11.5, color: _getAffectionColor(npc.affection), fontWeight: FontWeight.w600)),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            npc.currentLocation,
-                            style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                        Text('好感 ${npc.affection > 0 ? '+' : ''}${npc.affection}', style: TextStyle(fontSize: 10.5, color: Theme.of(context).textTheme.bodyMedium!.color)),
                       ],
                     ),
-                    if (npc.personality.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 2,
-                        children: npc.personality.map((trait) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    const SizedBox(height: 4),
+                    // 身份/角色标签（3个以内，简化识别，不显示外貌）
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 2,
+                      children: roleTags.map((tag) {
+                        final isJob = tag.contains('教授') || tag.contains('校长') || tag.contains('管理') || tag.contains('护士') || tag.contains('看守') || tag.contains('解说') || tag.contains('部长') || tag.contains('傲罗') || tag.contains('级长') || tag.contains('队长') || tag.contains('母亲') || tag.contains('父亲') || tag.contains('母亲') || tag.contains('教父') || tag.contains('家主') || tag.contains('夫人') || tag.contains('姨夫') || tag.contains('姨妈') || tag.contains('表哥') || tag.contains('跟班') || tag.contains('女友') || tag.contains('食死徒') || tag.contains('黑巫师') || tag.contains('叛徒');
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: Colors.purple.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
+                            color: isJob ? const Color(0xFFD3A625).withValues(alpha: 0.12) : houseColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(5),
                           ),
-                          child: Text(trait, style: TextStyle(fontSize: 10, color: Colors.purple.shade700)),
-                        )).toList(),
-                      ),
-                    ],
+                          child: Text(tag,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: isJob ? const Color(0xFFD3A625) : houseColor,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          if (hasAppearance) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(npc.appearance,
-                      style: TextStyle(fontSize: 12.5, height: 1.5, color: Theme.of(context).textTheme.bodyLarge!.color)),
-                  if (npc.personalGoal != null && npc.personalGoal!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text('🎯 ${npc.personalGoal}',
-                        style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color, fontStyle: FontStyle.italic)),
-                  ],
-                ],
-              ),
-            ),
-          ],
-          if (hasRecentEvents) ...[
+          // 只对登场过的 NPC 显示近期事件（没登场的没必要显示）
+          if (hasAppeared && hasRecentEvents) ...[
             const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                color: Colors.amber.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.auto_stories, size: 14, color: Colors.amber.shade700),
-                  const SizedBox(width: 6),
+                  Icon(Icons.auto_stories, size: 12, color: Colors.amber.shade700),
+                  const SizedBox(width: 5),
                   Expanded(
                     child: Text(
                       '曾在「${npc.recentEvents.first}」中出现',
-                      style: TextStyle(fontSize: 11, color: Colors.amber.shade800),
+                      style: TextStyle(fontSize: 10.5, color: Colors.amber.shade800),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (npc.recentEvents.length > 1)
-                    Text('等${npc.recentEvents.length}条', style: TextStyle(fontSize: 10, color: Colors.amber.shade600)),
                 ],
               ),
             ),

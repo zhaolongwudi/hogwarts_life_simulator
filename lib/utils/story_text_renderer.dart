@@ -65,6 +65,7 @@ class StoryTextRenderer {
 
   static const Color _narrationColor = Color(0xFFC9D1D9);
   static const Color _dialogueColor = Color(0xFF58A6FF);
+  static const Color _dialogueSpeakerColor = Color(0xFFFFA657);
   static const Color _characterColor = Color(0xFFE3B341);
   static const Color _locationColor = Color(0xFF56D364);
   static const Color _itemColor = Color(0xFFBC8CFF);
@@ -76,6 +77,11 @@ class StoryTextRenderer {
   static TextStyle _dialogueStyle = const TextStyle(
     fontSize: 15, height: 1.8, color: _dialogueColor,
     fontWeight: FontWeight.w500,
+  );
+
+  static TextStyle _dialogueSpeakerStyle = const TextStyle(
+    fontSize: 15, height: 1.8, color: _dialogueSpeakerColor,
+    fontWeight: FontWeight.w700,
   );
 
   static TextStyle _characterStyle = const TextStyle(
@@ -109,42 +115,73 @@ class StoryTextRenderer {
   /// 常规段落与 [parse] 方法保持一致的渲染效果。
   static List<TextSpan> parseWithAffectionStyle(String text) {
     if (text.isEmpty) return [];
+    final cleaned = _preStripChoices(text);
 
     final spans = <TextSpan>[];
     final markerPattern = RegExp(r'【[^】]*】');
-    final matches = markerPattern.allMatches(text).toList();
+    final matches = markerPattern.allMatches(cleaned).toList();
 
     if (matches.isEmpty) {
-      return parse(text);
+      return parse(cleaned);
     }
 
     int currentPos = 0;
 
     for (final match in matches) {
       if (match.start > currentPos) {
-        spans.addAll(parse(text.substring(currentPos, match.start)));
+        spans.addAll(parse(cleaned.substring(currentPos, match.start)));
       }
 
       final markerText = match.group(0)!;
-      final sectionEnd = _nextMarkerOrEnd(text, match.end);
+      final sectionEnd = _nextMarkerOrEnd(cleaned, match.end);
 
       if (markerText == '【好感度变化】') {
         spans.add(TextSpan(text: markerText, style: _narrationStyle));
         spans.addAll(
-          _parseAffectionSection(text.substring(match.end, sectionEnd)),
+          _parseAffectionSection(cleaned.substring(match.end, sectionEnd)),
         );
       } else {
-        spans.addAll(parse(text.substring(match.start, sectionEnd)));
+        spans.addAll(parse(cleaned.substring(match.start, sectionEnd)));
       }
 
       currentPos = sectionEnd;
     }
 
-    if (currentPos < text.length) {
-      spans.addAll(parse(text.substring(currentPos)));
+    if (currentPos < cleaned.length) {
+      spans.addAll(parse(cleaned.substring(currentPos)));
     }
 
     return spans;
+  }
+
+  /// 预处理：从剧情文本中剥掉内嵌的 A./B./C./D./E. 选项行（这些在下方「可选行动」区块单独显示）
+  /// 支持：半角字母、全角字母（Ａ-Ｅ）、半角/全角句号、右括号、中文顿号「、」
+  static String _preStripChoices(String text) {
+    final buffer = StringBuffer();
+    final choiceLinePattern = RegExp(
+      r'^\s*(?:[A-Ea-e]|[Ａ-Ｅ])\s*(?:[\.\．、\)）])\s*',
+    );
+    // 兼容"1.""(1)"等数字编号，以及中文一、二、三、编号
+    final numberedPattern = RegExp(
+      r'^\s*(?:\d{1,2}\s*[\.\．、\)）]|[一二三四五六七八九十]{1,3}\s*[、\.．])\s*',
+    );
+    for (final line in text.split('\n')) {
+      // 选项行：空行后紧跟选项说明（排除叙事里的正常句子引用）
+      if (choiceLinePattern.hasMatch(line)) {
+        final after = line.replaceFirst(choiceLinePattern, '');
+        if (after.trim().isNotEmpty && after.trim().length <= 60) {
+          continue; // 典型选项行：< 60 字的一句话行动
+        }
+      }
+      if (numberedPattern.hasMatch(line)) {
+        final after = line.replaceFirst(numberedPattern, '');
+        if (after.trim().isNotEmpty && after.trim().length <= 60) {
+          continue;
+        }
+      }
+      buffer.writeln(line);
+    }
+    return buffer.toString().replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
   }
 
   static int _nextMarkerOrEnd(String text, int from) {
@@ -188,15 +225,18 @@ class StoryTextRenderer {
 
   static List<TextSpan> parse(String text) {
     if (text.isEmpty) return [];
+    final cleaned = _preStripChoices(text);
 
-    final cached = _cache[text];
+    final cached = _cache[cleaned];
     if (cached != null) return cached;
 
     final spans = <TextSpan>[];
-    final tokens = _tokenize(text);
+    final tokens = _tokenize(cleaned);
 
     for (final token in tokens) {
-      if (token is _DialogueToken) {
+      if (token is _DialogueSpeakerToken) {
+        spans.add(TextSpan(text: token.text, style: _dialogueSpeakerStyle));
+      } else if (token is _DialogueToken) {
         spans.add(TextSpan(text: token.text, style: _dialogueStyle));
       } else if (token is _CharacterToken) {
         spans.add(TextSpan(text: token.text, style: _characterStyle));
@@ -212,7 +252,7 @@ class StoryTextRenderer {
     if (_cache.length >= _maxCacheSize) {
       _cache.clear();
     }
-    _cache[text] = spans;
+    _cache[cleaned] = spans;
     return spans;
   }
 
@@ -226,6 +266,13 @@ class StoryTextRenderer {
       RegExp(r'『[^』]*』'),
     ];
 
+    // 冒号对话模式：「说话人（可选情绪）: 台词」或「说话人：台词」
+    // 匹配例子：
+    //   老苹果店主·杂货店老头 (想起你藏钥匙的利落动作，嘴角牵了一下) 好感+1: 你没多问一句...
+    //   米勒娃·麦格：把你的 wand 拿出来，波特先生。
+    // 说话人长度放宽到 120 字符（包含好感提示、情绪括号等长修饰）
+    final colonSpeaker = RegExp(r'(?:^|\n)[^\n]{1,120}?[：:]');
+
     final dialogueRanges = <_Range>[];
     for (final pattern in dialoguePatterns) {
       for (final match in pattern.allMatches(text)) {
@@ -233,6 +280,43 @@ class StoryTextRenderer {
       }
     }
     dialogueRanges.sort((a, b) => a.start.compareTo(b.start));
+
+    // 记录冒号对话的分段范围：说话人(range+标记说话人) + 冒号分隔符 + 台词正文
+    final colonSegments = <_ColonSegment>[];
+    for (final match in colonSpeaker.allMatches(text)) {
+      final matched = match.group(0)!;
+      // 说话人部分可能以 \n 开头（看正则），实际起点要剥离掉换行
+      final rawStart = match.start;
+      final startsWithNewline = matched.startsWith('\n');
+      final speakerStart = startsWithNewline ? rawStart + 1 : rawStart;
+      final matchedTrimmed = startsWithNewline ? matched.substring(1) : matched;
+      final colonEnd = match.end;
+      // 确保后面还有至少 2 个字符以上的正文，避免误匹配时间戳、冒号标签
+      if (colonEnd >= text.length) continue;
+      final rest = text.substring(colonEnd);
+      if (rest.length < 2) continue;
+      // 分离冒号和说话人
+      final speakerPart = matchedTrimmed.substring(0, matchedTrimmed.length - 1);
+      if (speakerPart.trim().isEmpty) continue;
+      // 排除时间格式 09:00、12：30（说话人部分全是数字和空格）
+      if (RegExp(r'^\d{1,2}\s*$').hasMatch(speakerPart.trim())) continue;
+      // 说话人必须是中文/字母开头（不是纯数字、符号）
+      final firstChar = speakerPart.trim().isNotEmpty ? speakerPart.trim()[0] : '';
+      if (firstChar.isEmpty) continue;
+      if (RegExp(r'^[\d\s\+\-\*\/\%\=\@\#\$\&\|\~\<\>\?\!]+$').hasMatch(speakerPart.trim())) continue;
+      // 台词的正文持续到换行或结束
+      final contentEnd = text.indexOf('\n', colonEnd) == -1
+          ? text.length
+          : text.indexOf('\n', colonEnd);
+      colonSegments.add(_ColonSegment(
+        speakerStart: speakerStart,
+        speakerEnd: speakerStart + speakerPart.length,
+        colonEnd: colonEnd,
+        contentEnd: contentEnd,
+      ));
+    }
+    // 按出现顺序排序（避免重复叠加）
+    colonSegments.sort((a, b) => a.speakerStart.compareTo(b.speakerStart));
 
     void addToken(_Token token) {
       if (token.text.isNotEmpty) tokens.add(token);
@@ -251,17 +335,25 @@ class StoryTextRenderer {
       }
     }
 
-    final matchedDialogue = <_Range>[];
-    int dIdx = 0;
-    for (final range in dialogueRanges) {
-      if (dIdx < dialogueRanges.length && range == dialogueRanges[dIdx]) {
-        matchedDialogue.add(range);
-        dIdx++;
-      }
-    }
-
+    final matchedDialogue = dialogueRanges;
     int dPointer = 0;
+    int cPointer = 0;
+
     while (i < text.length) {
+      // 优先判断冒号对话（通常比引号台词更准地定位说话人）
+      if (cPointer < colonSegments.length && i == colonSegments[cPointer].speakerStart) {
+        flushNarration();
+        final seg = colonSegments[cPointer];
+        final speaker = text.substring(seg.speakerStart, seg.speakerEnd);
+        final colon = text.substring(seg.speakerEnd, seg.colonEnd);
+        final content = text.substring(seg.colonEnd, seg.contentEnd);
+        addToken(_DialogueSpeakerToken(speaker));
+        addToken(_DialogueToken(colon));
+        addToken(_DialogueToken(content));
+        i = seg.contentEnd;
+        cPointer++;
+        continue;
+      }
       if (dPointer < matchedDialogue.length && i == matchedDialogue[dPointer].start) {
         flushNarration();
         final dEnd = matchedDialogue[dPointer].end;
@@ -361,6 +453,19 @@ class _Range {
   _Range(this.start, this.end, this.text);
 }
 
+class _ColonSegment {
+  final int speakerStart;
+  final int speakerEnd;
+  final int colonEnd;
+  final int contentEnd;
+  _ColonSegment({
+    required this.speakerStart,
+    required this.speakerEnd,
+    required this.colonEnd,
+    required this.contentEnd,
+  });
+}
+
 class _Replacement {
   final int start;
   final String word;
@@ -379,6 +484,10 @@ class _NarrationToken extends _Token {
 
 class _DialogueToken extends _Token {
   const _DialogueToken(super.text);
+}
+
+class _DialogueSpeakerToken extends _Token {
+  const _DialogueSpeakerToken(super.text);
 }
 
 class _CharacterToken extends _Token {

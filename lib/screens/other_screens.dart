@@ -19,7 +19,10 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
   @override
   Widget build(BuildContext context) {
     final gp = context.watch<GameProvider>();
-    final npcs = gp.npcRegistry.values.toList();
+    // 魔法通讯只显示：剧情中已登场 / 已产生好感互动 / 关系等级建立 的 NPC（没认识的不显示）
+    final npcs = gp.npcRegistry.values.where((n) {
+      return n.introduced;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -54,10 +57,18 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
 
   Widget _buildFilterBar() {
     return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+        ),
+      ),
+      alignment: Alignment.center,
       child: ListView(
         scrollDirection: Axis.horizontal,
+        shrinkWrap: true,
         children: [
           _buildFilterChip('全部', 'all'),
           const SizedBox(width: 8),
@@ -80,25 +91,30 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
     return GestureDetector(
       onTap: () => setState(() => _filter = value),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        constraints: const BoxConstraints(minHeight: 36, minWidth: 56),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+              : Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isSelected
                 ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).dividerColor,
           ),
         ),
+        alignment: Alignment.center,
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
+            height: 1.0,
             color: isSelected
                 ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).textTheme.bodyMedium?.color,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -143,6 +159,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
     final affLevel = UiHelpers.getAffectionLabel(npc.affection);
     final isAlive = npc.isAlive;
     final canChat = npc.isAlive;
+    final roleTags = UiHelpers.npcRoleTags(npc); // 身份标签替代外貌描述
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -224,7 +241,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                           _buildAffectionBadge(npc.affection),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         affLevel,
                         style: TextStyle(
@@ -232,26 +249,25 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                           color: !isAlive ? Colors.grey : UiHelpers.getAffectionColor(npc.affection),
                         ),
                       ),
-                      if (npc.appearance.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          npc.appearance,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color),
-                        ),
-                      ],
-                      if (npc.personalGoal != null && npc.personalGoal!.isNotEmpty) ...[
-                        const SizedBox(height: 1),
-                        Text(
-                          '目标：${npc.personalGoal!}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall!.color),
-                        ),
-                      ],
+                      const SizedBox(height: 4),
+                      // 身份标签（不写外貌，只写让用户记起角色的定位标签）
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 2,
+                        children: roleTags.take(2).map((tag) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: houseColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            tag,
+                            style: TextStyle(fontSize: 10.5, color: houseColor, fontWeight: FontWeight.w500),
+                          ),
+                        )).toList(),
+                      ),
                       if (npc.recentEvents.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             Container(
@@ -266,7 +282,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                                   Icon(Icons.auto_stories, size: 12, color: Colors.amber.shade700),
                                   const SizedBox(width: 3),
                                   Text(
-                                    '近期剧情 · ${npc.recentEvents.first}',
+                                    '近期 · ${npc.recentEvents.first}',
                                     style: TextStyle(fontSize: 10, color: Colors.amber.shade800),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

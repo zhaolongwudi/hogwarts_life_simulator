@@ -181,6 +181,9 @@ class GameProvider extends ChangeNotifier {
     final npc = _npcRegistry[npcId];
     if (npc == null) return;
 
+    // 只要产生了好感互动，就标记为已登场/认识
+    if (!npc.introduced) markNpcIntroduced(npc);
+
     final currentDay = _worldState.time.dayOfYear;
     int actualChange = change;
 
@@ -445,7 +448,9 @@ $profile
 
   int _roll(int min, int max) => min + _random.nextInt(max - min + 1);
 
-  /// 建立玩家初始关系（同年级同学认识）
+  /// 建立玩家初始关系
+  /// 说明：开局不自动把「同年级同学」标记为已认识——必须在剧情中正式见面/产生互动才会 introduced=true。
+  /// 仅对血缘亲属、开场设定的宠物绯月等明确认识的角色默认 introduced。
   void _assignInitialRelationships() {
     final p = _player;
     if (p == null) return;
@@ -455,9 +460,77 @@ $profile
           targetId: npc.id,
           targetName: npc.name,
           relationType: '同学',
-          level: 10,
+          level: 0, // 仅登记关系档案，好感待剧情中建立
         );
       }
+    }
+  }
+
+  /// 显式标记某 NPC 已登场/被玩家认识（并记录认识事件）
+  void markNpcIntroduced(NPC npc) {
+    if (npc.introduced) return;
+    npc.introduced = true;
+    final event = '初次见面';
+    if (!npc.recentEvents.contains(event)) {
+      npc.recentEvents.insert(0, event);
+      if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
+    }
+    _worldState.addNarrativeEvent('👤 你结识了 ${npc.name}');
+  }
+
+  /// 扫描剧情文本，匹配到已知 NPC 名字时自动标记 introduced
+  /// （严格模式：仅当名字独立出现、前后不是其他汉字字母时才认定登场；
+  ///  额外限制：单回合最多标记 5 人，避免 AI 列大纲时一次性把所有角色「登记」）
+  void _markIntroducedFromNarrative(String text) {
+    if (text.isEmpty || _npcRegistry.isEmpty) return;
+    int markedThisRound = 0;
+    const maxPerRound = 5;
+    // 按名字长度降序，长名优先匹配（避免「哈利」在「哈利·波特」之前匹配到）
+    final names = _npcRegistry.values.toList()
+      ..sort((a, b) => b.name.length.compareTo(a.name.length));
+    for (final npc in names) {
+      if (npc.introduced) continue;
+      if (markedThisRound >= maxPerRound) break;
+      // 名字必须 >= 2 字符才参与自动匹配（过短的昵称/单字容易误匹配）
+      if (npc.name.runes.length < 2) continue;
+      if (_standaloneNameMentioned(text, npc.name)) {
+        markNpcIntroduced(npc);
+        markedThisRound++;
+      }
+    }
+  }
+
+  /// 判断 name 在 text 中是否以「独立词」出现（前后被标点/空格/行边界包围，
+  /// 而不是嵌在更长的词组里）
+  static bool _standaloneNameMentioned(String text, String name) {
+    bool isBoundary(int charCode) {
+      if (charCode == 0) return true; // 虚拟位置
+      // CJK Unified Ideographs 基本区 + 扩展 A
+      if (charCode >= 0x4E00 && charCode <= 0x9FFF) return false;
+      if (charCode >= 0x3400 && charCode <= 0x4DBF) return false;
+      // 字母（含全角）、数字
+      if ((charCode >= 0x41 && charCode <= 0x5A) ||
+          (charCode >= 0x61 && charCode <= 0x7A) ||
+          (charCode >= 0xFF21 && charCode <= 0xFF3A) ||
+          (charCode >= 0xFF41 && charCode <= 0xFF5A) ||
+          (charCode >= 0x30 && charCode <= 0x39) ||
+          (charCode >= 0xFF10 && charCode <= 0xFF19)) return false;
+      // 点·/-下划线等连接符（中间名、外国人姓氏连字符）
+      if (charCode == 0x00B7 || charCode == 0x2022 ||
+          charCode == 0x2D || charCode == 0x5F) return false;
+      return true;
+    }
+
+    int idx = 0;
+    while (true) {
+      idx = text.indexOf(name, idx);
+      if (idx == -1) return false;
+      final before = idx == 0 ? 0 : text.codeUnitAt(idx - 1);
+      final after = idx + name.length >= text.length
+          ? 0
+          : text.codeUnitAt(idx + name.length);
+      if (isBoundary(before) && isBoundary(after)) return true;
+      idx += name.length;
     }
   }
 
@@ -2627,6 +2700,9 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
     // Parse reputation changes
     _parseReputationChanges(text);
+
+    // 根据剧情文本中出现的人名，标记 NPC 为已登场（让世界页和通讯列表更准确）
+    _markIntroducedFromNarrative(_currentNarrative);
 
     if (_choices.isEmpty) {
       _choices.addAll(_generateFallbackChoices());

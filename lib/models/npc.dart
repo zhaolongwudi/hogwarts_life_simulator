@@ -36,6 +36,7 @@ class NPC {
   int affectionGainedThisWeek; // 本周好感增量（第一周上限+30）
   int affectionGainedThisMonth; // 本月好感增量（第一个月上限+50）
   int lastGrudgeDay; // 上次记仇的游戏日
+  bool introduced; // 是否已经在剧情中登场/被玩家认识
 
   NPC({
     required this.id,
@@ -69,6 +70,7 @@ class NPC {
     this.affectionGainedThisWeek = 0,
     this.affectionGainedThisMonth = 0,
     this.lastGrudgeDay = -1,
+    this.introduced = false,
   }) : reputation = reputation ?? Reputation();
 
   String get affectionStage => affectionStageFor(affection);
@@ -137,6 +139,7 @@ class NPC {
         'affection_gained_this_week': affectionGainedThisWeek,
         'affection_gained_this_month': affectionGainedThisMonth,
         'last_grudge_day': lastGrudgeDay,
+        'introduced': introduced,
       };
 
   factory NPC.fromJson(Map<String, dynamic> json) => NPC(
@@ -176,5 +179,6 @@ class NPC {
         affectionGainedThisWeek: json['affection_gained_this_week'] ?? 0,
         affectionGainedThisMonth: json['affection_gained_this_month'] ?? 0,
         lastGrudgeDay: json['last_grudge_day'] ?? -1,
+        introduced: json['introduced'] ?? false,
       );
 }
