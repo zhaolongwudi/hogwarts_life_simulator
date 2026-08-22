@@ -863,15 +863,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (freeModels.isNotEmpty)
-          _buildModelChipRow('🎁 免费额度', freeModels, current, const Color(0xFF10B981)),
+          _buildModelChipRow(p, '🎁 免费额度', freeModels, current, const Color(0xFF10B981)),
         if (freeModels.isNotEmpty && paidModels.isNotEmpty) const SizedBox(height: 6),
         if (paidModels.isNotEmpty)
-          _buildModelChipRow('⭐ 推荐付费', paidModels, current, const Color(0xFFD3A625)),
+          _buildModelChipRow(p, '⭐ 推荐付费', paidModels, current, const Color(0xFFD3A625)),
       ],
     );
   }
 
-  Widget _buildModelChipRow(String label, List<String> models, String current, Color accent) {
+  Widget _buildModelChipRow(AiProvider p, String label, List<String> models, String current, Color accent) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -2897,7 +2897,7 @@ $_pendingSummary
           orElse: () => _npcRegistry.values.first,
         );
         if (npc.name == npcName) {
-          updateNpcAffection(npc, delta, reason: '剧情互动');
+          updateNpcAffection(npc.id, delta, reason: '剧情互动');
           _checkLocks(npc);
           _syncRelationshipLevel(npc);
           _checkAffectionAchievements(npc);
