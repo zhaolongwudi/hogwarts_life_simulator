@@ -631,6 +631,44 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
         ),
+        // 好感变化卡片（独立于正文显示）
+        final affectionSections = gp.lastAffectionSections;
+        if (affectionSections.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2D2D),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF444444)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '📊 本回合变化',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8B949E),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...affectionSections.map((section) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    section,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFC9D1D9),
+                    ),
+                  ),
+                )),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -2256,7 +2294,6 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildProviderPicker(AppProvider appProvider) {
     final providers = [
       ('DeepSeek', AiProvider.deepseek, 'https://platform.deepseek.com'),
-      ('智谱 AI', AiProvider.zhipu, 'https://open.bigmodel.cn'),
       ('Agnes', AiProvider.agnes, 'https://apihub.agnes-ai.cn'),
       ('商汤日日新', AiProvider.sensenova, 'https://platform.sensenova.cn'),
     ];

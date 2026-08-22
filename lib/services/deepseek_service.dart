@@ -248,13 +248,6 @@ class DeepSeekService {
           if (bal is String) return double.tryParse(bal);
         }
         return null;
-      } else if (config.provider == AiProvider.zhipu) {
-        final balance = data['data']?['balance'] ?? data['balance'];
-        if (balance is num) return balance.toDouble();
-        if (balance is String) return double.tryParse(balance);
-        final remaining = data['data']?['remaining'];
-        if (remaining is num) return remaining.toDouble();
-        return null;
       } else if (config.provider == AiProvider.agnes) {
         return null;
       } else if (config.provider == AiProvider.sensenova) {
@@ -271,15 +264,6 @@ class DeepSeekService {
   Future<Map<String, dynamic>?> getQuotaInfo() async {
     final path = config.balancePath;
     if (path == null) return null;
-    try {
-      final response = await _dio.get(normalizePath(path));
-      if (config.provider == AiProvider.zhipu) {
-        final data = response.data['data'] as Map<String, dynamic>?;
-        return data;
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 }

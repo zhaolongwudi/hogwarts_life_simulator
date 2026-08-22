@@ -12,14 +12,9 @@ class AiRouterConfig {
   final List<AiProvider> fallbackOrder;
 
   const AiRouterConfig({
-    // Agnes作为主剧情提供商（响应最快，中文质量可接受）
-    // 用户可通过设置页面自定义覆盖此默认值
-    this.narrativeProvider = AiProvider.agnes,
-    // SenseNova作为摘要提供商（Token效率最高）
+    this.narrativeProvider = AiProvider.sensenova,
     this.summaryProvider = AiProvider.sensenova,
-    // DeepSeek作为NPC聊天提供商（长文本能力强）
-    this.npcChatProvider = AiProvider.deepseek,
-    // 降级顺序：DeepSeek→SenseNova→Agnes（速度优先，快速降级）
+    this.npcChatProvider = AiProvider.agnes,
     this.fallbackOrder = const [AiProvider.deepseek, AiProvider.sensenova, AiProvider.agnes],
   });
 
@@ -50,7 +45,6 @@ class AiRouter {
   final Map<AiProvider, DeepSeekService> _services = {};
   final Map<AiProvider, AiConfig> _configs = {};
   final AiRouterConfig _config;
-  final _zhipuQueue = ZhipuConcurrencyQueue();
   final _responseCache = ResponseCache.instance;
 
   AiRouter(this._config);
@@ -176,17 +170,6 @@ class AiRouter {
     required int maxTokens,
   }) async {
     switch (provider) {
-      case AiProvider.zhipu:
-        // 智谱AI：使用并发队列（限1个并发）
-        return _zhipuQueue.execute(() async {
-          return service.chatComplete(
-            prompt: prompt,
-            systemPrompt: systemPrompt ?? '',
-            temperature: temperature,
-            maxTokens: maxTokens,
-          );
-        });
-
       case AiProvider.agnes:
         // Agnes：使用速率限制器（限20 RPM）
         await AgnesRateLimiter.instance.waitForSlot();
@@ -232,8 +215,6 @@ class AiRouter {
     switch (provider) {
       case AiProvider.deepseek:
         return 'DeepSeek';
-      case AiProvider.zhipu:
-        return '智谱 AI';
       case AiProvider.agnes:
         return 'Agnes';
       case AiProvider.sensenova:

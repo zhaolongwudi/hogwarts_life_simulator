@@ -597,6 +597,75 @@ class StoryTextRenderer {
         (first >= 0x2B00 && first <= 0x2BFF);
   }
 
+  /// 自动段落排版：将长文本按句号/问号/感叹号 + 长度阈值自动分段
+  static String autoParagraph(String text) {
+    if (text.isEmpty) return '';
+    
+    final buffer = StringBuffer();
+    int sentenceCount = 0;
+    int paragraphLength = 0;
+    
+    for (int i = 0; i < text.length; i++) {
+      final ch = text[i];
+      buffer.write(ch);
+      paragraphLength++;
+      
+      // 检测段落结束：句末标点 + 长度达标
+      if (ch == '。' || ch == '！' || ch == '？' || ch == '.' || ch == '!' || ch == '?') {
+        sentenceCount++;
+        // 每 2-3 句话 或 段落长度达到 100-150 字符时分段
+        if ((sentenceCount >= 3 && paragraphLength >= 80) || 
+            paragraphLength >= 150) {
+          buffer.write('\n\n');
+          sentenceCount = 0;
+          paragraphLength = 0;
+        }
+      }
+      
+      // 保留原有的双换行（AI 主动分段）
+      if (ch == '\n' && i + 1 < text.length && text[i + 1] == '\n') {
+        sentenceCount = 0;
+        paragraphLength = 0;
+      }
+    }
+    
+    // 清理多余空行
+    var result = buffer.toString();
+    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return result.trim();
+  }
+
+  /// 从文本中提取好感变化区块（返回 Map：纯叙事文本 + 好感变化文本列表）
+  static Map<String, dynamic> extractAffectionSections(String text) {
+    final affectionPattern = RegExp(r'【好感度变化】[\s\S]*?(?=【|$)');
+    final reputationPattern = RegExp(r'【声望变化】[\s\S]*?(?=【|$)');
+    
+    final affectionMatches = affectionPattern.allMatches(text);
+    final reputationMatches = reputationPattern.allMatches(text);
+    
+    final affectionSections = <String>[];
+    for (final m in affectionMatches) {
+      final section = text.substring(m.start, m.end).trim();
+      if (section.isNotEmpty) affectionSections.add(section);
+    }
+    for (final m in reputationMatches) {
+      final section = text.substring(m.start, m.end).trim();
+      if (section.isNotEmpty) affectionSections.add(section);
+    }
+    
+    // 从原文本中移除好感/声望区块，返回纯叙事
+    var narrative = text;
+    narrative = narrative.replaceAllMapped(affectionPattern, (m) => '');
+    narrative = narrative.replaceAllMapped(reputationPattern, (m) => '');
+    narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    narrative = narrative.trim();
+    
+    return {
+      'narrative': narrative,
+      'affectionSections': affectionSections,
+    };
+  }
+
   static List<_Token> _splitNarration(String text) {
     final tokens = <_Token>[];
     final replacements = <_Replacement>[];

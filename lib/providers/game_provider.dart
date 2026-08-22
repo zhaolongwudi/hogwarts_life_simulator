@@ -21,6 +21,7 @@ import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../utils/crash_logger.dart';
 import '../utils/prompt_sanitizer.dart';
+import '../utils/story_text_renderer.dart';
 
 class GameProvider extends ChangeNotifier {
   final AppProvider appProvider;
@@ -63,6 +64,7 @@ class GameProvider extends ChangeNotifier {
   String _lastPlayerAction = '';
   String? _systemPrompt;
   String _loadingStage = '';
+  List<String> _lastAffectionSections = [];
   final List<String> _notifications = [];
   Future<void>? _pendingSave;
   bool _saveScheduled = false;
@@ -93,6 +95,7 @@ class GameProvider extends ChangeNotifier {
   int get turnCount => _turnCount;
   Map<String, NPC> get npcRegistry => _npcRegistry;
   List<String> get notifications => List.unmodifiable(_notifications);
+  List<String> get lastAffectionSections => List.unmodifiable(_lastAffectionSections);
 
   GameProvider(this.appProvider) {
     chatService = NpcChatService(appProvider: appProvider);
@@ -314,7 +317,7 @@ class GameProvider extends ChangeNotifier {
     final eraName = _eraLabelShort(_parseEra(effectiveEra));
 
     final profile = p != null
-        ? '【玩家档案】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜${p.magicAptitude ?? '普通'}天赋｜${p.gender}｜精神力${p.spirit}精力${p.energy}'
+        ? '【档案】${p.name}·${_bloodStatusLabel(p.bloodType)}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}'
         : '';
 
     // 身份模式：穿越者拥有对原作剧情的隐约记忆，原住民则一无所知
@@ -407,6 +410,10 @@ class GameProvider extends ChangeNotifier {
     _totalTokens = 0;
     _lastRoundTokens = 0;
     _apiCalls = 0;
+    // 销毁旧路由器（清除响应缓存、已注册的服务实例）
+    _router = null;
+    // 重建 NPC 聊天服务（清除对话历史）
+    chatService = NpcChatService(appProvider: appProvider);
     notifyListeners();
   }
 
@@ -437,6 +444,14 @@ class GameProvider extends ChangeNotifier {
   }) async {
     // 先彻底清空所有旧状态（防止新开局把旧摘要/近期剧情注入到 Prompt）
     resetAllState();
+    // 重新创建路由器（resetAllState 已将 _router 置空）
+    _updateClient();
+    // 清空旧自动存档文件（防止新游戏误加载到旧存档）
+    try {
+      await _saveService.clearAutoSave();
+    } catch (e) {
+      debugPrint('清理旧存档失败(不影响游戏): $e');
+    }
     _isLoading = true;
     notifyListeners();
 
@@ -964,7 +979,7 @@ ${profile.join('｜')}
       return '''【世界上下文】
 $context
 
-【玩家状态】$statusTag
+${statusTag.isNotEmpty ? '【状态】$statusTag\n' : ''}
 【当前场景】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}
 $sceneInfo
 
@@ -972,13 +987,10 @@ $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $safeAction
 
 【写作要求】
-1. 叙事:300-450字，写成流畅的小说正文，把环境氛围的感官细节（声音、气味、光线、温度、触感等）、NPC的言行举止与对话、玩家的心理活动、关键物品/事件的细节，全部自然融入叙事之中。严禁写成提纲或分段标注的格式——绝对不要出现「环境氛围：」「NPC的言行举止：」「玩家的心理活动：」「重要物品/事件的细节描写：」「场景氛围：」这类结构化小标题或分点列表，也不要加章节序号。读者看到的就是一段完整小说。
-
-2. 好感变化:NPC名:±X(原因)，独立成段，可多条
-
-3. 可选行动:A/B/C/D（四个具体选项，各体现不同性格或策略）
-
-4. 可选行动:''';
+- 叙事:300-450字小说正文，融入感官细节、对话、心理，分2-4段用空行分隔，严禁结构化标签或序号
+- 好感:NPC名±X(原因)，独立成段，可多条
+- 选项:A/B/C/D四选一，各体现不同策略
+''';
     }
 
     try {
@@ -3792,6 +3804,8 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       _extractNarrativeFromRawText(text);
     }
 
+    // 自动段落排版（为无分行的 AI 输出插入合理段落）
+    _currentNarrative = StoryTextRenderer.autoParagraph(_currentNarrative);
     _currentNarrative = _currentNarrative
         .replaceAll(_reMultiNewline, '\n\n')
         .trim();
@@ -3801,6 +3815,11 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       _currentNarrative = _generateFallbackNarrative();
     }
 
+    // 提取好感变化区块（用于独立卡片显示）
+    final extracted = StoryTextRenderer.extractAffectionSections(text);
+    _currentNarrative = extracted['narrative'] as String? ?? _currentNarrative;
+    _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
+    
     // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
     _parseAffectionChanges(text);
 
@@ -4033,14 +4052,14 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
   /// 只在状态异常时输出状态标签（HP低/MP低/精力低/受伤），正常则不写
   String _buildStatusTag(Player p) {
     final tags = <String>[];
-    if (p.health <= 30) tags.add('HP低:${p.health}');
-    if (p.magic <= 20) tags.add('MP低:${p.magic}');
-    if (p.energy <= 20) tags.add('精力低:${p.energy}');
+    if (p.health <= 30) tags.add('HP${p.health}');
+    if (p.magic <= 20) tags.add('MP${p.magic}');
+    if (p.energy <= 20) tags.add('精力${p.energy}');
     if (p.injuries.isNotEmpty) {
       tags.add(p.injuries.take(2).join('、'));
     }
-    if (tags.isEmpty) return '状态良好';
-    return tags.join('｜');
+    if (tags.isEmpty) return '';
+    return '异常:${tags.join('｜')}';
   }
 
   /// 根据行动关键词，只在关键剧情节点临时注入相关上下文（平时不注入）
@@ -4114,10 +4133,10 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
     final npcsHere = npcsInCurrentLocation();
     if (npcsHere.isNotEmpty) {
       final npcNames = npcsHere.map((n) {
-        final status = n.isAlive ? '好感${n.affection}' : '';
-        return '${n.name}($status)';
+        final status = n.isAlive ? n.affection.toString() : '';
+        return '${n.name}$status';
       }).join('、');
-      parts.add('【在场NPC】$npcNames');
+      parts.add('【在场】$npcNames');
     }
 
     final hour = ws.time.hour;
@@ -4125,7 +4144,7 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
                      hour >= 18 ? '夜晚' :
                      hour >= 14 ? '下午' :
                      hour >= 10 ? '上午' : '清晨';
-    parts.add('【时间氛围】$timeDesc（${ws.time.formattedTime}）');
+    parts.add('【时段】$timeDesc·${ws.time.formattedTime}');
 
     if (p != null && p.energy < 30) {
       parts.add('【提示】玩家精力较低，建议休息');
@@ -4154,8 +4173,11 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
       final match = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)').firstMatch(trimmed);
       if (match == null) continue;
       final npcName = match.group(1)!.trim();
-      final delta = int.tryParse(match.group(2)!) ?? 0;
+      var delta = int.tryParse(match.group(2)!) ?? 0;
       if (delta == 0 || npcName.isEmpty) continue;
+      // 压缩好感变化幅度：过大的变化 AI 可能失控，压缩到合理范围
+      if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
+      if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
       try {
         final npc = _npcRegistry.values.firstWhere(
           (n) => n.name == npcName,

@@ -102,8 +102,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     switch (p) {
       case AiProvider.deepseek:
         return 'https://api.deepseek.com';
-      case AiProvider.zhipu:
-        return 'https://open.bigmodel.cn';
       case AiProvider.agnes:
         return 'https://api.agnes-ai.cn';
       case AiProvider.sensenova:
@@ -117,8 +115,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case AiProvider.agnes:
       case AiProvider.sensenova:
         return '/v1/chat/completions';
-      case AiProvider.zhipu:
-        return '/api/paas/v4/chat/completions';
     }
   }
 
@@ -126,8 +122,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     switch (p) {
       case AiProvider.deepseek:
         return 'deepseek-v4-flash';
-      case AiProvider.zhipu:
-        return 'glm-4.7-flash';
       case AiProvider.agnes:
         return 'agnes-2.5-flash';
       case AiProvider.sensenova:
@@ -612,8 +606,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     switch (p) {
       case AiProvider.deepseek:
         return 'DeepSeek';
-      case AiProvider.zhipu:
-        return '智谱';
       case AiProvider.agnes:
         return 'Agnes';
       case AiProvider.sensenova:
