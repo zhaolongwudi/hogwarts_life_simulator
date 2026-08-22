@@ -30,11 +30,19 @@ class GameProvider extends ChangeNotifier {
   late final NpcChatService chatService;
 
   // ====== 预编译正则（避免循环内重复编译） ======
-  static final _reChoiceOption = RegExp(r'^[A-E][\.\)]\s*');
+  // 选项行开头：半角 A-E.  全角Ａ-Ｅ．  中文顿号、  右括号  冒号  空格(至少1个)
+  static final _reChoiceOption = RegExp(
+    r'^\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s*',
+  );
   static final _reMultiNewline = RegExp(r'\n{3,}');
   static final _reAffectionSection = RegExp(r'【好感度变化】[\s\S]*?(?=【|$)');
   static final _reReputationSection = RegExp(r'【声望变化】[\s\S]*?(?=【|$)');
-  static final _reChoiceMultiLine = RegExp(r'^[A-E][\.\)]\s', multiLine: true);
+  // 匹配任意一行：(开头/上一行换行后) 编号(A-E/数字/中文数字) + 分隔符(./、/)/):/： + 空格 + 选项文字
+  // 用来定位整个 AI 响应中「选项区块」的起点
+  static final _reChoiceMultiLine = RegExp(
+    r'(?:^|\n)\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s+\S',
+    multiLine: true,
+  );
   static final _reSectionMarkers = RegExp(r'【[^】]+】');
 
   Player? _player;
@@ -110,20 +118,30 @@ class GameProvider extends ChangeNotifier {
     try {
       _player = Player.fromJson(data['player'] as Map<String, dynamic>);
       _worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
-      _systemPrompt = _buildSystemPrompt();
       _npcRegistry.clear();
       (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
         _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
       });
+      // 系统提示词必须在 player 和 worldState 赋值之后构建
+      _systemPrompt = _buildSystemPrompt();
+
+      // 叙事/选项：直接加载存档值（即使短也保留原貌，用户可点「推进」重生成剧情）
       _currentNarrative = data['narrative'] as String? ?? '';
       _choices = (data['choices'] as List<dynamic>?)
           ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
           .toList() ?? [];
       _turnCount = data['turn_count'] as int? ?? 0;
+
       final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
       _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
       _pendingSummary = extraData['pending_summary'] as String? ?? '';
       _gameWeek = extraData['game_week'] as int? ?? 1;
+      _lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
+      _apiCalls = extraData['api_calls'] as int? ?? 0;
+      _totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
+      _totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
+      _totalTokens = extraData['total_tokens'] as int? ?? 0;
+
       _recentTurns
         ..clear()
         ..addAll((extraData['recent_turns'] as List<dynamic>?)
@@ -133,15 +151,42 @@ class GameProvider extends ChangeNotifier {
       if (_recentTurns.isEmpty && _currentNarrative.isNotEmpty) {
         _recentTurns.add(_currentNarrative);
       }
+
+      // 完整性兜底：若读档后正文极短 (< 20字) 或完全没有选项，
+      // 则补发兜底选项，但**不立即覆盖 _currentNarrative 为生成式兜底**——
+      // 否则老存档里已被错误截断的短叙事会被替换成"你在霍格沃茨走廊上..."
+      // 这种无内容模板，导致读档体验更差；若玩家不满内容，点「推进」就会重新生成
+      if (_choices.isEmpty) {
+        _choices = _generateFallbackChoices();
+      }
+      if (_choices.length > 4) {
+        _choices = _choices.sublist(0, 4);
+      }
+      if (_currentNarrative.isEmpty) {
+        _currentNarrative = _generateFallbackNarrative();
+      }
+
+      // 加载后绝对不能让 _isLoading 残留为 true — 否则界面永远转圈或读档后
+      // 自动按残留 loading 触发再次请求
+      _isLoading = false;
       _isInitializing = false;
-      debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合 (第$_gameWeek周)');
+      _error = null;
+      _loadingStage = '';
+      debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合 (第$_gameWeek周) 叙事${_currentNarrative.length}字');
       notifyListeners();
     } catch (e) {
+      _isLoading = false;
       _isInitializing = false;
       debugPrint('❌ 自动存档加载失败: $e');
       appProvider.setGameStarted(false);
       _error = '存档加载失败: $e';
       notifyListeners();
+      unawaited(CrashLogger.instance.record(
+        e,
+        StackTrace.current,
+        screen: 'autoLoad',
+        extra: 'error during tryAutoLoad',
+      ));
     }
   }
 
@@ -165,6 +210,11 @@ class GameProvider extends ChangeNotifier {
             'pending_summary': _pendingSummary,
             'recent_turns': _recentTurns,
             'game_week': _gameWeek,
+            'last_round_tokens': _lastRoundTokens,
+            'api_calls': _apiCalls,
+            'total_prompt_tokens': _totalPromptTokens,
+            'total_completion_tokens': _totalCompletionTokens,
+            'total_tokens': _totalTokens,
           },
         );
       } catch (e) {
@@ -3672,37 +3722,73 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     final lines = text.split('\n');
     _currentNarrative = '';
     _choices = [];
+    // 标记是否遇到过显式的【叙事】标题：遇到后严格按结构化走，
+    // 否则走"整段正文直到选项区块开始之前"的宽松模式
+    bool sawExplicitNarrativeMarker = false;
     bool inNarrative = false;
+    // 显式区块（选项/好感/声望）之后就不再把后面的任何文字当正文
+    bool anyExplicitBlockPassed = false;
 
     // Pass 1: Try structured parsing with explicit markers
     for (final line in lines) {
       final trimmed = line.trim();
-      if (trimmed == '【叙事】') {
+      if (trimmed == '【叙事】' || trimmed == '【剧情】' || trimmed == '【正文】') {
+        sawExplicitNarrativeMarker = true;
         inNarrative = true;
-        continue;
-      } else if (trimmed.startsWith('【可选行动】') ||
-          trimmed.startsWith('【自由行动】') ||
-          trimmed.startsWith('【好感度变化】') ||
-          trimmed.startsWith('【声望变化】')) {
-        inNarrative = false;
+        anyExplicitBlockPassed = false;
         continue;
       }
+
+      final isBlockHeader = trimmed.startsWith('【可选行动】') ||
+          trimmed.startsWith('【自由行动】') ||
+          trimmed.startsWith('【行动建议】') ||
+          trimmed.startsWith('【备选行动】') ||
+          trimmed.startsWith('【剧情选项】') ||
+          trimmed.startsWith('【好感度变化】') ||
+          trimmed.startsWith('【声望变化】');
+      if (isBlockHeader) {
+        inNarrative = false;
+        anyExplicitBlockPassed = true;
+        continue;
+      }
+
       if (inNarrative) {
+        // 在【叙事】块内部：除了好感度独立行外全收
         if (trimmed.isNotEmpty) {
-          _currentNarrative += '$trimmed\n';
+          _currentNarrative += '$line\n';
+        } else {
+          _currentNarrative += '\n';
+        }
+      } else if (!sawExplicitNarrativeMarker && !anyExplicitBlockPassed) {
+        // 没有出现过显式【叙事】标题，且尚未进入任何结构化区块：
+        // 这一段默认按正文处理（AI忘写标题的情况最常见）
+        if (_reChoiceOption.hasMatch(trimmed)) {
+          // 一上来就看到 A.xxx 形式 → 认为已经进入选项区，正文结束
+          anyExplicitBlockPassed = true;
+          final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+          if (action.isNotEmpty) {
+            _choices.add(GameChoice(text: action, action: action));
+          }
+        } else {
+          if (trimmed.isNotEmpty) {
+            _currentNarrative += '$line\n';
+          } else {
+            _currentNarrative += '\n';
+          }
         }
       } else if (_reChoiceOption.hasMatch(trimmed)) {
-        final action =
-            trimmed.replaceFirst(_reChoiceOption, '').trim();
-        if (action.isNotEmpty) {
+        // 在显式选项区块之后，逐行收集选项
+        final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+        if (action.isNotEmpty && _choices.length < 6) {
           _choices.add(GameChoice(text: action, action: action));
         }
       }
     }
 
-    // Pass 2: If narrative is empty or too short (< 20 chars), try
-    // to extract from raw text before choices
-    if (_currentNarrative.isEmpty || _currentNarrative.length < 20) {
+    // Pass 2: 如果叙事 < 20 字，按"原始文本 - 好感/声望 - 选项区块"兜底提取，
+    // 但注意兜底函数 _extractNarrativeFromRawText 已经不再做 split('\n\n').first
+    // 的毁灭性截断，所以即使走到这里也能保住长文。
+    if (_currentNarrative.trim().length < 20) {
       _extractNarrativeFromRawText(text);
     }
 
@@ -3710,12 +3796,12 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
         .replaceAll(_reMultiNewline, '\n\n')
         .trim();
 
-    // Pass 3: If still empty, generate a fallback narrative
+    // Pass 3: 若依然正文为空，才生成兜底叙事（兜底叙事的特点：短、单段、以📅开头）
     if (_currentNarrative.isEmpty) {
       _currentNarrative = _generateFallbackNarrative();
     }
 
-    // Parse affection changes
+    // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
     _parseAffectionChanges(text);
 
     // Parse reputation changes
@@ -3727,8 +3813,12 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     if (_choices.isEmpty) {
       _choices.addAll(_generateFallbackChoices());
     }
+    // 避免出现过多选项：裁剪到 4 个
+    if (_choices.length > 4) {
+      _choices = _choices.sublist(0, 4);
+    }
 
-    if (_turnCount % 5 == 0 || _lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'))) {
+    if (_turnCount > 0 && (_turnCount % 5 == 0 || _lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)')))) {
       checkNPCConfessions();
     }
 
@@ -3745,19 +3835,43 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   void _extractNarrativeFromRawText(String text) {
     var cleaned = text;
 
+    // 1. 先删【好感度变化】和【声望变化】整块（它们是结构化输出区块，不属于正文叙事）
     cleaned = cleaned.replaceAllMapped(_reAffectionSection, (m) => '');
     cleaned = cleaned.replaceAllMapped(_reReputationSection, (m) => '');
 
-    final choiceMatch = _reChoiceMultiLine.firstMatch(cleaned);
-    if (choiceMatch != null) {
-      cleaned = cleaned.substring(0, choiceMatch.start);
-    } else {
-      cleaned = cleaned.split('\n\n').first;
+    // 2. 删除其他已知结构化区块（整体移除，连同标题行一起）
+    const stripSections = [
+      '可选行动', '自由行动', '行动建议', '备选行动',
+      '剧情选项', '下回合选择', '选择建议',
+    ];
+    for (final s in stripSections) {
+      // 从出现 【$s】 或 行首 $s： 开始，到下一个【 标题 或 末尾结束
+      final pat = RegExp(
+        r'(?:【' + RegExp.escape(s) + r'】|^\s*' + RegExp.escape(s) + r'\s*[：:])[\s\S]*?(?=\n【|$)',
+        multiLine: true,
+      );
+      cleaned = cleaned.replaceAllMapped(pat, (m) => '');
     }
 
+    // 3. 找到「选项区块」的起点：某一行以「A./B./1./一、A)」开头且后面是文字
+    //    把起点之后的内容全部认为是选项而丢弃
+    final choiceMatch = _reChoiceMultiLine.firstMatch(cleaned);
+    if (choiceMatch != null) {
+      int end;
+      if (choiceMatch.group(0)!.startsWith('\n')) {
+        end = choiceMatch.start + 1; // 保留换行，让正文末尾完整
+      } else {
+        end = choiceMatch.start;
+      }
+      cleaned = cleaned.substring(0, end);
+    }
+    // 注意：已经不再用 split('\n\n').first 这种会把正文长文裁成第一段的危险做法
+    // 叙事区的完整性对游戏体验至关重要（哪怕读回带残留文字，总比丢剧情强）
+
+    // 4. 去掉【章节标题】等方括号记号但保留文字内容之间的空行
     cleaned = cleaned
-        .replaceAll(_reSectionMarkers, '')
-        .replaceAll(RegExp(r'\n{2,}'), '\n\n')
+        .replaceAllMapped(RegExp(r'^【[^】\n]*】\s*$', multiLine: true), (m) => '')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
         .trim();
 
     if (cleaned.isNotEmpty && cleaned.length > 10) {
@@ -4498,6 +4612,11 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
         'pending_summary': _pendingSummary,
         'recent_turns': _recentTurns,
         'game_week': _gameWeek,
+        'last_round_tokens': _lastRoundTokens,
+        'api_calls': _apiCalls,
+        'total_prompt_tokens': _totalPromptTokens,
+        'total_completion_tokens': _totalCompletionTokens,
+        'total_tokens': _totalTokens,
       },
     );
   }
@@ -4513,12 +4632,14 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
 
     _player = Player.fromJson(data['player'] as Map<String, dynamic>);
     _worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
-    _systemPrompt = _buildSystemPrompt();
     _npcRegistry.clear();
     final npcMap = data['npc_registry'] as Map<String, dynamic>? ?? <String, dynamic>{};
     npcMap.forEach((k, v) {
       _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
     });
+    // 在 player/worldState/npc 赋值之后再构建系统提示词（_buildSystemPrompt 会用到）
+    _systemPrompt = _buildSystemPrompt();
+
     _currentNarrative = data['narrative'] as String? ?? '';
     _choices = (data['choices'] as List<dynamic>?)
         ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
@@ -4528,6 +4649,12 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
     _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
     _pendingSummary = extraData['pending_summary'] as String? ?? '';
     _gameWeek = extraData['game_week'] as int? ?? 1;
+    _lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
+    _apiCalls = extraData['api_calls'] as int? ?? 0;
+    _totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
+    _totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
+    _totalTokens = extraData['total_tokens'] as int? ?? 0;
+
     _recentTurns
       ..clear()
       ..addAll((extraData['recent_turns'] as List<dynamic>?)
@@ -4537,6 +4664,19 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
     if (_recentTurns.isEmpty && _currentNarrative.isNotEmpty) {
       _recentTurns.add(_currentNarrative);
     }
+
+    // 完整性兜底：只在空的时候补默认
+    if (_choices.isEmpty) _choices = _generateFallbackChoices();
+    if (_choices.length > 4) _choices = _choices.sublist(0, 4);
+    if (_currentNarrative.isEmpty) _currentNarrative = _generateFallbackNarrative();
+
+    // 任何读档之后都必须确保 isLoading=false / isInitializing=false，
+    // 否则"继续游戏"后会卡住或误触发再次请求
+    _isLoading = false;
+    _isInitializing = false;
+    _error = null;
+    _loadingStage = '';
+
     _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();
