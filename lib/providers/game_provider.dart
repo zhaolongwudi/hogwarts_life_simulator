@@ -55,6 +55,7 @@ class GameProvider extends ChangeNotifier {
   int _totalTokens = 0;
   int _lastRoundTokens = 0;
   int _apiCalls = 0;
+  int _gameWeek = 1; // 用于好感沉淀（第一周上限+30）
 
   int get totalPromptTokens => _totalPromptTokens;
   int get totalCompletionTokens => _totalCompletionTokens;
@@ -111,8 +112,9 @@ class GameProvider extends ChangeNotifier {
       final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
       _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
       _pendingSummary = extraData['pending_summary'] as String? ?? '';
+      _gameWeek = extraData['game_week'] as int? ?? 1;
       _isInitializing = false;
-      debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合');
+      debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合 (第$_gameWeek周)');
       notifyListeners();
     } catch (e) {
       _isInitializing = false;
@@ -141,6 +143,7 @@ class GameProvider extends ChangeNotifier {
           extraData: {
             'narrative_summary': _narrativeSummary,
             'pending_summary': _pendingSummary,
+            'game_week': _gameWeek,
           },
         );
       } catch (e) {
@@ -172,10 +175,44 @@ class GameProvider extends ChangeNotifier {
     _router = router;
   }
 
-  void updateNpcAffection(String npcId, int change) {
+  void updateNpcAffection(String npcId, int change, {String? reason}) {
     final npc = _npcRegistry[npcId];
     if (npc == null) return;
-    npc.affection = (npc.affection + change).clamp(-100, 100);
+
+    final currentDay = _worldState.time.dayOfYear;
+    int actualChange = change;
+
+    if (change > 0) {
+      final cap = npc.getAffectionGainLimit(currentDay, _gameWeek);
+      if (cap <= 0) {
+        actualChange = 0;
+        _notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+      } else if (change > cap) {
+        actualChange = cap;
+      }
+      npc.affectionGainedThisWeek += actualChange;
+      npc.affectionGainedThisMonth += actualChange;
+    }
+
+    if (actualChange > 0 && npc.hasGrudge) {
+      final cap = npc.effectiveAffectionCap;
+      final projected = npc.affection + actualChange;
+      if (projected > cap) {
+        actualChange = cap - npc.affection;
+        if (actualChange < 0) actualChange = 0;
+        _notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
+      }
+    }
+
+    if (change < -15) {
+      npc.addGrudge('betrayal', reason ?? '背叛/欺骗', currentDay);
+      _notifications.add('💔 ${npc.name}因你的行为而记恨在心');
+    }
+
+    npc.affection = (npc.affection + actualChange).clamp(-100, 100);
+    if (npc.affection > npc.maxAffectionReached) {
+      npc.maxAffectionReached = npc.affection;
+    }
     _checkAffectionAchievements(npc);
     notifyListeners();
     _autoSave();
@@ -194,23 +231,16 @@ class GameProvider extends ChangeNotifier {
     final eraName = _eraLabelShort(_parseEra(effectiveEra));
 
     final profile = p != null
-        ? '【玩家档案】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜${p.magicAptitude ?? '普通'}天赋\n'
+        ? '【玩家档案】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜${p.magicAptitude ?? '普通'}天赋｜${p.gender}｜精神力${p.spirit}精力${p.energy}'
         : '';
 
-    return '''你是【哈利·波特·魔法纪元】叙事AI。以原著七部为正典。
+    final worldRules = kUseFusedCompact ? kWorldRulesFusedCompact : kWorldRulesFused;
+
+    return '''$worldRules
 
 $profile
-【世界五层】麻瓜｜巫师社会｜霍格沃茨｜禁地｜超自然
-【九大支柱】学校/魔法部/纯血家族/保密法/商业/神奇生物/黑巫师/国际/预言
-
-【叙事规则】
-1. 玩家普通人，选择即后果，NPC有独立人格
-2. 不透露NPC内心，不替玩家说话
-3. 200-300字叙事，≥3感官细节，📅时间戳开头
-4. 格式：叙事→好感变化→可选行动→自由行动
-5. 恋爱止于拥抱，不编造未拥有的物品/关系
-
-【时代】$eraName''';
+【时代】$eraName
+【当前状态】${_buildSceneContext()}''';
   }
 
   String _eraLabel(Era era) {
@@ -732,6 +762,33 @@ $action
         _generateNewNPC();
         return true;
 
+      case '/恋爱等待':
+      case '/恋爱 等待':
+        _currentNarrative = _formatLoveWaiting();
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/恋爱阶段':
+        _currentNarrative = _formatLoveStages();
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/关系网络':
+      case '/关系 网络':
+        if (parts.length >= 4) {
+          _currentNarrative = _formatNpcRelationship(parts[2], parts[3]);
+        } else {
+          _currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
+        }
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/骨科':
+      case '/骨科状态':
+        _currentNarrative = _formatBoneMode();
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
       case '/cheat':
         _handleCheat(parts);
         return true;
@@ -861,7 +918,7 @@ $action
 /cheat 解锁CG <CG编号> — 解锁指定CG''';
   }
 
-  // ==================== 生成新NPC ====================
+  // ==================== 生成新NPC（增强版：多人格+多样化） ====================
   void _generateNewNPC() {
     final p = _player;
     if (p == null) return;
@@ -873,15 +930,78 @@ $action
       return;
     }
 
-    const surnames = ['布莱克', '隆巴顿', '洛夫古德', '迪戈里', '波特', '马尔福', '沙比尼', '韦斯莱', '克鲁姆', '安德森'];
-    const givenMale = ['西奥多', '塞巴斯蒂安', '艾德里安', '卡斯珀', '伊万', '诺亚', '奥利弗', '利奥'];
-    const givenFemale = ['塞西莉亚', '艾拉', '薇奥拉', '罗莎琳', '埃洛伊斯', '伊莎贝拉', '莉莉安', '海伦娜'];
+    final surnames = [
+      '布莱克', '隆巴顿', '洛夫古德', '迪戈里', '波特', '马尔福',
+      '沙比尼', '韦斯莱', '克鲁姆', '安德森', '塞尔温', '罗斯',
+      '阿什福德', '格雷', '芬尼甘', '博恩斯', '艾博', '普莱斯',
+    ];
+    final givenMale = [
+      '西奥多', '塞巴斯蒂安', '艾德里安', '卡斯珀', '伊万', '诺亚',
+      '奥利弗', '利奥', '马库斯', '朱利安', '塞缪尔', '内森',
+    ];
+    final givenFemale = [
+      '塞西莉亚', '艾拉', '薇奥拉', '罗莎琳', '埃洛伊斯', '伊莎贝拉',
+      '莉莉安', '海伦娜', '卡珊德拉', '奥利维亚', '克洛伊', '斯嘉丽',
+    ];
+
+    final houseNames = {
+      'Gryffindor': '格兰芬多',
+      'Slytherin': '斯莱特林',
+      'Ravenclaw': '拉文克劳',
+      'Hufflepuff': '赫奇帕奇',
+    };
+
+    final personalityTemplates = <String, List<String>>{
+      '勇敢型': ['勇敢', '直率', '热情', '正义'],
+      '智慧型': ['理性', '聪明', '好奇', '独立'],
+      '温柔型': ['善良', '温柔', '体贴', '细腻'],
+      '野心型': ['野心', '精明', '果断', '领导'],
+      '忠诚型': ['忠诚', '正直', '勤勉', '耐心'],
+      '神秘型': ['神秘', '内敛', '深沉', '敏感'],
+      '幽默型': ['幽默', '乐观', '热情', '善于交际'],
+      '叛逆型': ['叛逆', '独立', '直率', '挑战权威'],
+    };
+
+    final appearanceTemplates = <String, List<String>>{
+      'Gryffindor': [
+        '红棕色的头发在风中微扬，绿色的眼睛里闪着热情的光芒',
+        '高大挺拔，肩膀宽阔，笑容明亮而坦荡',
+        '一头金色的短发，脸上有几颗雀斑，眼神坚定',
+      ],
+      'Slytherin': [
+        '乌黑的长发披在肩上，眼睛是深邃的灰绿色',
+        '身材修长，举手投足间带着一种与生俱来的优雅',
+        '皮肤苍白，深色的眼睛里藏着不易察觉的心思',
+      ],
+      'Ravenclaw': [
+        '一头凌乱的棕色卷发，戴着一副圆形眼镜',
+        '目光锐利而充满好奇，总是在观察着周围的一切',
+        '纤细的身影，眼神中带着几分聪慧的狡黠',
+      ],
+      'Hufflepuff': [
+        '棕色的直发垂到肩际，笑容温暖而真诚',
+        '体格健壮，给人踏实可靠的感觉',
+        '圆圆的脸蛋，金色的眼睛里满是善意',
+      ],
+    };
+
     final isMale = _random.nextBool();
-    final name = '${isMale ? givenMale[_random.nextInt(givenMale.length)] : givenFemale[_random.nextInt(givenFemale.length)]}·${surnames[_random.nextInt(surnames.length)]}';
+    final givenNames = isMale ? givenMale : givenFemale;
+    final name = '${givenNames[_random.nextInt(givenNames.length)]}·${surnames[_random.nextInt(surnames.length)]}';
     final houses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
     final house = houses[_random.nextInt(houses.length)];
     final id = 'generated_${DateTime.now().millisecondsSinceEpoch}';
     final grade = p.grade ?? 1;
+
+    final archetypes = personalityTemplates.keys.toList();
+    final archetype = archetypes[_random.nextInt(archetypes.length)];
+    final personality = List<String>.from(personalityTemplates[archetype] ?? ['友善', '独立']);
+    final appearanceDesc = (appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇'])[_random.nextInt((appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇']).length)];
+    final houseLabel = houseNames[house] ?? house;
+
+    final orientationOptions = [p.sexOrientation ?? '女', '男', '女'];
+    orientationOptions.removeWhere((e) => e == p.sexOrientation);
+    final sexOrientation = orientationOptions[_random.nextInt(orientationOptions.length)];
 
     final npc = NPC(
       id: id,
@@ -889,12 +1009,18 @@ $action
       house: house,
       grade: grade,
       bloodStatus: 'unknown',
-      personality: ['友善', '独立'],
-      appearance: '一位来自${house == 'Gryffindor' ? '格兰芬多' : house == 'Slytherin' ? '斯莱特林' : house == 'Ravenclaw' ? '拉文克劳' : '赫奇帕奇'}的${isMale ? '男' : '女'}生，面容${isMale ? '俊朗' : '清秀'}，眼神里带着好奇。',
-      sexOrientation: isMale ? '女' : '男',
+      personality: personality,
+      appearance: '$appearanceDesc。这位$houseLabel的${isMale ? '男生' : '女生'}，属于$archetype气质。',
+      sexOrientation: sexOrientation,
+      mood: _roll(40, 70),
       affection: _roll(5, 15),
       isGenerated: true,
-      generatedProfile: '新生，与你同年级，来自$house。',
+      generatedProfile: '$archetype气质｜$houseLabel｜${isMale ? '男' : '女'}生｜与你同年级',
+      giftPrefs: _generateGiftPrefs(archetype),
+      personalGoal: _generatePersonalGoal(archetype, house),
+      schedule: _generateNpcSchedule(house, grade),
+      knowsAbout: _generateKnownFacts(archetype),
+      reputation: _generateNpcReputation(archetype, house),
     );
 
     _npcRegistry[id] = npc;
@@ -904,14 +1030,203 @@ $action
       relationType: '同学',
       level: 10,
     );
-    _notifications.add('📬 新同学加入了你的圈子：$name');
+    _notifications.add('📬 新同学加入了你的圈子：$name（$archetype）');
     _currentNarrative =
-        '一位新的同学出现在霍格沃茨的走廊里——$name，来自$house学院。也许你们会有一段值得书写的故事。\n\n'
-        '（你可以继续探索，或与这位新同学互动）';
+        '一位新的同学出现在霍格沃茨的走廊里——$name，来自$houseLabel学院。\n\n'
+        '$appearanceDesc。从他/她的言行举止来看，这是一位$archetype气质的人。\n\n'
+        '${_generateNpcBackstoryFlavor(archetype, isMale, house)}\n\n'
+        '也许你们会有一段值得书写的故事。';
     _choices = [
-      GameChoice(text: '上前与新同学打招呼', action: '上前与新同学打招呼'),
-      GameChoice(text: '保持距离，观察一下', action: '保持距离，观察一下'),
+      GameChoice(text: '上前与$name打招呼', action: '上前与$name打招呼'),
+      GameChoice(text: '保持距离，暗中观察', action: '保持距离，暗中观察'),
+      GameChoice(text: '请$name帮个小忙', action: '请$name帮个小忙'),
     ];
+
+    _checkGenerationArtistAchievement();
+  }
+
+  Map<String, int> _generateGiftPrefs(String archetype) {
+    switch (archetype) {
+      case '勇敢型':
+        return {'魁地奇徽章': 8, '勇气勋章': 6, '巧克力蛙': 2};
+      case '智慧型':
+        return {'旧书': 8, '羽毛笔': 5, '巧克力蛙': 2};
+      case '温柔型':
+        return {'花束': 7, '手写贺卡': 5, '巧克力蛙': 3};
+      case '野心型':
+        return {'计划书': 7, '银色钢笔': 6, '巧克力蛙': 2};
+      case '忠诚型':
+        return {'编织围巾': 8, '自制点心': 5, '巧克力蛙': 3};
+      case '神秘型':
+        return {'神秘符号': 8, '魔法道具': 6, '巧克力蛙': 2};
+      case '幽默型':
+        return {'恶作剧玩具': 7, '笑话集': 5, '巧克力蛙': 3};
+      case '叛逆型':
+        return {'朋克饰品': 8, '摇滚专辑': 6, '巧克力蛙': 2};
+      default:
+        return {'巧克力蛙': 2};
+    }
+  }
+
+  String? _generatePersonalGoal(String archetype, String house) {
+    final goals = <String, List<String>>{
+      '勇敢型': ['成为魁地奇队长', '证明自己的勇气', '保护身边的朋友'],
+      '智慧型': ['解开一个古老的魔法谜题', '成为级长', '研究禁忌咒文'],
+      '温柔型': ['治愈所有受伤的生物', '建立一个温暖的朋友圈', '守护一段珍贵的友谊'],
+      '野心型': ['成为学生会主席', '掌握高阶黑魔法防御术', '建立自己的魔法家族'],
+      '忠诚型': ['为学院赢得学院杯', '成为朋友最可靠的依靠', '守护家族的荣誉'],
+      '神秘型': ['探索霍格沃茨的秘密', '理解自己的魔法天赋', '找到传说中的密室'],
+      '幽默型': ['成为霍格沃茨的笑话大王', '让所有人都开怀大笑', '发明新的恶作剧道具'],
+      '叛逆型': ['打破陈规', '证明传统可以被挑战', '追随自己的道路'],
+    };
+    final houseGoals = <String, List<String>>{
+      'Gryffindor': ['赢得魁地奇冠军', '成为格兰芬多的骄傲'],
+      'Slytherin': ['在斯莱特林出人头地', '成为最优秀的蛇院学生'],
+      'Ravenclaw': ['解开图书馆的秘密', '拉文克劳最聪明的学生'],
+      'Hufflepuff': ['证明赫奇帕奇的价值', '成为最努力工作的学生'],
+    };
+    final pool = <String>[];
+    pool.addAll(goals[archetype] ?? []);
+    pool.addAll(houseGoals[house] ?? []);
+    if (pool.isEmpty) return null;
+    return pool[_random.nextInt(pool.length)];
+  }
+
+  Map<String, String> _generateNpcSchedule(String house, int grade) {
+    final schedules = <String, Map<String, String>>{
+      'Gryffindor': {
+        '早晨': '在魁地奇训练场练习',
+        '上午': '在教室里认真听讲',
+        '下午': '在格兰芬多公共休息室休息',
+        '晚上': '在图书馆查阅魁地奇战术',
+      },
+      'Slytherin': {
+        '早晨': '在黑魔法防御术教室',
+        '上午': '在魔药课实验室',
+        '下午': '在斯莱特林公共休息室',
+        '晚上': '在有求必应屋学习',
+      },
+      'Ravenclaw': {
+        '早晨': '在图书馆占座',
+        '上午': '在教室积极发言',
+        '下午': '在天文塔观察星象',
+        '晚上': '在图书馆研读古籍',
+      },
+      'Hufflepuff': {
+        '早晨': '在厨房准备早餐',
+        '上午': '在草药课温室',
+        '下午': '在赫奇帕奇公共休息室',
+        '晚上': '在厨房帮家养小精灵',
+      },
+    };
+    return schedules[house] ?? {
+      '早晨': '在教室',
+      '上午': '在上课',
+      '下午': '在公共休息室',
+      '晚上': '在图书馆',
+    };
+  }
+
+  List<String> _generateKnownFacts(String archetype) {
+    final facts = <String, List<String>>{
+      '勇敢型': ['听说过禁林的传说', '知道如何找到秘密通道', '认识魁地奇队的人'],
+      '智慧型': ['读过大部分图书馆的书', '知道一些古老的咒语', '对霍格沃茨的历史很了解'],
+      '温柔型': ['知道谁需要帮助', '了解霍格沃茨的家养小精灵', '认识医院的护士'],
+      '野心型': ['了解魔法部的运作', '知道哪些教授有影响力', '认识一些高年级学生'],
+      '忠诚型': ['知道如何让朋友开心', '了解每个同学的喜好', '认识所有家养小精灵的名字'],
+      '神秘型': ['听说过密室的传说', '知道一些不为人知的咒语', '对霍格沃茨的秘密很感兴趣'],
+      '幽默型': ['知道所有恶作剧的秘密', '认识弗雷德和乔治的粉丝', '了解霍格沃茨的笑话'],
+      '叛逆型': ['知道哪些规则可以打破', '了解有求必应屋的秘密', '认识一些反叛的学生'],
+    };
+    return facts[archetype] ?? ['知道一些校园的小秘密'];
+  }
+
+  Reputation _generateNpcReputation(String archetype, String house) {
+    final rep = Reputation();
+    switch (archetype) {
+      case '勇敢型':
+        rep.setValue('combat', _roll(40, 70));
+        rep.setValue('moral', _roll(30, 60));
+        break;
+      case '智慧型':
+        rep.setValue('academic', _roll(50, 80));
+        rep.setValue('dark', _roll(10, 30));
+        break;
+      case '温柔型':
+        rep.setValue('moral', _roll(50, 80));
+        rep.setValue('social', _roll(40, 70));
+        break;
+      case '野心型':
+        rep.setValue('leadership', _roll(40, 70));
+        rep.setValue('dark', _roll(20, 50));
+        break;
+      case '忠诚型':
+        rep.setValue('moral', _roll(50, 75));
+        rep.setValue('social', _roll(35, 65));
+        break;
+      case '神秘型':
+        rep.setValue('dark', _roll(30, 60));
+        rep.setValue('academic', _roll(30, 60));
+        break;
+      case '幽默型':
+        rep.setValue('social', _roll(50, 80));
+        break;
+      case '叛逆型':
+        rep.setValue('dark', _roll(40, 70));
+        rep.setValue('combat', _roll(30, 60));
+        break;
+      default:
+        rep.setValue('social', _roll(30, 60));
+    }
+    return rep;
+  }
+
+  String _generateNpcBackstoryFlavor(String archetype, bool isMale, String house) {
+    final prefix = isMale ? '他' : '她';
+    final flavors = <String, List<String>>{
+      '勇敢型': [
+        '$prefix的父亲曾是${house}的魁地奇队长，$prefix从小就梦想着继承这份荣耀。',
+        '据说$prefix在二年级时就独自面对过一只博格特，展现了超乎年龄的勇气。',
+        '$prefix总是第一个冲入危险的人，朋友们常常担心$prefix的安全。',
+      ],
+      '智慧型': [
+        '$prefix在入学前就已经读完了大部分霍格沃茨的教科书。',
+        '$prefix的论文总是被教授们当作范本，据说连邓布利多都曾关注过$prefix的学业。',
+        '$prefix喜欢独自在图书馆待上几个小时，研究那些被其他学生忽略的角落。',
+      ],
+      '温柔型': [
+        '$prefix来自一个温暖的家庭，$prefix的母亲是一位治疗师。',
+        '$prefix经常在医务室帮忙照顾受伤的同学，院长阿姨对$prefix赞不绝口。',
+        '$prefix总是能察觉别人的情绪变化，是朋友圈里最好的倾听者。',
+      ],
+      '野心型': [
+        '$prefix的父母都是魔法部的高级官员，$prefix从小就被培养成未来的领袖。',
+        '据说$prefix已经在为自己的政治生涯做准备，学生会主席是$prefix的第一个目标。',
+        '$prefix做事有条不紊，目标明确，很少有人能动摇$prefix的决心。',
+      ],
+      '忠诚型': [
+        '$prefix的家族代代都在${house}，家族传统让$prefix对学院有着深厚的感情。',
+        '$prefix是朋友圈里最值得信赖的人，任何秘密告诉$prefix都绝对安全。',
+        '$prefix喜欢在厨房帮家养小精灵的忙，认为尊重每一个生灵是最重要的品质。',
+      ],
+      '神秘型': [
+        '$prefix身上有一种说不清的气质，似乎总是能感知到别人感知不到的东西。',
+        '$prefix对霍格沃茨的历史了如指掌，甚至包括那些被官方历史遗漏的片段。',
+        '据说$prefix在入学时就表现出特殊的魔法天赋，让分院帽犹豫了很长时间。',
+      ],
+      '幽默型': [
+        '$prefix是霍格沃茨的笑话大王，几乎每一天都能让身边的人开怀大笑。',
+        '$prefix和弗雷德、乔治是好友，经常一起策划各种恶作剧。',
+        '$prefix有一个特殊的天赋，能在任何场合找到笑点。',
+      ],
+      '叛逆型': [
+        '$prefix的家庭背景有些特殊，这让$prefix从小就对权威持怀疑态度。',
+        '$prefix拒绝遵守一些在$prefix看来不合理的规定，这让$prefix在某些圈子里很有名。',
+        '$prefix信奉"规则是用来被打破的"，但$prefix有自己的底线。',
+      ],
+    };
+    final list = flavors[archetype] ?? ['$prefix是一个有故事的人。'];
+    return list[_random.nextInt(list.length)];
   }
 
   int _calculateAge() {
@@ -1299,10 +1614,20 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       n.isConsideringConfession = false;
     }
 
-    // 候选：好感≥85、未表白过、性取向匹配（未指定取向的NPC可向任意性别表白）
+    // 融合版条件：好感≥85 + 关系阶段为"暧昧" + 浪漫事件≥2次 + 持续≥2周
+    final currentDay = _worldState.time.dayOfYear;
     final candidates = _npcRegistry.values.where((n) {
       if (!n.isAlive || n.affection < 85 || n.confessed) return false;
       if (n.sexOrientation != null && n.sexOrientation != p.sexOrientation) {
+        return false;
+      }
+      // 检查关系阶段
+      final stage = p.loveState.stageFor(n.name);
+      if (stage != '暧昧' && stage != '亲密') return false;
+      // 检查浪漫事件计数
+      if (p.loveState.romanticEventsFor(n.name) < 2) return false;
+      // 检查暧昧持续时间
+      if (p.loveState.currentCrushName == n.name && !p.loveState.isCrushMature(currentDay)) {
         return false;
       }
       return true;
@@ -1310,33 +1635,66 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
     if (candidates.isEmpty) return;
 
-    // 概率触发：每轮20%概率有NPC酝酿表白
-    if (_random.nextDouble() > 0.2) {
-      // 仍可标记"正在考虑"
+    // 融合版：概率触发（基础20% + 条件达标加成）
+    double triggerProb = 0.2;
+    // 好感超过90%时概率增加
+    for (final c in candidates) {
+      if (c.affection >= 90) triggerProb += 0.1;
+    }
+    triggerProb = triggerProb.clamp(0.0, 0.6);
+
+    if (_random.nextDouble() > triggerProb) {
+      // 标记"正在考虑"
       final npc = candidates[_random.nextInt(candidates.length)];
       npc.isConsideringConfession = true;
       return;
     }
 
-    final npc = candidates[_random.nextInt(candidates.length)];
+    // 选择好感最高的候选者（更合理的表白对象）
+    candidates.sort((a, b) => b.affection.compareTo(a.affection));
+    final npc = candidates.first;
     npc.isConsideringConfession = true;
     npc.isAlive = true;
 
     final originalNarrative = _currentNarrative;
     _currentNarrative =
         (originalNarrative.isEmpty ? '' : '$originalNarrative\n\n') +
-            '${npc.name}走到你面前，深深吸了一口气，像是下了很大的决心。\n\n'
-            '"${p.name}，我有话想对你说……" 他/她低着头，声音有些颤抖。'
-            '月光洒在走廊上，一切仿佛都静止了。\n\n'
-            '【${npc.name}的表白】\n'
-            '"我喜欢你。从很久以前就开始了。如果你愿意，我想和你在一起。"\n\n'
-            '你的心跳漏了一拍。';
+            _buildConfessionNarrative(npc, p);
     _choices = [
       GameChoice(text: '接受这份心意', action: '接受${npc.name}的表白'),
       GameChoice(text: '婉拒，但保持朋友关系', action: '婉拒${npc.name}，希望保持朋友关系'),
     ];
     p.loveState.awaitingConfession = true;
     p.loveState.consideringNpcName = npc.name;
+  }
+
+  /// 融合版表白叙事：根据NPC人格生成不同风格
+  String _buildConfessionNarrative(NPC npc, Player p) {
+    final personality = npc.personality;
+    final traits = personality.join('');
+
+    // 根据NPC特质选择表白风格
+    if (traits.contains('勇敢') || traits.contains('直率')) {
+      return '${npc.name}鼓起勇气走到你面前，眼睛里闪烁着坚定的光。\n\n'
+          '"${p.name}，我有件事藏在心里很久了。" 他/她深吸一口气，\n'
+          '"我喜欢你。不是一时兴起，是真的想和你在一起。"\n\n'
+          '走廊里的烛光轻轻摇曳，你的心跳似乎漏了一拍。';
+    } else if (traits.contains('理性') || traits.contains('聪明')) {
+      return '${npc.name}似乎经过了一番深思熟虑才找到你。\n\n'
+          '"${p.name}，我一直在想，该怎么说这件事才合适。" 他/她的声音平稳，\n'
+          '"经过这么久的相处，我确定——我想和你在一起。不是因为冲动，而是因为我想认真地走下去。"\n\n'
+          '理性的话语下，是一颗同样在跳动的心。';
+    } else if (traits.contains('害羞') || traits.contains('内向')) {
+      return '${npc.name}的脸涨得通红，低着头不敢看你。\n\n'
+          '"${p.name}…我…" 他/她的声音很小，几乎被风声盖过，\n'
+          '"我喜欢你…可以吗？"\n\n'
+          '月光下，${npc.name}的耳朵尖都红了，你第一次发现原来害羞的人表白时这么可爱。';
+    } else {
+      return '${npc.name}站在你面前，深深地吸了一口气。\n\n'
+          '"${p.name}，有件事我想让你知道。" 他/她的眼神认真而温柔，\n'
+          '"我喜欢你。如果你愿意，我想和你一起走下去。"\n\n'
+          '夜风拂过，一切仿佛都在等待你的回答。';
+    }
   }
 
   /// 处理表白回应
@@ -1421,6 +1779,45 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (npc.affection >= 20) {
       _unlockAchievement('first_friend');
     }
+    _checkCGUnlockByAffection(npc);
+  }
+
+  void _checkCGUnlockByAffection(NPC npc) {
+    final p = _player;
+    if (p == null) return;
+    final aff = npc.affection;
+    final isCrush = p.loveState.currentCrushName == npc.name;
+    final isPartner = p.loveState.partnerId == npc.id;
+
+    final cgChecks = <int, String>{};
+
+    if (aff >= 20) cgChecks[20] = 'CG-001';
+    if (aff >= 35) cgChecks[35] = 'CG-004';
+    if (aff >= 40) {
+      cgChecks[40] = 'CG-005';
+      cgChecks[41] = 'CG-006';
+    }
+    if (aff >= 60 && isCrush) cgChecks[60] = 'CG-007';
+    if (aff >= 65 && isCrush) cgChecks[65] = 'CG-008';
+    if (aff >= 70 && isCrush) cgChecks[70] = 'CG-009';
+    if (aff >= 80 && isCrush) cgChecks[80] = 'CG-011';
+    if (aff >= 90 && (isPartner || aff >= 90)) cgChecks[90] = 'CG-013';
+    if (aff >= 92 && aff < 95) cgChecks[92] = 'CG-014';
+    if (aff >= 95) {
+      cgChecks[95] = 'CG-015';
+      cgChecks[96] = 'CG-017';
+    }
+    if (aff >= 93) cgChecks[93] = 'CG-018';
+    if (aff >= 96) cgChecks[96] = 'CG-019';
+    if (aff >= 98) cgChecks[98] = 'CG-020';
+
+    for (final cgId in cgChecks.values) {
+      _unlockCG(cgById(cgId));
+    }
+
+    if (p.boneMode && isCrush) {
+      if (npc.confessed) _unlockCG(cgById('CG-BONE-001'));
+    }
   }
 
   void _checkSkillAchievements() {
@@ -1449,6 +1846,98 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (combat >= 80) {
       _unlockAchievement('war_hero');
     }
+  }
+
+  void _checkExplorerAchievement() {
+    final p = _player;
+    if (p == null) return;
+    final visited = <String>{};
+    visited.add(_worldState.currentLocation ?? '');
+    if (visited.length >= 5) _unlockAchievement('explorer');
+  }
+
+  void _checkRichWizardAchievement() {
+    final p = _player;
+    if (p == null) return;
+    if (totalWealth >= 100) _unlockAchievement('rich_wizard');
+  }
+
+  void _checkBookwormAchievement() {
+    final p = _player;
+    if (p == null) return;
+    if (p.learnedSpells.length >= 10) _unlockAchievement('bookworm');
+  }
+
+  void _checkSocialButterflyAchievement() {
+    final p = _player;
+    if (p == null) return;
+    final friendCount = _npcRegistry.values.where((n) => n.isAlive).length;
+    if (friendCount >= 10) _unlockAchievement('social_butterfly');
+  }
+
+  void _checkDeepRelationshipAchievement() {
+    for (final npc in _npcRegistry.values) {
+      if (npc.affection >= 80) {
+        _unlockAchievement('deep_relationship');
+        return;
+      }
+    }
+  }
+
+  void _checkBetrayalSurvivorAchievement() {
+    for (final npc in _npcRegistry.values) {
+      if (npc.hasGrudge && npc.affection > npc.maxAffectionReached * 0.8) {
+        _unlockAchievement('betrayal_survivor');
+        return;
+      }
+    }
+  }
+
+  void _checkMonthlyEvolutionAchievement() {
+    if (_worldState.recentEvents.where((e) => e.contains('月度世界演化')).length >= 3) {
+      _unlockAchievement('monthly_evolution');
+    }
+  }
+
+  void _checkGenerationArtistAchievement() {
+    final count = _npcRegistry.values.where((n) => n.isGenerated).length;
+    if (count >= 5) _unlockAchievement('generation_artist');
+  }
+
+  void _checkCGCollectorAchievement() {
+    final p = _player;
+    if (p == null) return;
+    if (p.cgRecords.length >= 10) _unlockAchievement('cg_collector');
+  }
+
+  void _checkRelationshipMasterAchievement() {
+    final highAffectionCount = _npcRegistry.values
+        .where((n) => n.affection >= 60)
+        .length;
+    if (highAffectionCount >= 3) _unlockAchievement('relationship_master');
+  }
+
+  void _checkTimeMasterAchievement() {
+    final startYear = 1991;
+    final currentYear = _worldState.time.year;
+    if (currentYear - startYear >= 2) _unlockAchievement('time_master');
+  }
+
+  void _checkAllAchievements() {
+    _checkSkillAchievements();
+    _checkWorldChangerAchievement();
+    _checkWarHeroAchievement();
+    _checkExplorerAchievement();
+    _checkRichWizardAchievement();
+    _checkBookwormAchievement();
+    _checkSocialButterflyAchievement();
+    _checkDeepRelationshipAchievement();
+    _checkBetrayalSurvivorAchievement();
+    _checkMonthlyEvolutionAchievement();
+    _checkGenerationArtistAchievement();
+    _checkCGCollectorAchievement();
+    _checkRelationshipMasterAchievement();
+    _checkTimeMasterAchievement();
   }
 
   void _incrementWorldLineDeviation(double delta) {
@@ -1481,9 +1970,17 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       minutes = 60;
     }
 
+    final oldDayOfYear = _worldState.time.dayOfYear;
     final oldMonth = _worldState.time.month;
     final oldYear = _worldState.time.year;
     _worldState.time.advanceMinutes(minutes);
+
+    // 游戏周追踪（好感沉淀用）
+    final newDayOfYear = _worldState.time.dayOfYear;
+    if ((newDayOfYear ~/ 7) > (oldDayOfYear ~/ 7)) {
+      _gameWeek++;
+      _resetWeeklyAffectionCaps();
+    }
 
     // 深夜触发满月标记
     if (_worldState.time.isFullMoon && !_worldState.specialMarkers.contains('🌙满月')) {
@@ -1500,6 +1997,13 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     _runConsistencyChecks();
 
     _checkMonthlyEvolution(oldMonth, oldYear);
+  }
+
+  void _resetWeeklyAffectionCaps() {
+    for (final npc in _npcRegistry.values) {
+      npc.affectionGainedThisWeek = 0;
+    }
+    debugPrint('📊 新的一周开始：好感周增量已重置');
   }
 
   void _checkMonthlyEvolution(int oldMonth, int oldYear) {
@@ -1584,19 +2088,81 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (p == null) return;
     final issues = <String>[];
 
+    // ====== 资源值钳制 ======
     p.health = p.health.clamp(0, 100);
     p.magic = p.magic.clamp(0, 100);
     p.spirit = p.spirit.clamp(0, 100);
     p.satiety = p.satiety.clamp(0, 100);
     p.energy = p.energy.clamp(0, 100);
 
+    // ====== 属性合理性检查 ======
+    for (final entry in p.attributes.entries) {
+      if (entry.value < 0) {
+        p.attributes[entry.key] = 0;
+        issues.add('属性"${entry.key}"负值，已归零');
+      }
+      if (entry.value > 100) {
+        p.attributes[entry.key] = 100;
+        issues.add('属性"${entry.key}"超过100，已钳制');
+      }
+    }
+
+    // ====== 学院四维检查 ======
+    for (final entry in p.houseDimensions.entries) {
+      if (entry.value < 0) {
+        p.houseDimensions[entry.key] = 0;
+        issues.add('学院四维"${entry.key}"负值，已归零');
+      }
+      if (entry.value > 100) {
+        p.houseDimensions[entry.key] = 100;
+        issues.add('学院四维"${entry.key}"超过100，已钳制');
+      }
+    }
+
+    // ====== 世界线变动率检查 ======
+    if (p.worldLineDeviation < 0) {
+      p.worldLineDeviation = 0;
+      issues.add('世界线变动率负值，已修正');
+    }
+    if (p.worldLineDeviation > 1) {
+      p.worldLineDeviation = 1;
+      issues.add('世界线变动率超过100%，已钳制');
+    }
+
+    // ====== NPC好感与关系检查 ======
     for (final npc in _npcRegistry.values) {
       npc.affection = npc.affection.clamp(-100, 100);
       if (!npc.isAlive && p.relationships.containsKey(npc.id)) {
         issues.add('NPC "${npc.name}" 已死亡但仍在关系列表中');
       }
+      if (npc.affection > npc.maxAffectionReached) {
+        npc.maxAffectionReached = npc.affection;
+      }
+      if (npc.hasGrudge && npc.affection > npc.effectiveAffectionCap) {
+        npc.affection = npc.effectiveAffectionCap;
+        issues.add('NPC "${npc.name}" 好感超过背叛前水平，已钳制');
+      }
     }
 
+    // ====== 恋爱状态一致性检查 ======
+    if (p.loveState.status != '单身') {
+      if (p.loveState.partnerId == null || p.loveState.partnerName == null) {
+        p.loveState.status = '单身';
+        p.loveState.partnerId = null;
+        p.loveState.partnerName = null;
+        issues.add('恋爱状态不一致（缺少伴侣信息），已重置为单身');
+      } else {
+        final partnerNpc = _npcRegistry[p.loveState.partnerId];
+        if (partnerNpc == null || !partnerNpc.isAlive) {
+          p.loveState.status = '单身';
+          p.loveState.partnerId = null;
+          p.loveState.partnerName = null;
+          issues.add('恋爱对象已不存在，已重置为单身');
+        }
+      }
+    }
+
+    // ====== 时间合理性检查 ======
     final year = _worldState.time.year;
     if (year < 1890 || year > 2100) {
       issues.add('年份异常: $year');
@@ -1606,16 +2172,52 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       _worldState.time.month = month.clamp(1, 12);
       issues.add('月份越界，已修正');
     }
+    final day = _worldState.time.day;
+    if (day < 1 || day > 31) {
+      _worldState.time.day = day.clamp(1, 31);
+      issues.add('日期越界，已修正');
+    }
 
-    for (final entry in p.houseDimensions.entries) {
-      if (entry.value < 0) {
-        p.houseDimensions[entry.key] = 0;
-        issues.add('学院四维 "${entry.key}" 负值，已归零');
+    // ====== 时代一致性检查 ======
+    final eraName = _worldState.era;
+    final appEra = appProvider.era.name;
+    if (eraName.isNotEmpty && eraName != appEra) {
+      debugPrint('存档时代($eraName)与当前设置($appEra)不一致');
+    }
+
+    // ====== 货币合理性 ======
+    if (p.galleons < 0) {
+      p.galleons = 0;
+      issues.add('加隆余额负值，已归零');
+    }
+    if (p.bankGalleons < 0) {
+      p.bankGalleons = 0;
+      issues.add('古灵阁存款负值，已归零');
+    }
+
+    // ====== 背包物品检查 ======
+    p.inventory.removeWhere((item) => item.name.isEmpty);
+    if (p.inventory.length > 100) {
+      p.inventory.removeRange(100, p.inventory.length);
+      issues.add('背包物品超过上限，已清理');
+    }
+
+    // ====== 声望合理性检查 ======
+    final reputationFields = ['academic', 'social', 'combat', 'moral', 'leadership', 'dark'];
+    for (final field in reputationFields) {
+      final value = p.playerReputation.get(field);
+      if (value < 0 || value > 100) {
+        p.playerReputation.setValue(field, value.clamp(0, 100));
+        issues.add('声望$field越界，已修正');
       }
     }
 
+    // ====== 成就检查 ======
+    _checkAllAchievements();
+
     if (issues.isNotEmpty) {
       _notifications.add('⚠️ 状态自修复：${issues.join('；')}');
+      debugPrint('🛡️ 防崩坏自检: 修复${issues.length}项状态异常');
     }
   }
 
@@ -1730,14 +2332,13 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   }
 
   // ==================== 好感度操作（供UI调用） ====================
-  void adjustAffection(String npcId, int delta) {
+  void adjustAffection(String npcId, int delta, {String? reason}) {
+    updateNpcAffection(npcId, delta, reason: reason);
     final npc = _npcRegistry[npcId];
-    if (npc == null) return;
-    npc.affection = (npc.affection + delta).clamp(-100, 100);
-    _checkLocks(npc);
-    _syncRelationshipLevel(npc);
-    _checkAffectionAchievements(npc);
-    notifyListeners();
+    if (npc != null) {
+      _checkLocks(npc);
+      _syncRelationshipLevel(npc);
+    }
   }
 
   void _checkLocks(NPC npc) {
@@ -2537,6 +3138,7 @@ $_pendingSummary
       extraData: {
         'narrative_summary': _narrativeSummary,
         'pending_summary': _pendingSummary,
+        'game_week': _gameWeek,
       },
     );
   }
@@ -2566,6 +3168,7 @@ $_pendingSummary
     final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
     _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
     _pendingSummary = extraData['pending_summary'] as String? ?? '';
+    _gameWeek = extraData['game_week'] as int? ?? 1;
     _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();

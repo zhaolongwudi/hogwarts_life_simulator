@@ -30,6 +30,13 @@ class NPC {
   final bool isGenerated; // 是否为动态生成的新NPC
   String? generatedProfile; // 新NPC完整档案文本
 
+  // ====== 融合版：好感沉淀与记仇机制 ======
+  int maxAffectionReached; // 历史最高好感（背叛后不可超越此值）
+  final List<Map<String, dynamic>> grudges; // 记仇记录：类型+原因+时间
+  int affectionGainedThisWeek; // 本周好感增量（第一周上限+30）
+  int affectionGainedThisMonth; // 本月好感增量（第一个月上限+50）
+  int lastGrudgeDay; // 上次记仇的游戏日
+
   NPC({
     required this.id,
     required this.name,
@@ -57,12 +64,46 @@ class NPC {
     this.confessed = false,
     this.isGenerated = false,
     this.generatedProfile,
+    this.maxAffectionReached = 0,
+    this.grudges = const <Map<String, dynamic>>[],
+    this.affectionGainedThisWeek = 0,
+    this.affectionGainedThisMonth = 0,
+    this.lastGrudgeDay = -1,
   }) : reputation = reputation ?? Reputation();
 
   String get affectionStage => affectionStageFor(affection);
 
   /// 查询好感锁是否解锁
   bool hasLock(String lockName) => affectionLocks.contains(lockName);
+
+  /// 是否有记仇（好感不可恢复到背叛前水平）
+  bool get hasGrudge => grudges.isNotEmpty;
+
+  /// 获取有效好感上限（背叛后不可超越历史最高）
+  int get effectiveAffectionCap {
+    if (!hasGrudge) return 100;
+    return maxAffectionReached > 0 ? maxAffectionReached : 0;
+  }
+
+  /// 添加记仇记录
+  void addGrudge(String type, String reason, int day) {
+    grudges.add({
+      'type': type,
+      'reason': reason,
+      'day': day,
+      'affection_at_time': affection,
+    });
+    lastGrudgeDay = day;
+  }
+
+  /// 获取好感沉淀修正值
+  int getAffectionGainLimit(int currentDay, int gameWeek) {
+    if (gameWeek <= 1) {
+      final remaining = 30 - affectionGainedThisWeek;
+      return remaining > 0 ? remaining : 0;
+    }
+    return 100;
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -91,6 +132,11 @@ class NPC {
         'confessed': confessed,
         'is_generated': isGenerated,
         'generated_profile': generatedProfile,
+        'max_affection_reached': maxAffectionReached,
+        'grudges': grudges,
+        'affection_gained_this_week': affectionGainedThisWeek,
+        'affection_gained_this_month': affectionGainedThisMonth,
+        'last_grudge_day': lastGrudgeDay,
       };
 
   factory NPC.fromJson(Map<String, dynamic> json) => NPC(
@@ -121,5 +167,14 @@ class NPC {
         confessed: json['confessed'] ?? false,
         isGenerated: json['is_generated'] ?? false,
         generatedProfile: json['generated_profile'],
+        maxAffectionReached: json['max_affection_reached'] ?? 0,
+        grudges: List<Map<String, dynamic>>.from(
+            (json['grudges'] as List<dynamic>? ?? []).map(
+              (e) => Map<String, dynamic>.from(e as Map),
+            ),
+          ),
+        affectionGainedThisWeek: json['affection_gained_this_week'] ?? 0,
+        affectionGainedThisMonth: json['affection_gained_this_month'] ?? 0,
+        lastGrudgeDay: json['last_grudge_day'] ?? -1,
       );
 }

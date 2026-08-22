@@ -71,6 +71,18 @@ class GameTime {
 
   String get periodLabel => TimePeriod.label(TimePeriod.fromHour(hour));
 
+  /// 一年中的第几天（用于计算暧昧持续时间等）
+  int get dayOfYear {
+    const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    int total = day;
+    for (int m = 1; m < month; m++) {
+      total += days[m - 1];
+    }
+    // 闰年修正
+    if (month > 2 && _isLeapYear(year)) total += 1;
+    return total;
+  }
+
   /// 格式化时间戳
   String format() {
     final datePart = '📅 $year年$month月$day日，${weekdays[weekday]}，$periodLabel $hour:${minute.toString().padLeft(2, '0')}';
@@ -400,6 +412,12 @@ class LoveState {
   String? consideringNpcName;
   final List<Map<String, String>> history;
 
+  // ====== 融合版扩展字段 ======
+  final Map<String, int> romanticEventCounts; // 每位NPC的浪漫事件计数
+  final Map<String, String> relationshipStages; // 每位NPC的关系阶段与开始时间
+  String? currentCrushName; // 当前暧昧对象
+  int? crushStartDay; // 暧昧开始日期（用于计算≥2周）
+
   LoveState({
     this.status = '单身',
     this.partnerId,
@@ -407,7 +425,13 @@ class LoveState {
     this.awaitingConfession = false,
     this.consideringNpcName,
     List<Map<String, String>>? history,
-  }) : history = List<Map<String, String>>.from(history ?? const []);
+    Map<String, int>? romanticEventCounts,
+    Map<String, String>? relationshipStages,
+    this.currentCrushName,
+    this.crushStartDay,
+  })  : history = List<Map<String, String>>.from(history ?? const []),
+        romanticEventCounts = Map<String, int>.from(romanticEventCounts ?? {}),
+        relationshipStages = Map<String, String>.from(relationshipStages ?? {});
 
   Map<String, dynamic> toJson() => {
         'status': status,
@@ -416,6 +440,10 @@ class LoveState {
         'awaiting_confession': awaitingConfession,
         'considering_npc': consideringNpcName,
         'history': history,
+        'romantic_event_counts': romanticEventCounts,
+        'relationship_stages': relationshipStages,
+        'current_crush': currentCrushName,
+        'crush_start_day': crushStartDay,
       };
 
   factory LoveState.fromJson(Map<String, dynamic> json) => LoveState(
@@ -427,7 +455,43 @@ class LoveState {
         history: (json['history'] as List<dynamic>? ?? [])
             .map((e) => Map<String, String>.from(e as Map))
             .toList(),
+        romanticEventCounts: Map<String, int>.from(
+            json['romantic_event_counts'] as Map<String, dynamic>? ?? {},
+        ),
+        relationshipStages: Map<String, String>.from(
+            json['relationship_stages'] as Map<String, dynamic>? ?? {},
+        ),
+        currentCrushName: json['current_crush'],
+        crushStartDay: json['crush_start_day'] as int?,
       );
+
+  // ====== 融合版方法 ======
+
+  /// 记录一次浪漫事件
+  void recordRomanticEvent(String npcName) {
+    romanticEventCounts[npcName] = (romanticEventCounts[npcName] ?? 0) + 1;
+  }
+
+  /// 获取某NPC的浪漫事件计数
+  int romanticEventsFor(String npcName) => romanticEventCounts[npcName] ?? 0;
+
+  /// 获取某NPC的关系阶段
+  String stageFor(String npcName) => relationshipStages[npcName] ?? '陌生';
+
+  /// 设置某NPC的关系阶段
+  void setStage(String npcName, String stage, {int? currentDay}) {
+    relationshipStages[npcName] = stage;
+    if (stage == '暧昧' && currentDay != null && currentCrushName != npcName) {
+      currentCrushName = npcName;
+      crushStartDay = currentDay;
+    }
+  }
+
+  /// 检查暧昧是否持续足够时间（≥14天/2周）
+  bool isCrushMature(int currentDay) {
+    if (currentCrushName == null || crushStartDay == null) return false;
+    return currentDay - crushStartDay! >= 14;
+  }
 }
 
 // ==================== 收藏与成就 ====================
@@ -473,6 +537,17 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'world_changer', name: '世界线变动者', description: '世界线变动率达到10%'),
   Achievement(id: 'honor_student', name: '优等生', description: '任一技能熟练度达到90'),
   Achievement(id: 'war_hero', name: '战争英雄', description: '参与关键战役'),
+  Achievement(id: 'explorer', name: '探索者', description: '访问5个以上不同地点'),
+  Achievement(id: 'rich_wizard', name: '小富翁', description: '累计拥有100加隆'),
+  Achievement(id: 'bookworm', name: '书虫', description: '学习10个以上魔咒'),
+  Achievement(id: 'social_butterfly', name: '社交蝴蝶', description: '认识10个以上NPC'),
+  Achievement(id: 'deep_relationship', name: '挚友', description: '与NPC好感度达到80'),
+  Achievement(id: 'betrayal_survivor', name: '背叛幸存者', description: '被NPC记仇后仍恢复好感'),
+  Achievement(id: 'monthly_evolution', name: '时代见证者', description: '经历3次以上月度世界演化'),
+  Achievement(id: 'generation_artist', name: '创作者', description: '生成5位原创NPC'),
+  Achievement(id: 'cg_collector', name: '收藏大师', description: '解锁10张以上CG'),
+  Achievement(id: 'relationship_master', name: '关系大师', description: '同时与3位NPC保持高好感'),
+  Achievement(id: 'time_master', name: '时间行者', description: '游戏内时间推进超过1年'),
 ];
 
 // ==================== 信件 ====================
