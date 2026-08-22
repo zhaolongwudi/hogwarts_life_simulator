@@ -261,6 +261,11 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.9 — 2026-08-22
+
+**📋 变更说明**
+fix: 修复 goalLine 拼接时 void 值被链接调用导致的 analyze 报错
+
 ### v1.1.8 — 2026-08-22
 
 **📋 变更说明**
