@@ -1,7 +1,5 @@
 /// 用户输入安全处理：在用户自由文本进入 Prompt 之前做净化，
 /// 降低 Prompt 注入与超长输入破坏叙事结构的风险。
-library;
-
 class PromptSanitizer {
   PromptSanitizer._();
 
@@ -24,7 +22,7 @@ class PromptSanitizer {
 
   /// 净化用户输入：去控制字符、折叠空白、限长、转义注入标记。
   static String sanitize(String raw) {
-    var s = raw ?? '';
+    var s = raw;
 
     // 1) 去除控制字符（保留换行、制表符用于格式）
     s = s.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');

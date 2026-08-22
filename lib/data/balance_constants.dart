@@ -2,7 +2,6 @@
 ///
 /// 集中管理原先散落在 game_provider.dart / npc.dart 中的魔法数字，
 /// 便于调参与回归测试。所有好感度、表白、好感锁等关键阈值统一在此维护。
-library;
 
 /// 好感度与关系平衡
 abstract final class Balance {
