@@ -6,6 +6,7 @@ import '../providers/game_provider.dart';
 import '../services/ai_router.dart';
 import '../services/deepseek_service.dart';
 import '../utils/crash_logger.dart';
+import '../utils/ai_debug_logger.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testing = false;
   final _testResults = <AiProvider, String>{};
   final _testSuccess = <AiProvider, bool>{};
+  bool _debugLogEnabled = false;
 
   @override
   void initState() {
@@ -209,6 +211,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           _buildEraPicker(appProvider.era.name),
           const SizedBox(height: 24),
+          // AI 调试日志设置
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF252C36),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF374151)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.bug_report, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    const Text('🔧 调试日志',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: const Text('启用 AI 调用日志'),
+                  subtitle: const Text('记录每回合 AI 的输入输出到本地文件，用于排查 bug'),
+                  value: _debugLogEnabled,
+                  onChanged: (v) {
+                    setState(() {
+                      _debugLogEnabled = v;
+                    });
+                    AiDebugLogger.instance.setEnabled(v);
+                    if (v) {
+                      AiDebugLogger.instance.initialize(enabled: true);
+                    }
+                  },
+                ),
+                if (_debugLogEnabled) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final files = await AiDebugLogger.instance.getLogFiles();
+                          if (!mounted) return;
+                          if (files.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('暂无日志文件')),
+                            );
+                            return;
+                          }
+                          showDialog(
+                            context: context,
+                            builder: (_) => LogViewerDialog(logFiles: files),
+                          );
+                        },
+                        icon: const Icon(Icons.folder),
+                        label: const Text('查看日志'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('清空日志？'),
+                              content: const Text('将删除所有已保存的 AI 调用日志'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    AiDebugLogger.instance.clearAllLogs();
+                                    Navigator.pop(context);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('日志已清空')),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                  child: const Text('清空'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.delete_forever),
+                        label: const Text('清空'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1F2B),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      '日志文件保存在应用文档目录下的 ai_debug_logs 文件夹\n可用于分析上下文污染、路由错误等问题',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // 危险操作
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -547,7 +656,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final selected = provider == p;
               final hasP = appProvider.hasKey(p);
               return GestureDetector(
-                onTap: () => appProvider.setSceneRoute(scene, p),
+                onTap: () {
+                  appProvider.setSceneRoute(scene, p);
+                  final gameProvider = context.read<GameProvider>();
+                  gameProvider.refreshClient();
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -1164,4 +1277,109 @@ class EraOption {
   final String value;
   final String desc;
   const EraOption(this.label, this.value, this.desc);
+}
+
+class LogViewerDialog extends StatefulWidget {
+  final List<String> logFiles;
+  const LogViewerDialog({super.key, required this.logFiles});
+
+  @override
+  State<LogViewerDialog> createState() => _LogViewerDialogState();
+}
+
+class _LogViewerDialogState extends State<LogViewerDialog> {
+  String? _selectedFile;
+  String? _fileContent;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.logFiles.isNotEmpty) {
+      _loadFile(widget.logFiles.first);
+    }
+  }
+
+  Future<void> _loadFile(String path) async {
+    setState(() {
+      _isLoading = true;
+      _selectedFile = path;
+    });
+    final content = await AiDebugLogger.instance.readLogFile(path);
+    if (mounted) {
+      setState(() {
+        _fileContent = content ?? '无法读取文件';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('AI 调用日志'),
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 50,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.logFiles.length,
+                itemBuilder: (context, index) {
+                  final file = widget.logFiles[index];
+                  final isSelected = file == _selectedFile;
+                  return Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isSelected ? Colors.blue : Colors.grey[300],
+                        foregroundColor: isSelected ? Colors.white : Colors.black,
+                      ),
+                      onPressed: () => _loadFile(file),
+                      child: Text(
+                        file.split('/').last,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _fileContent ?? '选择一个日志文件查看',
+                          style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
+        ),
+      ],
+    );
+  }
 }

@@ -250,6 +250,12 @@ class GameProvider extends ChangeNotifier {
     _router = router;
   }
 
+  void refreshClient() {
+    _updateClient();
+    chatService.refreshClient();
+    notifyListeners();
+  }
+
   void updateNpcAffection(String npcId, int change, {String? reason}) {
     final npc = _npcRegistry[npcId];
     if (npc == null) return;
@@ -1038,11 +1044,6 @@ $safeAction
       notifyListeners();
 
       _parseResponse(response);
-
-      if (_choices.length < 3 && _currentNarrative.isNotEmpty) {
-        await _generateChoicesIndependently();
-      }
-
       _accumulateForSummary(_currentNarrative);
       _appendRecentTurn(_currentNarrative);
       _advanceTimeForAction(action);
@@ -3736,57 +3737,6 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     final rel = p.relationships[npc.id];
     if (rel != null) {
       rel.level = npc.affection.clamp(0, 100);
-    }
-  }
-
-  Future<void> _generateChoicesIndependently() async {
-    if (_currentNarrative.isEmpty || _router == null) return;
-
-    _loadingStage = '正在生成选项...';
-    notifyListeners();
-
-    final choicePrompt = '''基于以下叙事，生成4个不同的行动选项：
-
-【当前场景】${_worldState.currentLocation}
-【时间】${_worldState.timestamp}
-【上一轮玩家行动】$_lastPlayerAction
-
-【本回合叙事】
-$_currentNarrative
-
-请生成4个选项，每个选项用一行表示，格式：A.选项内容 B.选项内容 C.选项内容 D.选项内容
-每个选项要具体、有不同的策略倾向。''';
-
-    try {
-      final result = await _router!.chatComplete(
-        scene: AiScene.choice,
-        prompt: choicePrompt,
-        systemPrompt: '',
-        temperature: 0.7,
-        maxTokens: 500,
-      );
-
-      final text = result.content;
-      final choicePattern = RegExp(
-        r'[A-Da-d]\.\s*(.+?)(?=[A-Da-d]\.|\$)',
-        multiLine: true,
-        dotAll: true,
-      );
-
-      final choices = <GameChoice>[];
-      for (final m in choicePattern.allMatches(text)) {
-        final action = m.group(1)?.trim() ?? '';
-        if (action.isNotEmpty && action.length <= 80) {
-          choices.add(GameChoice(text: action, action: action));
-        }
-        if (choices.length >= 4) break;
-      }
-
-      if (choices.length >= 3) {
-        _choices = choices;
-      }
-    } catch (e) {
-      debugPrint('选项独立生成失败(不影响游戏): $e');
     }
   }
 

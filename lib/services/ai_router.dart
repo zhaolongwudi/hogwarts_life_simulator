@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../providers/app_provider.dart';
+import '../utils/ai_debug_logger.dart';
 import 'deepseek_service.dart';
 import 'rate_limiter.dart';
 
@@ -77,6 +78,20 @@ class AiRouter {
     int maxTokens = 2500,
   }) async {
     final primary = _config.providerFor(scene);
+    final timestamp = DateTime.now().toIso8601String();
+    final sceneLabel = scene.toString().split('.').last;
+    final promptPreview = prompt.length > 200 ? '${prompt.substring(0, 200)}...' : prompt;
+
+    // 记录调用开始
+    AiDebugLogger.instance.logCall(
+      timestamp: timestamp,
+      scene: sceneLabel,
+      provider: getProviderLabel(primary),
+      action: 'START',
+      promptPreview: promptPreview,
+      systemPrompt: systemPrompt,
+    );
+
     final future = _callWithFallback(
       primary: primary,
       prompt: prompt,
@@ -84,14 +99,29 @@ class AiRouter {
       temperature: temperature,
       maxTokens: maxTokens,
       useCache: scene != AiScene.narrative && scene != AiScene.choice,
+      scene: scene,
     );
     if (scene == AiScene.narrative) {
       return future.timeout(const Duration(seconds: 45), onTimeout: () {
+        AiDebugLogger.instance.logCall(
+          timestamp: DateTime.now().toIso8601String(),
+          scene: sceneLabel,
+          provider: getProviderLabel(primary),
+          action: 'TIMEOUT',
+          error: '剧情生成超时（45秒）',
+        );
         throw AiRetryableException('剧情生成超时（45秒），请重试或切换提供商');
       });
     }
     if (scene == AiScene.choice) {
       return future.timeout(const Duration(seconds: 20), onTimeout: () {
+        AiDebugLogger.instance.logCall(
+          timestamp: DateTime.now().toIso8601String(),
+          scene: sceneLabel,
+          provider: getProviderLabel(primary),
+          action: 'TIMEOUT',
+          error: '选项生成超时（20秒）',
+        );
         throw AiRetryableException('选项生成超时（20秒），请重试');
       });
     }
@@ -105,6 +135,7 @@ class AiRouter {
     required double temperature,
     required int maxTokens,
     bool useCache = true,
+    AiScene? scene,
   }) async {
     // 检查缓存（narrative 场景关闭缓存：其 prompt 每回合都变，命中率极低且有冻结随机性的风险）
     if (useCache) {
@@ -157,9 +188,33 @@ class AiRouter {
             maxTokens: maxTokens,
           );
         }
+        // 记录成功响应
+        final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+        final responsePreview = result.content.length > 300
+            ? '${result.content.substring(0, 300)}...'
+            : result.content;
+        AiDebugLogger.instance.logCall(
+          timestamp: DateTime.now().toIso8601String(),
+          scene: sceneLabel,
+          provider: getProviderLabel(current),
+          action: 'RESPONSE',
+          responsePreview: responsePreview,
+          promptTokens: result.usage.promptTokens,
+          completionTokens: result.usage.completionTokens,
+          totalTokens: result.usage.totalTokens,
+        );
         return result;
       } catch (e) {
         debugPrint('⚠️ ${current.name} 调用失败: $e');
+        // 记录错误
+        final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+        AiDebugLogger.instance.logCall(
+          timestamp: DateTime.now().toIso8601String(),
+          scene: sceneLabel,
+          provider: getProviderLabel(current),
+          action: 'ERROR',
+          error: e.toString(),
+        );
         if (tried.length >= _configs.length) {
           rethrow;
         }
