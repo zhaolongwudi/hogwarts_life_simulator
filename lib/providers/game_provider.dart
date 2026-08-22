@@ -28,7 +28,7 @@ class GameProvider extends ChangeNotifier {
   AiRouter? _router;
   final SaveService _saveService = SaveService();
   final Random _random = Random();
-  late final NpcChatService chatService;
+  late NpcChatService chatService;
 
   // ====== 预编译正则（避免循环内重复编译） ======
   // 选项行开头：半角 A-E.  全角Ａ-Ｅ．  中文顿号、  右括号  冒号  空格(至少1个)
@@ -411,8 +411,9 @@ class GameProvider extends ChangeNotifier {
     _apiCalls = 0;
     // 销毁旧路由器（清除响应缓存、已注册的服务实例）
     _router = null;
-    // 重建 NPC 聊天服务（清除对话历史）
-    chatService = NpcChatService(appProvider: appProvider);
+    // 清除 NPC 聊天缓存（对话历史、路由器）
+    chatService.clearCache();
+    chatService.refreshClient();
     notifyListeners();
   }
 

@@ -58,6 +58,10 @@ class NpcChatService {
 
   void refreshClient() => _initClient();
 
+  void clearCache() {
+    _conversationCache.clear();
+  }
+
   Future<String> chatWithNPC({
     required NPC npc,
     required Player player,
