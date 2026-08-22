@@ -18,8 +18,8 @@ class StoryTextRenderer {
     '霍拉斯·斯拉格霍恩', '吉德罗·洛哈特', '多洛雷斯·乌姆里奇',
     '奥罗·布莱克', '贝拉特里克斯·莱斯特兰奇', '卢修斯·马尔福',
     '纳西莎·马尔福', '彼得·佩迪鲁', '小矮星彼得',
-    '莱姆斯·卢平', '尼法朵拉·唐克斯', '天狼星·布莱克',
-    '詹姆·波特', '莉莉·波特', '西吉·格林', '弗农·德思礼',
+    '莱姆斯·卢平', '尼法朵拉·唐克斯', '天狼星·布莱克', '小天狼星',
+    '詹姆·波特', '莉莉·波特', '莉莉·伊万斯', '西吉·格林', '弗农·德思礼',
     '佩妮·德思礼', '达力·德思礼', '莫丽·韦斯莱', '亚瑟·韦斯莱',
     '莉娜·斯特兰奇', '塞德里克·迪戈里', '卢娜·洛夫古德',
     '马克·麦克拉根', '罗米达·万尼', '克丽奥娜·张伯伦',
@@ -27,7 +27,8 @@ class StoryTextRenderer {
     '马尔福', '斯内普', '邓布利多', '麦格', '海格', '弗立维',
     '斯普劳特', '特里劳妮', '费尔奇', '庞弗雷', '洛哈特',
     '卢平', '唐克斯', '布莱克', '波特', '韦斯莱', '迪戈里', '洛夫古德',
-    '德拉科', '珀西', '克拉布', '高尔',
+    '德拉科', '珀西', '克拉布', '高尔', '莉莉', '詹姆', '塞德里克',
+    '卢娜', '霍琦', '斯拉格霍恩', '平斯', '费尔奇',
   ];
 
   static final List<String> _locations = [
@@ -112,10 +113,14 @@ class StoryTextRenderer {
   /// 使用说明：解析文本并将【好感度变化】标记后的段落以柔和样式渲染。
   /// 好感度变化段落的字体更小（fontSize: 12）、颜色更淡（#8B949E）、斜体显示，
   /// 使其与正文叙述形成视觉层次。
+  /// 同时兼容正文里直接出现的「姓名：+5（说明）」/「好感+N」这种裸好感度行，
+  /// 统一以好感度柔和样式渲染。
   /// 常规段落与 [parse] 方法保持一致的渲染效果。
   static List<TextSpan> parseWithAffectionStyle(String text) {
     if (text.isEmpty) return [];
-    final cleaned = _preStripChoices(text);
+    var cleaned = _stripOutlineLabels(text);
+    cleaned = _preStripChoices(cleaned);
+    cleaned = _promoteAffectionLines(cleaned);
 
     final spans = <TextSpan>[];
     final markerPattern = RegExp(r'【[^】]*】');
@@ -154,6 +159,35 @@ class StoryTextRenderer {
     return spans;
   }
 
+  /// 预处理：把 AI 偶尔失控写出的结构化提纲标签（"环境氛围：""NPC的言行举止："
+  /// "玩家的心理活动：""重要物品/事件的细节描写："等）剥掉，让它们后面的内容直接融入正文。
+  /// 这是 Prompt 之外的兜底渲染保护。
+  static String _stripOutlineLabels(String text) {
+    final labels = [
+      '环境氛围', '场景氛围',
+      'NPC的言行举止', 'NPC 言行举止', 'NPC言行举止', '人物言行',
+      '玩家的心理活动', '玩家心理活动', '心理活动',
+      '重要物品/事件的细节描写', '重要物品与事件细节',
+      '重要物品', '事件细节', '细节描写',
+      '一、命运回响', '二、命运回响', '三、命运回响',
+      '命运回响', '世界回响', '回响',
+    ];
+    String result = text;
+    for (final label in labels) {
+      // 匹配：行首/空白  label  冒号（全角/半角）  → 删除 label+冒号
+      final pattern = RegExp(
+        r'(?<=^|\n)\s*' + RegExp.escape(label) + r'\s*[：:]\s*',
+        multiLine: true,
+      );
+      result = result.replaceAllMapped(pattern, (m) {
+        // 保留原换行，删除 label+冒号+后续空白
+        return '';
+      });
+    }
+    // 处理序号小节标题（"一、xxx"）：仅当后面紧跟的内容为环境/心理/动作类空泛词时才剥
+    return result;
+  }
+
   /// 预处理：从剧情文本中剥掉内嵌的 A./B./C./D./E. 选项行（这些在下方「可选行动」区块单独显示）
   /// 支持：半角字母、全角字母（Ａ-Ｅ）、半角/全角句号、右括号、中文顿号「、」
   static String _preStripChoices(String text) {
@@ -187,6 +221,118 @@ class StoryTextRenderer {
   static int _nextMarkerOrEnd(String text, int from) {
     final idx = text.indexOf('【', from);
     return idx == -1 ? text.length : idx;
+  }
+
+  /// 把正文里直接出现的「裸好感度行」提升包装成【好感度变化】区块，
+  /// 以便统一用柔和样式渲染（淡色+斜体+名字加粗）。
+  ///
+  /// 支持的模式（行尾或独立行）：
+  ///   莉莉：+5
+  ///   （鼓励和支持）
+  ///   → 包装成 【好感度变化】莉莉：+5\n（鼓励和支持）
+  ///
+  ///   莉莉：-3（背叛）、马尔福 +2、好感度：哈利 +10
+  ///   → 同样识别
+  static String _promoteAffectionLines(String text) {
+    // 按行扫描，找：角色名 + 冒号? + [+-]数字 + 可选括号说明
+    // 同时允许下一行紧跟着的（说明）一起包进去
+    final sortedNames = List<String>.from(_characterNames)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    final nameUnion = sortedNames.map(RegExp.escape).join('|');
+
+    // 模式1: 行内包含 "姓名：+/-N" 或 "姓名 +/-N"（必须是行末，不跟其他叙述文字混在同一行非好感内容后面）
+    // 模式2: 独立的好感度标签（"好感度变化："/"好感："前缀）
+    final lineAffection = RegExp(
+      r'^(?<prefix>.*?)'
+      r'(?:'
+        r'(?<name>' + nameUnion + r')\s*[：:]?\s*'
+        r'(?<delta>[+-]\d{1,3})'
+        r'\s*(?<note>[（(][^）)\n]*[）)])?'
+      r'|'
+        r'(?:好感度?变化?|声望变化?)\s*[：:]\s*.+'
+      r')'
+      r'\s*$',
+      multiLine: true,
+      unicode: true,
+    );
+
+    final lines = text.split('\n');
+    final buffer = <String>[];
+    int i = 0;
+    bool inBlock = false; // 正在拼接裸好感度行
+    final blockBuffer = StringBuffer();
+
+    void flushBlock() {
+      if (blockBuffer.isEmpty) return;
+      buffer.add('【好感度变化】${blockBuffer.toString().trimRight()}');
+      blockBuffer.clear();
+      inBlock = false;
+    }
+
+    while (i < lines.length) {
+      final line = lines[i];
+      final match = lineAffection.firstMatch(line);
+
+      if (match != null) {
+        final prefix = match.namedGroup('prefix') ?? '';
+        final namePart = match.namedGroup('name');
+        // 必须：名字存在 + 前缀（prefix）不包含过长叙述内容
+        // 如果前缀只有空白或结尾分隔符，认为这是独立好感度行（或行尾好感度），需要包起来
+        bool isAffectionStandalone = false;
+        if (namePart != null) {
+          final trimmedPrefix = prefix.trim();
+          // 前缀要么空，要么末尾是句子分隔符（句号/逗号/顿号等）
+          if (trimmedPrefix.isEmpty) {
+            isAffectionStandalone = true;
+          } else {
+            final last = trimmedPrefix.runes.last;
+            const separators = [0x3002, 0xFF0C, 0x3001, 0xFF1B, 0x2026, 0x002E, 0x002C, 0x003B]; // 。，、；….,;
+            if (separators.contains(last)) {
+              isAffectionStandalone = true;
+            }
+          }
+        } else {
+          // 走 "好感度变化：xxx" 分支
+          isAffectionStandalone = true;
+        }
+
+        if (isAffectionStandalone) {
+          // 如果前缀有句子残留叙述（比如"...。莉莉：+5"），先把前缀部分输出为普通行，
+          // 再把后面的"莉莉：+5"包进好感度区块
+          final trimmedPrefix = prefix.trimRight();
+          if (trimmedPrefix.isNotEmpty) {
+            flushBlock();
+            buffer.add(trimmedPrefix);
+          }
+          // 取本好感度行的内容（去掉前缀）
+          final affContent = line.substring(prefix.length).trim();
+          if (!inBlock) {
+            inBlock = true;
+          } else {
+            blockBuffer.writeln();
+          }
+          blockBuffer.write(affContent);
+          // 检查下一行是否全是（说明）括号 — 如果是就一起包进去
+          if (i + 1 < lines.length) {
+            final nextLine = lines[i + 1];
+            if (RegExp(r'^\s*[（(][^）)\n]*[）)]\s*$').hasMatch(nextLine)) {
+              blockBuffer.writeln();
+              blockBuffer.write(nextLine.trim());
+              i++;
+            }
+          }
+          i++;
+          continue;
+        }
+      }
+
+      flushBlock();
+      buffer.add(line);
+      i++;
+    }
+    flushBlock();
+
+    return buffer.join('\n');
   }
 
   static List<TextSpan> _parseAffectionSection(String text) {
@@ -225,7 +371,8 @@ class StoryTextRenderer {
 
   static List<TextSpan> parse(String text) {
     if (text.isEmpty) return [];
-    final cleaned = _preStripChoices(text);
+    var cleaned = _stripOutlineLabels(text);
+    cleaned = _preStripChoices(cleaned);
 
     final cached = _cache[cleaned];
     if (cached != null) return cached;
@@ -375,12 +522,26 @@ class StoryTextRenderer {
     return b >= 0x30 && b <= 0x39 && a >= 0x30 && a <= 0x39;
   }
 
-  /// 行内说话人起点：跳过行首空白。
+  /// 行内说话人起点：跳过行首空白 + 允许说话人跟在句子分隔符（句号/问号/感叹号/分号等）之后。
+  /// 例：「心中涌起一股暖流。莉莉：+5」应提取说话人「莉莉」，而不是从行首开始。
   static int _speakerStart(String text, int lineStart, int colonIdx) {
+    // 1. 找到最近的句子分隔符（句号/问号/感叹号/分号/逗号/顿号/省略号…）
     int s = lineStart;
+    int lastSentenceBreak = lineStart - 1;
+    for (int i = lineStart; i < colonIdx; i++) {
+      final c = text[i];
+      if (c == '。' || c == '！' || c == '？' || c == '；' || c == '…' ||
+          c == '.' || c == '!' || c == '?' || c == ';' || c == '~') {
+        lastSentenceBreak = i;
+      }
+    }
+    if (lastSentenceBreak >= lineStart) {
+      s = lastSentenceBreak + 1; // 从分隔符的下一个字符开始
+    }
+    // 2. 跳过开头空白（空格/Tab/不换行空格）
     while (s < colonIdx) {
       final c = text.codeUnitAt(s);
-      if (c != 0x20 && c != 0x09) break;
+      if (c != 0x20 && c != 0x09 && c != 0xA0) break;
       s++;
     }
     return s;

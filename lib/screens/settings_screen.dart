@@ -254,6 +254,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
                           ElevatedButton(
                             onPressed: () {
+                              // 先清空 GameProvider 内所有旧叙事/玩家/世界状态（摘要、近期剧情、回合计数等）
+                              // 否则新游戏第一回合 Prompt 里会注入旧游戏的前情摘要，导致 AI 接着旧剧情写
+                              context.read<GameProvider>().resetAllState();
                               appProvider.setGameStarted(false);
                               Navigator.pop(context);
                               Navigator.pop(context);

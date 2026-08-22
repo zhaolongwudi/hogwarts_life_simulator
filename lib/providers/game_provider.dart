@@ -331,6 +331,35 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
+  // ==================== 重置全部游戏状态 ====================
+  /// 用于「开始新游戏」时彻底清空旧存档上下文，避免新游戏的第一回合仍被旧摘要、
+  /// 旧剧情缓冲、旧回合计数器影响，导致 AI"接着之前的剧情写"。
+  void resetAllState() {
+    _player = null;
+    _worldState = WorldState();
+    _npcRegistry.clear();
+    _currentNarrative = '';
+    _narrativeSummary = '';
+    _pendingSummary = '';
+    _recentTurns.clear();
+    _choices.clear();
+    _isLoading = false;
+    _isInitializing = false;
+    _error = null;
+    _turnCount = 0;
+    _lastPlayerAction = '';
+    _systemPrompt = null;
+    _loadingStage = '';
+    _notifications.clear();
+    _gameWeek = 1;
+    _lastSchoolYearStart = 0;
+    _pendingAnchorDirective = null;
+    _totalTokens = 0;
+    _lastRoundTokens = 0;
+    _apiCalls = 0;
+    notifyListeners();
+  }
+
   // ==================== 初始化游戏 ====================
   Future<void> initializeGame({
     required String name,
@@ -356,9 +385,9 @@ class GameProvider extends ChangeNotifier {
     String? simulationStyle,
     String? birthIdentity,
   }) async {
+    // 先彻底清空所有旧状态（防止新开局把旧摘要/近期剧情注入到 Prompt）
+    resetAllState();
     _isLoading = true;
-    _error = null;
-    _notifications.clear();
     notifyListeners();
 
     try {
@@ -893,16 +922,11 @@ $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $safeAction
 
 【写作要求】
-1. 叙事要求:300-450字，详细描写：
-   - 环境氛围（声音、气味、光线等3-5种感官细节）
-   - NPC的言行举止、表情反应、对话交流
-   - 玩家的心理活动、情绪变化
-   - 重要物品/事件的细节描写
-   - 场景氛围的变化和渲染
+1. 叙事:300-450字，写成流畅的小说正文，把环境氛围的感官细节（声音、气味、光线、温度、触感等）、NPC的言行举止与对话、玩家的心理活动、关键物品/事件的细节，全部自然融入叙事之中。严禁写成提纲或分段标注的格式——绝对不要出现「环境氛围：」「NPC的言行举止：」「玩家的心理活动：」「重要物品/事件的细节描写：」「场景氛围：」这类结构化小标题或分点列表，也不要加章节序号。读者看到的就是一段完整小说。
 
-2. 好感变化:NPC名:±X(原因)
+2. 好感变化:NPC名:±X(原因)，独立成段，可多条
 
-3. 可选行动:A/B/C/D（具体选项，各选项体现不同性格/策略）
+3. 可选行动:A/B/C/D（四个具体选项，各体现不同性格或策略）
 
 4. 可选行动:''';
     }
