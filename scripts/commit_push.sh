@@ -4,7 +4,7 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-README="$PROJECT_DIR/README.md"
+CHANGELOG="$PROJECT_DIR/CHANGELOG.md"
 PUBSPEC="$PROJECT_DIR/pubspec.yaml"
 
 if [ ! -f "$PUBSPEC" ]; then
@@ -86,7 +86,7 @@ else
         *.sh)
           CONFIG_CHANGES="${CONFIG_CHANGES}- 📜 脚本更新: $(basename $file)\n"
           ;;
-        README.md)
+        README.md|CHANGELOG.md)
           ;;
         *)
           OTHER_CHANGES="${OTHER_CHANGES}- 📝 $file\n"
@@ -119,6 +119,7 @@ export PROJECT_DIR NEW_VERSION ENTRY_FILE MAJOR MINOR PATCH DATE
 
 python3 << 'PYEOF'
 import os
+import re
 
 project_dir = os.environ["PROJECT_DIR"]
 entry_file = os.environ["ENTRY_FILE"]
@@ -130,7 +131,7 @@ version = f"{major}.{minor}.{patch}"
 
 os.chdir(project_dir)
 
-with open("README.md", "r", encoding="utf-8") as f:
+with open("CHANGELOG.md", "r", encoding="utf-8") as f:
     content = f.read()
 
 with open(entry_file, "r", encoding="utf-8") as f:
@@ -139,17 +140,19 @@ with open(entry_file, "r", encoding="utf-8") as f:
 if f"### v{version}" in content:
     print(f"⚠️  Changelog for v{version} already exists, skipping")
 else:
-    marker = "## 📝 更新日志\n"
-    if marker in content:
-        idx = content.index(marker) + len(marker)
-        updated = content[:idx] + "\n" + new_entry + "\n" + content[idx:]
+    # 新版本永远插入在「所有现有版本条目的最顶部」
+    first_h3 = re.search(r"^### v", content, re.MULTILINE)
+    if first_h3:
+        before = content[:first_h3.start()].rstrip("\n")
+        after = content[first_h3.start():].lstrip("\n")
+        updated = before + "\n\n" + new_entry + "\n\n" + after
     else:
-        updated = content.rstrip() + "\n\n" + marker + "\n" + new_entry + "\n"
+        updated = content.rstrip() + "\n\n" + new_entry + "\n"
 
-    with open("README.md", "w", encoding="utf-8") as f:
+    with open("CHANGELOG.md", "w", encoding="utf-8") as f:
         f.write(updated)
 
-    print(f"✅ 更新日志 v{version} 已写入 README.md")
+    print(f"✅ 更新日志 v{version} 已写入 CHANGELOG.md")
 
 PYEOF
 
@@ -158,5 +161,9 @@ rm -f "$ENTRY_FILE"
 echo ""
 echo "📋 更新日志预览:"
 echo "----------------------------------------"
-cat "$ENTRY_FILE" 2>/dev/null || echo "(已写入 README.md)"
+{
+  echo "### v${MAJOR}.${MINOR}.${PATCH} — ${DATE}"
+  echo ""
+  echo -e "$DESCRIPTION"
+} 2>/dev/null
 echo "----------------------------------------"

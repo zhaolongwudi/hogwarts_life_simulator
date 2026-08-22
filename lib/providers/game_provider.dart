@@ -691,22 +691,48 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  /// 判断 name 在 text 中是否以「独立词」出现（前后被标点/空格/行边界包围，
-  /// 而不是嵌在更长的词组里）
+  /// 判断 name 是否在 text 中以「可识别方式」出现。
+  /// 关键修复：中文（CJK）文本不用空格分词，因此「金妮」嵌在「捕捉到了金妮骤然...」
+  /// 中间就是正常的独立出现——如果还要求前后字符不是汉字就会永远匹配失败，
+  /// 造成所有 NPC 剧情里出现了但大世界永远显示「未登场 0 人」。
+  ///
+  /// 规则：
+  ///   - 主要由 CJK 字符构成的名称（中文姓名）：只要文本 contains 就算。
+  ///     另外对「姓氏两字简称」（如"韦斯莱"）加一层宽松保护：若前后紧接更多
+  ///     CJK 字符构成更长真实姓名的一部分也允许匹配（剧情里常简称姓氏）。
+  ///   - 主要由拉丁/数字构成的名称（英文代号）：仍执行严格边界检查，
+  ///     防止 "哈利" 匹配进 "哈利波特童装店" 这种英文子串误命中场景。
   static bool _standaloneNameMentioned(String text, String name) {
+    if (name.isEmpty || text.isEmpty) return false;
+
+    // 统计 name 中 CJK 字符比例
+    int cjkCount = 0;
+    for (final code in name.codeUnits) {
+      if ((code >= 0x4E00 && code <= 0x9FFF) ||
+          (code >= 0x3400 && code <= 0x4DBF)) {
+        cjkCount++;
+      }
+    }
+    final mostlyCjk = cjkCount * 2 >= name.length; // ≥50% 字符是 CJK 视为中文名称
+
+    if (mostlyCjk) {
+      // 中文名称：只要包含即可出现即算。
+      // 故事文本里出现「了金妮骤」「·韦斯莱僵」这种就是角色名字正常出现，
+      // 中文不用空格分词，不存在"嵌在更长词组里就不算"的问题。
+      return text.contains(name);
+    }
+
+    // ====== 拉丁/数字为主的名称：走严格边界检查 ======
     bool isBoundary(int charCode) {
-      if (charCode == 0) return true; // 虚拟位置
-      // CJK Unified Ideographs 基本区 + 扩展 A
-      if (charCode >= 0x4E00 && charCode <= 0x9FFF) return false;
-      if (charCode >= 0x3400 && charCode <= 0x4DBF) return false;
-      // 字母（含全角）、数字
+      if (charCode == 0) return true;
+      if ((charCode >= 0x4E00 && charCode <= 0x9FFF) ||
+          (charCode >= 0x3400 && charCode <= 0x4DBF)) return true; // CJK 对英文名字天然视作分隔
       if ((charCode >= 0x41 && charCode <= 0x5A) ||
           (charCode >= 0x61 && charCode <= 0x7A) ||
           (charCode >= 0xFF21 && charCode <= 0xFF3A) ||
           (charCode >= 0xFF41 && charCode <= 0xFF5A) ||
           (charCode >= 0x30 && charCode <= 0x39) ||
           (charCode >= 0xFF10 && charCode <= 0xFF19)) return false;
-      // 点·/-下划线等连接符（中间名、外国人姓氏连字符）
       if (charCode == 0x00B7 || charCode == 0x2022 ||
           charCode == 0x2D || charCode == 0x5F) return false;
       return true;

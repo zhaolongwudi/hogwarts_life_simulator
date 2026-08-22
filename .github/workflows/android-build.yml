@@ -58,12 +58,12 @@ jobs:
           echo "VERSION_NAME=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
           echo "Version bumped: $CURRENT -> $NEW"
 
-      - name: Sync changelog to README
+      - name: Sync changelog to CHANGELOG.md
         id: sync
         run: |
           chmod +x scripts/sync_changelog.sh
           bash scripts/sync_changelog.sh
-          git add README.md pubspec.yaml
+          git add CHANGELOG.md pubspec.yaml
           if git diff --cached --quiet; then
             echo "No changes to commit"
             echo "SYNCED=false" >> "$GITHUB_OUTPUT"

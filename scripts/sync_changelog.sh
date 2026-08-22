@@ -2,15 +2,15 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-README="$PROJECT_DIR/README.md"
+CHANGELOG="$PROJECT_DIR/CHANGELOG.md"
 PUBSPEC="$PROJECT_DIR/pubspec.yaml"
 
 if [ ! -f "$PUBSPEC" ]; then
   echo "Error: pubspec.yaml not found at $PUBSPEC"
   exit 1
 fi
-if [ ! -f "$README" ]; then
-  echo "Error: README.md not found at $README"
+if [ ! -f "$CHANGELOG" ]; then
+  echo "Error: CHANGELOG.md not found at $CHANGELOG"
   exit 1
 fi
 
@@ -22,8 +22,8 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-if grep -q "### v${VERSION}" "$README"; then
-  echo "✅ Changelog for v${VERSION} already exists in README.md"
+if grep -q "### v${VERSION}" "$CHANGELOG"; then
+  echo "✅ Changelog for v${VERSION} already exists in CHANGELOG.md"
   exit 0
 fi
 
@@ -81,23 +81,29 @@ entry_file = os.environ["ENTRY_FILE"]
 
 os.chdir(project_dir)
 
-with open("README.md", "r", encoding="utf-8") as f:
+with open("CHANGELOG.md", "r", encoding="utf-8") as f:
     content = f.read()
 
 with open(entry_file, "r", encoding="utf-8") as f:
     new_entry = f.read().rstrip("\n")
 
-marker = "## 📝 更新日志\n"
-if marker in content:
-    idx = content.index(marker) + len(marker)
-    updated = content[:idx] + "\n" + new_entry + "\n" + content[idx:]
-else:
-    updated = content.rstrip() + "\n\n" + marker + "\n" + new_entry + "\n"
+# 新版本永远插入在「所有现有版本条目的最顶部」。
+# 逻辑：找到全文第一个 "### v" 版本标题的位置（就是当前最新的已有版本），
+# 在它之前插入。如果没有任何现有版本条目，则直接追加到文末。
+import re
 
-with open("README.md", "w", encoding="utf-8") as f:
+first_h3 = re.search(r"^### v", content, re.MULTILINE)
+if first_h3:
+    before = content[:first_h3.start()].rstrip("\n")
+    after = content[first_h3.start():].lstrip("\n")
+    updated = before + "\n\n" + new_entry + "\n\n" + after
+else:
+    updated = content.rstrip() + "\n\n" + new_entry + "\n"
+
+with open("CHANGELOG.md", "w", encoding="utf-8") as f:
     f.write(updated)
 
-print(f"✅ Changelog for v{version} added to README.md")
+print(f"✅ Changelog for v{version} added to CHANGELOG.md")
 PYEOF
 
 rm -f "$ENTRY_FILE"
