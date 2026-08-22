@@ -54,11 +54,11 @@ class NPC {
     this.personalGoal,
     this.lifeLog = const [],
     this.relationships = const {},
-    this.recentEvents = const [],
+    List<String>? recentEvents,
     this.appearance = '',
     this.sexOrientation,
     this.affection = 0,
-    this.affectionLocks = const [],
+    List<String>? affectionLocks,
     this.giftPrefs = const {},
     this.schedule = const {},
     Reputation? reputation,
@@ -67,12 +67,16 @@ class NPC {
     this.isGenerated = false,
     this.generatedProfile,
     this.maxAffectionReached = 0,
-    this.grudges = const <Map<String, dynamic>>[],
+    List<Map<String, dynamic>>? grudges,
     this.affectionGainedThisWeek = 0,
     this.affectionGainedThisMonth = 0,
     this.lastGrudgeDay = -1,
     this.introduced = false,
-  }) : reputation = reputation ?? Reputation();
+  })  : reputation = reputation ?? Reputation(),
+        recentEvents = List<String>.from(recentEvents ?? const []),
+        affectionLocks = List<String>.from(affectionLocks ?? const []),
+        grudges = List<Map<String, dynamic>>.from(
+            grudges ?? const <Map<String, dynamic>>[]);
 
   String get affectionStage => affectionStageFor(affection);
 

@@ -72,9 +72,9 @@ class WorldState {
   }
 
   void addNarrativeEvent(String event) {
-    recentNarrativeEvents.add(event);
+    recentNarrativeEvents.insert(0, event);
     if (recentNarrativeEvents.length > 20) {
-      recentNarrativeEvents.removeAt(0);
+      recentNarrativeEvents.removeLast();
     }
   }
 

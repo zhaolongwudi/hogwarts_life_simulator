@@ -44,7 +44,7 @@ void main() {
 
     test('好感阶段标签正确', () {
       final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
-      npc.affection = -50;
+      npc.affection = -60;
       expect(npc.affectionStage, '宿怨');
       npc.affection = 0;
       expect(npc.affectionStage, '中立');

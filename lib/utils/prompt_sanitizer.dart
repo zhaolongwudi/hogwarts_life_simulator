@@ -36,13 +36,11 @@ class PromptSanitizer {
       s = s.substring(0, maxInputLength).trimRight();
     }
 
-    // 4) 注入标记降级：用全角括号弱化其指令语义
+    // 4) 注入标记降级：在标记字符间插入零宽空格，打断连续指令语义
     for (final marker in _injectionMarkers) {
       if (s.toLowerCase().contains(marker.toLowerCase())) {
-        s = s.replaceAll(
-          RegExp(marker, caseSensitive: false),
-          '[${marker.replaceAll(' ', '')}]',
-        );
+        final broken = marker.split('').join('\u200B');
+        s = s.replaceAll(RegExp(RegExp.escape(marker), caseSensitive: false), broken);
       }
     }
 
