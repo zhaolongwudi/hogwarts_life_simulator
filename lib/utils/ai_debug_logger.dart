@@ -269,6 +269,18 @@ class AiDebugLogger {
     };
   }
 
+  /// 读取指定路径的日志文件文本（用于设置页 LogViewerDialog）
+  Future<String?> readLogFile(String path) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) return null;
+      return await file.readAsString();
+    } catch (e) {
+      debugPrint('读取日志失败 $path: $e');
+      return '读取失败: $e';
+    }
+  }
+
   Future<void> clearAllLogs() async {
     final files = await getLogFiles();
     for (final p in files) {
