@@ -412,6 +412,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          _buildModelPresets(p, appProvider),
           if (testResult != null) ...[
             const SizedBox(height: 6),
             Container(
@@ -848,6 +850,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
         Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+      ],
+    );
+  }
+
+  Widget _buildModelPresets(AiProvider p, AppProvider appProvider) {
+    final freeModels = appProvider.freeModelsFor(p);
+    final paidModels = appProvider.popularPaidModelsFor(p);
+    final current = _modelControllers[p]!.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (freeModels.isNotEmpty)
+          _buildModelChipRow('🎁 免费额度', freeModels, current, const Color(0xFF10B981)),
+        if (freeModels.isNotEmpty && paidModels.isNotEmpty) const SizedBox(height: 6),
+        if (paidModels.isNotEmpty)
+          _buildModelChipRow('⭐ 推荐付费', paidModels, current, const Color(0xFFD3A625)),
+      ],
+    );
+  }
+
+  Widget _buildModelChipRow(String label, List<String> models, String current, Color accent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: TextStyle(fontSize: 11, color: accent, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: models.map((model) {
+            final selected = current == model;
+            return GestureDetector(
+              onTap: () {
+                _modelControllers[p]!.text = model;
+                // 选中后自动写入 provider（无需等保存按钮），体验更顺
+                context.read<AppProvider>().setModelForProvider(p, model);
+                setState(() {});
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? accent.withValues(alpha: 0.18)
+                      : const Color(0xFF21262D),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: selected ? accent : const Color(0xFF30363D),
+                    width: selected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  model,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: selected ? accent : const Color(0xFFC9D1D9),
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ],
     );
   }

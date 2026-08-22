@@ -387,6 +387,34 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// 免费模型（官方提供免费额度 / 极低资费）
+  List<String> freeModelsFor(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.deepseek:
+        return ['deepseek-chat'];
+      case AiProvider.zhipu:
+        return ['glm-4-flash', 'glm-4.7-flash'];
+      case AiProvider.agnes:
+        return ['agnes-2.5-flash', 'agnes-2.5-turbo'];
+      case AiProvider.sensenova:
+        return ['sensenova-6.7-flash-lite'];
+    }
+  }
+
+  /// 常用付费模型（按性价比与质量推荐）
+  List<String> popularPaidModelsFor(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.deepseek:
+        return ['deepseek-v4-pro', 'deepseek-reasoner'];
+      case AiProvider.zhipu:
+        return ['glm-4.7', 'glm-4', 'glm-4-long'];
+      case AiProvider.agnes:
+        return ['agnes-2.5-pro', 'agnes-2.5'];
+      case AiProvider.sensenova:
+        return ['deepseek-v4-flash'];
+    }
+  }
+
   void clearApiKey() {
     _apiKey = null;
     _apiKeys.remove(_aiProvider.name);
