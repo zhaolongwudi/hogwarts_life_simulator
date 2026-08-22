@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../services/ai_router.dart';
 import '../services/deepseek_service.dart';
+import '../utils/crash_logger.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -168,6 +170,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSceneRouting(appProvider),
           const SizedBox(height: 16),
           _buildTokenUsage(),
+          const SizedBox(height: 16),
+          _buildCrashLogSection(),
           const SizedBox(height: 20),
           const Text('📺 显示模式',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -852,6 +856,242 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(2)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return n.toString();
+  }
+
+  Widget _buildCrashLogSection() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bug_report, color: Color(0xFFFF6B6B), size: 18),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text('🐞 崩溃日志',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFF6B6B))),
+              ),
+              TextButton(
+                onPressed: CrashLogger.instance.entries.isEmpty
+                    ? null
+                    : () async {
+                        await CrashLogger.instance.clear();
+                        setState(() {});
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('崩溃日志已清除')),
+                          );
+                        }
+                      },
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('清除', style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (CrashLogger.instance.entries.isEmpty)
+            const Text('暂无崩溃记录，游戏运行稳定 ✅',
+                style: TextStyle(fontSize: 12, color: Color(0xFF10B981)))
+          else ...[
+            Text('共记录 ${CrashLogger.instance.entries.length} 次崩溃',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+            const SizedBox(height: 10),
+            ...CrashLogger.instance.entries.take(3).map((e) => _buildCrashItem(e)),
+            if (CrashLogger.instance.entries.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(
+                  onPressed: _showAllCrashLogs,
+                  icon: const Icon(Icons.list, size: 16),
+                  label: Text('查看全部 (${CrashLogger.instance.entries.length})'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFFF6B6B)),
+                    foregroundColor: const Color(0xFFFF6B6B),
+                    minimumSize: const Size.fromHeight(40),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCrashItem(CrashEntry e) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252C36),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF374151)),
+      ),
+      child: InkWell(
+        onTap: () => _showCrashDetail(e),
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.error, size: 14, color: Color(0xFFFF6B6B)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    e.error.length > 60 ? '${e.error.substring(0, 60)}...' : e.error,
+                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${_formatTime(e.time)}${e.screen.isNotEmpty ? ' · ${e.screen}' : ''}',
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF8B949E)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(DateTime t) {
+    return '${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _showCrashDetail(CrashEntry e) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            const Icon(Icons.bug_report, color: Color(0xFFFF6B6B), size: 20),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('崩溃详情', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy, size: 18, color: Color(0xFFD3A625)),
+              onPressed: () {
+                final text = '时间: ${e.time.toIso8601String()}\n'
+                    '场景: ${e.screen}\n'
+                    '错误: ${e.error}\n'
+                    '补充: ${e.extra}\n'
+                    '堆栈:\n${e.stackTrace}';
+                Clipboard.setData(ClipboardData(text: text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('已复制到剪贴板')),
+                );
+              },
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('时间', e.time.toIso8601String()),
+              if (e.screen.isNotEmpty) _buildDetailRow('场景', e.screen),
+              if (e.extra.isNotEmpty) _buildDetailRow('补充', e.extra),
+              const SizedBox(height: 8),
+              const Text('错误信息', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFF6B6B))),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D1117),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF30363D)),
+                ),
+                child: Text(e.error, style: const TextStyle(fontSize: 12, color: Color(0xFFFFE4E4))),
+              ),
+              if (e.stackTrace.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('堆栈跟踪', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8B949E))),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D1117),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF30363D)),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      e.stackTrace,
+                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF8B949E), fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text('$label:', style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 12, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAllCrashLogs() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: const Color(0xFF0D1117),
+          appBar: AppBar(
+            title: Text('全部崩溃日志 (${CrashLogger.instance.entries.length})'),
+            backgroundColor: const Color(0xFF161B22),
+          ),
+          body: ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: CrashLogger.instance.entries.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) => _buildCrashItem(CrashLogger.instance.entries[i]),
+          ),
+        ),
+      ),
+    );
   }
 }
 

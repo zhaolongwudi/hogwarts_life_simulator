@@ -16,6 +16,7 @@ import '../services/deepseek_service.dart' show ChatResult;
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
+import '../utils/crash_logger.dart';
 
 class GameProvider extends ChangeNotifier {
   final AppProvider appProvider;
@@ -370,6 +371,12 @@ $profile
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      unawaited(CrashLogger.instance.record(
+        e,
+        StackTrace.current,
+        screen: 'openingInit',
+        extra: 'name=$name, era=${appProvider.era.name}',
+      ));
     }
   }
 
@@ -530,6 +537,12 @@ ${profile.join('｜')}
           '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
       _choices = [GameChoice(text: '继续', action: '继续')];
       notifyListeners();
+      unawaited(CrashLogger.instance.record(
+        e,
+        StackTrace.current,
+        screen: 'generateOpeningScene',
+        extra: 'player=${p.name}, era=${appProvider.era.name}',
+      ));
     }
   }
 
@@ -666,6 +679,12 @@ $action
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      unawaited(CrashLogger.instance.record(
+        e,
+        StackTrace.current,
+        screen: 'processChoice',
+        extra: 'action=$action, turn=$_turnCount',
+      ));
     }
   }
 
@@ -2480,11 +2499,12 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   void _updatePlayerImpactScore(String action) {
     double delta = 0.01;
 
-    // 涉及原著NPC名字的行动
-    for (final npc in _npcRegistry.values) {
-      if (npc.isCanon && action.contains(npc.name)) {
-        delta += 0.02;
-        break;
+    if (_npcRegistry.isNotEmpty) {
+      for (final npc in _npcRegistry.values) {
+        if (npc.isCanon && action.contains(npc.name)) {
+          delta += 0.02;
+          break;
+        }
       }
     }
 
@@ -2538,12 +2558,17 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       temperature: 0.85,
       maxTokens: scene == AiScene.narrative ? 1800 : 2500,
     );
-    _totalPromptTokens += result.usage.promptTokens;
-    _totalCompletionTokens += result.usage.completionTokens;
-    _totalTokens += result.usage.totalTokens;
-    _lastRoundTokens = result.usage.totalTokens;
-    _apiCalls++;
-    notifyListeners();
+    // 使用 try-catch 保护 token 统计，避免因 API 返回格式异常导致崩溃
+    try {
+      _totalPromptTokens += result.usage.promptTokens;
+      _totalCompletionTokens += result.usage.completionTokens;
+      _totalTokens += result.usage.totalTokens;
+      _lastRoundTokens = result.usage.totalTokens;
+      _apiCalls++;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[GameProvider] Token 统计异常(不影响游戏): $e');
+    }
     return result;
   }
 
@@ -2865,18 +2890,26 @@ $_pendingSummary
       if (match == null) continue;
       final npcName = match.group(1)!.trim();
       final delta = int.tryParse(match.group(2)!) ?? 0;
-      final npc = _npcRegistry.values
-          .firstWhere((n) => n.name == npcName, orElse: () => _npcRegistry.values.first);
-      if (npc.name == npcName) {
-        npc.affection = (npc.affection + delta).clamp(-100, 100);
-        _checkLocks(npc);
-        _syncRelationshipLevel(npc);
-        _checkAffectionAchievements(npc);
+      if (delta == 0 || npcName.isEmpty) continue;
+      try {
+        final npc = _npcRegistry.values.firstWhere(
+          (n) => n.name == npcName,
+          orElse: () => _npcRegistry.values.first,
+        );
+        if (npc.name == npcName) {
+          updateNpcAffection(npc, delta, reason: '剧情互动');
+          _checkLocks(npc);
+          _syncRelationshipLevel(npc);
+          _checkAffectionAchievements(npc);
+        }
+      } catch (e) {
+        // 空注册表或注册表为空时静默忽略
       }
     }
   }
 
   void _parseReputationChanges(String text) {
+    if (_player == null) return;
     final inSection = text.split('【声望变化】');
     if (inSection.length < 2) return;
     final section = inSection[1].split('【').first;
@@ -2887,7 +2920,12 @@ $_pendingSummary
       if (match == null) continue;
       final dim = match.group(1)!.trim();
       final delta = int.tryParse(match.group(2)!) ?? 0;
-      _player?.playerReputation.add(dim, delta);
+      if (delta == 0 || dim.isEmpty) continue;
+      try {
+        _player!.playerReputation.add(dim, delta);
+      } catch (e) {
+        // 维度不存在时静默忽略
+      }
     }
   }
 

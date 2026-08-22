@@ -1,9 +1,30 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
+import 'utils/crash_logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CrashLogger.instance.load();
+
+  // 捕获 Flutter 框架错误（例如 Widget build 抛出）
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    unawaited(CrashLogger.instance.record(
+      details.exception,
+      details.stack,
+      screen: 'FlutterFrame',
+      extra: details.context?.toString() ?? details.library ?? '',
+    ));
+  };
+
+  // 捕获 Dart 层未处理的 async 错误
+  PlatformDispatcher.instance.onError = (error, stack) {
+    unawaited(CrashLogger.instance.record(error, stack, screen: 'PlatformDispatcher'));
+    return true;
+  };
+
   final appProvider = AppProvider();
   await appProvider.loadSettings();
   runApp(
