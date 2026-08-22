@@ -285,7 +285,9 @@ class GameProvider extends ChangeNotifier {
       ..write('\n')
       ..write(identityLine);
     if (goalLine.isNotEmpty) {
-      buffer.write('\n').write(goalLine);
+      buffer
+        ..write('\n')
+        ..write(goalLine);
     }
     return buffer.toString();
   }
