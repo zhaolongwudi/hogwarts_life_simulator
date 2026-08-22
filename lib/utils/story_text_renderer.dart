@@ -264,14 +264,9 @@ class StoryTextRenderer {
       RegExp(r'「[^」]*」'),
       RegExp(r'"[^"]*"'),
       RegExp(r'『[^』]*』'),
+      RegExp(r'“[^”]*”'),
+      RegExp(r'‘[^’]*’'),
     ];
-
-    // 冒号对话模式：「说话人（可选情绪）: 台词」或「说话人：台词」
-    // 匹配例子：
-    //   老苹果店主·杂货店老头 (想起你藏钥匙的利落动作，嘴角牵了一下) 好感+1: 你没多问一句...
-    //   米勒娃·麦格：把你的 wand 拿出来，波特先生。
-    // 说话人长度放宽到 120 字符（包含好感提示、情绪括号等长修饰）
-    final colonSpeaker = RegExp(r'(?:^|\n)[^\n]{1,120}?[：:]');
 
     final dialogueRanges = <_Range>[];
     for (final pattern in dialoguePatterns) {
@@ -281,39 +276,26 @@ class StoryTextRenderer {
     }
     dialogueRanges.sort((a, b) => a.start.compareTo(b.start));
 
-    // 记录冒号对话的分段范围：说话人(range+标记说话人) + 冒号分隔符 + 台词正文
+    // 冒号对话模式：「说话人：台词」/「说话人（情绪）：台词」
+    // 逐行检测，排除时间（09:00）、日期（📅 年月日 星期）、叙述性「说：」等误判。
     final colonSegments = <_ColonSegment>[];
-    for (final match in colonSpeaker.allMatches(text)) {
-      final matched = match.group(0)!;
-      // 说话人部分可能以 \n 开头（看正则），实际起点要剥离掉换行
-      final rawStart = match.start;
-      final startsWithNewline = matched.startsWith('\n');
-      final speakerStart = startsWithNewline ? rawStart + 1 : rawStart;
-      final matchedTrimmed = startsWithNewline ? matched.substring(1) : matched;
-      final colonEnd = match.end;
-      // 确保后面还有至少 2 个字符以上的正文，避免误匹配时间戳、冒号标签
-      if (colonEnd >= text.length) continue;
-      final rest = text.substring(colonEnd);
-      if (rest.length < 2) continue;
-      // 分离冒号和说话人
-      final speakerPart = matchedTrimmed.substring(0, matchedTrimmed.length - 1);
-      if (speakerPart.trim().isEmpty) continue;
-      // 排除时间格式 09:00、12：30（说话人部分全是数字和空格）
-      if (RegExp(r'^\d{1,2}\s*$').hasMatch(speakerPart.trim())) continue;
-      // 说话人必须是中文/字母开头（不是纯数字、符号）
-      final firstChar = speakerPart.trim().isNotEmpty ? speakerPart.trim()[0] : '';
-      if (firstChar.isEmpty) continue;
-      if (RegExp(r'^[\d\s\+\-\*\/\%\=\@\#\$\&\|\~\<\>\?\!]+$').hasMatch(speakerPart.trim())) continue;
-      // 台词的正文持续到换行或结束
-      final contentEnd = text.indexOf('\n', colonEnd) == -1
-          ? text.length
-          : text.indexOf('\n', colonEnd);
-      colonSegments.add(_ColonSegment(
-        speakerStart: speakerStart,
-        speakerEnd: speakerStart + speakerPart.length,
-        colonEnd: colonEnd,
-        contentEnd: contentEnd,
-      ));
+    {
+      int lineStart = 0;
+      while (lineStart <= text.length) {
+        final newlineIdx = text.indexOf('\n', lineStart);
+        final lineEnd = newlineIdx == -1 ? text.length : newlineIdx;
+        final k = _findDialogueColon(text, lineStart, lineEnd);
+        if (k >= 0) {
+          colonSegments.add(_ColonSegment(
+            speakerStart: _speakerStart(text, lineStart, k),
+            speakerEnd: k,
+            colonEnd: k + 1,
+            contentEnd: lineEnd,
+          ));
+        }
+        if (newlineIdx == -1) break;
+        lineStart = newlineIdx + 1;
+      }
     }
     // 按出现顺序排序（避免重复叠加）
     colonSegments.sort((a, b) => a.speakerStart.compareTo(b.speakerStart));
@@ -368,6 +350,90 @@ class StoryTextRenderer {
 
     flushNarration();
     return tokens;
+  }
+
+  /// 在 [text] 的 [lineStart, lineEnd) 区间内查找对话冒号（说话人：台词）的位置。
+  /// 找不到返回 -1。
+  static int _findDialogueColon(String text, int lineStart, int lineEnd) {
+    for (int i = lineStart; i < lineEnd; i++) {
+      final ch = text[i];
+      if (ch != '：' && ch != ':') continue;
+      // 时钟时间（数字:数字，如 9:00 / 09:00）不算对话
+      if (_isClockColon(text, i)) continue;
+      final speaker =
+          text.substring(_speakerStart(text, lineStart, i), i).trim();
+      if (_isValidSpeaker(speaker)) return i;
+    }
+    return -1;
+  }
+
+  /// 冒号前后是否紧邻数字（时钟格式）。
+  static bool _isClockColon(String text, int i) {
+    if (i <= 0 || i >= text.length - 1) return false;
+    final b = text.codeUnitAt(i - 1);
+    final a = text.codeUnitAt(i + 1);
+    return b >= 0x30 && b <= 0x39 && a >= 0x30 && a <= 0x39;
+  }
+
+  /// 行内说话人起点：跳过行首空白。
+  static int _speakerStart(String text, int lineStart, int colonIdx) {
+    int s = lineStart;
+    while (s < colonIdx) {
+      final c = text.codeUnitAt(s);
+      if (c != 0x20 && c != 0x09) break;
+      s++;
+    }
+    return s;
+  }
+
+  /// 判断冒号前文本是否为合理的说话人（角色名/短人名），排除时间、日期、标签、叙述。
+  static bool _isValidSpeaker(String raw) {
+    if (raw.isEmpty || raw.length > 24) return false;
+    // 结构标记 / 时间戳方括号
+    if (raw.contains('【') ||
+        raw.contains('】') ||
+        raw.contains('[') ||
+        raw.contains(']')) {
+      return false;
+    }
+    // emoji 前缀（时间戳 📅 等）
+    if (_startsWithEmoji(raw)) return false;
+
+    // 提取纯名字：去掉「（情绪）」「(动作)」「好感+1」等修饰
+    String name = raw;
+    final bracket = name.indexOf(RegExp(r'[（(]'));
+    if (bracket >= 0) name = name.substring(0, bracket);
+    final gk = name.indexOf('好感');
+    if (gk >= 0) name = name.substring(0, gk);
+    name = name.trim();
+    if (name.isEmpty) return false;
+
+    // 已知角色名（含带修饰的原始串）
+    if (_characterNames.contains(name) || _characterNames.contains(raw)) {
+      return true;
+    }
+
+    // 时间/日期/状态等标签不是人名
+    const labels = ['时间', '日期', '星期', '月份', '地点', '位置', '状态', '身份',
+      '模式', '目标', '学年', '学期', '年级', '天气', '场景', '当前', '剩余'];
+    for (final l in labels) {
+      if (name.contains(l)) return false;
+    }
+
+    // 长度 1~8，允许中文/字母/数字/·/空格；纯数字或含叙述标点则排除
+    if (name.length > 8) return false;
+    if (RegExp(r'^[\d\s.:,，、]+$').hasMatch(name)) return false;
+    if (RegExp(r'[，。！？、；：:]').hasMatch(name)) return false;
+
+    return true;
+  }
+
+  static bool _startsWithEmoji(String s) {
+    if (s.isEmpty) return false;
+    final first = s.runes.first;
+    return (first >= 0x1F300 && first <= 0x1FAFF) ||
+        (first >= 0x2600 && first <= 0x27BF) ||
+        (first >= 0x2B00 && first <= 0x2BFF);
   }
 
   static List<_Token> _splitNarration(String text) {

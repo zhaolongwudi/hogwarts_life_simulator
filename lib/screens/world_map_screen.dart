@@ -161,57 +161,128 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   Widget _buildBranchIndicators() {
-    if (!_isInSubArea) {
-      final areas = _mapData.keys.toList();
-      return Positioned(
-        right: 12,
-        bottom: 160,
-        child: GestureDetector(
-          onTap: () {
-            final idx = areas.indexOf(_currentArea);
-            if (idx < areas.length - 1) {
-              setState(() {
-                _currentArea = areas[idx + 1];
-                _currentSubArea = null;
-                _parentArea = null;
-                _selectedLocation = null;
-              });
-            }
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.chevron_right, size: 18, color: Color(0xFFB8860B)),
-                    const SizedBox(width: 6),
-                    const Text('大世界', style: TextStyle(fontSize: 16, color: Color(0xFFB8860B), fontWeight: FontWeight.w700)),
-                  ],
-                ),
+    if (_isInSubArea) return const SizedBox.shrink();
+
+    return Positioned(
+      right: 12,
+      bottom: 160,
+      child: GestureDetector(
+        onTap: _showWorldOverview,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              const Text('大世界', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
-            ],
-          ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.public, size: 18, color: Color(0xFFB8860B)),
+                  const SizedBox(width: 6),
+                  const Text('大世界', style: TextStyle(fontSize: 16, color: Color(0xFFB8860B), fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text('世界总览', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+          ],
         ),
-      );
-    }
-    return const SizedBox.shrink();
+      ),
+    );
+  }
+
+  /// 打开「大世界」总览：列出全部区域与子地图，点按快速跳转。
+  void _showWorldOverview() {
+    final areas = _mapData.keys.toList();
+    final subAreas = _subAreas.keys.toList();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF20402F),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      '大世界 · 区域总览',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...areas.map((a) => _buildOverviewTile(ctx, a, _mapData[a]!.length, false)),
+                  ...subAreas.map((s) => _buildOverviewTile(ctx, s, (_subAreas[s]!['locations'] as List).length, true)),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOverviewTile(
+      BuildContext ctx, String name, int count, bool isSub) {
+    return ListTile(
+      leading: Icon(
+        isSub ? Icons.subdirectory_arrow_right : Icons.map,
+        color: isSub ? const Color(0xFFD97706) : const Color(0xFFD3A625),
+      ),
+      title: Text(name,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+      subtitle: Text('$count 个地点', style: const TextStyle(color: Colors.white70)),
+      trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+      onTap: () {
+        Navigator.pop(ctx);
+        setState(() {
+          if (isSub) {
+            _currentArea = '伦敦';
+            _parentArea = '伦敦';
+            _currentSubArea = name;
+          } else {
+            _currentArea = name;
+            _currentSubArea = null;
+            _parentArea = null;
+          }
+          _selectedLocation = null;
+        });
+      },
+    );
   }
 
   Widget _buildFullMap() {
