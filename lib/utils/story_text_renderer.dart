@@ -143,7 +143,7 @@ class StoryTextRenderer {
       final markerText = match.group(0)!;
       final sectionEnd = _nextMarkerOrEnd(cleaned, match.end);
 
-      if (markerText == '【好感度变化】') {
+      if (markerText == '【好感度变化】' || markerText == '【好感变化】') {
         spans.add(TextSpan(text: markerText, style: _narrationStyle));
         spans.addAll(
           _parseAffectionSection(cleaned.substring(match.end, sectionEnd)),
@@ -658,8 +658,8 @@ class StoryTextRenderer {
 
   /// 从文本中提取好感变化区块（返回 Map：纯叙事文本 + 好感变化文本列表）
   static Map<String, dynamic> extractAffectionSections(String text) {
-    final affectionPattern = RegExp(r'【好感度变化】[\s\S]*?(?=【|$)');
-    final reputationPattern = RegExp(r'【声望变化】[\s\S]*?(?=【|$)');
+    final affectionPattern = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+    final reputationPattern = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
     
     final affectionMatches = affectionPattern.allMatches(text);
     final reputationMatches = reputationPattern.allMatches(text);

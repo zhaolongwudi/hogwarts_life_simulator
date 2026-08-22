@@ -36,8 +36,8 @@ class GameProvider extends ChangeNotifier {
     r'^\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s*',
   );
   static final _reMultiNewline = RegExp(r'\n{3,}');
-  static final _reAffectionSection = RegExp(r'【好感度变化】[\s\S]*?(?=【|$)');
-  static final _reReputationSection = RegExp(r'【声望变化】[\s\S]*?(?=【|$)');
+  static final _reAffectionSection = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+  static final _reReputationSection = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
   // 匹配任意一行：(开头/上一行换行后) 编号(A-E/数字/中文数字) + 分隔符(./、/)/):/： + 空格 + 选项文字
   // 用来定位整个 AI 响应中「选项区块」的起点
   static final _reChoiceMultiLine = RegExp(
@@ -968,8 +968,21 @@ ${profile.join('｜')}
       if (_narrativeSummary.isNotEmpty) {
         contextBuffer.write('【前情摘要】\n$_narrativeSummary\n\n');
       }
-      final recentBuffer = _recentTurns.isNotEmpty
-          ? _recentTurns.join('\n\n')
+      final currentLoc = _worldState.currentLocation ?? '';
+      final filteredTurns = <String>[];
+      for (int i = _recentTurns.length - 1; i >= 0; i--) {
+        final entry = _recentTurns[i];
+        if (currentLoc.contains('车站') && (entry.contains('女贞路') || entry.contains('抽屉'))) {
+          continue;
+        }
+        if (currentLoc.contains('大礼堂') && entry.contains('车站') && !entry.contains('分院')) {
+          continue;
+        }
+        filteredTurns.insert(0, entry);
+        if (filteredTurns.length >= 3) break;
+      }
+      final recentBuffer = filteredTurns.isNotEmpty
+          ? filteredTurns.join('\n\n')
           : _currentNarrative;
       final recent = _truncateNarrativeContext(recentBuffer, 1600);
       contextBuffer.write('【近期剧情】\n$recent');
@@ -2768,8 +2781,19 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   void resolveConfession(bool accepted, String npcName) {
     final p = _player;
     if (p == null) return;
-    final npc = _npcRegistry.values
-        .firstWhere((n) => n.name == npcName, orElse: () => _npcRegistry.values.first);
+    NPC? npc;
+    try {
+      npc = _npcRegistry.values.firstWhere((n) => n.name == npcName);
+    } catch (_) {
+      try {
+        npc = _npcRegistry.values.firstWhere(
+          (n) => n.name.contains(npcName) || npcName.contains(n.name),
+        );
+      } catch (_) {
+        return;
+      }
+    }
+    if (npc == null) return;
     npc.confessed = true;
     npc.isConsideringConfession = false;
     p.loveState.awaitingConfession = false;
@@ -3765,6 +3789,7 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
           trimmed.startsWith('【备选行动】') ||
           trimmed.startsWith('【剧情选项】') ||
           trimmed.startsWith('【好感度变化】') ||
+          trimmed.startsWith('【好感变化】') ||
           trimmed.startsWith('【声望变化】');
       if (isBlockHeader) {
         inNarrative = false;
@@ -3805,6 +3830,26 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       }
     }
 
+    // 检测并截断"下回合泄漏"：如果正文中包含新的📅时间戳，
+    // 说明 AI 把下回合的预告也输出了，需要截断
+    final timestampPattern = RegExp(r'📅\s*\d{4}年\d{1,2}月\d{1,2}日');
+    final narrativeLines = _currentNarrative.split('\n');
+    final truncatedLines = <String>[];
+    bool foundSecondTimestamp = false;
+    for (final line in narrativeLines) {
+      if (foundSecondTimestamp) break;
+      if (timestampPattern.hasMatch(line.trim())) {
+        if (truncatedLines.isNotEmpty) {
+          foundSecondTimestamp = true;
+          break;
+        }
+      }
+      truncatedLines.add(line);
+    }
+    if (foundSecondTimestamp) {
+      _currentNarrative = truncatedLines.join('\n').trimRight();
+    }
+
     // Pass 2: 如果叙事 < 20 字，按"原始文本 - 好感/声望 - 选项区块"兜底提取，
     // 但注意兜底函数 _extractNarrativeFromRawText 已经不再做 split('\n\n').first
     // 的毁灭性截断，所以即使走到这里也能保住长文。
@@ -3817,7 +3862,12 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
     var narrativeForDisplay = extracted['narrative'] as String? ?? _currentNarrative;
 
-    // 剥离选项区块（防止正文里混入选项）
+    narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
+      RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)'), (m) => '');
+    narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
+      RegExp(r'【声望变化?】[\s\S]*?(?=【|$)'), (m) => '');
+    narrativeForDisplay = narrativeForDisplay.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
       RegExp(r'【可选行动】[\s\S]*$'), (m) => '').trimRight();
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
@@ -3865,6 +3915,8 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     if (_turnCount % 10 == 0) {
       _incrementWorldLineDeviation(0.005);
     }
+
+    notifyListeners();
   }
 
   void _extractNarrativeFromRawText(String text) {
@@ -4180,42 +4232,62 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
 
   void _parseAffectionChanges(String text) {
     if (_npcRegistry.isEmpty) return;
-    final inSection = text.split('【好感度变化】');
-    if (inSection.length < 2) return;
-    final section = inSection[1].split('【').first;
+    final sectionPattern = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+    final sectionMatch = sectionPattern.firstMatch(text);
+    if (sectionMatch == null) return;
+    final section = sectionMatch.group(0)!.replaceFirst(sectionPattern, '').trim();
+    if (section.isEmpty) return;
     for (final line in section.split('\n')) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
       final match = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)').firstMatch(trimmed);
       if (match == null) continue;
-      final npcName = match.group(1)!.trim();
+      var npcName = match.group(1)!.trim();
       var delta = int.tryParse(match.group(2)!) ?? 0;
       if (delta == 0 || npcName.isEmpty) continue;
-      // 压缩好感变化幅度：过大的变化 AI 可能失控，压缩到合理范围
+      npcName = npcName.replaceFirst(RegExp(r'[（(].*?[）)]'), '').trim();
+      if (npcName.isEmpty) continue;
       if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
       if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
       try {
-        final npc = _npcRegistry.values.firstWhere(
-          (n) => n.name == npcName,
-          orElse: () => _npcRegistry.values.first,
-        );
-        if (npc.name == npcName) {
+        NPC? npc;
+        try {
+          npc = _npcRegistry.values.firstWhere((n) => n.name == npcName);
+        } catch (_) {
+          for (final n in _npcRegistry.values) {
+            if (n.name.contains(npcName) || npcName.contains(n.name)) {
+              npc = n;
+              break;
+            }
+          }
+          if (npc == null) {
+            for (final n in _npcRegistry.values) {
+              final surname = n.name.split('·').isNotEmpty ? n.name.split('·').last : n.name;
+              if (npcName.contains(surname) || surname.contains(npcName)) {
+                npc = n;
+                break;
+              }
+            }
+          }
+        }
+        if (npc != null) {
           updateNpcAffection(npc.id, delta, reason: '剧情互动');
           _checkLocks(npc);
           _syncRelationshipLevel(npc);
           _checkAffectionAchievements(npc);
         }
       } catch (e) {
-        // 空注册表或注册表为空时静默忽略
       }
     }
   }
 
   void _parseReputationChanges(String text) {
     if (_player == null) return;
-    final inSection = text.split('【声望变化】');
-    if (inSection.length < 2) return;
-    final section = inSection[1].split('【').first;
+    final sectionPattern = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
+    final sectionMatch = sectionPattern.firstMatch(text);
+    if (sectionMatch == null) return;
+    final section = sectionMatch.group(0)!.replaceFirst(sectionPattern, '').trim();
+    if (section.isEmpty) return;
     for (final line in section.split('\n')) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
@@ -4227,7 +4299,6 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
       try {
         _player!.playerReputation.add(dim, delta);
       } catch (e) {
-        // 维度不存在时静默忽略
       }
     }
   }
