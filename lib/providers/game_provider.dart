@@ -584,6 +584,7 @@ class GameProvider extends ChangeNotifier {
       _npcRegistry[seed.id] = NPC(
         id: seed.id,
         name: seed.name,
+        aliases: List.of(seed.aliases),
         house: seed.house,
         grade: seed.grade,
         bloodStatus: seed.bloodStatus,
