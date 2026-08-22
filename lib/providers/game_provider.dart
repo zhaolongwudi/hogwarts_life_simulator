@@ -19,6 +19,7 @@ import '../services/deepseek_service.dart';
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
+import '../services/rate_limiter.dart';
 import '../utils/crash_logger.dart';
 import '../utils/prompt_sanitizer.dart';
 import '../utils/story_text_renderer.dart';
@@ -251,6 +252,8 @@ class GameProvider extends ChangeNotifier {
   }
 
   void refreshClient() {
+    // 清理响应缓存，防止旧模型的响应泄漏到新路由
+    ResponseCache.instance.clear();
     _updateClient();
     chatService.refreshClient();
     notifyListeners();
@@ -418,6 +421,11 @@ class GameProvider extends ChangeNotifier {
     _lastRoundTokens = 0;
     _apiCalls = 0;
     _openingScene = 'station';
+    // 清除响应缓存（重要：防止旧剧情数据泄漏到新游戏）
+    ResponseCache.instance.clear();
+    // 清除速率限制器状态
+    AgnesRateLimiter.instance.reset();
+    SenseNovaQuotaManager.instance.reset();
     // 销毁旧路由器（清除响应缓存、已注册的服务实例）
     _router = null;
     // 清除 NPC 聊天缓存（对话历史、路由器）
@@ -975,19 +983,11 @@ ${profile.join('｜')}
       if (_narrativeSummary.isNotEmpty) {
         contextBuffer.write('【前情摘要】\n$_narrativeSummary\n\n');
       }
+
+      // 智能历史上下文过滤：根据当前地点过滤不相关的旧剧情
       final currentLoc = _worldState.currentLocation ?? '';
-      final filteredTurns = <String>[];
-      for (int i = _recentTurns.length - 1; i >= 0; i--) {
-        final entry = _recentTurns[i];
-        if (currentLoc.contains('车站') && (entry.contains('女贞路') || entry.contains('抽屉'))) {
-          continue;
-        }
-        if (currentLoc.contains('大礼堂') && entry.contains('车站') && !entry.contains('分院')) {
-          continue;
-        }
-        filteredTurns.insert(0, entry);
-        if (filteredTurns.length >= 3) break;
-      }
+      final filteredTurns = _filterRelevantHistory(currentLoc);
+      
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
           : _currentNarrative;
@@ -4058,6 +4058,94 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     while (_recentTurns.length > _maxRecentTurns) {
       _recentTurns.removeAt(0);
     }
+  }
+
+  /// 地点关键词映射：每个地点对应一组特征关键词
+  /// 用于智能过滤：当剧情不包含当前地点的关键词时，判定为不相关
+  static const Map<String, List<String>> _locationKeywords = {
+    '车站': ['车站', '月台', '列车', '火车', '检票', '站台', '行李', '猫头鹰'],
+    '女贞路': ['女贞路', '4号', '德思礼', '佩妮', '弗农', '达力'],
+    '格里莫广场': ['格里莫', '格里莫广场', '凤凰社', '小天狼星'],
+    '对角巷': ['对角巷', '古灵阁', '魔杖店', '奥利凡德', '蜂蜜公爵', '笑话店'],
+    '翻倒巷': ['翻倒巷', '黑魔法', '黑店', '博金'],
+    '大礼堂': ['大礼堂', '分院帽', '格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇', '分院', '长桌', '蜡烛', '星空'],
+    '教室': ['教室', '课堂', '教授', '课程', '魔法史', '黑魔法防御', '魔药', '魔咒', '变形', '天文学', '草药', '飞行'],
+    '黑魔法防御': ['黑魔法防御', '防御课', '卢平', '穆迪'],
+    '魔药课': ['魔药', '斯内普', '药水', '坩埚'],
+    '图书馆': ['图书馆', '借书', '书库', '禁书区', '平斯夫人'],
+    '休息室': ['休息室', '公共休息室', '格兰芬多塔', '斯莱特林地下室', '炉火'],
+    '宿舍': ['宿舍', '寝室', '床位', '睡衣'],
+    '操场': ['操场', '禁林', '魁地奇', '飞球', '扫帚'],
+    '魁地奇': ['魁地奇', '比赛', '击球手', '找球手', '游走球', '金色飞贼'],
+    '霍格莫德': ['霍格莫德', '蜂蜜公爵', '三把扫帚', '猪头酒吧', '糖果'],
+    '厨房': ['厨房', '家养小精灵', '饭厅', '食物'],
+    '密室': ['密室', '斯莱特林', '蛇怪', '汤姆', '里德尔'],
+    '浴室': ['浴室', '盥洗室', '洗澡', '盥洗'],
+    '温室': ['温室', '草药', '植物', '斯普劳特'],
+    '钟楼': ['钟楼', '钟声', '时间'],
+    '地下室': ['地下室', '地牢', '斯莱特林', '斯内普'],
+    '天文台': ['天文台', '天文', '望远镜', '星星'],
+    '禁林': ['禁林', '森林', '黑暗生物', '半人马', '独角兽'],
+    '海格的小屋': ['海格', '小屋', '阿拉戈克', '巴克比克'],
+  };
+
+  /// 智能历史上下文过滤
+  /// 根据当前地点的关键词，过滤掉不相关的历史剧情
+  /// 规则：
+  /// 1. 最近2回合始终保留（保证连续性）
+  /// 2. 更早的回合只有在包含当前地点关键词时才保留
+  /// 3. 如果当前地点没有匹配关键词（如"走廊"），则保留所有回合
+  List<String> _filterRelevantHistory(String currentLoc) {
+    if (_recentTurns.isEmpty) return [];
+    
+    // 找到当前地点的关键词
+    final locKeywords = _findLocationKeywords(currentLoc);
+    
+    // 如果没有匹配关键词，保留所有回合
+    if (locKeywords.isEmpty) {
+      return List.from(_recentTurns.reversed.take(3));
+    }
+    
+    final result = <String>[];
+    final turns = List.from(_recentTurns.reversed); // 最新的在前
+    
+    for (int i = 0; i < turns.length && result.length < 3; i++) {
+      final entry = turns[i];
+      
+      // 最近2回合始终保留
+      if (i < 2) {
+        result.insert(0, entry);
+        continue;
+      }
+      
+      // 更早的回合需要包含当前地点的关键词
+      if (_entryMatchesLocation(entry, locKeywords)) {
+        result.insert(0, entry);
+      }
+    }
+    
+    return result;
+  }
+
+  /// 根据地点名查找关键词列表
+  List<String> _findLocationKeywords(String location) {
+    if (location.isEmpty) return [];
+    for (final entry in _locationKeywords.entries) {
+      if (location.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+    return [];
+  }
+
+  /// 检查历史回合是否包含当前地点的关键词
+  bool _entryMatchesLocation(String entry, List<String> keywords) {
+    for (final kw in keywords) {
+      if (entry.contains(kw)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // ==================== 剧情摘要机制：每10回合压缩历史 ====================
