@@ -596,6 +596,7 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
+    final affectionSections = gp.lastAffectionSections;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -631,8 +632,6 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
         ),
-        // 好感变化卡片（独立于正文显示）
-        final affectionSections = gp.lastAffectionSections;
         if (affectionSections.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(

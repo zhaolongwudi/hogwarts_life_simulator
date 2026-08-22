@@ -44,7 +44,6 @@ class GameProvider extends ChangeNotifier {
     r'(?:^|\n)\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s+\S',
     multiLine: true,
   );
-  static final _reSectionMarkers = RegExp(r'【[^】]+】');
 
   Player? _player;
   WorldState _worldState = WorldState();
