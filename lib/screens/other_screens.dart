@@ -173,7 +173,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                   decoration: BoxDecoration(
                     color: houseColor.withValues(alpha: isAlive ? 0.15 : 0.08),
                     shape: BoxShape.circle,
-                    border: Border.all(color: houseColor.withValues(isAlive ? 0.5 : 0.2)),
+                    border: Border.all(color: houseColor.withValues(alpha: isAlive ? 0.5 : 0.2)),
                   ),
                   child: Center(
                     child: Text(

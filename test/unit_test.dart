@@ -45,13 +45,13 @@ void main() {
     test('好感阶段标签正确', () {
       final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
       npc.affection = -50;
-      expect(npc.affectionStage, '敌对');
+      expect(npc.affectionStage, '宿怨');
       npc.affection = 0;
-      expect(npc.affectionStage, '关系未明');
+      expect(npc.affectionStage, '中立');
       npc.affection = 40;
-      expect(npc.affectionStage, '朋友');
+      expect(npc.affectionStage, '友好');
       npc.affection = 85;
-      expect(npc.affectionStage, '亲密');
+      expect(npc.affectionStage, '深爱');
     });
 
     test('好感锁解锁', () {
@@ -203,15 +203,48 @@ void main() {
   group('LoveState恋爱状态', () {
     test('初始状态为单身', () {
       final ls = LoveState();
-      expect(ls.stage, 'single');
+      expect(ls.status, '单身');
     });
 
     test('恋爱阶段推进', () {
       final ls = LoveState();
-      ls.stage = 'crush';
-      ls.partnerId = 'hermione';
-      expect(ls.stage, 'crush');
-      expect(ls.partnerId, 'hermione');
+      ls.setStage('hermione', '暧昧', currentDay: 1);
+      expect(ls.stageFor('hermione'), '暧昧');
+      expect(ls.currentCrushName, 'hermione');
+      expect(ls.crushStartDay, 1);
+    });
+
+    test('暧昧成熟期检查(≥14天)', () {
+      final ls = LoveState();
+      ls.setStage('hermione', '暧昧', currentDay: 1);
+      expect(ls.isCrushMature(10), false);
+      expect(ls.isCrushMature(15), true);
+    });
+
+    test('浪漫事件计数', () {
+      final ls = LoveState();
+      ls.recordRomanticEvent('hermione');
+      ls.recordRomanticEvent('hermione');
+      ls.recordRomanticEvent('ron');
+      expect(ls.romanticEventsFor('hermione'), 2);
+      expect(ls.romanticEventsFor('ron'), 1);
+      expect(ls.romanticEventsFor('draco'), 0);
+    });
+
+    test('恋爱状态序列化', () {
+      final ls = LoveState(
+        status: '恋爱',
+        partnerId: 'hermione',
+        partnerName: '赫敏·格兰杰',
+      );
+      ls.recordRomanticEvent('hermione');
+      ls.setStage('hermione', '暧昧', currentDay: 5);
+      final json = ls.toJson();
+      final restored = LoveState.fromJson(json);
+      expect(restored.status, '恋爱');
+      expect(restored.partnerName, '赫敏·格兰杰');
+      expect(restored.romanticEventsFor('hermione'), 1);
+      expect(restored.stageFor('hermione'), '暧昧');
     });
   });
 }
