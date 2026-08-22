@@ -981,18 +981,23 @@ ${profile.join('｜')}
 
       final contextBuffer = StringBuffer();
       if (_narrativeSummary.isNotEmpty) {
-        contextBuffer.write('【前情摘要】\n$_narrativeSummary\n\n');
+        // 关键改进：明确标注前情摘要是"历史背景"，不要基于此生成选项
+        contextBuffer.write('【历史背景（仅作参考，不要基于此生成当前场景的选项）】\n$_narrativeSummary\n\n');
       }
 
-      // 智能历史上下文过滤：根据当前地点过滤不相关的旧剧情
       final currentLoc = _worldState.currentLocation ?? '';
-      final filteredTurns = _filterRelevantHistory(currentLoc);
-      
+      final filteredTurns = <String>[];
+      for (int i = _recentTurns.length - 1; i >= 0; i--) {
+        final entry = _recentTurns[i];
+        filteredTurns.insert(0, entry);
+        if (filteredTurns.length >= 3) break;
+      }
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
           : _currentNarrative;
       final recent = _truncateNarrativeContext(recentBuffer, 1600);
-      contextBuffer.write('【近期剧情】\n$recent');
+      // 关键改进：明确标注近期剧情是"当前场景上下文"，选项必须基于此
+      contextBuffer.write('【当前场景上下文（以此生成选项）】\n$recent');
 
       final context = contextBuffer.toString();
       final statusTag = _buildStatusTag(p);
@@ -1014,10 +1019,15 @@ $sceneInfo
 $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $safeAction
 
+【重要规则】
+- 选项必须基于【当前场景】和【玩家行动】生成
+- 不要基于【历史背景】生成选项，那只是过去的参考
+- 确保选项符合当前地点（${_worldState.currentLocation ?? '未知'}）和当前时间（${_worldState.timestamp}）
+
 【写作要求】
 - 叙事:300-450字小说正文，融入感官细节、对话、心理，分2-4段用空行分隔，严禁结构化标签或序号
 - 好感:NPC名±X(原因)，独立成段，可多条
-- 选项:A/B/C/D四选一，各体现不同策略
+- 选项:A/B/C/D四选一，必须符合当前场景，各体现不同策略
 ''';
     }
 
@@ -4060,94 +4070,6 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     }
   }
 
-  /// 地点关键词映射：每个地点对应一组特征关键词
-  /// 用于智能过滤：当剧情不包含当前地点的关键词时，判定为不相关
-  static const Map<String, List<String>> _locationKeywords = {
-    '车站': ['车站', '月台', '列车', '火车', '检票', '站台', '行李', '猫头鹰'],
-    '女贞路': ['女贞路', '4号', '德思礼', '佩妮', '弗农', '达力'],
-    '格里莫广场': ['格里莫', '格里莫广场', '凤凰社', '小天狼星'],
-    '对角巷': ['对角巷', '古灵阁', '魔杖店', '奥利凡德', '蜂蜜公爵', '笑话店'],
-    '翻倒巷': ['翻倒巷', '黑魔法', '黑店', '博金'],
-    '大礼堂': ['大礼堂', '分院帽', '格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇', '分院', '长桌', '蜡烛', '星空'],
-    '教室': ['教室', '课堂', '教授', '课程', '魔法史', '黑魔法防御', '魔药', '魔咒', '变形', '天文学', '草药', '飞行'],
-    '黑魔法防御': ['黑魔法防御', '防御课', '卢平', '穆迪'],
-    '魔药课': ['魔药', '斯内普', '药水', '坩埚'],
-    '图书馆': ['图书馆', '借书', '书库', '禁书区', '平斯夫人'],
-    '休息室': ['休息室', '公共休息室', '格兰芬多塔', '斯莱特林地下室', '炉火'],
-    '宿舍': ['宿舍', '寝室', '床位', '睡衣'],
-    '操场': ['操场', '禁林', '魁地奇', '飞球', '扫帚'],
-    '魁地奇': ['魁地奇', '比赛', '击球手', '找球手', '游走球', '金色飞贼'],
-    '霍格莫德': ['霍格莫德', '蜂蜜公爵', '三把扫帚', '猪头酒吧', '糖果'],
-    '厨房': ['厨房', '家养小精灵', '饭厅', '食物'],
-    '密室': ['密室', '斯莱特林', '蛇怪', '汤姆', '里德尔'],
-    '浴室': ['浴室', '盥洗室', '洗澡', '盥洗'],
-    '温室': ['温室', '草药', '植物', '斯普劳特'],
-    '钟楼': ['钟楼', '钟声', '时间'],
-    '地下室': ['地下室', '地牢', '斯莱特林', '斯内普'],
-    '天文台': ['天文台', '天文', '望远镜', '星星'],
-    '禁林': ['禁林', '森林', '黑暗生物', '半人马', '独角兽'],
-    '海格的小屋': ['海格', '小屋', '阿拉戈克', '巴克比克'],
-  };
-
-  /// 智能历史上下文过滤
-  /// 根据当前地点的关键词，过滤掉不相关的历史剧情
-  /// 规则：
-  /// 1. 最近2回合始终保留（保证连续性）
-  /// 2. 更早的回合只有在包含当前地点关键词时才保留
-  /// 3. 如果当前地点没有匹配关键词（如"走廊"），则保留所有回合
-  List<String> _filterRelevantHistory(String currentLoc) {
-    if (_recentTurns.isEmpty) return [];
-    
-    // 找到当前地点的关键词
-    final locKeywords = _findLocationKeywords(currentLoc);
-    
-    // 如果没有匹配关键词，保留所有回合
-    if (locKeywords.isEmpty) {
-      return List.from(_recentTurns.reversed.take(3));
-    }
-    
-    final result = <String>[];
-    final turns = List.from(_recentTurns.reversed); // 最新的在前
-    
-    for (int i = 0; i < turns.length && result.length < 3; i++) {
-      final entry = turns[i];
-      
-      // 最近2回合始终保留
-      if (i < 2) {
-        result.insert(0, entry);
-        continue;
-      }
-      
-      // 更早的回合需要包含当前地点的关键词
-      if (_entryMatchesLocation(entry, locKeywords)) {
-        result.insert(0, entry);
-      }
-    }
-    
-    return result;
-  }
-
-  /// 根据地点名查找关键词列表
-  List<String> _findLocationKeywords(String location) {
-    if (location.isEmpty) return [];
-    for (final entry in _locationKeywords.entries) {
-      if (location.contains(entry.key)) {
-        return entry.value;
-      }
-    }
-    return [];
-  }
-
-  /// 检查历史回合是否包含当前地点的关键词
-  bool _entryMatchesLocation(String entry, List<String> keywords) {
-    for (final kw in keywords) {
-      if (entry.contains(kw)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   // ==================== 剧情摘要机制：每10回合压缩历史 ====================
 
   /// 待摘要缓冲上限：摘要服务反复失败时防止缓冲无限膨胀撑爆后续请求
@@ -4174,7 +4096,14 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
         : (_turnCount <= 100 ? 500 : 700);
     final relationSnapshot = _buildRelationshipSnapshot();
 
-    final prompt = '''请将以下剧情内容压缩成摘要，保留关键事件、NPC互动、重要转折和玩家状态变化。用第三人称。
+    // 关键改进：明确要求 AI 只保留"人物关系"和"重要转折"，不保留具体场景描述
+    // 这样开局的"车站"、"检票"等场景会被自然淘汰，只保留"与赫敏建立友谊"、"被分到格兰芬多"等重要信息
+    final prompt = '''请将以下剧情内容压缩成摘要。重要规则：
+1. 只保留【人物关系变化】和【重要剧情转折】
+2. 淘汰具体场景描述（如"在车站"、"在教室"等地点信息），这些会干扰后续剧情生成
+3. 淘汰具体行动描述（如"检票上车"、"拿出魔杖"等），除非是关键转折点
+4. 保留 NPC 好感度变化（如"赫敏:友好+10"）、学院分配、重要事件等
+5. 用简洁的第三人称
 
 【前情摘要】
 ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
@@ -4182,11 +4111,11 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
 【新剧情】
 $_pendingSummary
 
-【当前关系状态】（以此为准校准，避免记忆偏差）
+【当前关系状态】（以此为准校准）
 ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
 
 请输出：
-1. 剧情摘要（不超过$limit字）
+1. 精简剧情摘要（不超过$limit字，聚焦关系和转折，不要保留具体场景）
 2. 末尾单独一行【关系】列出当前重要NPC的关系状态（如：赫敏:友好/72；马尔福:敌对/-30）''';
 
     try {
