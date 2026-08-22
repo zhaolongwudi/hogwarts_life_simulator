@@ -115,11 +115,14 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
+    // 沉浸模式下隐藏顶部状态栏，呈现全屏剧情体验（底部导航保留以保证可用性）
+    final immersive = context.watch<AppProvider>().displayMode == DisplayMode.immersive;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(),
+            if (!immersive) _buildTopBar(),
             Expanded(child: _buildTabContent()),
             _currentTab == 0 ? _buildBottomInput() : const SizedBox.shrink(),
           ],

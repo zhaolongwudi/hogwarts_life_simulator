@@ -11,6 +11,7 @@ import '../data/wand_data.dart';
 import '../data/cg_data.dart';
 import '../data/npc_data.dart';
 import '../data/world_rules.dart';
+import '../data/goal_data.dart';
 import '../data/balance_constants.dart';
 import '../services/deepseek_service.dart';
 import '../services/deepseek_service.dart' show ChatResult;
@@ -263,12 +264,30 @@ class GameProvider extends ChangeNotifier {
         ? '【玩家档案】${p.name}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜${p.grade}年级｜${p.magicAptitude ?? '普通'}天赋｜${p.gender}｜精神力${p.spirit}精力${p.energy}'
         : '';
 
+    // 身份模式：穿越者拥有对原作剧情的隐约记忆，原住民则一无所知
+    final identityLine = appProvider.identityMode == IdentityMode.transmigration
+        ? '【身份模式】穿越者：你对原作的命运走向留有隐约记忆，可作为行动依据，但他人不会轻信"预言"；引用未来信息需克制并举证自洽。'
+        : '【身份模式】原住民：你对命运走向一无所知，只凭自己的判断与本能行事。';
+
+    // 人生目标：若已设定，注入为剧情牵引方向（非强制任务）
+    final goalLine = (p != null && p.currentGoal != null && p.currentGoal!.isNotEmpty)
+        ? '【人生目标】${p.currentGoal}（仅作剧情牵引方向，玩家仍可自由行动，切勿变成每回合的任务推送）'
+        : '';
+
     final worldRules = kUseFusedCompact ? kWorldRulesFusedCompact : kWorldRulesFused;
 
-    return '''$worldRules
-
-$profile
-【时代】$eraName''';
+    final buffer = StringBuffer()
+      ..write(worldRules)
+      ..write('\n\n')
+      ..write(profile)
+      ..write('\n【时代】')
+      ..write(eraName)
+      ..write('\n')
+      ..write(identityLine);
+    if (goalLine.isNotEmpty) {
+      buffer.write('\n').write(goalLine);
+    }
+    return buffer.toString();
   }
 
   String _eraLabel(Era era) {
@@ -383,6 +402,14 @@ $profile
 
       appProvider.setGameStarted(true);
       _unlockAchievement('first_letter');
+      if (_player!.letters.isEmpty) {
+        _player!.letters.add(Letter(
+          id: 'L_admission',
+          sender: '霍格沃茨魔法学校',
+          date: '${_player!.birthYear}年7月',
+          content: '亲爱的${_player!.name}小姐/先生：\n\n我们愉快地通知您，您已获准在霍格沃茨魔法学校就读。随信附上所需书籍与装备一览表。\n学期定于九月一日开始，我们将于七月三十一日前静候您的猫头鹰带来回音。\n\n您忠诚的\n副校长（女）\n米勒娃·麦格 谨上',
+        ));
+      }
       _isLoading = false;
       notifyListeners();
       _autoSave();
@@ -835,9 +862,24 @@ $safeAction
         _choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
+      case '/舆论':
+      case '/传闻':
+        _currentNarrative = _formatRumors();
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
       case '/课程':
         _currentNarrative = _formatCourses();
         _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/课堂':
+        if (parts.length >= 2 && parts[1] == '互动') {
+          _classroomInteraction();
+        } else {
+          _currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
+          _choices = [GameChoice(text: '返回', action: '继续')];
+        }
         return true;
 
       case '/收藏':
@@ -846,7 +888,15 @@ $safeAction
         return true;
 
       case '/日记':
-        _currentNarrative = _formatDiary();
+        if (parts.length >= 2 && parts[1] == '统计') {
+          _currentNarrative = _formatDiaryStats();
+        } else if (parts.length >= 3 && parts[1] == '重播') {
+          _currentNarrative = _replayCg(parts[2]);
+        } else if (parts.length >= 2) {
+          _currentNarrative = _formatCgDetail(parts[1]);
+        } else {
+          _currentNarrative = _formatDiary();
+        }
         _choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
@@ -866,8 +916,7 @@ $safeAction
         return true;
 
       case '/信':
-        _currentNarrative = _formatLetters();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        _handleLetterCommand(parts);
         return true;
 
       case '/血缘':
@@ -916,6 +965,36 @@ $safeAction
       case '/骨科状态':
         _currentNarrative = _formatBoneMode();
         _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/目标':
+        if (parts.length >= 2) {
+          final arg = parts.sublist(1).join(' ');
+          LifeGoal? goal;
+          final idx = int.tryParse(arg);
+          if (idx != null && idx >= 1 && idx <= lifeGoalCatalog.length) {
+            goal = lifeGoalCatalog[idx - 1];
+          } else {
+            goal = goalById(arg) ?? goalByName(arg);
+          }
+          if (goal != null) {
+            p.currentGoal = goal.name;
+            _currentNarrative = '✅ 已设定人生目标：${goal.name}\n'
+                '『${goal.description}』\n\n'
+                '这条目标将牵引后续剧情方向，但你仍可自由行动。\n'
+                '输入 /目标 可重新查看或更换。';
+          } else {
+            _currentNarrative = '未找到目标"$arg"。输入 /目标 查看全部目标。';
+          }
+        } else {
+          _currentNarrative = _formatGoals();
+        }
+        _choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/结局':
+      case '/终章':
+        _startEndingSequence();
         return true;
 
       case '/cheat':
@@ -1018,6 +1097,21 @@ $safeAction
         }
         break;
 
+      case '舆论':
+      case 'rumor':
+        if (parts.length >= 3 && parts[2] == '重置') {
+          p.rumors.clear();
+          _currentNarrative = '已清除所有舆论传闻。';
+        } else if (parts.length >= 4 && parts[2] == '清除') {
+          final key = parts.sublist(3).join(' ');
+          final before = p.rumors.length;
+          p.rumors.removeWhere((r) => r.contains(key));
+          _currentNarrative = '已清除 ${before - p.rumors.length} 条相关传闻。';
+        } else {
+          _currentNarrative = '使用方式：/cheat 舆论 清除 <关键词> 或 /cheat 舆论 重置';
+        }
+        break;
+
       case '解锁CG':
       case 'cg':
         if (parts.length >= 3) {
@@ -1044,6 +1138,8 @@ $safeAction
 /cheat 声望 <数值> <academic|social|combat|moral|leadership|dark>
 /cheat 时间 <天数>
 /cheat 骨科 无视 — 开启骨科模式
+/cheat 舆论 清除 <关键词> — 清除相关传闻
+/cheat 舆论 重置 — 清空所有传闻
 /cheat 解锁CG <CG编号> — 解锁指定CG''';
   }
 
@@ -1533,17 +1629,141 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 /关系 — 查看所有NPC好感度与关系
 /恋爱 — 查看恋爱状态
 /声望 — 查看声望档案
+/舆论 — 查看校园里的传闻/谣言
 /课程 — 查看课程表与进度
+/课堂 互动 — 触发课堂互动（提问/练习/同桌/意外）
 /收藏 — 查看收藏品
-/日记 — 查看CG图鉴与日记
+/日记 — 查看CG图鉴（/日记 统计·/日记 [编号]·/日记 重播 [编号]）
 /档案 — 查看角色完整档案
 /成就 — 查看成就
 /宠物 — 查看宠物状态
-/信 — 查看收到的信件
+/信 — 查看收到的信件（/信 读 [编号] · /信 回 [编号] [内容] · /信 寄 [NPC] [内容]）
 /新NPC — 生成一位新NPC（每学年限4次）
 /血缘 — 查看血缘亲属
 /联动 — 查看时代联动痕迹
+/目标 — 查看/设定人生目标（/目标 [编号]）
+/结局 — 生成终章报告
 /cheat — 作弊指令（详见 /cheat）''';
+  }
+
+  // ==================== 人生目标系统 ====================
+  String _formatGoals() {
+    final p = _player;
+    final current = p?.currentGoal;
+    final buf = StringBuffer()
+      ..writeln('╔══════════════════════════════════════╗')
+      ..writeln('  《人生目标》')
+      ..writeln('╚══════════════════════════════════════╝')
+      ..writeln()
+      ..writeln('【当前目标】${(current == null || current.isEmpty) ? '尚未设定' : current}');
+    if (current != null && current.isNotEmpty) {
+      final g = goalByName(current);
+      if (g != null) {
+        buf.writeln('  『${g.description}』');
+      }
+    }
+    buf
+      ..writeln()
+      ..writeln('【可选目标】（输入 /目标 [编号] 设定）');
+    for (int i = 0; i < lifeGoalCatalog.length; i++) {
+      final g = lifeGoalCatalog[i];
+      buf.writeln('${i + 1}. ${g.name}（${g.category}）— ${g.description}');
+    }
+    return buf.toString();
+  }
+
+  // ==================== 终章 / 结局 ====================
+  void _startEndingSequence() {
+    if (_player == null) return;
+    _isLoading = true;
+    _loadingStage = '正在书写你的终章…';
+    _currentNarrative = '';
+    _choices = [];
+    notifyListeners();
+    unawaited(_generateEnding());
+  }
+
+  Future<void> _generateEnding() async {
+    final p = _player;
+    if (p == null) {
+      _isLoading = false;
+      _loadingStage = '';
+      notifyListeners();
+      return;
+    }
+
+    final relationSnapshot = _buildRelationshipSnapshot();
+    final unlockedNames = achievementCatalog
+        .where((a) => p.achievements.contains(a.id))
+        .map((a) => a.name)
+        .toList();
+    final rep = p.playerReputation;
+    final repSummary =
+        '学术${rep.academic} 社交${rep.social} 战斗${rep.combat} 道德${rep.moral} 领导${rep.leadership} 黑魔法${rep.dark}';
+
+    final header = '╔══════════════════════════════════════╗\n'
+        '  《终章报告》· ${p.name}的魔法人生\n'
+        '╚══════════════════════════════════════╝\n\n'
+        '【时代】${_eraLabel(appProvider.era)}\n'
+        '【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级\n'
+        '【爱情】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}\n'
+        '【财富】${p.galleons}金加隆 · 银行${p.bankGalleons}\n'
+        '【世界线变动率】${(p.worldLineDeviation * 100).toStringAsFixed(1)}%\n'
+        '【人生目标】${p.currentGoal ?? '未设定'}\n'
+        '【声望】$repSummary\n'
+        '【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}\n'
+        '【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}\n';
+
+    // 本地回退（无 AI 或调用失败时使用）
+    final localFallback = header +
+        '\n这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
+        '也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，'
+        '在无数平行世界里继续生长。\n\n'
+        '—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';
+
+    var ending = localFallback;
+    try {
+      if (_router != null && _router!.hasNarrativeService) {
+        final prompt = '''请为玩家撰写一份《终章报告》的评语部分，作为这段魔法人生的结局回顾。用第二人称"你"，小说化文笔，情感克制而有温度，600字以内。
+
+【玩家档案】
+姓名：${p.name}｜${p.gender}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜时代：${_eraLabel(appProvider.era)}
+
+【人生目标】${p.currentGoal ?? '未设定'}（评价：是否实现、以怎样的方式实现或错失）
+
+【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}
+
+【声望】$repSummary
+【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}
+
+【前情摘要】
+${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年级开始的旅程）'}
+
+请按此结构输出：
+一、命运回响
+二、重要羁绊
+三、人生目标达成
+四、终章评语''';
+
+        final result = await _callDeepSeek(
+          prompt,
+          scene: AiScene.summary,
+        );
+        final content = result.content.trim();
+        if (content.isNotEmpty) {
+          ending = header + '\n' + content;
+        }
+      }
+    } catch (e) {
+      debugPrint('终章生成失败，使用本地回退: $e');
+    }
+
+    _currentNarrative = ending;
+    _choices = [GameChoice(text: '继续旅程', action: '继续')];
+    _isLoading = false;
+    _loadingStage = '';
+    notifyListeners();
+    _autoSave();
   }
 
   String _formatRelationships() {
@@ -1721,6 +1941,31 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 阵营声望：${p.factionReputation}''';
   }
 
+  /// 舆论/传闻系统（设定文档 7.3 / 第十三部分）
+  String _formatRumors() {
+    final rumors = _player!.rumors;
+    if (rumors.isEmpty) {
+      return '【舆论】\n目前校园里还没有关于你的传闻。你只是个普通学生——至少现在还是。';
+    }
+    final buf = StringBuffer('【舆论 / 传闻】\n');
+    for (final r in rumors) {
+      buf.writeln('· $r');
+    }
+    buf.writeln('\n（输入 /cheat 舆论 清除 可删除传闻）');
+    return buf.toString();
+  }
+
+  /// 追加一条传闻（去重 + 保留最近 20 条，避免无限膨胀）
+  void _addRumor(String text) {
+    final p = _player;
+    if (p == null) return;
+    if (p.rumors.contains(text)) return;
+    p.rumors.insert(0, text);
+    if (p.rumors.length > 20) {
+      p.rumors.removeRange(20, p.rumors.length);
+    }
+  }
+
   String _formatCourses() {
     final buf = StringBuffer('【课程系统】\n必修课：\n');
     for (final c in requiredCourses) {
@@ -1730,7 +1975,74 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     for (final c in electiveCourses) {
       buf.writeln('· ${c.name}（${c.professor}）');
     }
+    buf.writeln('\n（输入 /课堂 互动 进入当前课堂的互动环节）');
     return buf.toString();
+  }
+
+  /// 课堂互动（设定 10.3，全程本地判定，零 token 消耗）
+  void _classroomInteraction() {
+    final p = _player;
+    if (p == null) return;
+    final roll = _random.nextInt(100);
+    String result;
+
+    if (roll < 40) {
+      // 教授提问：影响学术声望
+      final correct = _random.nextBool();
+      if (correct) {
+        p.playerReputation.add('academic', 2);
+        result = '【课堂互动 · 教授提问】\n'
+            '教授的目光扫过教室，最后停在你身上，抛出一个刁钻的问题。\n'
+            '你略一思索，给出了答案。教室里响起几声低低的惊叹，教授罕见地点了点头。\n'
+            '\n学术声望 +2';
+      } else {
+        result = '【课堂互动 · 教授提问】\n'
+            '教授突然点你的名。你心头一跳，答案卡在喉咙里，最后只好摇了摇头。\n'
+            '几个同学投来同情的目光，你决定下次好好预习。\n'
+            '\n（本次无变化）';
+      }
+    } else if (roll < 70) {
+      // 实践操作：影响技能熟练度
+      const skills = ['魔咒学', '变形术', '魔药学', '草药学'];
+      const skillAttrs = {
+        '魔咒学': 'spell_understanding',
+        '变形术': 'transfiguration',
+        '魔药学': 'potions',
+        '草药学': 'herbology',
+      };
+      final skill = skills[_random.nextInt(skills.length)];
+      final attr = skillAttrs[skill]!;
+      p.attributes[attr] = ((p.attributes[attr] ?? 50) + 1).clamp(0, 100);
+      result = '【课堂互动 · 实践操作】\n'
+          '你握紧魔杖，全神贯注地练习$skill。魔杖尖端的光芒稳定而流畅，眼前的材料随着你的咒语乖巧地变化。\n'
+          '\n$skill 熟练度 +1';
+    } else if (roll < 90) {
+      // 同桌互动：影响 NPC 好感
+      final alive = _npcRegistry.values.where((n) => n.isAlive).toList();
+      if (alive.isNotEmpty) {
+        final npc = alive[_random.nextInt(alive.length)];
+        final delta = 1 + _random.nextInt(2); // +1 ~ +2
+        npc.affection = (npc.affection + delta).clamp(-100, 100);
+        result = '【课堂互动 · 同桌】\n'
+            '趁教授转身，${npc.name}悄悄递来一张纸条，上面写着刚才没听懂的笔记要点。\n'
+            '你冲对方感激地笑了笑。\n'
+            '\n与 ${npc.name} 的好感 +$delta';
+      } else {
+        result = '【课堂互动 · 同桌】\n你环顾四周，身边的座位空着，只得独自琢磨刚才的内容。';
+      }
+    } else {
+      // 特殊意外：纯叙事
+      const events = [
+        '魔药课上，你的坩埚突然冒出诡异的绿烟，被斯内普教授冷冷地盯了三秒。',
+        '温室里，你险些被曼德拉草的尖叫声震晕，幸好及时堵住了耳朵。',
+        '黑魔法防御课上，你被选中上台示范，紧张中竟意外地漂亮完成了动作。',
+        '天文课上，你透过望远镜瞥见了一颗罕见的流星，全班都循声凑了过来。',
+      ];
+      result = '【课堂互动 · 意外】\n${events[_random.nextInt(events.length)]}\n\n（一段课堂上的小插曲，世界线纹丝不动）';
+    }
+
+    _currentNarrative = result;
+    _choices = [GameChoice(text: '继续', action: '继续')];
   }
 
   String _formatCollection() {
@@ -1742,10 +2054,82 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
 
   String _formatDiary() {
     if (_player!.cgRecords.isEmpty) {
-      return '【日记 / CG图鉴】\n暂无解锁CG。在关键剧情节点将解锁专属CG。';
+      return '【日记 / CG图鉴】\n暂无解锁CG。在关键剧情节点将解锁专属CG。\n\n（输入 /日记 统计 查看进度；/日记 [编号] 查看详情）';
     }
-    return '【日记 / CG图鉴】（已解锁 ${_player!.cgRecords.length}/36）\n'
-        '${_player!.cgRecords.values.map((c) => '· ${c.cgId} ${c.name}（${c.unlockedDate}）').join('\n')}';
+    final buf = StringBuffer('【日记 / CG图鉴】（已解锁 ${_player!.cgRecords.length}/${allCgs().length}）\n');
+    for (final cg in allCgs()) {
+      final rec = _player!.cgRecords[cg.id];
+      if (rec == null) continue;
+      buf.writeln('· ${cg.id} ${cg.name}（${rec.unlockedDate}）');
+    }
+    return buf.toString();
+  }
+
+  /// CG 数量与等级分布（设定 7.5 /日记 统计）
+  String _formatDiaryStats() {
+    final unlocked = _player!.cgRecords;
+    final all = allCgs();
+    final byStars = <int, int>{2: 0, 3: 0, 4: 0, 5: 0};
+    final byChapter = <String, int>{};
+    for (final cg in all) {
+      if (unlocked.containsKey(cg.id)) {
+        byStars[cg.stars] = (byStars[cg.stars] ?? 0) + 1;
+        byChapter[cg.chapter] = (byChapter[cg.chapter] ?? 0) + 1;
+      }
+    }
+    final buf = StringBuffer()
+      ..writeln('【日记统计】')
+      ..writeln('已解锁：${unlocked.length}/${all.length}')
+      ..writeln()
+      ..writeln('【等级分布】')
+      ..writeln('★★ 二星：${byStars[2] ?? 0}')
+      ..writeln('★★★ 三星：${byStars[3] ?? 0}')
+      ..writeln('★★★★ 四星：${byStars[4] ?? 0}')
+      ..writeln('★★★★★ 五星：${byStars[5] ?? 0}')
+      ..writeln()
+      ..writeln('【章节分布】');
+    if (byChapter.isEmpty) {
+      buf.writeln('（暂无）');
+    } else {
+      for (final e in byChapter.entries) {
+        buf.writeln('· ${e.key}：${e.value}');
+      }
+    }
+    return buf.toString();
+  }
+
+  /// 查看指定 CG 详情（设定 7.5 /日记 [编号]）
+  String _formatCgDetail(String id) {
+    final cg = cgById(id);
+    if (cg == null) {
+      return '未找到 CG「$id」。可用编号见 /日记。';
+    }
+    final rec = _player!.cgRecords[cg.id];
+    if (rec == null) {
+      return '【${cg.id} ${cg.name}】🔒 尚未解锁\n'
+          '章节：${cg.chapter}｜等级：${cg.starText}\n'
+          '解锁条件：${cg.condition}';
+    }
+    return '【${cg.id} ${cg.name}】${cg.starText}\n'
+        '章节：${cg.chapter}\n'
+        '解锁条件：${cg.condition}\n'
+        '解锁于：${rec.unlockedDate}';
+  }
+
+  /// 重播指定 CG（精简版，设定 7.5 /日记 重播）
+  String _replayCg(String id) {
+    final cg = cgById(id);
+    if (cg == null) {
+      return '未找到 CG「$id」。可用编号见 /日记。';
+    }
+    final rec = _player!.cgRecords[cg.id];
+    if (rec == null) {
+      return '【${cg.id} ${cg.name}】尚未解锁，无法重播。\n解锁条件：${cg.condition}';
+    }
+    return '【重播 · ${cg.name}】${cg.starText}\n\n'
+        '—— 记忆被重新点亮。\n\n'
+        '你仿佛又回到了那一刻：旧羊皮纸与蜡烛的气味在空气里浮动，远处的钟声在石墙之间低低回荡，而「${cg.name}」的画面，如月光一般温柔地重新铺展在你眼前。\n\n'
+        '（${cg.chapter}）解锁于 ${rec.unlockedDate}';
   }
 
   String _formatArchive() {
@@ -1786,11 +2170,170 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     return '【宠物】\n名字：${p.petName ?? '未命名'}\n羁绊：${p.petBond}/100\n宠物可以帮你送信、在冒险中提供帮助。';
   }
 
-  String _formatLetters() {
-    if (_player!.letters.isEmpty) {
-      return '【信件】\n暂无信件。';
+  // ==================== 信件互动系统 ====================
+
+  /// 处理 /信 系列子指令：读 / 回 / 寄
+  void _handleLetterCommand(List<String> parts) {
+    final back = () {
+      _choices = [GameChoice(text: '返回', action: '继续')];
+    };
+
+    if (parts.length < 2) {
+      _currentNarrative = _formatLetters();
+      back();
+      return;
     }
-    return '【信件】\n${_player!.letters.map((l) => '· ${l.sender}（${l.date}）：${l.content.length > 30 ? '${l.content.substring(0, 30)}…' : l.content}').join('\n')}';
+
+    switch (parts[1]) {
+      case '读':
+        final idx = int.tryParse(parts.length > 2 ? parts[2] : '');
+        _currentNarrative = idx == null
+            ? '【信件】\n请输入信件编号：/信 读 [编号]'
+            : _formatLetterDetail(idx);
+        back();
+        return;
+      case '回':
+        final idx = int.tryParse(parts.length > 2 ? parts[2] : '');
+        if (idx == null) {
+          _currentNarrative = '【回信】\n请输入：/信 回 [编号] [回信内容]';
+        } else {
+          final content = parts.length > 3 ? parts.sublist(3).join(' ') : '';
+          _currentNarrative = _replyToLetter(idx, content);
+        }
+        back();
+        return;
+      case '寄':
+        final name = parts.length > 2 ? parts[2] : '';
+        final content = parts.length > 3 ? parts.sublist(3).join(' ') : '';
+        _currentNarrative = name.isEmpty
+            ? '【寄信】\n请输入：/信 寄 [NPC名字] [信件内容]'
+            : _sendLetterToNpc(name, content);
+        back();
+        return;
+      default:
+        _currentNarrative = _formatLetters();
+        back();
+        return;
+    }
+  }
+
+  String _formatLetters() {
+    final letters = _player!.letters;
+    if (letters.isEmpty) {
+      return '【信件】\n暂无信件。\n\n你可以通过猫头鹰给某人寄信：/信 寄 [NPC名字] [内容]';
+    }
+    final buf = StringBuffer()
+      ..writeln('【信件】共 ${letters.length} 封（✉ 表示未读）')
+      ..writeln();
+    for (int i = 0; i < letters.length; i++) {
+      final l = letters[i];
+      final mark = l.read ? '　' : '✉';
+      buf.writeln('[$mark ${i + 1}] ${l.sender}（${l.date}）');
+      final preview = l.content.length > 26 ? '${l.content.substring(0, 26)}…' : l.content;
+      buf.writeln('      $preview');
+      buf.writeln();
+    }
+    buf.writeln('用法：/信 读 [编号] · /信 回 [编号] [内容] · /信 寄 [NPC名字] [内容]');
+    return buf.toString();
+  }
+
+  String _formatLetterDetail(int index) {
+    final letters = _player!.letters;
+    if (index < 1 || index > letters.length) {
+      return '【信件】\n没有第 $index 封信。当前共 ${letters.length} 封。';
+    }
+    final l = letters[index - 1];
+    l.read = true;
+    return '【书信】\n寄信人：${l.sender}\n日期：${l.date}\n\n${l.content}';
+  }
+
+  /// 寄信给 NPC（本地逻辑，不消耗 AI token）
+  String _sendLetterToNpc(String npcName, String content) {
+    final p = _player;
+    if (p == null) return '【寄信】\n尚未创建角色。';
+    if (content.trim().isEmpty) {
+      return '【寄信】\n请写明信件内容：/信 寄 [$npcName] [信件内容]';
+    }
+
+    NPC? npc;
+    for (final n in _npcRegistry.values) {
+      if (n.name.contains(npcName) || npcName.contains(n.name)) {
+        npc = n;
+        break;
+      }
+    }
+    if (npc == null) {
+      return '【寄信】\n你没有找到名叫「$npcName」的人。可输入 /关系 查看已认识的NPC。';
+    }
+    if (!npc.isAlive) {
+      return '【寄信】\n${npc.name}已经无法收到你的信了……';
+    }
+
+    // 寄信耗时（猫头鹰往返）
+    _worldState.time.advanceMinutes(15);
+
+    // 信件是低成本的维系方式：好感小幅提升
+    final stage = affectionStageFor(npc.affection);
+    int change = 1;
+    if (stage == '友好' || stage == '信任') change = 2;
+    if (stage == '亲密' || stage == '深爱' || stage == '灵魂伴侣') change = 3;
+    updateNpcAffection(npc.id, change, reason: '寄信联络');
+
+    // 对方回信（本地模板，不消耗 AI token）
+    _addLetter(sender: npc.name, content: _generateLetterReply(npc));
+
+    final warm = stage == '死敌' || stage == '宿怨' || stage == '反感'
+        ? '（对方似乎并不领情）'
+        : '（你们的关系似乎更近了一点）';
+    return '【寄信】\n你把写好的信交给猫头鹰，目送它振翅飞向${npc.name}。$warm\n\n几天后，猫头鹰带回了回信——输入 /信 读 查看最新一封。';
+  }
+
+  /// 回信给某封信的寄信人
+  String _replyToLetter(int index, String content) {
+    final letters = _player!.letters;
+    if (index < 1 || index > letters.length) {
+      return '【回信】\n没有第 $index 封信。当前共 ${letters.length} 封。';
+    }
+    final letter = letters[index - 1];
+    letter.read = true;
+    return _sendLetterToNpc(letter.sender, content);
+  }
+
+  /// 添加一封来信
+  void _addLetter({required String sender, required String content}) {
+    _player!.letters.add(Letter(
+      id: 'L${DateTime.now().microsecondsSinceEpoch}',
+      sender: sender,
+      content: content,
+      date: _worldState.time.formatDate(),
+    ));
+    _notifications.add('📬 收到来自 $sender 的信');
+  }
+
+  /// 根据好感阶段生成 NPC 回信（本地模板）
+  String _generateLetterReply(NPC npc) {
+    final stage = affectionStageFor(npc.affection);
+    final name = npc.name;
+    switch (stage) {
+      case '死敌':
+      case '宿怨':
+      case '反感':
+        return '（${name}读完你的信后，随手把它揉成一团扔进了壁炉。）\n你对${name}的来信，只换来了冷冰冰的沉默。';
+      case '冷漠':
+      case '中立':
+        return '几天后，一只猫头鹰送来${name}的回信，措辞礼貌而疏远：\n「来信收悉，谢谢。祝好。」';
+      case '好感':
+      case '友好':
+        return '${name}的回信语气轻快：\n「收到你的信啦，很高兴。等我忙完这阵子，我们在礼堂一起喝杯南瓜汁吧。」';
+      case '信任':
+      case '亲密':
+        return '${name}的回信写得很长，字里行间透着真诚与信任，末了还留了一句：「有什么心事，随时告诉我。」';
+      case '深爱':
+      case '灵魂伴侣':
+        return '${name}的回信字迹微微颤抖，情意几乎溢出纸面：「你的信我读了一遍又一遍……等见面时，我有话想亲口对你说。」';
+      default:
+        return '几天后，${name}简短地回了信。';
+    }
   }
 
   String _formatBloodRelatives() {
@@ -1981,6 +2524,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       _unlockAchievement('in_love');
       _notifications.add('💕 你与${npc.name}开始了恋爱！');
       _worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！');
+      _addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
       _currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'
@@ -1988,6 +2532,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     } else {
       npc.affection -= 5;
       _unlockCG(cgById('CG-CF-002'));
+      _addRumor('听说${npc.name}向你表白，却被你拒绝了。');
       _currentNarrative =
           '你温和地摇了摇头。${npc.name}的眼神黯淡了一下，但很快挤出一个微笑。\n\n'
           '"我明白了……那我们，还是朋友吧？"\n\n'
@@ -2652,6 +3197,10 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   // ==================== DeepSeek 调用 ====================
   Future<ChatResult> _callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
     if (_router == null) throw Exception('AI 服务未初始化');
+    // 每次调用前刷新系统提示词，确保玩家动态状态（人生目标、身份模式等）实时注入
+    if (_player != null) {
+      _systemPrompt = _buildSystemPrompt();
+    }
     final result = await _router!.chatComplete(
       scene: scene,
       prompt: prompt,

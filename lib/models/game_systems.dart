@@ -302,16 +302,22 @@ class Reputation {
     switch (_normalize(dim)) {
       case 'academic':
         academic = _clamp(academic + value);
+        break;
       case 'social':
         social = _clamp(social + value);
+        break;
       case 'combat':
         combat = _clamp(combat + value);
+        break;
       case 'moral':
         moral = _clamp(moral + value);
+        break;
       case 'leadership':
         leadership = _clamp(leadership + value);
+        break;
       case 'dark':
         dark = _clamp(dark + value);
+        break;
     }
   }
 
@@ -319,16 +325,22 @@ class Reputation {
     switch (_normalize(dim)) {
       case 'academic':
         academic = _clamp(value);
+        break;
       case 'social':
         social = _clamp(value);
+        break;
       case 'combat':
         combat = _clamp(value);
+        break;
       case 'moral':
         moral = _clamp(value);
+        break;
       case 'leadership':
         leadership = _clamp(value);
+        break;
       case 'dark':
         dark = _clamp(value);
+        break;
     }
   }
 
