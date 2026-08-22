@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.0.6 — 2026-08-22
+
+**📋 变更说明**
+fix: 修复CI flutter analyze的4个错误
+
+- other_screens.dart:176 withValues缺少alpha: 命名参数
+  withValues(isAlive ? 0.5 : 0.2) → withValues(alpha: isAlive ? 0.5 : 0.2)
+
+- test/unit_test.dart LoveState使用错误的字段名
+  LoveState没有stage字段，改为status + setStage/stageFor方法
+
 ### v1.0.5 — 2026-08-22
 
 **📋 变更说明**
