@@ -9,6 +9,7 @@ class WorldState {
   String era;
   Map<String, int> housePoints;
   List<String> recentEvents;
+  List<String> recentNarrativeEvents;
   double playerImpactScore; // 预留字段: 设计钩子, 达到0.5+时原著NPC对玩家可见, 当前未实现写入
 
   // ====== 设定文档扩展字段 ======
@@ -29,6 +30,7 @@ class WorldState {
     this.era = 'harry_same',
     Map<String, int>? housePoints,
     List<String>? recentEvents,
+    List<String>? recentNarrativeEvents,
     this.playerImpactScore = 0.0,
     GameTime? time,
     this.timeFlowMode = 'normal',
@@ -45,6 +47,7 @@ class WorldState {
           'Hufflepuff': 350,
         }),
         recentEvents = List<String>.from(recentEvents ?? const []),
+        recentNarrativeEvents = List<String>.from(recentNarrativeEvents ?? const []),
         specialMarkers = List<String>.from(specialMarkers ?? const []),
         timelineBranches = List<String>.from(timelineBranches ?? const []);
 
@@ -68,6 +71,13 @@ class WorldState {
     specialMarkers.remove(marker);
   }
 
+  void addNarrativeEvent(String event) {
+    recentNarrativeEvents.add(event);
+    if (recentNarrativeEvents.length > 20) {
+      recentNarrativeEvents.removeAt(0);
+    }
+  }
+
   /// 记录一条世界线分支
   void addTimelineBranch(String description) {
     timelineChanges += 1;
@@ -86,6 +96,7 @@ class WorldState {
         'era': era,
         'house_points': housePoints,
         'recent_events': recentEvents,
+        'recent_narrative_events': recentNarrativeEvents,
         'player_impact_score': playerImpactScore,
         'time': time.toJson(),
         'time_flow_mode': timeFlowMode,
@@ -112,6 +123,7 @@ class WorldState {
       era: json['era'] ?? 'harry_same',
       housePoints: Map<String, int>.from(json['house_points'] ?? {}),
       recentEvents: List<String>.from(json['recent_events'] ?? []),
+      recentNarrativeEvents: List<String>.from(json['recent_narrative_events'] ?? []),
       playerImpactScore: (json['player_impact_score'] ?? 0.0).toDouble(),
       time: time ??
           GameTime.fromJson(Map<String, dynamic>.from(json['time'] ?? {})),

@@ -93,6 +93,99 @@ class StoryTextRenderer {
     fontWeight: FontWeight.w500,
   );
 
+  static const Color _affectionColor = Color(0xFF8B949E);
+  static TextStyle _affectionStyle = const TextStyle(
+    fontSize: 12, height: 1.8, color: _affectionColor,
+    fontStyle: FontStyle.italic,
+  );
+  static TextStyle _affectionCharacterStyle = const TextStyle(
+    fontSize: 12, height: 1.8, color: _affectionColor,
+    fontStyle: FontStyle.italic, fontWeight: FontWeight.w600,
+  );
+
+  /// 使用说明：解析文本并将【好感度变化】标记后的段落以柔和样式渲染。
+  /// 好感度变化段落的字体更小（fontSize: 12）、颜色更淡（#8B949E）、斜体显示，
+  /// 使其与正文叙述形成视觉层次。
+  /// 常规段落与 [parse] 方法保持一致的渲染效果。
+  static List<TextSpan> parseWithAffectionStyle(String text) {
+    if (text.isEmpty) return [];
+
+    final spans = <TextSpan>[];
+    final markerPattern = RegExp(r'【[^】]*】');
+    final matches = markerPattern.allMatches(text).toList();
+
+    if (matches.isEmpty) {
+      return parse(text);
+    }
+
+    int currentPos = 0;
+
+    for (final match in matches) {
+      if (match.start > currentPos) {
+        spans.addAll(parse(text.substring(currentPos, match.start)));
+      }
+
+      final markerText = match.group(0)!;
+      final sectionEnd = _nextMarkerOrEnd(text, match.end);
+
+      if (markerText == '【好感度变化】') {
+        spans.add(TextSpan(text: markerText, style: _narrationStyle));
+        spans.addAll(
+          _parseAffectionSection(text.substring(match.end, sectionEnd)),
+        );
+      } else {
+        spans.addAll(parse(text.substring(match.start, sectionEnd)));
+      }
+
+      currentPos = sectionEnd;
+    }
+
+    if (currentPos < text.length) {
+      spans.addAll(parse(text.substring(currentPos)));
+    }
+
+    return spans;
+  }
+
+  static int _nextMarkerOrEnd(String text, int from) {
+    final idx = text.indexOf('【', from);
+    return idx == -1 ? text.length : idx;
+  }
+
+  static List<TextSpan> _parseAffectionSection(String text) {
+    final spans = <TextSpan>[];
+    final lines = text.split('\n');
+
+    for (int i = 0; i < lines.length; i++) {
+      if (i > 0) spans.add(const TextSpan(text: '\n'));
+      final line = lines[i];
+      if (line.isEmpty) continue;
+
+      final characterName = _findCharacterAtStart(line);
+      if (characterName != null) {
+        spans.add(
+          TextSpan(text: characterName, style: _affectionCharacterStyle),
+        );
+        spans.add(
+          TextSpan(text: line.substring(characterName.length), style: _affectionStyle),
+        );
+      } else {
+        spans.add(TextSpan(text: line, style: _affectionStyle));
+      }
+    }
+
+    return spans;
+  }
+
+  static String? _findCharacterAtStart(String line) {
+    final sortedNames = List<String>.from(_characterNames)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    for (final name in sortedNames) {
+      if (line.startsWith(name)) return name;
+    }
+    return null;
+  }
+
   static List<TextSpan> parse(String text) {
     if (text.isEmpty) return [];
 

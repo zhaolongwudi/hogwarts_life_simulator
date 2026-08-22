@@ -141,23 +141,27 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
   Widget _buildContactTile(NPC npc) {
     final houseColor = UiHelpers.getHouseColor(npc.house);
     final affLevel = UiHelpers.getAffectionLabel(npc.affection);
+    final isAlive = npc.isAlive;
+    final canChat = npc.isAlive;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: !isAlive ? Colors.grey.withValues(alpha: 0.3) : Theme.of(context).dividerColor),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => NpcChatScreen(npc: npc)),
-            );
-          },
+          onTap: canChat
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => NpcChatScreen(npc: npc)),
+                  );
+                }
+              : null,
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -167,9 +171,9 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: houseColor.withValues(alpha: 0.15),
+                    color: houseColor.withValues(alpha: isAlive ? 0.15 : 0.08),
                     shape: BoxShape.circle,
-                    border: Border.all(color: houseColor.withValues(alpha: 0.5)),
+                    border: Border.all(color: houseColor.withValues(isAlive ? 0.5 : 0.2)),
                   ),
                   child: Center(
                     child: Text(
@@ -188,11 +192,35 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                           Expanded(
                             child: Text(
                               npc.name,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: !isAlive ? Colors.grey : null,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (npc.isConsideringConfession)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text('酝酿中', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444))),
+                            ),
+                          if (!isAlive)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text('已离场', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ),
                           _buildAffectionBadge(npc.affection),
                         ],
                       ),
@@ -201,13 +229,58 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                         affLevel,
                         style: TextStyle(
                           fontSize: 12,
-                          color: UiHelpers.getAffectionColor(npc.affection),
+                          color: !isAlive ? Colors.grey : UiHelpers.getAffectionColor(npc.affection),
                         ),
                       ),
+                      if (npc.appearance.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          npc.appearance,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color),
+                        ),
+                      ],
+                      if (npc.personalGoal != null && npc.personalGoal!.isNotEmpty) ...[
+                        const SizedBox(height: 1),
+                        Text(
+                          '目标：${npc.personalGoal!}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall!.color),
+                        ),
+                      ],
+                      if (npc.recentEvents.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_stories, size: 12, color: Colors.amber.shade700),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    '近期剧情 · ${npc.recentEvents.first}',
+                                    style: TextStyle(fontSize: 10, color: Colors.amber.shade800),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Theme.of(context).dividerColor),
+                Icon(Icons.chevron_right, color: canChat ? Theme.of(context).dividerColor : Colors.grey),
               ],
             ),
           ),

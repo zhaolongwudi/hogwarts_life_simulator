@@ -8,18 +8,19 @@ enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
 enum AiProvider { deepseek, zhipu, agnes, sensenova }
 
 // 场景 → 提供商名 的默认路由
-// 策略：智谱AI用于主剧情（中文质量最好），SenseNova用于摘要（Token效率最高），Agnes用于NPC聊天（响应最快）
+// 策略：Agnes用于主剧情（响应最快，中文质量可接受），SenseNova用于摘要（Token效率最高），DeepSeek用于NPC聊天（长文本能力强）
+// 用户可通过设置页面自定义路由覆盖默认值
 const Map<AiScene, String> kDefaultRoute = {
-  AiScene.narrative: 'zhipu',      // 主剧情：智谱中文质量最好
+  AiScene.narrative: 'agnes',      // 主剧情：Agnes响应速度最快（<1s首字）
   AiScene.summary: 'sensenova',    // 摘要：商汤Token效率最高(省60%)
-  AiScene.npcChat: 'agnes',        // NPC聊天：Agnes响应速度最快
+  AiScene.npcChat: 'deepseek',    // NPC聊天：DeepSeek长文本能力强
 };
 
 // 场景简介（显示在设置页）
 const Map<AiScene, String> kSceneDescriptions = {
-  AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。这是核心功能，推荐使用智谱AI（中文质量最好）或DeepSeek。',
-  AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。推荐使用SenseNova（Token效率最高，省60%）。',
-  AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。推荐使用Agnes（响应速度最快）。',
+  AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。默认使用 Agnes turbo（速度最快），可改为智谱AI以获得更高中文质量。',
+  AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。默认使用 SenseNova（Token效率最高，省60%）。',
+  AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。默认使用 DeepSeek（长文本能力强），可改为 Agnes 以获得更快响应。',
 };
 
 // 提供商简介
@@ -80,7 +81,7 @@ class AiConfig {
 
   factory AiConfig.agnes(String apiKey) => AiConfig(
         provider: AiProvider.agnes,
-        model: 'agnes-2.5-flash',
+        model: 'agnes-2.5-turbo',
         apiKey: apiKey,
         baseUrl: 'https://api.agnes-ai.cn',
         chatPath: '/v1/chat/completions',
@@ -177,7 +178,7 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.zhipu:
         return 'glm-4.7-flash';
       case AiProvider.agnes:
-        return 'agnes-2.5-flash';
+        return 'agnes-2.5-turbo';
       case AiProvider.sensenova:
         return 'sensenova-6.7-flash-lite';
     }
@@ -217,7 +218,7 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.zhipu:
         return ['glm-4.7-flash', 'glm-4-flash', 'glm-4', 'glm-4-long'];
       case AiProvider.agnes:
-        return ['agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
+        return ['agnes-2.5-turbo', 'agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
       case AiProvider.sensenova:
         // 平台公测版模型（参考 https://platform.sensenova.cn/docs）
         // sensenova-u1-fast 是信息图生成专用模型，不走 chat completions，
@@ -293,7 +294,7 @@ class AppProvider extends ChangeNotifier {
     final defaults = {
       AiProvider.deepseek: 'deepseek-v4-flash',
       AiProvider.zhipu: 'glm-4.7-flash',
-      AiProvider.agnes: 'agnes-2.5-flash',
+      AiProvider.agnes: 'agnes-2.5-turbo',
       AiProvider.sensenova: 'sensenova-6.7-flash-lite',
     };
     _aiModel = defaults[provider]!;
@@ -380,7 +381,7 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.zhipu:
         return ['glm-4.7-flash', 'glm-4.7', 'glm-4-flash', 'glm-4', 'glm-4-long'];
       case AiProvider.agnes:
-        return ['agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
+        return ['agnes-2.5-turbo', 'agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
       case AiProvider.sensenova:
         return ['sensenova-6.7-flash-lite', 'deepseek-v4-flash'];
     }

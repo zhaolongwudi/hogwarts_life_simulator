@@ -427,18 +427,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildEventList() {
-    final events = [
-      {'title': '特快列车上的初遇', 'time': '第1年·9月'},
-      {'title': '猫头鹰的意外', 'time': '第1年·9月'},
-      {'title': '红头发的热情', 'time': '第1年·9月'},
-    ];
+    final gp = context.read<GameProvider>();
+    final events = gp.worldState.recentEvents.isNotEmpty
+        ? gp.worldState.recentEvents.take(8).toList()
+        : <String>[];
+    final narrativeEvents = gp.worldState.recentNarrativeEvents.isNotEmpty
+        ? gp.worldState.recentNarrativeEvents.take(5).toList()
+        : <String>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text('当前事件列表', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+            const Text('📋 事件记录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -447,72 +449,127 @@ class _GameScreenState extends State<GameScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Theme.of(context).dividerTheme.color!),
               ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.refresh, size: 16),
-                SizedBox(width: 4),
-                Text('重刷', style: TextStyle(fontSize: 12)),
-              ]),
+              child: Text('共 ${events.length + narrativeEvents.length} 条',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text('可通过探索地图触发新的事件', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
         const SizedBox(height: 8),
-        ...events.map((e) => _buildEventCard(e['title']!, e['time']!)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.history, color: Theme.of(context).textTheme.bodyMedium!.color),
-            const SizedBox(width: 4),
-            Text('往期与已完结', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium!.color)),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).dividerTheme.color,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('0', style: TextStyle(fontSize: 12)),
+        if (events.isEmpty && narrativeEvents.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerTheme.color!),
             ),
+            child: const Center(
+              child: Text('暂无事件记录\n行动起来创建你的故事吧！', style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            ),
+          )
+        else ...[
+          if (narrativeEvents.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('📖 剧情事件', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color, fontWeight: FontWeight.w600)),
+            ),
+            ...narrativeEvents.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final event = entry.value;
+              return _buildEventCard(event, idx == 0 ? '最新' : '${idx + 1} 回合前', isRecent: idx == 0);
+            }),
+            const SizedBox(height: 8),
           ],
-        ),
+          if (events.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('🌍 世界动态', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color, fontWeight: FontWeight.w600)),
+            ),
+            ...events.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final event = entry.value;
+              return _buildEventCard(event, idx == 0 ? '最新' : '$idx 月前', isRecent: idx == 0);
+            }),
+          ],
+        ],
       ],
     );
   }
 
-  Widget _buildEventCard(String title, String time) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildEventCard(String title, String time, {bool isRecent = false}) {
+    final isWorldEvent = title.startsWith('【');
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Row(
               children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3))),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.schedule, size: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
-                    const SizedBox(width: 2),
-                    Text('时间: $time', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-                  ],
-                ),
+                Icon(isWorldEvent ? Icons.public : Icons.auto_awesome, size: 20, color: isRecent ? const Color(0xFFD3A625) : Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(child: Text(isWorldEvent ? '世界动态详情' : '剧情事件详情')),
               ],
             ),
+            content: Text(
+              title,
+              style: const TextStyle(height: 1.5),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+            ],
           ),
-          Icon(Icons.bookmark_border, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
-          const SizedBox(width: 12),
-          Icon(Icons.edit, size: 20, color: Theme.of(context).textTheme.bodyMedium!.color),
-          const SizedBox(width: 8),
-          Icon(Icons.chevron_right, size: 24, color: Theme.of(context).colorScheme.primary),
-        ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isRecent
+                ? const Color(0xFFD3A625).withValues(alpha: 0.6)
+                : isWorldEvent
+                    ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                    : Theme.of(context).dividerTheme.color!,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: (isRecent ? const Color(0xFFD3A625) : isWorldEvent ? const Color(0xFF3B82F6) : Theme.of(context).colorScheme.primary).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isWorldEvent ? Icons.public : Icons.auto_awesome,
+                size: 16,
+                color: isRecent ? const Color(0xFFD3A625) : isWorldEvent ? const Color(0xFF3B82F6) : Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title.length > 40 ? '${title.substring(0, 38)}…' : title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isRecent ? FontWeight.w700 : FontWeight.w500,
+                      color: isRecent ? const Color(0xFFD3A625) : const Color(0xFFE6EDF3),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(time, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: Theme.of(context).textTheme.bodyMedium!.color),
+          ],
+        ),
       ),
     );
   }
@@ -566,7 +623,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
           child: RichText(
             text: TextSpan(
-              children: StoryTextRenderer.parse(narrative),
+              children: StoryTextRenderer.parseWithAffectionStyle(narrative),
             ),
           ),
         ),
@@ -1119,30 +1176,28 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildWorldTab() {
     final gp = context.watch<GameProvider>();
     final npcs = gp.npcRegistry.values.toList();
-    final nearby = npcs.where((n) => gp.isNearby(n.id)).toList();
-    final others = npcs.where((n) => !gp.isNearby(n.id)).toList();
-    final totalCount = npcs.length;
-    final unmetCount = npcs.where((n) => n.affection == 0 && !gp.isNearby(n.id)).length;
+    final nearby = npcs.where((n) => gp.isNearby(n.id) || n.affection > 0 || n.recentEvents.isNotEmpty).toList();
+    final others = npcs.where((n) => !nearby.contains(n)).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildWorldHeader(totalCount, unmetCount),
+          _buildWorldHeader(nearby.length, others.length),
           const SizedBox(height: 12),
           _buildWorldActionRow(),
           const SizedBox(height: 12),
-          _buildNpcSection('未登场人物', others, true),
+          _buildNpcSection('🌟 已登场人物', nearby, false),
           const SizedBox(height: 8),
-          _buildNpcSection('已登场人物', nearby, false),
+          _buildNpcSection('👥 未登场/未结识', others, true),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildWorldHeader(int total, int unmet) {
+  Widget _buildWorldHeader(int appeared, int unmet) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1169,7 +1224,7 @@ class _GameScreenState extends State<GameScreen> {
                 Text('世界', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(
-                  '第${_currentYear()}年·9月 · 已登场 ${total - unmet} 人 · 未登场 $unmet 人',
+                  '第${_currentYear()}年·9月 · 已登场 $appeared 人 · 未登场 $unmet 人',
                   style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
                 ),
               ],
@@ -1299,8 +1354,18 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildNpcDetailCard(NPC npc) {
     final gp = context.read<GameProvider>();
     final isNearby = gp.isNearby(npc.id);
+    final hasAppeared = isNearby || npc.affection > 0 || npc.recentEvents.isNotEmpty;
     final relationLabel = _getRelationLabel(npc);
     final hasAppearance = npc.appearance.isNotEmpty;
+    final hasRecentEvents = npc.recentEvents.isNotEmpty;
+    final houseLabel = {
+      'Gryffindor': '格兰芬多',
+      'Slytherin': '斯莱特林',
+      'Ravenclaw': '拉文克劳',
+      'Hufflepuff': '赫奇帕奇',
+      'staff': '教职工',
+    }[npc.house] ?? '';
+    final gradeLabel = npc.grade == 0 ? '教职工' : '${npc.grade}年级';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
@@ -1319,10 +1384,16 @@ class _GameScreenState extends State<GameScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                  color: _getHouseColor(npc.house).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
+                  border: Border.all(color: _getHouseColor(npc.house).withValues(alpha: 0.5)),
                 ),
-                child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 28),
+                child: Center(
+                  child: Text(
+                    npc.name.isNotEmpty ? npc.name[0] : '?',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _getHouseColor(npc.house)),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1331,51 +1402,178 @@ class _GameScreenState extends State<GameScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                        Expanded(
+                          child: Text(npc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: hasAppeared ? Colors.green.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            hasAppeared ? '已登场' : '未登场',
+                            style: TextStyle(fontSize: 11, color: hasAppeared ? Colors.green : Colors.grey),
+                          ),
+                        ),
                         if (isNearby) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.12),
+                              color: Colors.blue.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Text('同地点', style: TextStyle(fontSize: 11, color: Colors.green)),
+                            child: const Text('同地点', style: TextStyle(fontSize: 11, color: Colors.blue)),
+                          ),
+                        ],
+                        if (npc.isConsideringConfession) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text('酝酿中', style: TextStyle(fontSize: 11, color: Color(0xFFEF4444))),
                           ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(relationLabel, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Text(relationLabel, style: TextStyle(fontSize: 12, color: _getAffectionColor(npc.affection), fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 8),
+                        Text('好感 ${npc.affection > 0 ? '+' : ''}${npc.affection}', style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                      ],
+                    ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
-                        const SizedBox(width: 3),
-                        Text(
-                          npc.currentLocation,
-                          style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                        if (houseLabel.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: _getHouseColor(npc.house).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(houseLabel, style: TextStyle(fontSize: 11, color: _getHouseColor(npc.house))),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(gradeLabel, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            npc.currentLocation,
+                            style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
+                    if (npc.personality.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 2,
+                        children: npc.personality.map((trait) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(trait, style: TextStyle(fontSize: 10, color: Colors.purple.shade700)),
+                        )).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
           if (hasAppearance) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
-              child: Text(
-                npc.appearance,
-                style: TextStyle(fontSize: 13, height: 1.6, color: Theme.of(context).textTheme.bodyLarge!.color),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(npc.appearance,
+                      style: TextStyle(fontSize: 12.5, height: 1.5, color: Theme.of(context).textTheme.bodyLarge!.color)),
+                  if (npc.personalGoal != null && npc.personalGoal!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('🎯 ${npc.personalGoal}',
+                        style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color, fontStyle: FontStyle.italic)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          if (hasRecentEvents) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_stories, size: 14, color: Colors.amber.shade700),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '曾在「${npc.recentEvents.first}」中出现',
+                      style: TextStyle(fontSize: 11, color: Colors.amber.shade800),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (npc.recentEvents.length > 1)
+                    Text('等${npc.recentEvents.length}条', style: TextStyle(fontSize: 10, color: Colors.amber.shade600)),
+                ],
               ),
             ),
           ],
         ],
       ),
     );
+  }
+
+  Color _getHouseColor(String house) {
+    switch (house) {
+      case 'Gryffindor':
+        return const Color(0xFFB8860B);
+      case 'Slytherin':
+        return const Color(0xFF2D6A4F);
+      case 'Ravenclaw':
+        return const Color(0xFF3B82F6);
+      case 'Hufflepuff':
+        return const Color(0xFFD97706);
+      case 'staff':
+        return const Color(0xFF6B7280);
+      default:
+        return const Color(0xFF5A6B4A);
+    }
+  }
+
+  Color _getAffectionColor(int affection) {
+    if (affection <= -30) return const Color(0xFFEF4444);
+    if (affection <= -10) return const Color(0xFFF97316);
+    if (affection <= 10) return const Color(0xFF6B7280);
+    if (affection <= 30) return const Color(0xFF3B82F6);
+    if (affection <= 50) return const Color(0xFF10B981);
+    if (affection <= 70) return const Color(0xFF8B5CF6);
+    if (affection <= 90) return const Color(0xFFEC4899);
+    return const Color(0xFFD946EF);
   }
 
   String _getRelationLabel(NPC npc) {
@@ -1457,8 +1655,8 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '💰 ${gp.player?.inventory.isNotEmpty == true ? '有' : '无'}资产 · 🎯 第${_turnCount(gp)}回合',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                      '💰 ${gp.player?.galleons ?? 0} 加隆 · 🏦 ${gp.player?.bankGalleons ?? 0} 存 · 🎯 第${_turnCount(gp)}回合',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
                     ),
                   ],
                 ),

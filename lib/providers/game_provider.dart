@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'app_provider.dart';
@@ -187,6 +188,7 @@ class GameProvider extends ChangeNotifier {
       if (cap <= 0) {
         actualChange = 0;
         _notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+        _worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升');
       } else if (change > cap) {
         actualChange = cap;
       }
@@ -201,17 +203,25 @@ class GameProvider extends ChangeNotifier {
         actualChange = cap - npc.affection;
         if (actualChange < 0) actualChange = 0;
         _notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
+        _worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
       }
     }
 
     if (change < -15) {
       npc.addGrudge('betrayal', reason ?? '背叛/欺骗', currentDay);
       _notifications.add('💔 ${npc.name}因你的行为而记恨在心');
+      _worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心');
     }
 
     npc.affection = (npc.affection + actualChange).clamp(-100, 100);
     if (npc.affection > npc.maxAffectionReached) {
       npc.maxAffectionReached = npc.affection;
+    }
+
+    if (actualChange != 0) {
+      final eventText = '好感 ${actualChange > 0 ? '+' : ''}$actualChange：${reason ?? '互动'}';
+      npc.recentEvents.insert(0, eventText);
+      if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
     }
     _checkAffectionAchievements(npc);
     notifyListeners();
@@ -599,7 +609,7 @@ ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $action
 
 【写作要求】
-1. 叙事要求:400-600字，详细描写：
+1. 叙事要求:300-450字，详细描写：
    - 环境氛围（声音、气味、光线等3-5种感官细节）
    - NPC的言行举止、表情反应、对话交流
    - 玩家的心理活动、情绪变化
@@ -637,13 +647,13 @@ $action
       _updateNPCsFromAction(action);
 
       if (_turnCount % 10 == 0 && _pendingSummary.isNotEmpty) {
-        _loadingStage = '正在整理剧情摘要...';
-        notifyListeners();
-        try {
-          await _summarizeNarrative();
-        } catch (e) {
-          debugPrint('摘要生成失败(不影响游戏): $e');
-        }
+        unawaited(Future.microtask(() async {
+          try {
+            await _summarizeNarrative();
+          } catch (e) {
+            debugPrint('摘要生成失败(不影响游戏): $e');
+          }
+        }));
       }
 
       _loadingStage = '';
@@ -1849,6 +1859,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       _unlockAchievement('first_confession');
       _unlockAchievement('in_love');
       _notifications.add('💕 你与${npc.name}开始了恋爱！');
+      _worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！');
       _currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'
@@ -1889,6 +1900,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       chapter: cg.chapter,
     );
     _notifications.add('📸 解锁CG：${cg.name}');
+    _worldState.addNarrativeEvent('📸 解锁CG：${cg.name}');
   }
 
   void _unlockAchievement(String id) {
@@ -1901,6 +1913,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     );
     p.achievements.add(id);
     _notifications.add('🏆 解锁成就：${ach.name}');
+    _worldState.addNarrativeEvent('🏆 解锁成就：${ach.name}');
   }
 
   void _checkAffectionAchievements(NPC npc) {
@@ -2202,6 +2215,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     );
 
     _notifications.add('🌍 $event');
+    _worldState.addNarrativeEvent('🌍 $event');
   }
 
   String _monthSeasonKey(int month) {
@@ -2396,6 +2410,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (npc == null) return;
 
     _notifications.add('💕 与${npc.name}之间发生了一段浪漫插曲。');
+    _worldState.addNarrativeEvent('💕 与${npc.name}之间发生了一段浪漫插曲。');
   }
 
   // ==================== 快速推进 ====================
@@ -2495,7 +2510,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       prompt: prompt,
       systemPrompt: _systemPrompt ?? '',
       temperature: 0.85,
-      maxTokens: 2000,
+      maxTokens: scene == AiScene.narrative ? 1800 : 2500,
     );
     _totalPromptTokens += result.usage.promptTokens;
     _totalCompletionTokens += result.usage.completionTokens;

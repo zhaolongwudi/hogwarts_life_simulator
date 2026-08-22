@@ -12,14 +12,15 @@ class AiRouterConfig {
   final List<AiProvider> fallbackOrder;
 
   const AiRouterConfig({
-    // 智谱AI作为主剧情提供商（中文质量最好）
-    this.narrativeProvider = AiProvider.zhipu,
+    // Agnes作为主剧情提供商（响应最快，中文质量可接受）
+    // 用户可通过设置页面自定义覆盖此默认值
+    this.narrativeProvider = AiProvider.agnes,
     // SenseNova作为摘要提供商（Token效率最高）
     this.summaryProvider = AiProvider.sensenova,
-    // Agnes作为NPC聊天提供商（响应速度最快）
-    this.npcChatProvider = AiProvider.agnes,
-    // 降级顺序：智谱→SenseNova→Agnes→DeepSeek
-    this.fallbackOrder = const [AiProvider.sensenova, AiProvider.agnes, AiProvider.deepseek],
+    // DeepSeek作为NPC聊天提供商（长文本能力强）
+    this.npcChatProvider = AiProvider.deepseek,
+    // 降级顺序：DeepSeek→SenseNova→Agnes（速度优先，快速降级）
+    this.fallbackOrder = const [AiProvider.deepseek, AiProvider.sensenova, AiProvider.agnes],
   });
 
   AiProvider providerFor(AiScene scene) {
@@ -75,16 +76,22 @@ class AiRouter {
     required String prompt,
     String? systemPrompt,
     double temperature = 0.8,
-    int maxTokens = 2000,
+    int maxTokens = 2500,
   }) async {
     final primary = _config.providerFor(scene);
-    return _callWithFallback(
+    final future = _callWithFallback(
       primary: primary,
       prompt: prompt,
       systemPrompt: systemPrompt,
       temperature: temperature,
       maxTokens: maxTokens,
     );
+    if (scene == AiScene.narrative) {
+      return future.timeout(const Duration(seconds: 45), onTimeout: () {
+        throw Exception('剧情生成超时（45秒），请重试或切换提供商');
+      });
+    }
+    return future;
   }
 
   Future<ChatResult> _callWithFallback({
