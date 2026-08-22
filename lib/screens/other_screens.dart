@@ -942,11 +942,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
       _entries.removeAt(index);
     });
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }
 
 // ==================== 平行世界小剧场 ====================

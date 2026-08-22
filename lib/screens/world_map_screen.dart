@@ -15,7 +15,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   String? _parentArea;
   String? _selectedLocation;
 
-  final Map<String, List<Map<String, dynamic>>> _mapData = {
+  static const Map<String, List<Map<String, dynamic>>> _mapData = {
     '霍格沃茨': [
       {'name': '天文塔', 'x': 0.62, 'y': 0.12, 'desc': '霍格沃茨最高的塔楼，仰望星空学习天文学。', 'icon': Icons.auto_awesome},
       {'name': '拉文克劳塔', 'x': 0.28, 'y': 0.14, 'desc': '拉文克劳学院的公共休息室所在。', 'icon': Icons.castle},
@@ -73,7 +73,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     ],
   };
 
-  final Map<String, Map<String, dynamic>> _subAreas = {
+  static const Map<String, Map<String, dynamic>> _subAreas = {
     '对角巷': {
       'subtitle': '巫师世界最繁华的商业街，各类魔法店铺齐聚于此。',
       'locations': [

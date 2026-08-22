@@ -645,6 +645,7 @@ $action
       _accumulateForSummary(_currentNarrative);
       _advanceTimeForAction(action);
       _updateNPCsFromAction(action);
+      _updatePlayerImpactScore(action);
 
       if (_turnCount % 10 == 0 && _pendingSummary.isNotEmpty) {
         unawaited(Future.microtask(() async {
@@ -2472,6 +2473,31 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   void travelTo(String location) {
     _worldState.currentLocation = location;
     notifyListeners();
+  }
+
+  /// 根据玩家行动累计影响力分数
+  /// 每回合 +0.01，涉及原著NPC互动 +0.02，涉及关键剧情(恋爱/CG/成就) +0.05
+  void _updatePlayerImpactScore(String action) {
+    double delta = 0.01;
+
+    // 涉及原著NPC名字的行动
+    for (final npc in _npcRegistry.values) {
+      if (npc.isCanon && action.contains(npc.name)) {
+        delta += 0.02;
+        break;
+      }
+    }
+
+    // 关键剧情关键词
+    const keywords = ['恋爱', '表白', '冒险', '战斗', '发现', '秘密', '魂器', '黑魔法'];
+    for (final kw in keywords) {
+      if (action.contains(kw)) {
+        delta += 0.02;
+        break;
+      }
+    }
+
+    _worldState.playerImpactScore = (_worldState.playerImpactScore + delta).clamp(0.0, 1.0);
   }
 
   // ==================== 好感度操作（供UI调用） ====================

@@ -1591,7 +1591,16 @@ class _GameScreenState extends State<GameScreen> {
     final gp = context.read<GameProvider>();
     final yearStr = gp.worldState.academicYear;
     try {
-      return int.parse(yearStr.split('-')[0]) - 1991 + 1;
+      final startYear = int.parse(yearStr.split('-')[0]);
+      // 根据时代动态计算年级：1年=1年级，不固定基准年
+      final baseYear = switch (gp.worldState.era) {
+        'dumbledore' => 1892,
+        'marauders' => 1971,
+        'first_war' => 1976,
+        'post_war' => 2020,
+        _ => 1991, // harry_same / random
+      };
+      return startYear - baseYear + 1;
     } catch (_) {
       return 1;
     }
@@ -2293,35 +2302,8 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildApiKeyInput(AppProvider appProvider, GameProvider gp) {
-    final controller = TextEditingController(text: appProvider.apiKey ?? '');
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            obscureText: true,
-            decoration: const InputDecoration(
-              hintText: 'sk-...',
-              isDense: true,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: () async {
-            await appProvider.saveApiKey(controller.text.trim());
-            await gp.updateApiKey(controller.text.trim());
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✅ 已保存 API Key')),
-              );
-            }
-          },
-          child: const Text('保存'),
-        ),
-      ],
-    );
+ Widget _buildApiKeyInput(AppProvider appProvider, GameProvider gp) {
+    return _ApiKeyInput(appProvider: appProvider, gp: gp);
   }
 
   Widget _buildSpeedChip(String label, bool selected) {
@@ -2353,6 +2335,62 @@ class _GameScreenState extends State<GameScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.phone_android), label: '手机'),
         BottomNavigationBarItem(icon: Icon(Icons.public), label: '世界'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
+      ],
+    );
+  }
+}
+
+class _ApiKeyInput extends StatefulWidget {
+  final AppProvider appProvider;
+  final GameProvider gp;
+  const _ApiKeyInput({required this.appProvider, required this.gp});
+
+  @override
+  State<_ApiKeyInput> createState() => _ApiKeyInputState();
+}
+
+class _ApiKeyInputState extends State<_ApiKeyInput> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.appProvider.apiKey ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'sk-...',
+              isDense: true,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () async {
+            await widget.appProvider.saveApiKey(_controller.text.trim());
+            await widget.gp.updateApiKey(_controller.text.trim());
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('已保存 API Key')),
+              );
+            }
+          },
+          child: const Text('保存'),
+        ),
       ],
     );
   }
