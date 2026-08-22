@@ -14,6 +14,10 @@ class AiDebugLogger {
   bool _enabled = false;
   final _controller = StreamController<String>.broadcast();
 
+  /// 进行中的调用（callId → 当前缓冲内容），用于把 START+RESPONSE/ERROR 拼成一条
+  /// 避免并行调用（如narrative和choice）时START和RESPONSE交叉写入
+  final Map<String, StringBuffer> _pendingCalls = {};
+
   bool get enabled => _enabled;
   Stream<String> get logs => _controller.stream;
 
@@ -41,7 +45,117 @@ class AiDebugLogger {
     }
   }
 
-  /// 记录 AI 调用
+  /// 生成一个调用ID（timestamp + 场景 + 短随机），唯一标识一次 START→RESPONSE/ERROR 配对
+  String _newCallId(String scene, String provider) {
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    return '$ts-$scene-$provider';
+  }
+
+  /// 记录 START 阶段 → 返回 callId，后续 RESPONSE/ERROR/TIMEOUT 用这个 callId 追加并完成
+  Future<String?> logStart({
+    required String timestamp,
+    required String scene,
+    required String provider,
+    required String promptPreview,
+    String? systemPrompt,
+  }) async {
+    if (!_enabled) return null;
+    try {
+      await _ensureLogDir();
+      final callId = _newCallId(scene, provider);
+      final buf = StringBuffer();
+      buf.writeln('═══════════════════════════════════');
+      buf.writeln('时间: $timestamp');
+      buf.writeln('场景: $scene');
+      buf.writeln('模型: $provider');
+      buf.writeln('动作: START');
+      buf.writeln('CallID: $callId');
+      buf.writeln('═══════════════════════════════════');
+      buf.writeln('【发送给模型的 Prompt】');
+      buf.writeln('---');
+      buf.writeln(promptPreview);
+      buf.writeln('---');
+      if (systemPrompt != null && systemPrompt.isNotEmpty) {
+        buf.writeln('【System Prompt】');
+        buf.writeln('---');
+        buf.writeln(systemPrompt);
+        buf.writeln('---');
+      }
+      _pendingCalls[callId] = buf;
+      return callId;
+    } catch (e) {
+      debugPrint('AiDebugLogger logStart 失败: $e');
+      return null;
+    }
+  }
+
+  /// 记录 RESPONSE / ERROR / TIMEOUT 阶段：用 callId 找到 START 缓冲，合并成一条再落盘
+  Future<void> logComplete({
+    required String? callId,
+    required String timestamp,
+    required String scene,
+    required String provider,
+    required String action, // 'RESPONSE' / 'ERROR' / 'TIMEOUT'
+    String? responsePreview,
+    int? promptTokens,
+    int? completionTokens,
+    int? totalTokens,
+    String? error,
+  }) async {
+    if (!_enabled) return;
+    try {
+      await _ensureLogDir();
+      StringBuffer buf;
+      if (callId != null && _pendingCalls.containsKey(callId)) {
+        buf = _pendingCalls.remove(callId)!;
+        // 追加一个分隔区块区分 START 和完成阶段
+        buf.writeln('');
+        buf.writeln('───────────────────────────────────');
+        buf.writeln('完成时间: $timestamp');
+        buf.writeln('动作: $action');
+        buf.writeln('───────────────────────────────────');
+      } else {
+        // 找不到对应的START（极端情况），单独写一条带说明
+        buf = StringBuffer();
+        buf.writeln('═══════════════════════════════════');
+        buf.writeln('时间: $timestamp');
+        buf.writeln('场景: $scene');
+        buf.writeln('模型: $provider');
+        buf.writeln('动作: $action（对应START缺失，可能是日志开关中途切换）');
+        buf.writeln('═══════════════════════════════════');
+      }
+
+      if (responsePreview != null) {
+        buf.writeln('【模型返回内容】');
+        buf.writeln('---');
+        buf.writeln(responsePreview);
+        buf.writeln('---');
+      }
+      if (error != null) {
+        buf.writeln('【错误信息】');
+        buf.writeln('---');
+        buf.writeln(error);
+        buf.writeln('---');
+      }
+      if (promptTokens != null || completionTokens != null || totalTokens != null) {
+        buf.writeln('【Token 统计】');
+        buf.writeln('---');
+        buf.writeln('输入: ${promptTokens ?? '-'} tokens');
+        buf.writeln('输出: ${completionTokens ?? '-'} tokens');
+        buf.writeln('总计: ${totalTokens ?? '-'} tokens');
+        buf.writeln('---');
+      }
+
+      buf.writeln('');
+      final logLine = buf.toString();
+      _controller.add(logLine);
+      await _writeToFile(logLine);
+    } catch (e) {
+      debugPrint('AiDebugLogger logComplete 失败: $e');
+    }
+  }
+
+  /// 兼容旧版 API：一次性写入 START/RESPONSE/ERROR（无配对）
   Future<void> logCall({
     required String timestamp,
     required String scene,
@@ -127,55 +241,43 @@ class AiDebugLogger {
   String _pad(int n) => n.toString().padLeft(2, '0');
 
   Future<List<String>> getLogFiles() async {
-    if (_logDir == null) return [];
+    if (_logDir == null) {
+      await _ensureLogDir();
+      if (_logDir == null) return [];
+    }
     final dir = Directory(_logDir!);
     if (!await dir.exists()) return [];
-    final files = await dir.list().where((f) => f.path.endsWith('.txt')).toList();
-    files.sort((a, b) => b.path.compareTo(a.path));
-    return files.map((f) => f.path).toList();
+    final files = await dir.list().toList();
+    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    return files.whereType<File>().map((f) => f.path).toList();
   }
 
-  Future<String?> readLogFile(String path) async {
-    try {
-      return await File(path).readAsString();
-    } catch (e) {
-      return null;
+  Future<Map<String, dynamic>> getUsageStats() async {
+    final files = await getLogFiles();
+    int totalCalls = 0;
+    int totalSize = 0;
+    for (final p in files) {
+      final f = File(p);
+      totalSize += await f.length();
+      final content = await f.readAsString();
+      totalCalls += '═══════════════════════════════════'.allMatches(content).length;
     }
+    return {
+      'files': files.length,
+      'calls': totalCalls,
+      'sizeBytes': totalSize,
+    };
   }
 
   Future<void> clearAllLogs() async {
-    if (_logDir == null) return;
-    final dir = Directory(_logDir!);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
-      _logDir = null;
-      await _ensureLogDir();
-    }
-  }
-
-  String getLogDirPath() => _logDir ?? '';
-
-  /// 获取日志摘要，用于快速查看
-  Future<List<Map<String, String>>> getLogSummary() async {
     final files = await getLogFiles();
-    final summaries = <Map<String, String>>[];
-    for (final path in files.take(30)) {
-      final content = await readLogFile(path);
-      if (content != null) {
-        final timestampMatch = RegExp(r'时间: (.+)').firstMatch(content);
-        final sceneMatch = RegExp(r'场景: (.+)').firstMatch(content);
-        final providerMatch = RegExp(r'模型: (.+)').firstMatch(content);
-        final tokenMatch = RegExp(r'总计: (\d+)').firstMatch(content);
-
-        summaries.add({
-          'file': path.split('/').last,
-          'timestamp': timestampMatch?.group(1) ?? '未知',
-          'scene': sceneMatch?.group(1) ?? '未知',
-          'provider': providerMatch?.group(1) ?? '未知',
-          'tokens': tokenMatch?.group(1) ?? '-',
-        });
+    for (final p in files) {
+      try {
+        await File(p).delete();
+      } catch (e) {
+        debugPrint('删除日志失败: $p $e');
       }
     }
-    return summaries;
+    _pendingCalls.clear();
   }
 }

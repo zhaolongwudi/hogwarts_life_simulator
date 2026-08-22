@@ -55,7 +55,7 @@ class GameProvider extends ChangeNotifier {
   String _pendingSummary = '';
   /// 最近几回合剧情环形缓冲（避免 AI 只有单回合记忆，保持短期连贯性）
   final List<String> _recentTurns = [];
-  static const int _maxRecentTurns = 4;
+  static const int _maxRecentTurns = 6;  // 从4扩大到6，多保留1-2小时游戏时间内的对话
   List<GameChoice> _choices = [];
   bool _isLoading = false;
   bool _isInitializing = false;
@@ -1066,17 +1066,36 @@ ${profile.join('｜')}
         contextBuffer.write('【历史背景（仅作参考，不要基于此生成当前场景的选项）】\n$_narrativeSummary\n\n');
       }
 
+      // 强制注入世界动态/剧情事件锚点（最近6条）——这些是长线剧情的硬锚，防止AI遗忘重大世界事件
+      final ws = _worldState;
+      final worldAnchors = <String>[];
+      if (ws.worldEvents.isNotEmpty) {
+        for (final e in ws.worldEvents.reversed.take(6)) {
+          worldAnchors.add('${e.timestamp}｜${e.title}：${e.description}');
+        }
+      }
+      if (ws.recentNarrativeEvents.isNotEmpty) {
+        for (final e in ws.recentNarrativeEvents.reversed.take(6)) {
+          worldAnchors.add('${e.timestamp}｜剧情锚：${e.description}');
+        }
+      }
+      if (worldAnchors.isNotEmpty) {
+        contextBuffer.writeln('【世界近期重大事件（硬锚，不能丢）】');
+        contextBuffer.writeln(worldAnchors.join('\n'));
+        contextBuffer.writeln('');
+      }
+
       final currentLoc = _worldState.currentLocation ?? '';
       final filteredTurns = <String>[];
       for (int i = _recentTurns.length - 1; i >= 0; i--) {
         final entry = _recentTurns[i];
         filteredTurns.insert(0, entry);
-        if (filteredTurns.length >= 3) break;
+        if (filteredTurns.length >= 5) break;  // 从3扩大到5，短期连贯性更强（配合maxRecentTurns=6）
       }
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
           : _currentNarrative;
-      final recent = _truncateNarrativeContext(recentBuffer, 1600);
+      final recent = _truncateNarrativeContext(recentBuffer, 2400);  // 1600→2400，多保留一些感官细节和对话
       // 关键改进：明确标注近期剧情是"当前场景上下文"，选项必须基于此
       contextBuffer.write('【当前场景上下文（以此生成选项）】\n$recent');
 
@@ -4529,8 +4548,8 @@ D.尝试用魔法解决眼前的问题
 
     // 摘要长度随游戏进度逐步放宽，避免长线信息被过度压缩丢失
     final limit = _turnCount <= 40
-        ? 300
-        : (_turnCount <= 100 ? 500 : 700);
+        ? 600   // 从300→600：开局阶段保留更多关系细节和伏笔
+        : (_turnCount <= 100 ? 1000 : 1500);  // 500→1000, 700→1500：中长线不丢事件链
     final relationSnapshot = _buildRelationshipSnapshot();
 
     // 关键改进：明确要求 AI 只保留"人物关系"和"重要转折"，不保留具体场景描述
@@ -4540,7 +4559,8 @@ D.尝试用魔法解决眼前的问题
 2. 淘汰具体场景描述（如"在车站"、"在教室"等地点信息），这些会干扰后续剧情生成
 3. 淘汰具体行动描述（如"检票上车"、"拿出魔杖"等），除非是关键转折点
 4. 保留 NPC 好感度变化（如"赫敏:友好+10"）、学院分配、重要事件等
-5. 用简洁的第三人称
+5. 保留关键伏笔、NPC承诺、秘密、未完成任务、冲突起源、长期目标（这些是长线剧情的锚，必须单独归纳）
+6. 用简洁的第三人称
 
 【前情摘要】
 ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
@@ -4553,7 +4573,8 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
 
 请输出：
 1. 精简剧情摘要（不超过$limit字，聚焦关系和转折，不要保留具体场景）
-2. 末尾单独一行【关系】列出当前重要NPC的关系状态（如：赫敏:友好/72；马尔福:敌对/-30）''';
+2. 末尾单独一行【关系】列出当前重要NPC的关系状态（如：赫敏:友好/72；马尔福:敌对/-30）
+3. 如果有伏笔/承诺/秘密/未完成任务，再单独一行【伏笔】列出（例如：斯内普答应给主角保密身份；主角欠邓布利多一次夜探；小天狼星留了一把钥匙）''';
 
     try {
       final result = await _callDeepSeek(

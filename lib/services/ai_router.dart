@@ -83,48 +83,62 @@ class AiRouter {
     // 调试日志不再截断 prompt/response 重要内容，完整保存
     final promptPreview = prompt;
 
-    // 记录调用开始
-    AiDebugLogger.instance.logCall(
+    // 记录调用开始 → 返回 callId，后续完成阶段用 callId 拼成完整一条
+    final callId = await AiDebugLogger.instance.logStart(
       timestamp: timestamp,
       scene: sceneLabel,
       provider: getProviderLabel(primary),
-      action: 'START',
       promptPreview: promptPreview,
       systemPrompt: systemPrompt,
     );
 
-    final future = _callWithFallback(
-      primary: primary,
-      prompt: prompt,
-      systemPrompt: systemPrompt,
-      temperature: temperature,
-      maxTokens: maxTokens,
-      useCache: scene != AiScene.narrative && scene != AiScene.choice,
-      scene: scene,
-    );
+    Future<ChatResult> future;
+    try {
+      future = _callWithFallback(
+        primary: primary,
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        useCache: scene != AiScene.narrative && scene != AiScene.choice,
+        scene: scene,
+        callId: callId,
+      );
+    } catch (_) {
+      rethrow;
+    }
+
     if (scene == AiScene.narrative) {
-      return future.timeout(const Duration(seconds: 45), onTimeout: () {
-        AiDebugLogger.instance.logCall(
-          timestamp: DateTime.now().toIso8601String(),
-          scene: sceneLabel,
-          provider: getProviderLabel(primary),
-          action: 'TIMEOUT',
-          error: '剧情生成超时（45秒）',
-        );
-        throw AiRetryableException('剧情生成超时（45秒），请重试或切换提供商');
-      });
+      return future.timeout(
+        const Duration(seconds: 45),
+        onTimeout: () async {
+          await AiDebugLogger.instance.logComplete(
+            callId: callId,
+            timestamp: DateTime.now().toIso8601String(),
+            scene: sceneLabel,
+            provider: getProviderLabel(primary),
+            action: 'TIMEOUT',
+            error: '剧情生成超时（45秒）',
+          );
+          throw AiRetryableException('剧情生成超时（45秒），请重试或切换提供商');
+        },
+      );
     }
     if (scene == AiScene.choice) {
-      return future.timeout(const Duration(seconds: 20), onTimeout: () {
-        AiDebugLogger.instance.logCall(
-          timestamp: DateTime.now().toIso8601String(),
-          scene: sceneLabel,
-          provider: getProviderLabel(primary),
-          action: 'TIMEOUT',
-          error: '选项生成超时（20秒）',
-        );
-        throw AiRetryableException('选项生成超时（20秒），请重试');
-      });
+      return future.timeout(
+        const Duration(seconds: 20),
+        onTimeout: () async {
+          await AiDebugLogger.instance.logComplete(
+            callId: callId,
+            timestamp: DateTime.now().toIso8601String(),
+            scene: sceneLabel,
+            provider: getProviderLabel(primary),
+            action: 'TIMEOUT',
+            error: '选项生成超时（20秒）',
+          );
+          throw AiRetryableException('选项生成超时（20秒），请重试');
+        },
+      );
     }
     return future;
   }
@@ -137,6 +151,7 @@ class AiRouter {
     required int maxTokens,
     bool useCache = true,
     AiScene? scene,
+    String? callId,
   }) async {
     // 检查缓存（narrative 场景关闭缓存：其 prompt 每回合都变，命中率极低且有冻结随机性的风险）
     if (useCache) {
@@ -192,7 +207,8 @@ class AiRouter {
         // 记录成功响应（完整保存返回内容，不再截断以便调试）
         final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
         final responsePreview = result.content;
-        AiDebugLogger.instance.logCall(
+        await AiDebugLogger.instance.logComplete(
+          callId: callId,
           timestamp: DateTime.now().toIso8601String(),
           scene: sceneLabel,
           provider: getProviderLabel(current),
@@ -207,7 +223,8 @@ class AiRouter {
         debugPrint('⚠️ ${current.name} 调用失败: $e');
         // 记录错误
         final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-        AiDebugLogger.instance.logCall(
+        await AiDebugLogger.instance.logComplete(
+          callId: callId,
           timestamp: DateTime.now().toIso8601String(),
           scene: sceneLabel,
           provider: getProviderLabel(current),

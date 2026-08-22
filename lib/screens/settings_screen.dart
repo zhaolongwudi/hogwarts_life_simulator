@@ -21,7 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testing = false;
   final _testResults = <AiProvider, String>{};
   final _testSuccess = <AiProvider, bool>{};
-  bool _debugLogEnabled = false;
 
   @override
   void initState() {
@@ -235,18 +234,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   title: const Text('启用 AI 调用日志'),
                   subtitle: const Text('记录每回合 AI 的输入输出到本地文件，用于排查 bug'),
-                  value: _debugLogEnabled,
-                  onChanged: (v) {
-                    setState(() {
-                      _debugLogEnabled = v;
-                    });
+                  value: appProvider.aiDebugLogEnabled,
+                  onChanged: (v) async {
                     AiDebugLogger.instance.setEnabled(v);
                     if (v) {
-                      AiDebugLogger.instance.initialize(enabled: true);
+                      await AiDebugLogger.instance.initialize(enabled: true);
                     }
+                    await context.read<AppProvider>().setAiDebugLogEnabled(v);
                   },
                 ),
-                if (_debugLogEnabled) ...[
+                if (appProvider.aiDebugLogEnabled) ...[
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,

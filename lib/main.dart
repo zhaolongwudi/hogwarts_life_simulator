@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
 import 'utils/crash_logger.dart';
+import 'utils/ai_debug_logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,8 @@ void main() async {
 
   final appProvider = AppProvider();
   await appProvider.loadSettings();
+  // 应用启动时恢复 AI 调试日志开关（之前被清回false的根因）
+  await AiDebugLogger.instance.initialize(enabled: appProvider.aiDebugLogEnabled);
   runApp(
     MultiProvider(
       providers: [

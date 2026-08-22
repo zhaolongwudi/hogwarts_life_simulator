@@ -121,6 +121,7 @@ class AppProvider extends ChangeNotifier {
   Map<String, String> _baseUrls = {};
   Map<String, String> _models = {};
   Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
+  bool _aiDebugLogEnabled = false;
 
   String? get apiKey => _apiKey;
   bool get isGameStarted => _isGameStarted;
@@ -129,6 +130,7 @@ class AppProvider extends ChangeNotifier {
   Era get era => _era;
   AiProvider get aiProvider => _aiProvider;
   String get aiModel => _aiModel;
+  bool get aiDebugLogEnabled => _aiDebugLogEnabled;
   Map<String, String> get apiKeys => Map.unmodifiable(_apiKeys);
   Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
   Map<String, String> get models => Map.unmodifiable(_models);
@@ -270,6 +272,9 @@ class AppProvider extends ChangeNotifier {
         _sceneRoute[scene] = saved;
       }
     }
+
+    // Load AI debug log switch
+    _aiDebugLogEnabled = prefs.getBool('ai_debug_log_enabled') ?? false;
 
     notifyListeners();
   }
@@ -438,6 +443,14 @@ class AppProvider extends ChangeNotifier {
       prefs.remove('api_key_${p.name}');
       prefs.remove('base_url_${p.name}');
     });
+    notifyListeners();
+  }
+
+  /// 切换 AI 调试日志开关，同步写入 SharedPreferences 持久化
+  Future<void> setAiDebugLogEnabled(bool value) async {
+    _aiDebugLogEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('ai_debug_log_enabled', value);
     notifyListeners();
   }
 }
