@@ -2849,27 +2849,27 @@ $_pendingSummary
   String _buildSceneContext() {
     final parts = <String>[];
 
-    // 防御：_worldState/_player 可能尚未初始化（例如 initializeGame 早期调用）
+    // 防御：_worldState 有默认值（非空）但为防止未来改类型，统一局部变量引用；
+    // _player 为可空类型，必须判空
     final ws = _worldState;
     final p = _player;
 
-    if (ws != null) {
-      final npcsHere = npcsInCurrentLocation();
-      if (npcsHere.isNotEmpty) {
-        final npcNames = npcsHere.map((n) {
-          final status = n.isAlive ? '好感${n.affection}' : '';
-          return '${n.name}($status)';
-        }).join('、');
-        parts.add('【在场NPC】$npcNames');
-      }
-
-      final hour = ws.time.hour;
-      final timeDesc = hour >= 22 || hour < 6 ? '深夜' :
-                       hour >= 18 ? '夜晚' :
-                       hour >= 14 ? '下午' :
-                       hour >= 10 ? '上午' : '清晨';
-      parts.add('【时间氛围】$timeDesc（${ws.time.formattedTime}）');
+    // _worldState 始终非空，此处无需 null 判断（避免 analyzer unnecessary_null_comparison）
+    final npcsHere = npcsInCurrentLocation();
+    if (npcsHere.isNotEmpty) {
+      final npcNames = npcsHere.map((n) {
+        final status = n.isAlive ? '好感${n.affection}' : '';
+        return '${n.name}($status)';
+      }).join('、');
+      parts.add('【在场NPC】$npcNames');
     }
+
+    final hour = ws.time.hour;
+    final timeDesc = hour >= 22 || hour < 6 ? '深夜' :
+                     hour >= 18 ? '夜晚' :
+                     hour >= 14 ? '下午' :
+                     hour >= 10 ? '上午' : '清晨';
+    parts.add('【时间氛围】$timeDesc（${ws.time.formattedTime}）');
 
     if (p != null && p.energy < 30) {
       parts.add('【提示】玩家精力较低，建议休息');
