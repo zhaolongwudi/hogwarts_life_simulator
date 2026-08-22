@@ -259,6 +259,15 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.3.0 — 2026-08-22
+
+**📋 变更说明**
+fix: CI analyze error - remove this. in method parameter
+
+'this.' is only valid in constructor field initializers, not in regular
+method parameters. Changed 'this.openingScene = station' to
+'String openingScene = station' in initializeGame().
+
 ### v1.2.9 — 2026-08-22
 
 **📋 变更说明**
