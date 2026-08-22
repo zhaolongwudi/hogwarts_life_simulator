@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.0 — 2026-08-22
+
+**📋 变更说明**
+fix(opening): 修复开场提交剧情时 _player!.energy 空断言崩溃
+
+根因：initializeGame 中 _buildSystemPrompt() 调用时机错误（放在 _player 赋值之前），
+_buildSystemPrompt → _buildSceneContext → _player!.energy 触发 Null check operator used on a null value。
+
+修复：
+1. 将 _systemPrompt = _buildSystemPrompt() 移到 _player 和 _worldState 都赋值之后
+
 ### v1.0.9 — 2026-08-22
 
 **📋 变更说明**
