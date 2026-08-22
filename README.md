@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.2.5 — 2026-08-22
+
+**📋 变更说明**
+Fix narrative loss after app restart + improve response parsing
+
+- Remove split(paragraph).first truncation in _extractNarrativeFromRawText that
+  permanently dropped all but first paragraph when AI forgot section markers
+- Widen choice regex: fullwidth letters, digits, chinese numerals, more separators
+- Rewrite _parseResponse as state machine: default to everything before the first
+  option line as narrative, preserve blank lines inside paragraphs
+
 ### v1.2.4 — 2026-08-22
 
 **📋 变更说明**
