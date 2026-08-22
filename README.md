@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.3 — 2026-08-22
+
+**📋 变更说明**
+refactor: 安全加固与可维护性改进
+
+- 安全：API Key 改用 flutter_secure_storage 加密存储，旧版明文自动迁移并清除
+- 重构：抽取 balance_constants 集中管理好感/表白/好感锁等魔法数字
+- 修复：响应缓存键纳入 temperature/maxTokens，避免不同生成参数间污染
+- 修复：设置页模型名存储 key 与加载 key 不一致，导致模型设置未生效
+- 安全：用户自由行动与 NPC 聊天输入做 Prompt 注入净化与限长
+
 ### v1.1.2 — 2026-08-22
 
 **📋 变更说明**
