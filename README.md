@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.3.8 — 2026-08-22
+
+**📋 变更说明**
+revert: 恢复NPC限制和取消自动注册机制
+
+1. 恢复 NPC 限制为 50（不再改为 100）
+2. 取消自动注册机制：
+   - _markIntroducedFromNarrative 恢复原始逻辑（检查 _npcRegistry.isEmpty）
+   - _autoRegisterNPCsFromNarrative 简化为空方法
+   - _parseAffectionChanges 恢复原始逻辑（检查 _npcRegistry.isEmpty）
+
 ### v1.3.7 — 2026-08-22
 
 **📋 变更说明**
