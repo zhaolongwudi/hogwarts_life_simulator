@@ -3880,14 +3880,23 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   // ==================== DeepSeek 调用 ====================
   Future<ChatResult> _callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
     if (_router == null) throw Exception('AI 服务未初始化');
-    // 每次调用前刷新系统提示词，确保玩家动态状态（人生目标、身份模式等）实时注入
-    if (_player != null) {
-      _systemPrompt = _buildSystemPrompt();
+    String effectiveSystemPrompt;
+    if (scene == AiScene.choice || scene == AiScene.summary) {
+      // 选项/摘要场景：无需注入完整世界观 + 玩家档案，提示词本身已经包含了指令
+      effectiveSystemPrompt = scene == AiScene.summary
+          ? '你是严谨的剧情摘要员，忠实保留关键信息，不新增设定。'
+          : '你是专业的游戏选项设计师，只输出符合要求的4个选项。';
+    } else {
+      // 每次 narrative/npcChat 调用前刷新系统提示词，确保玩家动态状态实时注入
+      if (_player != null) {
+        _systemPrompt = _buildSystemPrompt();
+      }
+      effectiveSystemPrompt = _systemPrompt ?? '';
     }
     final result = await _router!.chatComplete(
       scene: scene,
       prompt: prompt,
-      systemPrompt: _systemPrompt ?? '',
+      systemPrompt: effectiveSystemPrompt,
       temperature: 0.85,
       maxTokens: scene == AiScene.narrative ? 3000 : 3500,  // 从1800/2500提高到3000/3500
     );

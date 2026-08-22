@@ -77,11 +77,7 @@ class AiDebugLogger {
       if (systemPrompt != null && systemPrompt.isNotEmpty) {
         logEntry.writeln('【System Prompt】');
         logEntry.writeln('---');
-        if (systemPrompt.length > 500) {
-          logEntry.writeln('${systemPrompt.substring(0, 500)}... (截断，共${systemPrompt.length}字符)');
-        } else {
-          logEntry.writeln(systemPrompt);
-        }
+        logEntry.writeln(systemPrompt);
         logEntry.writeln('---');
       }
 

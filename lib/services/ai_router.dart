@@ -80,7 +80,8 @@ class AiRouter {
     final primary = _config.providerFor(scene);
     final timestamp = DateTime.now().toIso8601String();
     final sceneLabel = scene.toString().split('.').last;
-    final promptPreview = prompt.length > 200 ? '${prompt.substring(0, 200)}...' : prompt;
+    // 调试日志不再截断 prompt/response 重要内容，完整保存
+    final promptPreview = prompt;
 
     // 记录调用开始
     AiDebugLogger.instance.logCall(
@@ -188,11 +189,9 @@ class AiRouter {
             maxTokens: maxTokens,
           );
         }
-        // 记录成功响应
+        // 记录成功响应（完整保存返回内容，不再截断以便调试）
         final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-        final responsePreview = result.content.length > 300
-            ? '${result.content.substring(0, 300)}...'
-            : result.content;
+        final responsePreview = result.content;
         AiDebugLogger.instance.logCall(
           timestamp: DateTime.now().toIso8601String(),
           scene: sceneLabel,
