@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.4.1 — 2026-08-22
+
+**📋 变更说明**
+fix(log&prompt): 移除调试日志截断 + choice场景精简System Prompt省token
+
+问题：
+- 用户看到日志里【档案】【世界上下文】等重要内容被截断为500/200/300字符，影响定位bug
+- choice/summary场景也传入完整世界观+玩家档案(231行)的System Prompt，既浪费token又有世界观信息污染风险
+
+修复：
+
 ### v1.4.0 — 2026-08-22
 
 **📋 变更说明**
