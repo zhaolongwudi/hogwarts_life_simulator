@@ -261,6 +261,15 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.0.9 — 2026-08-22
+
+**📋 变更说明**
+fix(analyze): 修复 CI flutter analyze 4个报错
+
+- main.dart:23  缺失 dart:ui 导入导致 PlatformDispatcher 未定义
+- game_provider.dart:2900  updateNpcAffection 参数类型错误: NPC→String（传 npc.id）
+- settings_screen.dart:891/893  _buildModelChipRow 缺少 AiProvider p 参数，闭包内访问 _modelControllers[p]/setModelForProvider(p) 报 undefined
+
 ### v1.0.8 — 2026-08-22
 
 **📋 变更说明**
