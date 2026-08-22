@@ -259,6 +259,16 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.3.1 — 2026-08-22
+
+**📋 变更说明**
+fix: systemic fix for 5 narrative/context issues
+
+1. 好感标记变体匹配:
+   - extractAffectionSections/parseResponse/_promoteAffectionLines
+     统一匹配【好感变化】和【好感度变化】
+   - parseWithAffectionStyle 渲染层也兼容两种格式
+
 ### v1.3.0 — 2026-08-22
 
 **📋 变更说明**
