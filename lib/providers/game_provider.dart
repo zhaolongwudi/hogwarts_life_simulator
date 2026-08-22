@@ -13,6 +13,8 @@ import '../data/npc_data.dart';
 import '../data/world_rules.dart';
 import '../data/goal_data.dart';
 import '../data/balance_constants.dart';
+import '../data/event_anchors.dart';
+import '../data/trait_data.dart';
 import '../services/deepseek_service.dart';
 import '../services/deepseek_service.dart' show ChatResult;
 import '../services/save_service.dart';
@@ -64,6 +66,8 @@ class GameProvider extends ChangeNotifier {
   int _lastRoundTokens = 0;
   int _apiCalls = 0;
   int _gameWeek = 1; // 用于好感沉淀（第一周上限+30）
+  int _lastSchoolYearStart = 0; // 学年推进追踪（当前学年起始年份）
+  String? _pendingAnchorDirective; // 待注入的事件锚点指令
 
   int get totalPromptTokens => _totalPromptTokens;
   int get totalCompletionTokens => _totalCompletionTokens;
@@ -289,6 +293,12 @@ class GameProvider extends ChangeNotifier {
         ..write('\n')
         ..write(goalLine);
     }
+    final traitLine = _traitNarrativeHints();
+    if (traitLine.isNotEmpty) {
+      buffer
+        ..write('\n')
+        ..write(traitLine);
+    }
     return buffer.toString();
   }
 
@@ -354,6 +364,7 @@ class GameProvider extends ChangeNotifier {
 
     try {
       final birthYear = _calculateBirthYear();
+      final startYear = _startYearForEra(appProvider.era);
       final startHour = 9;
       final startMinute = 0;
 
@@ -381,19 +392,27 @@ class GameProvider extends ChangeNotifier {
         politicalTendency: politicalTendency,
         simulationStyle: simulationStyle,
         birthIdentity: birthIdentity,
+        grade: 1,
       );
+
+      // 开局特质抽取（3个，软保底稀有度）
+      final rolledTraits = _rollStartingTraits();
+      _player!.traits.addAll(rolledTraits.map((t) => t.id));
+      _applyTraitBonuses(rolledTraits);
 
       _worldState = WorldState(
         era: appProvider.era.name,
         academicYear: _academicYearForEra(appProvider.era),
         time: GameTime(
-          year: int.parse(birthYear),
+          year: startYear,
           month: 9,
           day: 1,
           hour: startHour,
           minute: startMinute,
         ),
       );
+      _lastSchoolYearStart = startYear;
+      _updateAcademicYearLabel();
 
       // 必须在 _player 和 _worldState 都赋值后再构建系统提示词
       _systemPrompt = _buildSystemPrompt();
@@ -578,14 +597,128 @@ class GameProvider extends ChangeNotifier {
   }
 
   String _calculateBirthYear() {
-    return switch (appProvider.era) {
-      Era.dumbledore => '1881',
-      Era.marauders => '1960',
-      Era.first_war => '1965',
-      Era.harry_same => '1980',
-      Era.post_war => '2009',
-      Era.random => '1980',
+    // 入学时11岁：出生年份 = 时代入学年份 - 11
+    return (_startYearForEra(appProvider.era) - 11).toString();
+  }
+
+  /// 时代对应的入学年份（游戏开始年份）
+  int _startYearForEra(Era era) {
+    return switch (era) {
+      Era.dumbledore => 1892,
+      Era.marauders => 1971,
+      Era.first_war => 1976,
+      Era.harry_same => 1991,
+      Era.post_war => 2020,
+      Era.random => 1991,
     };
+  }
+
+  // ==================== 开局特质抽取（软保底） ====================
+
+  /// 抽取 3 个开局特质，稀有度软保底
+  List<TraitDef> _rollStartingTraits() {
+    final byRarity = traitsByRarity();
+    final commons = byRarity['common'] ?? [];
+    final rares = byRarity['rare'] ?? [];
+    final legendaries = byRarity['legendary'] ?? [];
+
+    final picked = <TraitDef>[];
+    final usedIds = <String>{};
+    int pity = 0; // 连续未出稀有/传说的次数
+
+    while (picked.length < 3) {
+      // 软保底：连续未出高稀有度时提升概率
+      final pityBoost = (pity ~/ TraitRarityWeights.pityThreshold) * TraitRarityWeights.pityBonus;
+      final legendaryP = TraitRarityWeights.legendaryBase + pityBoost * 0.5;
+      final rareP = TraitRarityWeights.rareBase + pityBoost;
+
+      final roll = _random.nextDouble();
+      String rarity;
+      if (roll < legendaryP && legendaries.isNotEmpty) {
+        rarity = 'legendary';
+      } else if (roll < legendaryP + rareP && rares.isNotEmpty) {
+        rarity = 'rare';
+      } else {
+        rarity = 'common';
+      }
+
+      final pool = switch (rarity) {
+        'legendary' => legendaries,
+        'rare' => rares,
+        _ => commons,
+      };
+      final available = pool.where((t) => !usedIds.contains(t.id)).toList();
+      if (available.isEmpty) {
+        // 该稀有度已抽完，回退到普通
+        final fallback = commons.where((t) => !usedIds.contains(t.id)).toList();
+        if (fallback.isEmpty) break;
+        final t = fallback[_random.nextInt(fallback.length)];
+        picked.add(t);
+        usedIds.add(t.id);
+        continue;
+      }
+
+      final trait = available[_random.nextInt(available.length)];
+      picked.add(trait);
+      usedIds.add(trait.id);
+      if (rarity == 'common') {
+        pity++;
+      } else {
+        pity = 0;
+      }
+    }
+    return picked;
+  }
+
+  /// 应用特质属性加成
+  void _applyTraitBonuses(List<TraitDef> traits) {
+    final p = _player;
+    if (p == null) return;
+    for (final t in traits) {
+      t.attributeBonus.forEach((key, bonus) {
+        // energy/health 等是顶层字段，attributes 是技能属性
+        switch (key) {
+          case 'energy':
+            p.energy = (p.energy + bonus).clamp(0, 100);
+            break;
+          case 'health':
+            p.health = (p.health + bonus).clamp(0, 100);
+            break;
+          case 'moral':
+            p.playerReputation.add('moral', bonus);
+            break;
+          case 'spirit':
+            p.spirit = (p.spirit + bonus).clamp(0, 100);
+            break;
+          case 'social':
+            // social 既是属性也是声望，这里加到属性
+            p.attributes['social'] = ((p.attributes['social'] ?? 50) + bonus).clamp(0, 100);
+            break;
+          default:
+            p.attributes[key] = ((p.attributes[key] ?? 50) + bonus).clamp(0, 100);
+        }
+      });
+      // 节俭特质：初始加隆略多
+      if (t.id == 'thrifty') {
+        p.galleons += 100;
+      }
+    }
+    if (traits.isNotEmpty) {
+      _notifications.add('✨ 你获得了特质：${traits.map((t) => t.name).join('、')}');
+    }
+  }
+
+  /// 特质叙事提示（注入系统提示词）
+  String _traitNarrativeHints() {
+    final p = _player;
+    if (p == null || p.traits.isEmpty) return '';
+    final hints = p.traits
+        .map((id) => traitById(id))
+        .where((t) => t != null && t.narrativeHint.isNotEmpty)
+        .map((t) => t!.narrativeHint)
+        .toList();
+    if (hints.isEmpty) return '';
+    return '【出身特质】${hints.join('；')}';
   }
 
   
@@ -615,6 +748,13 @@ class GameProvider extends ChangeNotifier {
     if (p.magicAptitude != null && p.magicAptitude!.isNotEmpty) profile.add('资质：${p.magicAptitude}');
     if (p.initialTalent != null && p.initialTalent!.isNotEmpty) profile.add('天赋：${p.initialTalent}');
     if (p.housePreference != null && p.housePreference!.isNotEmpty) profile.add('学院倾向：${p.housePreference}');
+    if (p.traits.isNotEmpty) {
+      final traitNames = p.traits
+          .map((id) => traitById(id)?.name)
+          .where((n) => n != null)
+          .join('、');
+      if (traitNames.isNotEmpty) profile.add('出身特质：$traitNames');
+    }
     profile.add('时代：${_eraLabelShort(appProvider.era)}');
     profile.add('魔杖：$wandInfo');
     profile.add('宠物：$petInfo');
@@ -738,6 +878,11 @@ ${profile.join('｜')}
       final extra = _buildCriticalContext(safeAction);
       final sceneInfo = _buildSceneContext();
 
+      // 事件锚点注入：手写剧情骨架，保证关键节点在正确时间发生
+      final anchorLine = _pendingAnchorDirective != null
+          ? '【剧情节点】本回合请自然融入以下既定剧情骨架（不必生硬转折，可结合玩家行动展开）：\n$_pendingAnchorDirective\n\n'
+          : '';
+
       return '''【世界上下文】
 $context
 
@@ -745,7 +890,7 @@ $context
 【当前场景】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}
 $sceneInfo
 
-${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
+$anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $safeAction
 
 【写作要求】
@@ -765,6 +910,8 @@ $safeAction
 
     try {
       final prompt = buildPrompt();
+      // 记录本回合实际注入的锚点（推进时间后可能产生新锚点，不能误清）
+      final consumedAnchor = _pendingAnchorDirective;
       _loadingStage = '正在生成剧情...';
       notifyListeners();
 
@@ -787,8 +934,13 @@ $safeAction
       _advanceTimeForAction(action);
       _updateNPCsFromAction(action);
       _updatePlayerImpactScore(action);
+      // 锚点已成功注入本回合剧情，清除待注入状态（仅当未被新锚点替换时）
+      if (consumedAnchor != null && _pendingAnchorDirective == consumedAnchor) {
+        _pendingAnchorDirective = null;
+      }
 
-      if (_turnCount % 10 == 0 && _pendingSummary.isNotEmpty) {
+      // 定期摘要：每10回合，或待摘要缓冲过长（>3000字）时提前压缩，控制单次摘要输入规模
+      if ((_turnCount % 10 == 0 || _pendingSummary.length > 3000) && _pendingSummary.isNotEmpty) {
         unawaited(Future.microtask(() async {
           try {
             await _summarizeNarrative();
@@ -803,10 +955,16 @@ $safeAction
       notifyListeners();
       _autoSave();
     } catch (e) {
+      // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
+      debugPrint('❌ 剧情生成失败，启用本地兜底叙事: $e');
+      _currentNarrative = _generateFallbackNarrative();
+      _choices = _generateFallbackChoices();
+      _appendRecentTurn(_currentNarrative);
+      _notifications.add('⚠️ AI 服务暂时不可用，已切换为本地过渡剧情，稍后可重试行动');
       _loadingStage = '';
-      _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      _autoSave();
       unawaited(CrashLogger.instance.record(
         e,
         StackTrace.current,
@@ -970,6 +1128,11 @@ $safeAction
         return true;
 
       case '/目标':
+        if (parts.length >= 2 && (parts[1] == '进度' || parts[1] == 'progress')) {
+          _currentNarrative = _formatGoalProgress();
+          _choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        }
         if (parts.length >= 2) {
           final arg = parts.sublist(1).join(' ');
           LifeGoal? goal;
@@ -1670,6 +1833,11 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     for (int i = 0; i < lifeGoalCatalog.length; i++) {
       final g = lifeGoalCatalog[i];
       buf.writeln('${i + 1}. ${g.name}（${g.category}）— ${g.description}');
+    }
+    if (current != null && current.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln('💡 输入 /目标 进度 查看当前目标的毕业条件达成情况。');
     }
     return buf.toString();
   }
@@ -2803,9 +2971,254 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     _worldState.dayOfWeek = GameTime.weekdays[_worldState.time.weekday];
     _worldState.month = GameTime.months[_worldState.time.month - 1];
 
+    // 学年推进检测（9月1日触发）
+    _checkSchoolYearTransition(oldMonth, oldYear);
+
+    // 事件锚点检测（按月份触发手写剧情骨架）
+    _checkEventAnchors();
+
     _runConsistencyChecks();
 
     _checkMonthlyEvolution(oldMonth, oldYear);
+  }
+
+  // ==================== 学年推进系统 ====================
+
+  /// 计算当前学年起始年份（9月起为新学年）
+  int _schoolYearStartFor(int year, int month) {
+    return month >= 9 ? year : year - 1;
+  }
+
+  /// 学年切换检测：当进入新的学年（9月）时，推进玩家与 NPC 年级
+  void _checkSchoolYearTransition(int oldMonth, int oldYear) {
+    final p = _player;
+    if (p == null) return;
+    final t = _worldState.time;
+
+    final newStart = _schoolYearStartFor(t.year, t.month);
+    if (_lastSchoolYearStart == 0) {
+      // 首次初始化追踪（不触发晋升）
+      _lastSchoolYearStart = newStart;
+      return;
+    }
+    if (newStart <= _lastSchoolYearStart) return;
+
+    // 跨越了一个或多个学年
+    final yearsPassed = newStart - _lastSchoolYearStart;
+    _lastSchoolYearStart = newStart;
+
+    // 玩家已毕业则不再推进
+    if (_worldState.graduated) {
+      _updateAcademicYearLabel();
+      return;
+    }
+
+    final oldGrade = p.grade ?? 1;
+    final newGrade = oldGrade + yearsPassed;
+
+    if (newGrade > 7) {
+      // 毕业
+      p.grade = 7;
+      _worldState.graduated = true;
+      _onPlayerGraduated(oldGrade);
+    } else {
+      p.grade = newGrade;
+      _promoteNpcs(yearsPassed);
+      _onSchoolYearStart(newGrade);
+    }
+    _updateAcademicYearLabel();
+  }
+
+  /// 更新学年标签（如 1992-1993）
+  void _updateAcademicYearLabel() {
+    final t = _worldState.time;
+    final start = _schoolYearStartFor(t.year, t.month);
+    _worldState.academicYear = '$start-${start + 1}';
+    // 学期：9-12月第一学期，1-6月第二学期，7-8月暑假
+    if (t.month >= 9) {
+      _worldState.term = 'first';
+    } else if (t.month <= 6) {
+      _worldState.term = 'second';
+    } else {
+      _worldState.term = 'summer';
+    }
+  }
+
+  /// 推进所有在校生 NPC 年级，七年级以上者毕业离校
+  void _promoteNpcs(int yearsPassed) {
+    final graduatedNames = <String>[];
+    for (final npc in _npcRegistry.values) {
+      if (npc.grade <= 0) continue; // 教职/成人不推进
+      if (npc.graduated) continue;
+      npc.grade += yearsPassed;
+      if (npc.grade > 7) {
+        npc.graduated = true;
+        npc.grade = 7;
+        graduatedNames.add(npc.name);
+      }
+    }
+    if (graduatedNames.isNotEmpty) {
+      _notifications.add('🎓 ${graduatedNames.take(5).join('、')}${graduatedNames.length > 5 ? '等' : ''} 已从霍格沃茨毕业');
+      _worldState.addNarrativeEvent('🎓 一批高年级学生毕业了：${graduatedNames.take(5).join('、')}');
+    }
+  }
+
+  /// 新学年开始的叙事与通知
+  void _onSchoolYearStart(int newGrade) {
+    final p = _player;
+    if (p == null) return;
+    _notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
+    _worldState.addNarrativeEvent('🏫 ${_worldState.time.year}年9月，你升入${newGrade}年级');
+    _worldState.addMarker('⏳新学年');
+    // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
+    debugPrint('🎓 学年推进：玩家升入${newGrade}年级');
+  }
+
+  /// 玩家毕业（七年级结束）
+  void _onPlayerGraduated(int oldGrade) {
+    final p = _player;
+    if (p == null) return;
+    _notifications.add('🎓 你从霍格沃茨毕业了！七年的魔法生涯画上句点。');
+    _worldState.addNarrativeEvent('🎓 ${_worldState.time.year}年，你从霍格沃茨毕业');
+    _worldState.addMarker('🎓毕业');
+    debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
+    // 毕业结算：评估人生目标达成情况并生成结算报告
+    _graduationSettlement();
+  }
+
+  // ==================== 毕业结算系统 ====================
+
+  /// 评估目标毕业条件，返回 (条件描述, 是否达成) 列表
+  List<(String, bool)> _evaluateGoalRequirement(GoalRequirement req) {
+    final p = _player;
+    if (p == null) return [];
+    final lines = <(String, bool)>[];
+    if (req.reputationDim != null) {
+      final cur = p.playerReputation.get(req.reputationDim!);
+      lines.add(('${p.playerReputation.labelOf(req.reputationDim!)} ≥ ${req.reputationMin}（当前 $cur）', cur >= req.reputationMin));
+    }
+    if (req.attributeKey != null) {
+      final cur = p.attributes[req.attributeKey!] ?? 0;
+      lines.add(('${_attrLabel(req.attributeKey!)} ≥ ${req.attributeMin}（当前 $cur）', cur >= req.attributeMin));
+    }
+    if (req.wealthMin > 0) {
+      final cur = p.galleons + p.bankGalleons;
+      lines.add(('资产 ≥ ${req.wealthMin} 加隆（当前 $cur）', cur >= req.wealthMin));
+    }
+    if (req.deepRelationsMin > 0) {
+      final cur = _npcRegistry.values.where((n) => n.isAlive && n.affection >= 50).length;
+      lines.add(('深厚羁绊（好感≥50）≥ ${req.deepRelationsMin} 人（当前 $cur）', cur >= req.deepRelationsMin));
+    }
+    if (req.worldLineMin > 0) {
+      final cur = p.worldLineDeviation;
+      lines.add(('世界线变动率 ≥ ${(req.worldLineMin * 100).toStringAsFixed(0)}%（当前 ${(cur * 100).toStringAsFixed(1)}%）', cur >= req.worldLineMin));
+    }
+    return lines;
+  }
+
+  /// 毕业结算：评估人生目标、解锁成就、生成结算报告（追加到当前剧情后）
+  void _graduationSettlement() {
+    final p = _player;
+    if (p == null) return;
+
+    _unlockAchievement('graduated');
+
+    final goal = p.currentGoal != null ? goalByName(p.currentGoal!) : null;
+    final reqLines = goal != null ? _evaluateGoalRequirement(goal.requirement) : <(String, bool)>[];
+    final goalMet = reqLines.isNotEmpty && reqLines.every((e) => e.$2);
+    if (goalMet) {
+      _unlockAchievement('goal_achieved');
+    }
+
+    final buf = StringBuffer()
+      ..writeln('╔══════════════════════════════════════╗')
+      ..writeln('  🎓 毕业结算 · ${p.name}')
+      ..writeln('╚══════════════════════════════════════╝')
+      ..writeln();
+
+    if (goal != null) {
+      buf.writeln('【人生目标】${goal.name}');
+      for (final (label, met) in reqLines) {
+        buf.writeln('  ${met ? '✅' : '❌'} $label');
+      }
+      buf.writeln(goalMet
+          ? '\n🏆 目标达成！你在霍格沃茨的七年，画上了一个方向明确的句号。'
+          : '\n这个目标尚未完全达成——但毕业不是终点，你的人生仍可以继续书写。');
+    } else {
+      buf.writeln('【人生目标】未设定——你的七年平静而真实地流淌而过。');
+    }
+
+    final rep = p.playerReputation;
+    final deepCount = _npcRegistry.values.where((n) => n.isAlive && n.affection >= 50).length;
+    buf
+      ..writeln()
+      ..writeln('【七年统计】')
+      ..writeln('· 声望：学术${rep.academic}｜社交${rep.social}｜战斗${rep.combat}｜道德${rep.moral}｜领导${rep.leadership}')
+      ..writeln('· 资产：${p.galleons + p.bankGalleons} 加隆')
+      ..writeln('· 深厚羁绊：$deepCount 人')
+      ..writeln('· 世界线变动率：${(p.worldLineDeviation * 100).toStringAsFixed(1)}%')
+      ..writeln('· 成就：${p.achievements.length} / ${achievementCatalog.length}')
+      ..writeln()
+      ..writeln('输入 /结局 可生成完整终章评语，或继续你的毕业后人生。');
+
+    // 追加到当前剧情之后，保留本回合叙事
+    _currentNarrative = _currentNarrative.isEmpty
+        ? buf.toString().trim()
+        : '$_currentNarrative\n\n${buf.toString().trim()}';
+    _worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}');
+  }
+
+  /// 目标进度查询（/目标 进度）
+  String _formatGoalProgress() {
+    final p = _player;
+    if (p == null) return '尚未创建角色。';
+    final goal = p.currentGoal != null ? goalByName(p.currentGoal!) : null;
+    if (goal == null) {
+      return '尚未设定人生目标。输入 /目标 查看并设定。';
+    }
+    final lines = _evaluateGoalRequirement(goal.requirement);
+    final met = lines.isNotEmpty && lines.every((e) => e.$2);
+    final buf = StringBuffer()
+      ..writeln('【目标进度】${goal.name}')
+      ..writeln('『${goal.description}』')
+      ..writeln();
+    for (final (label, ok) in lines) {
+      buf.writeln('${ok ? '✅' : '⬜'} $label');
+    }
+    buf.writeln();
+    buf.writeln(met
+        ? '🏆 所有毕业条件已达成！坚持到毕业即可在结算中获得「得偿所愿」。'
+        : '继续朝着目标努力吧——毕业时将进行最终结算。');
+    return buf.toString();
+  }
+
+  // ==================== 事件锚点系统 ====================
+
+  /// 按当前月份/年级/时代检查并触发手写事件锚点
+  void _checkEventAnchors() {
+    final p = _player;
+    if (p == null) return;
+    if (_worldState.graduated) return; // 毕业后不再触发校内锚点
+
+    final t = _worldState.time;
+    final fired = _worldState.firedAnchorIds.toSet();
+    final grade = p.grade ?? 1;
+
+    final due = anchorsFor(
+      month: t.month,
+      grade: grade,
+      era: _worldState.era,
+      firedIds: fired,
+    );
+    if (due.isEmpty) return;
+
+    // 每个回合最多注入一个锚点，避免信息过载；其余顺延
+    final anchor = due.first;
+    _worldState.firedAnchorIds.add(anchor.id);
+    _pendingAnchorDirective = anchor.directive;
+    _notifications.add('📜 剧情节点：${anchor.title}');
+    _worldState.addNarrativeEvent('📜 ${anchor.title}');
+    debugPrint('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
   }
 
   void _resetWeeklyAffectionCaps() {
@@ -3032,12 +3445,17 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   }
 
   void _fastForwardTime(int days) {
+    final oldMonth = _worldState.time.month;
+    final oldYear = _worldState.time.year;
     for (int i = 0; i < days; i++) {
       _worldState.time.advanceMinutes(24 * 60);
     }
     _worldState.dayOfMonth = _worldState.time.day;
     _worldState.dayOfWeek = GameTime.weekdays[_worldState.time.weekday];
     _worldState.month = GameTime.months[_worldState.time.month - 1];
+    // 快进也要接入学年推进与事件锚点，避免跳过年份
+    _checkSchoolYearTransition(oldMonth, oldYear);
+    _checkEventAnchors();
   }
 
   // ==================== NPC 状态更新 ====================
@@ -3411,8 +3829,16 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
 
   // ==================== 剧情摘要机制：每10回合压缩历史 ====================
 
+  /// 待摘要缓冲上限：摘要服务反复失败时防止缓冲无限膨胀撑爆后续请求
+  static const int _maxPendingSummaryChars = 6000;
+
   void _accumulateForSummary(String newNarrative) {
     _pendingSummary += '$newNarrative\n';
+    if (_pendingSummary.length > _maxPendingSummaryChars) {
+      // 保留最近的剧情（尾部），丢弃最早的部分
+      final cut = _pendingSummary.length - _maxPendingSummaryChars;
+      _pendingSummary = '…（更早剧情略）\n${_pendingSummary.substring(cut)}';
+    }
   }
 
   Future<void> _summarizeNarrative() async {

@@ -21,6 +21,10 @@ class WorldState {
   int timelineChanges; // 世界线变动次数
   final List<String> timelineBranches; // 已分叉的世界线描述
 
+  // ====== 学年系统扩展字段 ======
+  final List<String> firedAnchorIds; // 已触发的事件锚点（防重复）
+  bool graduated; // 玩家是否已毕业（七年级后）
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -39,6 +43,8 @@ class WorldState {
     this.weather,
     this.timelineChanges = 0,
     List<String>? timelineBranches,
+    List<String>? firedAnchorIds,
+    this.graduated = false,
   })  : time = time ?? GameTime(),
         housePoints = Map<String, int>.from(housePoints ?? const {
           'Gryffindor': 350,
@@ -49,7 +55,8 @@ class WorldState {
         recentEvents = List<String>.from(recentEvents ?? const []),
         recentNarrativeEvents = List<String>.from(recentNarrativeEvents ?? const []),
         specialMarkers = List<String>.from(specialMarkers ?? const []),
-        timelineBranches = List<String>.from(timelineBranches ?? const []);
+        timelineBranches = List<String>.from(timelineBranches ?? const []),
+        firedAnchorIds = List<String>.from(firedAnchorIds ?? const []);
 
   /// 当前时间戳字符串
   String get timestamp => time.format();
@@ -105,6 +112,8 @@ class WorldState {
         'weather': weather,
         'timeline_changes': timelineChanges,
         'timeline_branches': timelineBranches,
+        'fired_anchor_ids': firedAnchorIds,
+        'graduated': graduated,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -133,6 +142,8 @@ class WorldState {
       weather: json['weather'],
       timelineChanges: json['timeline_changes'] ?? 0,
       timelineBranches: List<String>.from(json['timeline_branches'] ?? []),
+      firedAnchorIds: List<String>.from(json['fired_anchor_ids'] ?? []),
+      graduated: json['graduated'] ?? false,
     );
   }
 

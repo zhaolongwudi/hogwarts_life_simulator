@@ -78,10 +78,20 @@ class NpcChatService {
     promptBuffer.writeln(systemPrompt);
 
     if (history != null && history.isNotEmpty) {
+      // 双维度裁剪：条数上限 20 条 + 总字符上限 3000，防止长会话撑爆上下文
       final recent = history.length > 20 ? history.sublist(history.length - 20) : history;
-      for (final msg in recent) {
-        promptBuffer.writeln('${msg.role.toUpperCase()}: ${msg.content}');
+      final buffer = StringBuffer();
+      int totalChars = 0;
+      final kept = <ChatMessage>[];
+      for (final msg in recent.reversed) {
+        if (totalChars + msg.content.length > 3000) break;
+        totalChars += msg.content.length;
+        kept.insert(0, msg);
       }
+      for (final msg in kept) {
+        buffer.writeln('${msg.role.toUpperCase()}: ${msg.content}');
+      }
+      promptBuffer.write(buffer);
     }
 
     promptBuffer.writeln('USER: $safeMessage');

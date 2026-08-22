@@ -53,14 +53,26 @@ class AgnesRateLimiter {
     _requestTimes.add(DateTime.now());
   }
 
-  Future<void> waitForSlot() async {
-    int attempts = 0;
-    while (!canRequest && attempts < 60) {
-      await Future.delayed(const Duration(seconds: 3));
-      attempts++;
-    }
-    if (canRequest) {
-      recordRequest();
+  /// 精确等待可用名额（替代固定 3 秒轮询）：
+  /// 直接计算最早一条请求滑出 60 秒窗口的时刻并睡到那一刻。
+  /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
+  Future<void> waitForSlot({Duration timeout = const Duration(seconds: 40)}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final now = DateTime.now();
+      _requestTimes.removeWhere((t) => now.difference(t) > const Duration(minutes: 1));
+      if (_requestTimes.length < _maxRPM) {
+        _requestTimes.add(DateTime.now());
+        return;
+      }
+      if (now.isAfter(deadline)) {
+        throw Exception('Agnes 限流等待超时（${timeout.inSeconds}秒），已切换备用提供商');
+      }
+      // 最早一条请求在 oldest+60s 滑出窗口，精确睡到该时刻（+50ms 缓冲）
+      final waitMs = const Duration(minutes: 1).inMilliseconds -
+          now.difference(_requestTimes.first).inMilliseconds +
+          50;
+      await Future.delayed(Duration(milliseconds: waitMs.clamp(50, 61000).toInt()));
     }
   }
 
@@ -95,21 +107,24 @@ class SenseNovaQuotaManager {
     _callTimes.add(DateTime.now());
   }
 
-  Future<void> waitForQuota() async {
-    int attempts = 0;
-    while (!canMakeCall && attempts < 30) {
+  /// 精确等待配额窗口：计算最早一条调用滑出 5 小时窗口的时刻并睡到那一刻。
+  /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
+  Future<void> waitForQuota({Duration timeout = const Duration(seconds: 40)}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
       final now = DateTime.now();
-      final oldestCall = _callTimes.first;
-      final waitTime = _windowDuration.inSeconds - now.difference(oldestCall).inSeconds;
-      if (waitTime > 0 && waitTime < 300) {
-        await Future.delayed(Duration(seconds: waitTime));
-      } else {
-        await Future.delayed(const Duration(minutes: 1));
+      _callTimes.removeWhere((t) => now.difference(t) > _windowDuration);
+      if (_callTimes.length < _maxCallsPerWindow) {
+        _callTimes.add(DateTime.now());
+        return;
       }
-      attempts++;
-    }
-    if (canMakeCall) {
-      recordCall();
+      if (now.isAfter(deadline)) {
+        throw Exception('SenseNova 配额等待超时（${timeout.inSeconds}秒），已切换备用提供商');
+      }
+      final waitMs = _windowDuration.inMilliseconds -
+          now.difference(_callTimes.first).inMilliseconds +
+          50;
+      await Future.delayed(Duration(milliseconds: waitMs.clamp(50, 61000).toInt()));
     }
   }
 

@@ -59,6 +59,7 @@ class Player {
   final List<String> bloodRelatives; // 血缘亲属NPC名
   final List<Letter> letters; // 信件
   final List<String> rumors; // 舆论传闻
+  final List<String> traits; // 开局特质 id 列表
 
   Player({
     String? id,
@@ -114,6 +115,7 @@ class Player {
     List<String>? bloodRelatives,
     List<Letter>? letters,
     List<String>? rumors,
+    List<String>? traits,
   })  : id = id ?? _uuid.v4(),
         personalityTraits = List<String>.from(personalityTraits ?? const []),
         attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
@@ -131,6 +133,7 @@ class Player {
         bloodRelatives = List<String>.from(bloodRelatives ?? const []),
         letters = List<Letter>.from(letters ?? const []),
         rumors = List<String>.from(rumors ?? const []),
+        traits = List<String>.from(traits ?? const []),
         jobHistory = List<String>.from(jobHistory ?? const []);
 
   static const Map<String, int> _defaultAttributes = {
@@ -223,6 +226,7 @@ class Player {
         'blood_relatives': bloodRelatives,
         'letters': letters.map((e) => e.toJson()).toList(),
         'rumors': rumors,
+        'traits': traits,
       };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -290,6 +294,7 @@ class Player {
                 .toList() ??
             [],
         rumors: List<String>.from(json['rumors'] ?? []),
+        traits: List<String>.from(json['traits'] ?? []),
       );
 }
 

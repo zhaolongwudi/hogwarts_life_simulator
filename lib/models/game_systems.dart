@@ -562,6 +562,8 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'cg_collector', name: '收藏大师', description: '解锁10张以上CG'),
   Achievement(id: 'relationship_master', name: '关系大师', description: '同时与3位NPC保持高好感'),
   Achievement(id: 'time_master', name: '时间行者', description: '游戏内时间推进超过1年'),
+  Achievement(id: 'graduated', name: '七年之约', description: '从霍格沃茨毕业'),
+  Achievement(id: 'goal_achieved', name: '得偿所愿', description: '毕业时达成人生目标的数值条件'),
 ];
 
 // ==================== 信件 ====================

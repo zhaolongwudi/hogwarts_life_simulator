@@ -38,6 +38,7 @@ class NPC {
   int affectionGainedThisMonth; // 本月好感增量（第一个月上限+50）
   int lastGrudgeDay; // 上次记仇的游戏日
   bool introduced; // 是否已经在剧情中登场/被玩家认识
+  bool graduated; // 在校生是否已毕业离校
 
   NPC({
     required this.id,
@@ -72,6 +73,7 @@ class NPC {
     this.affectionGainedThisMonth = 0,
     this.lastGrudgeDay = -1,
     this.introduced = false,
+    this.graduated = false,
   })  : reputation = reputation ?? Reputation(),
         recentEvents = List<String>.from(recentEvents ?? const []),
         affectionLocks = List<String>.from(affectionLocks ?? const []),
@@ -145,6 +147,7 @@ class NPC {
         'affection_gained_this_month': affectionGainedThisMonth,
         'last_grudge_day': lastGrudgeDay,
         'introduced': introduced,
+        'graduated': graduated,
       };
 
   factory NPC.fromJson(Map<String, dynamic> json) => NPC(
@@ -185,5 +188,6 @@ class NPC {
         affectionGainedThisMonth: json['affection_gained_this_month'] ?? 0,
         lastGrudgeDay: json['last_grudge_day'] ?? -1,
         introduced: json['introduced'] ?? false,
+        graduated: json['graduated'] ?? false,
       );
 }
