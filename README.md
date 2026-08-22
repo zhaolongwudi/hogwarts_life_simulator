@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.7 — 2026-08-22
+
+**📋 变更说明**
+refactor: 提升 token 优化下的剧情连贯性与完整性
+
+- 近期剧情由单回合改为最近4回合环形缓冲，修复 AI 第2-9回合失忆
+- 删除 systemPrompt 中陈旧的【当前状态】(已由 buildPrompt 实时注入)
+- 摘要长度随进度放宽(300/500/700字)并注入真实关系快照校准
+- 缓存键由 hashCode 改为原文，narrative 场景关闭缓存避免冻结随机性
+- _buildCriticalContext 按行动中提及的 NPC 名精准注入好感
+
 ### v1.1.6 — 2026-08-22
 
 **📋 变更说明**
