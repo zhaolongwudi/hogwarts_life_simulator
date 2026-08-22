@@ -2808,7 +2808,7 @@ $_pendingSummary
     final location = _worldState.currentLocation;
     if (location == null || location.isEmpty) return [];
     return _npcRegistry.values.where((npc) {
-      return npc.currentLocation?.toLowerCase().contains(location.toLowerCase()) ?? false;
+      return npc.currentLocation.toLowerCase().contains(location.toLowerCase());
     }).toList();
   }
 
