@@ -261,6 +261,11 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.4 — 2026-08-22
+
+**📋 变更说明**
+fix(analyzer): 消除 dead_null_aware_expression 与多余 library 指令
+
 ### v1.1.3 — 2026-08-22
 
 **📋 变更说明**
