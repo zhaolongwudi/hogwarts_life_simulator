@@ -42,6 +42,9 @@ class GameProvider extends ChangeNotifier {
   String _currentNarrative = '';
   String _narrativeSummary = '';
   String _pendingSummary = '';
+  /// 最近几回合剧情环形缓冲（避免 AI 只有单回合记忆，保持短期连贯性）
+  final List<String> _recentTurns = [];
+  static const int _maxRecentTurns = 4;
   List<GameChoice> _choices = [];
   bool _isLoading = false;
   bool _isInitializing = false;
@@ -117,6 +120,15 @@ class GameProvider extends ChangeNotifier {
       _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
       _pendingSummary = extraData['pending_summary'] as String? ?? '';
       _gameWeek = extraData['game_week'] as int? ?? 1;
+      _recentTurns
+        ..clear()
+        ..addAll((extraData['recent_turns'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            []);
+      if (_recentTurns.isEmpty && _currentNarrative.isNotEmpty) {
+        _recentTurns.add(_currentNarrative);
+      }
       _isInitializing = false;
       debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合 (第$_gameWeek周)');
       notifyListeners();
@@ -147,6 +159,7 @@ class GameProvider extends ChangeNotifier {
           extraData: {
             'narrative_summary': _narrativeSummary,
             'pending_summary': _pendingSummary,
+            'recent_turns': _recentTurns,
             'game_week': _gameWeek,
           },
         );
@@ -255,8 +268,7 @@ class GameProvider extends ChangeNotifier {
     return '''$worldRules
 
 $profile
-【时代】$eraName
-【当前状态】${_buildSceneContext()}''';
+【时代】$eraName''';
   }
 
   String _eraLabel(Era era) {
@@ -600,6 +612,7 @@ ${profile.join('｜')}
         GameChoice(text: '收拾行李，准备出发', action: '收拾行李，准备出发'),
         GameChoice(text: '再检查一遍霍格沃茨的入学清单', action: '再检查一遍霍格沃茨的入学清单'),
       ];
+      _appendRecentTurn(_currentNarrative);
       return;
     }
 
@@ -607,12 +620,14 @@ ${profile.join('｜')}
       final response = await _callDeepSeek(prompt);
       _parseResponse(response.content);
       _accumulateForSummary(_currentNarrative);
+      _appendRecentTurn(_currentNarrative);
       notifyListeners();
     } catch (e) {
       _error = e.toString();
       _currentNarrative =
           '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
       _choices = [GameChoice(text: '继续', action: '继续')];
+      _appendRecentTurn(_currentNarrative);
       notifyListeners();
       unawaited(CrashLogger.instance.record(
         e,
@@ -683,7 +698,10 @@ ${profile.join('｜')}
       if (_narrativeSummary.isNotEmpty) {
         contextBuffer.write('【前情摘要】\n$_narrativeSummary\n\n');
       }
-      final recent = _truncateNarrativeContext(_currentNarrative, 400);
+      final recentBuffer = _recentTurns.isNotEmpty
+          ? _recentTurns.join('\n\n')
+          : _currentNarrative;
+      final recent = _truncateNarrativeContext(recentBuffer, 1600);
       contextBuffer.write('【近期剧情】\n$recent');
 
       final context = contextBuffer.toString();
@@ -736,6 +754,7 @@ $safeAction
 
       _parseResponse(response);
       _accumulateForSummary(_currentNarrative);
+      _appendRecentTurn(_currentNarrative);
       _advanceTimeForAction(action);
       _updateNPCsFromAction(action);
       _updatePlayerImpactScore(action);
@@ -2829,6 +2848,16 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     return '…（前情略）${narrative.substring(cut)}';
   }
 
+  /// 把一回合剧情加入近期缓冲，裁剪到最近 N 回合
+  void _appendRecentTurn(String narrative) {
+    final trimmed = narrative.trim();
+    if (trimmed.isEmpty) return;
+    _recentTurns.add(trimmed);
+    while (_recentTurns.length > _maxRecentTurns) {
+      _recentTurns.removeAt(0);
+    }
+  }
+
   // ==================== 剧情摘要机制：每10回合压缩历史 ====================
 
   void _accumulateForSummary(String newNarrative) {
@@ -2841,7 +2870,13 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       return;
     }
 
-    final prompt = '''请将以下剧情内容压缩成5-8句话的摘要，保留关键事件、NPC互动、重要转折和玩家状态变化。用第三人称。
+    // 摘要长度随游戏进度逐步放宽，避免长线信息被过度压缩丢失
+    final limit = _turnCount <= 40
+        ? 300
+        : (_turnCount <= 100 ? 500 : 700);
+    final relationSnapshot = _buildRelationshipSnapshot();
+
+    final prompt = '''请将以下剧情内容压缩成摘要，保留关键事件、NPC互动、重要转折和玩家状态变化。用第三人称。
 
 【前情摘要】
 ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
@@ -2849,7 +2884,12 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
 【新剧情】
 $_pendingSummary
 
-请输出合并后的完整摘要(不超过300字)：''';
+【当前关系状态】（以此为准校准，避免记忆偏差）
+${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
+
+请输出：
+1. 剧情摘要（不超过$limit字）
+2. 末尾单独一行【关系】列出当前重要NPC的关系状态（如：赫敏:友好/72；马尔福:敌对/-30）''';
 
     try {
       final result = await _callDeepSeek(
@@ -2863,6 +2903,15 @@ $_pendingSummary
     } catch (e) {
       debugPrint('❌ 摘要生成失败: $e');
     }
+  }
+
+  /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
+  String _buildRelationshipSnapshot() {
+    final npcs = _npcRegistry.values.where((n) => n.affection != 0).toList()
+      ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
+    return npcs.take(5)
+        .map((n) => '${n.name}:${n.affectionStage}/${n.affection}')
+        .join('；');
   }
 
   /// 只在状态异常时输出状态标签（HP低/MP低/精力低/受伤），正常则不写
@@ -2910,8 +2959,16 @@ $_pendingSummary
       if (study.isNotEmpty) parts.add('【学业】$study');
     }
 
-    // 社交/对话 → 注入最多2个相关NPC好感
-    if (a.contains(RegExp(r'(约会|表白|心动|拥抱|接吻|单独见面|私聊)'))) {
+    // 社交/对话：若行动中提到具体NPC名则精准注入其好感，否则按关键词注入
+    final mentioned = _npcRegistry.values
+        .where((n) => action.contains(n.name))
+        .toList();
+    if (mentioned.isNotEmpty) {
+      final affs = mentioned.take(2)
+          .map((n) => '${n.name}:好感${n.affection}(${n.affectionStage})')
+          .join('；');
+      parts.add('【关系】$affs');
+    } else if (a.contains(RegExp(r'(约会|表白|心动|拥抱|接吻|单独见面|私聊)'))) {
       final affs = _formatAffections(maxEntries: 2);
       if (affs.isNotEmpty && !affs.contains('暂无深入关系')) parts.add('【关系】$affs');
     }
@@ -3437,6 +3494,7 @@ $_pendingSummary
       extraData: {
         'narrative_summary': _narrativeSummary,
         'pending_summary': _pendingSummary,
+        'recent_turns': _recentTurns,
         'game_week': _gameWeek,
       },
     );
@@ -3468,6 +3526,15 @@ $_pendingSummary
     _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
     _pendingSummary = extraData['pending_summary'] as String? ?? '';
     _gameWeek = extraData['game_week'] as int? ?? 1;
+    _recentTurns
+      ..clear()
+      ..addAll((extraData['recent_turns'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          []);
+    if (_recentTurns.isEmpty && _currentNarrative.isNotEmpty) {
+      _recentTurns.add(_currentNarrative);
+    }
     _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();

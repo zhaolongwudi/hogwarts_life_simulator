@@ -128,16 +128,16 @@ class ResponseCache {
   static final ResponseCache instance = ResponseCache._privateConstructor();
 
   String _makeKey(String prompt, {String? systemPrompt, double? temperature, int? maxTokens}) {
+    // 用原文作为缓存键，避免 hashCode 碰撞导致不同请求错误命中
     final keyBuffer = StringBuffer();
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
-      keyBuffer.write(systemPrompt.hashCode);
-      keyBuffer.write(':');
+      keyBuffer.write(systemPrompt);
+      keyBuffer.write('|||');
     }
-    keyBuffer.write(prompt.hashCode);
+    keyBuffer.write(prompt);
     // 将温度与最大 token 纳入缓存键，避免不同生成参数之间互相污染
-    // （例如温度 0.3 的摘要与温度 0.9 的剧情本不该命中同一条缓存）
-    keyBuffer.write(':t$temperature');
-    keyBuffer.write(':m$maxTokens');
+    keyBuffer.write('|||t$temperature');
+    keyBuffer.write('|||m$maxTokens');
     return keyBuffer.toString();
   }
 

@@ -85,6 +85,7 @@ class AiRouter {
       systemPrompt: systemPrompt,
       temperature: temperature,
       maxTokens: maxTokens,
+      useCache: scene != AiScene.narrative,
     );
     if (scene == AiScene.narrative) {
       return future.timeout(const Duration(seconds: 45), onTimeout: () {
@@ -100,19 +101,22 @@ class AiRouter {
     String? systemPrompt,
     required double temperature,
     required int maxTokens,
+    bool useCache = true,
   }) async {
-    // 检查缓存
-    final cached = _responseCache.get(
-      prompt,
-      systemPrompt: systemPrompt,
-      temperature: temperature,
-      maxTokens: maxTokens,
-    );
-    if (cached != null) {
-      return ChatResult(
-        content: cached,
-        usage: TokenUsage(promptTokens: 0, completionTokens: 0, totalTokens: 0),
+    // 检查缓存（narrative 场景关闭缓存：其 prompt 每回合都变，命中率极低且有冻结随机性的风险）
+    if (useCache) {
+      final cached = _responseCache.get(
+        prompt,
+        systemPrompt: systemPrompt,
+        temperature: temperature,
+        maxTokens: maxTokens,
       );
+      if (cached != null) {
+        return ChatResult(
+          content: cached,
+          usage: TokenUsage(promptTokens: 0, completionTokens: 0, totalTokens: 0),
+        );
+      }
     }
 
     final tried = <AiProvider>{};
@@ -141,13 +145,15 @@ class AiRouter {
           maxTokens: maxTokens,
         );
         // 缓存成功响应
-        _responseCache.set(
-          prompt,
-          result.content,
-          systemPrompt: systemPrompt,
-          temperature: temperature,
-          maxTokens: maxTokens,
-        );
+        if (useCache) {
+          _responseCache.set(
+            prompt,
+            result.content,
+            systemPrompt: systemPrompt,
+            temperature: temperature,
+            maxTokens: maxTokens,
+          );
+        }
         return result;
       } catch (e) {
         debugPrint('⚠️ ${current.name} 调用失败: $e');
