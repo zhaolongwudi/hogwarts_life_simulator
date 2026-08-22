@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.0.7 — 2026-08-22
+
+**📋 变更说明**
+fix: 修复开场和回合崩溃，添加崩溃日志收集和查看系统
+
+- 修复开场崩溃：_parseAffectionChanges空注册表保护、_parseReputationChanges空player检查
+- 修复回合崩溃：_updatePlayerImpactScore空注册表保护、token统计异常捕获
+- 新增CrashLogger：全局Flutter框架+PlatformDispatcher错误捕获，本地JSON落盘（最多50条）
+- 设置页新增崩溃日志面板：支持查看最近3条、查看全部、复制详情、清除日志
+- 关键异常记录：processChoice、开场初始化、开场AI调用失败均记录到CrashLogger
+
 ### v1.0.6 — 2026-08-22
 
 **📋 变更说明**
