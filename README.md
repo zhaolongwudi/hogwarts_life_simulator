@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.4.2 — 2026-08-22
+
+**📋 变更说明**
+fix: debug log switch persistence, paired call logs, stronger long-term memory
+
+- Persist AI debug log switch to AppProvider + SharedPreferences, restore on app boot via main.dart
+- SettingsScreen reads switch via context.watch<AppProvider> instead of a local bool
+- AiDebugLogger refactor: logStart returns callId (buffered in memory), logComplete merges START + RESPONSE/ERROR/TIMEOUT into a single contiguous write to avoid parallel narrative/choice calls interleaving
+- ai_router passes callId through whole chain including timeouts and fallback errors
+- Long-term memory improvements:
+
 ### v1.4.1 — 2026-08-22
 
 **📋 变更说明**
