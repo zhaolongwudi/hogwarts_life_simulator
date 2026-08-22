@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.3.9 — 2026-08-22
+
+**📋 变更说明**
+fix: 修复NPC名字简写匹配和好感度不更新问题
+
+1. NPC名称匹配修复 (npc.dart):
+   - 新增 aliases 字段支持自定义别名
+   - 新增 allNames getter 自动推导简称（全名→姓氏/名字）
+     - 「西弗勒斯·斯内普」→「斯内普」「西弗勒斯」
+     - 「Harry Potter」→「Potter」「Harry」
+
 ### v1.3.8 — 2026-08-22
 
 **📋 变更说明**
