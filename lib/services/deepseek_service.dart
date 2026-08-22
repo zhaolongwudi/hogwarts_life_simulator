@@ -32,6 +32,22 @@ class ChatResult {
   });
 }
 
+/// 可重试的 AI 调用异常（超时、限流、服务端错误等）
+class AiRetryableException implements Exception {
+  final String message;
+  AiRetryableException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// 不可重试的 AI 调用异常（认证失败、参数错误、端点不存在等）
+class AiNonRetryableException implements Exception {
+  final String message;
+  AiNonRetryableException(this.message);
+  @override
+  String toString() => message;
+}
+
 class DeepSeekService {
   final AiConfig config;
   final Dio _dio;
@@ -148,15 +164,15 @@ class DeepSeekService {
     }
 
     if (statusCode == 401) {
-      throw Exception('API Key 无效，请检查设置');
-    } else if (statusCode == 429) {
-      throw Exception('请求过于频繁，请稍后重试');
+      throw AiNonRetryableException('API Key 无效，请检查设置');
     } else if (statusCode == 404) {
-      throw Exception('API 端点不存在，请检查 Base URL 设置');
-    } else if (statusCode != null && statusCode >= 400) {
-      throw Exception('API 错误 ($statusCode): $msg');
+      throw AiNonRetryableException('API 端点不存在，请检查 Base URL 设置');
+    } else if (statusCode == 429) {
+      throw AiRetryableException('请求过于频繁，请稍后重试');
+    } else if (statusCode != null && statusCode >= 400 && statusCode < 500) {
+      throw AiNonRetryableException('API 错误 ($statusCode): $msg');
     } else {
-      throw Exception('网络错误: $msg');
+      throw AiRetryableException('网络错误: $msg');
     }
   }
 

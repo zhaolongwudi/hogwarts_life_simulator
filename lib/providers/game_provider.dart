@@ -16,7 +16,6 @@ import '../data/balance_constants.dart';
 import '../data/event_anchors.dart';
 import '../data/trait_data.dart';
 import '../services/deepseek_service.dart';
-import '../services/deepseek_service.dart' show ChatResult;
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
@@ -253,9 +252,9 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> updateApiKey(String key) async {
+    await appProvider.saveApiKey(key);
     _updateClient();
     chatService.refreshClient();
-    notifyListeners();
   }
 
   // ==================== 系统提示词（精简版 + 玩家档案嵌入） ====================
@@ -918,6 +917,8 @@ $safeAction
       String response;
       try {
         response = (await _callDeepSeek(prompt)).content;
+      } on AiNonRetryableException {
+        rethrow;
       } catch (e) {
         _loadingStage = '请求失败，正在重试...';
         notifyListeners();

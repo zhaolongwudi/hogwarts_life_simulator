@@ -89,7 +89,7 @@ class AiRouter {
     );
     if (scene == AiScene.narrative) {
       return future.timeout(const Duration(seconds: 45), onTimeout: () {
-        throw Exception('剧情生成超时（45秒），请重试或切换提供商');
+        throw AiRetryableException('剧情生成超时（45秒），请重试或切换提供商');
       });
     }
     return future;
@@ -164,7 +164,7 @@ class AiRouter {
       }
     }
 
-    throw Exception('所有AI服务均不可用');
+    throw AiNonRetryableException('所有AI服务均不可用');
   }
 
   Future<ChatResult> _executeWithRateLimit({

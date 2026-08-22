@@ -327,7 +327,7 @@ class AppProvider extends ChangeNotifier {
       AiProvider.agnes: 'agnes-2.5-turbo',
       AiProvider.sensenova: 'sensenova-6.7-flash-lite',
     };
-    _aiModel = defaults[provider]!;
+    _aiModel = defaults[provider] ?? 'deepseek-v4-flash';
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('ai_provider', provider.index);
     await prefs.setString('ai_model', _aiModel);

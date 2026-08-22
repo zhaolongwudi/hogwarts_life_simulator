@@ -2393,7 +2393,6 @@ class _ApiKeyInputState extends State<_ApiKeyInput> {
         const SizedBox(width: 8),
         ElevatedButton(
           onPressed: () async {
-            await widget.appProvider.saveApiKey(_controller.text.trim());
             await widget.gp.updateApiKey(_controller.text.trim());
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
