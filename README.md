@@ -261,6 +261,11 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.1 — 2026-08-22
+
+**📋 变更说明**
+fix(analyzer): 移除 _worldState 多余 null 判断（非空字段）导致的 unnecessary_null_comparison 警告
+
 ### v1.1.0 — 2026-08-22
 
 **📋 变更说明**
