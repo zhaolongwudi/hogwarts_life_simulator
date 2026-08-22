@@ -8,6 +8,7 @@ class NPC {
   int grade;
   final String bloodStatus;
   final bool isCanon;
+  final List<String> aliases;  // 简称/别名列表
   bool isAlive;
   final List<String> personality;
   String currentLocation;
@@ -48,6 +49,7 @@ class NPC {
     this.bloodStatus = 'unknown',
     this.isCanon = false,
     this.isAlive = true,
+    this.aliases = const [],
     this.personality = const [],
     this.currentLocation = '霍格沃茨',
     this.mood = 50,
@@ -79,6 +81,43 @@ class NPC {
         affectionLocks = List<String>.from(affectionLocks ?? const []),
         grudges = List<Map<String, dynamic>>.from(
             grudges ?? const <Map<String, dynamic>>[]);
+
+  /// 获取所有匹配名称：全名 + 简称 + 自动推导的姓氏
+  List<String> get allNames {
+    final result = <String>{name};
+    result.addAll(aliases);
+    
+    // 自动推导中文姓氏（"西弗勒斯·斯内普" → "斯内普"）
+    if (name.contains('·')) {
+      final parts = name.split('·');
+      if (parts.length >= 2) {
+        result.add(parts.last);  // 姓氏
+        result.add(parts.first);  // 名字
+      }
+    }
+    
+    // 英文名字推导（"Harry Potter" → "Potter"、"Harry"）
+    if (name.contains(' ')) {
+      final parts = name.split(' ');
+      if (parts.length >= 2) {
+        result.add(parts.last);
+        result.add(parts.first);
+      }
+    }
+    
+    return result.where((n) => n.length >= 2).toList();
+  }
+  
+  /// 检查某个名字是否与该NPC匹配
+  bool nameMatches(String queryName) {
+    if (queryName.isEmpty) return false;
+    for (final n in allNames) {
+      if (n == queryName || n.contains(queryName) || queryName.contains(n)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   String get affectionStage => affectionStageFor(affection);
 
@@ -117,6 +156,7 @@ class NPC {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        'aliases': aliases,
         'house': house,
         'grade': grade,
         'blood_status': bloodStatus,
@@ -153,6 +193,7 @@ class NPC {
   factory NPC.fromJson(Map<String, dynamic> json) => NPC(
         id: json['id'],
         name: json['name'],
+        aliases: List<String>.from(json['aliases'] ?? []),
         house: json['house'] ?? '',
         grade: json['grade'] ?? 1,
         bloodStatus: json['blood_status'] ?? 'unknown',

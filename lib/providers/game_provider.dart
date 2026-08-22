@@ -272,9 +272,12 @@ class GameProvider extends ChangeNotifier {
     if (change > 0) {
       final cap = npc.getAffectionGainLimit(currentDay, _gameWeek);
       if (cap <= 0) {
+        // 达到周上限，添加通知（仅当本周首次触达时）
         actualChange = 0;
-        _notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
-        _worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+        if (npc.affectionGainedThisWeek == Balance.weekOneAffectionCap) {
+          _notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+          _worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+        }
       } else if (change > cap) {
         actualChange = cap;
       }
@@ -299,6 +302,7 @@ class GameProvider extends ChangeNotifier {
       _worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心');
     }
 
+    final oldAffection = npc.affection;
     npc.affection = (npc.affection + actualChange).clamp(-100, 100);
     if (npc.affection > npc.maxAffectionReached) {
       npc.maxAffectionReached = npc.affection;
@@ -658,15 +662,22 @@ class GameProvider extends ChangeNotifier {
     
     int markedThisRound = 0;
     const maxPerRound = 5;
-    // 按名字长度降序，长名优先匹配（避免「哈利」在「哈利·波特」之前匹配到）
-    final names = _npcRegistry.values.toList()
+    // 按名字长度降序，长名优先匹配
+    final npcs = _npcRegistry.values.toList()
       ..sort((a, b) => b.name.length.compareTo(a.name.length));
-    for (final npc in names) {
+    for (final npc in npcs) {
       if (npc.introduced) continue;
       if (markedThisRound >= maxPerRound) break;
-      // 名字必须 >= 2 字符才参与自动匹配
-      if (npc.name.runes.length < 2) continue;
-      if (_standaloneNameMentioned(text, npc.name)) {
+      // 检查 NPC 的所有名称（全名、简称、姓氏）
+      bool matched = false;
+      for (final alias in npc.allNames) {
+        if (alias.runes.length < 2) continue;
+        if (_standaloneNameMentioned(text, alias)) {
+          matched = true;
+          break;
+        }
+      }
+      if (matched) {
         markNpcIntroduced(npc);
         markedThisRound++;
       }
@@ -4691,32 +4702,36 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
       if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
       try {
         NPC? npc;
-        try {
-          npc = _npcRegistry.values.firstWhere((n) => n.name == npcName);
-        } catch (_) {
-          for (final n in _npcRegistry.values) {
-            if (n.name.contains(npcName) || npcName.contains(n.name)) {
-              npc = n;
-              break;
-            }
-          }
-          if (npc == null) {
-            for (final n in _npcRegistry.values) {
-              final surname = n.name.split('·').isNotEmpty ? n.name.split('·').last : n.name;
-              if (npcName.contains(surname) || surname.contains(npcName)) {
-                npc = n;
-                break;
-              }
-            }
+        // 优先级1: 使用 nameMatches 方法匹配所有别名和简称
+        for (final n in _npcRegistry.values) {
+          if (n.nameMatches(npcName)) {
+            npc = n;
+            break;
           }
         }
-        if (npc != null) {
-          updateNpcAffection(npc.id, delta, reason: '剧情互动');
-          _checkLocks(npc);
-          _syncRelationshipLevel(npc);
-          _checkAffectionAchievements(npc);
+        // 优先级2: 严格匹配全名
+        npc ??= _npcRegistry.values.cast<NPC?>().firstWhere(
+          (n) => n!.name == npcName,
+          orElse: () => null,
+        );
+        if (npc == null) {
+          debugPrint('[好感解析] 未找到匹配NPC: $npcName');
+          continue;
         }
+        debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta');
+        final before = npc.affection;
+        updateNpcAffection(npc.id, delta, reason: '剧情互动');
+        final after = npc.affection;
+        if (before != after) {
+          debugPrint('[好感更新] ${npc.name}: $before → $after');
+        } else {
+          debugPrint('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
+        }
+        _checkLocks(npc);
+        _syncRelationshipLevel(npc);
+        _checkAffectionAchievements(npc);
       } catch (e) {
+        debugPrint('[好感解析错误] $npcName: $e');
       }
     }
   }
