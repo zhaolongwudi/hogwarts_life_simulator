@@ -443,7 +443,7 @@ class GameProvider extends ChangeNotifier {
     String? politicalTendency,
     String? simulationStyle,
     String? birthIdentity,
-    this.openingScene = 'station',
+    String openingScene = 'station',
   }) async {
     // 先彻底清空所有旧状态（防止新开局把旧摘要/近期剧情注入到 Prompt）
     resetAllState();
