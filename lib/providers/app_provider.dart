@@ -12,9 +12,10 @@ enum AiProvider { deepseek, agnes, sensenova }
 // 策略：Agnes用于主剧情（响应最快，中文质量可接受），SenseNova用于摘要（Token效率最高），DeepSeek用于NPC聊天（长文本能力强）
 // 用户可通过设置页面自定义路由覆盖默认值
 const Map<AiScene, String> kDefaultRoute = {
-  AiScene.narrative: 'sensenova',   // 主剧情：商汤日日新剧情质量最好
-  AiScene.summary: 'sensenova',     // 摘要：Token效率最高
-  AiScene.npcChat: 'agnes',         // NPC聊天：速度最快、免费
+  AiScene.narrative: 'sensenova',
+  AiScene.summary: 'sensenova',
+  AiScene.npcChat: 'agnes',
+  AiScene.choice: 'sensenova',
 };
 
 // 场景简介（显示在设置页）
@@ -22,6 +23,7 @@ const Map<AiScene, String> kSceneDescriptions = {
   AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。默认使用 SenseNova（商汤日日新，剧情质量最好）。',
   AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。默认使用 SenseNova（Token效率最高，省60%）。',
   AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。默认使用 DeepSeek（长文本能力强），可改为 Agnes 以获得更快响应。',
+  AiScene.choice: '选项生成：独立于主剧情的选项生成，使用更强模型保证选项质量。默认使用 SenseNova。',
 };
 
 // 提供商简介
@@ -36,6 +38,7 @@ const Map<AiScene, String> kSceneLabels = {
   AiScene.narrative: '主剧情生成',
   AiScene.summary: '剧情摘要压缩',
   AiScene.npcChat: 'NPC独立聊天',
+  AiScene.choice: '选项独立生成',
 };
 
 List<AiProvider> get allProviders => AiProvider.values;

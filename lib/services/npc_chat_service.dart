@@ -46,6 +46,7 @@ class NpcChatService {
       narrativeProvider: appProvider.providerForScene(AiScene.narrative),
       summaryProvider: appProvider.providerForScene(AiScene.summary),
       npcChatProvider: appProvider.providerForScene(AiScene.npcChat),
+      choiceProvider: appProvider.providerForScene(AiScene.choice),
     );
     final router = AiRouter(config);
     for (final p in AiProvider.values) {

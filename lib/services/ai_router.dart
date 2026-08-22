@@ -3,18 +3,20 @@ import '../providers/app_provider.dart';
 import 'deepseek_service.dart';
 import 'rate_limiter.dart';
 
-enum AiScene { narrative, summary, npcChat }
+enum AiScene { narrative, summary, npcChat, choice }
 
 class AiRouterConfig {
   final AiProvider narrativeProvider;
   final AiProvider summaryProvider;
   final AiProvider npcChatProvider;
+  final AiProvider choiceProvider;
   final List<AiProvider> fallbackOrder;
 
   const AiRouterConfig({
     this.narrativeProvider = AiProvider.sensenova,
     this.summaryProvider = AiProvider.sensenova,
     this.npcChatProvider = AiProvider.agnes,
+    this.choiceProvider = AiProvider.sensenova,
     this.fallbackOrder = const [AiProvider.deepseek, AiProvider.sensenova, AiProvider.agnes],
   });
 
@@ -26,6 +28,8 @@ class AiRouterConfig {
         return summaryProvider;
       case AiScene.npcChat:
         return npcChatProvider;
+      case AiScene.choice:
+        return choiceProvider;
     }
   }
 
@@ -79,11 +83,16 @@ class AiRouter {
       systemPrompt: systemPrompt,
       temperature: temperature,
       maxTokens: maxTokens,
-      useCache: scene != AiScene.narrative,
+      useCache: scene != AiScene.narrative && scene != AiScene.choice,
     );
     if (scene == AiScene.narrative) {
       return future.timeout(const Duration(seconds: 45), onTimeout: () {
         throw AiRetryableException('剧情生成超时（45秒），请重试或切换提供商');
+      });
+    }
+    if (scene == AiScene.choice) {
+      return future.timeout(const Duration(seconds: 20), onTimeout: () {
+        throw AiRetryableException('选项生成超时（20秒），请重试');
       });
     }
     return future;
@@ -230,6 +239,8 @@ class AiRouter {
         return '摘要';
       case AiScene.npcChat:
         return 'NPC聊天';
+      case AiScene.choice:
+        return '选项';
     }
   }
 

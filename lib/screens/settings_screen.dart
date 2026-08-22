@@ -599,6 +599,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return '≈800-1200 token/次 · 每10回合1次';
       case AiScene.npcChat:
         return '≈300-800 token/次 · 按需调用';
+      case AiScene.choice:
+        return '≈200-500 token/次 · 选项不足3个时触发';
     }
   }
 
