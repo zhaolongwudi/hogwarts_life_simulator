@@ -6,6 +6,7 @@ import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/world_state.dart';
 import '../models/game_systems.dart';
+import '../models/long_term_memory.dart';
 import '../data/course_data.dart';
 import '../data/wand_data.dart';
 import '../data/cg_data.dart';
@@ -49,6 +50,7 @@ class GameProvider extends ChangeNotifier {
   Player? _player;
   WorldState _worldState = WorldState();
   final Map<String, NPC> _npcRegistry = {};
+  LongTermMemory _memory = LongTermMemory();
 
   String _currentNarrative = '';
   String _narrativeSummary = '';
@@ -145,6 +147,9 @@ class GameProvider extends ChangeNotifier {
       _totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
       _totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
       _totalTokens = extraData['total_tokens'] as int? ?? 0;
+      // 加载千回合级结构化长期记忆（不存在则为空白，LLM压缩摘要不会损伤这里）
+      _memory = LongTermMemory.fromJson(
+          extraData['long_term_memory'] as Map<String, dynamic>?);
 
       _recentTurns
         ..clear()
@@ -219,6 +224,8 @@ class GameProvider extends ChangeNotifier {
             'total_prompt_tokens': _totalPromptTokens,
             'total_completion_tokens': _totalCompletionTokens,
             'total_tokens': _totalTokens,
+            // 千回合级结构化长期记忆（永不压缩的纯事实层）
+            'long_term_memory': _memory.toJson(),
           },
         );
       } catch (e) {
@@ -1061,12 +1068,81 @@ ${profile.join('｜')}
       final p = _player!;
 
       final contextBuffer = StringBuffer();
+
+      // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
+      // 永远放在【世界上下文】最前面，防止后面截断看不到
+      // T0: 核心事实 (importance ≥ 5，重要性高到低，最多30条；importance 10永远保留)
+      final t0 = _memory.keyFacts
+          .where((f) => f.importance >= 5)
+          .toList()
+        ..sort((a, b) => b.importance.compareTo(a.importance));
+      if (t0.isNotEmpty) {
+        contextBuffer.writeln('【T0 核心事实（永不遗忘；纯事实，不得更改或遗忘）】');
+        for (int i = 0; i < t0.length && i < 30; i++) {
+          final f = t0[i];
+          contextBuffer.writeln('• [${f.importance}] ${f.fact}');
+        }
+        contextBuffer.writeln('');
+      }
+      // T1: 未完结事项 (open 状态优先，importance 排序，最多 20 条)
+      final t1 = _memory.openLoops.where((l) => l.status == 'open').toList()
+        ..sort((a, b) => b.importance.compareTo(a.importance));
+      if (t1.isNotEmpty) {
+        contextBuffer.writeln('【T1 未完结事项（承诺/债务/约定/未完成任务，说话要算数）】');
+        for (int i = 0; i < t1.length && i < 20; i++) {
+          final l = t1[i];
+          contextBuffer.writeln('• [${l.importance}] ${l.description}');
+        }
+        contextBuffer.writeln('');
+      }
+      // T2: NPC 关键关系（按 |好感| 取前 12 个 NPC 的结构化关系锚）
+      final topNpcs = _npcRegistry.values.toList()
+        ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
+      final t2Lines = <String>[];
+      for (int i = 0; i < topNpcs.length && i < 12; i++) {
+        final npc = topNpcs[i];
+        final anchor = _memory.relationshipAnchors[npc.id];
+        if (anchor == null) continue;
+        final buf = StringBuffer();
+        buf.write('${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})');
+        if (anchor.firstMeeting.isNotEmpty) buf.write('｜初见:${anchor.firstMeeting}');
+        if (anchor.keyMoments.isNotEmpty) {
+          // 注入最后 3 个关键转折点
+          buf.write('｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 3)).join("；")}');
+        }
+        if (anchor.secretsShared.isNotEmpty) buf.write('｜交换秘密:${anchor.secretsShared.take(3).join("；")}');
+        if (anchor.promisesExchanged.isNotEmpty) buf.write('｜承诺:${anchor.promisesExchanged.take(3).join("；")}');
+        t2Lines.add('• ${buf.toString()}');
+      }
+      if (t2Lines.isNotEmpty) {
+        contextBuffer.writeln('【T2 NPC 关键关系（纯事实结构锚，永不压缩）】');
+        contextBuffer.writeln(t2Lines.join('\n'));
+        contextBuffer.writeln('');
+      }
+      // T3: 世界事件银行（重要性 * 新鲜度 取前 20 条）
+      final ts = _worldState.time.dayOfYear;
+      final t3 = List<WorldEventRecord>.from(_memory.worldEvents)
+        ..sort((a, b) => b.score(ts).compareTo(a.score(ts)));
+      if (t3.isNotEmpty) {
+        contextBuffer.writeln('【T3 世界事件银行（按重要性+新鲜度排序）】');
+        for (int i = 0; i < t3.length && i < 20; i++) {
+          final e = t3[i];
+          final cons = e.consequences.isNotEmpty
+              ? ' → 后续:${e.consequences.join(";")}'
+              : '';
+          contextBuffer.writeln(
+              '• [${e.importance}]${e.timestamp} ${e.category}｜${e.title}:${e.description}$cons');
+        }
+        contextBuffer.writeln('');
+      }
+
+      // ========== T4 自然语言摘要（有损压缩历史背景，可有可无） ==========
       if (_narrativeSummary.isNotEmpty) {
         // 关键改进：明确标注前情摘要是"历史背景"，不要基于此生成选项
         contextBuffer.write('【历史背景（仅作参考，不要基于此生成当前场景的选项）】\n$_narrativeSummary\n\n');
       }
 
-      // 强制注入世界动态/剧情事件锚点（最近6条）——这些是长线剧情的硬锚，防止AI遗忘重大世界事件
+      // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
       final ws = _worldState;
       final worldAnchors = <String>[];
       if (ws.worldEvents.isNotEmpty) {
@@ -4323,35 +4399,90 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   Future<List<GameChoice>> _generateChoicesSeparately(String narrative) async {
     if (_router == null) return [];
 
+    final p = _player!;
     final currentLoc = _worldState.currentLocation ?? '';
     final timestamp = _worldState.timestamp;
     final playerAction = _lastPlayerAction;
 
-    final choicePrompt = '''你是一个游戏剧情选项生成器。请根据以下剧情内容，生成 4 个互斥的玩家选择。
+    // ---- 注入玩家硬状态：避免生成不可能的选项 ----
+    final yearLabel = p.year > 0 && p.year <= 7 ? '${p.year}年级' : '新生';
+    final houseText = p.house.isNotEmpty ? '学院：${p.house}' : '学院：未分院';
+    final healthText = '生命：${p.health}/100';
+    final energyText = '精力：${p.energy}/100（${p.energy < 25 ? '极低，高强度动作会失败' : p.energy < 50 ? '偏低，避免持久战' : '充足'}）';
+    final galleonsText = '加隆：${p.galleons}·古灵阁存${p.bankGalleons}';
 
-【当前剧情】
+    // 学会的魔法（只取前 6 个战斗/实用水平的）
+    final knownSpells = p.learnedSpells.entries
+        .where((e) =>
+            e.value == SpellLevel.intermediate ||
+            e.value == SpellLevel.proficient ||
+            e.value == SpellLevel.mastered)
+        .take(6)
+        .map((e) => e.key)
+        .toList();
+    final spellsText = knownSpells.isEmpty
+        ? '已知魔法：只会基本入门（荧光闪烁、开锁等）'
+        : '已知魔法：${knownSpells.join('、')}';
+
+    // 背包中值得一提的物品（前 6 个）
+    final invItems = p.inventory.take(6).map((i) => i.name).toList();
+    final inventoryText = invItems.isEmpty
+        ? '背包：空'
+        : '背包：${invItems.join('、')}';
+
+    // 从当前剧情 + 结构化记忆中提取"承诺/未完结事项"，防止选项说话不算话
+    final openLoopsBrief = _memory.openLoops
+        .where((l) => l.status == 'open' && l.importance >= 6)
+        .take(3)
+        .map((l) => '· ${l.description}')
+        .join('\n');
+
+    // 剧情中出现过的近期 NPC (nameMatches 不在此处，仅作简要上下文)
+    final nearbyNpcs = _npcRegistry.values
+        .where((n) => n.isNearby || n.affection.abs() >= 15)
+        .take(6)
+        .map((n) => '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection})')
+        .join('、');
+
+    final choicePrompt = '''你是《哈利波特·魔法人生模拟器》的专业选项设计师。任务：只生成 4 个互斥的玩家选择。
+你的输出只有 4 行（A/B/C/D），不要任何前置说明、正文、理由或【好感变化】等标签。
+
+===== 四选一设计规则（严格执行）=====
+规则1：4个选项必须分别覆盖「4 种决策风格」——
+  A 直面/主动出击/勇敢型（直接面对冲突、施法、站出来、揭穿）
+  B 谨慎/智取/观察型（撤退到安全、收集情报、等待时机、叫外援）
+  C 人际/沟通/结盟型（求助、谈判、说谎、拉路人、找 NPC）
+  D 规则内取巧/黑魔法边缘/代价型（铤而走险、用禁咒、牺牲物品、变身、隐忍装死）
+规则2：选项必须只基于【当前剧情】末尾的即时冲突或悬念。严禁重复之前剧情已经完成的事情。
+规则3：符合玩家硬状态限制——
+  • 一年级生无法单挑成年巫师（会输）
+  • 精力<25 不允许高强度战斗/长距离奔跑选项
+  • 没学会的魔法不能写"用XX咒"；没带的物品不能写"拿出XX"
+  • 不能违背未完结事项中的承诺
+规则4：每个选项 20~50 字之间，为具体动作+明确意图，不要"随便走走"、"休息一下"这种无意义选项。
+规则5：严格格式，只输出 A./B./C./D. + 内容，每行 1 条，最多 4 行。
+
+===== 游戏世界背景 =====
+【当前剧情】（你所有选项必须直接回应这段结尾的处境）
 $narrative
 
-【当前场景】$timestamp｜$currentLoc
-【玩家刚执行的行动】$playerAction
+【玩家硬状态】
+$timestamp｜$currentLoc｜$yearLabel｜$houseText
+$healthText｜$energyText｜$galleonsText
+$spellsText
+$inventoryText
+${nearbyNpcs.isNotEmpty ? '附近/重要NPC：' + nearbyNpcs : ''}
+【上回合玩家动作】$playerAction
 
-【要求】
-- 生成 4 个选项，每个选项体现不同的策略或态度
-- 选项必须与剧情紧密相关，不能脱离当前场景
-- 选项风格要符合霍格沃茨魔法世界的背景
-- 每个选项一行，使用以下格式：
-  A.选项文字
-  B.选项文字
-  C.选项文字
-  D.选项文字
+${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
+【T0 核心事实（选项不能违背）】
+${_memory.keyFacts.where((f) => f.importance >= 8).map((f) => '· ${f.fact}').take(4).join('\n')}
 
-【示例格式】
-A.勇敢地走上前，询问发生了什么事
-B.谨慎地躲在一旁观察情况
-C.立刻去找其他同学来帮忙
-D.尝试用魔法解决眼前的问题
-
-请直接输出选项，不要添加任何其他说明。''';
+请直接输出 4 行：
+A.xxxxxx
+B.xxxxxx
+C.xxxxxx
+D.xxxxxx''';
 
     try {
       final response = await _callDeepSeek(
@@ -5209,6 +5340,8 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
         'total_prompt_tokens': _totalPromptTokens,
         'total_completion_tokens': _totalCompletionTokens,
         'total_tokens': _totalTokens,
+        // 千回合级结构化长期记忆（永不压缩的纯事实层）
+        'long_term_memory': _memory.toJson(),
       },
     );
   }
@@ -5246,6 +5379,9 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
     _totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
     _totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
     _totalTokens = extraData['total_tokens'] as int? ?? 0;
+    // 加载千回合级结构化长期记忆
+    _memory = LongTermMemory.fromJson(
+        extraData['long_term_memory'] as Map<String, dynamic>?);
 
     _recentTurns
       ..clear()
