@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.2.7 — 2026-08-22
+
+**📋 变更说明**
+fix: CI analyze errors - fix game_screen syntax + remove unused field
+
+1. game_screen.dart: Move 'final affectionSections' declaration before Column return
+   (Dart doesn't allow variable declarations inside list literals)
+2. game_provider.dart: Remove unused _reSectionMarkers regex field
+
+Fixes CI flutter analyze errors
+
 ### v1.2.6 — 2026-08-22
 
 **📋 变更说明**
