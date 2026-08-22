@@ -1,6 +1,8 @@
 /// 核心系统模型：时间系统、好感度、声望、恋爱、收藏、成就、信件、舆论
 /// 依据设定文档第九、十一、十二、十三、十五部分。
 
+import '../data/balance_constants.dart';
+
 // ==================== 时间系统 ====================
 
 /// 时段：晨间/上午/午间/下午/黄昏/晚间/深夜
@@ -490,7 +492,7 @@ class LoveState {
   /// 检查暧昧是否持续足够时间（≥14天/2周）
   bool isCrushMature(int currentDay) {
     if (currentCrushName == null || crushStartDay == null) return false;
-    return currentDay - crushStartDay! >= 14;
+    return currentDay - crushStartDay! >= Balance.confessionCrushMatureDays;
   }
 }
 

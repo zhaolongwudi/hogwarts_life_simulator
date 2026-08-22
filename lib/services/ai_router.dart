@@ -102,7 +102,12 @@ class AiRouter {
     required int maxTokens,
   }) async {
     // 检查缓存
-    final cached = _responseCache.get(prompt, systemPrompt: systemPrompt);
+    final cached = _responseCache.get(
+      prompt,
+      systemPrompt: systemPrompt,
+      temperature: temperature,
+      maxTokens: maxTokens,
+    );
     if (cached != null) {
       return ChatResult(
         content: cached,
@@ -136,7 +141,13 @@ class AiRouter {
           maxTokens: maxTokens,
         );
         // 缓存成功响应
-        _responseCache.set(prompt, result.content, systemPrompt: systemPrompt);
+        _responseCache.set(
+          prompt,
+          result.content,
+          systemPrompt: systemPrompt,
+          temperature: temperature,
+          maxTokens: maxTokens,
+        );
         return result;
       } catch (e) {
         debugPrint('⚠️ ${current.name} 调用失败: $e');

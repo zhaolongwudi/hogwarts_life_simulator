@@ -83,6 +83,23 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      - name: Run tests with coverage
+        run: |
+          flutter test --coverage
+          # 输出覆盖率概览（line coverage），不阻断构建
+          if [ -f coverage/lcov.info ]; then
+            echo "Coverage report generated: coverage/lcov.info"
+            awk -F: '/^LF:/{lf+=$2} /^LH:/{lh+=$2} END{ if(lf>0) printf "Line coverage: %.1f%%\n", lh/lf*100; else print "No coverage data" }' coverage/lcov.info || true
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ steps.bump.outputs.VERSION_NAME }}
+          path: coverage/lcov.info
+          retention-days: 14
+
       - name: Build APK
         id: build
         run: |

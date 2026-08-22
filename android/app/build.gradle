@@ -42,7 +42,8 @@ android {
 
     defaultConfig {
         applicationId "com.hogwarts.life_simulator"
-        minSdkVersion flutter.minSdkVersion
+        // flutter_secure_storage 9.x 要求 minSdk >= 23
+        minSdkVersion 23
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

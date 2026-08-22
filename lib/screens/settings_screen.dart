@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../services/ai_router.dart';
@@ -49,19 +48,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final appProvider = context.read<AppProvider>();
 
     if (key.isNotEmpty) {
-      final savedKeys = Map<String, String>.from(appProvider.apiKeys);
-      savedKeys[p.name] = key;
-      await SharedPreferences.getInstance().then((prefs) async {
-        await prefs.setString('api_key_${p.name}', key);
-      });
+      await appProvider.saveApiKeyFor(p, key);
     }
 
     if (model.isNotEmpty) {
-      final savedModels = Map<String, String>.from(appProvider.providerModels);
-      savedModels[p.name] = model;
-      await SharedPreferences.getInstance().then((prefs) async {
-        await prefs.setString('provider_model_${p.name}', model);
-      });
+      await appProvider.setModelForProvider(p, model);
     }
 
     if (mounted) {

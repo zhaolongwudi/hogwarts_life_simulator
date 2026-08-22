@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_router.dart';
+import '../services/key_store.dart';
 
 enum DisplayMode { magazine, compact, immersive }
 enum IdentityMode { native, transmigration }
@@ -246,7 +247,6 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    _apiKey = prefs.getString('api_key');
     _isGameStarted = prefs.getBool('game_started') ?? false;
     _displayMode = DisplayMode.values[prefs.getInt('display_mode') ?? 0];
     _identityMode = IdentityMode.values[prefs.getInt('identity_mode') ?? 0];
@@ -254,10 +254,27 @@ class AppProvider extends ChangeNotifier {
     _aiProvider = AiProvider.values[prefs.getInt('ai_provider') ?? 0];
     _aiModel = prefs.getString('ai_model') ?? 'deepseek-v4-flash';
 
+    // 迁移旧版单一明文 api_key → 安全存储
+    final legacyApiKey = prefs.getString('api_key');
+    if (legacyApiKey != null && legacyApiKey.isNotEmpty) {
+      await KeyStore.instance.writeKey(_aiProvider.name, legacyApiKey);
+      await prefs.remove('api_key');
+    }
+
     final providers = ['deepseek', 'zhipu', 'agnes', 'sensenova'];
     for (final p in providers) {
-      final key = prefs.getString('api_key_$p');
-      if (key != null) _apiKeys[p] = key;
+      // API Key 优先从安全存储读取；旧版明文自动迁移并清除
+      var key = await KeyStore.instance.readKey(p);
+      if (key == null) {
+        final legacyKey = prefs.getString('api_key_$p');
+        if (legacyKey != null && legacyKey.isNotEmpty) {
+          key = legacyKey;
+          await KeyStore.instance.writeKey(p, legacyKey);
+          await prefs.remove('api_key_$p');
+        }
+      }
+      if (key != null && key.isNotEmpty) _apiKeys[p] = key;
+
       final url = prefs.getString('base_url_$p');
       if (url != null && url.isNotEmpty) _baseUrls[p] = url;
       final model = prefs.getString('model_$p');
@@ -281,9 +298,22 @@ class AppProvider extends ChangeNotifier {
   Future<void> saveApiKey(String key) async {
     _apiKey = key;
     _apiKeys[_aiProvider.name] = key;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('api_key', key);
-    await prefs.setString('api_key_${_aiProvider.name}', key);
+    await KeyStore.instance.writeKey(_aiProvider.name, key);
+    notifyListeners();
+  }
+
+  /// 保存指定提供商的 API Key（安全存储）
+  Future<void> saveApiKeyFor(AiProvider provider, String key) async {
+    if (key.isEmpty) {
+      _apiKeys.remove(provider.name);
+      await KeyStore.instance.deleteKey(provider.name);
+    } else {
+      _apiKeys[provider.name] = key;
+      await KeyStore.instance.writeKey(provider.name, key);
+    }
+    if (provider == _aiProvider) {
+      _apiKey = key.isEmpty ? null : key;
+    }
     notifyListeners();
   }
 
@@ -419,6 +449,7 @@ class AppProvider extends ChangeNotifier {
     _apiKey = null;
     _apiKeys.remove(_aiProvider.name);
     _baseUrls.remove(_aiProvider.name);
+    KeyStore.instance.deleteKey(_aiProvider.name);
     SharedPreferences.getInstance().then((prefs) {
       prefs.remove('api_key');
       prefs.remove('api_key_${_aiProvider.name}');
@@ -430,6 +461,7 @@ class AppProvider extends ChangeNotifier {
   void clearApiKeyFor(AiProvider p) {
     _apiKeys.remove(p.name);
     _baseUrls.remove(p.name);
+    KeyStore.instance.deleteKey(p.name);
     SharedPreferences.getInstance().then((prefs) {
       prefs.remove('api_key_${p.name}');
       prefs.remove('base_url_${p.name}');

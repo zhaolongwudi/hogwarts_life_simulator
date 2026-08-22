@@ -127,18 +127,22 @@ class ResponseCache {
   ResponseCache._privateConstructor();
   static final ResponseCache instance = ResponseCache._privateConstructor();
 
-  String _makeKey(String prompt, {String? systemPrompt}) {
+  String _makeKey(String prompt, {String? systemPrompt, double? temperature, int? maxTokens}) {
     final keyBuffer = StringBuffer();
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
       keyBuffer.write(systemPrompt.hashCode);
       keyBuffer.write(':');
     }
     keyBuffer.write(prompt.hashCode);
+    // 将温度与最大 token 纳入缓存键，避免不同生成参数之间互相污染
+    // （例如温度 0.3 的摘要与温度 0.9 的剧情本不该命中同一条缓存）
+    keyBuffer.write(':t$temperature');
+    keyBuffer.write(':m$maxTokens');
     return keyBuffer.toString();
   }
 
-  String? get(String prompt, {String? systemPrompt}) {
-    final key = _makeKey(prompt, systemPrompt: systemPrompt);
+  String? get(String prompt, {String? systemPrompt, double? temperature, int? maxTokens}) {
+    final key = _makeKey(prompt, systemPrompt: systemPrompt, temperature: temperature, maxTokens: maxTokens);
     final cached = _cache[key];
     if (cached != null &&
         DateTime.now().difference(cached.timestamp) < _maxAge) {
@@ -150,8 +154,8 @@ class ResponseCache {
     return null;
   }
 
-  void set(String prompt, String content, {String? systemPrompt}) {
-    final key = _makeKey(prompt, systemPrompt: systemPrompt);
+  void set(String prompt, String content, {String? systemPrompt, double? temperature, int? maxTokens}) {
+    final key = _makeKey(prompt, systemPrompt: systemPrompt, temperature: temperature, maxTokens: maxTokens);
     if (_cache.length >= _maxEntries) {
       _evictOldest();
     }

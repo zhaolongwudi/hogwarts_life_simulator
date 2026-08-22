@@ -11,12 +11,14 @@ import '../data/wand_data.dart';
 import '../data/cg_data.dart';
 import '../data/npc_data.dart';
 import '../data/world_rules.dart';
+import '../data/balance_constants.dart';
 import '../services/deepseek_service.dart';
 import '../services/deepseek_service.dart' show ChatResult;
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../utils/crash_logger.dart';
+import '../utils/prompt_sanitizer.dart';
 
 class GameProvider extends ChangeNotifier {
   final AppProvider appProvider;
@@ -663,11 +665,14 @@ ${profile.join('｜')}
       }
     }
 
+    // 用户自由文本在进入 Prompt 前做注入防御净化
+    final safeAction = PromptSanitizer.sanitizeAction(action);
+
     if (_router == null || !_router!.hasNarrativeService) return;
 
     _isLoading = true;
     _turnCount++;
-    _lastPlayerAction = action;
+    _lastPlayerAction = safeAction;
     _loadingStage = '正在构建请求...';
     notifyListeners();
 
@@ -683,7 +688,7 @@ ${profile.join('｜')}
 
       final context = contextBuffer.toString();
       final statusTag = _buildStatusTag(p);
-      final extra = _buildCriticalContext(action);
+      final extra = _buildCriticalContext(safeAction);
       final sceneInfo = _buildSceneContext();
 
       return '''【世界上下文】
@@ -694,7 +699,7 @@ $context
 $sceneInfo
 
 ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
-$action
+$safeAction
 
 【写作要求】
 1. 叙事要求:300-450字，详细描写：
@@ -1850,7 +1855,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     // 融合版条件：好感≥85 + 关系阶段为"暧昧" + 浪漫事件≥2次 + 持续≥2周
     final currentDay = _worldState.time.dayOfYear;
     final candidates = _npcRegistry.values.where((n) {
-      if (!n.isAlive || n.affection < 85 || n.confessed) return false;
+      if (!n.isAlive || n.affection < Balance.confessionMinAffection || n.confessed) return false;
       if (n.sexOrientation != null && n.sexOrientation != p.sexOrientation) {
         return false;
       }
@@ -1858,7 +1863,7 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
       final stage = p.loveState.stageFor(n.name);
       if (stage != '暧昧' && stage != '亲密') return false;
       // 检查浪漫事件计数
-      if (p.loveState.romanticEventsFor(n.name) < 2) return false;
+      if (p.loveState.romanticEventsFor(n.name) < Balance.confessionMinRomanticEvents) return false;
       // 检查暧昧持续时间
       if (p.loveState.currentCrushName == n.name && !p.loveState.isCrushMature(currentDay)) {
         return false;
@@ -1869,12 +1874,14 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     if (candidates.isEmpty) return;
 
     // 融合版：概率触发（基础20% + 条件达标加成）
-    double triggerProb = 0.2;
+    double triggerProb = Balance.confessionBaseProbability;
     // 好感超过90%时概率增加
     for (final c in candidates) {
-      if (c.affection >= 90) triggerProb += 0.1;
+      if (c.affection >= Balance.confessionHighAffectionThreshold) {
+        triggerProb += Balance.confessionHighAffectionBonus;
+      }
     }
-    triggerProb = triggerProb.clamp(0.0, 0.6);
+    triggerProb = triggerProb.clamp(0.0, Balance.confessionMaxProbability);
 
     if (_random.nextDouble() > triggerProb) {
       // 标记"正在考虑"
@@ -2606,10 +2613,10 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
   }
 
   void _checkLocks(NPC npc) {
-    if (npc.affection >= 50 && !npc.hasLock('信任锁')) {
+    if (npc.affection >= Balance.trustLockThreshold && !npc.hasLock('信任锁')) {
       npc.affectionLocks.add('信任锁');
     }
-    if (npc.affection >= 70 && !npc.hasLock('情感锁')) {
+    if (npc.affection >= Balance.romanceLockThreshold && !npc.hasLock('情感锁')) {
       npc.affectionLocks.add('情感锁');
     }
   }

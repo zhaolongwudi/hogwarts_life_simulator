@@ -1,4 +1,5 @@
 import 'game_systems.dart';
+import '../data/balance_constants.dart';
 
 class NPC {
   final String id;
@@ -101,10 +102,10 @@ class NPC {
   /// 获取好感沉淀修正值
   int getAffectionGainLimit(int currentDay, int gameWeek) {
     if (gameWeek <= 1) {
-      final remaining = 30 - affectionGainedThisWeek;
+      final remaining = Balance.weekOneAffectionCap - affectionGainedThisWeek;
       return remaining > 0 ? remaining : 0;
     }
-    return 100;
+    return Balance.affectionMax;
   }
 
   Map<String, dynamic> toJson() => {

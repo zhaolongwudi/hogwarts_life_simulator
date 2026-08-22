@@ -5,6 +5,7 @@ import '../models/npc.dart';
 import '../models/player.dart';
 import '../models/world_state.dart';
 import '../providers/app_provider.dart';
+import '../utils/prompt_sanitizer.dart';
 import 'ai_router.dart';
 
 class ChatMessage {
@@ -69,6 +70,9 @@ class NpcChatService {
       return _generateLocalResponse(npc, userMessage);
     }
 
+    // 用户输入进入 Prompt 前做注入防御净化
+    final safeMessage = PromptSanitizer.sanitize(userMessage);
+
     final systemPrompt = _buildNpcSystemPrompt(npc, player, worldState);
     final promptBuffer = StringBuffer();
     promptBuffer.writeln(systemPrompt);
@@ -80,7 +84,7 @@ class NpcChatService {
       }
     }
 
-    promptBuffer.writeln('USER: $userMessage');
+    promptBuffer.writeln('USER: $safeMessage');
     promptBuffer.write('ASSISTANT: ');
 
     try {
@@ -94,7 +98,7 @@ class NpcChatService {
       final responseText = response.content.replaceFirst(RegExp(r'^[\*\[]'), '').trim();
       return responseText;
     } catch (e) {
-      return _generateLocalResponse(npc, userMessage);
+      return _generateLocalResponse(npc, safeMessage);
     }
   }
 
