@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.4.4 — 2026-08-22
+
+**📋 变更说明**
+fix(lint): 修复 flutter analyze 全部 21 个问题（11 错误 + 10 警告）
+
+修复内容：
+1. WorldState.worldEvents → recentEvents，修复字符串遍历误调用 .timestamp/.description（4错误）
+2. Player.year → p.grade ?? 0，共 3 处（3错误）
+3. p.house.isNotEmpty → 先判空再访问，修复 nullable 调用（1错误）
+4. SpellLevel.intermediate/proficient/mastered → e.value.level >= 2（3错误）
+
 ### v1.4.3 — 2026-08-22
 
 **📋 变更说明**
