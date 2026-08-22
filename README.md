@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.2.8 — 2026-08-22
+
+**📋 变更说明**
+fix: LateInitializationError - chatService reassignment crash
+
+Root cause: 'chatService' was declared as 'late final', preventing
+reassignment in resetAllState(), causing LateInitializationError on
+both '开始新游戏' and intro screen '开启魔法人生' buttons.
+
+Fix:
+
 ### v1.2.7 — 2026-08-22
 
 **📋 变更说明**
