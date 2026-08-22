@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.2.6 — 2026-08-22
+
+**📋 变更说明**
+v1.0.1: Remove ZhipuAI + Rewrite routing + Reset fix + Token opt + Paragraph/affection UI
+
+核心改动:
+1. 【彻底删除智谱AI】
+   - 从AiProvider枚举中移除zhipu
+   - 删除所有zhipu相关代码（工厂/路由/余额/UI）
+   - 重写默认路由：主剧情→SenseNova(商汤日日新)，摘要→SenseNova，NPC聊天→Agnes
+
 ### v1.2.5 — 2026-08-22
 
 **📋 变更说明**
