@@ -1448,6 +1448,134 @@ ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}�
     return '对你有较高好感的NPC：\n${hints.join('\n')}';
   }
 
+  // ==================== 恋爱等待状态 ====================
+  String _formatLoveWaiting() {
+    if (_player == null) return '【恋爱等待】\n尚未创建角色。';
+    final love = _player!.loveState;
+    final considering = _npcRegistry.values
+        .where((n) => n.isConsideringConfession && n.isAlive)
+        .map((n) => '· ${n.name}（好感 ${n.affection}）')
+        .toList();
+    final buf = StringBuffer('【恋爱等待】\n');
+    if (love.awaitingConfession && love.consideringNpcName != null) {
+      buf.writeln('${love.consideringNpcName} 正在认真考虑向你表白……');
+      buf.writeln('请耐心等待，或继续与 TA 互动来推一把。');
+    } else if (considering.isNotEmpty) {
+      buf.writeln('以下 NPC 似乎正在酝酿感情：');
+      buf.writeln(considering.join('\n'));
+      buf.writeln('\n多互动可以加快表白时机。');
+    } else {
+      buf.writeln('目前没有 NPC 正在考虑向你表白。');
+      buf.writeln(_formatHighAffectionHints());
+    }
+    return buf.toString();
+  }
+
+  // ==================== 恋爱阶段一览 ====================
+  String _formatLoveStages() {
+    if (_player == null) return '【恋爱阶段】\n尚未创建角色。';
+    final love = _player!.loveState;
+    final stages = <String>[];
+    if (love.partnerName != null) {
+      stages.add('· ${love.partnerName}：${love.status}（正式伴侣）');
+    }
+    for (final entry in love.relationshipStages.entries) {
+      if (entry.key == love.partnerName) continue;
+      final events = love.romanticEventsFor(entry.key);
+      stages.add('· ${entry.key}：${entry.value}（浪漫事件 $events 次）');
+    }
+    final highAffection = _npcRegistry.values
+        .where((n) =>
+            n.affection >= 60 &&
+            n.isAlive &&
+            !love.relationshipStages.containsKey(n.name) &&
+            n.name != love.partnerName)
+        .take(5)
+        .map((n) => '· ${n.name}：${n.affectionStage}（好感 ${n.affection}）')
+        .toList();
+    if (stages.isEmpty && highAffection.isEmpty) {
+      return '【恋爱阶段】\n暂无任何 NPC 关系记录。多多互动会建立各种缘分。';
+    }
+    final buf = StringBuffer('【恋爱阶段】\n');
+    if (stages.isNotEmpty) {
+      buf.writeln('已建立关系：');
+      buf.writeln(stages.join('\n'));
+    }
+    if (highAffection.isNotEmpty) {
+      if (stages.isNotEmpty) buf.writeln();
+      buf.writeln('高好感潜力对象：');
+      buf.writeln(highAffection.join('\n'));
+    }
+    return buf.toString();
+  }
+
+  // ==================== NPC 关系网络查询 ====================
+  String _formatNpcRelationship(String npc1, String npc2) {
+    if (_player == null) return '【关系网络】\n尚未创建角色。';
+    NPC findNpc(String keyword) {
+      return _npcRegistry.values.firstWhere(
+        (n) => n.name.contains(keyword) || keyword.contains(n.name),
+        orElse: () => NPC(id: '', name: '「$keyword」', house: ''),
+      );
+    }
+
+    final a = findNpc(npc1);
+    final b = findNpc(npc2);
+    if (a.id.isEmpty || b.id.isEmpty) {
+      return '【${a.name} 与 ${b.name} 的关系】\n其中有 NPC 不在你的社交圈中，信息不足。';
+    }
+    // 基础关系推理
+    final tags = <String>[];
+    if (a.house.isNotEmpty && b.house.isNotEmpty) {
+      tags.add(a.house == b.house ? '同学院' : '跨学院');
+    }
+    // 共同认识的人（通过玩家关系推断）
+    final relMap = _player!.relationships;
+    final aKnows = relMap.containsKey(a.id);
+    final bKnows = relMap.containsKey(b.id);
+    if (aKnows && bKnows) {
+      tags.add('你们有共同好友（你）');
+    }
+    // 好感差异
+    final diff = (a.affection - b.affection).abs();
+    final closeness = a.affection > b.affection ? a.name : b.name;
+    tags.add('你对 $closeness 更亲近（好感差 $diff）');
+    // 血缘亲属检查
+    final bloodRel = _player!.bloodRelatives;
+    final aIsBlood = bloodRel.any((name) => name == a.name || a.name.contains(name) || name.contains(a.name));
+    final bIsBlood = bloodRel.any((name) => name == b.name || b.name.contains(name) || name.contains(b.name));
+    if (aIsBlood && bIsBlood) tags.add('两人都是你的血缘亲属');
+    return '【${a.name} 与 ${b.name} 的关系】\n'
+        '标签：${tags.isEmpty ? '无特殊关联' : tags.join(' · ')}\n'
+        '${a.house.isNotEmpty ? '${a.name}：${a.house}\n' : ''}'
+        '${b.house.isNotEmpty ? '${b.name}：${b.house}\n' : ''}'
+        '\n基于目前观察，他们属于${tags.length >= 2 ? '有交集的' : '普通的'}同学/熟人关系。';
+  }
+
+  // ==================== 骨科模式状态 ====================
+  String _formatBoneMode() {
+    if (_player == null) return '【骨科模式】\n尚未创建角色。';
+    final bloodRel = _player!.bloodRelatives;
+    final buf = StringBuffer(_player!.boneMode
+        ? '【骨科模式】已开启\n允许与血缘亲属发展浪漫关系。\n\n'
+        : '【骨科模式】已关闭\n无法与血缘亲属发展浪漫关系。\n\n');
+    if (bloodRel.isEmpty) {
+      buf.writeln('当前血缘亲属列表：（暂无记录）');
+    } else {
+      buf.writeln('当前血缘亲属列表：');
+      for (final name in bloodRel.take(10)) {
+        final npc = _npcRegistry.values.firstWhere(
+          (n) => n.name == name || name.contains(n.name) || n.name.contains(name),
+          orElse: () => NPC(id: '', name: name, house: ''),
+        );
+        final extra = npc.house.isNotEmpty ? ' · ${npc.house}' : '';
+        buf.writeln('· $name$extra');
+      }
+      if (bloodRel.length > 10) buf.writeln('  ……等共 ${bloodRel.length} 位');
+    }
+    return buf.toString();
+  }
+
   String _formatReputation() {
     final rep = _player!.playerReputation;
     final p = _player!;
@@ -2679,7 +2807,7 @@ $_pendingSummary
   List<NPC> npcsInCurrentLocation() {
     final location = _worldState.currentLocation;
     if (location == null || location.isEmpty) return [];
-    return _npcRegistry.where((npc) {
+    return _npcRegistry.values.where((npc) {
       return npc.currentLocation?.toLowerCase().contains(location.toLowerCase()) ?? false;
     }).toList();
   }
