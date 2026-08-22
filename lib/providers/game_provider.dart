@@ -4703,23 +4703,20 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
       if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
       try {
         NPC? npc;
-        // 优先级1: 使用 nameMatches 方法匹配所有别名和简称
+        int bestScore = 0;
+        // 使用 nameMatchScore 选择最精确的匹配（而非第一个命中）
         for (final n in _npcRegistry.values) {
-          if (n.nameMatches(npcName)) {
+          final score = n.nameMatchScore(npcName);
+          if (score > bestScore) {
+            bestScore = score;
             npc = n;
-            break;
           }
         }
-        // 优先级2: 严格匹配全名
-        npc ??= _npcRegistry.values.cast<NPC?>().firstWhere(
-          (n) => n!.name == npcName,
-          orElse: () => null,
-        );
-        if (npc == null) {
+        if (npc == null || bestScore == 0) {
           debugPrint('[好感解析] 未找到匹配NPC: $npcName');
           continue;
         }
-        debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta');
+        debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta (匹配分=$bestScore)');
         final before = npc.affection;
         updateNpcAffection(npc.id, delta, reason: '剧情互动');
         final after = npc.affection;

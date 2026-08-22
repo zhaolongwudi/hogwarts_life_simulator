@@ -110,13 +110,29 @@ class NPC {
   
   /// 检查某个名字是否与该NPC匹配
   bool nameMatches(String queryName) {
-    if (queryName.isEmpty) return false;
+    return nameMatchScore(queryName) > 0;
+  }
+
+  /// 返回名称匹配分数（0=不匹配，越大越精确），用于多个候选时选最佳
+  int nameMatchScore(String queryName) {
+    if (queryName.isEmpty) return 0;
+    int bestScore = 0;
     for (final n in allNames) {
-      if (n == queryName || n.contains(queryName) || queryName.contains(n)) {
-        return true;
+      int score = 0;
+      if (n == queryName) {
+        score = 1000 + n.length * 10;  // 完全匹配，权重最高
+      } else if (n.contains(queryName)) {
+        score = 100 + queryName.length * 5;  // 别名包含查询词
+      } else if (queryName.contains(n)) {
+        score = 50 + n.length * 3;  // 查询词包含别名
+      } else {
+        continue;
       }
+      // 对更具体的别名（更长）加分，避免模糊词胜出
+      if (aliases.contains(n)) score += 5;
+      if (score > bestScore) bestScore = score;
     }
-    return false;
+    return bestScore;
   }
 
   String get affectionStage => affectionStageFor(affection);
