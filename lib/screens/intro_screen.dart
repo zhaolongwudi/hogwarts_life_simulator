@@ -340,6 +340,22 @@ class _IntroScreenState extends State<IntroScreen> {
       }
     }
 
+    String _openingSceneKey = 'station';
+    switch (_startPoint) {
+      case '收到录取通知书的那一刻':
+        _openingSceneKey = 'letter';
+        break;
+      case '在九又四分之三站台踏上列车':
+        _openingSceneKey = 'station';
+        break;
+      case '第一次踏入霍格沃茨大礼堂':
+        _openingSceneKey = 'hall';
+        break;
+      case '分院仪式前夜':
+        _openingSceneKey = 'eve';
+        break;
+    }
+
     await gameProvider.initializeGame(
       name: _nameController.text.trim(),
       bloodStatus: _bloodStatus,
@@ -360,6 +376,7 @@ class _IntroScreenState extends State<IntroScreen> {
       politicalTendency: _politicalTendency,
       simulationStyle: _simulationStyle,
       birthIdentity: _birthIdentity,
+      openingScene: _openingSceneKey,
     );
 
     if (mounted) {

@@ -7,6 +7,7 @@ class StoryTextRenderer {
 
   static final List<String> _characterNames = [
     '哈利·波特', '赫敏·格兰杰', '罗恩·韦斯莱', '纳威·隆巴顿',
+    '查理·韦斯莱',
     '拉文德·布朗', '西莫·斐尼甘', '帕瓦蒂·帕蒂尔', '迪安·托马斯',
     '金妮·韦斯莱', '科林·克里维', '珀西·韦斯莱', '奥利弗·伍德',
     '弗雷德·韦斯莱', '乔治·韦斯莱', '李·乔丹', '安吉丽娜·约翰逊',
@@ -29,6 +30,7 @@ class StoryTextRenderer {
     '卢平', '唐克斯', '布莱克', '波特', '韦斯莱', '迪戈里', '洛夫古德',
     '德拉科', '珀西', '克拉布', '高尔', '莉莉', '詹姆', '塞德里克',
     '卢娜', '霍琦', '斯拉格霍恩', '平斯', '费尔奇',
+    '查理',
   ];
 
   static final List<String> _locations = [
@@ -119,6 +121,7 @@ class StoryTextRenderer {
   static List<TextSpan> parseWithAffectionStyle(String text) {
     if (text.isEmpty) return [];
     var cleaned = _stripOutlineLabels(text);
+    cleaned = _stripChoiceBlocks(cleaned);
     cleaned = _preStripChoices(cleaned);
     cleaned = _promoteAffectionLines(cleaned);
 
@@ -186,6 +189,23 @@ class StoryTextRenderer {
     }
     // 处理序号小节标题（"一、xxx"）：仅当后面紧跟的内容为环境/心理/动作类空泛词时才剥
     return result;
+  }
+
+  static String _stripChoiceBlocks(String text) {
+    final blockPatterns = [
+      RegExp(r'【可选行动】[\s\S]*$'),
+      RegExp(r'【自由行动】[\s\S]*$'),
+      RegExp(r'【行动建议】[\s\S]*$'),
+      RegExp(r'【备选行动】[\s\S]*$'),
+      RegExp(r'【剧情选项】[\s\S]*$'),
+      RegExp(r'【下回合选择】[\s\S]*$'),
+      RegExp(r'【选择建议】[\s\S]*$'),
+    ];
+    var result = text;
+    for (final pat in blockPatterns) {
+      result = result.replaceAllMapped(pat, (m) => '');
+    }
+    return result.replaceAll(RegExp(r'\n{3,}'), '\n\n').trimRight();
   }
 
   /// 预处理：从剧情文本中剥掉内嵌的 A./B./C./D./E. 选项行（这些在下方「可选行动」区块单独显示）
@@ -372,6 +392,7 @@ class StoryTextRenderer {
   static List<TextSpan> parse(String text) {
     if (text.isEmpty) return [];
     var cleaned = _stripOutlineLabels(text);
+    cleaned = _stripChoiceBlocks(cleaned);
     cleaned = _preStripChoices(cleaned);
 
     final cached = _cache[cleaned];
@@ -681,7 +702,9 @@ class StoryTextRenderer {
       }
     }
 
-    for (final name in _characterNames) {
+    final sortedNames = List<String>.from(_characterNames)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    for (final name in sortedNames) {
       int idx = 0;
       while (true) {
         idx = text.indexOf(name, idx);

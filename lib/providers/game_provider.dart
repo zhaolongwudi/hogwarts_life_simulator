@@ -76,6 +76,7 @@ class GameProvider extends ChangeNotifier {
   int _gameWeek = 1; // 用于好感沉淀（第一周上限+30）
   int _lastSchoolYearStart = 0; // 学年推进追踪（当前学年起始年份）
   String? _pendingAnchorDirective; // 待注入的事件锚点指令
+  String _openingScene = 'station';
 
   int get totalPromptTokens => _totalPromptTokens;
   int get totalCompletionTokens => _totalCompletionTokens;
@@ -409,6 +410,7 @@ class GameProvider extends ChangeNotifier {
     _totalTokens = 0;
     _lastRoundTokens = 0;
     _apiCalls = 0;
+    _openingScene = 'station';
     // 销毁旧路由器（清除响应缓存、已注册的服务实例）
     _router = null;
     // 清除 NPC 聊天缓存（对话历史、路由器）
@@ -441,6 +443,7 @@ class GameProvider extends ChangeNotifier {
     String? politicalTendency,
     String? simulationStyle,
     String? birthIdentity,
+    this.openingScene = 'station',
   }) async {
     // 先彻底清空所有旧状态（防止新开局把旧摘要/近期剧情注入到 Prompt）
     resetAllState();
@@ -512,6 +515,7 @@ class GameProvider extends ChangeNotifier {
 
       _initializeNPCsByEra();
       _assignInitialRelationships();
+      _openingScene = openingScene;
       await _generateOpeningScene();
 
       appProvider.setGameStarted(true);
@@ -917,14 +921,18 @@ ${profile.join('｜')}
 
   // ==================== 开场辅助：剧情起点 ====================
   String _buildStartPointNarrative() {
-    // 可根据玩家选择或默认生成
-    final starts = [
-      '故事从你收到霍格沃茨录取通知书的那一刻开始——那只迟来的猫头鹰终于叩响了你的窗。',
-      '故事从你站在九又四分之三站台前开始——蒸汽火车冒着白烟等待着你。',
-      '故事从你第一次踏入霍格沃茨大礼堂开始——金色的烛光在长桌上方摇曳。',
-      '故事从分院仪式前夜开始——你躺在床上翻来覆去，想着明天会被分到哪个学院。',
-    ];
-    return starts[_random.nextInt(starts.length)];
+    switch (_openingScene) {
+      case 'letter':
+        return '故事从你收到霍格沃茨录取通知书的那一刻开始——那只迟来的猫头鹰终于叩响了你的窗。';
+      case 'station':
+        return '故事从你站在九又四分之三站台前开始——蒸汽火车冒着白烟等待着你。';
+      case 'hall':
+        return '故事从你第一次踏入霍格沃茨大礼堂开始——金色的烛光在长桌上方摇曳。';
+      case 'eve':
+        return '故事从分院仪式前夜开始——你躺在床上翻来覆去，想着明天会被分到哪个学院。';
+      default:
+        return '故事从你站在九又四分之三站台前开始——蒸汽火车冒着白烟等待着你。';
+    }
   }
 
   // ==================== 处理选择 / 指令 ====================
@@ -3804,22 +3812,30 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       _extractNarrativeFromRawText(text);
     }
 
+    // 先提取好感变化区块（用于独立卡片显示）
+    final extracted = StoryTextRenderer.extractAffectionSections(text);
+    _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
+    var narrativeForDisplay = extracted['narrative'] as String? ?? _currentNarrative;
+
+    // 剥离选项区块（防止正文里混入选项）
+    narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
+      RegExp(r'【可选行动】[\s\S]*$'), (m) => '').trimRight();
+    narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
+      RegExp(r'【自由行动】[\s\S]*$'), (m) => '').trimRight();
+
     // 自动段落排版（为无分行的 AI 输出插入合理段落）
-    _currentNarrative = StoryTextRenderer.autoParagraph(_currentNarrative);
-    _currentNarrative = _currentNarrative
+    narrativeForDisplay = StoryTextRenderer.autoParagraph(narrativeForDisplay);
+    narrativeForDisplay = narrativeForDisplay
         .replaceAll(_reMultiNewline, '\n\n')
         .trim();
+
+    _currentNarrative = narrativeForDisplay;
 
     // Pass 3: 若依然正文为空，才生成兜底叙事（兜底叙事的特点：短、单段、以📅开头）
     if (_currentNarrative.isEmpty) {
       _currentNarrative = _generateFallbackNarrative();
     }
 
-    // 提取好感变化区块（用于独立卡片显示）
-    final extracted = StoryTextRenderer.extractAffectionSections(text);
-    _currentNarrative = extracted['narrative'] as String? ?? _currentNarrative;
-    _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
-    
     // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
     _parseAffectionChanges(text);
 
