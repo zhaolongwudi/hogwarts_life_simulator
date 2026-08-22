@@ -259,6 +259,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.2.9 — 2026-08-22
+
+**📋 变更说明**
+fix: 4 critical issues - NPC coloring/affection separation/choice duplication/opening scene
+
+1. NPC名字染色修复:
+   - 添加查理·韦斯莱、纳威·隆巴顿等全名到角色名单
+   - 名字匹配按长度降序排列，确保长名优先匹配
+
+2. 好感度变化分离:
+
 ### v1.2.8 — 2026-08-22
 
 **📋 变更说明**
