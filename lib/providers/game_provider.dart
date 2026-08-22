@@ -1020,14 +1020,13 @@ $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
 $safeAction
 
 【重要规则】
-- 选项必须基于【当前场景】和【玩家行动】生成
-- 不要基于【历史背景】生成选项，那只是过去的参考
-- 确保选项符合当前地点（${_worldState.currentLocation ?? '未知'}）和当前时间（${_worldState.timestamp}）
+- 选项将由独立步骤生成，本回合只需生成叙事和好感变化
+- 确保叙事符合当前地点（${_worldState.currentLocation ?? '未知'}）和当前时间（${_worldState.timestamp}）
 
 【写作要求】
 - 叙事:300-450字小说正文，融入感官细节、对话、心理，分2-4段用空行分隔，严禁结构化标签或序号
 - 好感:NPC名±X(原因)，独立成段，可多条
-- 选项:A/B/C/D四选一，必须符合当前场景，各体现不同策略
+- 不需要生成选项，选项将在下一步单独生成
 ''';
     }
 
@@ -1050,10 +1049,38 @@ $safeAction
         response = (await _callDeepSeek(prompt)).content;
       }
 
-      _loadingStage = '正在解析回应...';
+      _loadingStage = '正在解析剧情...';
       notifyListeners();
 
-      _parseResponse(response);
+      // 先解析叙事文本（不含选项）
+      _parseNarrativeOnly(response);
+
+      // 如果叙事解析失败，回退到完整解析
+      if (_currentNarrative.isEmpty) {
+        _parseResponse(response);
+      }
+
+      // 独立生成选项：基于已生成的剧情
+      _loadingStage = '正在生成选项...';
+      notifyListeners();
+
+      final separateChoices = await _generateChoicesSeparately(_currentNarrative);
+
+      if (separateChoices.isNotEmpty) {
+        // 使用独立生成的选项
+        _choices = separateChoices;
+      } else {
+        // 独立生成失败，尝试从原始响应中提取
+        _parseResponse(response);
+        // 如果还是空，使用兜底选项
+        if (_choices.isEmpty) {
+          _choices = _extractChoicesFromRawText(response);
+          if (_choices.isEmpty) {
+            _choices = _generateContextualFallbackChoices();
+          }
+        }
+      }
+
       _accumulateForSummary(_currentNarrative);
       _appendRecentTurn(_currentNarrative);
       _advanceTimeForAction(action);
@@ -1083,7 +1110,7 @@ $safeAction
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
       debugPrint('❌ 剧情生成失败，启用本地兜底叙事: $e');
       _currentNarrative = _generateFallbackNarrative();
-      _choices = _generateFallbackChoices();
+      _choices = _generateContextualFallbackChoices();
       _appendRecentTurn(_currentNarrative);
       _notifications.add('⚠️ AI 服务暂时不可用，已切换为本地过渡剧情，稍后可重试行动');
       _loadingStage = '';
@@ -3779,6 +3806,60 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   }
 
   // ==================== 解析响应 ====================
+
+  /// 只解析叙事文本（不含选项），用于独立选项生成模式
+  void _parseNarrativeOnly(String text) {
+    _currentNarrative = '';
+    _choices = [];
+
+    // 移除结构化区块（选项、好感、声望等）
+    var cleaned = text;
+    cleaned = cleaned.replaceAllMapped(_reAffectionSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(_reReputationSection, (m) => '');
+
+    const stripSections = [
+      '可选行动', '自由行动', '行动建议', '备选行动',
+      '剧情选项', '下回合选择', '选择建议',
+    ];
+    for (final s in stripSections) {
+      final pat = RegExp(r'【$s】[\s\S]*?(?=【|$)');
+      cleaned = cleaned.replaceAllMapped(pat, (m) => '');
+    }
+
+    // 移除选项行（A.xxx, B.xxx 等）
+    final lines = cleaned.split('\n');
+    final narrativeLines = <String>[];
+    for (final line in lines) {
+      final trimmed = line.trim();
+      // 跳过选项格式的行
+      if (_reChoiceOption.hasMatch(trimmed)) {
+        continue;
+      }
+      narrativeLines.add(line);
+    }
+
+    var narrative = narrativeLines.join('\n');
+
+    // 清理多余空行
+    narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+
+    // 自动段落排版
+    narrative = StoryTextRenderer.autoParagraph(narrative);
+
+    _currentNarrative = narrative;
+
+    // 提取好感区块用于UI显示
+    final extracted = StoryTextRenderer.extractAffectionSections(text);
+    _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
+
+    // 解析好感和声望变化（从原始文本）
+    _parseAffectionChanges(text);
+    _parseReputationChanges(text);
+
+    // 标记NPC登场
+    _markIntroducedFromNarrative(_currentNarrative);
+  }
+
   void _parseResponse(String text) {
     final lines = text.split('\n');
     _currentNarrative = '';
@@ -3789,6 +3870,10 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     bool inNarrative = false;
     // 显式区块（选项/好感/声望）之后就不再把后面的任何文字当正文
     bool anyExplicitBlockPassed = false;
+    // 新增：连续选项计数，防止正文中的选项格式被误识别
+    int consecutiveChoiceLines = 0;
+    // 新增：正文最小长度阈值，低于此值不触发选项区切换
+    const minNarrativeLength = 50;
 
     // Pass 1: Try structured parsing with explicit markers
     for (final line in lines) {
@@ -3797,6 +3882,7 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
         sawExplicitNarrativeMarker = true;
         inNarrative = true;
         anyExplicitBlockPassed = false;
+        consecutiveChoiceLines = 0;
         continue;
       }
 
@@ -3811,6 +3897,7 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       if (isBlockHeader) {
         inNarrative = false;
         anyExplicitBlockPassed = true;
+        consecutiveChoiceLines = 0;
         continue;
       }
 
@@ -3821,17 +3908,39 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
         } else {
           _currentNarrative += '\n';
         }
+        consecutiveChoiceLines = 0;
       } else if (!sawExplicitNarrativeMarker && !anyExplicitBlockPassed) {
         // 没有出现过显式【叙事】标题，且尚未进入任何结构化区块：
         // 这一段默认按正文处理（AI忘写标题的情况最常见）
         if (_reChoiceOption.hasMatch(trimmed)) {
-          // 一上来就看到 A.xxx 形式 → 认为已经进入选项区，正文结束
-          anyExplicitBlockPassed = true;
-          final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
-          if (action.isNotEmpty) {
-            _choices.add(GameChoice(text: action, action: action));
+          // 关键修复：只有当正文已经足够长（>50字）且连续2行都是选项格式时
+          // 才认为进入选项区，防止正文中的选项格式被误识别
+          if (_currentNarrative.trim().length >= minNarrativeLength) {
+            consecutiveChoiceLines++;
+            if (consecutiveChoiceLines >= 2) {
+              anyExplicitBlockPassed = true;
+              final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+              if (action.isNotEmpty) {
+                _choices.add(GameChoice(text: action, action: action));
+              }
+            } else {
+              // 第一行选项格式，暂时仍当作正文处理（可能是剧情描述）
+              if (trimmed.isNotEmpty) {
+                _currentNarrative += '$line\n';
+              } else {
+                _currentNarrative += '\n';
+              }
+            }
+          } else {
+            // 正文太短，可能是开局或错误，仍然按选项处理
+            anyExplicitBlockPassed = true;
+            final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+            if (action.isNotEmpty) {
+              _choices.add(GameChoice(text: action, action: action));
+            }
           }
         } else {
+          consecutiveChoiceLines = 0;
           if (trimmed.isNotEmpty) {
             _currentNarrative += '$line\n';
           } else {
@@ -3913,7 +4022,14 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     _markIntroducedFromNarrative(_currentNarrative);
 
     if (_choices.isEmpty) {
-      _choices.addAll(_generateFallbackChoices());
+      // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）
+      final extractedChoices = _extractChoicesFromRawText(text);
+      if (extractedChoices.isNotEmpty) {
+        _choices.addAll(extractedChoices);
+      } else {
+        // 最后才使用兜底选项（但现在也基于剧情生成，而不是静态位置选项）
+        _choices.addAll(_generateContextualFallbackChoices());
+      }
     }
     // 避免出现过多选项：裁剪到 4 个
     if (_choices.length > 4) {
@@ -4049,6 +4165,218 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     return rotated
         .map((e) => GameChoice(text: e.$1, action: e.$2))
         .toList();
+  }
+
+  /// 从AI原始响应文本中智能提取选项（用于解析失败后的兜底提取）
+  List<GameChoice> _extractChoicesFromRawText(String text) {
+    final choices = <GameChoice>[];
+    final lines = text.split('\n');
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      // 直接使用预编译的正则，匹配所有选项格式
+      final match = _reChoiceOption.firstMatch(trimmed);
+      if (match != null) {
+        final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+        if (action.isNotEmpty && action.length >= 2) {
+          choices.add(GameChoice(text: action, action: action));
+        }
+      }
+
+      if (choices.length >= 4) break;
+    }
+
+    return choices;
+  }
+
+  /// 独立生成选项：接收已生成的剧情文本，让 AI 专门基于此生成选项
+  Future<List<GameChoice>> _generateChoicesSeparately(String narrative) async {
+    if (_router == null) return [];
+
+    final currentLoc = _worldState.currentLocation ?? '';
+    final timestamp = _worldState.timestamp;
+    final playerAction = _lastPlayerAction;
+
+    final choicePrompt = '''你是一个游戏剧情选项生成器。请根据以下剧情内容，生成 4 个互斥的玩家选择。
+
+【当前剧情】
+$narrative
+
+【当前场景】$timestamp｜$currentLoc
+【玩家刚执行的行动】$playerAction
+
+【要求】
+- 生成 4 个选项，每个选项体现不同的策略或态度
+- 选项必须与剧情紧密相关，不能脱离当前场景
+- 选项风格要符合霍格沃茨魔法世界的背景
+- 每个选项一行，使用以下格式：
+  A.选项文字
+  B.选项文字
+  C.选项文字
+  D.选项文字
+
+【示例格式】
+A.勇敢地走上前，询问发生了什么事
+B.谨慎地躲在一旁观察情况
+C.立刻去找其他同学来帮忙
+D.尝试用魔法解决眼前的问题
+
+请直接输出选项，不要添加任何其他说明。''';
+
+    try {
+      final response = await _callDeepSeek(
+        choicePrompt,
+        scene: AiScene.choice,
+      );
+
+      final content = response.content.trim();
+      final choices = <GameChoice>[];
+      final lines = content.split('\n');
+
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+
+        final match = _reChoiceOption.firstMatch(trimmed);
+        if (match != null) {
+          final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+          if (action.isNotEmpty && action.length >= 2) {
+            choices.add(GameChoice(text: action, action: action));
+          }
+        }
+
+        if (choices.length >= 4) break;
+      }
+
+      return choices;
+    } catch (e) {
+      debugPrint('独立选项生成失败(回退到文本解析): $e');
+      return [];
+    }
+  }
+
+  /// 基于当前上下文生成的兜底选项（比静态位置选项更智能）
+  List<GameChoice> _generateContextualFallbackChoices() {
+    final currentLoc = _worldState.currentLocation ?? '';
+    final narrativeLower = _currentNarrative.toLowerCase();
+    final playerAction = _lastPlayerAction;
+
+    // 基于玩家最近的行动生成相关选项
+    final actionRelatedChoices = <GameChoice>[];
+
+    // 如果有玩家行动，生成延续性选项
+    if (playerAction.isNotEmpty) {
+      actionRelatedChoices.addAll([
+        GameChoice(text: '$playerAction（继续）', action: '$playerAction（继续）'),
+        GameChoice(text: '改变策略', action: '改变策略'),
+      ]);
+    }
+
+    // 基于剧情内容生成情境相关选项
+    final narrativeBasedChoices = <GameChoice>[];
+    
+    if (narrativeLower.contains('决斗') || narrativeLower.contains('战斗') || narrativeLower.contains('对抗')) {
+      narrativeBasedChoices.addAll([
+        GameChoice(text: '应战', action: '应战'),
+        GameChoice(text: '寻求帮助', action: '寻求帮助'),
+      ]);
+    }
+    if (narrativeLower.contains('对话') || narrativeLower.contains('交谈') || narrativeLower.contains('聊天')) {
+      narrativeBasedChoices.addAll([
+        GameChoice(text: '继续交谈', action: '继续交谈'),
+        GameChoice(text: '告辞离开', action: '告辞离开'),
+      ]);
+    }
+    if (narrativeLower.contains('受伤') || narrativeLower.contains('疼痛') || narrativeLower.contains('流血')) {
+      narrativeBasedChoices.addAll([
+        GameChoice(text: '寻求医疗帮助', action: '寻求医疗帮助'),
+        GameChoice(text: '自己处理伤势', action: '自己处理伤势'),
+      ]);
+    }
+    if (narrativeLower.contains('发现') || narrativeLower.contains('找到') || narrativeLower.contains('看到')) {
+      narrativeBasedChoices.addAll([
+        GameChoice(text: '仔细查看', action: '仔细查看'),
+        GameChoice(text: '报告他人', action: '报告他人'),
+      ]);
+    }
+    if (narrativeLower.contains('魔法') || narrativeLower.contains('咒语') || narrativeLower.contains('施法')) {
+      narrativeBasedChoices.addAll([
+        GameChoice(text: '尝试施法', action: '尝试施法'),
+        GameChoice(text: '研究魔法理论', action: '研究魔法理论'),
+      ]);
+    }
+
+    // 基于当前地点生成基础选项
+    final locationChoices = {
+      '霍格沃茨': [
+        ('继续探索', '继续探索'),
+        ('找人询问', '找人询问'),
+        ('观察环境', '观察环境'),
+      ],
+      '霍格莫德村': [
+        ('继续逛街', '继续逛街'),
+        ('进店看看', '进店看看'),
+        ('返回学校', '返回霍格沃茨'),
+      ],
+      '对角巷': [
+        ('继续购物', '继续购物'),
+        ('逛其他店铺', '逛其他店铺'),
+        ('返回霍格沃茨', '返回霍格沃茨'),
+      ],
+      '禁林': [
+        ('小心前进', '小心前进'),
+        ('观察周围', '观察周围'),
+        ('原路返回', '原路返回'),
+      ],
+      '大礼堂': [
+        ('继续用餐', '继续用餐'),
+        ('与人交谈', '与人交谈'),
+        ('离席活动', '离席活动'),
+      ],
+      '教室': [
+        ('认真听讲', '认真听讲'),
+        ('做笔记', '做笔记'),
+        ('课后请教', '课后请教'),
+      ],
+      '图书馆': [
+        ('查阅资料', '查阅资料'),
+        ('安静阅读', '安静阅读'),
+        ('借阅书籍', '借阅书籍'),
+      ],
+    };
+
+    final locationOptions = locationChoices[currentLoc] ?? [
+      ('继续前进', '继续前进'),
+      ('仔细观察', '仔细观察'),
+      ('与人交谈', '与人交谈'),
+    ];
+
+    final fallbackChoices = locationOptions
+        .map((e) => GameChoice(text: e.$1, action: e.$2))
+        .toList();
+
+    // 合并所有选项：优先剧情相关 > 玩家行动相关 > 地点相关
+    final result = <GameChoice>[];
+    if (narrativeBasedChoices.isNotEmpty) {
+      result.addAll(narrativeBasedChoices.take(2));
+    }
+    if (actionRelatedChoices.isNotEmpty) {
+      result.addAll(actionRelatedChoices.take(2));
+    }
+    result.addAll(fallbackChoices);
+
+    // 去重并限制数量
+    final seen = <String>{};
+    final unique = <GameChoice>[];
+    for (final c in result) {
+      if (seen.add(c.text) && unique.length < 4) {
+        unique.add(c);
+      }
+    }
+
+    return unique;
   }
 
   // ==================== Token 优化：上下文截断 + 状态精简 ====================
