@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.0.4 — 2026-08-22
+
+**📋 变更说明**
+fix/optimize: 智谱速度优化+地图UI修复+好感度模块重构
+
+- 分析智谱4.7速度瓶颈，将主剧情默认提供商改为Agnes turbo(响应快30-50%)
+- 摘要生成改为fire-and-forget不再阻塞下一回合
+- 叙事字数要求从400-600字降到300-450字，减少token
+- 世界地图: extendBody + resizeToAvoidBottomInset=false 修复底部导航覆盖地图标签
+- 地图标签移到导航栏上方(bottomOffset 420)，增强对比度、位置标记更大
+
 ### v1.0.3 — 2026-08-22
 
 **📋 变更说明**
