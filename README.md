@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.2.2 — 2026-08-22
+
+**📋 变更说明**
+fix: updateApiKey ignored key; avoid retry on auth/client errors
+
+- GameProvider.updateApiKey now actually persists the key via AppProvider
+- Remove redundant AppProvider.saveApiKey call in settings API key input
+- Classify AI errors into AiRetryableException / AiNonRetryableException
+- Only retry transient AI failures (timeout, 429, 5xx, network)
+- Replace unsafe ! map lookup in AppProvider.setAiProvider
+
 ### v1.2.1 — 2026-08-22
 
 **📋 变更说明**
