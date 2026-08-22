@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.1.6 — 2026-08-22
+
+**📋 变更说明**
+fix: 修复运行时崩溃与测试漂移
+
+- NPC: grudges/affectionLocks/recentEvents 由 const 空列表改为可变列表，
+  修复 addGrudge/好感锁解锁/近期事件记录时的 UnsupportedError 崩溃
+- WorldState.addNarrativeEvent: 改为前插(最新在前)，与 UI take() 语义一致
+- PromptSanitizer: 注入标记改用零宽空格打断，真正消除连续指令子串
+- 测试: 修正好感阶段边界断言、放宽首页 widget 测试窗口尺寸
+
 ### v1.1.5 — 2026-08-22
 
 **📋 变更说明**
