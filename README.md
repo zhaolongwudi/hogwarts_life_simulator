@@ -261,6 +261,17 @@ flutter build apk --release
 
 ## 📝 更新日志
 
+### v1.0.8 — 2026-08-22
+
+**📋 变更说明**
+feat(设置页): 模型快捷按钮 + 路由保存说明
+
+- 回答多模型路由保存问题：场景绑定实时保存，API Key/手写模型名需点保存按钮
+- AppProvider 新增 freeModelsFor() / popularPaidModelsFor() 两个分类方法
+- 设置页每个 AI 提供商卡片下新增模型快捷按钮：
+  * 🎁 免费额度（绿色）：智谱 glm-4-flash / glm-4.7-flash、Agnes agnes-2.5-flash/turbo、SenseNova、DeepSeek-chat
+  * ⭐ 推荐付费（金色）：DeepSeek v4-pro / reasoner、智谱 glm-4.7 / 4 / 4-long、Agnes pro/2.5
+
 ### v1.0.7 — 2026-08-22
 
 **📋 变更说明**
