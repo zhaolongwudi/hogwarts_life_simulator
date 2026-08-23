@@ -569,20 +569,27 @@ class GameProvider extends ChangeNotifier {
       // ====== 角色资料交叉校验（防止逻辑自相矛盾，AI写崩） ======
       // 校验1：出生身份与家族背景不可冲突
       // 例："纯血豪门" vs "麻瓜家庭" → 统一以 birthIdentity 为主，familyBackground 改为合理描述
-      final familyLower = (familyBackground ?? '').toLowerCase();
-      final identityLower = (birthIdentity ?? '').toLowerCase();
+      var fb = familyBackground ?? '';
+      final familyLower = fb.toLowerCase();
+      final idLower = (birthIdentity ?? '').toLowerCase();
       if (birthIdentity != null &&
-          birthIdentity!.isNotEmpty &&
-          familyBackground != null &&
-          familyBackground!.isNotEmpty) {
-        final pureBloodKeywords = ['纯血', '豪门', '神圣二十八族', 'pureblood'];
-        final muggleKeywords = ['麻瓜', '普通', '无魔法', 'muggle'];
-        final hasPure = pureBloodKeywords.any((k) => identityLower.contains(k));
+          birthIdentity.isNotEmpty &&
+          fb.isNotEmpty) {
+        const pureBloodKeywords = ['纯血', '豪门', '神圣二十八族', 'pureblood'];
+        const muggleKeywords = ['麻瓜', '普通', '无魔法', 'muggle'];
+        final hasPure = pureBloodKeywords.any((k) => idLower.contains(k));
         final hasMuggleFamily = muggleKeywords.any((k) => familyLower.contains(k));
         if (hasPure && hasMuggleFamily) {
           // 允许"神圣二十八族没落支系+麻瓜养父母"这种设定，但不能写成"普通麻瓜家庭出身"
-          // 统一解释为：家族血缘是纯血支系没落，由麻瓜养父母抚养成人
-          familyBackground = '神圣二十八族没落支系，由${familyBackground!.replaceAll(RegExp(r'[麻普通无魔法]', caseSensitive: false), '').trim().isEmpty ? '麻瓜养父母家庭' : familyBackground!.replaceAll('普通麻瓜家庭', '麻瓜养父母家庭').replaceAll('麻瓜家庭', '麻瓜养父母家庭')}抚养长大，亲生父母早已不在人世，血脉仍保留纯血族谱印记';
+          final sanitized = fb.replaceAll(RegExp(r'[麻普通无魔法]', caseSensitive: false), '').trim();
+          if (sanitized.isEmpty) {
+            fb = '麻瓜养父母家庭';
+          } else {
+            fb = fb
+                .replaceAll('普通麻瓜家庭', '麻瓜养父母家庭')
+                .replaceAll('麻瓜家庭', '麻瓜养父母家庭');
+          }
+          familyBackground = '神圣二十八族没落支系，由$fb抚养长大，亲生父母早已不在人世，血脉仍保留纯血族谱印记';
         }
       }
 
@@ -631,7 +638,7 @@ class GameProvider extends ChangeNotifier {
       );
       // letter 起点时同步 currentLocation 为玩家出生地（避免 prompt 里显示「未知」导致 AI 乱跳地点）
       if (openingScene == 'letter') {
-        _worldState.currentLocation = '${p.birthLocation}·家中';
+        _worldState.currentLocation = '${_player!.birthLocation}·家中';
       } else if (openingScene == 'station') {
         _worldState.currentLocation = '伦敦国王十字车站';
       } else if (openingScene == 'hall') {
@@ -1282,25 +1289,26 @@ ${profile.join('｜')}
       final worldAnchors = <String>[];
       final alreadyAnchors = <String>{}; // 去重
       // 世界重大事件锚点「伪造事件」真校验：
-      // - 🏆成就类：必须真正解锁才允许注入（check against _unlockedAchievements）
+      // - 🏆成就类：必须真正解锁才允许注入（check against _player.achievements）
       // - 👤结识类：必须对应 NPC 确实 introduced=true 才允许注入
       // - 否则直接丢弃（AI 之前乱塞"你认识哈利""你获得了什么什么成就"都是伪造事件）
-      final unlockedSet = _unlockedAchievements.toSet();
       final introducedSet = _npcRegistry.values.where((n) => n.introduced).map((n) => n.name).toSet();
       bool looksFake(String text) {
         final clean = text.replaceAll(RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*'), '');
         // 成就类伪造：含"成就/🏆"，但 achievement 关键词不在已解锁集合
         if (clean.contains('成就') || text.contains('🏆')) {
+          final unlocked = _player?.achievements ?? const <String>[];
           // 尝试找成就id/名称；若在已解锁集合找不到，算伪造
-          if (_unlockedAchievements.isEmpty) return true; // 宣称解锁但全局没解过任何成就=假
+          if (unlocked.isEmpty) return true; // 宣称解锁但全局没解过任何成就=假
           // 按名称匹配：把 clean 与已解锁成就描述做交集
           final names = achievementCatalog.map((a) => a.id).toSet()..addAll(achievementCatalog.map((a) => a.name));
-          final hit = names.any((n) => n.isNotEmpty && clean.contains(n));
-          if (!hit) return true; // 文字里找不到任何已知/已解锁成就名=假事件
+          final hitAch = names.any((n) => n.isNotEmpty && clean.contains(n));
+          // 双重校验：还必须有具体成就 ID 出现在已解锁列表中（避免文案命中但未解锁）
+          final hitUnlocked = unlocked.any((id) => clean.contains(id) || clean.contains(achievementCatalog.firstWhere((a) => a.id == id, orElse: () => achievementCatalog.first).name));
+          if (!(hitAch && hitUnlocked)) return true;
         }
         // 结识类伪造：含"结识/认识/见面/认识了/👤"但对应NPC没introduced
         if (RegExp(r'(结识|认识了|正式见面|成为朋友|初见了)', caseSensitive: false).hasMatch(clean) || text.contains('👤')) {
-          // 找中文姓名（2-6字姓名序列），或直接取常见 NPC 名交集
           final hitNpc = introducedSet.any((n) => n.isNotEmpty && clean.contains(n));
           if (!hitNpc) return true;
         }
@@ -3378,15 +3386,20 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   void _checkExplorerAchievement() {
     final p = _player;
     if (p == null) return;
-    final visited = <String>{};
-    visited.add(_worldState.currentLocation ?? '');
-    if (visited.length >= 5) _unlockAchievement('explorer');
+    // 记录当前地点到访问历史（若不同）
+    final loc = _worldState.currentLocation?.trim();
+    if (loc != null && loc.isNotEmpty) {
+      _worldState.visitedLocations.add(loc);
+    }
+    if (_worldState.visitedLocations.length >= 5) _unlockAchievement('explorer');
   }
 
   void _checkRichWizardAchievement() {
     final p = _player;
     if (p == null) return;
-    if (totalWealth >= 100) _unlockAchievement('rich_wizard');
+    // 小富翁=累计持有 ≥1500 加隆（player.dart默认500+节俭特质+100=约600开局）
+    // 原门槛100完全无意义，500还是开局秒解——1500要求玩家通过打工/交易真正积累财富。
+    if (totalWealth >= 1500) _unlockAchievement('rich_wizard');
   }
 
   void _checkBookwormAchievement() {
@@ -3402,14 +3415,6 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     // 不再用"NPC总数≥10"——NPC注册表初始化就有几十个，开局秒解锁是bug。
     final friendCount = _npcRegistry.values.where((n) => n.isAlive && n.introduced).length;
     if (friendCount >= 10) _unlockAchievement('social_butterfly');
-  }
-
-  void _checkRichWizardAchievement() {
-    final p = _player;
-    if (p == null) return;
-    // 小富翁=累计持有 ≥1500 加隆（player.dart默认500+节俭特质+100=约600开局）
-    // 原门槛100完全无意义，500还是开局秒解——1500要求玩家通过打工/交易真正积累财富。
-    if (totalWealth >= 1500) _unlockAchievement('rich_wizard');
   }
 
   void _checkDeepRelationshipAchievement() {
@@ -4271,71 +4276,84 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   // ==================== 解析响应 ====================
 
   /// 从叙事文本中智能提取分院结果并赋值给 _player.house
-  /// 带语境判断：只有当文本中出现"分院/分到/属于/学院帽/Sorting Hat"等分院语境时才匹配，
-  /// 避免分院前 AI 列举四个学院时误匹配到第一个出现的学院名。
+  /// 带语境判断：只有当文本中出现明确分院动作时才匹配。
   void _tryExtractHouseFromNarrative(String text) {
     if (_player == null || _player!.house != null) return;
+    const houseGroup = '格兰芬多|斯莱特林|拉文克劳|赫奇帕奇'
+        '|Gryffindor|Slytherin|Ravenclaw|Hufflepuff';
 
-    // 1. 强语境：必须出现"分院动作词"（对话或旁白明确分配学院）
-    //    仅出现"属于/XX学院/格兰芬多"这类孤立词汇不得触发。
+    // 1. 强语境：必须出现"分院动作词"
     final hasSortingAction = RegExp(
-      r'分到|分进|被分到|被分进|进入了|进了|戴上分院帽|分院帽.*喊出|分院帽.*叫道|分院帽.*说|分院帽.*唱|'
-      r'Sorting\s*Hat|hat\s*(?:said|shouted|sang)',
+      r'分到|分进|被分到|被分进|进入了|进了|戴上分院帽'
+      r'|分院帽.*喊出|分院帽.*叫道|分院帽.*说|分院帽.*唱'
+      r'|Sorting\s*Hat|hat\s*(?:said|shouted|sang)',
       caseSensitive: false,
     ).hasMatch(text);
 
-    // 1b. 兜底强信号：分院帽说话模式（引号+学院名+感叹号）+ 分院语境同时出现
-    final sortingNarrativeContext = RegExp(
+    // 1b. 兜底强信号：分院帽说话模式 + 分院语境同时出现
+    final hasContext = RegExp(
       r'分院|分院帽|大礼堂|长桌|四大学院|入学典礼',
       caseSensitive: false,
     ).hasMatch(text);
 
     if (!hasSortingAction) {
-      // 若没有明确动作词，只有同时命中"分院语境 + 学院名+感叹号"才允许进入
       final hatShout = RegExp(
-        r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]{2,}',
+        '($houseGroup)\\s*[\uff01!]{2,}',
         caseSensitive: false,
       ).hasMatch(text);
-      if (!(sortingNarrativeContext && hatShout)) return;
+      if (!(hasContext && hatShout)) return;
     }
 
-    // 2. 匹配学院名（优先级：动作紧邻 > 分院帽喊出 > XX学院）
-    //    —— 彻底移除裸兜底正则，避免"祝格兰芬多——或者别的学院——接纳你"这种祝福语气误匹配。
-    final housePatterns = [
+    // 2. 匹配学院名（三级优先级）
+    final housePatterns = <Pattern>[
       // 紧邻动作词：分到/分进/被分到/被分进/进入了 XX
-      RegExp(r'(?:分到|分进|被分到|被分进|进入了|进了)\s*(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
-      // 分院帽说话："XX！"/"XX！！"
-      RegExp(r"[\"']?(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]{2,}[\"']?", caseSensitive: false),
+      RegExp(
+        '(?:分到|分进|被分到|被分进|进入了|进了)\\s*($houseGroup)',
+        caseSensitive: false,
+      ),
+      // 分院帽说话：引号包裹 + 连续感叹号
+      RegExp(
+        '["\']?($houseGroup)\\s*[\uff01!]{2,}["\']?',
+        caseSensitive: false,
+      ),
       // 明确"XX学院"且上文已判定为分院语境
-      RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*学院', caseSensitive: false),
+      RegExp(
+        '($houseGroup)\\s*学院',
+        caseSensitive: false,
+      ),
     ];
 
     String? matched;
     for (final pat in housePatterns) {
-      final m = pat.firstMatch(text);
-      if (m != null) {
-        matched = m.group(1) ?? m.group(0);
-        if (matched != null) break;
+      if (pat is RegExp) {
+        final m = pat.firstMatch(text);
+        if (m != null && m.groupCount >= 1) {
+          matched = m.group(1);
+          if (matched != null) break;
+        }
       }
     }
     if (matched == null) return;
 
-    const cnToEn = {
+    const cnToEn = <String, String>{
       '格兰芬多': 'Gryffindor',
       '斯莱特林': 'Slytherin',
       '拉文克劳': 'Ravenclaw',
       '赫奇帕奇': 'Hufflepuff',
     };
-    final normalized = matched.toLowerCase();
+    final normalized = matched!.toLowerCase();
     String? en;
-    cnToEn.forEach((k, v) {
-      if (k == matched || v.toLowerCase() == normalized) en = v;
-    });
-    en ??= matched[0].toUpperCase() + matched.substring(1).toLowerCase();
+    for (final e in cnToEn.entries) {
+      if (e.key == matched || e.value.toLowerCase() == normalized) {
+        en = e.value;
+        break;
+      }
+    }
+    en ??= '${matched[0].toUpperCase()}${matched.substring(1).toLowerCase()}';
 
     _player!.house = en;
     _unlockAchievement('sorted');
-    debugPrint('⚡ 分院结果自动提取：${_player!.house}（匹配到"$matched"）');
+    debugPrint('⚡ 分院结果自动提取：${_player!.house}（匹配到 "$matched"）');
   }
 
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
