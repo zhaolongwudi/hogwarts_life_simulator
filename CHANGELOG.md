@@ -5,6 +5,17 @@
 
 ---
 
+### v1.5.2 — 2026-08-23
+
+**📋 变更说明**
+fix(ai): 免费模型优先路由与回退/存档/并发修复
+
+- AiRouter 回退改为候选列表迭代，默认 fallbackOrder 仅含免费模型
+  (sensenova/agnes)，不自动回退到付费 DeepSeek
+- hasNarrativeService 改为任一 provider 已配置即可用，避免有备用 key 被挡死
+- 超时用 CancelToken 真正取消底层 Dio 请求，避免资源浪费与重复日志
+- 修复 WorldEventRecord.score 忽略当前时间导致世界事件新鲜度不衰减
+
 ### v1.5.1 — 2026-08-23
 
 **📋 变更说明**
