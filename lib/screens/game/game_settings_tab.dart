@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../providers/app_provider.dart';
-import '../settings_screen.dart';
+import '../settings/settings_scene_routing.dart';
+import '../settings/settings_preset_pickers.dart';
+import '../settings/settings_token_usage.dart';
 
 class GameSettingsInlineTab extends StatefulWidget {
   const GameSettingsInlineTab({super.key});
@@ -352,14 +354,57 @@ class _GameSettingsInlineTabState extends State<GameSettingsInlineTab> {
                     appProvider.clearApiKey();
                   },
                 ),
-                ListTile(
-                  title: const Text('前往详细设置'),
-                  subtitle: const Text('显示模式、身份、时代背景等'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                const SizedBox(height: 20),
+                const Text('显示与模式', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Consumer<AppProvider>(builder: (ctx, app, _) => Column(children: [
+                  SettingsPresetPickers.buildModePicker(app.displayMode.name,
+                    disabled: const {'magazine'},
+                    onSelect: (v) => app.setDisplayMode(DisplayMode.values.byName(v)),
+                  ),
+                  const SizedBox(height: 10),
+                  SettingsPresetPickers.buildModePicker(app.identityMode.name,
+                    modes: const [
+                      ModeOption('pure', label: '纯血至上主义', icon: Icons.auto_awesome, color: Color(0xFFC0392B), desc: '血统至上，纯血高于一切'),
+                      ModeOption('noble', label: '维护传统', icon: Icons.shield_outlined, color: Color(0xFFD4A017), desc: '维护巫师界古老传统与秩序'),
+                      ModeOption('order', label: '光明阵营', icon: Icons.brightness_7_outlined, color: Color(0xFFD98880), desc: '加入邓布利多阵营对抗黑魔法'),
+                      ModeOption('dark', label: '黑魔法阵营', icon: Icons.bolt_outlined, color: Color(0xFF111111), desc: '追随伏地魔追求力量至上'),
+                      ModeOption('neutral', label: '中立旁观者', icon: Icons.all_inclusive_outlined, color: Color(0xFF7F8C8D), desc: '不站队，在各方间游走谋利'),
+                      ModeOption('transmigration', label: '穿越者', icon: Icons.public_outlined, color: Color(0xFF2980B9), desc: '知道原著剧情，尝试改写命运'),
+                      ModeOption('bone_mode', label: '骨科模式(隐藏)', icon: Icons.favorite_outline, color: Color(0xFFE91E63), desc: '解锁血缘亲属的恋爱与CG线路(⚠️伦理敏感)'),
+                    ],
+                    disabled: app.displayMode == DisplayMode.magazine ? const {'transmigration'} : null,
+                    onSelect: (v) => app.setIdentityMode(IdentityMode.values.byName(v)),
+                  ),
+                  const SizedBox(height: 10),
+                  SettingsPresetPickers.buildEraPicker(ctx, app.era.name,
+                    onSelect: (v) => app.setEra(Era.values.byName(v)),
+                  ),
+                ])),
+                const SizedBox(height: 24),
+                const Text('场景模型路由', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Consumer<AppProvider>(builder: (ctx, app, _) => SettingsSceneRouting(
+                  appProvider: app,
+                  onSceneRouteChanged: (scene, provider) {
+                    app.setSceneRoute(scene, provider);
+                    final gp = ctx.read<GameProvider>();
+                    gp.router = null;
+                    gp.updateClient();
                   },
-                ),
+                )),
+                const SizedBox(height: 24),
+                const Text('Token 使用统计', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Consumer<GameProvider>(builder: (ctx, gp, _) => SettingsTokenUsage(
+                  gameProvider: gp,
+                  onReset: () {
+                    gp.resetTokenUsage();
+                    // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+                    (ctx as Element).markNeedsBuild();
+                  },
+                )),
+                const SizedBox(height: 16),
               ],
             ),
           ),

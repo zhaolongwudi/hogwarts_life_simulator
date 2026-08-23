@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 
 class ModeOption {
-  final String label;
   final String value;
+  final String label;
   final String desc;
-  const ModeOption(this.label, this.value, this.desc);
+  final IconData? icon;
+  final Color? color;
+  const ModeOption(this.value, {required this.label, this.icon, this.color, required this.desc});
 }
 
 class EraOption {
@@ -24,18 +26,21 @@ class SettingsPresetPickers {
     ValueChanged<String>? onSelect,
   }) {
     final items = modes ?? const [
-      ModeOption('魔法手账', 'magazine', '默认推荐，显示日期/地点/状态'),
-      ModeOption('简洁', 'compact', '信息密度更高'),
-      ModeOption('沉浸', 'immersive', '纯小说叙事，无UI标签'),
+      ModeOption('magazine', label: '魔法手账', desc: '默认推荐，显示日期/地点/状态'),
+      ModeOption('compact', label: '简洁', desc: '信息密度更高'),
+      ModeOption('immersive', label: '沉浸', desc: '纯小说叙事，无UI标签'),
     ];
     return Column(
       children: items.map((m) {
         final isDisabled = disabled?.contains(m.value) ?? false;
         final isSelected = current == m.value;
+        final itemColor = m.color ?? (isSelected ? const Color(0xFFD3A625) : const Color(0xFF8B949E));
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Material(
-            color: isSelected ? const Color(0xFF740001).withValues(alpha: 0.2) : const Color(0xFF21262d),
+            color: isSelected
+                ? (m.color?.withValues(alpha: 0.2) ?? const Color(0xFF740001).withValues(alpha: 0.2))
+                : const Color(0xFF21262d),
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -45,18 +50,29 @@ class SettingsPresetPickers {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFFD3A625) : const Color(0xFF30363d),
+                    color: isSelected ? (m.color ?? const Color(0xFFD3A625)) : const Color(0xFF30363d),
                     width: isSelected ? 1.5 : 1,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: isSelected ? const Color(0xFFD3A625) : const Color(0xFF8B949E),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
+                    if (m.icon != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: itemColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(m.icon, size: 20, color: itemColor),
+                      ),
+                      const SizedBox(width: 12),
+                    ] else
+                      Icon(
+                        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                        color: isSelected ? (m.color ?? const Color(0xFFD3A625)) : const Color(0xFF8B949E),
+                        size: 20,
+                      ),
+                    if (m.icon == null) const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

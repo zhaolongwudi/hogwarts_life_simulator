@@ -200,9 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? const {'magazine'}
                 : null,
             onSelect: (v) {
-              if (v == 'magazine') context.read<AppProvider>().setDisplayMode(DisplayMode.magazine);
-              else if (v == 'compact') context.read<AppProvider>().setDisplayMode(DisplayMode.compact);
-              else context.read<AppProvider>().setDisplayMode(DisplayMode.immersive);
+              context.read<AppProvider>().setDisplayMode(DisplayMode.values.byName(v));
             },
           ),
           const SizedBox(height: 24),
@@ -215,22 +213,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingsPresetPickers.buildModePicker(
             appProvider.identityMode.name,
             modes: const [
-              ModeOption('原住民', 'native', '角色不知道自己是小说人物'),
-              ModeOption('穿越者', 'transmigration', '角色知道这是哈利·波特世界'),
+              ModeOption('pure', label: '纯血至上主义', desc: '血统至上，纯血高于一切'),
+              ModeOption('noble', label: '维护传统', desc: '维护巫师界古老传统与秩序'),
+              ModeOption('order', label: '光明阵营', desc: '加入邓布利多阵营对抗黑魔法'),
+              ModeOption('dark', label: '黑魔法阵营', desc: '追随伏地魔追求力量至上'),
+              ModeOption('neutral', label: '中立旁观者', desc: '不站队，在各方间游走谋利'),
+              ModeOption('transmigration', label: '穿越者', desc: '知道原著剧情，尝试改写命运'),
+              ModeOption('bone_mode', label: '骨科模式(隐藏)', desc: '解锁血缘亲属的恋爱与CG线路'),
             ],
             disabled: appProvider.displayMode == DisplayMode.magazine
                 ? const {'transmigration'}
                 : null,
             onSelect: (v) {
-              if (v == 'native') context.read<AppProvider>().setIdentityMode(IdentityMode.native);
-              else context.read<AppProvider>().setIdentityMode(IdentityMode.transmigration);
+              context.read<AppProvider>().setIdentityMode(IdentityMode.values.byName(v));
             },
           ),
           if (appProvider.displayMode == DisplayMode.magazine)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '使用「魔法手账」显示模式时，身份只能是「原住民」',
+                '使用「魔法手账」显示模式时，无法选用「穿越者」身份',
                 style: TextStyle(color: Colors.grey[500], fontSize: 12),
               ),
             ),

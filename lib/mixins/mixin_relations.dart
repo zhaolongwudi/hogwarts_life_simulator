@@ -1019,7 +1019,7 @@ mixin GameRelationsMixin on GameProviderBase {
     final list = player == null
         ? const <NPC>[]
         : npcRegistry.values
-            .where((n) => n.affection.abs() >= 30 || player!.relationships.containsKey(n.id))
+            .where((n) => n.introduced && (n.affection.abs() >= 30 || player!.relationships.containsKey(n.id)))
             .toList()
           ..sort((a, b) => b.affection.compareTo(a.affection));
     if (list.isEmpty) return '暂无深入关系';

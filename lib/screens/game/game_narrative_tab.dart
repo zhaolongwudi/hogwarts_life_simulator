@@ -289,6 +289,36 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
+  Map<String, String?> _extractHeader(String narrative) {
+    String? timestamp;
+    String? location;
+    int bodyStartIdx = 0;
+
+    final lines = narrative.split('\n');
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) continue;
+      if (line.startsWith('【时间戳】')) {
+        timestamp = line.replaceFirst('【时间戳】', '').trim();
+        bodyStartIdx = i + 1;
+      } else if (line.startsWith('【地点】')) {
+        location = line.replaceFirst('【地点】', '').trim();
+        bodyStartIdx = i + 1;
+      } else {
+        break;
+      }
+    }
+
+    final bodyLines = lines.sublist(bodyStartIdx);
+    final body = bodyLines.join('\n').trim();
+
+    return {
+      'timestamp': timestamp,
+      'location': location,
+      'body': body.isEmpty ? null : body,
+    };
+  }
+
   Widget _buildNarrativeText(GameProvider gp) {
     final panel = gp.commandResult;
     if (panel != null && panel.isNotEmpty) {
@@ -339,9 +369,80 @@ class _NarrativeTabState extends State<NarrativeTab> {
     }
 
     final affectionSections = gp.lastAffectionSections;
+    final header = _extractHeader(narrative);
+    final timestamp = header['timestamp'];
+    final location = header['location'];
+    final bodyNarrative = header['body'] ?? narrative;
+    final hasHeader = timestamp != null || location != null;
+    final colorScheme = Theme.of(context).colorScheme;
+    final dividerColor = Theme.of(context).dividerTheme.color!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (hasHeader) ...[
+          Container(
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border(
+                left: BorderSide(color: colorScheme.primary, width: 4),
+                top: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
+                right: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
+                bottom: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (timestamp != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.access_time_outlined, color: colorScheme.primary, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          timestamp,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (timestamp != null && location != null)
+                  Divider(
+                    height: 1,
+                    color: dividerColor.withAlpha(40),
+                    indent: 14,
+                    endIndent: 14,
+                  ),
+                if (location != null)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(14, timestamp != null ? 0 : 10, 14, 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.room_outlined, color: const Color(0xFF56D364), size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          location,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF56D364),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           decoration: BoxDecoration(
@@ -371,7 +472,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           ),
           child: RichText(
             text: TextSpan(
-              children: StoryTextRenderer.parseWithAffectionStyle(narrative),
+              children: StoryTextRenderer.parseWithAffectionStyle(bodyNarrative),
             ),
           ),
         ),

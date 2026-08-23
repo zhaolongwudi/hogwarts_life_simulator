@@ -161,6 +161,7 @@ mixin GameInitMixin on GameProviderBase {
     player = null;
     worldState = WorldState();
     npcRegistry.clear();
+    memory = LongTermMemory();
     currentNarrative = '';
     narrativeSummary = '';
     pendingSummary = '';
@@ -589,24 +590,49 @@ mixin GameInitMixin on GameProviderBase {
   void markIntroducedFromNarrative(String text) {
     if (text.isEmpty || npcRegistry.isEmpty) return;
 
+    const interactionVerbs = [
+      '见面', '握手', '介绍', '对视', '打招呼', '对话', '交谈', '自我介绍',
+      '走进', '进来', '敲门', '推开', '开门', '向你走', '看到你', '来到',
+      '回应你', '你唤', '你叫', '你问', '问你', '对你说', '告诉你',
+      '递给你', '你接过', '你握', '拥抱', '拍肩', '微笑着', '点头',
+      '行礼', '鞠躬', '一起坐', '坐下', '上楼', '下楼', '同行', '并肩'
+    ];
+
     int markedThisRound = 0;
     const maxPerRound = 5;
-    // 按名字长度降序，长名优先匹配
     final npcs = npcRegistry.values.toList()
       ..sort((a, b) => b.name.length.compareTo(a.name.length));
     for (final npc in npcs) {
       if (npc.introduced) continue;
       if (markedThisRound >= maxPerRound) break;
-      // 检查 NPC 的所有名称（全名、简称、姓氏）
-      bool matched = false;
+
+      int totalMentionCount = 0;
+      bool contextHasInteraction = false;
+
       for (final alias in npc.allNames) {
         if (alias.runes.length < 2) continue;
-        if (_standaloneNameMentioned(text, alias)) {
-          matched = true;
-          break;
+        if (!_standaloneNameMentioned(text, alias)) continue;
+
+        int searchFrom = 0;
+        while (true) {
+          final idx = text.indexOf(alias, searchFrom);
+          if (idx == -1) break;
+          totalMentionCount++;
+          final start = idx - 80 < 0 ? 0 : idx - 80;
+          final end = idx + alias.length + 80 > text.length
+              ? text.length
+              : idx + alias.length + 80;
+          final slice = text.substring(start, end);
+          if (interactionVerbs.any((v) => slice.contains(v))) {
+            contextHasInteraction = true;
+          }
+          searchFrom = idx + alias.length;
         }
+        if (contextHasInteraction) break;
       }
-      if (matched) {
+
+      final shouldMark = contextHasInteraction || totalMentionCount >= 3;
+      if (shouldMark && totalMentionCount > 0) {
         markNpcIntroduced(npc);
         markedThisRound++;
       }

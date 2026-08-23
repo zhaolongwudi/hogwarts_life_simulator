@@ -311,6 +311,12 @@ mixin GameSystemsMixin on GameProviderBase {
       hour: t.hour,
       currentLocation: worldState.currentLocation,
     );
+
+    // letter起点(7.31刚入学前)屏蔽「暑假开始」类锚点，避免刚开局就写学年结束
+    if (t.month == 7 && t.day <= 31 && openingScene == 'letter' && turnCount < 5) {
+      due.removeWhere((a) => a.id == 'common_jul_summer_start');
+    }
+
     if (due.isEmpty) return;
 
     // 每个回合最多注入一个锚点，避免信息过载；其余顺延

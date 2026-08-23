@@ -4,7 +4,7 @@ import '../services/ai_router.dart';
 import '../services/key_store.dart';
 
 enum DisplayMode { magazine, compact, immersive }
-enum IdentityMode { native, transmigration }
+enum IdentityMode { pure, noble, order, dark, neutral, transmigration, bone_mode }
 enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
 enum AiProvider { deepseek, agnes, sensenova }
 
@@ -114,7 +114,7 @@ class AppProvider extends ChangeNotifier {
   String? _apiKey;
   bool _isGameStarted = false;
   DisplayMode _displayMode = DisplayMode.magazine;
-  IdentityMode _identityMode = IdentityMode.native;
+  IdentityMode _identityMode = IdentityMode.pure;
   Era _era = Era.harry_same;
   AiProvider _aiProvider = AiProvider.deepseek;
   String _aiModel = 'deepseek-chat';
@@ -231,7 +231,12 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _isGameStarted = prefs.getBool('game_started') ?? false;
     _displayMode = DisplayMode.values[prefs.getInt('display_mode') ?? 0];
-    _identityMode = IdentityMode.values[prefs.getInt('identity_mode') ?? 0];
+    final savedIdentityIdx = prefs.getInt('identity_mode');
+    if (savedIdentityIdx == null || savedIdentityIdx >= IdentityMode.values.length) {
+      _identityMode = IdentityMode.pure;
+    } else {
+      _identityMode = IdentityMode.values[savedIdentityIdx];
+    }
     _era = Era.values[prefs.getInt('era') ?? 2];
     _aiProvider = AiProvider.values[prefs.getInt('ai_provider') ?? 0];
     _aiModel = prefs.getString('ai_model') ?? 'deepseek-v4-flash';

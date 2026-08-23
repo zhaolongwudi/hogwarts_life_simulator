@@ -103,8 +103,10 @@ mixin GameNarrativeMixin on GameProviderBase {
         }
         contextBuffer.writeln('');
       }
-      // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚）
-      final topNpcs = npcRegistry.values.toList()
+      // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚，仅展示已登场NPC）
+      final topNpcs = npcRegistry.values
+          .where((npc) => npc.introduced == true)
+          .toList()
         ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
       final t2Lines = <String>[];
       for (int i = 0; i < topNpcs.length && i < 24; i++) {
@@ -548,7 +550,9 @@ $kNarrativeWritingRules
   /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
 
   String buildRelationshipSnapshot() {
-    final npcs = npcRegistry.values.where((n) => n.affection != 0).toList()
+    final npcs = npcRegistry.values
+        .where((n) => n.introduced && n.affection != 0)
+        .toList()
       ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
     return npcs.take(5)
         .map((n) => '${n.name}:${n.affectionStage}/${n.affection}')
@@ -641,11 +645,15 @@ $kNarrativeWritingRules
     // worldState 始终非空，此处无需 null 判断（避免 analyzer unnecessary_null_comparison）
     final npcsHere = npcsInCurrentLocation();
     if (npcsHere.isNotEmpty) {
-      final npcNames = npcsHere.map((n) {
+      final npcNames = npcsHere
+          .where((n) => n.introduced)
+          .map((n) {
         final status = n.isAlive ? n.affection.toString() : '';
         return '${n.name}$status';
       }).join('、');
-      parts.add('【在场】$npcNames');
+      if (npcNames.isNotEmpty) {
+        parts.add('【在场】$npcNames');
+      }
     }
 
     final hour = ws.time.hour;
@@ -668,7 +676,7 @@ $kNarrativeWritingRules
     final location = worldState.currentLocation;
     if (location == null || location.isEmpty) return [];
     return npcRegistry.values.where((npc) {
-      return npc.currentLocation.toLowerCase().contains(location.toLowerCase());
+      return npc.introduced && npc.currentLocation.toLowerCase().contains(location.toLowerCase());
     }).toList();
   }
 
