@@ -1091,10 +1091,24 @@ ${profile.join('｜')}
         contextBuffer.writeln('');
       }
 
-      // ========== T4 自然语言摘要（有损压缩历史背景，可有可无） ==========
+      // ========== T4 自然语言摘要（有损压缩历史背景，权重最低，严格控量） ==========
+      // 重要：T4 是 LLM 压缩的「模糊历史记忆」，可能包含过期/错误细节（如"开局巨怪事件"）
+      //      → 严格限制注入长度：超过 200 字强制截断
+      //      → 在结构化记忆(T0~T3)已存在内容/刚做完摘要的回合跳过，避免污染
       if (_narrativeSummary.isNotEmpty) {
-        // 关键改进：明确标注前情摘要是"历史背景"，不要基于此生成选项
-        contextBuffer.write('【历史背景（仅作参考，不要基于此生成当前场景的选项）】\n$_narrativeSummary\n\n');
+        // 如果 T0+T1 已经提供了≥12条结构化事实，说明核心信息充足，
+        // 不需要再把自然语言摘要（可能含过期场景）塞进来
+        final structuredCount = t0.length + t1.length;
+        if (structuredCount < 12) {
+          // 限制注入长度：最多 200 字（约 100~150 tokens），防止摘要回合 prompt 暴涨到5000+
+          final trimmedSummary = _narrativeSummary.length > 200
+              ? '${_narrativeSummary.substring(0, 200)}…'
+              : _narrativeSummary;
+          // 强约束：只当"关系和转折"参考，严格禁止基于此生成当前回合选项/场景
+          contextBuffer.write('【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n');
+        } else {
+          debugPrint('T4 跳过注入：结构化事实 T0(${t0.length})+T1(${t1.length}) ≥ 12，信息充足');
+        }
       }
 
       // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
@@ -1200,30 +1214,20 @@ NPC名:±X(原因)
       // 先解析叙事文本（不含选项）
       _parseNarrativeOnly(response);
 
-      // 如果叙事解析失败，回退到完整解析
-      if (_currentNarrative.isEmpty) {
-        _parseResponse(response);
-      }
-
-      // 独立生成选项：基于已生成的剧情
+      // 独立生成选项：基于已生成的剧情（与主叙事完全解耦，不再从叙事响应提取）
+      // 注意：从 2026-08-23 起「写作要求」明确禁止主叙事 AI 输出选项，
+      //       因此即使叙事响应里意外夹带了 ABCD（来自 T4 旧摘要污染），
+      //       也绝对不再读入到选项里——否则会出现"海格/巨怪"等过期内容。
       _loadingStage = '正在生成选项...';
       notifyListeners();
 
       final separateChoices = await _generateChoicesSeparately(_currentNarrative);
-
       if (separateChoices.isNotEmpty) {
-        // 使用独立生成的选项
         _choices = separateChoices;
       } else {
-        // 独立生成失败，尝试从原始响应中提取
-        _parseResponse(response);
-        // 如果还是空，使用兜底选项
-        if (_choices.isEmpty) {
-          _choices = _extractChoicesFromRawText(response);
-          if (_choices.isEmpty) {
-            _choices = _generateContextualFallbackChoices();
-          }
-        }
+        // 独立选项生成失败时，只用本地上下文兜底选项生成器（不碰 AI 的响应文本）
+        debugPrint('独立选项生成失败，切换到本地上下文兜底选项');
+        _choices = _generateContextualFallbackChoices();
       }
 
       _accumulateForSummary(_currentNarrative);
@@ -1236,8 +1240,10 @@ NPC名:±X(原因)
         _pendingAnchorDirective = null;
       }
 
-      // 定期摘要：每10回合，或待摘要缓冲过长（>3000字）时提前压缩，控制单次摘要输入规模
-      if ((_turnCount % 10 == 0 || _pendingSummary.length > 3000) && _pendingSummary.isNotEmpty) {
+      // 定期摘要：每20回合，或待摘要缓冲过长（>3200字）时提前压缩
+      // 2026-08-23：从 10 回合调整为 20 回合，大幅减少摘要触发频率
+      // 字符阈值从 3000 提到 3200，保证新 4000 上限前就开始压缩
+      if ((_turnCount % 20 == 0 || _pendingSummary.length > 3200) && _pendingSummary.isNotEmpty) {
         unawaited(Future.microtask(() async {
           try {
             await _summarizeNarrative();
@@ -4630,7 +4636,8 @@ D.xxxxxx''';
   // ==================== 剧情摘要机制：每10回合压缩历史 ====================
 
   /// 待摘要缓冲上限：摘要服务反复失败时防止缓冲无限膨胀撑爆后续请求
-  static const int _maxPendingSummaryChars = 6000;
+  /// 2026-08-23：从 6000 降到 4000，避免单次摘要输入过长
+  static const int _maxPendingSummaryChars = 4000;
 
   void _accumulateForSummary(String newNarrative) {
     _pendingSummary += '$newNarrative\n';
@@ -4648,20 +4655,23 @@ D.xxxxxx''';
     }
 
     // 摘要长度随游戏进度逐步放宽，避免长线信息被过度压缩丢失
+    // 2026-08-23：严格压缩上限，避免 T4 摘要保存长度失控到 1000+ 字
     final limit = _turnCount <= 40
-        ? 600   // 从300→600：开局阶段保留更多关系细节和伏笔
-        : (_turnCount <= 100 ? 1000 : 1500);  // 500→1000, 700→1500：中长线不丢事件链
+        ? 400   // 早期剧情信息密度低，400 字足够
+        : (_turnCount <= 100 ? 700 : 1000);
     final relationSnapshot = _buildRelationshipSnapshot();
 
     // 关键改进：明确要求 AI 只保留"人物关系"和"重要转折"，不保留具体场景描述
-    // 这样开局的"车站"、"检票"等场景会被自然淘汰，只保留"与赫敏建立友谊"、"被分到格兰芬多"等重要信息
+    // 2026-08-23：新增规则 7/8：绝对禁止保留一次性事件（"开局巨怪袭击"等）和具体地点/检票/教室等
     final prompt = '''请将以下剧情内容压缩成摘要。重要规则：
 1. 只保留【人物关系变化】和【重要剧情转折】
-2. 淘汰具体场景描述（如"在车站"、"在教室"等地点信息），这些会干扰后续剧情生成
+2. 淘汰具体场景描述（如"在车站"、"在教室"、"列车走廊"等地点信息），这些会严重干扰后续剧情生成
 3. 淘汰具体行动描述（如"检票上车"、"拿出魔杖"等），除非是关键转折点
 4. 保留 NPC 好感度变化（如"赫敏:友好+10"）、学院分配、重要事件等
 5. 保留关键伏笔、NPC承诺、秘密、未完成任务、冲突起源、长期目标（这些是长线剧情的锚，必须单独归纳）
 6. 用简洁的第三人称
+7. 绝对禁止保留一次性冲突/怪物事件（如"巨怪事件""某个小决斗"）的具体场景和过程，仅保留对人物关系造成的长期影响（例如："与罗恩因共同抗敌建立信任"而非"在厕所击败巨怪"）
+8. 严格遵守【精简剧情摘要】不超过 $limit 字，超过部分会被直接截断，超出规则会导致后续剧情冲突
 
 【前情摘要】
 ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
@@ -4683,9 +4693,16 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
         scene: AiScene.summary,
       );
 
-      _narrativeSummary = result.content.trim();
+      // 硬限制摘要保存长度——如果 AI 不肯遵守字数限制，直接强截断前 limit×1.2 字
+      // 防止出现 1500+ 字摘要，造成下回合 prompt 暴涨 5000 tokens
+      var rawSummary = result.content.trim();
+      final hardLimit = (limit * 1.2).toInt();
+      if (rawSummary.length > hardLimit) {
+        rawSummary = '${rawSummary.substring(0, hardLimit)}…(已截短)';
+      }
+      _narrativeSummary = rawSummary;
       _pendingSummary = '';
-      debugPrint('✅ 剧情摘要已更新 (${_narrativeSummary.length}字)');
+      debugPrint('✅ 剧情摘要已更新 (${_narrativeSummary.length}字，上限=$hardLimit)');
     } catch (e) {
       debugPrint('❌ 摘要生成失败: $e');
     }
