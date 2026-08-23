@@ -149,59 +149,114 @@ class GameBottomInput extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF161B22),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => SafeArea(
+        top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade600,
-                    borderRadius: BorderRadius.circular(2),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.72,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade600,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text('⚡ 指令系统',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
-              const SizedBox(height: 4),
-              const Text('在输入框输入 / 开头的命令即可触发',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-              const SizedBox(height: 16),
-              _buildCommandItem('/帮助', '显示所有可用命令', Icons.help, context),
-              _buildCommandItem('/状态', '查看角色完整属性', Icons.person, context),
-              _buildCommandItem('/时间', '查看当前日期时间', Icons.schedule, context),
-              _buildCommandItem('/地图', '快速跳转地图', Icons.map, context),
-              _buildCommandItem('/关系', '查看NPC关系', Icons.people, context),
-              _buildCommandItem('/恋爱', '查看恋爱状态', Icons.favorite, context),
-              _buildCommandItem('/声望', '查看声望值', Icons.emoji_events, context),
-              _buildCommandItem('/cheat', '打开作弊面板', Icons.bug_report, context),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    inputController.text = '/帮助';
-                    onHandleFreeAction();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD3A625),
-                    foregroundColor: Colors.black,
+                const SizedBox(height: 16),
+                const Text('⚡ 指令系统',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+                const SizedBox(height: 4),
+                const Text('点击右侧 ▶ 直接运行，或在输入框输入 / 开头的命令',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    children: [
+                      _sectionTitle('📖 核心查看', top: 0),
+                      _buildCommandItem('/帮助', '显示所有可用命令总览', Icons.help, context),
+                      _buildCommandItem('/状态', '查看角色完整属性面板', Icons.person, context),
+                      _buildCommandItem('/时间', '查看当前日期时间和时段', Icons.schedule, context),
+                      _buildCommandItem('/地图', '查看场景地图/快速跳转', Icons.map, context),
+                      _buildCommandItem('/通知', '查看系统通知/待办/未读信件', Icons.notifications, context),
+                      _buildCommandItem('/档案', '当前角色完整档案(血统/出身/天赋/魔杖)', Icons.folder_shared, context),
+                      _sectionTitle('👥 关系·恋爱·血缘'),
+                      _buildCommandItem('/关系', '查看已登场NPC关系总表', Icons.people, context),
+                      _buildCommandItem('/恋爱', '当前恋爱关系/阶段/共同经历', Icons.favorite, context),
+                      _buildCommandItem('/恋爱等待', '下一次可触发恋爱事件的剩余时间', Icons.hourglass_empty, context),
+                      _buildCommandItem('/恋爱阶段', '关系阶段阶梯说明(好感→暧昧→告白→交往)', Icons.auto_graph, context),
+                      _buildCommandItem('/关系网络 NPC1 NPC2', '查询两位NPC之间的后台关系', Icons.account_tree, context),
+                      _buildCommandItem('/血缘', '你的血缘关系家族树(堂/表/姑/舅)', Icons.family_restroom, context),
+                      _buildCommandItem('/骨科', '骨科模式状态与禁忌限制', Icons.local_hospital, context),
+                      _sectionTitle('🎓 成长·声望·传闻'),
+                      _buildCommandItem('/声望', '多维声望面板(学术/社交/战斗/道德/领导/黑魔法)', Icons.military_tech, context),
+                      _buildCommandItem('/舆论', '当前对你的舆论传闻摘要', Icons.record_voice_over, context),
+                      _buildCommandItem('/传闻', '同上，别名', Icons.chat_bubble_outline, context),
+                      _buildCommandItem('/课程', '本周课表/上课地点/剩余课时', Icons.school, context),
+                      _buildCommandItem('/课堂 互动', '触发当前课堂互动(教授提问/实践/同桌)', Icons.edit_note, context),
+                      _buildCommandItem('/目标', '查看&切换人生目标(1-6 选目标ID或名称)', Icons.flag, context),
+                      _sectionTitle('🎒 收藏·成就·宠物·信件'),
+                      _buildCommandItem('/收藏', '背包/收藏物品/魔法道具总览', Icons.inventory_2, context),
+                      _buildCommandItem('/成就', '已解锁成就 / 未解锁进度', Icons.workspace_premium, context),
+                      _buildCommandItem('/宠物', '当前宠物状态(亲密度/属性/技能)', Icons.pets, context),
+                      _buildCommandItem('/日记', 'CG相册列表(也可/日记 重播 cg_id 重看)', Icons.photo_album, context),
+                      _buildCommandItem('/信', '查看收到的信件列表/写新信', Icons.mail, context),
+                      _sectionTitle('🌍 世界·时代·NPC'),
+                      _buildCommandItem('/联动', '跨时代剧情联动痕迹列表', Icons.join_inner, context),
+                      _buildCommandItem('/世界演化', '当月世界五大类事件动态', Icons.public, context),
+                      _buildCommandItem('/新NPC', '手动生成一位原创学生NPC', Icons.person_add, context),
+                      _sectionTitle('🧪 进阶·作弊·结局'),
+                      _buildCommandItem('/结局', '开始最终终章流程(当前条件满足时)', Icons.flag_circle, context),
+                      _buildCommandItem('/终章', '同上，别名', Icons.flag, context),
+                      _buildCommandItem('/cheat', '打开作弊帮助(好感/资源/声望/时间/骨科/CG解锁/舆论)', Icons.bug_report, context),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            inputController.text = '/帮助';
+                            onHandleFreeAction();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD3A625),
+                            foregroundColor: Colors.black,
+                          ),
+                          child: const Text('用 /帮助 获取带例子的完整文档'),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('查看完整命令列表'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, {double top = 12}) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(0, top, 0, 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF8B949E),
+          letterSpacing: 0.4,
         ),
       ),
     );

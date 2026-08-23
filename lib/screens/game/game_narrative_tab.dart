@@ -329,160 +329,30 @@ class _NarrativeTabState extends State<NarrativeTab> {
       'body': body.isEmpty ? null : body,
     };
   }
-
+  @Deprecated('使用 _buildNarrativeSubTab 代替')
   Widget _buildNarrativeText(GameProvider gp) {
     final panel = gp.commandResult;
     if (panel != null && panel.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
-            ),
-            child: RichText(
-              text: TextSpan(
-                children: StoryTextRenderer.parseWithAffectionStyle(panel),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: gp.closeCommandPanel,
-              icon: const Icon(Icons.arrow_back, size: 16, color: Color(0xFF8B949E)),
-              label: const Text('返回剧情', style: TextStyle(color: Color(0xFF8B949E))),
-            ),
-          ),
-        ],
-      );
+      return _buildCommandResultPanel(panel);
     }
+    return const SizedBox.shrink();
+  }
 
-    final narrative = gp.currentNarrative;
-    if (narrative.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerTheme.color!),
-        ),
-        child: const Text(
-          '等待开始...\n\n输入自由行动或选择一个选项开始你的霍格沃茨之旅。',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF8B949E)),
-        ),
-      );
-    }
-
-    final affectionSections = gp.lastAffectionSections;
-    final header = _extractHeader(narrative);
-    final timestamp = header['timestamp'];
-    final location = header['location'];
-    final bodyNarrative = header['body'] ?? narrative;
-    final hasHeader = timestamp != null || location != null;
-
-    return SizedBox(
-      width: double.infinity,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(top: hasHeader ? 120 : 16, bottom: 24, left: 0, right: 0),
-              physics: const NeverScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Theme.of(context).dividerTheme.color!),
-                    ),
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        _buildLegendItem(const Color(0xFFE3B341), '人名'),
-                        _buildLegendItem(const Color(0xFFFFA657), '说话人'),
-                        _buildLegendItem(const Color(0xFF58A6FF), '对话'),
-                        _buildLegendItem(const Color(0xFF56D364), '地点'),
-                        _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).dividerTheme.color!),
-                    ),
-                    child: RichText(
-                      text: TextSpan(
-                        children: StoryTextRenderer.parseWithAffectionStyle(bodyNarrative),
-                      ),
-                    ),
-                  ),
-                  if (affectionSections.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2D2D2D),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF444444)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '📊 本回合变化',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF8B949E),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          ...affectionSections.map((section) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              section,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFFC9D1D9),
-                              ),
-                            ),
-                          )),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-          if (hasHeader)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _buildHeaderCard(timestamp, location),
-            ),
-        ],
+  Widget _buildCommandResultPanel(String panel) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Text(
+        panel,
+        style: const TextStyle(color: Color(0xFFC9D1D9), height: 1.5),
       ),
     );
   }
+
 
   Widget _buildHeaderCard(String? timestamp, String? location) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -914,26 +784,27 @@ class _NarrativeTabState extends State<NarrativeTab> {
       children: [
         _buildPanelEventTabs(),
         Expanded(
-          child: SingleChildScrollView(
-            controller: widget.scrollController,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.subTab == 0) ...[
-                  _buildNarrativeText(gp),
-                  const SizedBox(height: 12),
-                  _buildChoiceList(gp),
-                ] else ...[
-                  _buildPanelContent(player),
-                ],
-              ],
-            ),
+          child: LayoutBuilder(
+            builder: (ctx, constraints) {
+              if (widget.subTab == 0) {
+                // 剧情子Tab：内部Stack实现时间戳悬浮固定
+                // + 同一个 SingleChildScrollView 装 legend/正文/好感变化/可选行动
+                // 底部 padding 120 保证选项不被输入栏盖住，且不会出现"无限纯黑下滑"
+                return _buildNarrativeSubTab(gp, constraints);
+              } else {
+                // 面板子Tab：正常全屏滚动手册属性面板
+                return SingleChildScrollView(
+                  controller: widget.scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 48),
+                  child: _buildPanelContent(player),
+                );
+              }
+            },
           ),
         ),
         if (gp.isLoading)
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -968,6 +839,133 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildNarrativeSubTab(GameProvider gp, BoxConstraints constraints) {
+    final narrative = gp.currentNarrative ?? '';
+    if (narrative.isEmpty || gp.worldState.currentLocation == null && narrative.isEmpty) {
+      return _buildChoiceList(gp);
+    }
+    // 先抽出header，然后复用_buildNarrativeText，但需要把Choices也塞到内层ScrollView里
+    final affectionSections = gp.lastAffectionSections;
+    final header = _extractHeader(narrative);
+    final timestamp = header['timestamp'];
+    final location = header['location'];
+    final bodyNarrative = header['body'] ?? narrative;
+    final hasHeader = timestamp != null || location != null;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          child: SingleChildScrollView(
+            controller: widget.subTab == 0 ? widget.scrollController : null,
+            padding: EdgeInsets.only(
+              top: hasHeader ? 120 : 16,
+              bottom: 120,
+              left: 16,
+              right: 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildLegendPanel(),
+                const SizedBox(height: 8),
+                _buildBodyCard(bodyNarrative),
+                if (affectionSections.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _buildAffectionCard(affectionSections),
+                ],
+                const SizedBox(height: 16),
+                _buildChoiceList(gp),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+        if (hasHeader)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _buildHeaderCard(timestamp, location),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildLegendPanel() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 4,
+        children: [
+          _buildLegendItem(const Color(0xFFE3B341), '人名'),
+          _buildLegendItem(const Color(0xFFFFA657), '说话人'),
+          _buildLegendItem(const Color(0xFF58A6FF), '对话'),
+          _buildLegendItem(const Color(0xFF56D364), '地点'),
+          _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBodyCard(String body) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: RichText(
+        text: TextSpan(
+          children: StoryTextRenderer.parseWithAffectionStyle(body),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAffectionCard(List<String> sections) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF444444)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '📊 本回合变化',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF8B949E),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ...sections.map((section) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              section,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFC9D1D9),
+              ),
+            ),
+          )),
+        ],
+      ),
     );
   }
 }
