@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.2 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): 解决1024+ CI编译错误：recursive_interface/字段可见性/跨Mixin私有/类型转换
+
+- 根因A：6个Mixin  + GameProvider  6个Mixin 形成 recursive_interface 继承环（Dart 3.x不允许）
+- 根因B：ChangeNotifierProvider<GameProvider> 泛型边界不接受隐式Mixin扩展的ChangeNotifier
+- 修复1：所有6个Mixin声明改为  解环（GameProvider extends ChangeNotifier + with Mixin = 天然满足）
+- 修复2：跨Mixin引用的52个私有方法public化（Dart library级隐私模型跨文件_前缀不可见）
+- 修复3：houseDimensions数值courage/ambition/wisdom/loyalty 显式.toInt()解决int/double赋值错误
+
 ### v1.7.1 — 2026-08-23
 
 **📋 变更说明**
