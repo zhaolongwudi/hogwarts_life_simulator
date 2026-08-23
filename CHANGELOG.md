@@ -5,6 +5,17 @@
 
 ---
 
+### v1.6.8 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): Dart Library级隐私修复 — 32成员public化+28处命名修正
+
+🔧 修复内容:
+1. 删除6个Mixin中对 game_provider.dart 的循环import (跨Library访问禁私有)
+2. 将 GameProvider 中 32 个被 Mixin 引用的私有成员 public化(去掉_前缀):
+   - 核心状态: player, worldState, npcRegistry, memory, currentNarrative, choices...
+   - 时间/回合: turnCount, gameWeek, lastSchoolYearStart
+
 ### v1.6.7 — 2026-08-23
 
 **📋 变更说明**
