@@ -5,6 +5,17 @@
 
 ---
 
+### v1.8.6 — 2026-08-23
+
+**📋 变更说明**
+修复CI 12报错: _lastScannedNarrativeHash公开化+类型修正+warning清理
+
+- 跨mixin/library私有字段访问报错：
+  _lastScannedNarrativeHash 改为 public lastScannedNarrativeHash
+  (Dart library级隐私模型：mixin_init/mixin_narrative 在另一个文件，
+   无法访问GameProviderBase的私有字段)
+- lib/models/world_state.dart: 移除unused dart:convert import
+
 ### v1.8.5 — 2026-08-23
 
 **📋 变更说明**
