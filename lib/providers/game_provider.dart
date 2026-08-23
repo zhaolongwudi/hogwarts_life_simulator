@@ -997,6 +997,7 @@ ${profile.join('｜')}
       _accumulateForSummary(_currentNarrative);
       _appendRecentTurn(_currentNarrative);
       notifyListeners();
+      _autoSave();
     } catch (e) {
       _error = e.toString();
       _currentNarrative =
@@ -1004,6 +1005,7 @@ ${profile.join('｜')}
       _choices = [GameChoice(text: '继续', action: '继续')];
       _appendRecentTurn(_currentNarrative);
       notifyListeners();
+      _autoSave();
       unawaited(CrashLogger.instance.record(
         e,
         StackTrace.current,
@@ -4056,6 +4058,66 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
 
   // ==================== 解析响应 ====================
 
+  /// 从叙事文本中智能提取分院结果并赋值给 _player.house
+  /// 带语境判断：只有当文本中出现"分院/分到/属于/学院帽/Sorting Hat"等分院语境时才匹配，
+  /// 避免分院前 AI 列举四个学院时误匹配到第一个出现的学院名。
+  void _tryExtractHouseFromNarrative(String text) {
+    if (_player == null || _player!.house != null) return;
+
+    // 1. 先检查是否存在分院语境（避免在分院前介绍四个学院时误匹配）
+    final sortingContext = RegExp(
+      r'分院|分到|分进|属于|进入.*学院|学院帽|分院帽|戴上.*帽子|'
+      r'Sorting|sorting|hat\s+said|hat\s+shouted',
+      caseSensitive: false,
+    ).hasMatch(text);
+    if (!sortingContext) {
+      // 兜底语境：文本中出现"！！"或感叹号紧跟学院名的强情绪描写（如"格兰芬多！"）
+      final strongMatch = RegExp(
+        r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]{1,3}',
+        caseSensitive: false,
+      ).hasMatch(text);
+      if (!strongMatch) return;
+    }
+
+    // 2. 匹配学院名（优先匹配"XX学院"/"分到XX"等紧邻模式）
+    final housePatterns = [
+      // 紧邻模式：优先级最高
+      RegExp(r'(?:分到|分进|属于|进入)\s*(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
+      RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*学院', caseSensitive: false),
+      // 分院帽说话模式："XX！"
+      RegExp(r'[\"\'」](格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]+[\"\'」?', caseSensitive: false),
+      // 普通匹配：兜底
+      RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
+    ];
+
+    String? matched;
+    for (final pat in housePatterns) {
+      final m = pat.firstMatch(text);
+      if (m != null) {
+        matched = m.group(1) ?? m.group(0);
+        if (matched != null) break;
+      }
+    }
+    if (matched == null) return;
+
+    const cnToEn = {
+      '格兰芬多': 'Gryffindor',
+      '斯莱特林': 'Slytherin',
+      '拉文克劳': 'Ravenclaw',
+      '赫奇帕奇': 'Hufflepuff',
+    };
+    final normalized = matched.toLowerCase();
+    String? en;
+    cnToEn.forEach((k, v) {
+      if (k == matched || v.toLowerCase() == normalized) en = v;
+    });
+    en ??= matched[0].toUpperCase() + matched.substring(1).toLowerCase();
+
+    _player!.house = en;
+    _unlockAchievement('sorted');
+    debugPrint('⚡ 分院结果自动提取：${_player!.house}（匹配到"$matched"）');
+  }
+
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
   void _parseNarrativeOnly(String text) {
     _currentNarrative = '';
@@ -4107,6 +4169,9 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
 
     // 标记NPC登场
     _markIntroducedFromNarrative(_currentNarrative);
+
+    // 分院结果自动提取（使用带语境判断的公共函数）
+    _tryExtractHouseFromNarrative(text);
   }
 
   void _parseResponse(String text) {
@@ -4297,6 +4362,9 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     if (_turnCount % 10 == 0) {
       _incrementWorldLineDeviation(0.005);
     }
+
+    // 分院结果自动提取（开局叙事通过 _parseResponse，必须也走这里）
+    _tryExtractHouseFromNarrative(text);
 
     notifyListeners();
   }
