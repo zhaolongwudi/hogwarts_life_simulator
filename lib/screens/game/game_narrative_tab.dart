@@ -333,24 +333,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
   Widget _buildNarrativeText(GameProvider gp) {
     final panel = gp.commandResult;
     if (panel != null && panel.isNotEmpty) {
-      return _buildCommandResultPanel(panel);
+      return _buildCommandResultPanel(gp, panel);
     }
     return const SizedBox.shrink();
-  }
-
-  Widget _buildCommandResultPanel(String panel) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Text(
-        panel,
-        style: const TextStyle(color: Color(0xFFC9D1D9), height: 1.5),
-      ),
-    );
   }
 
 
@@ -453,7 +438,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildChoiceList(GameProvider gp) {
-    if (gp.choices.isEmpty || gp.commandResult != null) {
+    // 注意：快捷指令/查看类命令执行时 commandResult 非空，
+    // 但 choices 已经被 processChoice 里恢复为原剧情选项，必须照常显示
+    if (gp.choices.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -844,10 +831,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildNarrativeSubTab(GameProvider gp, BoxConstraints constraints) {
     final narrative = gp.currentNarrative ?? '';
-    if (narrative.isEmpty || gp.worldState.currentLocation == null && narrative.isEmpty) {
-      return _buildChoiceList(gp);
-    }
-    // 先抽出header，然后复用_buildNarrativeText，但需要把Choices也塞到内层ScrollView里
+    final commandPanel = gp.commandResult;
+    // 命令面板独立显示 + 剧情正文 + 选项同时存在；不要求 narrative 非空
+    // （加载中的一回合可能 narrative 为空，但 choices 可能有历史残留）
     final affectionSections = gp.lastAffectionSections;
     final header = _extractHeader(narrative);
     final timestamp = header['timestamp'];
@@ -870,9 +856,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (commandPanel != null && commandPanel.isNotEmpty) ...[
+                  _buildCommandResultPanel(gp, commandPanel),
+                  const SizedBox(height: 12),
+                ],
                 _buildLegendPanel(),
                 const SizedBox(height: 8),
-                _buildBodyCard(bodyNarrative),
+                if (bodyNarrative.isNotEmpty) _buildBodyCard(bodyNarrative),
                 if (affectionSections.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   _buildAffectionCard(affectionSections),
@@ -892,6 +882,57 @@ class _NarrativeTabState extends State<NarrativeTab> {
             child: _buildHeaderCard(timestamp, location),
           ),
       ],
+    );
+  }
+
+  Widget _buildCommandResultPanel(GameProvider gp, String content) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF232A36),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.5), width: 1.1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.info_outline, color: Color(0xFFD3A625), size: 18),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  '指令结果',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFD3A625)),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => gp.closeCommandPanel(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374151),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.close, size: 16, color: Color(0xFFC9D1D9)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            content,
+            style: const TextStyle(fontSize: 13, color: Color(0xFFD0D7DE), height: 1.55),
+          ),
+        ],
+      ),
     );
   }
 
