@@ -5,6 +5,17 @@
 
 ---
 
+### v1.4.7 — 2026-08-23
+
+**📋 变更说明**
+fix(affection): 修复好感度永远不变的根因 + 被动好感推断机制
+
+## 根因
+_parseAffectionChanges 中 section 提取有致命 bug：
+  sectionMatch.group(0)!.replaceFirst(sectionPattern, '')
+group(0) 返回的是完整匹配（header+body），然后用同一个 sectionPattern
+再次匹配整段文本 → 全部被替换为空 → section 永远是 "" →
+
 ### v1.4.6 — 2026-08-22
 
 **📋 变更说明**
