@@ -24,6 +24,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _testResults = <AiProvider, String>{};
   final _testSuccess = <AiProvider, bool>{};
 
+  static String _stanceDesc(String s) {
+    switch (s) {
+      case '血统平等': return '相信血统不决定能力，混血麻瓜一样伟大';
+      case '纯血保守': return '维护纯血传统，但不走向极端暴力';
+      case '中立投机': return '审时度势，哪边有利倒向哪边';
+      case '凤凰社支持': return '支持邓布利多阵营，积极对抗黑魔法';
+      case '食死徒同情': return '同情或追随伏地魔的力量与理念';
+      case '自由独立': default: return '不站队，坚持自己的判断与良知行事';
+    }
+  }
+  static IconData _stanceIcon(String s) {
+    switch (s) {
+      case '血统平等': return Icons.balance_outlined;
+      case '纯血保守': return Icons.shield_outlined;
+      case '中立投机': return Icons.tune_outlined;
+      case '凤凰社支持': return Icons.brightness_7_outlined;
+      case '食死徒同情': return Icons.bolt_outlined;
+      case '自由独立': default: return Icons.all_inclusive_outlined;
+    }
+  }
+  static Color _stanceColor(String s) {
+    switch (s) {
+      case '血统平等': return const Color(0xFF2980B9);
+      case '纯血保守': return const Color(0xFFD4A017);
+      case '中立投机': return const Color(0xFF7F8C8D);
+      case '凤凰社支持': return const Color(0xFFD98880);
+      case '食死徒同情': return const Color(0xFF111111);
+      case '自由独立': default: return const Color(0xFF27AE60);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -207,27 +238,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Text('🎭 身份模式',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 4),
-          const Text('选择玩家在游戏中的身份定位',
+          const Text('穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
               style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
           const SizedBox(height: 12),
-          SettingsPresetPickers.buildModePicker(
+          Consumer<GameProvider>(builder: (ctx, gp, _) => SettingsPresetPickers.buildModePicker(
             appProvider.identityMode.name,
             modes: const [
-              ModeOption('pure', label: '纯血至上主义', desc: '血统至上，纯血高于一切'),
-              ModeOption('noble', label: '维护传统', desc: '维护巫师界古老传统与秩序'),
-              ModeOption('order', label: '光明阵营', desc: '加入邓布利多阵营对抗黑魔法'),
-              ModeOption('dark', label: '黑魔法阵营', desc: '追随伏地魔追求力量至上'),
-              ModeOption('neutral', label: '中立旁观者', desc: '不站队，在各方间游走谋利'),
-              ModeOption('transmigration', label: '穿越者', desc: '知道原著剧情，尝试改写命运'),
+              ModeOption('pure', label: '原住民（默认）', desc: '对命运走向一无所知，只凭判断与本能行事'),
+              ModeOption('transmigration', label: '穿越者', desc: '对原作剧情留有隐约记忆，引用未来信息需克制'),
               ModeOption('bone_mode', label: '骨科模式(隐藏)', desc: '解锁血缘亲属的恋爱与CG线路'),
             ],
             disabled: appProvider.displayMode == DisplayMode.magazine
                 ? const {'transmigration'}
                 : null,
             onSelect: (v) {
-              context.read<AppProvider>().setIdentityMode(IdentityMode.values.byName(v));
+              ctx.read<AppProvider>().setIdentityMode(IdentityMode.values.byName(v));
             },
-          ),
+          )),
           if (appProvider.displayMode == DisplayMode.magazine)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -236,6 +263,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: Colors.grey[500], fontSize: 12),
               ),
             ),
+          const SizedBox(height: 24),
+          const Text('🔱 当前角色政治立场（快捷改）',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 4),
+          const Text('修改当前存档的主角政治立场（与开局第11轮的选项一致）；未开新游戏时不生效。',
+              style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+          const SizedBox(height: 12),
+          Consumer<GameProvider>(builder: (ctx, gp, _) {
+            final p = gp.player;
+            final current = p?.politicalTendency ?? '自由独立';
+            final stanceList = const <String>[
+              '血统平等', '纯血保守', '中立投机', '凤凰社支持', '食死徒同情', '自由独立',
+            ];
+            final disabled = p == null ? Set<String>.from(stanceList) : null;
+            return SettingsPresetPickers.buildModePicker(
+              current,
+              modes: [
+                for (final s in stanceList)
+                  ModeOption(
+                    s,
+                    label: s,
+                    desc: _stanceDesc(s),
+                    icon: _stanceIcon(s),
+                    color: _stanceColor(s),
+                  ),
+              ],
+              disabled: disabled,
+              onSelect: (v) async {
+                gp.player?.politicalTendency = v;
+                gp.notifyListeners();
+                await gp.quickSave();
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                    content: Text('🔱 政治立场已切换为：$v（下回合 AI 起生效）'),
+                    duration: const Duration(seconds: 2),
+                  ));
+                }
+              },
+            );
+          }),
           const SizedBox(height: 24),
           const Text('⏳ 时代背景',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),

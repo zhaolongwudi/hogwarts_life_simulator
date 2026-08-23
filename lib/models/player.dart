@@ -227,6 +227,7 @@ class Player {
         'letters': letters.map((e) => e.toJson()).toList(),
         'rumors': rumors,
         'traits': traits,
+        'political_tendency': politicalTendency,
       };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -295,6 +296,7 @@ class Player {
             [],
         rumors: List<String>.from(json['rumors'] ?? []),
         traits: List<String>.from(json['traits'] ?? []),
+        politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
       );
 }
 
