@@ -22,6 +22,13 @@ class EventAnchor {
   /// 适用时代；null = 所有时代通用
   final String? era;
 
+  /// 触发当日允许的时段（小时，闭区间）；均为null则不限制
+  final int? minHour;
+  final int? maxHour;
+
+  /// 仅当当前位置包含该关键词时才允许触发；null则不限制
+  final String? requiredLocation;
+
   /// 事件标题（用于通知与存档记录）
   final String title;
 
@@ -33,6 +40,9 @@ class EventAnchor {
     required this.month,
     this.grade,
     this.era,
+    this.minHour,
+    this.maxHour,
+    this.requiredLocation,
     required this.title,
     required this.directive,
   });
@@ -44,6 +54,8 @@ const List<EventAnchor> eventAnchors = [
     id: 'g1_sep_arrival',
     month: 9,
     grade: 1,
+    minHour: 11, // 特快早上11点发车→12-14点才到霍格莫德
+    requiredLocation: '特快',
     title: '入学·霍格沃茨特快',
     directive:
         '本回合应自然带出：新生乘霍格沃茨特快抵达霍格莫德车站，乘船/马车初见城堡，大礼堂分院仪式临近。描写新生们的紧张与期待，以及老生重逢的热闹。若玩家尚未分院，可安排分院相关剧情推进。',
@@ -271,6 +283,8 @@ List<EventAnchor> anchorsFor({
   required int grade,
   required String era,
   required Set<String> firedIds,
+  int? hour,
+  String? currentLocation,
 }) {
   final result = <EventAnchor>[];
   for (final a in eventAnchors) {
@@ -278,6 +292,14 @@ List<EventAnchor> anchorsFor({
     if (firedIds.contains(a.id)) continue;
     if (a.grade != null && a.grade != grade) continue;
     if (a.era != null && a.era != era) continue;
+    // 时段门槛：防止特快刚发车(10:45)就被要求描写"抵达霍格莫德"（正常应12-15点抵达）
+    if (a.minHour != null && hour != null && hour < a.minHour!) continue;
+    if (a.maxHour != null && hour != null && hour > a.maxHour!) continue;
+    // 位置门槛：锚点要求在特定场景才触发
+    if (a.requiredLocation != null &&
+        currentLocation != null &&
+        !currentLocation.contains(a.requiredLocation!) &&
+        !a.requiredLocation!.contains(currentLocation)) continue;
     result.add(a);
   }
   return result;

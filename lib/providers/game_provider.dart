@@ -386,7 +386,8 @@ class GameProvider extends ChangeNotifier {
       if (p.wandId != null && p.wandId!.isNotEmpty) {
         final wd = wandById(p.wandId!);
         if (wd != null) {
-          characterLines.add('【魔杖】${wd.wood}木·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他）');
+          final woodClean = wd.wood.endsWith('木') ? wd.wood : '${wd.wood}木';
+          characterLines.add('【魔杖】$woodClean·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他木材；来源必须为奥利凡德魔杖店选中，绝对不要描写为捡来的木棍/祖传物品/自制）');
         }
       }
     }
@@ -544,8 +545,46 @@ class GameProvider extends ChangeNotifier {
     try {
       final birthYear = _calculateBirthYear();
       final startYear = _startYearForEra(appProvider.era);
-      final startHour = 9;
-      final startMinute = 0;
+      // letter 起点（收到录取通知书）按原著为 7 月 31 日前后；其它 3 个起点才是 9 月 1 日特快出发日
+      // 防止 letter 开局刚收到信，下一回合场景直接跳到 9 月 1 日已在站台导致整个暑假剧情丢失。
+      int startMonth, startDay, startHour, startMinute;
+      switch (openingScene) {
+        case 'letter':
+          startMonth = 7; startDay = 31; startHour = 18; startMinute = 45;
+          break;
+        case 'diagon':
+          startMonth = 8; startDay = 20; startHour = 10; startMinute = 30;
+          break;
+        case 'station':
+          startMonth = 9; startDay = 1; startHour = 10; startMinute = 45; // 10:45才接近发车11点
+          break;
+        case 'eve':
+        case 'hall':
+          startMonth = 9; startDay = 1; startHour = 18; startMinute = 0;
+          break;
+        default:
+          startMonth = 9; startDay = 1; startHour = 9; startMinute = 0;
+      }
+
+      // ====== 角色资料交叉校验（防止逻辑自相矛盾，AI写崩） ======
+      // 校验1：出生身份与家族背景不可冲突
+      // 例："纯血豪门" vs "麻瓜家庭" → 统一以 birthIdentity 为主，familyBackground 改为合理描述
+      final familyLower = (familyBackground ?? '').toLowerCase();
+      final identityLower = (birthIdentity ?? '').toLowerCase();
+      if (birthIdentity != null &&
+          birthIdentity!.isNotEmpty &&
+          familyBackground != null &&
+          familyBackground!.isNotEmpty) {
+        final pureBloodKeywords = ['纯血', '豪门', '神圣二十八族', 'pureblood'];
+        final muggleKeywords = ['麻瓜', '普通', '无魔法', 'muggle'];
+        final hasPure = pureBloodKeywords.any((k) => identityLower.contains(k));
+        final hasMuggleFamily = muggleKeywords.any((k) => familyLower.contains(k));
+        if (hasPure && hasMuggleFamily) {
+          // 允许"神圣二十八族没落支系+麻瓜养父母"这种设定，但不能写成"普通麻瓜家庭出身"
+          // 统一解释为：家族血缘是纯血支系没落，由麻瓜养父母抚养成人
+          familyBackground = '神圣二十八族没落支系，由${familyBackground!.replaceAll(RegExp(r'[麻普通无魔法]', caseSensitive: false), '').trim().isEmpty ? '麻瓜养父母家庭' : familyBackground!.replaceAll('普通麻瓜家庭', '麻瓜养父母家庭').replaceAll('麻瓜家庭', '麻瓜养父母家庭')}抚养长大，亲生父母早已不在人世，血脉仍保留纯血族谱印记';
+        }
+      }
 
       _player = Player(
         name: name,
@@ -584,12 +623,22 @@ class GameProvider extends ChangeNotifier {
         academicYear: _academicYearForEra(appProvider.era),
         time: GameTime(
           year: startYear,
-          month: 9,
-          day: 1,
+          month: startMonth,
+          day: startDay,
           hour: startHour,
           minute: startMinute,
         ),
       );
+      // letter 起点时同步 currentLocation 为玩家出生地（避免 prompt 里显示「未知」导致 AI 乱跳地点）
+      if (openingScene == 'letter') {
+        _worldState.currentLocation = '${p.birthLocation}·家中';
+      } else if (openingScene == 'station') {
+        _worldState.currentLocation = '伦敦国王十字车站';
+      } else if (openingScene == 'hall') {
+        _worldState.currentLocation = '霍格沃茨大礼堂';
+      } else if (openingScene == 'eve') {
+        _worldState.currentLocation = '霍格沃茨新生宿舍';
+      }
       _lastSchoolYearStart = startYear;
       _updateAcademicYearLabel();
 
@@ -1001,11 +1050,18 @@ ${profile.join('｜')}
 
 【起始场景】$startPoint
 
-【要求】500-600字，📅时间戳开头，自然融入魔杖/宠物/血统，体现性格，要有具体场景和事件，避免空洞描述。
+【魔杖硬设定·必须严格遵守】
+- 玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。
+- 若开场节点为 letter 或更早，叙事中可以写"你还带着前几天在对角巷奥利凡德购得的魔杖匣子"，不必展开采购剧情本身，但必须明确其来源为奥利凡德。
+- 魔杖细节必须为"${wandData != null ? wandData.wood + '木·' + wandData.core + '·' + wandData.length : '指定魔杖'}"，不能更改木材/杖芯/长度。
+
+【要求】1500-2500字小说正文，📅时间戳开头，自然融入魔杖/宠物/血统，体现性格，要有具体场景和事件，避免空洞描述。分4-8段用空行分隔，融入感官细节、对话、心理、环境描写。
 
 【格式】
-【叙事】（正文）
-【可选行动】A/B/C（具体）
+【时间戳】📅 日期
+【地点】具体位置
+（正文）
+【可选行动】A/B/C（具体动作）
 【自由行动】''';
 
     if (_router == null || !_router!.hasNarrativeService) {
@@ -1225,10 +1281,35 @@ ${profile.join('｜')}
       final ws = _worldState;
       final worldAnchors = <String>[];
       final alreadyAnchors = <String>{}; // 去重
+      // 世界重大事件锚点「伪造事件」真校验：
+      // - 🏆成就类：必须真正解锁才允许注入（check against _unlockedAchievements）
+      // - 👤结识类：必须对应 NPC 确实 introduced=true 才允许注入
+      // - 否则直接丢弃（AI 之前乱塞"你认识哈利""你获得了什么什么成就"都是伪造事件）
+      final unlockedSet = _unlockedAchievements.toSet();
+      final introducedSet = _npcRegistry.values.where((n) => n.introduced).map((n) => n.name).toSet();
+      bool looksFake(String text) {
+        final clean = text.replaceAll(RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*'), '');
+        // 成就类伪造：含"成就/🏆"，但 achievement 关键词不在已解锁集合
+        if (clean.contains('成就') || text.contains('🏆')) {
+          // 尝试找成就id/名称；若在已解锁集合找不到，算伪造
+          if (_unlockedAchievements.isEmpty) return true; // 宣称解锁但全局没解过任何成就=假
+          // 按名称匹配：把 clean 与已解锁成就描述做交集
+          final names = achievementCatalog.map((a) => a.id).toSet()..addAll(achievementCatalog.map((a) => a.name));
+          final hit = names.any((n) => n.isNotEmpty && clean.contains(n));
+          if (!hit) return true; // 文字里找不到任何已知/已解锁成就名=假事件
+        }
+        // 结识类伪造：含"结识/认识/见面/认识了/👤"但对应NPC没introduced
+        if (RegExp(r'(结识|认识了|正式见面|成为朋友|初见了)', caseSensitive: false).hasMatch(clean) || text.contains('👤')) {
+          // 找中文姓名（2-6字姓名序列），或直接取常见 NPC 名交集
+          final hitNpc = introducedSet.any((n) => n.isNotEmpty && clean.contains(n));
+          if (!hitNpc) return true;
+        }
+        return false;
+      }
       if (ws.recentEvents.isNotEmpty) {
         for (final e in ws.recentEvents.reversed) {
-          // 过滤系统通知类的无意义事件
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
+          if (looksFake(e)) continue; // 过滤掉"结识了/成就"类伪造事件
           final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add(e);
@@ -1238,6 +1319,7 @@ ${profile.join('｜')}
       if (ws.recentNarrativeEvents.isNotEmpty) {
         for (final e in ws.recentNarrativeEvents.reversed) {
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
+          if (looksFake(e)) continue;
           final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add('剧情锚：$e');
@@ -3316,8 +3398,18 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   void _checkSocialButterflyAchievement() {
     final p = _player;
     if (p == null) return;
-    final friendCount = _npcRegistry.values.where((n) => n.isAlive).length;
+    // 社交蝴蝶=真正结识过的NPC ≥ 10 位（introduced=true，必须剧情中正式见面/产生过互动）
+    // 不再用"NPC总数≥10"——NPC注册表初始化就有几十个，开局秒解锁是bug。
+    final friendCount = _npcRegistry.values.where((n) => n.isAlive && n.introduced).length;
     if (friendCount >= 10) _unlockAchievement('social_butterfly');
+  }
+
+  void _checkRichWizardAchievement() {
+    final p = _player;
+    if (p == null) return;
+    // 小富翁=累计持有 ≥1500 加隆（player.dart默认500+节俭特质+100=约600开局）
+    // 原门槛100完全无意义，500还是开局秒解——1500要求玩家通过打工/交易真正积累财富。
+    if (totalWealth >= 1500) _unlockAchievement('rich_wizard');
   }
 
   void _checkDeepRelationshipAchievement() {
@@ -3677,6 +3769,8 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       grade: grade,
       era: _worldState.era,
       firedIds: fired,
+      hour: t.hour,
+      currentLocation: _worldState.currentLocation,
     );
     if (due.isEmpty) return;
 
@@ -4182,30 +4276,38 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   void _tryExtractHouseFromNarrative(String text) {
     if (_player == null || _player!.house != null) return;
 
-    // 1. 先检查是否存在分院语境（避免在分院前介绍四个学院时误匹配）
-    final sortingContext = RegExp(
-      r'分院|分到|分进|属于|进入.*学院|学院帽|分院帽|戴上.*帽子|'
-      r'Sorting|sorting|hat\s+said|hat\s+shouted',
+    // 1. 强语境：必须出现"分院动作词"（对话或旁白明确分配学院）
+    //    仅出现"属于/XX学院/格兰芬多"这类孤立词汇不得触发。
+    final hasSortingAction = RegExp(
+      r'分到|分进|被分到|被分进|进入了|进了|戴上分院帽|分院帽.*喊出|分院帽.*叫道|分院帽.*说|分院帽.*唱|'
+      r'Sorting\s*Hat|hat\s*(?:said|shouted|sang)',
       caseSensitive: false,
     ).hasMatch(text);
-    if (!sortingContext) {
-      // 兜底语境：文本中出现"！！"或感叹号紧跟学院名的强情绪描写（如"格兰芬多！"）
-      final strongMatch = RegExp(
-        r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]{1,3}',
+
+    // 1b. 兜底强信号：分院帽说话模式（引号+学院名+感叹号）+ 分院语境同时出现
+    final sortingNarrativeContext = RegExp(
+      r'分院|分院帽|大礼堂|长桌|四大学院|入学典礼',
+      caseSensitive: false,
+    ).hasMatch(text);
+
+    if (!hasSortingAction) {
+      // 若没有明确动作词，只有同时命中"分院语境 + 学院名+感叹号"才允许进入
+      final hatShout = RegExp(
+        r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]{2,}',
         caseSensitive: false,
       ).hasMatch(text);
-      if (!strongMatch) return;
+      if (!(sortingNarrativeContext && hatShout)) return;
     }
 
-    // 2. 匹配学院名（优先匹配"XX学院"/"分到XX"等紧邻模式）
+    // 2. 匹配学院名（优先级：动作紧邻 > 分院帽喊出 > XX学院）
+    //    —— 彻底移除裸兜底正则，避免"祝格兰芬多——或者别的学院——接纳你"这种祝福语气误匹配。
     final housePatterns = [
-      // 紧邻模式：优先级最高
-      RegExp(r'(?:分到|分进|属于|进入)\s*(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
+      // 紧邻动作词：分到/分进/被分到/被分进/进入了 XX
+      RegExp(r'(?:分到|分进|被分到|被分进|进入了|进了)\s*(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
+      // 分院帽说话："XX！"/"XX！！"
+      RegExp(r"[\"']?(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]{2,}[\"']?", caseSensitive: false),
+      // 明确"XX学院"且上文已判定为分院语境
       RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*学院', caseSensitive: false),
-      // 分院帽说话模式：'XX！' 或 "XX！"
-      RegExp(r'''["']?(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]+["']?''', caseSensitive: false),
-      // 普通匹配：兜底
-      RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
     ];
 
     String? matched;
@@ -4635,9 +4737,10 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     final timestamp = _worldState.timestamp;
     final playerAction = _lastPlayerAction;
 
-    // 只取叙事末尾 500 字作为选项依据——选项只需知道当前处境，不需要完整叙事
-    final narrativeTail = narrative.length > 500
-        ? narrative.substring(narrative.length - 500)
+    // 只取叙事末尾 800 字作为选项依据——重点在「结尾的即时动作/最后一位说话者/场面氛围」
+    // 选项必须直接承接这一刻，不得跨越到下一节课/明天/下一个地点。
+    final narrativeTail = narrative.length > 800
+        ? '…（前略，以下为当前剧情的最末尾800字，请严格按结尾最后几行生成选项）\n' + narrative.substring(narrative.length - 800)
         : narrative;
 
     // ---- 注入玩家硬状态：避免生成不可能的选项 ----
@@ -4677,34 +4780,40 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
         .map((l) => '· ${l.description}')
         .join('\n');
 
-    // 近期 NPC （6→12 个；阈值从 15 好感降至 10，熟人圈更完整）
+    // 近期 NPC：
+    //  - 必须 introduced=true（剧情中正式认识/互动过）才会出现。
+    //  - 不再用「好感绝对值≥10」作为筛选——开局NPC全被塞了0~15随机好感，会导致"还没见过面就+14"伪造。
+    //  - 最多 8 个（12→8），避免 token 被NPC池污染。
     final nearbyNpcs = _npcRegistry.values
-        .where((n) => n.introduced || n.affection.abs() >= 10)
-        .take(12)
+        .where((n) => n.introduced)
+        .take(8)
         .map((n) => '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection})')
         .join('、');
 
     final choicePrompt = '''你是《哈利波特·魔法人生模拟器》的专业选项设计师。任务：只生成 4 个互斥的玩家选择。
 你的输出只有 4 行（A/B/C/D），不要任何前置说明、正文、理由或【好感变化】等标签。
 
-===== 四选一设计规则（严格执行）=====
+===== 四选一设计规则（严格执行，违反必重生成）=====
 规则1：4个选项必须分别覆盖「4 种决策风格」——
   A 直面/主动出击/勇敢型（直接面对冲突、施法、站出来、揭穿）
   B 谨慎/智取/观察型（撤退到安全、收集情报、等待时机、叫外援）
   C 人际/沟通/结盟型（求助、谈判、说谎、拉路人、找 NPC）
   D 规则内取巧/黑魔法边缘/代价型（铤而走险、用禁咒、牺牲物品、变身、隐忍装死）
-规则2：选项必须只基于【当前剧情】末尾的即时冲突或悬念。严禁重复之前剧情已经完成的事情。
-规则3：符合玩家硬状态限制——
+规则2：选项必须直接承接【当前剧情】最后一两句的「即时动作/最后一位说话者/当前场面氛围」，必须是"玩家此刻马上会做的事"，严禁跳到下一个地点、下一节课、明天、下个月等未来时间/地点！
+规则3：绝对禁止重复之前剧情中"已经发生/已经完成"的内容。
+规则4：绝对禁止"剧情预知类"选项——
+  • 原住民模式：严禁出现「寻找有求必应屋」「进入密室」「试探魂器」「找死亡圣器」「预言伏地魔」等主角此时不可能知道的内容
+  • 穿越者模式：可写"感觉这条走廊很眼熟"等模糊预感，但不能出现「因为哈利三年级会遇到…所以我要…」这类具体未来事件的知识
+规则5：严格遵守玩家硬状态限制——
   • 一年级生无法单挑成年巫师（会输）
   • 精力<25 不允许高强度战斗/长距离奔跑选项
   • 没学会的魔法不能写"用XX咒"；没带的物品不能写"拿出XX"
   • 不能违背未完结事项中的承诺
-  • 严禁选项中出现"利用剧情预知""试探密室入口""寻找有求必应屋"等主角不可能知道的信息——玩家身份见下方【身份模式】
-规则4：每个选项 20~50 字之间，为具体动作+明确意图，不要"随便走走"、"休息一下"这种无意义选项。
-规则5：严格格式，只输出 A./B./C./D. + 内容，每行 1 条，最多 4 行。
+规则6：每个选项 20~50 字之间，为"具体动作+明确意图"，不要"随便走走""休息一下"这种无意义选项。
+规则7：严格格式，只输出 A./B./C./D. + 内容，每行 1 条，刚好 4 行，不多不少。
 
 ===== 游戏世界背景 =====
-【当前剧情】（你所有选项必须直接回应这段结尾的处境）
+【当前剧情末尾处境】（你所有选项必须直接衔接这一段结尾的最后一个动作/对话/场面）
 $narrativeTail
 
 【玩家硬状态】

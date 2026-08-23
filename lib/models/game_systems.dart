@@ -556,7 +556,7 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'honor_student', name: '优等生', description: '任一技能熟练度达到90'),
   Achievement(id: 'war_hero', name: '战争英雄', description: '参与关键战役'),
   Achievement(id: 'explorer', name: '探索者', description: '访问5个以上不同地点'),
-  Achievement(id: 'rich_wizard', name: '小富翁', description: '累计拥有100加隆'),
+  Achievement(id: 'rich_wizard', name: '小富翁', description: '累计拥有1500加隆'),
   Achievement(id: 'bookworm', name: '书虫', description: '学习10个以上魔咒'),
   Achievement(id: 'social_butterfly', name: '社交蝴蝶', description: '认识10个以上NPC'),
   Achievement(id: 'deep_relationship', name: '挚友', description: '与NPC好感度达到80'),
