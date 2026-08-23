@@ -5,6 +5,17 @@
 
 ---
 
+### v1.8.8 — 2026-08-23
+
+**📋 变更说明**
+修NarrativeTab悬浮/选项/黑屏+指令菜单补全28条
+
+1 时间戳不固定悬浮修复:
+  * 旧结构 NarrativeTab Column → Expanded→SingleChildScrollView(套剧情卡SizedBox)
+    Stack Positioned 无边界尺寸 -> top:0 随整屏滚动=悬浮失效
+  * 新结构: build → 删外层SingleChildScrollView 包裹剧情层
+    Expanded→LayoutBuilder→_buildNarrativeSubTab
+
 ### v1.8.7 — 2026-08-23
 
 **📋 变更说明**
