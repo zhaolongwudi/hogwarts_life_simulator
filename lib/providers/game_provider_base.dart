@@ -68,7 +68,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   int lastSchoolYearStart = 0;
   String? pendingAnchorDirective;
   String openingScene = 'station';
-  int? _lastScannedNarrativeHash;
+  int? lastScannedNarrativeHash;
 
   // ============================================================
   // 跨 Mixin 调用 与 GameProvider 本体方法的 abstract 声明。

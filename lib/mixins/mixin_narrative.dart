@@ -54,7 +54,7 @@ mixin GameNarrativeMixin on GameProviderBase {
     commandResult = null; // 提交真实行动时关闭指令面板
     isLoading = true;
     turnCount++;
-    _lastScannedNarrativeHash = null;
+    lastScannedNarrativeHash = null;
     lastPlayerAction = safeAction;
     loadingStage = '正在构建请求...';
     notifyListeners();

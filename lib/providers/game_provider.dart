@@ -31,10 +31,10 @@ class GameProvider extends GameProviderBase
   @override
   bool markScanIfNew(String narrative) {
     final h = narrative.hashCode;
-    if (_lastScannedNarrativeHash != null && h == _lastScannedNarrativeHash) {
+    if (lastScannedNarrativeHash != null && h == lastScannedNarrativeHash) {
       return false;
     }
-    _lastScannedNarrativeHash = h;
+    lastScannedNarrativeHash = h;
     return true;
   }
   @override

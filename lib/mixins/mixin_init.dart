@@ -183,7 +183,7 @@ mixin GameInitMixin on GameProviderBase {
     lastRoundTokens = 0;
     apiCalls = 0;
     openingScene = 'station';
-    _lastScannedNarrativeHash = null;
+    lastScannedNarrativeHash = null;
     // 清除响应缓存（重要：防止旧剧情数据泄漏到新游戏）
     ResponseCache.instance.clear();
     // 清除速率限制器状态

@@ -292,7 +292,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               disabled: disabled,
               onSelect: (v) async {
                 gp.player?.politicalTendency = v;
-                gp.notifyListeners();
+                setState(() {});
                 await gp.quickSave();
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(

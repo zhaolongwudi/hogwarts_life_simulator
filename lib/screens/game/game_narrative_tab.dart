@@ -153,8 +153,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
     String _buildTimeLabel(NarrativeEvent event, bool isFirst, int turnCount) {
       if (isFirst) return '最新';
-      if (event.turn != null && turnCount > event.turn!) {
-        return '${turnCount - event.turn} 回合前';
+      final int? t = event.turn;
+      if (t != null && turnCount > t) {
+        final int diff = turnCount - t;
+        return '$diff 回合前';
       }
       return '—';
     }
