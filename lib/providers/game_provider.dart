@@ -60,6 +60,10 @@ class GameProvider extends ChangeNotifier {
   final List<String> _recentTurns = [];
   static const int _maxRecentTurns = 12;  // 从6扩大到12，完整保留前一天内的连续回合/长对话
   List<GameChoice> _choices = [];
+  /// 指令结果面板（/状态 /关系 /信 等查看类指令的输出）。
+  /// 非空时界面显示该输出而非剧情；关闭后当前回合剧情原样恢复。
+  /// 由此指令不再覆盖剧情，「返回」也不再作为行动发给 AI 重新生成。
+  String? _commandResult;
   bool _isLoading = false;
   bool _isInitializing = false;
   String? _error;
@@ -93,6 +97,7 @@ class GameProvider extends ChangeNotifier {
   WorldState get worldState => _worldState;
   String get currentNarrative => _currentNarrative;
   List<GameChoice> get choices => _choices;
+  String? get commandResult => _commandResult;
   bool get isLoading => _isLoading;
   bool get isInitializing => _isInitializing;
   String? get error => _error;
@@ -468,6 +473,7 @@ class GameProvider extends ChangeNotifier {
     _pendingSummary = '';
     _recentTurns.clear();
     _choices.clear();
+    _commandResult = null;
     _isLoading = false;
     _isInitializing = false;
     _error = null;
@@ -1085,8 +1091,26 @@ ${profile.join('｜')}
     // 本地指令解析
     final action = choice.action.trim();
     if (action.startsWith('/')) {
+      final prevNarrative = _currentNarrative;
+      final prevChoices = List<GameChoice>.from(_choices);
       final handled = _handleLocalCommand(action);
       if (handled) {
+        // 查看类指令（/状态 /关系 /信 /课堂 互动 等，特征是结尾选项为
+        // 「返回/继续」）：输出进独立面板，不覆盖当前回合剧情。
+        // 此前指令直接改写剧情，而「返回」的 action 又是「继续」，
+        // 会作为玩家行动发给 AI 重新生成，导致当前回合剧情丢失。
+        final isPanelOutput = _currentNarrative != prevNarrative &&
+            _choices.length == 1 &&
+            _choices[0].action == '继续' &&
+            (_choices[0].text == '返回' || _choices[0].text == '继续');
+        if (isPanelOutput) {
+          _commandResult = _currentNarrative;
+          _currentNarrative = prevNarrative;
+          _choices = prevChoices;
+        } else {
+          // 事件类指令（/新NPC /结局 等）正常替换剧情，同时关闭旧面板
+          _commandResult = null;
+        }
         notifyListeners();
         _autoSave();
         return;
@@ -1098,6 +1122,7 @@ ${profile.join('｜')}
 
     if (_router == null || !_router!.hasNarrativeService) return;
 
+    _commandResult = null; // 提交真实行动时关闭指令面板
     _isLoading = true;
     _turnCount++;
     _lastPlayerAction = safeAction;
@@ -1370,6 +1395,13 @@ NPC名:±X(原因)
         extra: 'action=$action, turn=$_turnCount',
       ));
     }
+  }
+
+  /// 关闭指令结果面板，恢复显示当前回合剧情（不消耗回合、不调用 AI）
+  void closeCommandPanel() {
+    if (_commandResult == null) return;
+    _commandResult = null;
+    notifyListeners();
   }
 
   /// 本地指令解析（设定文档第X部分指令系统）
@@ -2339,11 +2371,18 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   }
 
   String _formatRelationships() {
-    if (_npcRegistry.isEmpty) return '暂无认识的人。';
-    final buf = StringBuffer('【关系列表】\n');
-    final list = _npcRegistry.values.where((n) => n.isAlive).toList()
+    // 只显示本局正式见过面/有过互动的人（introduced）：
+    // 注册表开局会预注册整个时代的原典角色，不过滤的话新开局
+    // 也会列出全员，看起来像上一局的残留
+    final met = _npcRegistry.values
+        .where((n) => n.isAlive && n.introduced)
+        .toList()
       ..sort((a, b) => b.affection.compareTo(a.affection));
-    for (final n in list.take(15)) {
+    if (met.isEmpty) {
+      return '暂无认识的人。在剧情中与其他角色互动后会自动登记。';
+    }
+    final buf = StringBuffer('【关系列表】（已认识 ${met.length} 人）\n');
+    for (final n in met.take(15)) {
       buf.writeln('· ${n.name}：好感 ${n.affection}（${n.affectionStage}）');
     }
     return buf.toString();

@@ -30,6 +30,7 @@ class _GameScreenState extends State<GameScreen> {
   final _menuController = TextEditingController();
   final _scrollController = ScrollController();
   String? _lastNarrative;
+  String? _lastCommandPanel;
 
   @override
   void dispose() {
@@ -73,9 +74,11 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     final gp = context.watch<GameProvider>();
 
-    // Auto-scroll to top when narrative changes
-    if (gp.currentNarrative != _lastNarrative) {
+    // Auto-scroll to top when narrative or command panel changes
+    if (gp.currentNarrative != _lastNarrative ||
+        gp.commandResult != _lastCommandPanel) {
       _lastNarrative = gp.currentNarrative;
+      _lastCommandPanel = gp.commandResult;
       _scrollToTop();
     }
 
@@ -580,6 +583,39 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildNarrativeText(GameProvider gp) {
+    // 指令结果面板：查看类指令（/状态 /关系 /信 等）的输出在此展示，
+    // 不覆盖当前回合剧情；点「返回剧情」原样恢复剧情与选项
+    final panel = gp.commandResult;
+    if (panel != null && panel.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+            ),
+            child: RichText(
+              text: TextSpan(
+                children: StoryTextRenderer.parseWithAffectionStyle(panel),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: gp.closeCommandPanel,
+              icon: const Icon(Icons.arrow_back, size: 16, color: Color(0xFF8B949E)),
+              label: const Text('返回剧情', style: TextStyle(color: Color(0xFF8B949E))),
+            ),
+          ),
+        ],
+      );
+    }
+
     final narrative = gp.currentNarrative;
     if (narrative.isEmpty) {
       return Container(
@@ -693,7 +729,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildChoiceList(GameProvider gp) {
-    if (gp.choices.isEmpty) return const SizedBox.shrink();
+    // 指令面板打开时隐藏剧情选项，引导先「返回剧情」再行动
+    if (gp.choices.isEmpty || gp.commandResult != null) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
