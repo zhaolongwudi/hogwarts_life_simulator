@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import '../utils/ui_helpers.dart';
+import '../widgets/npc_avatar.dart';
 import 'memory_screen.dart';
 import 'other_screens.dart';
 import 'settings_screen.dart';
@@ -678,20 +679,11 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: houseColor.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: houseColor, width: 1.5),
-                    ),
-                    child: Center(
-                      child: Text(
-                        npc.name.isNotEmpty ? npc.name[0] : '?',
-                        style: TextStyle(fontSize: 13, color: houseColor, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                  NpcAvatar(
+                    npcId: npc.id,
+                    npcName: npc.name,
+                    houseColor: houseColor,
+                    size: 28,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -771,20 +763,11 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: houseColor.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: houseColor, width: 1.5),
-                  ),
-                  child: Center(
-                    child: Text(
-                      npc.name.isNotEmpty ? npc.name[0] : '?',
-                      style: TextStyle(fontSize: 18, color: houseColor, fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                NpcAvatar(
+                  npcId: npc.id,
+                  npcName: npc.name,
+                  houseColor: houseColor,
+                  size: 44,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

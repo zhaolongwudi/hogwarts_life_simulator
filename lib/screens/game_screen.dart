@@ -12,6 +12,7 @@ import 'job_screen.dart';
 import 'other_screens.dart';
 import '../utils/story_text_renderer.dart';
 import '../utils/ui_helpers.dart';
+import '../widgets/npc_avatar.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -1470,20 +1471,11 @@ class _GameScreenState extends State<GameScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 头像
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: houseColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: houseColor.withValues(alpha: 0.5)),
-                ),
-                child: Center(
-                  child: Text(
-                    npc.name.isNotEmpty ? npc.name[0] : '?',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: houseColor),
-                  ),
-                ),
+              NpcAvatar(
+                npcId: npc.id,
+                npcName: npc.name,
+                houseColor: houseColor,
+                size: 42,
               ),
               const SizedBox(width: 10),
               // 信息区

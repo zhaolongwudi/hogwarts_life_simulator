@@ -4,6 +4,7 @@ import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import 'npc_chat_screen.dart';
 import '../utils/ui_helpers.dart';
+import '../widgets/npc_avatar.dart';
 
 // ==================== 魔法通讯 ====================
 class CommunicationScreen extends StatefulWidget {
@@ -184,20 +185,11 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: houseColor.withValues(alpha: isAlive ? 0.15 : 0.08),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: houseColor.withValues(alpha: isAlive ? 0.5 : 0.2)),
-                  ),
-                  child: Center(
-                    child: Text(
-                      npc.name.isNotEmpty ? npc.name[0] : '?',
-                      style: TextStyle(fontSize: 18, color: houseColor, fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                NpcAvatar(
+                  npcId: npc.id,
+                  npcName: npc.name,
+                  houseColor: houseColor,
+                  size: 48,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
