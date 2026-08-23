@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.6 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): Base 4类错误清场
+
+1. abstract_class_member(79+): Dart 不允许类成员前写 'abstract'
+   → 全量删除方法签名前的 abstract 前缀；GameProviderBase 本身声明为 abstract class(已加)
+2. 移除无效 private abstract: _formatTime() 声明是跨library不可见的_前缀方法
+   → Base 中直接删除；mixin_commands 内部定义/引用不动
+3. 补 5 个 import：
+
 ### v1.7.5 — 2026-08-23
 
 **📋 变更说明**
