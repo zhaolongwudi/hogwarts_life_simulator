@@ -27,6 +27,7 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
+import '../providers/game_provider.dart';
 
 mixin GameNarrativeMixin on GameProvider {
   Future<void> processChoice(GameChoice choice) async {
@@ -244,7 +245,7 @@ mixin GameNarrativeMixin on GameProvider {
 
       // 事件锚点注入：手写剧情骨架，保证关键节点在正确时间发生
       final anchorLine = pendingAnchorDirective != null
-          ? '【剧情节点】本回合请自然融入以下既定剧情骨架（不必生硬转折，可结合玩家行动展开）：\n$_pendingAnchorDirective\n\n'
+          ? '【剧情节点】本回合请自然融入以下既定剧情骨架（不必生硬转折，可结合玩家行动展开）：\n$pendingAnchorDirective\n\n'
           : '';
 
       return '''【世界上下文】
@@ -364,7 +365,7 @@ mixin GameNarrativeMixin on GameProvider {
         e,
         StackTrace.current,
         screen: 'processChoice',
-        extra: 'action=$action, turn=$_turnCount',
+        extra: 'action=$action, turn=$turnCount',
       ));
     }
   }
@@ -555,7 +556,7 @@ mixin GameNarrativeMixin on GameProvider {
   ${narrativeSummary.isNotEmpty ? narrativeSummary : '（开局）'}
 
   【新剧情】
-  $_pendingSummary
+  $pendingSummary
 
   【当前关系状态】（以此为准校准）
   ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}

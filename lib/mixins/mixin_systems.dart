@@ -27,6 +27,7 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
+import '../providers/game_provider.dart';
 
 mixin GameSystemsMixin on GameProvider {
   void _advanceTimeForAction(String action) {
@@ -276,7 +277,7 @@ mixin GameSystemsMixin on GameProvider {
     // 追加到当前剧情之后，保留本回合叙事
     currentNarrative = currentNarrative.isEmpty
         ? buf.toString().trim()
-        : '$_currentNarrative\n\n${buf.toString().trim()}';
+        : '$currentNarrative\n\n${buf.toString().trim()}';
     worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}');
   }
 

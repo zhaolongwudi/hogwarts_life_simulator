@@ -27,6 +27,7 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
+import '../providers/game_provider.dart';
 
 mixin GameCommandsMixin on GameProvider {
   void closeCommandPanel() {

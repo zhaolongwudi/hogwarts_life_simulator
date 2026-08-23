@@ -97,8 +97,6 @@ class GameProvider extends ChangeNotifier
   int lastSchoolYearStart = 0;
   String? pendingAnchorDirective;
   String openingScene = 'station';
-  List<String> get notifications => List.unmodifiable(notifications);
-  List<String> get lastAffectionSections => List.unmodifiable(lastAffectionSections);
 
   GameProvider(this.appProvider) {
     chatService = NpcChatService(appProvider: appProvider);
@@ -166,7 +164,7 @@ class GameProvider extends ChangeNotifier
       isInitializing = false;
       error = null;
       loadingStage = '';
-      debugPrint('✅ 自动存档加载成功: ${player?.name} 第$_turnCount回合 (第$_gameWeek周) 叙事${currentNarrative.length}字');
+      debugPrint('✅ 自动存档加载成功: ${player?.name} 第$turnCount回合 (第$gameWeek周) 叙事${currentNarrative.length}字');
       notifyListeners();
     } catch (e) {
       isLoading = false;
@@ -243,13 +241,13 @@ class GameProvider extends ChangeNotifier
       npcChatProvider: appProvider.providerForScene(AiScene.npcChat),
       choiceProvider: appProvider.providerForScene(AiScene.choice),
     );
-    final router = AiRouter(config);
+    final newRouter = AiRouter(config);
     for (final p in AiProvider.values) {
       if (appProvider.hasKey(p)) {
-        router.register(appProvider.configForProvider(p));
+        newRouter.register(appProvider.configForProvider(p));
       }
     }
-    router = router;
+    router = newRouter;
   }
 
   void refreshClient() {
