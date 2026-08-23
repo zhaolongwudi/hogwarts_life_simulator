@@ -29,7 +29,7 @@ import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider.dart';
 
-mixin GameResponseMixin on GameProvider {
+mixin GameResponseMixin on ChangeNotifier {
   void _tryExtractHouseFromNarrative(String text) {
     if (player == null || player!.house != null) return;
     const houseGroup = '格兰芬多|斯莱特林|拉文克劳|赫奇帕奇'
@@ -105,13 +105,13 @@ mixin GameResponseMixin on GameProvider {
     en ??= '${matched[0].toUpperCase()}${matched.substring(1).toLowerCase()}';
 
     player!.house = en;
-    _unlockAchievement('sorted');
+    unlockAchievement('sorted');
     debugPrint('⚡ 分院结果自动提取：${player!.house}（匹配到 "$matched"）');
   }
 
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
 
-  void _parseNarrativeOnly(String text) {
+  void parseNarrativeOnly(String text) {
     currentNarrative = '';
     choices = [];
 
@@ -160,13 +160,13 @@ mixin GameResponseMixin on GameProvider {
     _parseReputationChanges(text);
 
     // 标记NPC登场
-    _markIntroducedFromNarrative(currentNarrative);
+    markIntroducedFromNarrative(currentNarrative);
 
     // 分院结果自动提取（使用带语境判断的公共函数）
     _tryExtractHouseFromNarrative(text);
   }
 
-  void _parseResponse(String text) {
+  void parseResponse(String text) {
     final lines = text.split('\n');
     currentNarrative = '';
     choices = [];
@@ -325,7 +325,7 @@ mixin GameResponseMixin on GameProvider {
     _parseReputationChanges(text);
 
     // 根据剧情文本中出现的人名，标记 NPC 为已登场（让世界页和通讯列表更准确）
-    _markIntroducedFromNarrative(currentNarrative);
+    markIntroducedFromNarrative(currentNarrative);
 
     if (choices.isEmpty) {
       // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）
@@ -334,7 +334,7 @@ mixin GameResponseMixin on GameProvider {
         choices.addAll(extractedChoices);
       } else {
         // 最后才使用兜底选项（但现在也基于剧情生成，而不是静态位置选项）
-        choices.addAll(_generateContextualFallbackChoices());
+        choices.addAll(generateContextualFallbackChoices());
       }
     }
     // 避免出现过多选项：裁剪到 4 个
@@ -346,16 +346,16 @@ mixin GameResponseMixin on GameProvider {
       checkNPCConfessions();
     }
 
-    _checkSkillAchievements();
-    _checkWorldChangerAchievement();
-    _checkWarHeroAchievement();
+    checkSkillAchievements();
+    checkWorldChangerAchievement();
+    checkWarHeroAchievement();
 
     // 每10回合增加少量世界线变动率
     if (turnCount % 10 == 0) {
-      _incrementWorldLineDeviation(0.005);
+      incrementWorldLineDeviation(0.005);
     }
 
-    // 分院结果自动提取（开局叙事通过 _parseResponse，必须也走这里）
+    // 分院结果自动提取（开局叙事通过 parseResponse，必须也走这里）
     _tryExtractHouseFromNarrative(text);
 
     notifyListeners();
@@ -502,7 +502,7 @@ mixin GameResponseMixin on GameProvider {
   }
 
   /// 独立生成选项：接收已生成的剧情文本，让 AI 专门基于此生成选项
-  Future<List<GameChoice>> _generateChoicesSeparately(String narrative) async {
+  Future<List<GameChoice>> generateChoicesSeparately(String narrative) async {
     if (router == null) return [];
 
     final p = player!;
@@ -609,7 +609,7 @@ mixin GameResponseMixin on GameProvider {
   D.xxxxxx''';
 
     try {
-      final response = await _callDeepSeek(
+      final response = await callDeepSeek(
         choicePrompt,
         scene: AiScene.choice,
       );
@@ -701,8 +701,8 @@ mixin GameResponseMixin on GameProvider {
           } else {
             debugPrint('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
           }
-          _checkLocks(npc);
-          _syncRelationshipLevel(npc);
+          checkLocks(npc);
+          syncRelationshipLevel(npc);
           checkAffectionAchievements(npc);
         } catch (e) {
           debugPrint('[好感解析错误] $npcName: $e');
@@ -793,8 +793,8 @@ mixin GameResponseMixin on GameProvider {
       final after = npc.affection;
       if (before != after) {
         debugPrint('[被动好感] ${npc.name}: $before → $after (推断${delta > 0 ? "+" : ""}$delta)');
-        _checkLocks(npc);
-        _syncRelationshipLevel(npc);
+        checkLocks(npc);
+        syncRelationshipLevel(npc);
       }
     }
   }

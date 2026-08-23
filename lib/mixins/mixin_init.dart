@@ -29,14 +29,14 @@ import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider.dart';
 
-mixin GameInitMixin on GameProvider {
+mixin GameInitMixin on ChangeNotifier {
   String buildSystemPrompt() {
     final p = player;
     final effectiveEra = worldState.era.isNotEmpty ? worldState.era : appProvider.era.name;
     final eraName = _eraLabelShort(_parseEra(effectiveEra));
 
     final profile = p != null
-        ? '【档案】${p.name}·${_bloodStatusLabel(p.bloodType)}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}'
+        ? '【档案】${p.name}·${bloodStatusLabel(p.bloodType)}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}'
         : '';
 
     // 角色创建时的玩家属性（必须注入，否则 AI 完全不知道玩家选了什么）
@@ -112,7 +112,7 @@ mixin GameInitMixin on GameProvider {
     return buffer.toString();
   }
 
-  String _eraLabel(Era era) {
+  String eraLabel(Era era) {
     return switch (era) {
       Era.dumbledore => '邓布利多时代（1892-1899）：少年阿不思·邓布利多在霍格沃茨求学，认识盖勒特·格林德沃。',
       Era.marauders => '亲世代（1971-1978）：掠夺者四人组与莉莉·伊万斯同窗的时代。',
@@ -330,7 +330,7 @@ mixin GameInitMixin on GameProvider {
         worldState.currentLocation = '霍格沃茨新生宿舍';
       }
       lastSchoolYearStart = startYear;
-      _updateAcademicYearLabel();
+      updateAcademicYearLabel();
 
       // 必须在 player 和 worldState 都赋值后再构建系统提示词
       systemPrompt = buildSystemPrompt();
@@ -346,10 +346,10 @@ mixin GameInitMixin on GameProvider {
       // 如果玩家已经通过 AI 叙事解析得到 house（如 station 起点写了很多回合后分院），这里会被跳过。
       if (player != null && player!.house == null && (openingScene == 'hall' || openingScene == 'eve')) {
         try {
-          final house = _computeHouseLocal();
-          final sortingNarrative = _generateSortingNarrative(house);
+          final house = computeHouseLocal();
+          final sortingNarrative = generateSortingNarrative(house);
           player!.house = house;
-          _unlockAchievement('sorted');
+          unlockAchievement('sorted');
           // 合并：本地分院叙事拼接在开场叙事后面
           if (sortingNarrative.trim().isNotEmpty) {
             currentNarrative = (currentNarrative.trim() +
@@ -363,7 +363,7 @@ mixin GameInitMixin on GameProvider {
       }
 
       appProvider.setGameStarted(true);
-      _unlockAchievement('first_letter');
+      unlockAchievement('first_letter');
       if (player!.letters.isEmpty) {
         player!.letters.add(Letter(
           id: 'L_admission',
@@ -422,14 +422,14 @@ mixin GameInitMixin on GameProvider {
         personalGoal: seed.personalGoal,
         affection: _initialAffectionFor(seed),
         reputation: Reputation(
-          academic: _roll(15, 45),
-          social: _roll(15, 45),
-          combat: _roll(10, 40),
-          moral: _roll(20, 50),
-          leadership: _roll(10, 40),
+          academic: roll(15, 45),
+          social: roll(15, 45),
+          combat: roll(10, 40),
+          moral: roll(20, 50),
+          leadership: roll(10, 40),
           dark: seed.era == 'dumbledore' || seed.id == 'grindelwald'
-              ? _roll(30, 60)
-              : _roll(0, 20),
+              ? roll(30, 60)
+              : roll(0, 20),
         ),
       );
     }
@@ -447,11 +447,11 @@ mixin GameInitMixin on GameProvider {
   }
 
   int _initialAffectionFor(NpcSeed seed) {
-    if (seed.grade == 0) return _roll(0, 10);
-    return _roll(0, 15);
+    if (seed.grade == 0) return roll(0, 10);
+    return roll(0, 15);
   }
 
-  int _roll(int min, int max) => min + random.nextInt(max - min + 1);
+  int roll(int min, int max) => min + random.nextInt(max - min + 1);
 
   /// 建立玩家初始关系
   /// 说明：开局不自动把「同年级同学」标记为已认识——必须在剧情中正式见面/产生互动才会 introduced=true。
@@ -487,7 +487,7 @@ mixin GameInitMixin on GameProvider {
 
   /// 扫描剧情文本，匹配到已知 NPC 名字时自动标记 introduced
 
-  void _markIntroducedFromNarrative(String text) {
+  void markIntroducedFromNarrative(String text) {
     if (text.isEmpty || npcRegistry.isEmpty) return;
 
     int markedThisRound = 0;
@@ -721,7 +721,7 @@ mixin GameInitMixin on GameProvider {
 
     // 只收集已设定字段，减少 token 噪声
     final profile = <String>[];
-    profile.add('姓名：${p.name}｜11岁｜${_bloodStatusLabel(p.bloodType)}｜${p.birthLocation}');
+    profile.add('姓名：${p.name}｜11岁｜${bloodStatusLabel(p.bloodType)}｜${p.birthLocation}');
     if (p.personalityTraits.isNotEmpty) profile.add('性格：${p.personalityTraits.join('、')}');
     if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) profile.add('出身：${p.birthIdentity}');
     if (p.appearance != null && p.appearance!.isNotEmpty) profile.add('外貌：${p.appearance}');
@@ -771,15 +771,15 @@ mixin GameInitMixin on GameProvider {
         GameChoice(text: '收拾行李，准备出发', action: '收拾行李，准备出发'),
         GameChoice(text: '再检查一遍霍格沃茨的入学清单', action: '再检查一遍霍格沃茨的入学清单'),
       ];
-      _appendRecentTurn(currentNarrative);
+      appendRecentTurn(currentNarrative);
       return;
     }
 
     try {
-      final response = await _callDeepSeek(prompt);
-      _parseResponse(response.content);
-      _accumulateForSummary(currentNarrative);
-      _appendRecentTurn(currentNarrative);
+      final response = await callDeepSeek(prompt);
+      parseResponse(response.content);
+      accumulateForSummary(currentNarrative);
+      appendRecentTurn(currentNarrative);
       notifyListeners();
       autoSave();
     } catch (e) {
@@ -787,7 +787,7 @@ mixin GameInitMixin on GameProvider {
       currentNarrative =
           '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
       choices = [GameChoice(text: '继续', action: '继续')];
-      _appendRecentTurn(currentNarrative);
+      appendRecentTurn(currentNarrative);
       notifyListeners();
       autoSave();
       unawaited(CrashLogger.instance.record(
@@ -843,7 +843,7 @@ mixin GameInitMixin on GameProvider {
 
   // ==================== 处理选择 / 指令 ====================
 
-  String _computeHouseLocal() {
+  String computeHouseLocal() {
     final traits = player!.personalityTraits.join(' ');
     final dims = player!.houseDimensions;
 
@@ -883,10 +883,10 @@ mixin GameInitMixin on GameProvider {
     }
 
     // 基于学院四维（houseDimensions）
-    final courage = dims['courage'] ?? 50;
-    final ambition = dims['ambition'] ?? 50;
-    final wisdom = dims['wisdom'] ?? 50;
-    final loyalty = dims['loyalty'] ?? 50;
+    final courage = (dims['courage'] ?? 50).toInt();
+    final ambition = (dims['ambition'] ?? 50).toInt();
+    final wisdom = (dims['wisdom'] ?? 50).toInt();
+    final loyalty = (dims['loyalty'] ?? 50).toInt();
     scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + courage;
     scores['Slytherin'] = (scores['Slytherin'] ?? 0) + ambition;
     scores['Ravenclaw'] = (scores['Ravenclaw'] ?? 0) + wisdom;
@@ -915,7 +915,7 @@ mixin GameInitMixin on GameProvider {
     return candidates.first.key;
   }
 
-  String _generateSortingNarrative(String house) {
+  String generateSortingNarrative(String house) {
     final houseName = switch (house) {
       'Gryffindor' => '格兰芬多',
       'Slytherin' => '斯莱特林',
@@ -948,7 +948,7 @@ mixin GameInitMixin on GameProvider {
     try {
       final selected = _computeWandLocal(options);
       player!.wandId = selected['id'] as String?;
-      _unlockAchievement('first_wand');
+      unlockAchievement('first_wand');
       final narrative = _generateWandNarrative(selected);
 
       isLoading = false;

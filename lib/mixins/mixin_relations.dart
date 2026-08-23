@@ -29,8 +29,8 @@ import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider.dart';
 
-mixin GameRelationsMixin on GameProvider {
-  void _generateNewNPC() {
+mixin GameRelationsMixin on ChangeNotifier {
+  void generateNewNPC() {
     final p = player;
     if (p == null) return;
 
@@ -123,8 +123,8 @@ mixin GameRelationsMixin on GameProvider {
       personality: personality,
       appearance: '$appearanceDesc。这位$houseLabel的${isMale ? '男生' : '女生'}，属于$archetype气质。',
       sexOrientation: sexOrientation,
-      mood: _roll(40, 70),
-      affection: _roll(5, 15),
+      mood: roll(40, 70),
+      affection: roll(5, 15),
       isGenerated: true,
       generatedProfile: '$archetype气质｜$houseLabel｜${isMale ? '男' : '女'}生｜与你同年级',
       giftPrefs: _generateGiftPrefs(archetype),
@@ -256,38 +256,38 @@ mixin GameRelationsMixin on GameProvider {
     final rep = Reputation();
     switch (archetype) {
       case '勇敢型':
-        rep.setValue('combat', _roll(40, 70));
-        rep.setValue('moral', _roll(30, 60));
+        rep.setValue('combat', roll(40, 70));
+        rep.setValue('moral', roll(30, 60));
         break;
       case '智慧型':
-        rep.setValue('academic', _roll(50, 80));
-        rep.setValue('dark', _roll(10, 30));
+        rep.setValue('academic', roll(50, 80));
+        rep.setValue('dark', roll(10, 30));
         break;
       case '温柔型':
-        rep.setValue('moral', _roll(50, 80));
-        rep.setValue('social', _roll(40, 70));
+        rep.setValue('moral', roll(50, 80));
+        rep.setValue('social', roll(40, 70));
         break;
       case '野心型':
-        rep.setValue('leadership', _roll(40, 70));
-        rep.setValue('dark', _roll(20, 50));
+        rep.setValue('leadership', roll(40, 70));
+        rep.setValue('dark', roll(20, 50));
         break;
       case '忠诚型':
-        rep.setValue('moral', _roll(50, 75));
-        rep.setValue('social', _roll(35, 65));
+        rep.setValue('moral', roll(50, 75));
+        rep.setValue('social', roll(35, 65));
         break;
       case '神秘型':
-        rep.setValue('dark', _roll(30, 60));
-        rep.setValue('academic', _roll(30, 60));
+        rep.setValue('dark', roll(30, 60));
+        rep.setValue('academic', roll(30, 60));
         break;
       case '幽默型':
-        rep.setValue('social', _roll(50, 80));
+        rep.setValue('social', roll(50, 80));
         break;
       case '叛逆型':
-        rep.setValue('dark', _roll(40, 70));
-        rep.setValue('combat', _roll(30, 60));
+        rep.setValue('dark', roll(40, 70));
+        rep.setValue('combat', roll(30, 60));
         break;
       default:
-        rep.setValue('social', _roll(30, 60));
+        rep.setValue('social', roll(30, 60));
     }
     return rep;
   }
@@ -340,7 +340,7 @@ mixin GameRelationsMixin on GameProvider {
     return list[random.nextInt(list.length)];
   }
 
-  int _calculateAge() {
+  int calculateAge() {
     final p = player;
     if (p == null) return 11;
     try {
@@ -428,7 +428,7 @@ mixin GameRelationsMixin on GameProvider {
 
   // ==================== 指令格式化 ====================
 
-  Future<void> _generateEnding() async {
+  Future<void> generateEnding() async {
     final p = player;
     if (p == null) {
       isLoading = false;
@@ -437,7 +437,7 @@ mixin GameRelationsMixin on GameProvider {
       return;
     }
 
-    final relationSnapshot = _buildRelationshipSnapshot();
+    final relationSnapshot = buildRelationshipSnapshot();
     final unlockedNames = achievementCatalog
         .where((a) => p.achievements.contains(a.id))
         .map((a) => a.name)
@@ -449,7 +449,7 @@ mixin GameRelationsMixin on GameProvider {
     final header = '╔══════════════════════════════════════╗\n'
         '  《终章报告》· ${p.name}的魔法人生\n'
         '╚══════════════════════════════════════╝\n\n'
-        '【时代】${_eraLabel(appProvider.era)}\n'
+        '【时代】${eraLabel(appProvider.era)}\n'
         '【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级\n'
         '【爱情】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}\n'
         '【财富】${p.galleons}金加隆 · 银行${p.bankGalleons}\n'
@@ -472,7 +472,7 @@ mixin GameRelationsMixin on GameProvider {
         final prompt = '''请为玩家撰写一份《终章报告》的评语部分，作为这段魔法人生的结局回顾。用第二人称"你"，小说化文笔，情感克制而有温度，600字以内。
 
   【玩家档案】
-  姓名：${p.name}｜${p.gender}｜${_bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜时代：${_eraLabel(appProvider.era)}
+  姓名：${p.name}｜${p.gender}｜${bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜时代：${eraLabel(appProvider.era)}
 
   【人生目标】${p.currentGoal ?? '未设定'}（评价：是否实现、以怎样的方式实现或错失）
 
@@ -490,7 +490,7 @@ mixin GameRelationsMixin on GameProvider {
   三、人生目标达成
   四、终章评语''';
 
-        final result = await _callDeepSeek(
+        final result = await callDeepSeek(
           prompt,
           scene: AiScene.summary,
         );
@@ -511,7 +511,7 @@ mixin GameRelationsMixin on GameProvider {
     autoSave();
   }
 
-  String _formatRelationships() {
+  String formatRelationships() {
     // 只显示本局正式见过面/有过互动的人（introduced）：
     // 注册表开局会预注册整个时代的原典角色，不过滤的话新开局
     // 也会列出全员，看起来像上一局的残留
@@ -529,7 +529,7 @@ mixin GameRelationsMixin on GameProvider {
     return buf.toString();
   }
 
-  String _formatLove() {
+  String formatLove() {
     final love = player!.loveState;
     if (love.status == '单身') {
       return '【恋爱状态】单身\n'
@@ -551,7 +551,7 @@ mixin GameRelationsMixin on GameProvider {
 
   // ==================== 恋爱等待状态 ====================
 
-  String _formatLoveWaiting() {
+  String formatLoveWaiting() {
     if (player == null) return '【恋爱等待】\n尚未创建角色。';
     final love = player!.loveState;
     final considering = npcRegistry.values
@@ -575,7 +575,7 @@ mixin GameRelationsMixin on GameProvider {
 
   // ==================== 恋爱阶段一览 ====================
 
-  String _formatLoveStages() {
+  String formatLoveStages() {
     if (player == null) return '【恋爱阶段】\n尚未创建角色。';
     final love = player!.loveState;
     final stages = <String>[];
@@ -614,7 +614,7 @@ mixin GameRelationsMixin on GameProvider {
 
   // ==================== NPC 关系网络查询 ====================
 
-  String _formatNpcRelationship(String npc1, String npc2) {
+  String formatNpcRelationship(String npc1, String npc2) {
     if (player == null) return '【关系网络】\n尚未创建角色。';
     NPC findNpc(String keyword) {
       return npcRegistry.values.firstWhere(
@@ -658,7 +658,7 @@ mixin GameRelationsMixin on GameProvider {
 
   // ==================== 骨科模式状态 ====================
 
-  String _formatBoneMode() {
+  String formatBoneMode() {
     if (player == null) return '【骨科模式】\n尚未创建角色。';
     final bloodRel = player!.bloodRelatives;
     final buf = StringBuffer(player!.boneMode
@@ -681,7 +681,7 @@ mixin GameRelationsMixin on GameProvider {
     return buf.toString();
   }
 
-  String _formatReputation() {
+  String formatReputation() {
     final rep = player!.playerReputation;
     final p = player!;
     return '''【声望档案】
@@ -699,7 +699,7 @@ mixin GameRelationsMixin on GameProvider {
 
   /// 舆论/传闻系统（设定文档 7.3 / 第十三部分）
 
-  String _formatRumors() {
+  String formatRumors() {
     final rumors = player!.rumors;
     if (rumors.isEmpty) {
       return '【舆论】\n目前校园里还没有关于你的传闻。你只是个普通学生——至少现在还是。';
@@ -724,7 +724,7 @@ mixin GameRelationsMixin on GameProvider {
     }
   }
 
-  String _formatCourses() {
+  String formatCourses() {
     final buf = StringBuffer('【课程系统】\n必修课：\n');
     for (final c in requiredCourses) {
       buf.writeln('· ${c.name}（${c.professor}）');
@@ -739,7 +739,7 @@ mixin GameRelationsMixin on GameProvider {
 
   /// 课堂互动（设定 10.3，全程本地判定，零 token 消耗）
 
-  void _classroomInteraction() {
+  void classroomInteraction() {
     final p = player;
     if (p == null) return;
     final roll = random.nextInt(100);
@@ -804,14 +804,14 @@ mixin GameRelationsMixin on GameProvider {
     choices = [GameChoice(text: '继续', action: '继续')];
   }
 
-  String _formatCollection() {
+  String formatCollection() {
     if (player!.collection.isEmpty) {
       return '【收藏】\n暂无收藏品。在冒险中收集独特物品，如巧克力蛙画片、日记本等。';
     }
     return '【收藏】\n${player!.collection.map((c) => '· $c').join('\n')}';
   }
 
-  void _handleLetterCommand(List<String> parts) {
+  void handleLetterCommand(List<String> parts) {
     final back = () {
       choices = [GameChoice(text: '返回', action: '继续')];
     };
@@ -978,7 +978,7 @@ mixin GameRelationsMixin on GameProvider {
     }
   }
 
-  String _formatBloodRelatives() {
+  String formatBloodRelatives() {
     if (player!.bloodRelatives.isEmpty) {
       return '【血缘】\n未设定血缘亲属关系。三代内血亲不可攻略（除非开启骨科模式）。';
     }
@@ -987,9 +987,9 @@ mixin GameRelationsMixin on GameProvider {
 
   /// 月度世界演化报告（第47章）
 
-  String _formatWorldEvolution() {
+  String formatWorldEvolution() {
     final w = worldState;
-    final eraName = _eraLabel(appProvider.era);
+    final eraName = eraLabel(appProvider.era);
     final buf = StringBuffer()
       ..writeln('╔══════════════════════════════════════╗')
       ..writeln('  《月度世界演化报告》')
@@ -1034,7 +1034,7 @@ mixin GameRelationsMixin on GameProvider {
     return buf.toString();
   }
 
-  String _formatAffections({int maxEntries = 8}) {
+  String formatAffections({int maxEntries = 8}) {
     final list = player == null
         ? const <NPC>[]
         : npcRegistry.values
@@ -1174,24 +1174,24 @@ mixin GameRelationsMixin on GameProvider {
         'date': worldState.timestamp,
         'event': '接受了${npc.name}的表白',
       });
-      _unlockCG(cgById('CG-010'));
-      _unlockCG(cgById('CG-CF-001'));
-      if (p.boneMode) _unlockCG(cgById('CG-BONE-002'));
-      _unlockAchievement('first_confession');
-      _unlockAchievement('in_love');
+      unlockCG(cgById('CG-010'));
+      unlockCG(cgById('CG-CF-001'));
+      if (p.boneMode) unlockCG(cgById('CG-BONE-002'));
+      unlockAchievement('first_confession');
+      unlockAchievement('in_love');
       notifications.add('💕 你与${npc.name}开始了恋爱！');
       worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！');
       _addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
-      _bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
+      bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
       currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'
           '你们在月色下相视而笑，霍格沃茨的钟声在远处敲响，仿佛在为这段感情祝福。';
     } else {
       npc.affection -= 5;
-      _unlockCG(cgById('CG-CF-002'));
+      unlockCG(cgById('CG-CF-002'));
       _addRumor('听说${npc.name}向你表白，却被你拒绝了。');
-      _bumpImpactScore(npc.isCanon ? 0.03 : 0.015, debugReason: '婉拒${npc.name}表白');
+      bumpImpactScore(npc.isCanon ? 0.03 : 0.015, debugReason: '婉拒${npc.name}表白');
       currentNarrative =
           '你温和地摇了摇头。${npc.name}的眼神黯淡了一下，但很快挤出一个微笑。\n\n'
           '"我明白了……那我们，还是朋友吧？"\n\n'
@@ -1216,7 +1216,7 @@ mixin GameRelationsMixin on GameProvider {
 
   // ==================== CG 解锁 ====================
 
-  void _unlockCG(CgDef? cg) {
+  void unlockCG(CgDef? cg) {
     final p = player;
     if (cg == null || p == null) return;
     if (p.cgRecords.containsKey(cg.id)) return;
@@ -1228,10 +1228,10 @@ mixin GameRelationsMixin on GameProvider {
     );
     notifications.add('📸 解锁CG：${cg.name}');
     worldState.addNarrativeEvent('📸 解锁CG：${cg.name}');
-    _bumpImpactScore(0.02, debugReason: '解锁CG：${cg.id}');
+    bumpImpactScore(0.02, debugReason: '解锁CG：${cg.id}');
   }
 
-  void _unlockAchievement(String id) {
+  void unlockAchievement(String id) {
     final p = player;
     if (p == null) return;
     if (p.achievements.contains(id)) return;
@@ -1246,7 +1246,7 @@ mixin GameRelationsMixin on GameProvider {
 
   void checkAffectionAchievements(NPC npc) {
     if (npc.affection >= 20) {
-      _unlockAchievement('first_friend');
+      unlockAchievement('first_friend');
     }
     _checkCGUnlockByAffection(npc);
   }
@@ -1281,42 +1281,42 @@ mixin GameRelationsMixin on GameProvider {
     if (aff >= 98) cgChecks[98] = 'CG-020';
 
     for (final cgId in cgChecks.values) {
-      _unlockCG(cgById(cgId));
+      unlockCG(cgById(cgId));
     }
 
     if (p.boneMode) {
-      if (isCrush && npc.confessed) _unlockCG(cgById('CG-BONE-001'));
-      if (isPartner && aff >= 95) _unlockCG(cgById('CG-BONE-003'));
+      if (isCrush && npc.confessed) unlockCG(cgById('CG-BONE-001'));
+      if (isPartner && aff >= 95) unlockCG(cgById('CG-BONE-003'));
     }
   }
 
-  void _checkSkillAchievements() {
+  void checkSkillAchievements() {
     final p = player;
     if (p == null) return;
     for (final s in p.learnedSpells.values) {
       if (s.level >= 90) {
-        _unlockAchievement('honor_student');
+        unlockAchievement('honor_student');
         return;
       }
     }
   }
 
-  void _checkWorldChangerAchievement() {
+  void checkWorldChangerAchievement() {
     final p = player;
     if (p == null) return;
     // 双条件判据：玩家影响力(>=0.5) 与 世界线偏移(>=0.1) 同时满足才解锁
     // 防止只靠时间堆积或只改一条剧情线就拿成就——需要真正从 NPC 关系/原著事件/关键锚点三路都撼动世界
     if (p.worldLineDeviation >= 0.1 && worldState.playerImpactScore >= 0.5) {
-      _unlockAchievement('world_changer');
+      unlockAchievement('world_changer');
     }
   }
 
-  void _checkWarHeroAchievement() {
+  void checkWarHeroAchievement() {
     final p = player;
     if (p == null) return;
     final combat = p.playerReputation.get('combat');
     if (combat >= 80) {
-      _unlockAchievement('war_hero');
+      unlockAchievement('war_hero');
     }
   }
 
@@ -1328,7 +1328,7 @@ mixin GameRelationsMixin on GameProvider {
     if (loc != null && loc.isNotEmpty) {
       worldState.visitedLocations.add(loc);
     }
-    if (worldState.visitedLocations.length >= 5) _unlockAchievement('explorer');
+    if (worldState.visitedLocations.length >= 5) unlockAchievement('explorer');
   }
 
   void _checkRichWizardAchievement() {
@@ -1336,13 +1336,13 @@ mixin GameRelationsMixin on GameProvider {
     if (p == null) return;
     // 小富翁=累计持有 ≥1500 加隆（player.dart默认500+节俭特质+100=约600开局）
     // 原门槛100完全无意义，500还是开局秒解——1500要求玩家通过打工/交易真正积累财富。
-    if (totalWealth >= 1500) _unlockAchievement('rich_wizard');
+    if (totalWealth >= 1500) unlockAchievement('rich_wizard');
   }
 
   void _checkBookwormAchievement() {
     final p = player;
     if (p == null) return;
-    if (p.learnedSpells.length >= 10) _unlockAchievement('bookworm');
+    if (p.learnedSpells.length >= 10) unlockAchievement('bookworm');
   }
 
   void _checkSocialButterflyAchievement() {
@@ -1351,13 +1351,13 @@ mixin GameRelationsMixin on GameProvider {
     // 社交蝴蝶=真正结识过的NPC ≥ 10 位（introduced=true，必须剧情中正式见面/产生过互动）
     // 不再用"NPC总数≥10"——NPC注册表初始化就有几十个，开局秒解锁是bug。
     final friendCount = npcRegistry.values.where((n) => n.isAlive && n.introduced).length;
-    if (friendCount >= 10) _unlockAchievement('social_butterfly');
+    if (friendCount >= 10) unlockAchievement('social_butterfly');
   }
 
   void _checkDeepRelationshipAchievement() {
     for (final npc in npcRegistry.values) {
       if (npc.affection >= 80) {
-        _unlockAchievement('deep_relationship');
+        unlockAchievement('deep_relationship');
         return;
       }
     }
@@ -1366,7 +1366,7 @@ mixin GameRelationsMixin on GameProvider {
   void _checkBetrayalSurvivorAchievement() {
     for (final npc in npcRegistry.values) {
       if (npc.hasGrudge && npc.affection > npc.maxAffectionReached * 0.8) {
-        _unlockAchievement('betrayal_survivor');
+        unlockAchievement('betrayal_survivor');
         return;
       }
     }
@@ -1374,38 +1374,38 @@ mixin GameRelationsMixin on GameProvider {
 
   void _checkMonthlyEvolutionAchievement() {
     if (worldState.recentEvents.where((e) => e.contains('月度世界演化')).length >= 3) {
-      _unlockAchievement('monthly_evolution');
+      unlockAchievement('monthly_evolution');
     }
   }
 
   void _checkGenerationArtistAchievement() {
     final count = npcRegistry.values.where((n) => n.isGenerated).length;
-    if (count >= 5) _unlockAchievement('generation_artist');
+    if (count >= 5) unlockAchievement('generation_artist');
   }
 
   void _checkCGCollectorAchievement() {
     final p = player;
     if (p == null) return;
-    if (p.cgRecords.length >= 10) _unlockAchievement('cg_collector');
+    if (p.cgRecords.length >= 10) unlockAchievement('cg_collector');
   }
 
   void _checkRelationshipMasterAchievement() {
     final highAffectionCount = npcRegistry.values
         .where((n) => n.affection >= 60)
         .length;
-    if (highAffectionCount >= 3) _unlockAchievement('relationship_master');
+    if (highAffectionCount >= 3) unlockAchievement('relationship_master');
   }
 
   void _checkTimeMasterAchievement() {
     final startYear = 1991;
     final currentYear = worldState.time.year;
-    if (currentYear - startYear >= 2) _unlockAchievement('time_master');
+    if (currentYear - startYear >= 2) unlockAchievement('time_master');
   }
 
-  void _checkAllAchievements() {
-    _checkSkillAchievements();
-    _checkWorldChangerAchievement();
-    _checkWarHeroAchievement();
+  void checkAllAchievements() {
+    checkSkillAchievements();
+    checkWorldChangerAchievement();
+    checkWarHeroAchievement();
     _checkExplorerAchievement();
     _checkRichWizardAchievement();
     _checkBookwormAchievement();
@@ -1419,11 +1419,11 @@ mixin GameRelationsMixin on GameProvider {
     _checkTimeMasterAchievement();
   }
 
-  void _incrementWorldLineDeviation(double delta) {
+  void incrementWorldLineDeviation(double delta) {
     final p = player;
     if (p == null) return;
     p.worldLineDeviation = (p.worldLineDeviation + delta).clamp(0.0, 1.0);
-    _checkWorldChangerAchievement();
+    checkWorldChangerAchievement();
   }
 
   // ==================== 时间推进 ====================
@@ -1432,12 +1432,12 @@ mixin GameRelationsMixin on GameProvider {
     updateNpcAffection(npcId, delta, reason: reason);
     final npc = npcRegistry[npcId];
     if (npc != null) {
-      _checkLocks(npc);
-      _syncRelationshipLevel(npc);
+      checkLocks(npc);
+      syncRelationshipLevel(npc);
     }
   }
 
-  void _syncRelationshipLevel(NPC npc) {
+  void syncRelationshipLevel(NPC npc) {
     final p = player;
     if (p == null) return;
     final rel = p.relationships[npc.id];

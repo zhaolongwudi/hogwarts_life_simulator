@@ -29,7 +29,7 @@ import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider.dart';
 
-mixin GameCommandsMixin on GameProvider {
+mixin GameCommandsMixin on ChangeNotifier {
   void closeCommandPanel() {
     if (commandResult == null) return;
     commandResult = null;
@@ -38,7 +38,7 @@ mixin GameCommandsMixin on GameProvider {
 
   /// 本地指令解析（设定文档第X部分指令系统）
 
-  bool _handleLocalCommand(String command) {
+  bool handleLocalCommand(String command) {
     final p = player;
     if (p == null) return false;
     final parts = command.split(RegExp(r'\s+'));
@@ -71,34 +71,34 @@ mixin GameCommandsMixin on GameProvider {
         return true;
 
       case '/关系':
-        currentNarrative = _formatRelationships();
+        currentNarrative = formatRelationships();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/恋爱':
-        currentNarrative = _formatLove();
+        currentNarrative = formatLove();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/声望':
-        currentNarrative = _formatReputation();
+        currentNarrative = formatReputation();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/舆论':
       case '/传闻':
-        currentNarrative = _formatRumors();
+        currentNarrative = formatRumors();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/课程':
-        currentNarrative = _formatCourses();
+        currentNarrative = formatCourses();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/课堂':
         if (parts.length >= 2 && parts[1] == '互动') {
-          _classroomInteraction();
+          classroomInteraction();
         } else {
           currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
           choices = [GameChoice(text: '返回', action: '继续')];
@@ -106,7 +106,7 @@ mixin GameCommandsMixin on GameProvider {
         return true;
 
       case '/收藏':
-        currentNarrative = _formatCollection();
+        currentNarrative = formatCollection();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
@@ -139,45 +139,45 @@ mixin GameCommandsMixin on GameProvider {
         return true;
 
       case '/信':
-        _handleLetterCommand(parts);
+        handleLetterCommand(parts);
         return true;
 
       case '/血缘':
-        currentNarrative = _formatBloodRelatives();
+        currentNarrative = formatBloodRelatives();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/联动':
-        currentNarrative = '【联动系统】\n当前时代：${_eraLabel(appProvider.era)}\n'
+        currentNarrative = '【联动系统】\n当前时代：${eraLabel(appProvider.era)}\n'
             '联动系统允许你在特定节点与其他时代剧情产生关联（例如在子世代时遇到亲世代留下的物品或信件）。\n'
             '当前已触发的联动痕迹：\n${worldState.timelineBranches.isEmpty ? '暂无。' : worldState.timelineBranches.map((b) => '· $b').join('\n')}';
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/世界演化':
-        currentNarrative = _formatWorldEvolution();
+        currentNarrative = formatWorldEvolution();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/新NPC':
-        _generateNewNPC();
+        generateNewNPC();
         return true;
 
       case '/恋爱等待':
       case '/恋爱 等待':
-        currentNarrative = _formatLoveWaiting();
+        currentNarrative = formatLoveWaiting();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/恋爱阶段':
-        currentNarrative = _formatLoveStages();
+        currentNarrative = formatLoveStages();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/关系网络':
       case '/关系 网络':
         if (parts.length >= 4) {
-          currentNarrative = _formatNpcRelationship(parts[2], parts[3]);
+          currentNarrative = formatNpcRelationship(parts[2], parts[3]);
         } else {
           currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
         }
@@ -186,13 +186,13 @@ mixin GameCommandsMixin on GameProvider {
 
       case '/骨科':
       case '/骨科状态':
-        currentNarrative = _formatBoneMode();
+        currentNarrative = formatBoneMode();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/目标':
         if (parts.length >= 2 && (parts[1] == '进度' || parts[1] == 'progress')) {
-          currentNarrative = _formatGoalProgress();
+          currentNarrative = formatGoalProgress();
           choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         }
@@ -311,7 +311,7 @@ mixin GameCommandsMixin on GameProvider {
       case 'time':
         if (parts.length >= 3) {
           final days = int.tryParse(parts[2]);
-          if (days != null) _fastForwardTime(days);
+          if (days != null) fastForwardTime(days);
           currentNarrative = '时间已推进 $days 天。\n${worldState.timestamp}';
         }
         break;
@@ -319,10 +319,10 @@ mixin GameCommandsMixin on GameProvider {
       case '骨科':
         if (parts.length >= 3 && parts[2] == '无视') {
           p.boneMode = true;
-          _unlockAchievement('bone_mode');
+          unlockAchievement('bone_mode');
           notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
           worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除');
-          _bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
+          bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
           currentNarrative =
               '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
         } else {
@@ -350,7 +350,7 @@ mixin GameCommandsMixin on GameProvider {
         if (parts.length >= 3) {
           final cg = cgById(parts[2]);
           if (cg != null) {
-            _unlockCG(cg);
+            unlockCG(cg);
             currentNarrative = '已解锁 CG：${cg.name}';
           } else {
             currentNarrative = '未找到该 CG，可用：${allCgs().map((c) => c.id).take(10).join(', ')}...';
@@ -387,8 +387,8 @@ mixin GameCommandsMixin on GameProvider {
       ..writeln('╚══════════════════════════════════════╝')
       ..writeln()
       ..writeln('【时间】${w.timestamp}')
-      ..writeln('【年龄】${_calculateAge()}岁')
-      ..writeln('【血统】${_bloodStatusLabel(p.bloodType)}')
+      ..writeln('【年龄】${calculateAge()}岁')
+      ..writeln('【血统】${bloodStatusLabel(p.bloodType)}')
       ..writeln('【身份】${p.birthIdentity ?? '未设定'}')
       ..writeln('【所在地】${w.currentLocation ?? '未知'}')
       ..writeln('【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
@@ -426,8 +426,8 @@ mixin GameCommandsMixin on GameProvider {
     final w = worldState;
     return '【当前时间】\n${w.timestamp}\n'
         '学年：${w.academicYear}\n'
-        '学期：${_termLabel(w.term)}\n'
-        '流速模式：${_flowModeLabel(w.timeFlowMode)}\n'
+        '学期：${termLabel(w.term)}\n'
+        '流速模式：${flowModeLabel(w.timeFlowMode)}\n'
         '${w.specialMarkers.isEmpty ? '' : '特殊标记：${w.specialMarkers.join(' ')}'}';
   }
 
@@ -524,7 +524,7 @@ mixin GameCommandsMixin on GameProvider {
     currentNarrative = '';
     choices = [];
     notifyListeners();
-    unawaited(_generateEnding());
+    unawaited(generateEnding());
   }
 
   String _formatDiary() {
@@ -615,7 +615,7 @@ mixin GameCommandsMixin on GameProvider {
     return '''【角色完整档案】
   姓名：${p.name}｜性别：${p.gender.isEmpty ? '未设定' : p.gender}
   生日：${p.birthDay ?? '未设定'}｜出生年份：${p.birthYear}
-  血统：${_bloodStatusLabel(p.bloodType)}｜出生地：${p.birthLocation}
+  血统：${bloodStatusLabel(p.bloodType)}｜出生地：${p.birthLocation}
   学院：${p.house ?? '未分院'}｜年级：${p.grade ?? 1}
   性取向：${p.sexOrientation ?? '未设定'}
   魔杖：${p.wandId != null ? wandById(p.wandId!)?.name ?? p.wandId : '未选择'}

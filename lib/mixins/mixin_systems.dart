@@ -29,8 +29,8 @@ import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider.dart';
 
-mixin GameSystemsMixin on GameProvider {
-  void _advanceTimeForAction(String action) {
+mixin GameSystemsMixin on ChangeNotifier {
+  void advanceTimeForAction(String action) {
     int minutes = 15;
     if (action.contains('吃饭') || action.contains('用餐') || action.contains('早餐') || action.contains('午餐') || action.contains('晚餐')) {
       minutes = 30;
@@ -116,7 +116,7 @@ mixin GameSystemsMixin on GameProvider {
 
     // 玩家已毕业则不再推进
     if (worldState.graduated) {
-      _updateAcademicYearLabel();
+      updateAcademicYearLabel();
       return;
     }
 
@@ -133,12 +133,12 @@ mixin GameSystemsMixin on GameProvider {
       _promoteNpcs(yearsPassed);
       _onSchoolYearStart(newGrade);
     }
-    _updateAcademicYearLabel();
+    updateAcademicYearLabel();
   }
 
   /// 更新学年标签（如 1992-1993）
 
-  void _updateAcademicYearLabel() {
+  void updateAcademicYearLabel() {
     final t = worldState.time;
     final start = _schoolYearStartFor(t.year, t.month);
     worldState.academicYear = '$start-${start + 1}';
@@ -211,7 +211,7 @@ mixin GameSystemsMixin on GameProvider {
     }
     if (req.attributeKey != null) {
       final cur = p.attributes[req.attributeKey!] ?? 0;
-      lines.add(('${_attrLabel(req.attributeKey!)} ≥ ${req.attributeMin}（当前 $cur）', cur >= req.attributeMin));
+      lines.add(('${attrLabel(req.attributeKey!)} ≥ ${req.attributeMin}（当前 $cur）', cur >= req.attributeMin));
     }
     if (req.wealthMin > 0) {
       final cur = p.galleons + p.bankGalleons;
@@ -234,13 +234,13 @@ mixin GameSystemsMixin on GameProvider {
     final p = player;
     if (p == null) return;
 
-    _unlockAchievement('graduated');
+    unlockAchievement('graduated');
 
     final goal = p.currentGoal != null ? goalByName(p.currentGoal!) : null;
     final reqLines = goal != null ? _evaluateGoalRequirement(goal.requirement) : <(String, bool)>[];
     final goalMet = reqLines.isNotEmpty && reqLines.every((e) => e.$2);
     if (goalMet) {
-      _unlockAchievement('goal_achieved');
+      unlockAchievement('goal_achieved');
     }
 
     final buf = StringBuffer()
@@ -283,7 +283,7 @@ mixin GameSystemsMixin on GameProvider {
 
   /// 目标进度查询（/目标 进度）
 
-  String _formatGoalProgress() {
+  String formatGoalProgress() {
     final p = player;
     if (p == null) return '尚未创建角色。';
     final goal = p.currentGoal != null ? goalByName(p.currentGoal!) : null;
@@ -553,7 +553,7 @@ mixin GameSystemsMixin on GameProvider {
     }
 
     // ====== 成就检查 ======
-    _checkAllAchievements();
+    checkAllAchievements();
 
     if (issues.isNotEmpty) {
       notifications.add('⚠️ 状态自修复：${issues.join('；')}');
@@ -561,7 +561,7 @@ mixin GameSystemsMixin on GameProvider {
     }
   }
 
-  void _fastForwardTime(int days) {
+  void fastForwardTime(int days) {
     final oldMonth = worldState.time.month;
     final oldYear = worldState.time.year;
     for (int i = 0; i < days; i++) {
@@ -577,7 +577,7 @@ mixin GameSystemsMixin on GameProvider {
 
   // ==================== NPC 状态更新 ====================
 
-  void _updateNPCsFromAction(String action) {
+  void updateNPCsFromAction(String action) {
     // 消耗资源 - 大幅降低消耗，让玩家有更多精力进行活动
     final p = player!;
     p.energy = max(0, p.energy - 2);  // 从5降到2
@@ -640,7 +640,7 @@ mixin GameSystemsMixin on GameProvider {
   Future<void> fastForward(int days) async {
     isLoading = true;
     notifyListeners();
-    _fastForwardTime(days);
+    fastForwardTime(days);
     isLoading = false;
     notifyListeners();
   }
@@ -700,7 +700,7 @@ mixin GameSystemsMixin on GameProvider {
   /// 根据玩家行动累计影响力分数
   /// 每回合 +0.01，涉及原著NPC互动 +0.02，涉及关键剧情(恋爱/CG/成就) +0.05
 
-  void _updatePlayerImpactScore(String action) {
+  void updatePlayerImpactScore(String action) {
     double delta = 0.003; // 每回合基础增长：只要玩家做出选择，世界就有极小变动
 
     // 1. 与原著 NPC 互动：每次提到名字或与其对话，都代表蝴蝶翅膀拍动
@@ -741,9 +741,9 @@ mixin GameSystemsMixin on GameProvider {
 
   /// 便捷入口：在非 action 场景（告白成功、CG解锁、事件锚点达成、月度事件、
   /// 新 NPC 生成、毕业结算等）直接给 playerImpactScore 加一次分，
-  /// 避免这些"真正改变世界"的场景因为不从 _updatePlayerImpactScore(action) 走而被忽略。
+  /// 避免这些"真正改变世界"的场景因为不从 updatePlayerImpactScore(action) 走而被忽略。
 
-  void _bumpImpactScore(double delta, {String? debugReason}) {
+  void bumpImpactScore(double delta, {String? debugReason}) {
     if (worldState.playerImpactScore >= 1.0) return;
     worldState.playerImpactScore = (worldState.playerImpactScore + delta).clamp(0.0, 1.0);
     if (debugReason != null) {
@@ -753,7 +753,7 @@ mixin GameSystemsMixin on GameProvider {
 
   // ==================== 好感度操作（供UI调用） ====================
 
-  void _checkLocks(NPC npc) {
+  void checkLocks(NPC npc) {
     if (npc.affection >= Balance.trustLockThreshold && !npc.hasLock('信任锁')) {
       npc.affectionLocks.add('信任锁');
     }
@@ -762,7 +762,7 @@ mixin GameSystemsMixin on GameProvider {
     }
   }
 
-  Future<ChatResult> _callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
+  Future<ChatResult> callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
     if (router == null) throw Exception('AI 服务未初始化');
     String effectiveSystemPrompt;
     if (scene == AiScene.choice || scene == AiScene.summary) {
@@ -979,7 +979,7 @@ mixin GameSystemsMixin on GameProvider {
 
   // ==================== 辅助方法 ====================
 
-  String _bloodStatusLabel(String status) {
+  String bloodStatusLabel(String status) {
     return {
       'muggleborn': '麻瓜出身',
       'halfblood': '混血巫师',
@@ -997,7 +997,7 @@ mixin GameSystemsMixin on GameProvider {
     }[status] ?? status;
   }
 
-  String _attrLabel(String key) {
+  String attrLabel(String key) {
     return {
       'spell_understanding': '魔咒理解',
       'transfiguration': '变形术',
@@ -1021,7 +1021,7 @@ mixin GameSystemsMixin on GameProvider {
     }[key] ?? key;
   }
 
-  String _termLabel(String term) {
+  String termLabel(String term) {
     return {
       'first': '第一学期',
       'second': '第二学期',
@@ -1030,7 +1030,7 @@ mixin GameSystemsMixin on GameProvider {
     }[term] ?? term;
   }
 
-  String _flowModeLabel(String mode) {
+  String flowModeLabel(String mode) {
     return {
       'normal': '正常',
       'story': '剧情加速',
