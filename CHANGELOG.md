@@ -5,6 +5,17 @@
 
 ---
 
+### v1.6.6 — 2026-08-23
+
+**📋 变更说明**
+refactor(ui+prompts): P1 拆屏 + 常量抽离
+
+- other_screens 1476行 → 5屏+barrel:
+  - other/communication_screen.dart(360) + forum(343) + diary(270)
+    + parallel_world(245) + matchmaker(295) + barrel
+- shop_inventory_screens 597行 → 商店/库存/古灵阁 4文件+barrel:
+  - shop/shop_screen 壳(112) + shop_tab(190) + gringotts_tab(182)
+
 ### v1.6.5 — 2026-08-23
 
 **📋 变更说明**
