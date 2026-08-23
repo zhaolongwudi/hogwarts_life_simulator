@@ -5,6 +5,15 @@
 
 ---
 
+### v1.8.9 — 2026-08-23
+
+**📋 变更说明**
+快捷指令双修复:无响应+剧情选项丢失
+
+- BuildChoiceList去掉commandResult隐藏条件
+- _buildNarrativeSubTab顶部新增独立命令面板UI(带关闭按钮)
+- 正文为空时不渲染空RichText盒子(gap guard)
+
 ### v1.8.8 — 2026-08-23
 
 **📋 变更说明**
