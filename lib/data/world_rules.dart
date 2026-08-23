@@ -172,7 +172,8 @@ const String kWorldRulesFusedCompact = '''
 ''';
 
 /// 使用融合版还是完整版的开关
-const bool kUseFusedCompact = true;
+/// 2026-08-23：模型能力升级后切回完整版 kWorldRulesFused，保证世界观/规则完整、逻辑强
+const bool kUseFusedCompact = false;
 
 // ==================== 世界演化展示常量（《月度世界演化报告》用） ====================
 

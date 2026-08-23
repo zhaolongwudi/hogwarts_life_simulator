@@ -57,7 +57,7 @@ class GameProvider extends ChangeNotifier {
   String _pendingSummary = '';
   /// 最近几回合剧情环形缓冲（避免 AI 只有单回合记忆，保持短期连贯性）
   final List<String> _recentTurns = [];
-  static const int _maxRecentTurns = 6;  // 从4扩大到6，多保留1-2小时游戏时间内的对话
+  static const int _maxRecentTurns = 12;  // 从6扩大到12，完整保留前一天内的连续回合/长对话
   List<GameChoice> _choices = [];
   bool _isLoading = false;
   bool _isInitializing = false;
@@ -1026,35 +1026,36 @@ ${profile.join('｜')}
 
       // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
       // 永远放在【世界上下文】最前面，防止后面截断看不到
-      // T0: 核心事实 (importance ≥ 5，重要性高到低，最多30条；importance 10永远保留)
+      // 2026-08-23：模型能力升级，所有条数限制整体翻倍
+      // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；importance 10永远保留)
       final t0 = _memory.keyFacts
-          .where((f) => f.importance >= 5)
+          .where((f) => f.importance >= 4)
           .toList()
         ..sort((a, b) => b.importance.compareTo(a.importance));
       if (t0.isNotEmpty) {
         contextBuffer.writeln('【T0 核心事实（永不遗忘；纯事实，不得更改或遗忘）】');
-        for (int i = 0; i < t0.length && i < 30; i++) {
+        for (int i = 0; i < t0.length && i < 60; i++) {
           final f = t0[i];
           contextBuffer.writeln('• [${f.importance}] ${f.fact}');
         }
         contextBuffer.writeln('');
       }
-      // T1: 未完结事项 (open 状态优先，importance 排序，最多 20 条)
+      // T1: 未完结事项 (open 状态优先，importance 排序，最多 40 条)
       final t1 = _memory.openLoops.where((l) => l.status == 'open').toList()
         ..sort((a, b) => b.importance.compareTo(a.importance));
       if (t1.isNotEmpty) {
         contextBuffer.writeln('【T1 未完结事项（承诺/债务/约定/未完成任务，说话要算数）】');
-        for (int i = 0; i < t1.length && i < 20; i++) {
+        for (int i = 0; i < t1.length && i < 40; i++) {
           final l = t1[i];
           contextBuffer.writeln('• [${l.importance}] ${l.description}');
         }
         contextBuffer.writeln('');
       }
-      // T2: NPC 关键关系（按 |好感| 取前 12 个 NPC 的结构化关系锚）
+      // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚）
       final topNpcs = _npcRegistry.values.toList()
         ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
       final t2Lines = <String>[];
-      for (int i = 0; i < topNpcs.length && i < 12; i++) {
+      for (int i = 0; i < topNpcs.length && i < 24; i++) {
         final npc = topNpcs[i];
         final anchor = _memory.relationshipAnchors[npc.id];
         if (anchor == null) continue;
@@ -1062,11 +1063,11 @@ ${profile.join('｜')}
         buf.write('${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})');
         if (anchor.firstMeeting.isNotEmpty) buf.write('｜初见:${anchor.firstMeeting}');
         if (anchor.keyMoments.isNotEmpty) {
-          // 注入最后 3 个关键转折点
-          buf.write('｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 3)).join("；")}');
+          // 注入最后 6 个关键转折点（3→6）
+          buf.write('｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 6)).join("；")}');
         }
-        if (anchor.secretsShared.isNotEmpty) buf.write('｜交换秘密:${anchor.secretsShared.take(3).join("；")}');
-        if (anchor.promisesExchanged.isNotEmpty) buf.write('｜承诺:${anchor.promisesExchanged.take(3).join("；")}');
+        if (anchor.secretsShared.isNotEmpty) buf.write('｜交换秘密:${anchor.secretsShared.take(6).join("；")}');
+        if (anchor.promisesExchanged.isNotEmpty) buf.write('｜承诺:${anchor.promisesExchanged.take(6).join("；")}');
         t2Lines.add('• ${buf.toString()}');
       }
       if (t2Lines.isNotEmpty) {
@@ -1074,13 +1075,13 @@ ${profile.join('｜')}
         contextBuffer.writeln(t2Lines.join('\n'));
         contextBuffer.writeln('');
       }
-      // T3: 世界事件银行（重要性 * 新鲜度 取前 20 条）
+      // T3: 世界事件银行（重要性 * 新鲜度 取前 40 条）
       final ts = _worldState.time.dayOfYear;
       final t3 = List<WorldEventRecord>.from(_memory.worldEvents)
         ..sort((a, b) => b.score(ts).compareTo(a.score(ts)));
       if (t3.isNotEmpty) {
         contextBuffer.writeln('【T3 世界事件银行（按重要性+新鲜度排序）】');
-        for (int i = 0; i < t3.length && i < 20; i++) {
+        for (int i = 0; i < t3.length && i < 40; i++) {
           final e = t3[i];
           final cons = e.consequences.isNotEmpty
               ? ' → 后续:${e.consequences.join(";")}'
@@ -1093,36 +1094,33 @@ ${profile.join('｜')}
 
       // ========== T4 自然语言摘要（有损压缩历史背景，权重最低，严格控量） ==========
       // 重要：T4 是 LLM 压缩的「模糊历史记忆」，可能包含过期/错误细节（如"开局巨怪事件"）
-      //      → 严格限制注入长度：超过 200 字强制截断
-      //      → 在结构化记忆(T0~T3)已存在内容/刚做完摘要的回合跳过，避免污染
+      //      → 模型能力升级后放宽到 600 字注入，但仍保持"不能用于生成当前选项"的强约束
+      //      → 跳过阈值从 12 条放宽到 30 条，给模型更多参考
       if (_narrativeSummary.isNotEmpty) {
-        // 如果 T0+T1 已经提供了≥12条结构化事实，说明核心信息充足，
-        // 不需要再把自然语言摘要（可能含过期场景）塞进来
         final structuredCount = t0.length + t1.length;
-        if (structuredCount < 12) {
-          // 限制注入长度：最多 200 字（约 100~150 tokens），防止摘要回合 prompt 暴涨到5000+
-          final trimmedSummary = _narrativeSummary.length > 200
-              ? '${_narrativeSummary.substring(0, 200)}…'
+        if (structuredCount < 30) {
+          // 2026-08-23：200→600 字，给长线剧情更多参考
+          final trimmedSummary = _narrativeSummary.length > 600
+              ? '${_narrativeSummary.substring(0, 600)}…'
               : _narrativeSummary;
           // 强约束：只当"关系和转折"参考，严格禁止基于此生成当前回合选项/场景
           contextBuffer.write('【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n');
         } else {
-          debugPrint('T4 跳过注入：结构化事实 T0(${t0.length})+T1(${t1.length}) ≥ 12，信息充足');
+          debugPrint('T4 跳过注入：结构化事实 T0(${t0.length})+T1(${t1.length}) ≥ 30，信息充足');
         }
       }
 
       // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
-      // 注意：WorldState.recentEvents / recentNarrativeEvents 都是 List<String>（纯字符串），
-      // 而不是结构化对象；直接按字符串原样注入最近 6 条即可。
+      // 2026-08-23：6→12 条
       final ws = _worldState;
       final worldAnchors = <String>[];
       if (ws.recentEvents.isNotEmpty) {
-        for (final e in ws.recentEvents.reversed.take(6)) {
+        for (final e in ws.recentEvents.reversed.take(12)) {
           worldAnchors.add(e);
         }
       }
       if (ws.recentNarrativeEvents.isNotEmpty) {
-        for (final e in ws.recentNarrativeEvents.reversed.take(6)) {
+        for (final e in ws.recentNarrativeEvents.reversed.take(12)) {
           worldAnchors.add('剧情锚：$e');
         }
       }
@@ -1136,12 +1134,12 @@ ${profile.join('｜')}
       for (int i = _recentTurns.length - 1; i >= 0; i--) {
         final entry = _recentTurns[i];
         filteredTurns.insert(0, entry);
-        if (filteredTurns.length >= 5) break;  // 从3扩大到5，短期连贯性更强（配合maxRecentTurns=6）
+        if (filteredTurns.length >= 10) break;  // 5→10，多保留前几小时内的连续对话
       }
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
           : _currentNarrative;
-      final recent = _truncateNarrativeContext(recentBuffer, 2400);  // 1600→2400，多保留一些感官细节和对话
+      final recent = _truncateNarrativeContext(recentBuffer, 4800);  // 2400→4800，完整保留感官、细节、长对话
       // 关键改进：明确标注近期剧情是"当前场景上下文"，选项必须基于此
       contextBuffer.write('【当前场景上下文（以此生成选项）】\n$recent');
 
@@ -1240,10 +1238,9 @@ NPC名:±X(原因)
         _pendingAnchorDirective = null;
       }
 
-      // 定期摘要：每20回合，或待摘要缓冲过长（>3200字）时提前压缩
-      // 2026-08-23：从 10 回合调整为 20 回合，大幅减少摘要触发频率
-      // 字符阈值从 3000 提到 3200，保证新 4000 上限前就开始压缩
-      if ((_turnCount % 20 == 0 || _pendingSummary.length > 3200) && _pendingSummary.isNotEmpty) {
+      // 定期摘要：模型能力升级后回调到每15回合，缓冲阈值从3200→6000字
+      // 配合 _maxPendingSummaryChars=8000，每次摘要覆盖更长时间线，长线逻辑性更强
+      if ((_turnCount % 15 == 0 || _pendingSummary.length > 6000) && _pendingSummary.isNotEmpty) {
         unawaited(Future.microtask(() async {
           try {
             await _summarizeNarrative();
@@ -3966,7 +3963,10 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       prompt: prompt,
       systemPrompt: effectiveSystemPrompt,
       temperature: 0.85,
-      maxTokens: scene == AiScene.narrative ? 3000 : 3500,  // 从1800/2500提高到3000/3500
+      // 2026-08-23：模型能力升级，整体翻倍放开 maxTokens
+      //   narrative（主剧情）：3000→6000，写长篇对话、战斗、场景细节
+      //   其它场景（选项/摘要/NPC聊天等）：3500→7000
+      maxTokens: scene == AiScene.narrative ? 6000 : 7000,
     );
     // 使用 try-catch 保护 token 统计，避免因 API 返回格式异常导致崩溃
     try {
@@ -4390,33 +4390,34 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     final galleonsText = '加隆：${p.galleons}·古灵阁存${p.bankGalleons}';
 
     // 学会的魔法（SpellLevel是带level int的对象，不是enum；0=入门 1=基础 2=熟练 3=精通 4=大师）
-    // level >= 2 视为可在战斗/高风险场景中使用的魔法
+    // level >= 2 视为可在战斗/高风险场景中使用的魔法  2026-08-23：6→12
     final knownSpells = p.learnedSpells.entries
         .where((e) => e.value.level >= 2)
-        .take(6)
+        .take(12)
         .map((e) => e.key)
         .toList();
     final spellsText = knownSpells.isEmpty
         ? '已知魔法：只会基本入门（荧光闪烁、开锁等）'
         : '已知魔法：${knownSpells.join('、')}';
 
-    // 背包中值得一提的物品（前 6 个）
-    final invItems = p.inventory.take(6).map((i) => i.name).toList();
+    // 背包中值得一提的物品（前 12 个，6→12）
+    final invItems = p.inventory.take(12).map((i) => i.name).toList();
     final inventoryText = invItems.isEmpty
         ? '背包：空'
         : '背包：${invItems.join('、')}';
 
     // 从当前剧情 + 结构化记忆中提取"承诺/未完结事项"，防止选项说话不算话
+    // 2026-08-23：importance≥5（≥6→≥5），条数 3→6，重要承诺/伏笔/未完成任务更多注入
     final openLoopsBrief = _memory.openLoops
-        .where((l) => l.status == 'open' && l.importance >= 6)
-        .take(3)
+        .where((l) => l.status == 'open' && l.importance >= 5)
+        .take(6)
         .map((l) => '· ${l.description}')
         .join('\n');
 
-    // 近期 NPC (NPC 没有 isNearby 字段；用 introduced(认识) 或 好感绝对值 ≥15 作上下文)
+    // 近期 NPC （6→12 个；阈值从 15 好感降至 10，熟人圈更完整）
     final nearbyNpcs = _npcRegistry.values
-        .where((n) => n.introduced || n.affection.abs() >= 15)
-        .take(6)
+        .where((n) => n.introduced || n.affection.abs() >= 10)
+        .take(12)
         .map((n) => '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection})')
         .join('、');
 
@@ -4452,7 +4453,7 @@ ${nearbyNpcs.isNotEmpty ? '附近/重要NPC：' + nearbyNpcs : ''}
 
 ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
 【T0 核心事实（选项不能违背）】
-${_memory.keyFacts.where((f) => f.importance >= 8).map((f) => '· ${f.fact}').take(4).join('\n')}
+${_memory.keyFacts.where((f) => f.importance >= 6).map((f) => '· ${f.fact}').take(10).join('\n')}
 
 请直接输出 4 行：
 A.xxxxxx
@@ -4633,11 +4634,10 @@ D.xxxxxx''';
     }
   }
 
-  // ==================== 剧情摘要机制：每10回合压缩历史 ====================
+  // ==================== 剧情摘要机制：模型升级后放宽规模 ====================
 
-  /// 待摘要缓冲上限：摘要服务反复失败时防止缓冲无限膨胀撑爆后续请求
-  /// 2026-08-23：从 6000 降到 4000，避免单次摘要输入过长
-  static const int _maxPendingSummaryChars = 4000;
+  /// 待摘要缓冲上限：模型能力升级后 4000→8000 字，一次摘要可以压缩更多回合，减少摘要 AI 调用频次
+  static const int _maxPendingSummaryChars = 8000;
 
   void _accumulateForSummary(String newNarrative) {
     _pendingSummary += '$newNarrative\n';
@@ -4654,15 +4654,14 @@ D.xxxxxx''';
       return;
     }
 
-    // 摘要长度随游戏进度逐步放宽，避免长线信息被过度压缩丢失
-    // 2026-08-23：严格压缩上限，避免 T4 摘要保存长度失控到 1000+ 字
+    // 摘要长度随游戏进度逐步放宽
+    // 2026-08-23：模型能力升级，整体翻倍放开
     final limit = _turnCount <= 40
-        ? 400   // 早期剧情信息密度低，400 字足够
-        : (_turnCount <= 100 ? 700 : 1000);
+        ? 800
+        : (_turnCount <= 100 ? 1500 : 2400);
     final relationSnapshot = _buildRelationshipSnapshot();
 
     // 关键改进：明确要求 AI 只保留"人物关系"和"重要转折"，不保留具体场景描述
-    // 2026-08-23：新增规则 7/8：绝对禁止保留一次性事件（"开局巨怪袭击"等）和具体地点/检票/教室等
     final prompt = '''请将以下剧情内容压缩成摘要。重要规则：
 1. 只保留【人物关系变化】和【重要剧情转折】
 2. 淘汰具体场景描述（如"在车站"、"在教室"、"列车走廊"等地点信息），这些会严重干扰后续剧情生成

@@ -16,6 +16,23 @@ fix(summary): 修复每10回合token暴涨+选项出现未经历角色/事件
 - 摘要触发频率从每10回合调整为每20回合；字符阈值3000→3200；缓冲上限6000→4000
 - 摘要prompt新增第7/8条规则：绝对禁保留一次性事件(巨怪/小决斗)的具体场景和过程；
 
+perf(token): 模型升级整体放开翻倍，提升完整性逻辑性流畅度
+
+- T0：importance≥4，最多 60 条（≥5→≥4，30→60）
+- T1 未完结事项：最多 40 条（20→40）
+- T2 NPC 关键关系：24 个（12→24），keyMoments/secretsShared/promisesExchanged 每条 3→6
+- T3 世界事件：40 条（20→40）
+- T4 注入长度 200→600，跳过阈值 T0+T1<12→<30
+- WorldState.recentEvents/recentNarrativeEvents 6→12
+- _maxRecentTurns 6→12；filteredTurns 取 10（5→10）
+- 近期上下文 recent 字符上限 2400→4800
+- 摘要：maxPendingSummaryChars 4000→8000；触发 20→15 回合，阈值 3200→6000
+- 摘要保存字数：400/700/1000 → 800/1500/2400
+- 选项 prompt：knownSpells 6→12；invItems 6→12；openLoops 3→6 importance≥5；
+  nearbyNpcs 6→12 好感阈值 15→10；T0 事实 4→10 importance≥6
+- 系统提示词 kUseFusedCompact 精简版→切到完整版世界规则
+- maxTokens：narrative 3000→6000；其它（选项/摘要/NPC）3500→7000
+
 ### v1.4.8 — 2026-08-23
 
 **📋 变更说明**
