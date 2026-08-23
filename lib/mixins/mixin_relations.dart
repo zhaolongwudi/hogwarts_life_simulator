@@ -1004,7 +1004,7 @@ mixin GameRelationsMixin on GameProviderBase {
       ..writeln('【天气】${w.weather ?? '晴朗'}')
       ..writeln()
       ..writeln('【近期世界事件】')
-      ..writeln(w.recentEvents.isEmpty ? '暂无记录' : w.recentEvents.map((e) => '· $e').join('\n'))
+      ..writeln(w.recentEvents.isEmpty ? '暂无记录' : w.recentEvents.map((e) => '· ${e.text}').join('\n'))
       ..writeln()
       ..writeln('【世界线变动率】${(player?.worldLineDeviation ?? 0) * 100}%')
       ..writeln()
@@ -1161,7 +1161,7 @@ mixin GameRelationsMixin on GameProviderBase {
       unlockAchievement('first_confession');
       unlockAchievement('in_love');
       notifications.add('💕 你与${npc.name}开始了恋爱！');
-      worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！');
+      worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！', turn: turnCount);
       _addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
       bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
       currentNarrative =
@@ -1208,7 +1208,7 @@ mixin GameRelationsMixin on GameProviderBase {
       chapter: cg.chapter,
     );
     notifications.add('📸 解锁CG：${cg.name}');
-    worldState.addNarrativeEvent('📸 解锁CG：${cg.name}');
+    worldState.addNarrativeEvent('📸 解锁CG：${cg.name}', turn: turnCount);
     bumpImpactScore(0.02, debugReason: '解锁CG：${cg.id}');
   }
 
@@ -1222,7 +1222,7 @@ mixin GameRelationsMixin on GameProviderBase {
     );
     p.achievements.add(id);
     notifications.add('🏆 解锁成就：${ach.name}');
-    worldState.addNarrativeEvent('🏆 解锁成就：${ach.name}');
+    worldState.addNarrativeEvent('🏆 解锁成就：${ach.name}', turn: turnCount);
   }
 
   void checkAffectionAchievements(NPC npc) {
@@ -1354,7 +1354,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   void _checkMonthlyEvolutionAchievement() {
-    if (worldState.recentEvents.where((e) => e.contains('月度世界演化')).length >= 3) {
+    if (worldState.recentEvents.where((e) => e.text.contains('月度世界演化')).length >= 3) {
       unlockAchievement('monthly_evolution');
     }
   }

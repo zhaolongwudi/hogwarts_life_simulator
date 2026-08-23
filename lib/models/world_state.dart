@@ -1,4 +1,31 @@
+import 'dart:convert';
 import 'game_systems.dart';
+
+class NarrativeEvent {
+  final String text;
+  final int? turn;
+  final DateTime? at;
+
+  const NarrativeEvent(this.text, {this.turn, this.at});
+
+  Map<String, dynamic> toJson() => {
+    't': text,
+    if (turn != null) 'r': turn,
+    if (at != null) 'a': at!.toIso8601String(),
+  };
+
+  factory NarrativeEvent.fromJson(dynamic src) {
+    if (src is String) return NarrativeEvent(src);
+    if (src is Map<String, dynamic>) {
+      return NarrativeEvent(
+        src['t'] as String? ?? src['text'] as String? ?? '',
+        turn: src['r'] as int? ?? src['turn'] as int?,
+        at: src['a'] != null ? DateTime.tryParse(src['a'] as String) : null,
+      );
+    }
+    return const NarrativeEvent('');
+  }
+}
 
 class WorldState {
   String academicYear;
@@ -8,8 +35,8 @@ class WorldState {
   String dayOfWeek; // 兼容旧存档
   String era;
   Map<String, int> housePoints;
-  List<String> recentEvents;
-  List<String> recentNarrativeEvents;
+  List<NarrativeEvent> recentEvents;
+  List<NarrativeEvent> recentNarrativeEvents;
   double playerImpactScore; // 玩家对世界的真实影响力(0.0~1.0): 关键行动/原著NPC互动/CG解锁/成就达成累计加分, 达到0.5+时原著NPC对玩家主动可见
 
   // ====== 设定文档扩展字段 ======
@@ -34,8 +61,8 @@ class WorldState {
     this.dayOfWeek = 'Tuesday',
     this.era = 'harry_same',
     Map<String, int>? housePoints,
-    List<String>? recentEvents,
-    List<String>? recentNarrativeEvents,
+    List<NarrativeEvent>? recentEvents,
+    List<NarrativeEvent>? recentNarrativeEvents,
     this.playerImpactScore = 0.0,
     GameTime? time,
     this.timeFlowMode = 'normal',
@@ -54,8 +81,8 @@ class WorldState {
           'Ravenclaw': 350,
           'Hufflepuff': 350,
         }),
-        recentEvents = List<String>.from(recentEvents ?? const []),
-        recentNarrativeEvents = List<String>.from(recentNarrativeEvents ?? const []),
+        recentEvents = List<NarrativeEvent>.from(recentEvents ?? <NarrativeEvent>[]),
+        recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
         specialMarkers = List<String>.from(specialMarkers ?? const []),
         timelineBranches = List<String>.from(timelineBranches ?? const []),
         firedAnchorIds = List<String>.from(firedAnchorIds ?? const []),
@@ -101,10 +128,9 @@ class WorldState {
     return false;
   }
 
-  void addNarrativeEvent(String event) {
-    // 源头拦截：系统通知只走 notifications 面板，不走 AI 剧情锚点列表
+  void addNarrativeEvent(String event, {int? turn}) {
     if (isSystemNotification(event)) return;
-    recentNarrativeEvents.insert(0, event);
+    recentNarrativeEvents.insert(0, NarrativeEvent(event, turn: turn));
     if (recentNarrativeEvents.length > 20) {
       recentNarrativeEvents.removeLast();
     }
@@ -127,8 +153,8 @@ class WorldState {
         'day_of_week': dayOfWeek,
         'era': era,
         'house_points': housePoints,
-        'recent_events': recentEvents,
-        'recent_narrative_events': recentNarrativeEvents,
+        'recent_events': recentEvents.map((e) => e.toJson()).toList(),
+        'recent_narrative_events': recentNarrativeEvents.map((e) => e.toJson()).toList(),
         'player_impact_score': playerImpactScore,
         'time': time.toJson(),
         'time_flow_mode': timeFlowMode,
@@ -157,8 +183,8 @@ class WorldState {
       dayOfWeek: json['day_of_week'] ?? 'Tuesday',
       era: json['era'] ?? 'harry_same',
       housePoints: Map<String, int>.from(json['house_points'] ?? {}),
-      recentEvents: List<String>.from(json['recent_events'] ?? []),
-      recentNarrativeEvents: List<String>.from(json['recent_narrative_events'] ?? []),
+      recentEvents: (json['recent_events'] as List<dynamic>? ?? []).map((s) => NarrativeEvent.fromJson(s)).toList(),
+      recentNarrativeEvents: (json['recent_narrative_events'] as List<dynamic>? ?? []).map((s) => NarrativeEvent.fromJson(s)).toList(),
       playerImpactScore: (json['player_impact_score'] ?? 0.0).toDouble(),
       time: time ??
           GameTime.fromJson(Map<String, dynamic>.from(json['time'] ?? {})),

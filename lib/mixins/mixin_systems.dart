@@ -152,7 +152,7 @@ mixin GameSystemsMixin on GameProviderBase {
     }
     if (graduatedNames.isNotEmpty) {
       notifications.add('🎓 ${graduatedNames.take(5).join('、')}${graduatedNames.length > 5 ? '等' : ''} 已从霍格沃茨毕业');
-      worldState.addNarrativeEvent('🎓 一批高年级学生毕业了：${graduatedNames.take(5).join('、')}');
+      worldState.addNarrativeEvent('🎓 一批高年级学生毕业了：${graduatedNames.take(5).join('、')}', turn: turnCount);
     }
   }
 
@@ -162,7 +162,7 @@ mixin GameSystemsMixin on GameProviderBase {
     final p = player;
     if (p == null) return;
     notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
-    worldState.addNarrativeEvent('🏫 ${worldState.time.year}年9月，你升入${newGrade}年级');
+    worldState.addNarrativeEvent('🏫 ${worldState.time.year}年9月，你升入${newGrade}年级', turn: turnCount);
     worldState.addMarker('⏳新学年');
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
     debugPrint('🎓 学年推进：玩家升入${newGrade}年级');
@@ -174,7 +174,7 @@ mixin GameSystemsMixin on GameProviderBase {
     final p = player;
     if (p == null) return;
     notifications.add('🎓 你从霍格沃茨毕业了！七年的魔法生涯画上句点。');
-    worldState.addNarrativeEvent('🎓 ${worldState.time.year}年，你从霍格沃茨毕业');
+    worldState.addNarrativeEvent('🎓 ${worldState.time.year}年，你从霍格沃茨毕业', turn: turnCount);
     worldState.addMarker('🎓毕业');
     debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
@@ -262,7 +262,7 @@ mixin GameSystemsMixin on GameProviderBase {
     currentNarrative = currentNarrative.isEmpty
         ? buf.toString().trim()
         : '$currentNarrative\n\n${buf.toString().trim()}';
-    worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}');
+    worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}', turn: turnCount);
   }
 
   /// 目标进度查询（/目标 进度）
@@ -324,7 +324,7 @@ mixin GameSystemsMixin on GameProviderBase {
     worldState.firedAnchorIds.add(anchor.id);
     pendingAnchorDirective = anchor.directive;
     notifications.add('📜 剧情节点：${anchor.title}');
-    worldState.addNarrativeEvent('📜 ${anchor.title}');
+    worldState.addNarrativeEvent('📜 ${anchor.title}', turn: turnCount);
     debugPrint('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
   }
 
@@ -389,7 +389,7 @@ mixin GameSystemsMixin on GameProviderBase {
     pool.shuffle(random);
     final event = '【${year}年${month}月·月度世界演化】${pool.first}';
 
-    worldState.recentEvents.insert(0, event);
+    worldState.recentEvents.insert(0, NarrativeEvent(event, turn: turnCount));
     if (worldState.recentEvents.length > 50) {
       worldState.recentEvents.removeLast();
     }
@@ -403,7 +403,7 @@ mixin GameSystemsMixin on GameProviderBase {
     );
 
     notifications.add('🌍 $event');
-    worldState.addNarrativeEvent('🌍 $event');
+    worldState.addNarrativeEvent('🌍 $event', turn: turnCount);
   }
 
   String _monthSeasonKey(int month) {
@@ -622,7 +622,7 @@ mixin GameSystemsMixin on GameProviderBase {
     if (npc == null) return;
 
     notifications.add('💕 与${npc.name}之间发生了一段浪漫插曲。');
-    worldState.addNarrativeEvent('💕 与${npc.name}之间发生了一段浪漫插曲。');
+    worldState.addNarrativeEvent('💕 与${npc.name}之间发生了一段浪漫插曲。', turn: turnCount);
   }
 
   // ==================== 快速推进 ====================

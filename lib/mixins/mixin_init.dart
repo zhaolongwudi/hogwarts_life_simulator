@@ -183,6 +183,7 @@ mixin GameInitMixin on GameProviderBase {
     lastRoundTokens = 0;
     apiCalls = 0;
     openingScene = 'station';
+    _lastScannedNarrativeHash = null;
     // 清除响应缓存（重要：防止旧剧情数据泄漏到新游戏）
     ResponseCache.instance.clear();
     // 清除速率限制器状态
@@ -582,13 +583,114 @@ mixin GameInitMixin on GameProviderBase {
       npc.recentEvents.insert(0, event);
       if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
     }
-    worldState.addNarrativeEvent('👤 你结识了 ${npc.name}');
+    worldState.addNarrativeEvent('👤 你结识了 ${npc.name}', turn: turnCount);
+  }
+
+  static const List<String> _signoffKeywords = [
+    '敬启', '谨启', '谨致', '此致', '敬礼', '敬意', '顺颂', '顺颂时祺',
+    '顺颂安祺', '祝好', '祝安好', '谨上', '敬上', '顿首', '拜上',
+    '签名', '落款', '联系人', '联系电话', '地址：', '邮编：',
+    '校长：', '副校长：', '院长：', '教授：', '老师：',
+    '魔法部部长：', '傲罗办公室主任：', '司长：', '厅长：',
+    'Headmaster ', 'Deputy Head', 'Professor ', 'Mr.', 'Mrs.', 'Miss', 'Ms.',
+    'Sincerely', 'Yours truly', 'Best regards', 'Kind regards', 'Warm regards',
+    'From,', 'With love,', 'Cheers,', 'Regards,',
+  ];
+
+  List<(int, int)> _signatureRanges(String text) {
+    final ranges = <(int, int)>[];
+    if (text.isEmpty) return ranges;
+
+    final lines = text.split('\n');
+    if (lines.isEmpty) return ranges;
+
+    int currentOffset = 0;
+    final lineOffsets = <int>[];
+    for (final line in lines) {
+      lineOffsets.add(currentOffset);
+      currentOffset += line.length + 1;
+    }
+
+    int signatureStartLine = -1;
+    int consecutiveHits = 0;
+    const maxSignatureLines = 15;
+
+    for (int i = lines.length - 1; i >= 0; i--) {
+      final line = lines[i].trim();
+      if (line.isEmpty) {
+        if (signatureStartLine != -1) {
+          consecutiveHits++;
+          if (consecutiveHits > 2) break;
+        }
+        continue;
+      }
+
+      bool isSignatureLine = false;
+
+      for (final keyword in _signoffKeywords) {
+        if (line.contains(keyword)) {
+          isSignatureLine = true;
+          break;
+        }
+      }
+
+      if (!isSignatureLine) {
+        final titlePattern = RegExp(r'^[\u4e00-\u9fa5A-Za-z]{2,15}[：:]\s*\S');
+        if (titlePattern.hasMatch(line)) {
+          isSignatureLine = true;
+        }
+      }
+
+      if (isSignatureLine) {
+        signatureStartLine = i;
+        consecutiveHits = 0;
+      } else if (signatureStartLine != -1) {
+        consecutiveHits++;
+        if (consecutiveHits > 2) break;
+      }
+
+      if (signatureStartLine != -1 && (signatureStartLine - i) >= maxSignatureLines) {
+        break;
+      }
+    }
+
+    if (signatureStartLine != -1) {
+      final startOffset = lineOffsets[signatureStartLine];
+      final endOffset = text.length;
+      ranges.add((startOffset, endOffset));
+    }
+
+    return ranges;
+  }
+
+  bool _inSignatureRange(int idx, List<(int, int)> ranges) {
+    for (final range in ranges) {
+      if (idx >= range.$1 && idx <= range.$2) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _sliceOverlapsSignature(int start, int end, List<(int, int)> ranges) {
+    for (final range in ranges) {
+      final overlapStart = start > range.$1 ? start : range.$1;
+      final overlapEnd = end < range.$2 ? end : range.$2;
+      final overlapLen = overlapEnd > overlapStart ? overlapEnd - overlapStart : 0;
+      final sliceLen = end - start;
+      if (sliceLen > 0 && overlapLen * 2 >= sliceLen) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// 扫描剧情文本，匹配到已知 NPC 名字时自动标记 introduced
 
   void markIntroducedFromNarrative(String text) {
     if (text.isEmpty || npcRegistry.isEmpty) return;
+
+    final signatureRanges = _signatureRanges(text);
 
     const interactionVerbs = [
       '见面', '握手', '介绍', '对视', '打招呼', '对话', '交谈', '自我介绍',
@@ -606,7 +708,7 @@ mixin GameInitMixin on GameProviderBase {
       if (npc.introduced) continue;
       if (markedThisRound >= maxPerRound) break;
 
-      int totalMentionCount = 0;
+      final hitMidpoints = <int>{};
       bool contextHasInteraction = false;
 
       for (final alias in npc.allNames) {
@@ -617,20 +719,42 @@ mixin GameInitMixin on GameProviderBase {
         while (true) {
           final idx = text.indexOf(alias, searchFrom);
           if (idx == -1) break;
-          totalMentionCount++;
+
+          if (_inSignatureRange(idx, signatureRanges)) {
+            searchFrom = idx + alias.length;
+            continue;
+          }
+
+          final midpoint = idx + (alias.length ~/ 2);
+          bool isDuplicate = false;
+          for (final existing in hitMidpoints) {
+            if ((existing - midpoint).abs() < alias.length) {
+              isDuplicate = true;
+              break;
+            }
+          }
+          if (!isDuplicate) {
+            hitMidpoints.add(midpoint);
+          }
+
           final start = idx - 80 < 0 ? 0 : idx - 80;
           final end = idx + alias.length + 80 > text.length
               ? text.length
               : idx + alias.length + 80;
-          final slice = text.substring(start, end);
-          if (interactionVerbs.any((v) => slice.contains(v))) {
-            contextHasInteraction = true;
+
+          if (!_sliceOverlapsSignature(start, end, signatureRanges)) {
+            final slice = text.substring(start, end);
+            if (interactionVerbs.any((v) => slice.contains(v))) {
+              contextHasInteraction = true;
+            }
           }
+
           searchFrom = idx + alias.length;
         }
         if (contextHasInteraction) break;
       }
 
+      final totalMentionCount = hitMidpoints.length;
       final shouldMark = contextHasInteraction || totalMentionCount >= 3;
       if (shouldMark && totalMentionCount > 0) {
         markNpcIntroduced(npc);

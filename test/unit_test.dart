@@ -101,7 +101,7 @@ void main() {
       ws.addNarrativeEvent('测试事件1');
       ws.addNarrativeEvent('测试事件2');
       expect(ws.recentNarrativeEvents.length, 2);
-      expect(ws.recentNarrativeEvents.first, '测试事件2');
+      expect(ws.recentNarrativeEvents.first.text, '测试事件2');
     });
 
     test('recentNarrativeEvents上限20条', () {
@@ -110,8 +110,8 @@ void main() {
         ws.addNarrativeEvent('事件$i');
       }
       expect(ws.recentNarrativeEvents.length, 20);
-      expect(ws.recentNarrativeEvents.first, '事件24');
-      expect(ws.recentNarrativeEvents.last, '事件5');
+      expect(ws.recentNarrativeEvents.first.text, '事件24');
+      expect(ws.recentNarrativeEvents.last.text, '事件5');
     });
 
     test('playerImpactScore初始为0', () {
@@ -140,7 +140,7 @@ void main() {
       final json = ws.toJson();
       final restored = WorldState.fromJson(json);
       expect(restored.recentNarrativeEvents.length, 1);
-      expect(restored.recentNarrativeEvents.first, '测试事件');
+      expect(restored.recentNarrativeEvents.first.text, '测试事件');
     });
 
     test('旧存档无recentNarrativeEvents字段时默认空列表', () {

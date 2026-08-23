@@ -29,6 +29,15 @@ class GameProvider extends GameProviderBase
         GameRelationsMixin,
         GameSystemsMixin {
   @override
+  bool markScanIfNew(String narrative) {
+    final h = narrative.hashCode;
+    if (_lastScannedNarrativeHash != null && h == _lastScannedNarrativeHash) {
+      return false;
+    }
+    _lastScannedNarrativeHash = h;
+    return true;
+  }
+  @override
   final AppProvider appProvider;
   @override
   AiRouter? router;
@@ -222,7 +231,7 @@ class GameProvider extends GameProviderBase
         actualChange = 0;
         if (npc.affectionGainedThisWeek == Balance.weekOneAffectionCap) {
           notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
-          worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+          worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升', turn: turnCount);
         }
       } else if (change > cap) {
         actualChange = cap;
@@ -237,13 +246,13 @@ class GameProvider extends GameProviderBase
         actualChange = cap - npc.affection;
         if (actualChange < 0) actualChange = 0;
         notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
-        worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
+        worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限', turn: turnCount);
       }
     }
     if (change < -15) {
       npc.addGrudge('betrayal', reason ?? '背叛/欺骗', currentDay);
       notifications.add('💔 ${npc.name}因你的行为而记恨在心');
-      worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心');
+      worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心', turn: turnCount);
     }
     npc.affection = (npc.affection + actualChange).clamp(-100, 100);
     if (npc.affection > npc.maxAffectionReached) {

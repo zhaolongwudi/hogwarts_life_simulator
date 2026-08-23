@@ -139,7 +139,7 @@ mixin GameResponseMixin on GameProviderBase {
     _parseReputationChanges(text);
 
     // 标记NPC登场
-    markIntroducedFromNarrative(currentNarrative);
+    if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
 
     // 分院结果自动提取（使用带语境判断的公共函数）
     _tryExtractHouseFromNarrative(text);
@@ -304,7 +304,7 @@ mixin GameResponseMixin on GameProviderBase {
     _parseReputationChanges(text);
 
     // 根据剧情文本中出现的人名，标记 NPC 为已登场（让世界页和通讯列表更准确）
-    markIntroducedFromNarrative(currentNarrative);
+    if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
 
     if (choices.isEmpty) {
       // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）

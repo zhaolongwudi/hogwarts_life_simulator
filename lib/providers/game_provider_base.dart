@@ -68,6 +68,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   int lastSchoolYearStart = 0;
   String? pendingAnchorDirective;
   String openingScene = 'station';
+  int? _lastScannedNarrativeHash;
 
   // ============================================================
   // 跨 Mixin 调用 与 GameProvider 本体方法的 abstract 声明。
@@ -133,6 +134,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   Future<void> loadFromSave(String slotId);
   void markIntroducedFromNarrative(String text);
   void markNpcIntroduced(NPC npc);
+  bool markScanIfNew(String narrative);
   void onApiKeyChange();
   void parseNarrativeOnly(String text);
   void parseResponse(String text);

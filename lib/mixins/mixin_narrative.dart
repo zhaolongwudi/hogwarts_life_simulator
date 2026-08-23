@@ -54,6 +54,7 @@ mixin GameNarrativeMixin on GameProviderBase {
     commandResult = null; // 提交真实行动时关闭指令面板
     isLoading = true;
     turnCount++;
+    _lastScannedNarrativeHash = null;
     lastPlayerAction = safeAction;
     loadingStage = '正在构建请求...';
     notifyListeners();
@@ -197,9 +198,10 @@ mixin GameNarrativeMixin on GameProviderBase {
         return false;
       }
       if (ws.recentEvents.isNotEmpty) {
-        for (final e in ws.recentEvents.reversed) {
+        for (final ev in ws.recentEvents.reversed) {
+          final e = ev.text;
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
-          if (looksFake(e)) continue; // 过滤掉"结识了/成就"类伪造事件
+          if (looksFake(e)) continue;
           final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add(e);
@@ -207,7 +209,8 @@ mixin GameNarrativeMixin on GameProviderBase {
         }
       }
       if (ws.recentNarrativeEvents.isNotEmpty) {
-        for (final e in ws.recentNarrativeEvents.reversed) {
+        for (final ev in ws.recentNarrativeEvents.reversed) {
+          final e = ev.text;
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
           if (looksFake(e)) continue;
           final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();

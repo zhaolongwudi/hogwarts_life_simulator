@@ -299,7 +299,7 @@ mixin GameCommandsMixin on GameProviderBase {
           p.boneMode = true;
           unlockAchievement('bone_mode');
           notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
-          worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除');
+          worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除', turn: turnCount);
           bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
           currentNarrative =
               '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';

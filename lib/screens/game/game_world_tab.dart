@@ -316,7 +316,7 @@ class WorldTab extends StatelessWidget {
                       children: [
                         Text(relationLabel, style: TextStyle(fontSize: 11.5, color: _getAffectionColor(npc.affection), fontWeight: FontWeight.w600)),
                         const SizedBox(width: 8),
-                        Text('好感 ${npc.affection > 0 ? '+' : ''}${npc.affection}', style: TextStyle(fontSize: 10.5, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                        Text(npc.introduced == true ? '好感 ${npc.affection >= 0 ? '+' : ''}${npc.affection}' : '好感 —', style: TextStyle(fontSize: 10.5, color: Theme.of(context).textTheme.bodyMedium!.color)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -360,7 +360,7 @@ class WorldTab extends StatelessWidget {
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
-                      '曾在「${npc.recentEvents.first}」中出现',
+                      '曾在「${npc.recentEvents.first == '初次见面' ? '首次出现' : npc.recentEvents.first}」中出现',
                       style: TextStyle(fontSize: 10.5, color: Colors.amber.shade800),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

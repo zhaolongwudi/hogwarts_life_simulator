@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
+import '../../models/world_state.dart';
 import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
 
@@ -145,10 +146,18 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final gp = context.read<GameProvider>();
     final events = gp.worldState.recentEvents.isNotEmpty
         ? gp.worldState.recentEvents.take(8).toList()
-        : <String>[];
+        : <NarrativeEvent>[];
     final narrativeEvents = gp.worldState.recentNarrativeEvents.isNotEmpty
         ? gp.worldState.recentNarrativeEvents.take(5).toList()
-        : <String>[];
+        : <NarrativeEvent>[];
+
+    String _buildTimeLabel(NarrativeEvent event, bool isFirst, int turnCount) {
+      if (isFirst) return '最新';
+      if (event.turn != null && turnCount > event.turn!) {
+        return '${turnCount - event.turn} 回合前';
+      }
+      return '—';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +200,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ...narrativeEvents.asMap().entries.map((entry) {
               final idx = entry.key;
               final event = entry.value;
-              return _buildEventCard(event, idx == 0 ? '最新' : '${idx + 1} 回合前', isRecent: idx == 0);
+              return _buildEventCard(event.text, _buildTimeLabel(event, idx == 0, gp.turnCount), isRecent: idx == 0);
             }),
             const SizedBox(height: 8),
           ],
@@ -203,7 +212,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ...events.asMap().entries.map((entry) {
               final idx = entry.key;
               final event = entry.value;
-              return _buildEventCard(event, idx == 0 ? '最新' : '$idx 月前', isRecent: idx == 0);
+              return _buildEventCard(event.text, _buildTimeLabel(event, idx == 0, gp.turnCount), isRecent: idx == 0);
             }),
           ],
         ],
@@ -374,145 +383,166 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final location = header['location'];
     final bodyNarrative = header['body'] ?? narrative;
     final hasHeader = timestamp != null || location != null;
-    final colorScheme = Theme.of(context).colorScheme;
-    final dividerColor = Theme.of(context).dividerTheme.color!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (hasHeader) ...[
-          Container(
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border(
-                left: BorderSide(color: colorScheme.primary, width: 4),
-                top: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
-                right: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
-                bottom: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
+    return SizedBox(
+      height: 500,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(top: hasHeader ? 86 : 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                    ),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        _buildLegendItem(const Color(0xFFE3B341), '人名'),
+                        _buildLegendItem(const Color(0xFFFFA657), '说话人'),
+                        _buildLegendItem(const Color(0xFF58A6FF), '对话'),
+                        _buildLegendItem(const Color(0xFF56D364), '地点'),
+                        _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                    ),
+                    child: RichText(
+                      text: TextSpan(
+                        children: StoryTextRenderer.parseWithAffectionStyle(bodyNarrative),
+                      ),
+                    ),
+                  ),
+                  if (affectionSections.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2D2D2D),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF444444)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '📊 本回合变化',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF8B949E),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ...affectionSections.map((section) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              section,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFFC9D1D9),
+                              ),
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (timestamp != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.access_time_outlined, color: colorScheme.primary, size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          timestamp,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (timestamp != null && location != null)
-                  Divider(
-                    height: 1,
-                    color: dividerColor.withAlpha(40),
-                    indent: 14,
-                    endIndent: 14,
-                  ),
-                if (location != null)
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(14, timestamp != null ? 0 : 10, 14, 10),
-                    child: Row(
-                      children: [
-                        Icon(Icons.room_outlined, color: const Color(0xFF56D364), size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          location,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF56D364),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
           ),
-          const SizedBox(height: 10),
+          if (hasHeader)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildHeaderCard(timestamp, location),
+            ),
         ],
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Theme.of(context).dividerTheme.color!),
-          ),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              _buildLegendItem(const Color(0xFFE3B341), '人名'),
-              _buildLegendItem(const Color(0xFFFFA657), '说话人'),
-              _buildLegendItem(const Color(0xFF58A6FF), '对话'),
-              _buildLegendItem(const Color(0xFF56D364), '地点'),
-              _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
-            ],
-          ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard(String? timestamp, String? location) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final dividerColor = Theme.of(context).dividerTheme.color!;
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(color: colorScheme.primary, width: 4),
+          top: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
+          right: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
+          bottom: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
         ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerTheme.color!),
-          ),
-          child: RichText(
-            text: TextSpan(
-              children: StoryTextRenderer.parseWithAffectionStyle(bodyNarrative),
-            ),
-          ),
-        ),
-        if (affectionSections.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D2D2D),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF444444)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '📊 本回合变化',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF8B949E),
-                    fontWeight: FontWeight.w600,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (timestamp != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time_outlined, color: colorScheme.primary, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    timestamp,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.primary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                ...affectionSections.map((section) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    section,
+                ],
+              ),
+            ),
+          if (timestamp != null && location != null)
+            Divider(
+              height: 1,
+              color: dividerColor.withAlpha(40),
+              indent: 14,
+              endIndent: 14,
+            ),
+          if (location != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(14, timestamp != null ? 0 : 10, 14, 10),
+              child: Row(
+                children: [
+                  Icon(Icons.room_outlined, color: const Color(0xFF56D364), size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    location,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFFC9D1D9),
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF56D364),
                     ),
                   ),
-                )),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
-      ],
+      ),
     );
   }
 
