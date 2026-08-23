@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../providers/app_provider.dart';
 import '../utils/ai_debug_logger.dart';
@@ -18,7 +19,7 @@ class AiRouterConfig {
     this.summaryProvider = AiProvider.sensenova,
     this.npcChatProvider = AiProvider.agnes,
     this.choiceProvider = AiProvider.sensenova,
-    this.fallbackOrder = const [AiProvider.deepseek, AiProvider.sensenova, AiProvider.agnes],
+    this.fallbackOrder = const [AiProvider.sensenova, AiProvider.agnes],
   });
 
   AiProvider providerFor(AiScene scene) {
@@ -32,17 +33,6 @@ class AiRouterConfig {
       case AiScene.choice:
         return choiceProvider;
     }
-  }
-
-  AiProvider fallbackFor(AiProvider current) {
-    final idx = fallbackOrder.indexOf(current);
-    if (idx >= 0 && idx < fallbackOrder.length - 1) {
-      return fallbackOrder[idx + 1];
-    }
-    if (current != narrativeProvider && narrativeProvider != AiProvider.deepseek) {
-      return narrativeProvider;
-    }
-    return fallbackOrder.first;
   }
 }
 
@@ -64,7 +54,9 @@ class AiRouter {
     _services.remove(provider);
   }
 
-  bool get hasNarrativeService => _configs.containsKey(_config.narrativeProvider);
+  /// 是否存在任何可用 AI 服务。任一提供商已注册（配置了 key）即可通过 fallback 生成叙事，
+  /// 不再只检查主 narrativeProvider，避免「有备用 key 却被挡死」。
+  bool get hasNarrativeService => _configs.isNotEmpty;
 
   List<AiProvider> get registeredProviders => _configs.keys.toList();
 
@@ -92,26 +84,24 @@ class AiRouter {
       systemPrompt: systemPrompt,
     );
 
-    Future<ChatResult> future;
-    try {
-      future = _callWithFallback(
-        primary: primary,
-        prompt: prompt,
-        systemPrompt: systemPrompt,
-        temperature: temperature,
-        maxTokens: maxTokens,
-        useCache: scene != AiScene.narrative && scene != AiScene.choice,
-        scene: scene,
-        callId: callId,
-      );
-    } catch (_) {
-      rethrow;
-    }
+    final cancelToken = CancelToken();
+    final future = _callWithFallback(
+      primary: primary,
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      useCache: scene != AiScene.narrative && scene != AiScene.choice,
+      scene: scene,
+      callId: callId,
+      cancelToken: cancelToken,
+    );
 
     if (scene == AiScene.narrative) {
       return future.timeout(
         const Duration(seconds: 45),
         onTimeout: () async {
+          cancelToken.cancel('narrative timeout');
           await AiDebugLogger.instance.logComplete(
             callId: callId,
             timestamp: DateTime.now().toIso8601String(),
@@ -128,6 +118,7 @@ class AiRouter {
       return future.timeout(
         const Duration(seconds: 20),
         onTimeout: () async {
+          cancelToken.cancel('choice timeout');
           await AiDebugLogger.instance.logComplete(
             callId: callId,
             timestamp: DateTime.now().toIso8601String(),
@@ -152,6 +143,7 @@ class AiRouter {
     bool useCache = true,
     AiScene? scene,
     String? callId,
+    CancelToken? cancelToken,
   }) async {
     // 检查缓存（narrative 场景关闭缓存：其 prompt 每回合都变，命中率极低且有冻结随机性的风险）
     if (useCache) {
@@ -162,6 +154,16 @@ class AiRouter {
         maxTokens: maxTokens,
       );
       if (cached != null) {
+        // 命中缓存也落一条 COMPLETE，避免 logStart 留下的 _pendingCalls 条目泄漏，同时便于调试追踪
+        final cacheSceneLabel = scene?.toString().split('.').last ?? 'unknown';
+        await AiDebugLogger.instance.logComplete(
+          callId: callId,
+          timestamp: DateTime.now().toIso8601String(),
+          scene: cacheSceneLabel,
+          provider: getProviderLabel(primary),
+          action: 'CACHE',
+          responsePreview: cached,
+        );
         return ChatResult(
           content: cached,
           usage: TokenUsage(promptTokens: 0, completionTokens: 0, totalTokens: 0),
@@ -169,30 +171,28 @@ class AiRouter {
       }
     }
 
-    final tried = <AiProvider>{};
-    var current = primary;
+    // 候选列表：primary 优先，随后按 fallbackOrder 去重。
+    // 默认 fallbackOrder 只含免费模型（sensenova/agnes），不会自动切到付费 DeepSeek；
+    // 仅当 primary 本身就是 DeepSeek 时它才会被尝试，失败后回退到免费模型。
+    final candidates = <AiProvider>[primary];
+    for (final p in _config.fallbackOrder) {
+      if (!candidates.contains(p)) candidates.add(p);
+    }
 
-    while (tried.length < _configs.length) {
-      if (tried.contains(current)) {
-        current = _config.fallbackFor(current);
-        continue;
-      }
-      tried.add(current);
-
-      final service = _services[current];
-      if (service == null) {
-        current = _config.fallbackFor(current);
-        continue;
-      }
+    Object? lastError;
+    for (final provider in candidates) {
+      final service = _services[provider];
+      if (service == null) continue; // 未注册（无 key），跳过
 
       try {
         final result = await _executeWithRateLimit(
-          provider: current,
+          provider: provider,
           service: service,
           prompt: prompt,
           systemPrompt: systemPrompt,
           temperature: temperature,
           maxTokens: maxTokens,
+          cancelToken: cancelToken,
         );
         // 缓存成功响应
         if (useCache) {
@@ -206,38 +206,38 @@ class AiRouter {
         }
         // 记录成功响应（完整保存返回内容，不再截断以便调试）
         final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-        final responsePreview = result.content;
         await AiDebugLogger.instance.logComplete(
           callId: callId,
           timestamp: DateTime.now().toIso8601String(),
           scene: sceneLabel,
-          provider: getProviderLabel(current),
+          provider: getProviderLabel(provider),
           action: 'RESPONSE',
-          responsePreview: responsePreview,
+          responsePreview: result.content,
           promptTokens: result.usage.promptTokens,
           completionTokens: result.usage.completionTokens,
           totalTokens: result.usage.totalTokens,
         );
         return result;
       } catch (e) {
-        debugPrint('⚠️ ${current.name} 调用失败: $e');
-        // 记录错误
+        if (cancelToken?.isCancelled == true) {
+          // 上层已超时并通过 CancelToken 取消，不再 fallback 也不再记录错误日志
+          rethrow;
+        }
+        lastError = e;
+        debugPrint('⚠️ ${provider.name} 调用失败: $e');
         final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
         await AiDebugLogger.instance.logComplete(
           callId: callId,
           timestamp: DateTime.now().toIso8601String(),
           scene: sceneLabel,
-          provider: getProviderLabel(current),
+          provider: getProviderLabel(provider),
           action: 'ERROR',
           error: e.toString(),
         );
-        if (tried.length >= _configs.length) {
-          rethrow;
-        }
-        current = _config.fallbackFor(current);
       }
     }
 
+    if (lastError != null) throw lastError;
     throw AiNonRetryableException('所有AI服务均不可用');
   }
 
@@ -248,6 +248,7 @@ class AiRouter {
     String? systemPrompt,
     required double temperature,
     required int maxTokens,
+    CancelToken? cancelToken,
   }) async {
     switch (provider) {
       case AiProvider.agnes:
@@ -258,6 +259,7 @@ class AiRouter {
           systemPrompt: systemPrompt ?? '',
           temperature: temperature,
           maxTokens: maxTokens,
+          cancelToken: cancelToken,
         );
 
       case AiProvider.sensenova:
@@ -268,6 +270,7 @@ class AiRouter {
           systemPrompt: systemPrompt ?? '',
           temperature: temperature,
           maxTokens: maxTokens,
+          cancelToken: cancelToken,
         );
 
       case AiProvider.deepseek:
@@ -277,6 +280,7 @@ class AiRouter {
           systemPrompt: systemPrompt ?? '',
           temperature: temperature,
           maxTokens: maxTokens,
+          cancelToken: cancelToken,
         );
     }
   }
@@ -302,27 +306,4 @@ class AiRouter {
     }
   }
 
-  String sceneLabel(AiScene scene) {
-    switch (scene) {
-      case AiScene.narrative:
-        return '剧情';
-      case AiScene.summary:
-        return '摘要';
-      case AiScene.npcChat:
-        return 'NPC聊天';
-      case AiScene.choice:
-        return '选项';
-    }
   }
-
-  String sceneProviderLabel(AiScene scene) {
-    final p = _config.providerFor(scene);
-    final fallback = _config.fallbackFor(p);
-    final hasFallback = _configs.containsKey(fallback) && fallback != p;
-    final buffer = StringBuffer('${getProviderLabel(p)}');
-    if (hasFallback) {
-      buffer.write(' → ${getProviderLabel(fallback)}');
-    }
-    return buffer.toString();
-  }
-}

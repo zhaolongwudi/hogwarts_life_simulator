@@ -37,6 +37,15 @@ class NpcChatService {
   AiRouter? _router;
   final Map<String, List<ChatMessage>> _conversationCache = {};
 
+  /// 串行化所有会话文件写操作，避免并发写同一文件导致丢更新
+  Future<void> _writeChain = Future.value();
+
+  Future<T> _serialized<T>(Future<T> Function() task) {
+    final result = _writeChain.then((_) => task());
+    _writeChain = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
   NpcChatService({required this.appProvider}) {
     _initClient();
   }
@@ -70,7 +79,6 @@ class NpcChatService {
     required String userMessage,
     List<ChatMessage>? history,
   }) async {
-    _initClient();
     if (_router == null) {
       return _generateLocalResponse(npc, userMessage);
     }
@@ -204,15 +212,17 @@ class NpcChatService {
   Future<void> saveConversation(String npcId, List<ChatMessage> messages) async {
     _conversationCache[npcId] = messages;
     try {
-      final path = await _getSavePath();
-      final file = File(path);
-      final Map<String, dynamic> data = {};
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        data.addAll(jsonDecode(content) as Map<String, dynamic>);
-      }
-      data[npcId] = messages.map((m) => m.toJson()).toList();
-      await file.writeAsString(jsonEncode(data));
+      await _serialized(() async {
+        final path = await _getSavePath();
+        final file = File(path);
+        final Map<String, dynamic> data = {};
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          data.addAll(jsonDecode(content) as Map<String, dynamic>);
+        }
+        data[npcId] = messages.map((m) => m.toJson()).toList();
+        await file.writeAsString(jsonEncode(data));
+      });
     } catch (_) {}
   }
 
@@ -239,14 +249,16 @@ class NpcChatService {
   Future<void> clearConversation(String npcId) async {
     _conversationCache.remove(npcId);
     try {
-      final path = await _getSavePath();
-      final file = File(path);
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final data = jsonDecode(content) as Map<String, dynamic>;
-        data.remove(npcId);
-        await file.writeAsString(jsonEncode(data));
-      }
+      await _serialized(() async {
+        final path = await _getSavePath();
+        final file = File(path);
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          final data = jsonDecode(content) as Map<String, dynamic>;
+          data.remove(npcId);
+          await file.writeAsString(jsonEncode(data));
+        }
+      });
     } catch (_) {}
   }
 }

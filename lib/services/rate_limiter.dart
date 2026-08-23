@@ -1,34 +1,5 @@
 import 'dart:async';
 
-/// 智谱AI并发队列（免费版限1个并发）
-class ZhipuConcurrencyQueue {
-  final List<Completer<void>> _queue = [];
-  bool _isProcessing = false;
-
-  Future<T> execute<T>(Future<T> Function() task) async {
-    final completer = Completer<void>();
-    _queue.add(completer);
-
-    if (_queue.length > 1) {
-      await completer.future;
-    }
-
-    try {
-      _isProcessing = true;
-      return await task();
-    } finally {
-      _isProcessing = false;
-      _queue.remove(completer);
-      if (_queue.isNotEmpty) {
-        _queue.first.complete();
-      }
-    }
-  }
-
-  int get queueLength => _queue.length;
-  bool get isProcessing => _isProcessing;
-}
-
 /// Agnes速率限制器（免费版限20 RPM）
 class AgnesRateLimiter {
   static const int _maxRPM = 18; // 留2个余量

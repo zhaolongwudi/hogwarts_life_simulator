@@ -204,37 +204,50 @@ class GameProvider extends ChangeNotifier {
     if (_saveScheduled) return;
     _saveScheduled = true;
 
-    _pendingSave = () async {
-      try {
-        await Future.delayed(const Duration(milliseconds: 300));
-        await _saveService.autoSave(
-          player: _player!.toJson(),
-          worldState: _worldState.toJson(),
-          npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
-          narrative: _currentNarrative,
-          choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
-          turnCount: _turnCount,
-          extraData: {
-            'narrative_summary': _narrativeSummary,
-            'pending_summary': _pendingSummary,
-            'recent_turns': _recentTurns,
-            'game_week': _gameWeek,
-            'last_round_tokens': _lastRoundTokens,
-            'api_calls': _apiCalls,
-            'total_prompt_tokens': _totalPromptTokens,
-            'total_completion_tokens': _totalCompletionTokens,
-            'total_tokens': _totalTokens,
-            // 千回合级结构化长期记忆（永不压缩的纯事实层）
-            'long_term_memory': _memory.toJson(),
-          },
-        );
-      } catch (e) {
-        debugPrint('❌ 自动存档失败: $e');
-      } finally {
-        _saveScheduled = false;
-      }
-    }();
+    _pendingSave = _doSave(debounce: true);
     await _pendingSave;
+  }
+
+  /// 不防抖立即写盘，供 dispose 等必须尽快落盘的场景使用。
+  /// 状态序列化（_player!.toJson() 等）在 await 之前同步完成，dispose 后仍能确保数据已快照。
+  Future<void> _saveNow() async {
+    if (_player == null) return;
+    if (_saveScheduled) return; // 已有存档进行中，交给它
+    _saveScheduled = true;
+    await _doSave(debounce: false);
+  }
+
+  Future<void> _doSave({required bool debounce}) async {
+    try {
+      if (debounce) {
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      await _saveService.autoSave(
+        player: _player!.toJson(),
+        worldState: _worldState.toJson(),
+        npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
+        narrative: _currentNarrative,
+        choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
+        turnCount: _turnCount,
+        extraData: {
+          'narrative_summary': _narrativeSummary,
+          'pending_summary': _pendingSummary,
+          'recent_turns': _recentTurns,
+          'game_week': _gameWeek,
+          'last_round_tokens': _lastRoundTokens,
+          'api_calls': _apiCalls,
+          'total_prompt_tokens': _totalPromptTokens,
+          'total_completion_tokens': _totalCompletionTokens,
+          'total_tokens': _totalTokens,
+          // 千回合级结构化长期记忆（永不压缩的纯事实层）
+          'long_term_memory': _memory.toJson(),
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ 自动存档失败: $e');
+    } finally {
+      _saveScheduled = false;
+    }
   }
 
   void _onApiKeyChange() {
@@ -1076,7 +1089,7 @@ ${profile.join('｜')}
         contextBuffer.writeln('');
       }
       // T3: 世界事件银行（重要性 * 新鲜度 取前 40 条）
-      final ts = _worldState.time.dayOfYear;
+      final ts = _worldState.time.absoluteDayIndex;
       final t3 = List<WorldEventRecord>.from(_memory.worldEvents)
         ..sort((a, b) => b.score(ts).compareTo(a.score(ts)));
       if (t3.isNotEmpty) {
@@ -5643,7 +5656,7 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
 
   @override
   void dispose() {
-    _autoSave();
+    _saveNow(); // 异步但会同步快照状态并立即写盘，避免 300ms 防抖未完成导致存档丢失
     appProvider.removeListener(_onApiKeyChange);
     super.dispose();
   }

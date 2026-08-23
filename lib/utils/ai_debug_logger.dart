@@ -247,9 +247,20 @@ class AiDebugLogger {
     }
     final dir = Directory(_logDir!);
     if (!await dir.exists()) return [];
-    final files = await dir.list().toList();
-    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-    return files.whereType<File>().map((f) => f.path).toList();
+    final files = (await dir.list().toList()).whereType<File>().toList();
+    // 用异步 stat() 替代同步 statSync()，避免在 UI 线程做阻塞式文件 I/O
+    final pairs = <MapEntry<File, DateTime>>[];
+    for (final f in files) {
+      DateTime modified;
+      try {
+        modified = (await f.stat()).modified;
+      } catch (_) {
+        modified = DateTime.fromMillisecondsSinceEpoch(0);
+      }
+      pairs.add(MapEntry(f, modified));
+    }
+    pairs.sort((a, b) => b.value.compareTo(a.value));
+    return pairs.map((e) => e.key.path).toList();
   }
 
   Future<Map<String, dynamic>> getUsageStats() async {

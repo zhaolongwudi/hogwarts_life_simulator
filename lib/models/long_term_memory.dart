@@ -256,23 +256,34 @@ class WorldEventRecord {
       );
 
   /// 事件的新鲜度加权分数：importance * (1 - ageDays/365) ，最低也保留 importance * 0.2
-  double score(int currentDayOfYear) {
-    // 从 timestamp 简单解析日做衰减 (更严谨的可以转 GameTime)
-    final ageDays = _estimateAgeDays(timestamp);
+  /// currentAbsoluteDay = 当前游戏时间的绝对天数（自 1991-01-01 起），
+  /// 与 GameTime.absoluteDayIndex 使用同一公式，保证衰减计算一致。
+  double score(int currentAbsoluteDay) {
+    final eventDay = _estimateAbsoluteDay(timestamp);
+    final ageDays = currentAbsoluteDay - eventDay;
     final factor = (1.0 - ageDays / 365.0).clamp(0.2, 1.0);
     return importance * factor;
   }
 
-  static int _estimateAgeDays(String ts) {
-    // timestamp 形如 "1991年9月2日 星期一 23:25"，做一个很粗略的解析算天数差
-    // 这里只是近似估计，不影响主流程，若解析失败就返回0（当成新事件）
+  /// 从 timestamp（形如 "📅 1991年9月2日 星期一 23:25"）解析出绝对天数
+  /// （自 1991-01-01 起），与 GameTime.absoluteDayIndex 保持一致。
+  /// 解析失败返回 0（当成新事件）。
+  static int _estimateAbsoluteDay(String ts) {
     try {
       final m = RegExp(r'(\d{4})年(\d{1,2})月(\d{1,2})日').firstMatch(ts);
       if (m == null) return 0;
       final y = int.parse(m.group(1)!);
       final mo = int.parse(m.group(2)!);
       final d = int.parse(m.group(3)!);
-      return (y - 1991) * 365 + (mo - 1) * 30 + d;
+      const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      int dayOfYear = d;
+      for (int i = 1; i < mo; i++) {
+        dayOfYear += days[i - 1];
+      }
+      if (mo > 2 && ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)) {
+        dayOfYear += 1;
+      }
+      return (y - 1991) * 365 + dayOfYear;
     } catch (_) {
       return 0;
     }

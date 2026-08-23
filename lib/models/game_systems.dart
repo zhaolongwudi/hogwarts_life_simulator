@@ -85,6 +85,10 @@ class GameTime {
     return total;
   }
 
+  /// 自 1991-01-01 起的绝对天数。
+  /// 与 WorldEventRecord._estimateAbsoluteDay 保持一致，用于世界事件新鲜度衰减。
+  int get absoluteDayIndex => (year - 1991) * 365 + dayOfYear;
+
   /// 格式化时间戳
   String format() {
     final datePart = '📅 $year年$month月$day日，${weekdays[weekday]}，$periodLabel $hour:${minute.toString().padLeft(2, '0')}';

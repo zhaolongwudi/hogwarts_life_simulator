@@ -88,6 +88,7 @@ class DeepSeekService {
     String systemPrompt = '',
     double temperature = 0.8,
     int maxTokens = 4096,
+    CancelToken? cancelToken,
   }) async {
     try {
       final response = await _dio.post(
@@ -103,6 +104,7 @@ class DeepSeekService {
           'max_tokens': maxTokens,
           'stream': false,
         }),
+        cancelToken: cancelToken,
       );
 
       final data = response.data;
