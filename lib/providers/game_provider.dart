@@ -4164,7 +4164,7 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       RegExp(r'(?:分到|分进|属于|进入)\s*(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
       RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*学院', caseSensitive: false),
       // 分院帽说话模式："XX！"
-      RegExp(r'[\"\'」](格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]+[\"\'」?', caseSensitive: false),
+      RegExp(r'[\"\']?(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)\s*[！!]+[\"\']?', caseSensitive: false),
       // 普通匹配：兜底
       RegExp(r'(格兰芬多|斯莱特林|拉文克劳|赫奇帕奇|Gryffindor|Slytherin|Ravenclaw|Hufflepuff)', caseSensitive: false),
     ];

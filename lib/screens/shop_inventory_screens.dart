@@ -80,7 +80,7 @@ class _ShopScreenState extends State<ShopScreen> {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.vault, color: Colors.amber.shade700),
+                          Icon(Icons.savings, color: Colors.amber.shade700),
                           const SizedBox(width: 8),
                           const Text('金库存款', style: TextStyle(fontSize: 13)),
                           const Spacer(),
