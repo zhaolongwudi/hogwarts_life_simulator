@@ -613,6 +613,7 @@ class _GameScreenState extends State<GameScreen> {
             runSpacing: 4,
             children: [
               _buildLegendItem(const Color(0xFFE3B341), '人名'),
+              _buildLegendItem(const Color(0xFFFFA657), '说话人'),
               _buildLegendItem(const Color(0xFF58A6FF), '对话'),
               _buildLegendItem(const Color(0xFF56D364), '地点'),
               _buildLegendItem(const Color(0xFFBC8CFF), '物品'),

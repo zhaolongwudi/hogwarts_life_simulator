@@ -256,6 +256,18 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     );
   }
 
+  /// 子地图所属的父区域：由 _mapData 中的 branch 标记推导（避免硬编码）。
+  String? _parentAreaOf(String subAreaName) {
+    for (final entry in _mapData.entries) {
+      for (final loc in entry.value) {
+        if (loc['branch'] == true && loc['name'] == subAreaName) {
+          return entry.key;
+        }
+      }
+    }
+    return null;
+  }
+
   Widget _buildOverviewTile(
       BuildContext ctx, String name, int count, bool isSub) {
     return ListTile(
@@ -271,8 +283,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         Navigator.pop(ctx);
         setState(() {
           if (isSub) {
-            _currentArea = '伦敦';
-            _parentArea = '伦敦';
+            final parent = _parentAreaOf(name) ?? _currentArea;
+            _currentArea = parent;
+            _parentArea = parent;
             _currentSubArea = name;
           } else {
             _currentArea = name;

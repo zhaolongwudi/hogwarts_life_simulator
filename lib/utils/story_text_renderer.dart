@@ -211,7 +211,7 @@ class StoryTextRenderer {
   /// 预处理：从剧情文本中剥掉内嵌的 A./B./C./D./E. 选项行（这些在下方「可选行动」区块单独显示）
   /// 支持：半角字母、全角字母（Ａ-Ｅ）、半角/全角句号、右括号、中文顿号「、」
   static String _preStripChoices(String text) {
-    final buffer = StringBuffer();
+    final lines = text.split('\n');
     final choiceLinePattern = RegExp(
       r'^\s*(?:[A-Ea-e]|[Ａ-Ｅ])\s*(?:[\.\．、\)）])\s*',
     );
@@ -219,21 +219,34 @@ class StoryTextRenderer {
     final numberedPattern = RegExp(
       r'^\s*(?:\d{1,2}\s*[\.\．、\)）]|[一二三四五六七八九十]{1,3}\s*[、\.．])\s*',
     );
-    for (final line in text.split('\n')) {
-      // 选项行：空行后紧跟选项说明（排除叙事里的正常句子引用）
-      if (choiceLinePattern.hasMatch(line)) {
-        final after = line.replaceFirst(choiceLinePattern, '');
-        if (after.trim().isNotEmpty && after.trim().length <= 60) {
-          continue; // 典型选项行：< 60 字的一句话行动
+
+    // 一行是否像选项：短祈使短语、不以句号/感叹号/省略号收尾
+    bool isChoiceLike(String line) {
+      for (final p in [choiceLinePattern, numberedPattern]) {
+        final m = p.firstMatch(line);
+        if (m == null) continue;
+        final after = line.substring(m.end).trim();
+        if (after.isEmpty || after.length > 60) return false;
+        if (after.endsWith('。') || after.endsWith('！') || after.endsWith('…')) {
+          return false;
         }
+        return true;
       }
-      if (numberedPattern.hasMatch(line)) {
-        final after = line.replaceFirst(numberedPattern, '');
-        if (after.trim().isNotEmpty && after.trim().length <= 60) {
-          continue;
-        }
+      return false;
+    }
+
+    final choiceLike = lines.map(isChoiceLike).toList();
+    final buffer = StringBuffer();
+    for (int i = 0; i < lines.length; i++) {
+      if (choiceLike[i]) {
+        // 选项总是成块出现：前一行是空行/选项，或后一行紧跟选项。
+        // 满足其一才剥离，避免误删以「A.」「一、」开头的正常叙述句。
+        final prevBlank =
+            i == 0 || lines[i - 1].trim().isEmpty || choiceLike[i - 1];
+        final nextChoice = i + 1 < lines.length && choiceLike[i + 1];
+        if (prevBlank || nextChoice) continue;
       }
-      buffer.writeln(line);
+      buffer.writeln(lines[i]);
     }
     return buffer.toString().replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
   }
@@ -395,8 +408,12 @@ class StoryTextRenderer {
     cleaned = _stripChoiceBlocks(cleaned);
     cleaned = _preStripChoices(cleaned);
 
-    final cached = _cache[cleaned];
-    if (cached != null) return cached;
+    // 命中缓存时刷新插入顺序（近似 LRU）
+    final cached = _cache.remove(cleaned);
+    if (cached != null) {
+      _cache[cleaned] = cached;
+      return cached;
+    }
 
     final spans = <TextSpan>[];
     final tokens = _tokenize(cleaned);
@@ -417,8 +434,9 @@ class StoryTextRenderer {
       }
     }
 
-    if (_cache.length >= _maxCacheSize) {
-      _cache.clear();
+    // 缓存满时淘汰最旧条目（保留其余命中），而不是整表清空
+    while (_cache.length >= _maxCacheSize) {
+      _cache.remove(_cache.keys.first);
     }
     _cache[cleaned] = spans;
     return spans;
@@ -444,7 +462,7 @@ class StoryTextRenderer {
     }
     dialogueRanges.sort((a, b) => a.start.compareTo(b.start));
 
-    // 冒号对话模式：「说话人：台词」/「说话人（情绪）：台词」
+    // 冒号对话模式：「说话人：台词」/「说话人（情绪）：台词」/「说话人说：台词」
     // 逐行检测，排除时间（09:00）、日期（📅 年月日 星期）、叙述性「说：」等误判。
     final colonSegments = <_ColonSegment>[];
     {
@@ -454,8 +472,12 @@ class StoryTextRenderer {
         final lineEnd = newlineIdx == -1 ? text.length : newlineIdx;
         final k = _findDialogueColon(text, lineStart, lineEnd);
         if (k >= 0) {
+          final speakerStartIdx = _speakerStart(text, lineStart, k);
+          final raw = text.substring(speakerStartIdx, k).trim();
+          final nameEndInRaw = _validSpeakerNameEnd(raw);
           colonSegments.add(_ColonSegment(
-            speakerStart: _speakerStart(text, lineStart, k),
+            speakerStart: speakerStartIdx,
+            nameEnd: speakerStartIdx + nameEndInRaw,
             speakerEnd: k,
             colonEnd: k + 1,
             contentEnd: lineEnd,
@@ -490,15 +512,25 @@ class StoryTextRenderer {
     int cPointer = 0;
 
     while (i < text.length) {
+      // 跳过已被越过（被跨行引号台词范围覆盖）的冒号段落
+      while (cPointer < colonSegments.length &&
+          i > colonSegments[cPointer].speakerStart) {
+        cPointer++;
+      }
       // 优先判断冒号对话（通常比引号台词更准地定位说话人）
       if (cPointer < colonSegments.length && i == colonSegments[cPointer].speakerStart) {
         flushNarration();
         final seg = colonSegments[cPointer];
-        final speaker = text.substring(seg.speakerStart, seg.speakerEnd);
-        final colon = text.substring(seg.speakerEnd, seg.colonEnd);
+        final speaker = text.substring(seg.speakerStart, seg.nameEnd);
         final content = text.substring(seg.colonEnd, seg.contentEnd);
         addToken(_DialogueSpeakerToken(speaker));
-        addToken(_DialogueToken(colon));
+        if (seg.nameEnd < seg.speakerEnd) {
+          // 「名字+叙述动词」：动词连同冒号按叙述色渲染（如 赫敏说："…"）
+          addToken(_NarrationToken(text.substring(seg.nameEnd, seg.colonEnd)));
+        } else {
+          // 纯「名字：」：冒号紧贴台词，按对话色渲染
+          addToken(_DialogueToken(text.substring(seg.speakerEnd, seg.colonEnd)));
+        }
         addToken(_DialogueToken(content));
         i = seg.contentEnd;
         cPointer++;
@@ -530,7 +562,7 @@ class StoryTextRenderer {
       if (_isClockColon(text, i)) continue;
       final speaker =
           text.substring(_speakerStart(text, lineStart, i), i).trim();
-      if (_isValidSpeaker(speaker)) return i;
+      if (_validSpeakerNameEnd(speaker) >= 0) return i;
     }
     return -1;
   }
@@ -568,46 +600,107 @@ class StoryTextRenderer {
     return s;
   }
 
-  /// 判断冒号前文本是否为合理的说话人（角色名/短人名），排除时间、日期、标签、叙述。
-  static bool _isValidSpeaker(String raw) {
-    if (raw.isEmpty || raw.length > 24) return false;
+  /// 叙述动词（长词在前，保证贪婪匹配）：「赫敏说：」中「说」归叙述、不进说话人。
+  static const List<String> _speechVerbs = [
+    '轻声说道', '低声说道', '大声喊道', '笑着说道', '淡淡地说',
+    '说道', '问道', '喊道', '笑道', '答道', '叫道', '叹道', '低语', '回答',
+    '说', '道', '问', '喊', '答', '叫',
+  ];
+
+  /// 判断 [raw]（冒号前的整段文本）是否为合理说话人。
+  /// 返回「纯名字」在 raw 中的结束位置（用于把尾部叙述动词切给叙述色）；不合法返回 -1。
+  static int _validSpeakerNameEnd(String raw) {
+    if (raw.isEmpty || raw.length > 24) return -1;
     // 结构标记 / 时间戳方括号
     if (raw.contains('【') ||
         raw.contains('】') ||
         raw.contains('[') ||
         raw.contains(']')) {
-      return false;
+      return -1;
     }
+    // 含引号（如 他说："赫敏：你好"）：说话人名字不会带引号
+    if (RegExp(r'["「」『』“”‘’"]').hasMatch(raw)) return -1;
     // emoji 前缀（时间戳 📅 等）
-    if (_startsWithEmoji(raw)) return false;
+    if (_startsWithEmoji(raw)) return -1;
 
-    // 提取纯名字：去掉「（情绪）」「(动作)」「好感+1」等修饰
+    // 提取纯名字候选：去掉「（情绪）」「(动作)」「好感+1」等尾部修饰
+    final hasModifier =
+        RegExp(r'[（(]').hasMatch(raw) || raw.contains('好感');
     String name = raw;
     final bracket = name.indexOf(RegExp(r'[（(]'));
     if (bracket >= 0) name = name.substring(0, bracket);
     final gk = name.indexOf('好感');
     if (gk >= 0) name = name.substring(0, gk);
     name = name.trim();
-    if (name.isEmpty) return false;
+    if (name.isEmpty) return -1;
 
-    // 已知角色名（含带修饰的原始串）
+    // 情况一：整体（或去修饰后）是已知角色
     if (_characterNames.contains(name) || _characterNames.contains(raw)) {
+      return raw.length;
+    }
+
+    if (hasModifier) return -1; // 带修饰但提取出的名字不认识 → 不判定
+
+    // 情况二：「已知角色 + 叙述动词」，动词归叙述
+    for (final verb in _speechVerbs) {
+      if (name.length > verb.length && name.endsWith(verb)) {
+        final base = name.substring(0, name.length - verb.length);
+        if (_characterNames.contains(base)) {
+          return raw.length - verb.length;
+        }
+      }
+    }
+
+    // 情况三：未知名字（AI 生成的随机 NPC），先剥尾部叙述动词再严格判定
+    String base = name;
+    for (final verb in _speechVerbs) {
+      if (name.length > verb.length && name.endsWith(verb)) {
+        base = name.substring(0, name.length - verb.length);
+        break;
+      }
+    }
+    if (_looksLikeNarrationPhrase(base)) return -1;
+    if (base.length < 2 || base.length > 8) return -1;
+    if (RegExp(r'[\d]').hasMatch(base)) return -1;
+    if (RegExp(r'[，。！？、；：]').hasMatch(base)) return -1;
+    return raw.length - (name.length - base.length);
+  }
+
+  /// 判断短语是否更像叙述而非人名（含虚词/时间词/地点/章节标记/状态标签）。
+  static bool _looksLikeNarrationPhrase(String s) {
+    if (s.isEmpty) return true;
+    // 常见叙述虚词：人名几乎不会包含这些字
+    if (RegExp(r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个]').hasMatch(s)) {
       return true;
     }
-
-    // 时间/日期/状态等标签不是人名
-    const labels = ['时间', '日期', '星期', '月份', '地点', '位置', '状态', '身份',
-      '模式', '目标', '学年', '学期', '年级', '天气', '场景', '当前', '剩余'];
-    for (final l in labels) {
-      if (name.contains(l)) return false;
+    // 时间词开头（清晨的霍格沃茨：… / 下午三点：…）
+    const timePrefixes = [
+      '清晨', '早晨', '早上', '上午', '中午', '午后', '下午', '傍晚',
+      '晚上', '夜晚', '深夜', '午夜', '凌晨', '黄昏', '夜里', '当夜',
+      '今天', '明天', '昨天', '后天', '前天', '次日', '翌日',
+      '此刻', '此时', '这时', '那时', '瞬间', '突然', '忽然',
+    ];
+    for (final t in timePrefixes) {
+      if (s.startsWith(t)) return true;
     }
-
-    // 长度 1~8，允许中文/字母/数字/·/空格；纯数字或含叙述标点则排除
-    if (name.length > 8) return false;
-    if (RegExp(r'^[\d\s.:,，、]+$').hasMatch(name)) return false;
-    if (RegExp(r'[，。！？、；：:]').hasMatch(name)) return false;
-
-    return true;
+    // 含已知地点名（场景描述短语，如 清晨的霍格沃茨）
+    for (final loc in _locations) {
+      if (s.contains(loc)) return true;
+    }
+    // 章节序号
+    if (s.startsWith('第') || s.contains('章') || s.contains('卷') || s.contains('回')) {
+      return true;
+    }
+    // 状态/结构标签
+    const labels = [
+      '时间', '日期', '星期', '月份', '地点', '位置', '状态', '身份',
+      '模式', '目标', '学年', '学期', '年级', '天气', '场景', '当前',
+      '剩余', '选项', '行动', '提示', '备注', '说明', '编号', '总结',
+    ];
+    for (final l in labels) {
+      if (s.contains(l)) return true;
+    }
+    return false;
   }
 
   static bool _startsWithEmoji(String s) {
@@ -774,11 +867,13 @@ class _Range {
 
 class _ColonSegment {
   final int speakerStart;
+  final int nameEnd; // 说话人纯名字结束位置（其后到冒号之间是叙述动词）
   final int speakerEnd;
   final int colonEnd;
   final int contentEnd;
   _ColonSegment({
     required this.speakerStart,
+    required this.nameEnd,
     required this.speakerEnd,
     required this.colonEnd,
     required this.contentEnd,
