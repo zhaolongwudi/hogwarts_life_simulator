@@ -10,6 +10,8 @@ import '../models/long_term_memory.dart';
 import '../services/ai_router.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
+import '../prompts/narrative_prompts.dart';
+import '../prompts/summary_prompts.dart';
 
 mixin GameNarrativeMixin on GameProviderBase {
   Future<void> processChoice(GameChoice choice) async {
@@ -56,12 +58,25 @@ mixin GameNarrativeMixin on GameProviderBase {
     loadingStage = '正在构建请求...';
     notifyListeners();
 
-    String buildPrompt() {
-      final p = player!;
+    String _formatImpact(double score) {
+        if (score >= 1.0) return '极高影响力（深度改变历史走向）';
+        if (score >= 0.5) return '高影响力（知名人物/学院领袖候选）';
+        if (score >= 0.2) return '中等影响力（小有名气）';
+        if (score >= 0.05) return '低影响力（普通学生）';
+        return '无影响力（边缘人物）';
+      }
 
-      final contextBuffer = StringBuffer();
+      String buildPrompt() {
+        final p = player!;
 
-      // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
+        final contextBuffer = StringBuffer();
+
+        final profileLine = '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}';
+        final impactLine = '影响力：${_formatImpact(worldState.playerImpactScore)}';
+        contextBuffer.writeln('$profileLine｜$impactLine');
+        contextBuffer.writeln('');
+
+        // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
       // 永远放在【世界上下文】最前面，防止后面截断看不到
       // 2026-08-23：模型能力升级，所有条数限制整体翻倍
       // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；importance 10永远保留)
@@ -240,28 +255,7 @@ mixin GameNarrativeMixin on GameProviderBase {
   $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
-  【重要规则】
-  - 选项将由独立步骤生成，本回合只需生成叙事和好感变化
-  - 确保叙事符合当前地点（${worldState.currentLocation ?? '未知'}）和当前时间（${worldState.timestamp}）
-
-  【写作要求】
-  - 叙事:1500-2500字小说正文，融入感官细节、对话、心理、环境描写，分4-8段用空行分隔
-  - 叙事正文严禁使用【】标签、序号、大纲结构
-  - 剧情要有实际进展和转折，避免无意义的日常描述
-  - 严禁重复【前情回顾】中的任何内容！只写本回合新的剧情发展，从玩家行动之后开始续写
-
-  叙事结束后，在末尾输出好感度变化区块（必须严格使用以下格式）：
-  【好感度变化】
-  NPC名:±X(原因)
-
-  示例：
-  【好感度变化】
-  金妮: +5(因为帮助了她)
-  赫敏: -3(对玩家的言论不满)
-
-  规则：每行一条，只写本回合有实际互动的NPC；无变化时省略整个区块。
-
-  - 不需要生成选项，选项将在下一步单独生成
+$kNarrativeWritingRules
   ''';
     }
 
@@ -523,30 +517,12 @@ mixin GameNarrativeMixin on GameProviderBase {
         : (turnCount <= 100 ? 1500 : 2400);
     final relationSnapshot = buildRelationshipSnapshot();
 
-    // 关键改进：明确要求 AI 只保留"人物关系"和"重要转折"，不保留具体场景描述
-    final prompt = '''请将以下剧情内容压缩成摘要。重要规则：
-  1. 只保留【人物关系变化】和【重要剧情转折】
-  2. 淘汰具体场景描述（如"在车站"、"在教室"、"列车走廊"等地点信息），这些会严重干扰后续剧情生成
-  3. 淘汰具体行动描述（如"检票上车"、"拿出魔杖"等），除非是关键转折点
-  4. 保留 NPC 好感度变化（如"赫敏:友好+10"）、学院分配、重要事件等
-  5. 保留关键伏笔、NPC承诺、秘密、未完成任务、冲突起源、长期目标（这些是长线剧情的锚，必须单独归纳）
-  6. 用简洁的第三人称
-  7. 绝对禁止保留一次性冲突/怪物事件（如"巨怪事件""某个小决斗"）的具体场景和过程，仅保留对人物关系造成的长期影响（例如："与罗恩因共同抗敌建立信任"而非"在厕所击败巨怪"）
-  8. 严格遵守【精简剧情摘要】不超过 $limit 字，超过部分会被直接截断，超出规则会导致后续剧情冲突
-
-  【前情摘要】
-  ${narrativeSummary.isNotEmpty ? narrativeSummary : '（开局）'}
-
-  【新剧情】
-  $pendingSummary
-
-  【当前关系状态】（以此为准校准）
-  ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
-
-  请输出：
-  1. 精简剧情摘要（不超过$limit字，聚焦关系和转折，不要保留具体场景）
-  2. 末尾单独一行【关系】列出当前重要NPC的关系状态（如：赫敏:友好/72；马尔福:敌对/-30）
-  3. 如果有伏笔/承诺/秘密/未完成任务，再单独一行【伏笔】列出（例如：斯内普答应给主角保密身份；主角欠邓布利多一次夜探；小天狼星留了一把钥匙）''';
+    final prompt = buildSummaryPrompt(
+      limit: limit,
+      previousSummary: narrativeSummary,
+      newChunk: pendingSummary,
+      relSnapshot: relationSnapshot,
+    );
 
     try {
       final result = await callDeepSeek(

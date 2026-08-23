@@ -21,7 +21,6 @@ class _GameScreenState extends State<GameScreen> {
   int _currentTab = 0;
   int _subTab = 0;
   final _inputController = TextEditingController();
-  final _menuController = TextEditingController();
   final _scrollController = ScrollController();
   String? _lastNarrative;
   String? _lastCommandPanel;
@@ -29,7 +28,6 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _inputController.dispose();
-    _menuController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -138,7 +136,7 @@ class _GameScreenState extends State<GameScreen> {
           children: [
             if (!immersive) const GameTopBar(),
             Expanded(child: tabContent),
-            _currentTab == 0 ? GameBottomInput(inputController: _inputController, menuController: _menuController, onHandleFreeAction: _handleFreeAction) : const SizedBox.shrink(),
+            _currentTab == 0 ? GameBottomInput(inputController: _inputController, onHandleFreeAction: _handleFreeAction) : const SizedBox.shrink(),
           ],
         ),
       ),

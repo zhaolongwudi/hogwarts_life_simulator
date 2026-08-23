@@ -6,6 +6,7 @@ import '../models/game_systems.dart';
 import '../utils/story_text_renderer.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
+import '../prompts/choice_prompts.dart';
 
 mixin GameResponseMixin on GameProviderBase {
   void _tryExtractHouseFromNarrative(String text) {
@@ -541,28 +542,7 @@ mixin GameResponseMixin on GameProviderBase {
         .map((n) => '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection})')
         .join('、');
 
-    final choicePrompt = '''你是《哈利波特·魔法人生模拟器》的专业选项设计师。任务：只生成 4 个互斥的玩家选择。
-  你的输出只有 4 行（A/B/C/D），不要任何前置说明、正文、理由或【好感变化】等标签。
-
-  ===== 四选一设计规则（严格执行，违反必重生成）=====
-  规则1：4个选项必须分别覆盖「4 种决策风格」——
-  A 直面/主动出击/勇敢型（直接面对冲突、施法、站出来、揭穿）
-  B 谨慎/智取/观察型（撤退到安全、收集情报、等待时机、叫外援）
-  C 人际/沟通/结盟型（求助、谈判、说谎、拉路人、找 NPC）
-  D 规则内取巧/黑魔法边缘/代价型（铤而走险、用禁咒、牺牲物品、变身、隐忍装死）
-  规则2：选项必须直接承接【当前剧情】最后一两句的「即时动作/最后一位说话者/当前场面氛围」，必须是"玩家此刻马上会做的事"，严禁跳到下一个地点、下一节课、明天、下个月等未来时间/地点！
-  规则3：绝对禁止重复之前剧情中"已经发生/已经完成"的内容。
-  规则4：绝对禁止"剧情预知类"选项——
-  • 原住民模式：严禁出现「寻找有求必应屋」「进入密室」「试探魂器」「找死亡圣器」「预言伏地魔」等主角此时不可能知道的内容
-  • 穿越者模式：可写"感觉这条走廊很眼熟"等模糊预感，但不能出现「因为哈利三年级会遇到…所以我要…」这类具体未来事件的知识
-  规则5：严格遵守玩家硬状态限制——
-  • 一年级生无法单挑成年巫师（会输）
-  • 精力<25 不允许高强度战斗/长距离奔跑选项
-  • 没学会的魔法不能写"用XX咒"；没带的物品不能写"拿出XX"
-  • 不能违背未完结事项中的承诺
-  规则6：每个选项 20~50 字之间，为"具体动作+明确意图"，不要"随便走走""休息一下"这种无意义选项。
-  规则7：严格格式，只输出 A./B./C./D. + 内容，每行 1 条，刚好 4 行，不多不少。
-
+    final choicePrompt = '''$kChoicePromptPreamble
   ===== 游戏世界背景 =====
   【当前剧情末尾处境】（你所有选项必须直接衔接这一段结尾的最后一个动作/对话/场面）
   $narrativeTail
@@ -580,11 +560,7 @@ mixin GameResponseMixin on GameProviderBase {
   【T0 核心事实（选项不能违背）】
   ${memory.keyFacts.where((f) => f.importance >= 4).map((f) => '· ${f.fact}').take(10).join('\n')}
 
-  请直接输出 4 行：
-  A.xxxxxx
-  B.xxxxxx
-  C.xxxxxx
-  D.xxxxxx''';
+$kChoicePromptSuffix''';
 
     try {
       final response = await callDeepSeek(

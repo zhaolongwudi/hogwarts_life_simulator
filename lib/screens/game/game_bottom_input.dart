@@ -4,13 +4,11 @@ import '../../providers/game_provider.dart';
 
 class GameBottomInput extends StatelessWidget {
   final TextEditingController inputController;
-  final TextEditingController menuController;
   final VoidCallback onHandleFreeAction;
 
   const GameBottomInput({
     super.key,
     required this.inputController,
-    required this.menuController,
     required this.onHandleFreeAction,
   });
 

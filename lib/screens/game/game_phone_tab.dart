@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../other/other_screens.dart';
 import '../shop/shop_inventory_screens.dart';
@@ -6,7 +8,7 @@ import '../memory_screen.dart';
 import '../job_screen.dart';
 
 class PhoneTab extends StatelessWidget {
-  final dynamic gp;
+  final GameProvider gp;
 
   const PhoneTab({super.key, required this.gp});
 

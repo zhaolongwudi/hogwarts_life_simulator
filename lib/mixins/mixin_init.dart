@@ -14,6 +14,7 @@ import '../models/world_state.dart';
 import '../models/long_term_memory.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
+import '../prompts/narrative_prompts.dart';
 
 mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
@@ -446,6 +447,7 @@ mixin GameInitMixin on GameProviderBase {
           final house = computeHouseLocal();
           final sortingNarrative = generateSortingNarrative(house);
           player!.house = house;
+          bumpImpactScore(0.05, debugReason: '分院仪式');
           unlockAchievement('sorted');
           // 合并：本地分院叙事拼接在开场叙事后面
           if (sortingNarrative.trim().isNotEmpty) {
@@ -839,26 +841,16 @@ mixin GameInitMixin on GameProviderBase {
     profile.add('魔杖：$wandInfo');
     profile.add('宠物：$petInfo');
 
-    final prompt = '''【开场叙事】J.K.罗琳风格，3+感官细节。
-
-  【玩家资料】
-  ${profile.join('｜')}
-
-  【起始场景】$startPoint
-
-  【魔杖硬设定·必须严格遵守】
-  - 玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。
-  - 若开场节点为 letter 或更早，叙事中可以写"你还带着前几天在对角巷奥利凡德购得的魔杖匣子"，不必展开采购剧情本身，但必须明确其来源为奥利凡德。
-  - 魔杖细节必须为"${wandData != null ? wandData.wood + '木·' + wandData.core + '·' + wandData.length : '指定魔杖'}"，不能更改木材/杖芯/长度。
-
-  【要求】1500-2500字小说正文，📅时间戳开头，自然融入魔杖/宠物/血统，体现性格，要有具体场景和事件，避免空洞描述。分4-8段用空行分隔，融入感官细节、对话、心理、环境描写。
-
-  【格式】
-  【时间戳】📅 日期
-  【地点】具体位置
-  （正文）
-  【可选行动】A/B/C（具体动作）
-  【自由行动】''';
+    final wandSourceLine = '玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。';
+    final wandDetail = wandData != null
+        ? '${wandData.wood}木·${wandData.core}·${wandData.length}'
+        : '指定魔杖';
+    final prompt = buildOpeningNarrativePrompt(
+      profileLine: profile.join('｜'),
+      startPoint: startPoint,
+      wandDetail: wandDetail,
+      wandSourceLine: wandSourceLine,
+    );
 
     if (router == null || !router!.hasNarrativeService) {
       currentNarrative =
@@ -1046,6 +1038,7 @@ mixin GameInitMixin on GameProviderBase {
       final selected = _computeWandLocal(options);
       player!.wandId = selected['id'] as String?;
       unlockAchievement('first_wand');
+      bumpImpactScore(0.03, debugReason: '首次魔杖选择');
       final narrative = _generateWandNarrative(selected);
 
       isLoading = false;

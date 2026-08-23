@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/game_provider.dart';
 import '../../models/npc.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
 
 class WorldTab extends StatelessWidget {
-  final dynamic gp;
+  final GameProvider gp;
 
   const WorldTab({super.key, required this.gp});
 
