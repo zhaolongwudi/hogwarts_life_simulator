@@ -5,6 +5,17 @@
 
 ---
 
+### v1.8.1 — 2026-08-23
+
+**📋 变更说明**
+refactor: 全局关联链路审查修复 A+B+C类
+
+【A类 Game子组件小修 4项】
+- 删除死组件 game_character_tab.dart(288行，narrative_tab面板已内嵌角色面板)
+- GameBottomInput 移除 menuController 死参数(字段/构造/传参三处同步删除)
+- game_screen.dart 移除 _menuController 字段和 dispose 调用
+- PhoneTab/WorldTab: gp 从 dynamic→GameProvider 强类型，补齐import
+
 ### v1.8.0 — 2026-08-23
 
 **📋 变更说明**
