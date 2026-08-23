@@ -81,7 +81,29 @@ class WorldState {
     specialMarkers.remove(marker);
   }
 
+  /// 判定是否为系统通知类事件。
+  /// 系统通知只用于玩家 UI（notifications），不注入到 AI Prompt 的【世界近期重大事件】锚点，
+  /// 防止"好感本周已达上限""记恨在心"这类机械状态刷屏挤占真正的剧情事件槽位（20 条上限）。
+  static bool isSystemNotification(String event) {
+    const blacklistPrefixes = <String>[
+      '📊', // 好感上限/统计类
+      '⚠️', // 信任受限/系统警告类
+      '💔', // 记恨/背叛记录类
+    ];
+    const blacklistKeywords = <String>[
+      '好感本周已达上限',
+      '周好感度已达上限',
+      '对你的信任因过去的背叛而受限',
+      '因你的行为而记恨在心',
+    ];
+    if (blacklistPrefixes.any(event.startsWith)) return true;
+    if (blacklistKeywords.any(event.contains)) return true;
+    return false;
+  }
+
   void addNarrativeEvent(String event) {
+    // 源头拦截：系统通知只走 notifications 面板，不走 AI 剧情锚点列表
+    if (isSystemNotification(event)) return;
     recentNarrativeEvents.insert(0, event);
     if (recentNarrativeEvents.length > 20) {
       recentNarrativeEvents.removeLast();

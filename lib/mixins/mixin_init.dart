@@ -12,6 +12,7 @@ import '../data/trait_data.dart';
 import '../data/npc_data.dart';
 import '../data/wand_data.dart';
 import '../models/world_state.dart';
+import '../models/long_term_memory.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 
@@ -48,6 +49,29 @@ mixin GameInitMixin on GameProviderBase {
       }
       if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
         characterLines.add('【初始天赋专精】${p.initialTalent}（相关魔法成功率和理解更高，叙事中可体现主角的擅长领域）');
+      }
+      if (p.magicAptitude != null && p.magicAptitude!.isNotEmpty) {
+        characterLines.add('【魔法资质】${p.magicAptitude}（主角学习新魔法的速度、掌握深度、施法威力和稳定性都依此浮动，严禁在叙事中把"资质平平/普通"写成"天才"，也严禁把"天才级"写成"资质普通"）');
+      }
+      if (p.familyBackground != null && p.familyBackground!.isNotEmpty) {
+        characterLines.add('【家族背景】${p.familyBackground}（经济条件、在家中的地位、父母亲人对主角的态度、家族在魔法界的名声和人脉——必须体现在 NPC 互动和场景描述里）');
+      }
+      if (p.housePreference != null && p.housePreference!.isNotEmpty && p.house == null) {
+        characterLines.add('【学院倾向】${p.housePreference}（分院前分院帽会优先倾听此意愿；分院后如实际学院不同，主角内心的落差感要体现在心理描写里）');
+      }
+      if (p.simulationStyle != null && p.simulationStyle!.isNotEmpty) {
+        characterLines.add('【模拟风格】${p.simulationStyle}（叙事整体走向、冲突密度、感情线推进速度、政治剧情比重都需贴合此风格）');
+      }
+      if (p.petId != null && p.petId!.isNotEmpty) {
+        final pd = petById(p.petId!);
+        final petName = (p.petName != null && p.petName!.isNotEmpty) ? p.petName : (pd?.name ?? '宠物');
+        if (pd != null) {
+          final abilityDesc = pd.abilities.isNotEmpty ? '；能力：${pd.abilities.join('、')}' : '';
+          final transformDesc = pd.canTransform ? '；可化人形' : '';
+          characterLines.add('【宠物】$petName（${pd.species}${pd.species == pd.name ? '' : '·' + pd.name}）。${pd.description.trim()}$abilityDesc$transformDesc。当宠物出现在场景中时，必须符合这些设定，不能凭空添加/删除能力或改性格。');
+        } else {
+          characterLines.add('【宠物】$petName（契约伙伴，宠物出现在场景中时必须体现它的存在）');
+        }
       }
       if (p.wandId != null && p.wandId!.isNotEmpty) {
         final wd = wandById(p.wandId!);
@@ -323,7 +347,95 @@ mixin GameInitMixin on GameProviderBase {
 
       _initializeNPCsByEra();
       _assignInitialRelationships();
-      openingScene = openingScene;
+
+      // ====== 注入开局 T0 核心事实（永不遗忘层 LongTermMemory.keyFacts） ======
+      // 这些是「身份级」事实，即使 AI 摘要压缩也不会丢；importance 9 永远保留。
+      // 写入顺序要在 _generateOpeningScene 之前，确保第一回合 prompt 已经含有这些纯事实。
+      final ts0 = worldState.time.format();
+      void addT0(String id, String fact, {String? category, Set<String> npcIds = const {}}) {
+        memory = memory.addKeyFact(KeyFactRecord(
+          id: id,
+          fact: fact,
+          importance: 9,
+          timestamp: ts0,
+          category: category,
+          npcIds: npcIds,
+        ));
+      }
+      final p0 = player!;
+      // 1. 基础身份：姓名 + 时代出生年份（避免AI记混）
+      addT0(
+        'identity:name_birth',
+        '主角姓名为${p0.name}，出生于${p0.birthYear}年，血统为${bloodStatusLabel(p0.bloodType)}，出生地：${p0.birthLocation}。',
+        category: 'identity',
+      );
+      // 2. 魔杖：木材/杖芯/长度（如果AI在开局就写错，后续极难纠正，必须提前锁死）
+      if (p0.wandId != null && p0.wandId!.isNotEmpty) {
+        final wd = wandById(p0.wandId!);
+        if (wd != null) {
+          final woodClean = wd.wood.endsWith('木') ? wd.wood : '${wd.wood}木';
+          addT0(
+            'identity:wand',
+            '主角的魔杖为$woodClean·${wd.core}·${wd.length}，购自对角巷奥利凡德魔杖店，由魔杖主动选中。',
+            category: 'asset',
+          );
+        }
+      }
+      // 3. 宠物：普通宠物写5分，绯月九尾狐写9分+明确能力和忠诚（东方神话属性对整个叙事走向影响大）
+      if (p0.petId != null && p0.petId!.isNotEmpty) {
+        final pd = petById(p0.petId!);
+        final petName = (p0.petName != null && p0.petName!.isNotEmpty) ? p0.petName! : (pd?.name ?? '宠物');
+        if (p0.petId == 'kyuubi' || (pd?.canTransform ?? false)) {
+          final abilities = pd?.abilities.isNotEmpty ?? false ? '，能力：${pd!.abilities.join('、')}' : '';
+          addT0(
+            'pet:kyuubi',
+            '主角的契约宠物是九尾灵狐"$petName"（绯月），来自东方青丘神话，可化人形$abilities，对主角完全忠诚、绝对听命。',
+            category: 'pet',
+          );
+        } else if (pd != null) {
+          final ab3 = pd.abilities.take(2).join('、');
+          addT0(
+            'pet:${p0.petId}',
+            '主角饲养的宠物是${pd.species}"$petName"${ab3.isNotEmpty ? '，擅长' + ab3 : ''}，是重要的陪伴和伙伴。',
+            category: 'pet',
+          );
+          // 普通宠物 importance 7 即可，不占最高档槽位
+          // 目前 addT0 都写 9；这里手动覆盖为 7
+          memory = memory.addKeyFact(KeyFactRecord(
+            id: 'pet:${p0.petId}',
+            fact: '主角饲养的宠物是${pd.species}"$petName"${ab3.isNotEmpty ? '，擅长' + ab3 : ''}，是重要的陪伴和伙伴。',
+            importance: 7,
+            timestamp: ts0,
+            category: 'pet',
+          ));
+        } else {
+          memory = memory.addKeyFact(KeyFactRecord(
+            id: 'pet:${p0.petId}',
+            fact: '主角的契约伙伴：$petName。',
+            importance: 7,
+            timestamp: ts0,
+            category: 'pet',
+          ));
+        }
+      }
+      // 4. 初始天赋专精：AI容易忽略并写成"天赋平平"，提前写死
+      if (p0.initialTalent != null && p0.initialTalent!.isNotEmpty) {
+        addT0(
+          'ability:initial_talent',
+          '主角在入学前就在「${p0.initialTalent}」方向展现出明显的天赋和长期积累，学习相关魔法时理解更快、效果更强。',
+          category: 'ability',
+        );
+      }
+      // 5. 魔法资质：防止AI统一写成"普通"
+      if (p0.magicAptitude != null && p0.magicAptitude!.isNotEmpty) {
+        addT0(
+          'ability:aptitude',
+          '主角的整体魔法资质为${p0.magicAptitude}，这决定了学习速度、施法威力和魔力总量的天花板。',
+          category: 'ability',
+        );
+      }
+
+      this.openingScene = openingScene;
       await _generateOpeningScene();
 
       // 本地分院衔接：当玩家选择「hall（大礼堂）」或「eve（分院前夜）」作为剧情起点时，
