@@ -5,6 +5,17 @@
 
 ---
 
+### v1.8.0 — 2026-08-23
+
+**📋 变更说明**
+fix(CI): 修复flutter analyze 8个warning - 移除unused_imports/unused_fields
+
+修复清单:
+- mixin_init.dart: 删除未使用 deepseek_service.dart import
+- game_provider.dart: 删除未使用 deepseek_service.dart import
+- game_screen.dart: 删除未使用 game_character_tab.dart import + 未使用 _tokenUsage 字段
+- settings/settings_provider_card.dart: 删除 flutter/services.dart (冗余, material已提供)
+
 ### v1.7.9 — 2026-08-23
 
 **📋 变更说明**
