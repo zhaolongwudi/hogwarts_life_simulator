@@ -620,3 +620,23 @@ class Rumor {
     this.scope = '全校',
   });
 }
+
+
+// ==================== 剧情选项 ====================
+
+class GameChoice {
+  final String text;
+  final String action;
+
+  const GameChoice({required this.text, required this.action});
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'action': action,
+      };
+
+  factory GameChoice.fromJson(Map<String, dynamic> json) => GameChoice(
+        text: json['text'] as String,
+        action: json['action'] as String,
+      );
+}
