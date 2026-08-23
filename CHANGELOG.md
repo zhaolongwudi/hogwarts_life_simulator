@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.4 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): 终极解环：GameProviderBase abstract 承载字段 + Mixin on Base
+
+修复 recursive_interface_inheritance + type_argument_not_matching_bounds + 所有 undefined_name 级联:
+- 新增 game_provider_base.dart: GameProviderBase extends ChangeNotifier
+  - 抽象 getter/setter (appProvider/router/saveService/random/chatService) 由 GameProvider @override 提供
+  - 32个核心状态字段(player/worldState/npcRegistry/...) 全部迁移到 Base
+  - 6个静态正则(reChoiceOption/maxRecentTurns等) 迁移到 Base
+
 ### v1.7.3 — 2026-08-23
 
 **📋 变更说明**
