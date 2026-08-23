@@ -23,6 +23,11 @@ import '../utils/crash_logger.dart';
 import '../utils/prompt_sanitizer.dart';
 import '../utils/story_text_renderer.dart';
 import '../prompts/prompts.dart';
+import '../models/player.dart';
+import '../models/world_state.dart';
+import '../models/npc.dart';
+import '../models/game_systems.dart';
+import '../models/long_term_memory.dart';
 
 /// GameProvider 本体：只保留 constructor / autoSave / saveNow / onApiKeyChange
 /// / updateClient / refreshClient / updateNpcAffection / updateApiKey 等调度入口。
@@ -65,6 +70,7 @@ class GameProvider extends GameProviderBase
   // ---------------------------------------------------------------
   // 自动读档 + 存档
   // ---------------------------------------------------------------
+  @override
   Future<void> tryAutoLoad() async {
     if (!appProvider.isGameStarted) return;
     final data = await saveService.loadAutoSave();
@@ -134,6 +140,7 @@ class GameProvider extends GameProviderBase
     }
   }
 
+  @override
   Future<void> autoSave() async {
     if (player == null) return;
     if (_saveScheduled) return;
@@ -142,6 +149,7 @@ class GameProvider extends GameProviderBase
     await _pendingSave;
   }
 
+  @override
   Future<void> saveNow() async {
     if (player == null) return;
     if (_saveScheduled) return;
@@ -149,6 +157,7 @@ class GameProvider extends GameProviderBase
     await doSave(debounce: false);
   }
 
+  @override
   Future<void> doSave({required bool debounce}) async {
     try {
       if (debounce) {
@@ -181,11 +190,13 @@ class GameProvider extends GameProviderBase
     }
   }
 
+  @override
   void onApiKeyChange() {
     updateClient();
     chatService.refreshClient();
   }
 
+  @override
   void updateClient() {
     final config = AiRouterConfig(
       narrativeProvider: appProvider.providerForScene(AiScene.narrative),
@@ -202,6 +213,7 @@ class GameProvider extends GameProviderBase
     router = newRouter;
   }
 
+  @override
   void refreshClient() {
     ResponseCache.instance.clear();
     updateClient();
@@ -209,6 +221,7 @@ class GameProvider extends GameProviderBase
     notifyListeners();
   }
 
+  @override
   void updateNpcAffection(String npcId, int change, {String? reason}) {
     final npc = npcRegistry[npcId];
     if (npc == null) return;
@@ -259,6 +272,7 @@ class GameProvider extends GameProviderBase
     autoSave();
   }
 
+  @override
   Future<void> updateApiKey(String key) async {
     await appProvider.saveApiKey(key);
     updateClient();
