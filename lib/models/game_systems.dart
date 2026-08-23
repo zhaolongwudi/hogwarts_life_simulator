@@ -568,6 +568,7 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'time_master', name: '时间行者', description: '游戏内时间推进超过1年'),
   Achievement(id: 'graduated', name: '七年之约', description: '从霍格沃茨毕业'),
   Achievement(id: 'goal_achieved', name: '得偿所愿', description: '毕业时达成人生目标的数值条件'),
+  Achievement(id: 'bone_mode', name: '血脉的悖论', description: '开启骨科模式，踏上禁忌之路'),
 ];
 
 // ==================== 信件 ====================

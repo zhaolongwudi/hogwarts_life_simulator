@@ -10,7 +10,7 @@ class WorldState {
   Map<String, int> housePoints;
   List<String> recentEvents;
   List<String> recentNarrativeEvents;
-  double playerImpactScore; // 预留字段: 设计钩子, 达到0.5+时原著NPC对玩家可见, 当前未实现写入
+  double playerImpactScore; // 玩家对世界的真实影响力(0.0~1.0): 关键行动/原著NPC互动/CG解锁/成就达成累计加分, 达到0.5+时原著NPC对玩家主动可见
 
   // ====== 设定文档扩展字段 ======
   GameTime time; // 完整时间系统

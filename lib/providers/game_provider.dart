@@ -9,6 +9,7 @@ import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../data/course_data.dart';
 import '../data/wand_data.dart';
+import '../data/pet_data.dart';
 import '../data/cg_data.dart';
 import '../data/npc_data.dart';
 import '../data/world_rules.dart';
@@ -594,6 +595,28 @@ class GameProvider extends ChangeNotifier {
       _openingScene = openingScene;
       await _generateOpeningScene();
 
+      // 本地分院衔接：当玩家选择「hall（大礼堂）」或「eve（分院前夜）」作为剧情起点时，
+      // 先在初始化后立刻跑一次本地逻辑分院（不消耗 token），把 house 提前写好；
+      // 叙事合并进开场叙事并解锁 'sorted' 成就，后续 AI prompt 中的学院就正确了。
+      // 如果玩家已经通过 AI 叙事解析得到 house（如 station 起点写了很多回合后分院），这里会被跳过。
+      if (_player != null && _player!.house == null && (openingScene == 'hall' || openingScene == 'eve')) {
+        try {
+          final house = _computeHouseLocal();
+          final sortingNarrative = _generateSortingNarrative(house);
+          _player!.house = house;
+          _unlockAchievement('sorted');
+          // 合并：本地分院叙事拼接在开场叙事后面
+          if (sortingNarrative.trim().isNotEmpty) {
+            _currentNarrative = (_currentNarrative.trim() +
+                '\n\n—— 分院仪式 ——\n\n' +
+                sortingNarrative.trim()).trim();
+          }
+          debugPrint('⚡ 开局本地分院：${_player!.house} (起点=$openingScene)');
+        } catch (e) {
+          debugPrint('开局本地分院失败(不影响游戏): $e');
+        }
+      }
+
       appProvider.setGameStarted(true);
       _unlockAchievement('first_letter');
       if (_player!.letters.isEmpty) {
@@ -1020,6 +1043,15 @@ ${profile.join('｜')}
     final petId = p.petId;
     final petName = p.petName ?? '';
     if (petId == null) return '未饲养';
+    // 优先使用 PetDef 数据层（避免 UI/Provider 两处硬编码不一致）
+    final def = petById(petId);
+    if (def != null) {
+      final ab = def.abilities.take(3).join('·');
+      final tf = def.canTransform ? '·可化人形' : '';
+      final nm = petName.isNotEmpty ? petName : def.name;
+      return '$nm（${def.species}$tf，能力：$ab）';
+    }
+    // 数据层找不到时的兜底
     switch (petId) {
       case 'owl': return '$petName（猫头鹰·聪明忠诚）';
       case 'cat': return '$petName（猫·神秘敏感）';
@@ -1621,6 +1653,10 @@ NPC名:±X(原因)
       case '骨科':
         if (parts.length >= 3 && parts[2] == '无视') {
           p.boneMode = true;
+          _unlockAchievement('bone_mode');
+          _notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
+          _worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除');
+          _bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
           _currentNarrative =
               '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
         } else {
@@ -2703,7 +2739,17 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     if (p.petId == null && p.petName == null) {
       return '【宠物】\n你还没有宠物。可以去对角巷挑选一只猫头鹰、猫或蟾蜍。';
     }
-    return '【宠物】\n名字：${p.petName ?? '未命名'}\n羁绊：${p.petBond}/100\n宠物可以帮你送信、在冒险中提供帮助。';
+    final def = p.petId != null ? petById(p.petId!) : null;
+    final buf = StringBuffer('【宠物】\n');
+    buf.writeln('名字：${p.petName ?? def?.name ?? '未命名'}');
+    if (def != null) {
+      buf.writeln('种类：${def.species}');
+      buf.writeln('能力：${def.abilities.join('、')}');
+      if (def.canTransform) buf.writeln('特性：可化人形（羁绊≥60后会触发人形互动）');
+      buf.writeln('简介：${def.description.split('\n').first}');
+    }
+    buf.write('羁绊：${p.petBond}/100\n宠物可以帮你送信、在冒险中提供帮助。');
+    return buf.toString();
   }
 
   // ==================== 信件互动系统 ====================
@@ -3066,11 +3112,13 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       });
       _unlockCG(cgById('CG-010'));
       _unlockCG(cgById('CG-CF-001'));
+      if (p.boneMode) _unlockCG(cgById('CG-BONE-002'));
       _unlockAchievement('first_confession');
       _unlockAchievement('in_love');
       _notifications.add('💕 你与${npc.name}开始了恋爱！');
       _worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！');
       _addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
+      _bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
       _currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'
@@ -3079,6 +3127,7 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       npc.affection -= 5;
       _unlockCG(cgById('CG-CF-002'));
       _addRumor('听说${npc.name}向你表白，却被你拒绝了。');
+      _bumpImpactScore(npc.isCanon ? 0.03 : 0.015, debugReason: '婉拒${npc.name}表白');
       _currentNarrative =
           '你温和地摇了摇头。${npc.name}的眼神黯淡了一下，但很快挤出一个微笑。\n\n'
           '"我明白了……那我们，还是朋友吧？"\n\n'
@@ -3113,6 +3162,7 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     );
     _notifications.add('📸 解锁CG：${cg.name}');
     _worldState.addNarrativeEvent('📸 解锁CG：${cg.name}');
+    _bumpImpactScore(0.02, debugReason: '解锁CG：${cg.id}');
   }
 
   void _unlockAchievement(String id) {
@@ -3168,8 +3218,9 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       _unlockCG(cgById(cgId));
     }
 
-    if (p.boneMode && isCrush) {
-      if (npc.confessed) _unlockCG(cgById('CG-BONE-001'));
+    if (p.boneMode) {
+      if (isCrush && npc.confessed) _unlockCG(cgById('CG-BONE-001'));
+      if (isPartner && aff >= 95) _unlockCG(cgById('CG-BONE-003'));
     }
   }
 
@@ -3187,7 +3238,9 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   void _checkWorldChangerAchievement() {
     final p = _player;
     if (p == null) return;
-    if (p.worldLineDeviation >= 0.1) {
+    // 双条件判据：玩家影响力(>=0.5) 与 世界线偏移(>=0.1) 同时满足才解锁
+    // 防止只靠时间堆积或只改一条剧情线就拿成就——需要真正从 NPC 关系/原著事件/关键锚点三路都撼动世界
+    if (p.worldLineDeviation >= 0.1 && _worldState.playerImpactScore >= 0.5) {
       _unlockAchievement('world_changer');
     }
   }
@@ -3957,27 +4010,53 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   /// 根据玩家行动累计影响力分数
   /// 每回合 +0.01，涉及原著NPC互动 +0.02，涉及关键剧情(恋爱/CG/成就) +0.05
   void _updatePlayerImpactScore(String action) {
-    double delta = 0.01;
+    double delta = 0.003; // 每回合基础增长：只要玩家做出选择，世界就有极小变动
 
+    // 1. 与原著 NPC 互动：每次提到名字或与其对话，都代表蝴蝶翅膀拍动
     if (_npcRegistry.isNotEmpty) {
       for (final npc in _npcRegistry.values) {
         if (npc.isCanon && action.contains(npc.name)) {
-          delta += 0.02;
+          delta += 0.015;
           break;
         }
       }
     }
 
-    // 关键剧情关键词
-    const keywords = ['恋爱', '表白', '冒险', '战斗', '发现', '秘密', '魂器', '黑魔法'];
-    for (final kw in keywords) {
-      if (action.contains(kw)) {
-        delta += 0.02;
-        break;
+    // 2. 关键剧情关键词（越大的历史事件关键词加分越多）
+    const weightedKeywords = <String, double>{
+      '魂器': 0.05, '黑魔法': 0.03, '伏地魔': 0.06,
+      '表白': 0.02, '恋爱': 0.015, '告白': 0.02,
+      '战斗': 0.03, '决斗': 0.035, '冒险': 0.02,
+      '秘密': 0.02, '发现': 0.015, '预言': 0.03,
+      '死亡': 0.05, '杀死': 0.06, '拯救': 0.04,
+      '入学': 0.02, 'OWL': 0.025, 'NEWT': 0.025, '毕业': 0.04,
+      '魁地奇': 0.015, '学院杯': 0.02, '三强争霸': 0.04,
+      '部长': 0.03, '魔法部': 0.02, '校长': 0.025,
+    };
+    for (final e in weightedKeywords.entries) {
+      if (action.contains(e.key)) {
+        delta += e.value;
+        break; // 单关键词命中即加分，避免累计爆炸
       }
     }
 
+    // 3. 世界线偏移量辅助：世界线已偏离越多，影响力增速越快（正反馈）
+    if (_player != null && _player!.worldLineDeviation > 0.05) {
+      delta *= 1 + _player!.worldLineDeviation.clamp(0.0, 0.5);
+    }
+
     _worldState.playerImpactScore = (_worldState.playerImpactScore + delta).clamp(0.0, 1.0);
+  }
+
+  /// 便捷入口：在非 action 场景（告白成功、CG解锁、事件锚点达成、月度事件、
+  /// 新 NPC 生成、毕业结算等）直接给 playerImpactScore 加一次分，
+  /// 避免这些"真正改变世界"的场景因为不从 _updatePlayerImpactScore(action) 走而被忽略。
+  void _bumpImpactScore(double delta, {String? debugReason}) {
+    if (_worldState.playerImpactScore >= 1.0) return;
+    _worldState.playerImpactScore = (_worldState.playerImpactScore + delta).clamp(0.0, 1.0);
+    if (debugReason != null) {
+      debugPrint('🌐 影响力+${delta.toStringAsFixed(3)} → ${_worldState.playerImpactScore.toStringAsFixed(3)}（$debugReason）');
+    }
   }
 
   // ==================== 好感度操作（供UI调用） ====================
