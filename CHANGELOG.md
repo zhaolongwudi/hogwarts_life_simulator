@@ -8,13 +8,13 @@
 ### v1.5.0 — 2026-08-23
 
 **📋 变更说明**
-perf(token): 模型升级整体放开翻倍，提升完整性逻辑性流畅度
+perf(token): 模型升级整体放开翻倍 + maxTokens精细化
 
-- T0：importance≥4，最多 60 条（≥5→≥4，30→60）
-- T1 未完结事项：最多 40 条（20→40）
-- T2 NPC 关键关系：24 个（12→24），keyMoments/secretsShared/promisesExchanged 每条 3→6
-- T3 世界事件：40 条（20→40）
-- T4 注入长度 200→600，跳过阈值 T0+T1<12→<30
+- T0~T3/recentTurns/摘要/选项prompt条数全部翻倍（详见 v1.4.9 条目）
+- narrative 写作要求：500-800字→1500-2500字，让每回合总token达到4000
+- maxTokens 从二元 6000/7000 改为按场景精细化：
+  narrative=4000, choice=2500, summary=4000, npcChat=4000
+- 选项场景从7000降到2500：选项只输出4行ABCD，2500绰绰有余
 
 ### v1.4.9 — 2026-08-23
 

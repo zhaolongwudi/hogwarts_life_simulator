@@ -1168,7 +1168,7 @@ $safeAction
 - 确保叙事符合当前地点（${_worldState.currentLocation ?? '未知'}）和当前时间（${_worldState.timestamp}）
 
 【写作要求】
-- 叙事:500-800字小说正文，融入感官细节、对话、心理、环境描写，分3-5段用空行分隔
+- 叙事:1500-2500字小说正文，融入感官细节、对话、心理、环境描写，分4-8段用空行分隔
 - 叙事正文严禁使用【】标签、序号、大纲结构
 - 剧情要有实际进展和转折，避免无意义的日常描述
 
@@ -3958,15 +3958,23 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
       }
       effectiveSystemPrompt = _systemPrompt ?? '';
     }
+    // 2026-08-23：maxTokens 按场景精细化分配
+    //   narrative 主剧情：4000（配合 1500-2500 字叙事要求，总 token 约 4000）
+    //   choice 选项：2500（只输出 4 行 ABCD，每行 20-50 字，2500 绰绰有余）
+    //   summary 摘要：4000（输出 800-2400 字摘要）
+    //   npcChat NPC聊天：4000（对话场景需要一定长度）
+    final maxTokens = switch (scene) {
+      AiScene.narrative => 4000,
+      AiScene.choice => 2500,
+      AiScene.summary => 4000,
+      AiScene.npcChat => 4000,
+    };
     final result = await _router!.chatComplete(
       scene: scene,
       prompt: prompt,
       systemPrompt: effectiveSystemPrompt,
       temperature: 0.85,
-      // 2026-08-23：模型能力升级，整体翻倍放开 maxTokens
-      //   narrative（主剧情）：3000→6000，写长篇对话、战斗、场景细节
-      //   其它场景（选项/摘要/NPC聊天等）：3500→7000
-      maxTokens: scene == AiScene.narrative ? 6000 : 7000,
+      maxTokens: maxTokens,
     );
     // 使用 try-catch 保护 token 统计，避免因 API 返回格式异常导致崩溃
     try {
