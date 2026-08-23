@@ -387,13 +387,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final hasHeader = timestamp != null || location != null;
 
     return SizedBox(
-      height: 500,
+      width: double.infinity,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned.fill(
             child: SingleChildScrollView(
-              padding: EdgeInsets.only(top: hasHeader ? 86 : 0),
+              padding: EdgeInsets.only(top: hasHeader ? 120 : 16, bottom: 24, left: 0, right: 0),
+              physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -485,17 +486,25 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildHeaderCard(String? timestamp, String? location) {
     final colorScheme = Theme.of(context).colorScheme;
-    final dividerColor = Theme.of(context).dividerTheme.color!;
+    final dividerColor = const Color(0xFF30363D);
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: colorScheme.primary, width: 4),
-          top: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
-          right: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
-          bottom: BorderSide(color: colorScheme.primary.withValues(alpha: 0.22)),
-        ),
+        color: const Color(0xFF1C232D),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD3A625), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: const Color(0xFFD3A625).withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,14 +514,17 @@ class _NarrativeTabState extends State<NarrativeTab> {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
               child: Row(
                 children: [
-                  Icon(Icons.access_time_outlined, color: colorScheme.primary, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    timestamp,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
+                  Icon(Icons.access_time_outlined, color: const Color(0xFFD3A625), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      timestamp,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFF8F6EE),
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ],
@@ -527,17 +539,21 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ),
           if (location != null)
             Padding(
-              padding: EdgeInsets.fromLTRB(14, timestamp != null ? 0 : 10, 14, 10),
+              padding: EdgeInsets.fromLTRB(14, timestamp != null ? 2 : 10, 14, 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.room_outlined, color: const Color(0xFF56D364), size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    location,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF56D364),
+                  const Icon(Icons.room_outlined, color: Color(0xFF56D364), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      location,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFE8FBEC),
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],

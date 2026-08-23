@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../services/deepseek_service.dart';
+import '../../utils/ai_debug_logger.dart';
+import '../settings/settings_provider_card.dart';
+import '../settings/settings_scene_routing.dart';
+import '../settings/settings_preset_pickers.dart';
+import '../settings/settings_token_usage.dart';
+import '../settings/settings_crash_section.dart';
+import '../settings_screen.dart' show ModeOption;
+import '../../models/game_systems.dart';
 import '../../providers/app_provider.dart';
-import '../settings_screen.dart';
 
+/// 游戏过程中的设置 Tab 直接展示完整设置内容，和独立 SettingsScreen 保持一致
+/// 但不包含 AppBar 返回箭头、标题返回按钮（作为 Tab 内嵌使用）
 class GameSettingsInlineTab extends StatefulWidget {
   const GameSettingsInlineTab({super.key});
 
@@ -12,496 +22,443 @@ class GameSettingsInlineTab extends StatefulWidget {
 }
 
 class _GameSettingsInlineTabState extends State<GameSettingsInlineTab> {
-  int _tokenUsage = 0;
+  final _keyControllers = <AiProvider, TextEditingController>{};
+  final _modelControllers = <AiProvider, TextEditingController>{};
+  bool _testing = false;
+  final _testResults = <AiProvider, String>{};
+  final _testSuccess = <AiProvider, bool>{};
 
-  @override
-  Widget build(BuildContext context) {
-    return _buildSettingsTab();
+  static String _stanceDesc(String s) {
+    switch (s) {
+      case '血统平等': return '相信血统不决定能力，混血麻瓜一样伟大';
+      case '纯血保守': return '维护纯血传统，但不走向极端暴力';
+      case '中立投机': return '审时度势，哪边有利倒向哪边';
+      case '凤凰社支持': return '支持邓布利多阵营，积极对抗黑魔法';
+      case '食死徒同情': return '同情或追随伏地魔的力量与理念';
+      case '自由独立': default: return '不站队，坚持自己的判断与良知行事';
+    }
   }
-
-  Widget _buildSettingsTopBar(GameProvider gp) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTopBarAction(
-            icon: Icons.sync,
-            label: '同步剧本',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✨ 正在同步剧本...')),
-              );
-            },
-          ),
-          _buildTopBarAction(
-            icon: Icons.save,
-            label: '存读档',
-            onTap: () async {
-              await gp.quickSave();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('✅ 已存档')),
-                );
-              }
-            },
-          ),
-          _buildTopBarAction(
-            icon: Icons.import_export,
-            label: '导入导出',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('📦 导入导出功能')),
-              );
-            },
-          ),
-        ],
-      ),
-    );
+  static IconData _stanceIcon(String s) {
+    switch (s) {
+      case '血统平等': return Icons.balance_outlined;
+      case '纯血保守': return Icons.shield_outlined;
+      case '中立投机': return Icons.tune_outlined;
+      case '凤凰社支持': return Icons.brightness_7_outlined;
+      case '食死徒同情': return Icons.bolt_outlined;
+      case '自由独立': default: return Icons.all_inclusive_outlined;
+    }
   }
-
-  Widget _buildTopBarAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
+  static Color _stanceColor(String s) {
+    switch (s) {
+      case '血统平等': return const Color(0xFF2980B9);
+      case '纯血保守': return const Color(0xFFD4A017);
+      case '中立投机': return const Color(0xFF7F8C8D);
+      case '凤凰社支持': return const Color(0xFFD98880);
+      case '食死徒同情': return const Color(0xFF111111);
+      case '自由独立': default: return const Color(0xFF27AE60);
+    }
   }
-
-  Widget _buildTokenUsageSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.bolt, size: 18, color: Theme.of(context).colorScheme.primary),
-              ),
-              const SizedBox(width: 10),
-              const Text('Token 用量统计', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('本月消耗', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-                      const SizedBox(height: 4),
-                      Text('$_tokenUsage', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
-                      Text('Tokens', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('预计费用', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-                      const SizedBox(height: 4),
-                      Text('\$${(_tokenUsage * 0.0001).toStringAsFixed(2)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
-                      Text('基于当前模型', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, size: 14),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '本应用使用本地 API Key 直接调用 AI 服务，不收取任何平台费用。实际费用取决于您选择的 AI 提供商的计费标准。',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text('上次本地自动备份 刚刚', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('📊 查看详细用量报表')),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bar_chart, size: 18),
-                  SizedBox(width: 8),
-                  Text('用量明细', style: TextStyle(fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('💾 正在导出本地数据...')),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.download, size: 18),
-                  SizedBox(width: 8),
-                  Text('导出存档数据', style: TextStyle(fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsTab() {
-    final appProvider = context.watch<AppProvider>();
-    final gp = context.read<GameProvider>();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildSettingsTopBar(gp),
-          const SizedBox(height: 12),
-          _buildTokenUsageSection(),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('AI 引擎', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
-                const SizedBox(height: 12),
-                const Text('选择 AI 提供商', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
-                const SizedBox(height: 8),
-                _buildProviderPicker(appProvider),
-                const SizedBox(height: 12),
-                if (appProvider.availableModels.isNotEmpty) ...[
-                  const Text('选择模型', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
-                  const SizedBox(height: 8),
-                  _buildModelPicker(appProvider),
-                  const SizedBox(height: 12),
-                ],
-                const Text('API Key', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
-                const SizedBox(height: 8),
-                _buildApiKeyInput(appProvider, gp),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('文字展示与阅读速度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Theme.of(context).colorScheme.primary),
-                        ),
-                        child: const Text('AI 输出优先', textAlign: TextAlign.center),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).scaffoldBackgroundColor,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Theme.of(context).dividerTheme.color!),
-                        ),
-                        child: const Text('阅读优先', textAlign: TextAlign.center),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text('阅读速度', style: TextStyle(fontSize: 13)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: _buildSpeedChip('慢 10字/秒', false)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildSpeedChip('中 20字/秒', true)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildSpeedChip('快 30字/秒', false)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('危险操作', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
-                const SizedBox(height: 8),
-                ListTile(
-                  title: const Text('清除 API Key'),
-                  subtitle: const Text('删除当前提供商的 API Key'),
-                  trailing: const Icon(Icons.delete, color: Colors.red),
-                  onTap: () {
-                    appProvider.clearApiKey();
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: const Icon(Icons.tune, color: Color(0xFFD3A625)),
-                  title: const Text('🔧 打开完整设置'),
-                  subtitle: const Text('显示模式、身份定位、时代背景、场景路由、Token 统计、调试日志'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProviderPicker(AppProvider appProvider) {
-    final providers = [
-      ('DeepSeek', AiProvider.deepseek, 'https://platform.deepseek.com'),
-      ('Agnes', AiProvider.agnes, 'https://apihub.agnes-ai.cn'),
-      ('商汤日日新', AiProvider.sensenova, 'https://platform.sensenova.cn'),
-    ];
-
-    return Column(
-      children: providers.map((p) {
-        final isSelected = appProvider.aiProvider == p.$2;
-        return GestureDetector(
-          onTap: () => appProvider.setAiProvider(p.$2),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
-            ),
-            child: Row(
-              children: [
-                Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                    color: isSelected ? Theme.of(context).colorScheme.primary : null),
-                const SizedBox(width: 8),
-                Expanded(child: Text(p.$1, style: const TextStyle(fontWeight: FontWeight.w500))),
-                Text(p.$3, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildModelPicker(AppProvider appProvider) {
-    return Wrap(
-      spacing: 8,
-      children: appProvider.availableModels.map((model) {
-        final isSelected = appProvider.aiModel == model;
-        return GestureDetector(
-          onTap: () => appProvider.setAiModel(model),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
-            ),
-            child: Text(model,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : null,
-                  fontSize: 13,
-                )),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildApiKeyInput(AppProvider appProvider, GameProvider gp) {
-    return _ApiKeyInput(appProvider: appProvider, gp: gp);
-  }
-
-  Widget _buildSpeedChip(String label, bool selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerTheme.color!),
-      ),
-      child: Text(label,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: selected ? Colors.white : null, fontSize: 13)),
-    );
-  }
-}
-
-class _ApiKeyInput extends StatefulWidget {
-  final AppProvider appProvider;
-  final GameProvider gp;
-  const _ApiKeyInput({required this.appProvider, required this.gp});
-
-  @override
-  State<_ApiKeyInput> createState() => _ApiKeyInputState();
-}
-
-class _ApiKeyInputState extends State<_ApiKeyInput> {
-  late final TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.appProvider.apiKey ?? '');
+    final appProvider = context.read<AppProvider>();
+    for (final p in AiProvider.values) {
+      _keyControllers[p] = TextEditingController(text: appProvider.apiKeys[p.name] ?? '');
+      _modelControllers[p] = TextEditingController(text: appProvider.providerModel(p));
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    for (final c in _keyControllers.values) {
+      c.dispose();
+    }
+    for (final c in _modelControllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  Future<void> _saveKeyAndModel(AiProvider p) async {
+    final key = _keyControllers[p]!.text.trim();
+    final model = _modelControllers[p]!.text.trim();
+    final appProvider = context.read<AppProvider>();
+
+    if (key.isNotEmpty) {
+      await appProvider.saveApiKeyFor(p, key);
+    }
+    if (model.isNotEmpty) {
+      await appProvider.setModelForProvider(p, model);
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _testConnection(AiProvider p) async {
+    setState(() {
+      _testing = true;
+      _testResults[p] = '测试中...';
+      _testSuccess[p] = false;
+    });
+    try {
+      final service = DeepSeekService(
+        config: AiConfig(
+          provider: p,
+          apiKey: _keyControllers[p]!.text.trim(),
+          baseUrl: _defaultBaseUrl(p),
+          chatPath: _defaultChatPath(p),
+          model: _modelControllers[p]!.text.trim().isEmpty
+              ? _defaultModel(p)
+              : _modelControllers[p]!.text.trim(),
+        ),
+      );
+      final connected = await service.checkConnection();
+      if (!mounted) return;
+      setState(() {
+        _testResults[p] = connected ? '✅ 连接成功' : '❌ 连接失败';
+        _testSuccess[p] = connected;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _testResults[p] = '❌ $e';
+        _testSuccess[p] = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _testing = false);
+      }
+    }
+  }
+
+  String _defaultBaseUrl(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:   return 'https://api.deepseek.com';
+      case AiProvider.agnes:      return 'https://api.agnes-ai.cn';
+      case AiProvider.sensenova:  return 'https://token.sensenova.cn';
+    }
+  }
+
+  String _defaultChatPath(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+      case AiProvider.agnes:
+      case AiProvider.sensenova:
+        return '/v1/chat/completions';
+    }
+  }
+
+  String _defaultModel(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:   return 'deepseek-v4-flash';
+      case AiProvider.agnes:      return 'agnes-2.5-flash';
+      case AiProvider.sensenova:  return 'sensenova-6.7-flash-lite';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final appProvider = context.watch<AppProvider>();
+    final gp = context.watch<GameProvider>();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 36),
       children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            obscureText: true,
-            decoration: const InputDecoration(
-              hintText: 'sk-...',
-              isDense: true,
+        const Text('🤖 AI 服务配置',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 4),
+        const Text('选择并配置您的 AI 提供商',
+            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+        const SizedBox(height: 12),
+        ...AiProvider.values.map((p) => SettingsProviderCard(
+          provider: p,
+          appProvider: appProvider,
+          keyController: _keyControllers[p]!,
+          modelController: _modelControllers[p]!,
+          testing: _testing,
+          testResult: _testResults[p],
+          testSuccess: _testSuccess[p],
+          onSave: () => _saveKeyAndModel(p),
+          onTest: () => _testConnection(p),
+          onModelPresetSelected: (m) {
+            context.read<AppProvider>().setModelForProvider(p, m);
+            setState(() {});
+          },
+        )),
+        const SizedBox(height: 16),
+        SettingsSceneRouting(
+          appProvider: appProvider,
+          onSceneRouteChanged: (scene, provider) {
+            appProvider.setSceneRoute(scene, provider);
+            context.read<GameProvider>().refreshClient();
+          },
+        ),
+        const SizedBox(height: 16),
+        SettingsTokenUsage(
+          gameProvider: gp,
+          onReset: () {
+            gp.resetTokenUsage();
+            setState(() {});
+          },
+        ),
+        const SizedBox(height: 16),
+        SettingsCrashSection(),
+        const SizedBox(height: 20),
+        const Text('📺 显示模式',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 4),
+        const Text('选择游戏界面的显示风格',
+            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+        const SizedBox(height: 12),
+        SettingsPresetPickers.buildModePicker(
+          appProvider.displayMode.name,
+          disabled: appProvider.identityMode == IdentityMode.transmigration
+              ? const {'magazine'}
+              : null,
+          onSelect: (v) {
+            context.read<AppProvider>().setDisplayMode(DisplayMode.values.byName(v));
+          },
+        ),
+        const SizedBox(height: 24),
+        const Text('🎭 身份模式',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 4),
+        const Text('穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
+            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+        const SizedBox(height: 12),
+        Consumer<GameProvider>(builder: (ctx, gp, _) => SettingsPresetPickers.buildModePicker(
+          appProvider.identityMode.name,
+          modes: const [
+            ModeOption('pure', label: '原住民（默认）', desc: '对命运走向一无所知，只凭判断与本能行事'),
+            ModeOption('transmigration', label: '穿越者', desc: '对原作剧情留有隐约记忆，引用未来信息需克制'),
+            ModeOption('bone_mode', label: '骨科模式(隐藏)', desc: '解锁血缘亲属的恋爱与CG线路'),
+          ],
+          disabled: appProvider.displayMode == DisplayMode.magazine
+              ? const {'transmigration'}
+              : null,
+          onSelect: (v) {
+            ctx.read<AppProvider>().setIdentityMode(IdentityMode.values.byName(v));
+          },
+        )),
+        if (appProvider.displayMode == DisplayMode.magazine)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              '使用「魔法手账」显示模式时，无法选用「穿越者」身份',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
           ),
+        const SizedBox(height: 24),
+        const Text('🔱 当前角色政治立场（快捷改）',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 4),
+        const Text('修改当前存档的主角政治立场（与开局第11轮的选项一致）；未开新游戏时不生效。',
+            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+        const SizedBox(height: 12),
+        Consumer<GameProvider>(builder: (ctx, gp, _) {
+          final p = gp.player;
+          final current = p?.politicalTendency ?? '自由独立';
+          final stanceList = const <String>[
+            '血统平等', '纯血保守', '中立投机', '凤凰社支持', '食死徒同情', '自由独立',
+          ];
+          final disabled = p == null ? Set<String>.from(stanceList) : null;
+          return SettingsPresetPickers.buildModePicker(
+            current,
+            modes: [
+              for (final s in stanceList)
+                ModeOption(
+                  s,
+                  label: s,
+                  desc: _stanceDesc(s),
+                  icon: _stanceIcon(s),
+                  color: _stanceColor(s),
+                ),
+            ],
+            disabled: disabled,
+            onSelect: (v) async {
+              gp.player?.politicalTendency = v;
+              setState(() {});
+              await gp.quickSave();
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text('🔱 政治立场已切换为：$v（下回合 AI 起生效）'),
+                  duration: const Duration(seconds: 2),
+                ));
+              }
+            },
+          );
+        }),
+        const SizedBox(height: 24),
+        const Text('⏳ 时代背景',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 4),
+        const Text('选择游戏开始的时代',
+            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+        const SizedBox(height: 12),
+        SettingsPresetPickers.buildEraPicker(context, appProvider.era.name),
+        const SizedBox(height: 24),
+        // AI 调试日志设置
+        Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252C36),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF374151)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.bug_report, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Text('🔧 调试日志',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('启用 AI 调用日志'),
+                subtitle: const Text('记录每回合 AI 的输入输出到本地文件，用于排查 bug'),
+                value: appProvider.aiDebugLogEnabled,
+                onChanged: (v) async {
+                  AiDebugLogger.instance.setEnabled(v);
+                  if (v) {
+                    await AiDebugLogger.instance.initialize(enabled: true);
+                  }
+                  await context.read<AppProvider>().setAiDebugLogEnabled(v);
+                },
+              ),
+              if (appProvider.aiDebugLogEnabled) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final files = await AiDebugLogger.instance.getLogFiles();
+                        if (!mounted) return;
+                        if (files.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('暂无日志文件')),
+                          );
+                          return;
+                        }
+                        showDialog(
+                          context: context,
+                          builder: (_) => LogViewerDialog(logFiles: files),
+                        );
+                      },
+                      icon: const Icon(Icons.folder),
+                      label: const Text('查看日志'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('清空日志？'),
+                            content: const Text('将删除所有已保存的 AI 调用日志'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+                              ElevatedButton(
+                                onPressed: () {
+                                  AiDebugLogger.instance.clearAllLogs();
+                                  Navigator.pop(context);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('日志已清空')),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                child: const Text('清空'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.delete_forever),
+                      label: const Text('清空'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1F2B),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '日志文件保存在应用文档目录下的 ai_debug_logs 文件夹\n可用于分析上下文污染、路由错误等问题',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: () async {
-            await widget.gp.updateApiKey(_controller.text.trim());
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('已保存 API Key')),
-              );
-            }
-          },
-          child: const Text('保存'),
+        // 危险操作
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252C36),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF374151)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('⚠️ 危险操作',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+              const SizedBox(height: 8),
+              ListTile(
+                title: const Text('清除所有 API Key'),
+                subtitle: const Text('删除本地保存的所有 AI 提供商 Key'),
+                trailing: const Icon(Icons.delete, color: Colors.red),
+                onTap: () {
+                  for (final p in AiProvider.values) {
+                    context.read<AppProvider>().clearApiKeyFor(p);
+                    _keyControllers[p]!.clear();
+                  }
+                  setState(() {});
+                },
+              ),
+              ListTile(
+                title: const Text('开始新游戏'),
+                subtitle: const Text('重置当前游戏进度'),
+                trailing: const Icon(Icons.refresh, color: Colors.orange),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('确认？'),
+                      content: const Text('所有进度将被清除，确定继续？'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+                        ElevatedButton(
+                          onPressed: () {
+                            context.read<GameProvider>().resetAllState();
+                            context.read<AppProvider>().setGameStarted(false);
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          child: const Text('确认'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 30),
       ],
     );
   }
