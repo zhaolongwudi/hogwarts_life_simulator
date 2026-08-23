@@ -12,7 +12,6 @@ import '../services/deepseek_service.dart';
 import '../data/cg_data.dart';
 import '../utils/story_text_renderer.dart';
 import '../services/npc_chat_service.dart';
-import '../providers/game_provider.dart';
 import '../data/world_rules.dart';
 import '../data/event_anchors.dart';
 import '../models/player.dart';
@@ -31,7 +30,7 @@ import '../utils/crash_logger.dart';
 
 mixin GameResponseMixin on GameProvider {
   void _tryExtractHouseFromNarrative(String text) {
-    if (_player == null || _player!.house != null) return;
+    if (player == null || player!.house != null) return;
     const houseGroup = '格兰芬多|斯莱特林|拉文克劳|赫奇帕奇'
         '|Gryffindor|Slytherin|Ravenclaw|Hufflepuff';
 
@@ -104,21 +103,21 @@ mixin GameResponseMixin on GameProvider {
     }
     en ??= '${matched[0].toUpperCase()}${matched.substring(1).toLowerCase()}';
 
-    _player!.house = en;
+    player!.house = en;
     _unlockAchievement('sorted');
-    debugPrint('⚡ 分院结果自动提取：${_player!.house}（匹配到 "$matched"）');
+    debugPrint('⚡ 分院结果自动提取：${player!.house}（匹配到 "$matched"）');
   }
 
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
 
   void _parseNarrativeOnly(String text) {
-    _currentNarrative = '';
-    _choices = [];
+    currentNarrative = '';
+    choices = [];
 
     // 移除结构化区块（选项、好感、声望等）
     var cleaned = text;
-    cleaned = cleaned.replaceAllMapped(_reAffectionSection, (m) => '');
-    cleaned = cleaned.replaceAllMapped(_reReputationSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProvider.reAffectionSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProvider.reReputationSection, (m) => '');
 
     const stripSections = [
       '可选行动', '自由行动', '行动建议', '备选行动',
@@ -135,7 +134,7 @@ mixin GameResponseMixin on GameProvider {
     for (final line in lines) {
       final trimmed = line.trim();
       // 跳过选项格式的行
-      if (_reChoiceOption.hasMatch(trimmed)) {
+      if (GameProvider.reChoiceOption.hasMatch(trimmed)) {
         continue;
       }
       narrativeLines.add(line);
@@ -149,18 +148,18 @@ mixin GameResponseMixin on GameProvider {
     // 自动段落排版
     narrative = StoryTextRenderer.autoParagraph(narrative);
 
-    _currentNarrative = narrative;
+    currentNarrative = narrative;
 
     // 提取好感区块用于UI显示
     final extracted = StoryTextRenderer.extractAffectionSections(text);
-    _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
+    lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
 
     // 解析好感和声望变化（从原始文本）
     _parseAffectionChanges(text);
     _parseReputationChanges(text);
 
     // 标记NPC登场
-    _markIntroducedFromNarrative(_currentNarrative);
+    _markIntroducedFromNarrative(currentNarrative);
 
     // 分院结果自动提取（使用带语境判断的公共函数）
     _tryExtractHouseFromNarrative(text);
@@ -168,8 +167,8 @@ mixin GameResponseMixin on GameProvider {
 
   void _parseResponse(String text) {
     final lines = text.split('\n');
-    _currentNarrative = '';
-    _choices = [];
+    currentNarrative = '';
+    choices = [];
     // 标记是否遇到过显式的【叙事】标题：遇到后严格按结构化走，
     // 否则走"整段正文直到选项区块开始之前"的宽松模式
     bool sawExplicitNarrativeMarker = false;
@@ -210,54 +209,54 @@ mixin GameResponseMixin on GameProvider {
       if (inNarrative) {
         // 在【叙事】块内部：除了好感度独立行外全收
         if (trimmed.isNotEmpty) {
-          _currentNarrative += '$line\n';
+          currentNarrative += '$line\n';
         } else {
-          _currentNarrative += '\n';
+          currentNarrative += '\n';
         }
         consecutiveChoiceLines = 0;
       } else if (!sawExplicitNarrativeMarker && !anyExplicitBlockPassed) {
         // 没有出现过显式【叙事】标题，且尚未进入任何结构化区块：
         // 这一段默认按正文处理（AI忘写标题的情况最常见）
-        if (_reChoiceOption.hasMatch(trimmed)) {
+        if (GameProvider.reChoiceOption.hasMatch(trimmed)) {
           // 关键修复：只有当正文已经足够长（>50字）且连续2行都是选项格式时
           // 才认为进入选项区，防止正文中的选项格式被误识别
-          if (_currentNarrative.trim().length >= minNarrativeLength) {
+          if (currentNarrative.trim().length >= minNarrativeLength) {
             consecutiveChoiceLines++;
             if (consecutiveChoiceLines >= 2) {
               anyExplicitBlockPassed = true;
-              final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+              final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
               if (action.isNotEmpty) {
-                _choices.add(GameChoice(text: action, action: action));
+                choices.add(GameChoice(text: action, action: action));
               }
             } else {
               // 第一行选项格式，暂时仍当作正文处理（可能是剧情描述）
               if (trimmed.isNotEmpty) {
-                _currentNarrative += '$line\n';
+                currentNarrative += '$line\n';
               } else {
-                _currentNarrative += '\n';
+                currentNarrative += '\n';
               }
             }
           } else {
             // 正文太短，可能是开局或错误，仍然按选项处理
             anyExplicitBlockPassed = true;
-            final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+            final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
             if (action.isNotEmpty) {
-              _choices.add(GameChoice(text: action, action: action));
+              choices.add(GameChoice(text: action, action: action));
             }
           }
         } else {
           consecutiveChoiceLines = 0;
           if (trimmed.isNotEmpty) {
-            _currentNarrative += '$line\n';
+            currentNarrative += '$line\n';
           } else {
-            _currentNarrative += '\n';
+            currentNarrative += '\n';
           }
         }
-      } else if (_reChoiceOption.hasMatch(trimmed)) {
+      } else if (GameProvider.reChoiceOption.hasMatch(trimmed)) {
         // 在显式选项区块之后，逐行收集选项
-        final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
-        if (action.isNotEmpty && _choices.length < 6) {
-          _choices.add(GameChoice(text: action, action: action));
+        final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
+        if (action.isNotEmpty && choices.length < 6) {
+          choices.add(GameChoice(text: action, action: action));
         }
       }
     }
@@ -265,7 +264,7 @@ mixin GameResponseMixin on GameProvider {
     // 检测并截断"下回合泄漏"：如果正文中包含新的📅时间戳，
     // 说明 AI 把下回合的预告也输出了，需要截断
     final timestampPattern = RegExp(r'📅\s*\d{4}年\d{1,2}月\d{1,2}日');
-    final narrativeLines = _currentNarrative.split('\n');
+    final narrativeLines = currentNarrative.split('\n');
     final truncatedLines = <String>[];
     bool foundSecondTimestamp = false;
     for (final line in narrativeLines) {
@@ -279,20 +278,20 @@ mixin GameResponseMixin on GameProvider {
       truncatedLines.add(line);
     }
     if (foundSecondTimestamp) {
-      _currentNarrative = truncatedLines.join('\n').trimRight();
+      currentNarrative = truncatedLines.join('\n').trimRight();
     }
 
     // Pass 2: 如果叙事 < 20 字，按"原始文本 - 好感/声望 - 选项区块"兜底提取，
     // 但注意兜底函数 _extractNarrativeFromRawText 已经不再做 split('\n\n').first
     // 的毁灭性截断，所以即使走到这里也能保住长文。
-    if (_currentNarrative.trim().length < 20) {
+    if (currentNarrative.trim().length < 20) {
       _extractNarrativeFromRawText(text);
     }
 
     // 先提取好感变化区块（用于独立卡片显示）
     final extracted = StoryTextRenderer.extractAffectionSections(text);
-    _lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
-    var narrativeForDisplay = extracted['narrative'] as String? ?? _currentNarrative;
+    lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
+    var narrativeForDisplay = extracted['narrative'] as String? ?? currentNarrative;
 
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
       RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)'), (m) => '');
@@ -308,14 +307,14 @@ mixin GameResponseMixin on GameProvider {
     // 自动段落排版（为无分行的 AI 输出插入合理段落）
     narrativeForDisplay = StoryTextRenderer.autoParagraph(narrativeForDisplay);
     narrativeForDisplay = narrativeForDisplay
-        .replaceAll(_reMultiNewline, '\n\n')
+        .replaceAll(GameProvider.reMultiNewline, '\n\n')
         .trim();
 
-    _currentNarrative = narrativeForDisplay;
+    currentNarrative = narrativeForDisplay;
 
     // Pass 3: 若依然正文为空，才生成兜底叙事（兜底叙事的特点：短、单段、以📅开头）
-    if (_currentNarrative.isEmpty) {
-      _currentNarrative = _generateFallbackNarrative();
+    if (currentNarrative.isEmpty) {
+      currentNarrative = generateFallbackNarrative();
     }
 
     // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
@@ -325,24 +324,24 @@ mixin GameResponseMixin on GameProvider {
     _parseReputationChanges(text);
 
     // 根据剧情文本中出现的人名，标记 NPC 为已登场（让世界页和通讯列表更准确）
-    _markIntroducedFromNarrative(_currentNarrative);
+    _markIntroducedFromNarrative(currentNarrative);
 
-    if (_choices.isEmpty) {
+    if (choices.isEmpty) {
       // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）
       final extractedChoices = _extractChoicesFromRawText(text);
       if (extractedChoices.isNotEmpty) {
-        _choices.addAll(extractedChoices);
+        choices.addAll(extractedChoices);
       } else {
         // 最后才使用兜底选项（但现在也基于剧情生成，而不是静态位置选项）
-        _choices.addAll(_generateContextualFallbackChoices());
+        choices.addAll(_generateContextualFallbackChoices());
       }
     }
     // 避免出现过多选项：裁剪到 4 个
-    if (_choices.length > 4) {
-      _choices = _choices.sublist(0, 4);
+    if (choices.length > 4) {
+      choices = choices.sublist(0, 4);
     }
 
-    if (_turnCount > 0 && (_turnCount % 5 == 0 || _lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)')))) {
+    if (turnCount > 0 && (turnCount % 5 == 0 || lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)')))) {
       checkNPCConfessions();
     }
 
@@ -351,7 +350,7 @@ mixin GameResponseMixin on GameProvider {
     _checkWarHeroAchievement();
 
     // 每10回合增加少量世界线变动率
-    if (_turnCount % 10 == 0) {
+    if (turnCount % 10 == 0) {
       _incrementWorldLineDeviation(0.005);
     }
 
@@ -365,8 +364,8 @@ mixin GameResponseMixin on GameProvider {
     var cleaned = text;
 
     // 1. 先删【好感度变化】和【声望变化】整块（它们是结构化输出区块，不属于正文叙事）
-    cleaned = cleaned.replaceAllMapped(_reAffectionSection, (m) => '');
-    cleaned = cleaned.replaceAllMapped(_reReputationSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProvider.reAffectionSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProvider.reReputationSection, (m) => '');
 
     // 2. 删除其他已知结构化区块（整体移除，连同标题行一起）
     const stripSections = [
@@ -384,7 +383,7 @@ mixin GameResponseMixin on GameProvider {
 
     // 3. 找到「选项区块」的起点：某一行以「A./B./1./一、A)」开头且后面是文字
     //    把起点之后的内容全部认为是选项而丢弃
-    final choiceMatch = _reChoiceMultiLine.firstMatch(cleaned);
+    final choiceMatch = GameProvider.reChoiceMultiLine.firstMatch(cleaned);
     if (choiceMatch != null) {
       int end;
       if (choiceMatch.group(0)!.startsWith('\n')) {
@@ -404,17 +403,17 @@ mixin GameResponseMixin on GameProvider {
         .trim();
 
     if (cleaned.isNotEmpty && cleaned.length > 10) {
-      _currentNarrative = cleaned;
+      currentNarrative = cleaned;
     }
   }
 
   String generateFallbackNarrative() {
-    final p = _player;
+    final p = player;
     if (p == null) return '你站在霍格沃茨的走廊上，等待着下一段旅程。';
 
-    final location = _worldState.currentLocation ?? '霍格沃茨';
-    final time = _worldState.timestamp;
-    final weather = _worldState.weather ?? '晴朗';
+    final location = worldState.currentLocation ?? '霍格沃茨';
+    final time = worldState.timestamp;
+    final weather = worldState.weather ?? '晴朗';
 
     final fallbacks = [
       '📅 $time\n\n你在$location，感受着魔法世界的脉搏。周围的一切都在等待你的下一步行动。',
@@ -423,12 +422,12 @@ mixin GameResponseMixin on GameProvider {
       '📅 $time\n\n${p.name}，你身处$location。接下来会发生什么，完全取决于你的选择。',
     ];
 
-    final idx = _turnCount % fallbacks.length;
+    final idx = turnCount % fallbacks.length;
     return fallbacks[idx];
   }
 
   List<GameChoice> generateFallbackChoices() {
-    final location = _worldState.currentLocation ?? '霍格沃茨';
+    final location = worldState.currentLocation ?? '霍格沃茨';
 
     final locationChoices = {
       '霍格沃茨': [
@@ -464,7 +463,7 @@ mixin GameResponseMixin on GameProvider {
       ('返回原地', '回到之前的位置'),
     ];
 
-    final idx = _turnCount % options.length;
+    final idx = turnCount % options.length;
     final rotated = [
       options[idx],
       options[(idx + 1) % options.length],
@@ -487,9 +486,9 @@ mixin GameResponseMixin on GameProvider {
       if (trimmed.isEmpty) continue;
 
       // 直接使用预编译的正则，匹配所有选项格式
-      final match = _reChoiceOption.firstMatch(trimmed);
+      final match = GameProvider.reChoiceOption.firstMatch(trimmed);
       if (match != null) {
-        final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+        final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
         if (action.isNotEmpty && action.length >= 2) {
           choices.add(GameChoice(text: action, action: action));
         }
@@ -503,12 +502,12 @@ mixin GameResponseMixin on GameProvider {
 
   /// 独立生成选项：接收已生成的剧情文本，让 AI 专门基于此生成选项
   Future<List<GameChoice>> _generateChoicesSeparately(String narrative) async {
-    if (_router == null) return [];
+    if (router == null) return [];
 
-    final p = _player!;
-    final currentLoc = _worldState.currentLocation ?? '';
-    final timestamp = _worldState.timestamp;
-    final playerAction = _lastPlayerAction;
+    final p = player!;
+    final currentLoc = worldState.currentLocation ?? '';
+    final timestamp = worldState.timestamp;
+    final playerAction = lastPlayerAction;
 
     // 只取叙事末尾 800 字作为选项依据——重点在「结尾的即时动作/最后一位说话者/场面氛围」
     // 选项必须直接承接这一刻，不得跨越到下一节课/明天/下一个地点。
@@ -547,7 +546,7 @@ mixin GameResponseMixin on GameProvider {
 
     // 从当前剧情 + 结构化记忆中提取"承诺/未完结事项"，防止选项说话不算话
     // 2026-08-23：importance≥5（≥6→≥5），条数 3→6，重要承诺/伏笔/未完成任务更多注入
-    final openLoopsBrief = _memory.openLoops
+    final openLoopsBrief = memory.openLoops
         .where((l) => l.status == 'open' && l.importance >= 5)
         .take(6)
         .map((l) => '· ${l.description}')
@@ -557,7 +556,7 @@ mixin GameResponseMixin on GameProvider {
     //  - 必须 introduced=true（剧情中正式认识/互动过）才会出现。
     //  - 不再用「好感绝对值≥10」作为筛选——开局NPC全被塞了0~15随机好感，会导致"还没见过面就+14"伪造。
     //  - 最多 8 个（12→8），避免 token 被NPC池污染。
-    final nearbyNpcs = _npcRegistry.values
+    final nearbyNpcs = npcRegistry.values
         .where((n) => n.introduced)
         .take(8)
         .map((n) => '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection})')
@@ -600,7 +599,7 @@ mixin GameResponseMixin on GameProvider {
 
   ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
   【T0 核心事实（选项不能违背）】
-  ${_memory.keyFacts.where((f) => f.importance >= 4).map((f) => '· ${f.fact}').take(10).join('\n')}
+  ${memory.keyFacts.where((f) => f.importance >= 4).map((f) => '· ${f.fact}').take(10).join('\n')}
 
   请直接输出 4 行：
   A.xxxxxx
@@ -622,9 +621,9 @@ mixin GameResponseMixin on GameProvider {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
 
-        final match = _reChoiceOption.firstMatch(trimmed);
+        final match = GameProvider.reChoiceOption.firstMatch(trimmed);
         if (match != null) {
-          final action = trimmed.replaceFirst(_reChoiceOption, '').trim();
+          final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
           if (action.isNotEmpty && action.length >= 2) {
             choices.add(GameChoice(text: action, action: action));
           }
@@ -643,7 +642,7 @@ mixin GameResponseMixin on GameProvider {
   /// 基于当前上下文生成的兜底选项（比静态位置选项更智能）
 
   void _parseAffectionChanges(String text) {
-    if (_npcRegistry.isEmpty) return;
+    if (npcRegistry.isEmpty) return;
 
     // 修复：使用捕获组提取内容，避免 replaceFirst 把整段匹配（header+body）都删掉
     // 旧代码：sectionMatch.group(0)!.replaceFirst(sectionPattern, '') 会用同一个
@@ -680,7 +679,7 @@ mixin GameResponseMixin on GameProvider {
         try {
           NPC? npc;
           int bestScore = 0;
-          for (final n in _npcRegistry.values) {
+          for (final n in npcRegistry.values) {
             final score = n.nameMatchScore(npcName);
             if (score > bestScore) {
               bestScore = score;
@@ -703,7 +702,7 @@ mixin GameResponseMixin on GameProvider {
           }
           _checkLocks(npc);
           _syncRelationshipLevel(npc);
-          _checkAffectionAchievements(npc);
+          checkAffectionAchievements(npc);
         } catch (e) {
           debugPrint('[好感解析错误] $npcName: $e');
         }
@@ -727,7 +726,7 @@ mixin GameResponseMixin on GameProvider {
       // 必须包含 +数字 或 -数字
       if (!RegExp(r'[+-]\d').hasMatch(trimmed)) continue;
       // 不能是选项行
-      if (_reChoiceOption.hasMatch(trimmed)) continue;
+      if (GameProvider.reChoiceOption.hasMatch(trimmed)) continue;
       found.add(trimmed);
     }
     return found.isEmpty ? null : found.join('\n');
@@ -740,9 +739,9 @@ mixin GameResponseMixin on GameProvider {
   /// - 变化幅度小：正面互动 +1~+2，负面互动 -1
 
   void _inferPassiveAffection(String narrativeText, {Set<String>? excludeIds}) {
-    if (_npcRegistry.isEmpty || _player == null) return;
+    if (npcRegistry.isEmpty || player == null) return;
 
-    final action = _lastPlayerAction.toLowerCase();
+    final action = lastPlayerAction.toLowerCase();
     // 判断玩家行动的情感倾向
     final positiveKeywords = [
       '聊天', '对话', '帮助', '帮', '救', '约', '邀', '送礼', '送',
@@ -762,7 +761,7 @@ mixin GameResponseMixin on GameProvider {
 
     // 从剧情文本中找出出现的 NPC（未被显式好感覆盖的）
     final candidates = <NPC>[];
-    final npcs = _npcRegistry.values.toList()
+    final npcs = npcRegistry.values.toList()
       ..sort((a, b) => b.name.length.compareTo(a.name.length));
     for (final npc in npcs) {
       if (excludeIds != null && excludeIds.contains(npc.id)) continue;
@@ -786,7 +785,7 @@ mixin GameResponseMixin on GameProvider {
     for (int i = 0; i < candidates.length && i < maxPassive; i++) {
       final npc = candidates[i];
       final delta = isPositive
-          ? 1 + _random.nextInt(2)  // +1 or +2
+          ? 1 + random.nextInt(2)  // +1 or +2
           : -1;                     // -1
       final before = npc.affection;
       updateNpcAffection(npc.id, delta, reason: '剧情互动(推断)');
@@ -800,7 +799,7 @@ mixin GameResponseMixin on GameProvider {
   }
 
   void _parseReputationChanges(String text) {
-    if (_player == null) return;
+    if (player == null) return;
     // 修复：与 _parseAffectionChanges 同样的 bug——replaceFirst 把整段内容删掉
     final sectionPattern = RegExp(r'【声望变化?】\s*([\s\S]*?)(?=【|$)');
     final sectionMatch = sectionPattern.firstMatch(text);
@@ -816,7 +815,7 @@ mixin GameResponseMixin on GameProvider {
       final delta = int.tryParse(match.group(2)!) ?? 0;
       if (delta == 0 || dim.isEmpty) continue;
       try {
-        _player!.playerReputation.add(dim, delta);
+        player!.playerReputation.add(dim, delta);
       } catch (e) {
       }
     }

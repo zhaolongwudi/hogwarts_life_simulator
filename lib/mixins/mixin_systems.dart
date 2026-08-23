@@ -12,7 +12,6 @@ import '../services/deepseek_service.dart';
 import '../data/cg_data.dart';
 import '../utils/story_text_renderer.dart';
 import '../services/npc_chat_service.dart';
-import '../providers/game_provider.dart';
 import '../data/world_rules.dart';
 import '../data/event_anchors.dart';
 import '../models/player.dart';
@@ -52,29 +51,29 @@ mixin GameSystemsMixin on GameProvider {
       minutes = 60;
     }
 
-    final oldDayOfYear = _worldState.time.dayOfYear;
-    final oldMonth = _worldState.time.month;
-    final oldYear = _worldState.time.year;
-    _worldState.time.advanceMinutes(minutes);
+    final oldDayOfYear = worldState.time.dayOfYear;
+    final oldMonth = worldState.time.month;
+    final oldYear = worldState.time.year;
+    worldState.time.advanceMinutes(minutes);
 
     // 游戏周追踪（好感沉淀用）
-    final newDayOfYear = _worldState.time.dayOfYear;
+    final newDayOfYear = worldState.time.dayOfYear;
     if ((newDayOfYear ~/ 7) > (oldDayOfYear ~/ 7)) {
-      _gameWeek++;
+      gameWeek++;
       _resetWeeklyAffectionCaps();
     }
 
     // 深夜触发满月标记
-    if (_worldState.time.isFullMoon && !_worldState.specialMarkers.contains('🌙满月')) {
-      _worldState.specialMarkers.add('🌙满月');
-    } else if (!_worldState.time.isFullMoon) {
-      _worldState.specialMarkers.remove('🌙满月');
+    if (worldState.time.isFullMoon && !worldState.specialMarkers.contains('🌙满月')) {
+      worldState.specialMarkers.add('🌙满月');
+    } else if (!worldState.time.isFullMoon) {
+      worldState.specialMarkers.remove('🌙满月');
     }
 
     // 同步旧字段
-    _worldState.dayOfMonth = _worldState.time.day;
-    _worldState.dayOfWeek = GameTime.weekdays[_worldState.time.weekday];
-    _worldState.month = GameTime.months[_worldState.time.month - 1];
+    worldState.dayOfMonth = worldState.time.day;
+    worldState.dayOfWeek = GameTime.weekdays[worldState.time.weekday];
+    worldState.month = GameTime.months[worldState.time.month - 1];
 
     // 学年推进检测（9月1日触发）
     _checkSchoolYearTransition(oldMonth, oldYear);
@@ -98,24 +97,24 @@ mixin GameSystemsMixin on GameProvider {
   /// 学年切换检测：当进入新的学年（9月）时，推进玩家与 NPC 年级
 
   void _checkSchoolYearTransition(int oldMonth, int oldYear) {
-    final p = _player;
+    final p = player;
     if (p == null) return;
-    final t = _worldState.time;
+    final t = worldState.time;
 
     final newStart = _schoolYearStartFor(t.year, t.month);
-    if (_lastSchoolYearStart == 0) {
+    if (lastSchoolYearStart == 0) {
       // 首次初始化追踪（不触发晋升）
-      _lastSchoolYearStart = newStart;
+      lastSchoolYearStart = newStart;
       return;
     }
-    if (newStart <= _lastSchoolYearStart) return;
+    if (newStart <= lastSchoolYearStart) return;
 
     // 跨越了一个或多个学年
-    final yearsPassed = newStart - _lastSchoolYearStart;
-    _lastSchoolYearStart = newStart;
+    final yearsPassed = newStart - lastSchoolYearStart;
+    lastSchoolYearStart = newStart;
 
     // 玩家已毕业则不再推进
-    if (_worldState.graduated) {
+    if (worldState.graduated) {
       _updateAcademicYearLabel();
       return;
     }
@@ -126,7 +125,7 @@ mixin GameSystemsMixin on GameProvider {
     if (newGrade > 7) {
       // 毕业
       p.grade = 7;
-      _worldState.graduated = true;
+      worldState.graduated = true;
       _onPlayerGraduated(oldGrade);
     } else {
       p.grade = newGrade;
@@ -139,16 +138,16 @@ mixin GameSystemsMixin on GameProvider {
   /// 更新学年标签（如 1992-1993）
 
   void _updateAcademicYearLabel() {
-    final t = _worldState.time;
+    final t = worldState.time;
     final start = _schoolYearStartFor(t.year, t.month);
-    _worldState.academicYear = '$start-${start + 1}';
+    worldState.academicYear = '$start-${start + 1}';
     // 学期：9-12月第一学期，1-6月第二学期，7-8月暑假
     if (t.month >= 9) {
-      _worldState.term = 'first';
+      worldState.term = 'first';
     } else if (t.month <= 6) {
-      _worldState.term = 'second';
+      worldState.term = 'second';
     } else {
-      _worldState.term = 'summer';
+      worldState.term = 'summer';
     }
   }
 
@@ -156,7 +155,7 @@ mixin GameSystemsMixin on GameProvider {
 
   void _promoteNpcs(int yearsPassed) {
     final graduatedNames = <String>[];
-    for (final npc in _npcRegistry.values) {
+    for (final npc in npcRegistry.values) {
       if (npc.grade <= 0) continue; // 教职/成人不推进
       if (npc.graduated) continue;
       npc.grade += yearsPassed;
@@ -167,19 +166,19 @@ mixin GameSystemsMixin on GameProvider {
       }
     }
     if (graduatedNames.isNotEmpty) {
-      _notifications.add('🎓 ${graduatedNames.take(5).join('、')}${graduatedNames.length > 5 ? '等' : ''} 已从霍格沃茨毕业');
-      _worldState.addNarrativeEvent('🎓 一批高年级学生毕业了：${graduatedNames.take(5).join('、')}');
+      notifications.add('🎓 ${graduatedNames.take(5).join('、')}${graduatedNames.length > 5 ? '等' : ''} 已从霍格沃茨毕业');
+      worldState.addNarrativeEvent('🎓 一批高年级学生毕业了：${graduatedNames.take(5).join('、')}');
     }
   }
 
   /// 新学年开始的叙事与通知
 
   void _onSchoolYearStart(int newGrade) {
-    final p = _player;
+    final p = player;
     if (p == null) return;
-    _notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
-    _worldState.addNarrativeEvent('🏫 ${_worldState.time.year}年9月，你升入${newGrade}年级');
-    _worldState.addMarker('⏳新学年');
+    notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
+    worldState.addNarrativeEvent('🏫 ${worldState.time.year}年9月，你升入${newGrade}年级');
+    worldState.addMarker('⏳新学年');
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
     debugPrint('🎓 学年推进：玩家升入${newGrade}年级');
   }
@@ -187,11 +186,11 @@ mixin GameSystemsMixin on GameProvider {
   /// 玩家毕业（七年级结束）
 
   void _onPlayerGraduated(int oldGrade) {
-    final p = _player;
+    final p = player;
     if (p == null) return;
-    _notifications.add('🎓 你从霍格沃茨毕业了！七年的魔法生涯画上句点。');
-    _worldState.addNarrativeEvent('🎓 ${_worldState.time.year}年，你从霍格沃茨毕业');
-    _worldState.addMarker('🎓毕业');
+    notifications.add('🎓 你从霍格沃茨毕业了！七年的魔法生涯画上句点。');
+    worldState.addNarrativeEvent('🎓 ${worldState.time.year}年，你从霍格沃茨毕业');
+    worldState.addMarker('🎓毕业');
     debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
     _graduationSettlement();
@@ -202,7 +201,7 @@ mixin GameSystemsMixin on GameProvider {
   /// 评估目标毕业条件，返回 (条件描述, 是否达成) 列表
 
   List<(String, bool)> _evaluateGoalRequirement(GoalRequirement req) {
-    final p = _player;
+    final p = player;
     if (p == null) return [];
     final lines = <(String, bool)>[];
     if (req.reputationDim != null) {
@@ -218,7 +217,7 @@ mixin GameSystemsMixin on GameProvider {
       lines.add(('资产 ≥ ${req.wealthMin} 加隆（当前 $cur）', cur >= req.wealthMin));
     }
     if (req.deepRelationsMin > 0) {
-      final cur = _npcRegistry.values.where((n) => n.isAlive && n.affection >= 50).length;
+      final cur = npcRegistry.values.where((n) => n.isAlive && n.affection >= 50).length;
       lines.add(('深厚羁绊（好感≥50）≥ ${req.deepRelationsMin} 人（当前 $cur）', cur >= req.deepRelationsMin));
     }
     if (req.worldLineMin > 0) {
@@ -231,7 +230,7 @@ mixin GameSystemsMixin on GameProvider {
   /// 毕业结算：评估人生目标、解锁成就、生成结算报告（追加到当前剧情后）
 
   void _graduationSettlement() {
-    final p = _player;
+    final p = player;
     if (p == null) return;
 
     _unlockAchievement('graduated');
@@ -262,7 +261,7 @@ mixin GameSystemsMixin on GameProvider {
     }
 
     final rep = p.playerReputation;
-    final deepCount = _npcRegistry.values.where((n) => n.isAlive && n.affection >= 50).length;
+    final deepCount = npcRegistry.values.where((n) => n.isAlive && n.affection >= 50).length;
     buf
       ..writeln()
       ..writeln('【七年统计】')
@@ -275,16 +274,16 @@ mixin GameSystemsMixin on GameProvider {
       ..writeln('输入 /结局 可生成完整终章评语，或继续你的毕业后人生。');
 
     // 追加到当前剧情之后，保留本回合叙事
-    _currentNarrative = _currentNarrative.isEmpty
+    currentNarrative = currentNarrative.isEmpty
         ? buf.toString().trim()
         : '$_currentNarrative\n\n${buf.toString().trim()}';
-    _worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}');
+    worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}');
   }
 
   /// 目标进度查询（/目标 进度）
 
   String _formatGoalProgress() {
-    final p = _player;
+    final p = player;
     if (p == null) return '尚未创建角色。';
     final goal = p.currentGoal != null ? goalByName(p.currentGoal!) : null;
     if (goal == null) {
@@ -311,43 +310,43 @@ mixin GameSystemsMixin on GameProvider {
   /// 按当前月份/年级/时代检查并触发手写事件锚点
 
   void _checkEventAnchors() {
-    final p = _player;
+    final p = player;
     if (p == null) return;
-    if (_worldState.graduated) return; // 毕业后不再触发校内锚点
+    if (worldState.graduated) return; // 毕业后不再触发校内锚点
 
-    final t = _worldState.time;
-    final fired = _worldState.firedAnchorIds.toSet();
+    final t = worldState.time;
+    final fired = worldState.firedAnchorIds.toSet();
     final grade = p.grade ?? 1;
 
     final due = anchorsFor(
       month: t.month,
       grade: grade,
-      era: _worldState.era,
+      era: worldState.era,
       firedIds: fired,
       hour: t.hour,
-      currentLocation: _worldState.currentLocation,
+      currentLocation: worldState.currentLocation,
     );
     if (due.isEmpty) return;
 
     // 每个回合最多注入一个锚点，避免信息过载；其余顺延
     final anchor = due.first;
-    _worldState.firedAnchorIds.add(anchor.id);
-    _pendingAnchorDirective = anchor.directive;
-    _notifications.add('📜 剧情节点：${anchor.title}');
-    _worldState.addNarrativeEvent('📜 ${anchor.title}');
+    worldState.firedAnchorIds.add(anchor.id);
+    pendingAnchorDirective = anchor.directive;
+    notifications.add('📜 剧情节点：${anchor.title}');
+    worldState.addNarrativeEvent('📜 ${anchor.title}');
     debugPrint('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
   }
 
   void _resetWeeklyAffectionCaps() {
-    for (final npc in _npcRegistry.values) {
+    for (final npc in npcRegistry.values) {
       npc.affectionGainedThisWeek = 0;
     }
     debugPrint('📊 新的一周开始：好感周增量已重置');
   }
 
   void _checkMonthlyEvolution(int oldMonth, int oldYear) {
-    final newMonth = _worldState.time.month;
-    final newYear = _worldState.time.year;
+    final newMonth = worldState.time.month;
+    final newYear = worldState.time.year;
     if (newMonth != oldMonth || newYear != oldYear) {
       _generateMonthlyEvent(newMonth, newYear);
     }
@@ -393,27 +392,27 @@ mixin GameSystemsMixin on GameProvider {
     pool.addAll(templates['ministry']!);
     pool.addAll(templates['hogwarts']!);
     pool.addAll(templates['economy']!);
-    if (_random.nextDouble() < 0.3) pool.addAll(templates['dark']!);
-    if (_random.nextDouble() < 0.4) pool.addAll(templates['creature']!);
+    if (random.nextDouble() < 0.3) pool.addAll(templates['dark']!);
+    if (random.nextDouble() < 0.4) pool.addAll(templates['creature']!);
 
-    pool.shuffle(_random);
+    pool.shuffle(random);
     final event = '【${year}年${month}月·月度世界演化】${pool.first}';
 
-    _worldState.recentEvents.insert(0, event);
-    if (_worldState.recentEvents.length > 50) {
-      _worldState.recentEvents.removeLast();
+    worldState.recentEvents.insert(0, event);
+    if (worldState.recentEvents.length > 50) {
+      worldState.recentEvents.removeLast();
     }
 
-    _worldState.housePoints = Map<String, int>.fromEntries(
-      _worldState.housePoints.entries.map((e) {
-        final raw = e.value + _random.nextInt(5) - 2;
+    worldState.housePoints = Map<String, int>.fromEntries(
+      worldState.housePoints.entries.map((e) {
+        final raw = e.value + random.nextInt(5) - 2;
         final newValue = raw.clamp(0, 9999).toInt();
         return MapEntry(e.key, newValue);
       }),
     );
 
-    _notifications.add('🌍 $event');
-    _worldState.addNarrativeEvent('🌍 $event');
+    notifications.add('🌍 $event');
+    worldState.addNarrativeEvent('🌍 $event');
   }
 
   String _monthSeasonKey(int month) {
@@ -424,7 +423,7 @@ mixin GameSystemsMixin on GameProvider {
   }
 
   void _runConsistencyChecks() {
-    final p = _player;
+    final p = player;
     if (p == null) return;
     final issues = <String>[];
 
@@ -470,7 +469,7 @@ mixin GameSystemsMixin on GameProvider {
     }
 
     // ====== NPC好感与关系检查 ======
-    for (final npc in _npcRegistry.values) {
+    for (final npc in npcRegistry.values) {
       npc.affection = npc.affection.clamp(-100, 100);
       if (!npc.isAlive && p.relationships.containsKey(npc.id)) {
         issues.add('NPC "${npc.name}" 已死亡但仍在关系列表中');
@@ -492,7 +491,7 @@ mixin GameSystemsMixin on GameProvider {
         p.loveState.partnerName = null;
         issues.add('恋爱状态不一致（缺少伴侣信息），已重置为单身');
       } else {
-        final partnerNpc = _npcRegistry[p.loveState.partnerId];
+        final partnerNpc = npcRegistry[p.loveState.partnerId];
         if (partnerNpc == null || !partnerNpc.isAlive) {
           p.loveState.status = '单身';
           p.loveState.partnerId = null;
@@ -503,23 +502,23 @@ mixin GameSystemsMixin on GameProvider {
     }
 
     // ====== 时间合理性检查 ======
-    final year = _worldState.time.year;
+    final year = worldState.time.year;
     if (year < 1890 || year > 2100) {
       issues.add('年份异常: $year');
     }
-    final month = _worldState.time.month;
+    final month = worldState.time.month;
     if (month < 1 || month > 12) {
-      _worldState.time.month = month.clamp(1, 12);
+      worldState.time.month = month.clamp(1, 12);
       issues.add('月份越界，已修正');
     }
-    final day = _worldState.time.day;
+    final day = worldState.time.day;
     if (day < 1 || day > 31) {
-      _worldState.time.day = day.clamp(1, 31);
+      worldState.time.day = day.clamp(1, 31);
       issues.add('日期越界，已修正');
     }
 
     // ====== 时代一致性检查 ======
-    final eraName = _worldState.era;
+    final eraName = worldState.era;
     final appEra = appProvider.era.name;
     if (eraName.isNotEmpty && eraName != appEra) {
       debugPrint('存档时代($eraName)与当前设置($appEra)不一致');
@@ -556,20 +555,20 @@ mixin GameSystemsMixin on GameProvider {
     _checkAllAchievements();
 
     if (issues.isNotEmpty) {
-      _notifications.add('⚠️ 状态自修复：${issues.join('；')}');
+      notifications.add('⚠️ 状态自修复：${issues.join('；')}');
       debugPrint('🛡️ 防崩坏自检: 修复${issues.length}项状态异常');
     }
   }
 
   void _fastForwardTime(int days) {
-    final oldMonth = _worldState.time.month;
-    final oldYear = _worldState.time.year;
+    final oldMonth = worldState.time.month;
+    final oldYear = worldState.time.year;
     for (int i = 0; i < days; i++) {
-      _worldState.time.advanceMinutes(24 * 60);
+      worldState.time.advanceMinutes(24 * 60);
     }
-    _worldState.dayOfMonth = _worldState.time.day;
-    _worldState.dayOfWeek = GameTime.weekdays[_worldState.time.weekday];
-    _worldState.month = GameTime.months[_worldState.time.month - 1];
+    worldState.dayOfMonth = worldState.time.day;
+    worldState.dayOfWeek = GameTime.weekdays[worldState.time.weekday];
+    worldState.month = GameTime.months[worldState.time.month - 1];
     // 快进也要接入学年推进与事件锚点，避免跳过年份
     _checkSchoolYearTransition(oldMonth, oldYear);
     _checkEventAnchors();
@@ -579,7 +578,7 @@ mixin GameSystemsMixin on GameProvider {
 
   void _updateNPCsFromAction(String action) {
     // 消耗资源 - 大幅降低消耗，让玩家有更多精力进行活动
-    final p = _player!;
+    final p = player!;
     p.energy = max(0, p.energy - 2);  // 从5降到2
     p.satiety = max(0, p.satiety - 2);  // 从3降到2
     p.spirit = max(0, p.spirit - 1);  // 从2降到1
@@ -611,46 +610,46 @@ mixin GameSystemsMixin on GameProvider {
     }
 
     // 每日随机触发好感微调
-    for (final npc in _npcRegistry.values) {
-      if (npc.affection > 0 && _random.nextDouble() < 0.05) {
+    for (final npc in npcRegistry.values) {
+      if (npc.affection > 0 && random.nextDouble() < 0.05) {
         npc.affection = (npc.affection + 1).clamp(-100, 100);
-        _checkAffectionAchievements(npc);
+        checkAffectionAchievements(npc);
       }
     }
 
     // 检测表白时机（恋爱剧情推进时）
-    if (p.loveState.status == '恋爱' && _random.nextDouble() < 0.1) {
+    if (p.loveState.status == '恋爱' && random.nextDouble() < 0.1) {
       _spawnRomanticEvent();
     }
   }
 
   void _spawnRomanticEvent() {
-    final p = _player;
+    final p = player;
     final partner = p?.loveState.partnerId;
     if (partner == null) return;
-    final npc = _npcRegistry[partner];
+    final npc = npcRegistry[partner];
     if (npc == null) return;
 
-    _notifications.add('💕 与${npc.name}之间发生了一段浪漫插曲。');
-    _worldState.addNarrativeEvent('💕 与${npc.name}之间发生了一段浪漫插曲。');
+    notifications.add('💕 与${npc.name}之间发生了一段浪漫插曲。');
+    worldState.addNarrativeEvent('💕 与${npc.name}之间发生了一段浪漫插曲。');
   }
 
   // ==================== 快速推进 ====================
 
   Future<void> fastForward(int days) async {
-    _isLoading = true;
+    isLoading = true;
     notifyListeners();
     _fastForwardTime(days);
-    _isLoading = false;
+    isLoading = false;
     notifyListeners();
   }
 
   // ==================== 查看人物 ====================
   Map<String, dynamic>? getViewableCharacter(String npcId) {
-    final npc = _npcRegistry[npcId];
+    final npc = npcRegistry[npcId];
     if (npc == null || !_isNPCVisible(npc)) return null;
 
-    final rel = _player?.relationships[npcId];
+    final rel = player?.relationships[npcId];
     return {
       'id': npc.id,
       'name': npc.name,
@@ -672,28 +671,28 @@ mixin GameSystemsMixin on GameProvider {
   }
 
   bool _isNPCVisible(NPC npc) {
-    if (_player == null) return false;
-    if (_player!.relationships.containsKey(npc.id)) return true;
-    if (npc.house == _player!.house) return true;
-    if (npc.isCanon && _worldState.playerImpactScore > 0.5) return true;
+    if (player == null) return false;
+    if (player!.relationships.containsKey(npc.id)) return true;
+    if (npc.house == player!.house) return true;
+    if (npc.isCanon && worldState.playerImpactScore > 0.5) return true;
     return false;
   }
 
   bool isNearby(String npcId) {
-    final npc = _npcRegistry[npcId];
-    if (npc == null || _player == null) return false;
-    return npc.currentLocation == (_worldState.currentLocation ?? '');
+    final npc = npcRegistry[npcId];
+    if (npc == null || player == null) return false;
+    return npc.currentLocation == (worldState.currentLocation ?? '');
   }
 
   int getAffection(String npcId) {
-    final rel = _player?.relationships[npcId];
+    final rel = player?.relationships[npcId];
     if (rel != null) return rel.level;
-    final npc = _npcRegistry[npcId];
+    final npc = npcRegistry[npcId];
     return npc?.affection ?? 0;
   }
 
   void travelTo(String location) {
-    _worldState.currentLocation = location;
+    worldState.currentLocation = location;
     notifyListeners();
   }
 
@@ -704,8 +703,8 @@ mixin GameSystemsMixin on GameProvider {
     double delta = 0.003; // 每回合基础增长：只要玩家做出选择，世界就有极小变动
 
     // 1. 与原著 NPC 互动：每次提到名字或与其对话，都代表蝴蝶翅膀拍动
-    if (_npcRegistry.isNotEmpty) {
-      for (final npc in _npcRegistry.values) {
+    if (npcRegistry.isNotEmpty) {
+      for (final npc in npcRegistry.values) {
         if (npc.isCanon && action.contains(npc.name)) {
           delta += 0.015;
           break;
@@ -732,11 +731,11 @@ mixin GameSystemsMixin on GameProvider {
     }
 
     // 3. 世界线偏移量辅助：世界线已偏离越多，影响力增速越快（正反馈）
-    if (_player != null && _player!.worldLineDeviation > 0.05) {
-      delta *= 1 + _player!.worldLineDeviation.clamp(0.0, 0.5);
+    if (player != null && player!.worldLineDeviation > 0.05) {
+      delta *= 1 + player!.worldLineDeviation.clamp(0.0, 0.5);
     }
 
-    _worldState.playerImpactScore = (_worldState.playerImpactScore + delta).clamp(0.0, 1.0);
+    worldState.playerImpactScore = (worldState.playerImpactScore + delta).clamp(0.0, 1.0);
   }
 
   /// 便捷入口：在非 action 场景（告白成功、CG解锁、事件锚点达成、月度事件、
@@ -744,10 +743,10 @@ mixin GameSystemsMixin on GameProvider {
   /// 避免这些"真正改变世界"的场景因为不从 _updatePlayerImpactScore(action) 走而被忽略。
 
   void _bumpImpactScore(double delta, {String? debugReason}) {
-    if (_worldState.playerImpactScore >= 1.0) return;
-    _worldState.playerImpactScore = (_worldState.playerImpactScore + delta).clamp(0.0, 1.0);
+    if (worldState.playerImpactScore >= 1.0) return;
+    worldState.playerImpactScore = (worldState.playerImpactScore + delta).clamp(0.0, 1.0);
     if (debugReason != null) {
-      debugPrint('🌐 影响力+${delta.toStringAsFixed(3)} → ${_worldState.playerImpactScore.toStringAsFixed(3)}（$debugReason）');
+      debugPrint('🌐 影响力+${delta.toStringAsFixed(3)} → ${worldState.playerImpactScore.toStringAsFixed(3)}（$debugReason）');
     }
   }
 
@@ -763,7 +762,7 @@ mixin GameSystemsMixin on GameProvider {
   }
 
   Future<ChatResult> _callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
-    if (_router == null) throw Exception('AI 服务未初始化');
+    if (router == null) throw Exception('AI 服务未初始化');
     String effectiveSystemPrompt;
     if (scene == AiScene.choice || scene == AiScene.summary) {
       // 选项/摘要场景：无需注入完整世界观 + 玩家档案，提示词本身已经包含了指令
@@ -772,10 +771,10 @@ mixin GameSystemsMixin on GameProvider {
           : '你是专业的游戏选项设计师，只输出符合要求的4个选项。';
     } else {
       // 每次 narrative/npcChat 调用前刷新系统提示词，确保玩家动态状态实时注入
-      if (_player != null) {
-        _systemPrompt = _buildSystemPrompt();
+      if (player != null) {
+        systemPrompt = buildSystemPrompt();
       }
-      effectiveSystemPrompt = _systemPrompt ?? '';
+      effectiveSystemPrompt = systemPrompt ?? '';
     }
     // 2026-08-23：maxTokens 按场景精细化分配
     //   narrative 主剧情：4000（配合 1500-2500 字叙事要求，总 token 约 4000）
@@ -788,7 +787,7 @@ mixin GameSystemsMixin on GameProvider {
       AiScene.summary => 4000,
       AiScene.npcChat => 4000,
     };
-    final result = await _router!.chatComplete(
+    final result = await router!.chatComplete(
       scene: scene,
       prompt: prompt,
       systemPrompt: effectiveSystemPrompt,
@@ -797,11 +796,11 @@ mixin GameSystemsMixin on GameProvider {
     );
     // 使用 try-catch 保护 token 统计，避免因 API 返回格式异常导致崩溃
     try {
-      _totalPromptTokens += result.usage.promptTokens;
-      _totalCompletionTokens += result.usage.completionTokens;
-      _totalTokens += result.usage.totalTokens;
-      _lastRoundTokens = result.usage.totalTokens;
-      _apiCalls++;
+      totalPromptTokens += result.usage.promptTokens;
+      totalCompletionTokens += result.usage.completionTokens;
+      totalTokens += result.usage.totalTokens;
+      lastRoundTokens = result.usage.totalTokens;
+      apiCalls++;
       notifyListeners();
     } catch (e) {
       debugPrint('[GameProvider] Token 统计异常(不影响游戏): $e');
@@ -811,31 +810,31 @@ mixin GameSystemsMixin on GameProvider {
 
   // ==================== 解析响应 ====================
 
-  /// 从叙事文本中智能提取分院结果并赋值给 _player.house
+  /// 从叙事文本中智能提取分院结果并赋值给 player.house
   /// 带语境判断：只有当文本中出现明确分院动作时才匹配。
 
   Future<void> quickSave() async {
-    if (_player == null) return;
-    await _saveService.saveGame(
-      player: _player!.toJson(),
-      worldState: _worldState.toJson(),
-      npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
-      narrative: _currentNarrative,
-      choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
-      turnCount: _turnCount,
+    if (player == null) return;
+    await saveService.saveGame(
+      player: player!.toJson(),
+      worldState: worldState.toJson(),
+      npcRegistry: npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
+      narrative: currentNarrative,
+      choices: choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
+      turnCount: turnCount,
       slotName: '快速存档',
       extraData: {
-        'narrative_summary': _narrativeSummary,
-        'pending_summary': _pendingSummary,
-        'recent_turns': _recentTurns,
-        'game_week': _gameWeek,
-        'last_round_tokens': _lastRoundTokens,
-        'api_calls': _apiCalls,
-        'total_prompt_tokens': _totalPromptTokens,
-        'total_completion_tokens': _totalCompletionTokens,
-        'total_tokens': _totalTokens,
+        'narrative_summary': narrativeSummary,
+        'pending_summary': pendingSummary,
+        'recent_turns': recentTurns,
+        'game_week': gameWeek,
+        'last_round_tokens': lastRoundTokens,
+        'api_calls': apiCalls,
+        'total_prompt_tokens': totalPromptTokens,
+        'total_completion_tokens': totalCompletionTokens,
+        'total_tokens': totalTokens,
         // 千回合级结构化长期记忆（永不压缩的纯事实层）
-        'long_term_memory': _memory.toJson(),
+        'long_term_memory': memory.toJson(),
       },
     );
   }
@@ -843,66 +842,66 @@ mixin GameSystemsMixin on GameProvider {
   static const int _saveVersion = 2;
 
   Future<void> loadFromSave(String slotId) async {
-    final data = await _saveService.loadGame(slotId);
+    final data = await saveService.loadGame(slotId);
     if (data == null) return;
 
     final version = data['save_version'] as int? ?? 1;
     _migrateSave(data, version);
 
-    _player = Player.fromJson(data['player'] as Map<String, dynamic>);
-    _worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
-    _npcRegistry.clear();
+    player = Player.fromJson(data['player'] as Map<String, dynamic>);
+    worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
+    npcRegistry.clear();
     final npcMap = data['npc_registry'] as Map<String, dynamic>? ?? <String, dynamic>{};
     npcMap.forEach((k, v) {
-      _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
+      npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
     });
     // 在 player/worldState/npc 赋值之后再构建系统提示词（_buildSystemPrompt 会用到）
-    _systemPrompt = _buildSystemPrompt();
+    systemPrompt = buildSystemPrompt();
 
-    _currentNarrative = data['narrative'] as String? ?? '';
-    _choices = (data['choices'] as List<dynamic>?)
+    currentNarrative = data['narrative'] as String? ?? '';
+    choices = (data['choices'] as List<dynamic>?)
         ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
         .toList() ?? [];
-    _turnCount = data['turn_count'] as int? ?? 0;
+    turnCount = data['turn_count'] as int? ?? 0;
     final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
-    _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
-    _pendingSummary = extraData['pending_summary'] as String? ?? '';
-    _gameWeek = extraData['game_week'] as int? ?? 1;
-    _lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
-    _apiCalls = extraData['api_calls'] as int? ?? 0;
-    _totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
-    _totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
-    _totalTokens = extraData['total_tokens'] as int? ?? 0;
+    narrativeSummary = extraData['narrative_summary'] as String? ?? '';
+    pendingSummary = extraData['pending_summary'] as String? ?? '';
+    gameWeek = extraData['game_week'] as int? ?? 1;
+    lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
+    apiCalls = extraData['api_calls'] as int? ?? 0;
+    totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
+    totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
+    totalTokens = extraData['total_tokens'] as int? ?? 0;
     // 加载千回合级结构化长期记忆
-    _memory = LongTermMemory.fromJson(
+    memory = LongTermMemory.fromJson(
         extraData['long_term_memory'] as Map<String, dynamic>?);
 
-    _recentTurns
+    recentTurns
       ..clear()
       ..addAll((extraData['recent_turns'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           []);
-    if (_recentTurns.isEmpty && _currentNarrative.isNotEmpty) {
-      _recentTurns.add(_currentNarrative);
+    if (recentTurns.isEmpty && currentNarrative.isNotEmpty) {
+      recentTurns.add(currentNarrative);
     }
 
     // 完整性兜底：只在空的时候补默认
-    if (_choices.isEmpty) _choices = _generateFallbackChoices();
-    if (_choices.length > 4) _choices = _choices.sublist(0, 4);
-    if (_currentNarrative.isEmpty) _currentNarrative = _generateFallbackNarrative();
+    if (choices.isEmpty) choices = generateFallbackChoices();
+    if (choices.length > 4) choices = choices.sublist(0, 4);
+    if (currentNarrative.isEmpty) currentNarrative = generateFallbackNarrative();
 
     // 任何读档之后都必须确保 isLoading=false / isInitializing=false，
     // 否则"继续游戏"后会卡住或误触发再次请求
-    _isLoading = false;
-    _isInitializing = false;
-    _error = null;
-    _loadingStage = '';
+    isLoading = false;
+    isInitializing = false;
+    error = null;
+    loadingStage = '';
 
     _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();
-    _autoSave();
+    autoSave();
   }
 
   void _migrateSave(Map<String, dynamic> data, int version) {
@@ -939,41 +938,41 @@ mixin GameSystemsMixin on GameProvider {
   }
 
   Future<List<Map<String, dynamic>>> listSaves() async {
-    return _saveService.listSaves();
+    return saveService.listSaves();
   }
 
   Future<bool> deleteSave(String slotId) async {
-    return _saveService.deleteSave(slotId);
+    return saveService.deleteSave(slotId);
   }
 
   // ==================== API 检查 ====================
 
   Future<bool> checkConnection() async {
-    if (_router == null) return false;
+    if (router == null) return false;
     final provider = appProvider.aiProvider;
-    return await _router!.checkBalance(provider) != null ||
+    return await router!.checkBalance(provider) != null ||
         appProvider.hasKey(provider);
   }
 
   Future<double?> get balance async {
-    if (_router == null) return null;
+    if (router == null) return null;
     final provider = appProvider.aiProvider;
-    return await _router!.checkBalance(provider);
+    return await router!.checkBalance(provider);
   }
 
   Future<Map<String, dynamic>?> get quotaInfo async {
-    if (_router == null) return null;
+    if (router == null) return null;
     final provider = appProvider.aiProvider;
-    final service = _router!.getService(provider);
+    final service = router!.getService(provider);
     if (service == null) return null;
     return await service.getQuotaInfo();
   }
 
   void resetTokenUsage() {
-    _totalPromptTokens = 0;
-    _totalCompletionTokens = 0;
-    _totalTokens = 0;
-    _apiCalls = 0;
+    totalPromptTokens = 0;
+    totalCompletionTokens = 0;
+    totalTokens = 0;
+    apiCalls = 0;
     notifyListeners();
   }
 
@@ -1041,8 +1040,8 @@ mixin GameSystemsMixin on GameProvider {
   @override
 
   void dispose() {
-    _saveNow(); // 异步但会同步快照状态并立即写盘，避免 300ms 防抖未完成导致存档丢失
-    appProvider.removeListener(_onApiKeyChange);
+    saveNow(); // 异步但会同步快照状态并立即写盘，避免 300ms 防抖未完成导致存档丢失
+    appProvider.removeListener(onApiKeyChange);
     super.dispose();
   }
 }

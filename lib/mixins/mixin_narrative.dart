@@ -12,7 +12,6 @@ import '../services/deepseek_service.dart';
 import '../data/cg_data.dart';
 import '../utils/story_text_renderer.dart';
 import '../services/npc_chat_service.dart';
-import '../providers/game_provider.dart';
 import '../data/world_rules.dart';
 import '../data/event_anchors.dart';
 import '../models/player.dart';
@@ -31,33 +30,33 @@ import '../utils/crash_logger.dart';
 
 mixin GameNarrativeMixin on GameProvider {
   Future<void> processChoice(GameChoice choice) async {
-    if (_player == null) return;
+    if (player == null) return;
 
     // 本地指令解析
     final action = choice.action.trim();
     if (action.startsWith('/')) {
-      final prevNarrative = _currentNarrative;
-      final prevChoices = List<GameChoice>.from(_choices);
+      final prevNarrative = currentNarrative;
+      final prevChoices = List<GameChoice>.from(choices);
       final handled = _handleLocalCommand(action);
       if (handled) {
         // 查看类指令（/状态 /关系 /信 /课堂 互动 等，特征是结尾选项为
         // 「返回/继续」）：输出进独立面板，不覆盖当前回合剧情。
         // 此前指令直接改写剧情，而「返回」的 action 又是「继续」，
         // 会作为玩家行动发给 AI 重新生成，导致当前回合剧情丢失。
-        final isPanelOutput = _currentNarrative != prevNarrative &&
-            _choices.length == 1 &&
-            _choices[0].action == '继续' &&
-            (_choices[0].text == '返回' || _choices[0].text == '继续');
+        final isPanelOutput = currentNarrative != prevNarrative &&
+            choices.length == 1 &&
+            choices[0].action == '继续' &&
+            (choices[0].text == '返回' || choices[0].text == '继续');
         if (isPanelOutput) {
-          _commandResult = _currentNarrative;
-          _currentNarrative = prevNarrative;
-          _choices = prevChoices;
+          commandResult = currentNarrative;
+          currentNarrative = prevNarrative;
+          choices = prevChoices;
         } else {
           // 事件类指令（/新NPC /结局 等）正常替换剧情，同时关闭旧面板
-          _commandResult = null;
+          commandResult = null;
         }
         notifyListeners();
-        _autoSave();
+        autoSave();
         return;
       }
     }
@@ -65,17 +64,17 @@ mixin GameNarrativeMixin on GameProvider {
     // 用户自由文本在进入 Prompt 前做注入防御净化
     final safeAction = PromptSanitizer.sanitizeAction(action);
 
-    if (_router == null || !_router!.hasNarrativeService) return;
+    if (router == null || !router!.hasNarrativeService) return;
 
-    _commandResult = null; // 提交真实行动时关闭指令面板
-    _isLoading = true;
-    _turnCount++;
-    _lastPlayerAction = safeAction;
-    _loadingStage = '正在构建请求...';
+    commandResult = null; // 提交真实行动时关闭指令面板
+    isLoading = true;
+    turnCount++;
+    lastPlayerAction = safeAction;
+    loadingStage = '正在构建请求...';
     notifyListeners();
 
     String buildPrompt() {
-      final p = _player!;
+      final p = player!;
 
       final contextBuffer = StringBuffer();
 
@@ -83,7 +82,7 @@ mixin GameNarrativeMixin on GameProvider {
       // 永远放在【世界上下文】最前面，防止后面截断看不到
       // 2026-08-23：模型能力升级，所有条数限制整体翻倍
       // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；importance 10永远保留)
-      final t0 = _memory.keyFacts
+      final t0 = memory.keyFacts
           .where((f) => f.importance >= 4)
           .toList()
         ..sort((a, b) => b.importance.compareTo(a.importance));
@@ -96,7 +95,7 @@ mixin GameNarrativeMixin on GameProvider {
         contextBuffer.writeln('');
       }
       // T1: 未完结事项 (open 状态优先，importance 排序，最多 40 条)
-      final t1 = _memory.openLoops.where((l) => l.status == 'open').toList()
+      final t1 = memory.openLoops.where((l) => l.status == 'open').toList()
         ..sort((a, b) => b.importance.compareTo(a.importance));
       if (t1.isNotEmpty) {
         contextBuffer.writeln('【T1 未完结事项（承诺/债务/约定/未完成任务，说话要算数）】');
@@ -107,12 +106,12 @@ mixin GameNarrativeMixin on GameProvider {
         contextBuffer.writeln('');
       }
       // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚）
-      final topNpcs = _npcRegistry.values.toList()
+      final topNpcs = npcRegistry.values.toList()
         ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
       final t2Lines = <String>[];
       for (int i = 0; i < topNpcs.length && i < 24; i++) {
         final npc = topNpcs[i];
-        final anchor = _memory.relationshipAnchors[npc.id];
+        final anchor = memory.relationshipAnchors[npc.id];
         if (anchor == null) continue;
         final buf = StringBuffer();
         buf.write('${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})');
@@ -131,8 +130,8 @@ mixin GameNarrativeMixin on GameProvider {
         contextBuffer.writeln('');
       }
       // T3: 世界事件银行（重要性 * 新鲜度 取前 40 条）
-      final ts = _worldState.time.absoluteDayIndex;
-      final t3 = List<WorldEventRecord>.from(_memory.worldEvents)
+      final ts = worldState.time.absoluteDayIndex;
+      final t3 = List<WorldEventRecord>.from(memory.worldEvents)
         ..sort((a, b) => b.score(ts).compareTo(a.score(ts)));
       if (t3.isNotEmpty) {
         contextBuffer.writeln('【T3 世界事件银行（按重要性+新鲜度排序）】');
@@ -151,13 +150,13 @@ mixin GameNarrativeMixin on GameProvider {
       // 重要：T4 是 LLM 压缩的「模糊历史记忆」，可能包含过期/错误细节（如"开局巨怪事件"）
       //      → 模型能力升级后放宽到 600 字注入，但仍保持"不能用于生成当前选项"的强约束
       //      → 跳过阈值从 12 条放宽到 30 条，给模型更多参考
-      if (_narrativeSummary.isNotEmpty) {
+      if (narrativeSummary.isNotEmpty) {
         final structuredCount = t0.length + t1.length;
         if (structuredCount < 30) {
           // 2026-08-23：200→600 字，给长线剧情更多参考
-          final trimmedSummary = _narrativeSummary.length > 600
-              ? '${_narrativeSummary.substring(0, 600)}…'
-              : _narrativeSummary;
+          final trimmedSummary = narrativeSummary.length > 600
+              ? '${narrativeSummary.substring(0, 600)}…'
+              : narrativeSummary;
           // 强约束：只当"关系和转折"参考，严格禁止基于此生成当前回合选项/场景
           contextBuffer.write('【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n');
         } else {
@@ -167,20 +166,20 @@ mixin GameNarrativeMixin on GameProvider {
 
       // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
       // 2026-08-23：6→12 条；过滤"好感本周已达上限"这类系统通知刷屏
-      final ws = _worldState;
+      final ws = worldState;
       final worldAnchors = <String>[];
       final alreadyAnchors = <String>{}; // 去重
       // 世界重大事件锚点「伪造事件」真校验：
-      // - 🏆成就类：必须真正解锁才允许注入（check against _player.achievements）
+      // - 🏆成就类：必须真正解锁才允许注入（check against player.achievements）
       // - 👤结识类：必须对应 NPC 确实 introduced=true 才允许注入
       // - 否则直接丢弃（AI 之前乱塞"你认识哈利""你获得了什么什么成就"都是伪造事件）
-      final introducedSet = _npcRegistry.values.where((n) => n.introduced).map((n) => n.name).toSet();
+      final introducedSet = npcRegistry.values.where((n) => n.introduced).map((n) => n.name).toSet();
 
       bool looksFake(String text) {
         final clean = text.replaceAll(RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*'), '');
         // 成就类伪造：含"成就/🏆"，但 achievement 关键词不在已解锁集合
         if (clean.contains('成就') || text.contains('🏆')) {
-          final unlocked = _player?.achievements ?? const <String>[];
+          final unlocked = player?.achievements ?? const <String>[];
           // 尝试找成就id/名称；若在已解锁集合找不到，算伪造
           if (unlocked.isEmpty) return true; // 宣称解锁但全局没解过任何成就=假
           // 按名称匹配：把 clean 与已解锁成就描述做交集
@@ -225,14 +224,14 @@ mixin GameNarrativeMixin on GameProvider {
 
       // 只注入最近 3 回合（而非10），避免历史叙事过多导致 AI 重复输出
       final filteredTurns = <String>[];
-      for (int i = _recentTurns.length - 1; i >= 0; i--) {
-        final entry = _recentTurns[i];
+      for (int i = recentTurns.length - 1; i >= 0; i--) {
+        final entry = recentTurns[i];
         filteredTurns.insert(0, entry);
         if (filteredTurns.length >= 3) break;
       }
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
-          : _currentNarrative;
+          : currentNarrative;
       // 截断到 1600 字（而非4800），只保留末尾用于理解当前处境
       final recent = _truncateNarrativeContext(recentBuffer, 1600);
       // 关键改进：明确标注为"已生成的前情"，禁止 AI 重复或改写
@@ -244,7 +243,7 @@ mixin GameNarrativeMixin on GameProvider {
       final sceneInfo = _buildSceneContext();
 
       // 事件锚点注入：手写剧情骨架，保证关键节点在正确时间发生
-      final anchorLine = _pendingAnchorDirective != null
+      final anchorLine = pendingAnchorDirective != null
           ? '【剧情节点】本回合请自然融入以下既定剧情骨架（不必生硬转折，可结合玩家行动展开）：\n$_pendingAnchorDirective\n\n'
           : '';
 
@@ -252,7 +251,7 @@ mixin GameNarrativeMixin on GameProvider {
   $context
 
   ${statusTag.isNotEmpty ? '【状态】$statusTag\n' : ''}
-  【当前场景】${_worldState.timestamp}｜${_worldState.currentLocation ?? '未知'}
+  【当前场景】${worldState.timestamp}｜${worldState.currentLocation ?? '未知'}
   $sceneInfo
 
   $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
@@ -260,7 +259,7 @@ mixin GameNarrativeMixin on GameProvider {
 
   【重要规则】
   - 选项将由独立步骤生成，本回合只需生成叙事和好感变化
-  - 确保叙事符合当前地点（${_worldState.currentLocation ?? '未知'}）和当前时间（${_worldState.timestamp}）
+  - 确保叙事符合当前地点（${worldState.currentLocation ?? '未知'}）和当前时间（${worldState.timestamp}）
 
   【写作要求】
   - 叙事:1500-2500字小说正文，融入感官细节、对话、心理、环境描写，分4-8段用空行分隔
@@ -286,8 +285,8 @@ mixin GameNarrativeMixin on GameProvider {
     try {
       final prompt = buildPrompt();
       // 记录本回合实际注入的锚点（推进时间后可能产生新锚点，不能误清）
-      final consumedAnchor = _pendingAnchorDirective;
-      _loadingStage = '正在生成剧情...';
+      final consumedAnchor = pendingAnchorDirective;
+      loadingStage = '正在生成剧情...';
       notifyListeners();
 
       String response;
@@ -296,13 +295,13 @@ mixin GameNarrativeMixin on GameProvider {
       } on AiNonRetryableException {
         rethrow;
       } catch (e) {
-        _loadingStage = '请求失败，正在重试...';
+        loadingStage = '请求失败，正在重试...';
         notifyListeners();
         await Future.delayed(const Duration(milliseconds: 500));
         response = (await _callDeepSeek(prompt)).content;
       }
 
-      _loadingStage = '正在解析剧情...';
+      loadingStage = '正在解析剧情...';
       notifyListeners();
 
       // 先解析叙事文本（不含选项）
@@ -312,31 +311,31 @@ mixin GameNarrativeMixin on GameProvider {
       // 注意：从 2026-08-23 起「写作要求」明确禁止主叙事 AI 输出选项，
       //       因此即使叙事响应里意外夹带了 ABCD（来自 T4 旧摘要污染），
       //       也绝对不再读入到选项里——否则会出现"海格/巨怪"等过期内容。
-      _loadingStage = '正在生成选项...';
+      loadingStage = '正在生成选项...';
       notifyListeners();
 
-      final separateChoices = await _generateChoicesSeparately(_currentNarrative);
+      final separateChoices = await _generateChoicesSeparately(currentNarrative);
       if (separateChoices.isNotEmpty) {
-        _choices = separateChoices;
+        choices = separateChoices;
       } else {
         // 独立选项生成失败时，只用本地上下文兜底选项生成器（不碰 AI 的响应文本）
         debugPrint('独立选项生成失败，切换到本地上下文兜底选项');
-        _choices = _generateContextualFallbackChoices();
+        choices = _generateContextualFallbackChoices();
       }
 
-      _accumulateForSummary(_currentNarrative);
-      _appendRecentTurn(_currentNarrative);
+      _accumulateForSummary(currentNarrative);
+      _appendRecentTurn(currentNarrative);
       _advanceTimeForAction(action);
       _updateNPCsFromAction(action);
       _updatePlayerImpactScore(action);
       // 锚点已成功注入本回合剧情，清除待注入状态（仅当未被新锚点替换时）
-      if (consumedAnchor != null && _pendingAnchorDirective == consumedAnchor) {
-        _pendingAnchorDirective = null;
+      if (consumedAnchor != null && pendingAnchorDirective == consumedAnchor) {
+        pendingAnchorDirective = null;
       }
 
       // 定期摘要：模型能力升级后回调到每15回合，缓冲阈值从3200→6000字
       // 配合 _maxPendingSummaryChars=8000，每次摘要覆盖更长时间线，长线逻辑性更强
-      if ((_turnCount % 15 == 0 || _pendingSummary.length > 6000) && _pendingSummary.isNotEmpty) {
+      if ((turnCount % 15 == 0 || pendingSummary.length > 6000) && pendingSummary.isNotEmpty) {
         unawaited(Future.microtask(() async {
           try {
             await _summarizeNarrative();
@@ -346,21 +345,21 @@ mixin GameNarrativeMixin on GameProvider {
         }));
       }
 
-      _loadingStage = '';
-      _isLoading = false;
+      loadingStage = '';
+      isLoading = false;
       notifyListeners();
-      _autoSave();
+      autoSave();
     } catch (e) {
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
       debugPrint('❌ 剧情生成失败，启用本地兜底叙事: $e');
-      _currentNarrative = _generateFallbackNarrative();
-      _choices = _generateContextualFallbackChoices();
-      _appendRecentTurn(_currentNarrative);
-      _notifications.add('⚠️ AI 服务暂时不可用，已切换为本地过渡剧情，稍后可重试行动');
-      _loadingStage = '';
-      _isLoading = false;
+      currentNarrative = generateFallbackNarrative();
+      choices = _generateContextualFallbackChoices();
+      _appendRecentTurn(currentNarrative);
+      notifications.add('⚠️ AI 服务暂时不可用，已切换为本地过渡剧情，稍后可重试行动');
+      loadingStage = '';
+      isLoading = false;
       notifyListeners();
-      _autoSave();
+      autoSave();
       unawaited(CrashLogger.instance.record(
         e,
         StackTrace.current,
@@ -373,9 +372,9 @@ mixin GameNarrativeMixin on GameProvider {
   /// 关闭指令结果面板，恢复显示当前回合剧情（不消耗回合、不调用 AI）
 
   List<GameChoice> _generateContextualFallbackChoices() {
-    final currentLoc = _worldState.currentLocation ?? '';
-    final narrativeLower = _currentNarrative.toLowerCase();
-    final playerAction = _lastPlayerAction;
+    final currentLoc = worldState.currentLocation ?? '';
+    final narrativeLower = currentNarrative.toLowerCase();
+    final playerAction = lastPlayerAction;
 
     // 基于玩家最近的行动生成相关选项
     final actionRelatedChoices = <GameChoice>[];
@@ -508,9 +507,9 @@ mixin GameNarrativeMixin on GameProvider {
   void _appendRecentTurn(String narrative) {
     final trimmed = narrative.trim();
     if (trimmed.isEmpty) return;
-    _recentTurns.add(trimmed);
-    while (_recentTurns.length > _maxRecentTurns) {
-      _recentTurns.removeAt(0);
+    recentTurns.add(trimmed);
+    while (recentTurns.length > GameProvider.maxRecentTurns) {
+      recentTurns.removeAt(0);
     }
   }
 
@@ -520,25 +519,25 @@ mixin GameNarrativeMixin on GameProvider {
   static const int _maxPendingSummaryChars = 8000;
 
   void _accumulateForSummary(String newNarrative) {
-    _pendingSummary += '$newNarrative\n';
-    if (_pendingSummary.length > _maxPendingSummaryChars) {
+    pendingSummary += '$newNarrative\n';
+    if (pendingSummary.length > _maxPendingSummaryChars) {
       // 保留最近的剧情（尾部），丢弃最早的部分
-      final cut = _pendingSummary.length - _maxPendingSummaryChars;
-      _pendingSummary = '…（更早剧情略）\n${_pendingSummary.substring(cut)}';
+      final cut = pendingSummary.length - _maxPendingSummaryChars;
+      pendingSummary = '…（更早剧情略）\n${pendingSummary.substring(cut)}';
     }
   }
 
   Future<void> _summarizeNarrative() async {
-    if (_pendingSummary.length < 50) {
-      _pendingSummary = '';
+    if (pendingSummary.length < 50) {
+      pendingSummary = '';
       return;
     }
 
     // 摘要长度随游戏进度逐步放宽
     // 2026-08-23：模型能力升级，整体翻倍放开
-    final limit = _turnCount <= 40
+    final limit = turnCount <= 40
         ? 800
-        : (_turnCount <= 100 ? 1500 : 2400);
+        : (turnCount <= 100 ? 1500 : 2400);
     final relationSnapshot = _buildRelationshipSnapshot();
 
     // 关键改进：明确要求 AI 只保留"人物关系"和"重要转折"，不保留具体场景描述
@@ -553,7 +552,7 @@ mixin GameNarrativeMixin on GameProvider {
   8. 严格遵守【精简剧情摘要】不超过 $limit 字，超过部分会被直接截断，超出规则会导致后续剧情冲突
 
   【前情摘要】
-  ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（开局）'}
+  ${narrativeSummary.isNotEmpty ? narrativeSummary : '（开局）'}
 
   【新剧情】
   $_pendingSummary
@@ -579,9 +578,9 @@ mixin GameNarrativeMixin on GameProvider {
       if (rawSummary.length > hardLimit) {
         rawSummary = '${rawSummary.substring(0, hardLimit)}…(已截短)';
       }
-      _narrativeSummary = rawSummary;
-      _pendingSummary = '';
-      debugPrint('✅ 剧情摘要已更新 (${_narrativeSummary.length}字，上限=$hardLimit)');
+      narrativeSummary = rawSummary;
+      pendingSummary = '';
+      debugPrint('✅ 剧情摘要已更新 (${narrativeSummary.length}字，上限=$hardLimit)');
     } catch (e) {
       debugPrint('❌ 摘要生成失败: $e');
     }
@@ -590,7 +589,7 @@ mixin GameNarrativeMixin on GameProvider {
   /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
 
   String _buildRelationshipSnapshot() {
-    final npcs = _npcRegistry.values.where((n) => n.affection != 0).toList()
+    final npcs = npcRegistry.values.where((n) => n.affection != 0).toList()
       ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
     return npcs.take(5)
         .map((n) => '${n.name}:${n.affectionStage}/${n.affection}')
@@ -614,7 +613,7 @@ mixin GameNarrativeMixin on GameProvider {
   /// 根据行动关键词，只在关键剧情节点临时注入相关上下文（平时不注入）
 
   String _buildCriticalContext(String action) {
-    final p = _player;
+    final p = player;
     if (p == null) return '';
     final a = action.toLowerCase();
     final parts = <String>[];
@@ -645,7 +644,7 @@ mixin GameNarrativeMixin on GameProvider {
     }
 
     // 社交/对话：若行动中提到具体NPC名则精准注入其好感，否则按关键词注入
-    final mentioned = _npcRegistry.values
+    final mentioned = npcRegistry.values
         .where((n) => action.contains(n.name))
         .toList();
     if (mentioned.isNotEmpty) {
@@ -675,12 +674,12 @@ mixin GameNarrativeMixin on GameProvider {
   String _buildSceneContext() {
     final parts = <String>[];
 
-    // 防御：_worldState 有默认值（非空）但为防止未来改类型，统一局部变量引用；
-    // _player 为可空类型，必须判空
-    final ws = _worldState;
-    final p = _player;
+    // 防御：worldState 有默认值（非空）但为防止未来改类型，统一局部变量引用；
+    // player 为可空类型，必须判空
+    final ws = worldState;
+    final p = player;
 
-    // _worldState 始终非空，此处无需 null 判断（避免 analyzer unnecessary_null_comparison）
+    // worldState 始终非空，此处无需 null 判断（避免 analyzer unnecessary_null_comparison）
     final npcsHere = npcsInCurrentLocation();
     if (npcsHere.isNotEmpty) {
       final npcNames = npcsHere.map((n) {
@@ -707,40 +706,40 @@ mixin GameNarrativeMixin on GameProvider {
   /// 获取当前场景中的NPC
 
   List<NPC> npcsInCurrentLocation() {
-    final location = _worldState.currentLocation;
+    final location = worldState.currentLocation;
     if (location == null || location.isEmpty) return [];
-    return _npcRegistry.values.where((npc) {
+    return npcRegistry.values.where((npc) {
       return npc.currentLocation.toLowerCase().contains(location.toLowerCase());
     }).toList();
   }
 
   Future<void> generateMoreSuggestions() async {
-    if (_player == null || _isLoading) return;
+    if (player == null || isLoading) return;
 
-    _isLoading = true;
-    _error = null;
+    isLoading = true;
+    error = null;
     notifyListeners();
 
     try {
       final suggestions = _generateLocalSuggestions();
       if (suggestions.isEmpty) {
-        _error = '暂时想不出更多建议，请继续';
+        error = '暂时想不出更多建议，请继续';
       } else {
-        _choices = suggestions;
+        choices = suggestions;
       }
     } catch (e) {
-      _error = e.toString();
+      error = e.toString();
     } finally {
-      _isLoading = false;
+      isLoading = false;
       notifyListeners();
     }
   }
 
   List<GameChoice> _generateLocalSuggestions() {
-    final location = _worldState.currentLocation ?? '霍格沃茨';
-    final house = _player!.house ?? '';
-    final personality = _player!.personalityTraits;
-    final narrativeLower = _currentNarrative.toLowerCase();
+    final location = worldState.currentLocation ?? '霍格沃茨';
+    final house = player!.house ?? '';
+    final personality = player!.personalityTraits;
+    final narrativeLower = currentNarrative.toLowerCase();
 
     final bucket = <String, List<String>>{
       'classroom': [
@@ -875,7 +874,7 @@ mixin GameNarrativeMixin on GameProvider {
       seen.add(key);
       return true;
     }).toList();
-    deduped.shuffle(_random);
+    deduped.shuffle(random);
 
     final result = <GameChoice>[];
     for (int i = 0; i < deduped.length && result.length < 4; i++) {
@@ -892,24 +891,24 @@ mixin GameNarrativeMixin on GameProvider {
 
   // ==================== 分院仪式（本地逻辑，不消耗 token） ====================
   Future<Map<String, String>> sortPlayer() async {
-    if (_player == null) {
+    if (player == null) {
       return {'house': 'Gryffindor', 'narrative': ''};
     }
 
-    _isLoading = true;
+    isLoading = true;
     notifyListeners();
 
     try {
       final house = _computeHouseLocal();
       final narrative = _generateSortingNarrative(house);
-      _player!.house = house;
+      player!.house = house;
       _unlockAchievement('sorted');
 
-      _isLoading = false;
+      isLoading = false;
       notifyListeners();
       return {'house': house, 'narrative': narrative};
     } catch (e) {
-      _isLoading = false;
+      isLoading = false;
       notifyListeners();
       return {'house': 'Gryffindor', 'narrative': ''};
     }

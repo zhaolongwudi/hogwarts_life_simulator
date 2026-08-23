@@ -12,7 +12,6 @@ import '../services/deepseek_service.dart';
 import '../data/cg_data.dart';
 import '../utils/story_text_renderer.dart';
 import '../services/npc_chat_service.dart';
-import '../providers/game_provider.dart';
 import '../data/world_rules.dart';
 import '../data/event_anchors.dart';
 import '../models/player.dart';
@@ -31,111 +30,111 @@ import '../utils/crash_logger.dart';
 
 mixin GameCommandsMixin on GameProvider {
   void closeCommandPanel() {
-    if (_commandResult == null) return;
-    _commandResult = null;
+    if (commandResult == null) return;
+    commandResult = null;
     notifyListeners();
   }
 
   /// 本地指令解析（设定文档第X部分指令系统）
 
   bool _handleLocalCommand(String command) {
-    final p = _player;
+    final p = player;
     if (p == null) return false;
     final parts = command.split(RegExp(r'\s+'));
     final cmd = parts[0];
 
     switch (cmd) {
       case '/状态':
-        _currentNarrative = _formatStatus();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatStatus();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/时间':
-        _currentNarrative = _formatTime();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatTime();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/地图':
-        _currentNarrative = _formatMap();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatMap();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/通知':
-        _currentNarrative = _formatNotifications();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatNotifications();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/帮助':
-        _currentNarrative = _formatHelp();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatHelp();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/关系':
-        _currentNarrative = _formatRelationships();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatRelationships();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/恋爱':
-        _currentNarrative = _formatLove();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatLove();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/声望':
-        _currentNarrative = _formatReputation();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatReputation();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/舆论':
       case '/传闻':
-        _currentNarrative = _formatRumors();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatRumors();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/课程':
-        _currentNarrative = _formatCourses();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatCourses();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/课堂':
         if (parts.length >= 2 && parts[1] == '互动') {
           _classroomInteraction();
         } else {
-          _currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
-          _choices = [GameChoice(text: '返回', action: '继续')];
+          currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
+          choices = [GameChoice(text: '返回', action: '继续')];
         }
         return true;
 
       case '/收藏':
-        _currentNarrative = _formatCollection();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatCollection();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/日记':
         if (parts.length >= 2 && parts[1] == '统计') {
-          _currentNarrative = _formatDiaryStats();
+          currentNarrative = _formatDiaryStats();
         } else if (parts.length >= 3 && parts[1] == '重播') {
-          _currentNarrative = _replayCg(parts[2]);
+          currentNarrative = _replayCg(parts[2]);
         } else if (parts.length >= 2) {
-          _currentNarrative = _formatCgDetail(parts[1]);
+          currentNarrative = _formatCgDetail(parts[1]);
         } else {
-          _currentNarrative = _formatDiary();
+          currentNarrative = _formatDiary();
         }
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/档案':
-        _currentNarrative = _formatArchive();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatArchive();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/成就':
-        _currentNarrative = _formatAchievements();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatAchievements();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/宠物':
-        _currentNarrative = _formatPet();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatPet();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/信':
@@ -143,20 +142,20 @@ mixin GameCommandsMixin on GameProvider {
         return true;
 
       case '/血缘':
-        _currentNarrative = _formatBloodRelatives();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatBloodRelatives();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/联动':
-        _currentNarrative = '【联动系统】\n当前时代：${_eraLabel(appProvider.era)}\n'
+        currentNarrative = '【联动系统】\n当前时代：${_eraLabel(appProvider.era)}\n'
             '联动系统允许你在特定节点与其他时代剧情产生关联（例如在子世代时遇到亲世代留下的物品或信件）。\n'
-            '当前已触发的联动痕迹：\n${_worldState.timelineBranches.isEmpty ? '暂无。' : _worldState.timelineBranches.map((b) => '· $b').join('\n')}';
-        _choices = [GameChoice(text: '返回', action: '继续')];
+            '当前已触发的联动痕迹：\n${worldState.timelineBranches.isEmpty ? '暂无。' : worldState.timelineBranches.map((b) => '· $b').join('\n')}';
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/世界演化':
-        _currentNarrative = _formatWorldEvolution();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatWorldEvolution();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/新NPC':
@@ -165,35 +164,35 @@ mixin GameCommandsMixin on GameProvider {
 
       case '/恋爱等待':
       case '/恋爱 等待':
-        _currentNarrative = _formatLoveWaiting();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatLoveWaiting();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/恋爱阶段':
-        _currentNarrative = _formatLoveStages();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatLoveStages();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/关系网络':
       case '/关系 网络':
         if (parts.length >= 4) {
-          _currentNarrative = _formatNpcRelationship(parts[2], parts[3]);
+          currentNarrative = _formatNpcRelationship(parts[2], parts[3]);
         } else {
-          _currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
+          currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
         }
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/骨科':
       case '/骨科状态':
-        _currentNarrative = _formatBoneMode();
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        currentNarrative = _formatBoneMode();
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/目标':
         if (parts.length >= 2 && (parts[1] == '进度' || parts[1] == 'progress')) {
-          _currentNarrative = _formatGoalProgress();
-          _choices = [GameChoice(text: '返回', action: '继续')];
+          currentNarrative = _formatGoalProgress();
+          choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         }
         if (parts.length >= 2) {
@@ -207,17 +206,17 @@ mixin GameCommandsMixin on GameProvider {
           }
           if (goal != null) {
             p.currentGoal = goal.name;
-            _currentNarrative = '✅ 已设定人生目标：${goal.name}\n'
+            currentNarrative = '✅ 已设定人生目标：${goal.name}\n'
                 '『${goal.description}』\n\n'
                 '这条目标将牵引后续剧情方向，但你仍可自由行动。\n'
                 '输入 /目标 可重新查看或更换。';
           } else {
-            _currentNarrative = '未找到目标"$arg"。输入 /目标 查看全部目标。';
+            currentNarrative = '未找到目标"$arg"。输入 /目标 查看全部目标。';
           }
         } else {
-          _currentNarrative = _formatGoals();
+          currentNarrative = _formatGoals();
         }
-        _choices = [GameChoice(text: '返回', action: '继续')];
+        choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
       case '/结局':
@@ -235,11 +234,11 @@ mixin GameCommandsMixin on GameProvider {
   // ==================== 作弊指令（设定 8.1-8.5） ====================
 
   void _handleCheat(List<String> parts) {
-    final p = _player;
+    final p = player;
     if (p == null) return;
     if (parts.length < 2) {
-      _currentNarrative = _formatCheatHelp();
-      _choices = [GameChoice(text: '返回', action: '继续')];
+      currentNarrative = _formatCheatHelp();
+      choices = [GameChoice(text: '返回', action: '继续')];
       return;
     }
     final sub = parts[1];
@@ -250,19 +249,19 @@ mixin GameCommandsMixin on GameProvider {
         if (parts.length >= 4) {
           final nameKey = parts[2];
           NPC? npc;
-          for (final n in _npcRegistry.values) {
+          for (final n in npcRegistry.values) {
             if (n.name.contains(nameKey)) { npc = n; break; }
           }
-          npc ??= _npcRegistry[nameKey];
+          npc ??= npcRegistry[nameKey];
           if (npc == null) {
-            final allNames = _npcRegistry.values.map((n) => n.name).join('、');
-            _currentNarrative = '未找到NPC "$nameKey"。可用：$allNames';
+            final allNames = npcRegistry.values.map((n) => n.name).join('、');
+            currentNarrative = '未找到NPC "$nameKey"。可用：$allNames';
             break;
           }
           final delta = int.tryParse(parts[3]);
           if (delta != null) {
             npc.affection = (npc.affection + delta).clamp(-100, 100);
-            _currentNarrative = '已调整「${npc.name}」的好感度：${npc.affection}（${npc.affectionStage}）';
+            currentNarrative = '已调整「${npc.name}」的好感度：${npc.affection}（${npc.affectionStage}）';
           }
         }
         break;
@@ -293,7 +292,7 @@ mixin GameCommandsMixin on GameProvider {
               p.health = (p.health + amount).clamp(0, 100);
               break;
           }
-          _currentNarrative = '资源已调整。';
+          currentNarrative = '资源已调整。';
         }
         break;
 
@@ -302,7 +301,7 @@ mixin GameCommandsMixin on GameProvider {
         if (parts.length >= 4) {
           final amount = int.tryParse(parts[2]) ?? 0;
           p.playerReputation.add(parts[3], amount);
-          _currentNarrative =
+          currentNarrative =
               '${p.playerReputation.labelOf(parts[3])} ${p.playerReputation.get(parts[3])}';
         }
         break;
@@ -312,7 +311,7 @@ mixin GameCommandsMixin on GameProvider {
         if (parts.length >= 3) {
           final days = int.tryParse(parts[2]);
           if (days != null) _fastForwardTime(days);
-          _currentNarrative = '时间已推进 $days 天。\n${_worldState.timestamp}';
+          currentNarrative = '时间已推进 $days 天。\n${worldState.timestamp}';
         }
         break;
 
@@ -320,13 +319,13 @@ mixin GameCommandsMixin on GameProvider {
         if (parts.length >= 3 && parts[2] == '无视') {
           p.boneMode = true;
           _unlockAchievement('bone_mode');
-          _notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
-          _worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除');
+          notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
+          worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除');
           _bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
-          _currentNarrative =
+          currentNarrative =
               '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
         } else {
-          _currentNarrative = '使用方式：/cheat 骨科 无视（开启骨科模式）';
+          currentNarrative = '使用方式：/cheat 骨科 无视（开启骨科模式）';
         }
         break;
 
@@ -334,14 +333,14 @@ mixin GameCommandsMixin on GameProvider {
       case 'rumor':
         if (parts.length >= 3 && parts[2] == '重置') {
           p.rumors.clear();
-          _currentNarrative = '已清除所有舆论传闻。';
+          currentNarrative = '已清除所有舆论传闻。';
         } else if (parts.length >= 4 && parts[2] == '清除') {
           final key = parts.sublist(3).join(' ');
           final before = p.rumors.length;
           p.rumors.removeWhere((r) => r.contains(key));
-          _currentNarrative = '已清除 ${before - p.rumors.length} 条相关传闻。';
+          currentNarrative = '已清除 ${before - p.rumors.length} 条相关传闻。';
         } else {
-          _currentNarrative = '使用方式：/cheat 舆论 清除 <关键词> 或 /cheat 舆论 重置';
+          currentNarrative = '使用方式：/cheat 舆论 清除 <关键词> 或 /cheat 舆论 重置';
         }
         break;
 
@@ -351,17 +350,17 @@ mixin GameCommandsMixin on GameProvider {
           final cg = cgById(parts[2]);
           if (cg != null) {
             _unlockCG(cg);
-            _currentNarrative = '已解锁 CG：${cg.name}';
+            currentNarrative = '已解锁 CG：${cg.name}';
           } else {
-            _currentNarrative = '未找到该 CG，可用：${allCgs().map((c) => c.id).take(10).join(', ')}...';
+            currentNarrative = '未找到该 CG，可用：${allCgs().map((c) => c.id).take(10).join(', ')}...';
           }
         }
         break;
 
       default:
-        _currentNarrative = _formatCheatHelp();
+        currentNarrative = _formatCheatHelp();
     }
-    _choices = [GameChoice(text: '返回', action: '继续')];
+    choices = [GameChoice(text: '返回', action: '继续')];
   }
 
   String _formatCheatHelp() {
@@ -379,8 +378,8 @@ mixin GameCommandsMixin on GameProvider {
   // ==================== 生成新NPC（增强版：多人格+多样化） ====================
 
   String _formatStatus() {
-    final p = _player!;
-    final w = _worldState;
+    final p = player!;
+    final w = worldState;
     final buf = StringBuffer()
       ..writeln('╔══════════════════════════════════════╗')
       ..writeln('  《哈利·波特·魔法纪元·人生状态》')
@@ -423,7 +422,7 @@ mixin GameCommandsMixin on GameProvider {
   }
 
   String _formatTime() {
-    final w = _worldState;
+    final w = worldState;
     return '【当前时间】\n${w.timestamp}\n'
         '学年：${w.academicYear}\n'
         '学期：${_termLabel(w.term)}\n'
@@ -433,7 +432,7 @@ mixin GameCommandsMixin on GameProvider {
 
   String _formatMap() {
     return '''【霍格沃茨地图】
-  当前地点：${_worldState.currentLocation ?? '九又四分之三站台 / 霍格沃茨特快'}
+  当前地点：${worldState.currentLocation ?? '九又四分之三站台 / 霍格沃茨特快'}
 
   已知区域：
   🏰 城堡主楼（大礼堂、各学院公共休息室、图书馆、教室）
@@ -446,14 +445,14 @@ mixin GameCommandsMixin on GameProvider {
   📚 图书馆（含禁书区）
 
   各NPC当前位置：
-  ${_npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}：${n.currentLocation}').join('\n')}''';
+  ${npcRegistry.values.where((n) => n.isAlive).take(6).map((n) => '· ${n.name}：${n.currentLocation}').join('\n')}''';
   }
 
   String _formatNotifications() {
-    if (_notifications.isEmpty) {
+    if (notifications.isEmpty) {
       return '【通知】\n暂无新通知。';
     }
-    return '【通知】\n${_notifications.reversed.take(10).map((n) => '· $n').join('\n')}';
+    return '【通知】\n${notifications.reversed.take(10).map((n) => '· $n').join('\n')}';
   }
 
   String _formatHelp() {
@@ -486,7 +485,7 @@ mixin GameCommandsMixin on GameProvider {
   // ==================== 人生目标系统 ====================
 
   String _formatGoals() {
-    final p = _player;
+    final p = player;
     final current = p?.currentGoal;
     final buf = StringBuffer()
       ..writeln('╔══════════════════════════════════════╗')
@@ -518,22 +517,22 @@ mixin GameCommandsMixin on GameProvider {
   // ==================== 终章 / 结局 ====================
 
   void _startEndingSequence() {
-    if (_player == null) return;
-    _isLoading = true;
-    _loadingStage = '正在书写你的终章…';
-    _currentNarrative = '';
-    _choices = [];
+    if (player == null) return;
+    isLoading = true;
+    loadingStage = '正在书写你的终章…';
+    currentNarrative = '';
+    choices = [];
     notifyListeners();
     unawaited(_generateEnding());
   }
 
   String _formatDiary() {
-    if (_player!.cgRecords.isEmpty) {
+    if (player!.cgRecords.isEmpty) {
       return '【日记 / CG图鉴】\n暂无解锁CG。在关键剧情节点将解锁专属CG。\n\n（输入 /日记 统计 查看进度；/日记 [编号] 查看详情）';
     }
-    final buf = StringBuffer('【日记 / CG图鉴】（已解锁 ${_player!.cgRecords.length}/${allCgs().length}）\n');
+    final buf = StringBuffer('【日记 / CG图鉴】（已解锁 ${player!.cgRecords.length}/${allCgs().length}）\n');
     for (final cg in allCgs()) {
-      final rec = _player!.cgRecords[cg.id];
+      final rec = player!.cgRecords[cg.id];
       if (rec == null) continue;
       buf.writeln('· ${cg.id} ${cg.name}（${rec.unlockedDate}）');
     }
@@ -543,7 +542,7 @@ mixin GameCommandsMixin on GameProvider {
   /// CG 数量与等级分布（设定 7.5 /日记 统计）
 
   String _formatDiaryStats() {
-    final unlocked = _player!.cgRecords;
+    final unlocked = player!.cgRecords;
     final all = allCgs();
     final byStars = <int, int>{2: 0, 3: 0, 4: 0, 5: 0};
     final byChapter = <String, int>{};
@@ -581,7 +580,7 @@ mixin GameCommandsMixin on GameProvider {
     if (cg == null) {
       return '未找到 CG「$id」。可用编号见 /日记。';
     }
-    final rec = _player!.cgRecords[cg.id];
+    final rec = player!.cgRecords[cg.id];
     if (rec == null) {
       return '【${cg.id} ${cg.name}】🔒 尚未解锁\n'
           '章节：${cg.chapter}｜等级：${cg.starText}\n'
@@ -600,7 +599,7 @@ mixin GameCommandsMixin on GameProvider {
     if (cg == null) {
       return '未找到 CG「$id」。可用编号见 /日记。';
     }
-    final rec = _player!.cgRecords[cg.id];
+    final rec = player!.cgRecords[cg.id];
     if (rec == null) {
       return '【${cg.id} ${cg.name}】尚未解锁，无法重播。\n解锁条件：${cg.condition}';
     }
@@ -611,7 +610,7 @@ mixin GameCommandsMixin on GameProvider {
   }
 
   String _formatArchive() {
-    final p = _player!;
+    final p = player!;
     return '''【角色完整档案】
   姓名：${p.name}｜性别：${p.gender.isEmpty ? '未设定' : p.gender}
   生日：${p.birthDay ?? '未设定'}｜出生年份：${p.birthYear}
@@ -630,7 +629,7 @@ mixin GameCommandsMixin on GameProvider {
   }
 
   String _formatAchievements() {
-    final unlocked = _player!.achievements;
+    final unlocked = player!.achievements;
     final catalog = achievementCatalog;
     final buf = StringBuffer('【成就】（${unlocked.length}/${catalog.length}）\n');
     for (final a in catalog) {
@@ -641,7 +640,7 @@ mixin GameCommandsMixin on GameProvider {
   }
 
   String _formatPet() {
-    final p = _player!;
+    final p = player!;
     if (p.petId == null && p.petName == null) {
       return '【宠物】\n你还没有宠物。可以去对角巷挑选一只猫头鹰、猫或蟾蜍。';
     }

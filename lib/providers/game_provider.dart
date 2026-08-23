@@ -47,9 +47,9 @@ class GameProvider extends ChangeNotifier
         GameRelationsMixin,
         GameSystemsMixin {
   final AppProvider appProvider;
-  AiRouter? _router;
-  final SaveService _saveService = SaveService();
-  final Random _random = Random();
+  AiRouter? router;
+  final SaveService saveService = SaveService();
+  final Random random = Random();
   late NpcChatService chatService;
 
   // ====== 预编译正则（避免循环内重复编译） ======
@@ -64,66 +64,48 @@ class GameProvider extends ChangeNotifier
     multiLine: true,
   );
 
-  Player? _player;
-  WorldState _worldState = WorldState();
-  final Map<String, NPC> _npcRegistry = {};
-  LongTermMemory _memory = LongTermMemory();
+  Player? player;
+  WorldState worldState = WorldState();
+  final Map<String, NPC> npcRegistry = {};
+  LongTermMemory memory = LongTermMemory();
 
-  String _currentNarrative = '';
-  String _narrativeSummary = '';
-  String _pendingSummary = '';
-  final List<String> _recentTurns = [];
+  String currentNarrative = '';
+  String narrativeSummary = '';
+  String pendingSummary = '';
+  final List<String> recentTurns = [];
   static const int maxRecentTurns = 12;
-  List<GameChoice> _choices = [];
-  String? _commandResult;
-  bool _isLoading = false;
-  bool _isInitializing = false;
-  String? _error;
-  int _turnCount = 0;
-  String _lastPlayerAction = '';
-  String? _systemPrompt;
-  String _loadingStage = '';
-  List<String> _lastAffectionSections = [];
-  final List<String> _notifications = [];
+  List<GameChoice> choices = [];
+  String? commandResult;
+  bool isLoading = false;
+  bool isInitializing = false;
+  String? error;
+  int turnCount = 0;
+  String lastPlayerAction = '';
+  String? systemPrompt;
+  String loadingStage = '';
+  List<String> lastAffectionSections = [];
+  final List<String> notifications = [];
   Future<void>? _pendingSave;
   bool _saveScheduled = false;
 
-  int _totalPromptTokens = 0;
-  int _totalCompletionTokens = 0;
-  int _totalTokens = 0;
-  int _lastRoundTokens = 0;
-  int _apiCalls = 0;
-  int _gameWeek = 1;
-  int _lastSchoolYearStart = 0;
-  String? _pendingAnchorDirective;
-  String _openingScene = 'station';
-
-  int get totalPromptTokens => _totalPromptTokens;
-  int get totalCompletionTokens => _totalCompletionTokens;
-  int get totalTokens => _totalTokens;
-  int get lastRoundTokens => _lastRoundTokens;
-  int get apiCalls => _apiCalls;
-  String get loadingStage => _loadingStage;
-
-  Player? get player => _player;
-  WorldState get worldState => _worldState;
-  String get currentNarrative => _currentNarrative;
-  List<GameChoice> get choices => _choices;
-  String? get commandResult => _commandResult;
-  bool get isLoading => _isLoading;
-  bool get isInitializing => _isInitializing;
-  String? get error => _error;
-  int get turnCount => _turnCount;
-  Map<String, NPC> get npcRegistry => _npcRegistry;
-  List<String> get notifications => List.unmodifiable(_notifications);
-  List<String> get lastAffectionSections => List.unmodifiable(_lastAffectionSections);
+  int totalPromptTokens = 0;
+  int totalCompletionTokens = 0;
+  int totalTokens = 0;
+  int lastRoundTokens = 0;
+  int apiCalls = 0;
+  int gameWeek = 1;
+  int lastSchoolYearStart = 0;
+  String? pendingAnchorDirective;
+  String openingScene = 'station';
+  List<String> get notifications => List.unmodifiable(notifications);
+  List<String> get lastAffectionSections => List.unmodifiable(lastAffectionSections);
 
   GameProvider(this.appProvider) {
     chatService = NpcChatService(appProvider: appProvider);
-    _updateClient();
-    appProvider.addListener(_onApiKeyChange);
+    updateClient();
+    appProvider.addListener(onApiKeyChange);
     if (appProvider.isGameStarted) {
-      _isInitializing = true;
+      isInitializing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _tryAutoLoad();
       });
@@ -135,63 +117,63 @@ class GameProvider extends ChangeNotifier
   // ---------------------------------------------------------------
   Future<void> _tryAutoLoad() async {
     if (!appProvider.isGameStarted) return;
-    final data = await _saveService.loadAutoSave();
+    final data = await saveService.loadAutoSave();
     if (data == null) {
-      _isInitializing = false;
+      isInitializing = false;
       appProvider.setGameStarted(false);
       notifyListeners();
       return;
     }
     try {
-      _player = Player.fromJson(data['player'] as Map<String, dynamic>);
-      _worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
-      _npcRegistry.clear();
+      player = Player.fromJson(data['player'] as Map<String, dynamic>);
+      worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
+      npcRegistry.clear();
       (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
-        _npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
+        npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
       });
-      _systemPrompt = buildSystemPrompt();
+      systemPrompt = buildSystemPrompt();
 
-      _currentNarrative = data['narrative'] as String? ?? '';
-      _choices = (data['choices'] as List<dynamic>?)
+      currentNarrative = data['narrative'] as String? ?? '';
+      choices = (data['choices'] as List<dynamic>?)
           ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
           .toList() ?? [];
-      _turnCount = data['turn_count'] as int? ?? 0;
+      turnCount = data['turn_count'] as int? ?? 0;
 
       final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
-      _narrativeSummary = extraData['narrative_summary'] as String? ?? '';
-      _pendingSummary = extraData['pending_summary'] as String? ?? '';
-      _gameWeek = extraData['game_week'] as int? ?? 1;
-      _lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
-      _apiCalls = extraData['api_calls'] as int? ?? 0;
-      _totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
-      _totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
-      _totalTokens = extraData['total_tokens'] as int? ?? 0;
-      _memory = LongTermMemory.fromJson(extraData['long_term_memory'] as Map<String, dynamic>?);
-      _recentTurns
+      narrativeSummary = extraData['narrative_summary'] as String? ?? '';
+      pendingSummary = extraData['pending_summary'] as String? ?? '';
+      gameWeek = extraData['game_week'] as int? ?? 1;
+      lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
+      apiCalls = extraData['api_calls'] as int? ?? 0;
+      totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
+      totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
+      totalTokens = extraData['total_tokens'] as int? ?? 0;
+      memory = LongTermMemory.fromJson(extraData['long_term_memory'] as Map<String, dynamic>?);
+      recentTurns
         ..clear()
         ..addAll((extraData['recent_turns'] as List<dynamic>?)
                 ?.map((e) => e.toString())
                 .toList() ??
             []);
-      if (_recentTurns.isEmpty && _currentNarrative.isNotEmpty) {
-        _recentTurns.add(_currentNarrative);
+      if (recentTurns.isEmpty && currentNarrative.isNotEmpty) {
+        recentTurns.add(currentNarrative);
       }
-      if (_choices.isEmpty) _choices = generateFallbackChoices();
-      if (_choices.length > 4) _choices = _choices.sublist(0, 4);
-      if (_currentNarrative.isEmpty) _currentNarrative = generateFallbackNarrative();
+      if (choices.isEmpty) choices = generateFallbackChoices();
+      if (choices.length > 4) choices = choices.sublist(0, 4);
+      if (currentNarrative.isEmpty) currentNarrative = generateFallbackNarrative();
 
-      _isLoading = false;
-      _isInitializing = false;
-      _error = null;
-      _loadingStage = '';
-      debugPrint('✅ 自动存档加载成功: ${_player?.name} 第$_turnCount回合 (第$_gameWeek周) 叙事${_currentNarrative.length}字');
+      isLoading = false;
+      isInitializing = false;
+      error = null;
+      loadingStage = '';
+      debugPrint('✅ 自动存档加载成功: ${player?.name} 第$_turnCount回合 (第$_gameWeek周) 叙事${currentNarrative.length}字');
       notifyListeners();
     } catch (e) {
-      _isLoading = false;
-      _isInitializing = false;
+      isLoading = false;
+      isInitializing = false;
       debugPrint('❌ 自动存档加载失败: $e');
       appProvider.setGameStarted(false);
-      _error = '存档加载失败: $e';
+      error = '存档加载失败: $e';
       notifyListeners();
       unawaited(CrashLogger.instance.record(
         e,
@@ -203,15 +185,15 @@ class GameProvider extends ChangeNotifier
   }
 
   Future<void> autoSave() async {
-    if (_player == null) return;
+    if (player == null) return;
     if (_saveScheduled) return;
     _saveScheduled = true;
     _pendingSave = _doSave(debounce: true);
     await _pendingSave;
   }
 
-  Future<void> _saveNow() async {
-    if (_player == null) return;
+  Future<void> saveNow() async {
+    if (player == null) return;
     if (_saveScheduled) return;
     _saveScheduled = true;
     await _doSave(debounce: false);
@@ -222,24 +204,24 @@ class GameProvider extends ChangeNotifier
       if (debounce) {
         await Future.delayed(const Duration(milliseconds: 300));
       }
-      await _saveService.autoSave(
-        player: _player!.toJson(),
-        worldState: _worldState.toJson(),
-        npcRegistry: _npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
-        narrative: _currentNarrative,
-        choices: _choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
-        turnCount: _turnCount,
+      await saveService.autoSave(
+        player: player!.toJson(),
+        worldState: worldState.toJson(),
+        npcRegistry: npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
+        narrative: currentNarrative,
+        choices: choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
+        turnCount: turnCount,
         extraData: {
-          'narrative_summary': _narrativeSummary,
-          'pending_summary': _pendingSummary,
-          'recent_turns': _recentTurns,
-          'game_week': _gameWeek,
-          'last_round_tokens': _lastRoundTokens,
-          'api_calls': _apiCalls,
-          'total_prompt_tokens': _totalPromptTokens,
-          'total_completion_tokens': _totalCompletionTokens,
-          'total_tokens': _totalTokens,
-          'long_term_memory': _memory.toJson(),
+          'narrative_summary': narrativeSummary,
+          'pending_summary': pendingSummary,
+          'recent_turns': recentTurns,
+          'game_week': gameWeek,
+          'last_round_tokens': lastRoundTokens,
+          'api_calls': apiCalls,
+          'total_prompt_tokens': totalPromptTokens,
+          'total_completion_tokens': totalCompletionTokens,
+          'total_tokens': totalTokens,
+          'long_term_memory': memory.toJson(),
         },
       );
     } catch (e) {
@@ -249,12 +231,12 @@ class GameProvider extends ChangeNotifier
     }
   }
 
-  void _onApiKeyChange() {
-    _updateClient();
+  void onApiKeyChange() {
+    updateClient();
     chatService.refreshClient();
   }
 
-  void _updateClient() {
+  void updateClient() {
     final config = AiRouterConfig(
       narrativeProvider: appProvider.providerForScene(AiScene.narrative),
       summaryProvider: appProvider.providerForScene(AiScene.summary),
@@ -267,30 +249,30 @@ class GameProvider extends ChangeNotifier
         router.register(appProvider.configForProvider(p));
       }
     }
-    _router = router;
+    router = router;
   }
 
   void refreshClient() {
     ResponseCache.instance.clear();
-    _updateClient();
+    updateClient();
     chatService.refreshClient();
     notifyListeners();
   }
 
   void updateNpcAffection(String npcId, int change, {String? reason}) {
-    final npc = _npcRegistry[npcId];
+    final npc = npcRegistry[npcId];
     if (npc == null) return;
     if (!npc.introduced) markNpcIntroduced(npc);
 
-    final currentDay = _worldState.time.dayOfYear;
+    final currentDay = worldState.time.dayOfYear;
     int actualChange = change;
     if (change > 0) {
-      final cap = npc.getAffectionGainLimit(currentDay, _gameWeek);
+      final cap = npc.getAffectionGainLimit(currentDay, gameWeek);
       if (cap <= 0) {
         actualChange = 0;
         if (npc.affectionGainedThisWeek == Balance.weekOneAffectionCap) {
-          _notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
-          _worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+          notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
+          worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升');
         }
       } else if (change > cap) {
         actualChange = cap;
@@ -304,14 +286,14 @@ class GameProvider extends ChangeNotifier
       if (projected > cap) {
         actualChange = cap - npc.affection;
         if (actualChange < 0) actualChange = 0;
-        _notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
-        _worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
+        notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
+        worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
       }
     }
     if (change < -15) {
       npc.addGrudge('betrayal', reason ?? '背叛/欺骗', currentDay);
-      _notifications.add('💔 ${npc.name}因你的行为而记恨在心');
-      _worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心');
+      notifications.add('💔 ${npc.name}因你的行为而记恨在心');
+      worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心');
     }
     npc.affection = (npc.affection + actualChange).clamp(-100, 100);
     if (npc.affection > npc.maxAffectionReached) {
@@ -329,7 +311,7 @@ class GameProvider extends ChangeNotifier
 
   Future<void> updateApiKey(String key) async {
     await appProvider.saveApiKey(key);
-    _updateClient();
+    updateClient();
     chatService.refreshClient();
   }
 
