@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.9 — 2026-08-23
+
+**📋 变更说明**
+feat(P1+P3): 方案A三期全部落地 - Screen拆分完成(11新文件)
+
+第一期(Screen混装+Prompt拆出): prompts/ 4文件齐全,screens/无内嵌prompt
+第二期(GameProvider→6Mixin): 已在上次提交完成
+第三期(game_screen+settings_screen拆):
+- game_screen.dart: 2477→165行 (-93%), 拆出7个独立组件
+  * game_narrative_tab.dart 824行 (叙事Tab+面板+角色)
+
 ### v1.7.8 — 2026-08-23
 
 **📋 变更说明**
