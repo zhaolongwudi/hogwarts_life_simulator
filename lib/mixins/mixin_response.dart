@@ -27,9 +27,9 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
-import '../providers/game_provider.dart';
+import '../providers/game_provider_base.dart';
 
-mixin GameResponseMixin on ChangeNotifier {
+mixin GameResponseMixin on GameProviderBase {
   void _tryExtractHouseFromNarrative(String text) {
     if (player == null || player!.house != null) return;
     const houseGroup = '格兰芬多|斯莱特林|拉文克劳|赫奇帕奇'
@@ -117,8 +117,8 @@ mixin GameResponseMixin on ChangeNotifier {
 
     // 移除结构化区块（选项、好感、声望等）
     var cleaned = text;
-    cleaned = cleaned.replaceAllMapped(GameProvider.reAffectionSection, (m) => '');
-    cleaned = cleaned.replaceAllMapped(GameProvider.reReputationSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
 
     const stripSections = [
       '可选行动', '自由行动', '行动建议', '备选行动',
@@ -135,7 +135,7 @@ mixin GameResponseMixin on ChangeNotifier {
     for (final line in lines) {
       final trimmed = line.trim();
       // 跳过选项格式的行
-      if (GameProvider.reChoiceOption.hasMatch(trimmed)) {
+      if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) {
         continue;
       }
       narrativeLines.add(line);
@@ -218,14 +218,14 @@ mixin GameResponseMixin on ChangeNotifier {
       } else if (!sawExplicitNarrativeMarker && !anyExplicitBlockPassed) {
         // 没有出现过显式【叙事】标题，且尚未进入任何结构化区块：
         // 这一段默认按正文处理（AI忘写标题的情况最常见）
-        if (GameProvider.reChoiceOption.hasMatch(trimmed)) {
+        if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) {
           // 关键修复：只有当正文已经足够长（>50字）且连续2行都是选项格式时
           // 才认为进入选项区，防止正文中的选项格式被误识别
           if (currentNarrative.trim().length >= minNarrativeLength) {
             consecutiveChoiceLines++;
             if (consecutiveChoiceLines >= 2) {
               anyExplicitBlockPassed = true;
-              final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
+              final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
               if (action.isNotEmpty) {
                 choices.add(GameChoice(text: action, action: action));
               }
@@ -240,7 +240,7 @@ mixin GameResponseMixin on ChangeNotifier {
           } else {
             // 正文太短，可能是开局或错误，仍然按选项处理
             anyExplicitBlockPassed = true;
-            final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
+            final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
             if (action.isNotEmpty) {
               choices.add(GameChoice(text: action, action: action));
             }
@@ -253,9 +253,9 @@ mixin GameResponseMixin on ChangeNotifier {
             currentNarrative += '\n';
           }
         }
-      } else if (GameProvider.reChoiceOption.hasMatch(trimmed)) {
+      } else if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) {
         // 在显式选项区块之后，逐行收集选项
-        final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
+        final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
         if (action.isNotEmpty && choices.length < 6) {
           choices.add(GameChoice(text: action, action: action));
         }
@@ -308,7 +308,7 @@ mixin GameResponseMixin on ChangeNotifier {
     // 自动段落排版（为无分行的 AI 输出插入合理段落）
     narrativeForDisplay = StoryTextRenderer.autoParagraph(narrativeForDisplay);
     narrativeForDisplay = narrativeForDisplay
-        .replaceAll(GameProvider.reMultiNewline, '\n\n')
+        .replaceAll(GameProviderBase.reMultiNewline, '\n\n')
         .trim();
 
     currentNarrative = narrativeForDisplay;
@@ -365,8 +365,8 @@ mixin GameResponseMixin on ChangeNotifier {
     var cleaned = text;
 
     // 1. 先删【好感度变化】和【声望变化】整块（它们是结构化输出区块，不属于正文叙事）
-    cleaned = cleaned.replaceAllMapped(GameProvider.reAffectionSection, (m) => '');
-    cleaned = cleaned.replaceAllMapped(GameProvider.reReputationSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
+    cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
 
     // 2. 删除其他已知结构化区块（整体移除，连同标题行一起）
     const stripSections = [
@@ -384,7 +384,7 @@ mixin GameResponseMixin on ChangeNotifier {
 
     // 3. 找到「选项区块」的起点：某一行以「A./B./1./一、A)」开头且后面是文字
     //    把起点之后的内容全部认为是选项而丢弃
-    final choiceMatch = GameProvider.reChoiceMultiLine.firstMatch(cleaned);
+    final choiceMatch = GameProviderBase.reChoiceMultiLine.firstMatch(cleaned);
     if (choiceMatch != null) {
       int end;
       if (choiceMatch.group(0)!.startsWith('\n')) {
@@ -487,9 +487,9 @@ mixin GameResponseMixin on ChangeNotifier {
       if (trimmed.isEmpty) continue;
 
       // 直接使用预编译的正则，匹配所有选项格式
-      final match = GameProvider.reChoiceOption.firstMatch(trimmed);
+      final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
       if (match != null) {
-        final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
+        final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
         if (action.isNotEmpty && action.length >= 2) {
           choices.add(GameChoice(text: action, action: action));
         }
@@ -622,9 +622,9 @@ mixin GameResponseMixin on ChangeNotifier {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
 
-        final match = GameProvider.reChoiceOption.firstMatch(trimmed);
+        final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
         if (match != null) {
-          final action = trimmed.replaceFirst(GameProvider.reChoiceOption, '').trim();
+          final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
           if (action.isNotEmpty && action.length >= 2) {
             choices.add(GameChoice(text: action, action: action));
           }
@@ -727,7 +727,7 @@ mixin GameResponseMixin on ChangeNotifier {
       // 必须包含 +数字 或 -数字
       if (!RegExp(r'[+-]\d').hasMatch(trimmed)) continue;
       // 不能是选项行
-      if (GameProvider.reChoiceOption.hasMatch(trimmed)) continue;
+      if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) continue;
       found.add(trimmed);
     }
     return found.isEmpty ? null : found.join('\n');

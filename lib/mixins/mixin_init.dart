@@ -27,9 +27,9 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
-import '../providers/game_provider.dart';
+import '../providers/game_provider_base.dart';
 
-mixin GameInitMixin on ChangeNotifier {
+mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
     final p = player;
     final effectiveEra = worldState.era.isNotEmpty ? worldState.era : appProvider.era.name;

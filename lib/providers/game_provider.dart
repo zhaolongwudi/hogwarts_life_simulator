@@ -1,14 +1,9 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'app_provider.dart';
+import 'game_provider_base.dart';
 import '../mixins/game_provider_mixins.dart';
-import '../models/player.dart';
-import '../models/npc.dart';
-import '../models/world_state.dart';
-import '../models/game_systems.dart';
-import '../models/long_term_memory.dart';
 import '../data/course_data.dart';
 import '../data/wand_data.dart';
 import '../data/pet_data.dart';
@@ -29,16 +24,11 @@ import '../utils/prompt_sanitizer.dart';
 import '../utils/story_text_renderer.dart';
 import '../prompts/prompts.dart';
 
-/// GameProvider 本体：只保留 字段 / constructor / autoLoad / save 基础机制 /
-/// 对外调度总入口 (processChoice / initializeGame / resetAllState)。
-/// 所有业务方法分在 6 个 mixin 里：
-///   GameInitMixin        - 构建系统提示词、开局特质/分院/魔杖、初始化
-///   GameNarrativeMixin   - buildPrompt 组装、记忆注入、开场/更多建议、上下文
-///   GameCommandsMixin    - 命令面板、作弊、本地指令
-///   GameResponseMixin    - 模型响应解析、好感解析、摘要、token、分院提取
-///   GameRelationsMixin   - NPC 生成/信件/表白/骨科/CG/成就/经济(购/售/存/取/打工)/人物
-///   GameSystemsMixin     - 时间/学年/毕业/锚点/月度/一致性/快速推进/格式/存档/API
-class GameProvider extends ChangeNotifier
+/// GameProvider 本体：只保留 constructor / autoSave / saveNow / onApiKeyChange
+/// / updateClient / refreshClient / updateNpcAffection / updateApiKey 等调度入口。
+/// 所有字段和静态正则已经迁移到抽象基类 GameProviderBase 供 6 个 Mixin 通过
+/// `mixin X on GameProviderBase` 访问，从而解决 recursive_interface_inheritance。
+class GameProvider extends GameProviderBase
     with
         GameInitMixin,
         GameNarrativeMixin,
@@ -46,57 +36,19 @@ class GameProvider extends ChangeNotifier
         GameResponseMixin,
         GameRelationsMixin,
         GameSystemsMixin {
+  @override
   final AppProvider appProvider;
+  @override
   AiRouter? router;
+  @override
   final SaveService saveService = SaveService();
+  @override
   final Random random = Random();
+  @override
   late NpcChatService chatService;
 
-  // ====== 预编译正则（避免循环内重复编译） ======
-  static final reChoiceOption = RegExp(
-    r'^\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s*',
-  );
-  static final reMultiNewline = RegExp(r'\n{3,}');
-  static final reAffectionSection = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
-  static final reReputationSection = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
-  static final reChoiceMultiLine = RegExp(
-    r'(?:^|\n)\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s+\S',
-    multiLine: true,
-  );
-
-  Player? player;
-  WorldState worldState = WorldState();
-  final Map<String, NPC> npcRegistry = {};
-  LongTermMemory memory = LongTermMemory();
-
-  String currentNarrative = '';
-  String narrativeSummary = '';
-  String pendingSummary = '';
-  final List<String> recentTurns = [];
-  static const int maxRecentTurns = 12;
-  List<GameChoice> choices = [];
-  String? commandResult;
-  bool isLoading = false;
-  bool isInitializing = false;
-  String? error;
-  int turnCount = 0;
-  String lastPlayerAction = '';
-  String? systemPrompt;
-  String loadingStage = '';
-  List<String> lastAffectionSections = [];
-  final List<String> notifications = [];
   Future<void>? _pendingSave;
   bool _saveScheduled = false;
-
-  int totalPromptTokens = 0;
-  int totalCompletionTokens = 0;
-  int totalTokens = 0;
-  int lastRoundTokens = 0;
-  int apiCalls = 0;
-  int gameWeek = 1;
-  int lastSchoolYearStart = 0;
-  String? pendingAnchorDirective;
-  String openingScene = 'station';
 
   GameProvider(this.appProvider) {
     chatService = NpcChatService(appProvider: appProvider);
@@ -105,15 +57,15 @@ class GameProvider extends ChangeNotifier
     if (appProvider.isGameStarted) {
       isInitializing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _tryAutoLoad();
+        tryAutoLoad();
       });
     }
   }
 
   // ---------------------------------------------------------------
-  // 自动读档 + 存档 (保留在 core，它们访问字段太多，mixins 也能访问)
+  // 自动读档 + 存档
   // ---------------------------------------------------------------
-  Future<void> _tryAutoLoad() async {
+  Future<void> tryAutoLoad() async {
     if (!appProvider.isGameStarted) return;
     final data = await saveService.loadAutoSave();
     if (data == null) {
@@ -186,7 +138,7 @@ class GameProvider extends ChangeNotifier
     if (player == null) return;
     if (_saveScheduled) return;
     _saveScheduled = true;
-    _pendingSave = _doSave(debounce: true);
+    _pendingSave = doSave(debounce: true);
     await _pendingSave;
   }
 
@@ -194,10 +146,10 @@ class GameProvider extends ChangeNotifier
     if (player == null) return;
     if (_saveScheduled) return;
     _saveScheduled = true;
-    await _doSave(debounce: false);
+    await doSave(debounce: false);
   }
 
-  Future<void> _doSave({required bool debounce}) async {
+  Future<void> doSave({required bool debounce}) async {
     try {
       if (debounce) {
         await Future.delayed(const Duration(milliseconds: 300));
@@ -312,6 +264,4 @@ class GameProvider extends ChangeNotifier
     updateClient();
     chatService.refreshClient();
   }
-
-
 }

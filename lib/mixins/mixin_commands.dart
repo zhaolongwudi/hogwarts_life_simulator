@@ -27,9 +27,9 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
-import '../providers/game_provider.dart';
+import '../providers/game_provider_base.dart';
 
-mixin GameCommandsMixin on ChangeNotifier {
+mixin GameCommandsMixin on GameProviderBase {
   void closeCommandPanel() {
     if (commandResult == null) return;
     commandResult = null;

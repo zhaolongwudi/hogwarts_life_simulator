@@ -27,9 +27,9 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
-import '../providers/game_provider.dart';
+import '../providers/game_provider_base.dart';
 
-mixin GameRelationsMixin on ChangeNotifier {
+mixin GameRelationsMixin on GameProviderBase {
   void generateNewNPC() {
     final p = player;
     if (p == null) return;

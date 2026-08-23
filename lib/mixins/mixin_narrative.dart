@@ -27,9 +27,9 @@ import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/crash_logger.dart';
-import '../providers/game_provider.dart';
+import '../providers/game_provider_base.dart';
 
-mixin GameNarrativeMixin on ChangeNotifier {
+mixin GameNarrativeMixin on GameProviderBase {
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
 
@@ -509,7 +509,7 @@ mixin GameNarrativeMixin on ChangeNotifier {
     final trimmed = narrative.trim();
     if (trimmed.isEmpty) return;
     recentTurns.add(trimmed);
-    while (recentTurns.length > GameProvider.maxRecentTurns) {
+    while (recentTurns.length > GameProviderBase.maxRecentTurns) {
       recentTurns.removeAt(0);
     }
   }
