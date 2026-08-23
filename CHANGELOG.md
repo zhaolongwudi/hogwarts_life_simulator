@@ -5,6 +5,17 @@
 
 ---
 
+### v1.6.7 — 2026-08-23
+
+**📋 变更说明**
+refactor: 拆分GameProvider为6个Mixin (方案1 P2)
+
+- 游戏逻辑核心game_provider.dart从6047行瘦身至337行(-94%)
+- 按功能边界拆分为6个Mixin:
+  * mixin_init.dart     (1047行) 系统提示词、初始化、分院/魔杖/开局特质
+  * mixin_narrative.dart (917行) buildPrompt、记忆注入、上下文截断
+  * mixin_commands.dart  (664行) 命令面板、作弊指令
+
 ### v1.6.6 — 2026-08-23
 
 **📋 变更说明**
