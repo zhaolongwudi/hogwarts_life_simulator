@@ -5,6 +5,17 @@
 
 ---
 
+### v1.8.5 — 2026-08-23
+
+**📋 变更说明**
+修复:事件时间回退+签名排除+回合扫描去重+世界文案+剧情时间悬浮
+
+A 事件记录相对时间回退bug:
+- 新增 NarrativeEvent 模型(text/turn/at, 支持短键t/r/a和长键双读)
+- recentNarrativeEvents/recentEvents: List<String> → List<NarrativeEvent>
+- addNarrativeEvent(event,{turn}) 15处调用全填 turnCount
+- 旧档字符串100%兼容 → fromJson(src is String) 自动升级 turn=null 显示「—」
+
 ### v1.8.4 — 2026-08-23
 
 **📋 变更说明**
