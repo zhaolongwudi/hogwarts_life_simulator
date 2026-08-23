@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
-import '../services/ai_router.dart';
 import '../services/deepseek_service.dart';
 import '../utils/ai_debug_logger.dart';
 import 'settings/settings_provider_card.dart';

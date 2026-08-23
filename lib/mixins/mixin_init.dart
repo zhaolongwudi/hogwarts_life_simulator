@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import '../services/rate_limiter.dart';
-import '../services/deepseek_service.dart';
 import '../data/pet_data.dart';
 import '../providers/app_provider.dart';
 import '../models/npc.dart';

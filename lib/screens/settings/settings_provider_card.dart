@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../providers/app_provider.dart';
-import '../../services/ai_router.dart';
-import '../../services/deepseek_service.dart';
 
 class SettingsProviderCard extends StatefulWidget {
   final AiProvider provider;

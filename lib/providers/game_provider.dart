@@ -9,7 +9,6 @@ import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../services/rate_limiter.dart';
-import '../services/deepseek_service.dart';
 import '../utils/crash_logger.dart';
 import '../models/player.dart';
 import '../models/world_state.dart';

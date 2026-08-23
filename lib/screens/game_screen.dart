@@ -8,7 +8,6 @@ import 'game/game_phone_tab.dart';
 import 'game/game_world_tab.dart';
 import 'game/game_top_bar.dart';
 import 'game/game_bottom_input.dart';
-import 'game/game_character_tab.dart';
 import 'game/game_settings_tab.dart';
 
 class GameScreen extends StatefulWidget {
@@ -21,7 +20,6 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   int _currentTab = 0;
   int _subTab = 0;
-  int _tokenUsage = 0;
   final _inputController = TextEditingController();
   final _menuController = TextEditingController();
   final _scrollController = ScrollController();
