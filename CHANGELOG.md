@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.7 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): 清场全部CI错误 + 150 unused imports
+
+ERROR级别修复（共4处）：
+1. 删除GameProviderBase.buildPrompt抽象声明（实际是processChoice
+   内部的局部函数，不是Mixin方法，导致non_abstract_class报错）
+2. 移除generateContextualFallbackChoices/generateFallbackChoices
+   前的abstract关键字（Dart只允许abstract class，不允许
+
 ### v1.7.6 — 2026-08-23
 
 **📋 变更说明**
