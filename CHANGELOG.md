@@ -5,6 +5,17 @@
 
 ---
 
+### v1.5.7 — 2026-08-23
+
+**📋 变更说明**
+fix: 修复CI编译错误的两个问题
+
+1. game_provider.dart L4167: 正则中 」(U+300D) 被 Dart 分析器视为非法字符
+   导致整行解析断裂，级联 39 个错误
+   修复：移除 」 字符，仅用 ASCII 引号 [\"\']? 匹配分院帽引语
+
+2. shop_inventory_screens.dart L83: Icons.vault 不存在于 Flutter Icons 类
+
 ### v1.5.6 — 2026-08-23
 
 **📋 变更说明**
