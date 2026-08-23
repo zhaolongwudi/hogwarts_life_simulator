@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.5 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): 终极方案：85+6跨Mixin不可见方法 → GameProviderBase abstract声明
+
+Dart 3 的 Mixin  静态分析只认识 X 的成员，不认识同  中其它 Mixin 的方法，
+导致 roll/bloodStatusLabel/formatAffections/unlockAchievement/callDeepSeek 等 85 个方法报 undefined_method。
+
+修复：
+- p2_fix_cross_mixin_v3.py 自动扫描所有方法定义在A文件、引用在B文件的 85 个跨 Mixin 方法
+
 ### v1.7.4 — 2026-08-23
 
 **📋 变更说明**
