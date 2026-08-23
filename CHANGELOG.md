@@ -5,6 +5,17 @@
 
 ---
 
+### v1.6.5 — 2026-08-23
+
+**📋 变更说明**
+fix(ci): 修复17项flutter analyze错误
+
+CI编译错误全量修复：
+
+game_provider.dart:
+- 资料交叉校验：去除不必要的非空断言(!)（行575/577/585）
+- currentLocation设置：将未定义的 p.birthLocation 改为 _player!.birthLocation（行634）
+
 ### v1.6.4 — 2026-08-23
 
 **📋 变更说明**
