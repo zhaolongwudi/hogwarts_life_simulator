@@ -1,0 +1,1042 @@
+2026-08-23T17:37:35.6116157Z ##[group]Run flutter analyze --no-fatal-warnings
+flutter analyze --no-fatal-warnings
+shell: /usr/bin/bash -e {0}
+env:
+  JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-8/x64
+  JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-8/x64
+  FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.47.1-x64/flutter
+  PUB_CACHE: /home/runner/.pub-cache
+Analyzing hogwarts_life_simulator...                            
+
+  error • Only classes and mixins can be used as superclass constraints • lib/mixins/mixin_commands.dart:31:28 • mixin_super_class_constraint_non_interface
+  error • Undefined class 'GameProvider'. Try changing the name to the name of an existing class, or creating a class with the name 'GameProvider' • lib/mixins/mixin_commands.dart:31:28 • undefined_class
+  error • Undefined name 'commandResult'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:33:9 • undefined_identifier
+  error • Undefined name 'commandResult'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:34:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_commands.dart:35:5 • undefined_method
+warning • The declaration '_handleLocalCommand' isn't referenced. Try removing the declaration of '_handleLocalCommand' • lib/mixins/mixin_commands.dart:40:8 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:41:15 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:48:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:49:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:53:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:54:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:58:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:59:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:63:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:64:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:68:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:69:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:73:9 • undefined_identifier
+  error • The method '_formatRelationships' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatRelationships' • lib/mixins/mixin_commands.dart:73:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:74:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:78:9 • undefined_identifier
+  error • The method '_formatLove' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatLove' • lib/mixins/mixin_commands.dart:78:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:79:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:83:9 • undefined_identifier
+  error • The method '_formatReputation' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatReputation' • lib/mixins/mixin_commands.dart:83:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:84:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:89:9 • undefined_identifier
+  error • The method '_formatRumors' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatRumors' • lib/mixins/mixin_commands.dart:89:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:90:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:94:9 • undefined_identifier
+  error • The method '_formatCourses' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatCourses' • lib/mixins/mixin_commands.dart:94:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:95:9 • undefined_identifier
+  error • The method '_classroomInteraction' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_classroomInteraction' • lib/mixins/mixin_commands.dart:100:11 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:102:11 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:103:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:108:9 • undefined_identifier
+  error • The method '_formatCollection' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatCollection' • lib/mixins/mixin_commands.dart:108:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:109:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:114:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:116:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:118:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:120:11 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:122:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:126:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:127:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:131:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:132:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:136:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:137:9 • undefined_identifier
+  error • The method '_handleLetterCommand' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_handleLetterCommand' • lib/mixins/mixin_commands.dart:141:9 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:145:9 • undefined_identifier
+  error • The method '_formatBloodRelatives' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatBloodRelatives' • lib/mixins/mixin_commands.dart:145:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:146:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:150:9 • undefined_identifier
+  error • The method '_eraLabel' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_eraLabel' • lib/mixins/mixin_commands.dart:150:44 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:150:54 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:152:29 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:152:75 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:153:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:157:9 • undefined_identifier
+  error • The method '_formatWorldEvolution' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatWorldEvolution' • lib/mixins/mixin_commands.dart:157:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:158:9 • undefined_identifier
+  error • The method '_generateNewNPC' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_generateNewNPC' • lib/mixins/mixin_commands.dart:162:9 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:167:9 • undefined_identifier
+  error • The method '_formatLoveWaiting' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatLoveWaiting' • lib/mixins/mixin_commands.dart:167:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:168:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:172:9 • undefined_identifier
+  error • The method '_formatLoveStages' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatLoveStages' • lib/mixins/mixin_commands.dart:172:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:173:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:179:11 • undefined_identifier
+  error • The method '_formatNpcRelationship' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatNpcRelationship' • lib/mixins/mixin_commands.dart:179:30 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:181:11 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:183:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:188:9 • undefined_identifier
+  error • The method '_formatBoneMode' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatBoneMode' • lib/mixins/mixin_commands.dart:188:28 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:189:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:194:11 • undefined_identifier
+  error • The method '_formatGoalProgress' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatGoalProgress' • lib/mixins/mixin_commands.dart:194:30 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:195:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:209:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:214:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:217:11 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:219:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:237:15 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:240:7 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:241:7 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:252:27 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:255:19 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:257:30 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:258:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:264:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:295:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:304:11 • undefined_identifier
+  error • The method '_fastForwardTime' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_fastForwardTime' • lib/mixins/mixin_commands.dart:313:29 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:314:11 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:314:49 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_commands.dart:321:11 • undefined_method
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:322:11 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:323:11 • undefined_identifier
+  error • The method '_bumpImpactScore' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bumpImpactScore' • lib/mixins/mixin_commands.dart:324:11 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:325:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:328:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:336:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:341:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:343:11 • undefined_identifier
+  error • The method '_unlockCG' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockCG' • lib/mixins/mixin_commands.dart:352:13 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:353:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:355:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:361:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:363:5 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:381:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:382:15 • undefined_identifier
+  error • The method '_calculateAge' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_calculateAge' • lib/mixins/mixin_commands.dart:389:24 • undefined_method
+  error • The method '_bloodStatusLabel' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bloodStatusLabel' • lib/mixins/mixin_commands.dart:390:24 • undefined_method
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:425:15 • undefined_identifier
+  error • The method '_termLabel' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_termLabel' • lib/mixins/mixin_commands.dart:428:15 • undefined_method
+  error • The method '_flowModeLabel' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_flowModeLabel' • lib/mixins/mixin_commands.dart:429:17 • undefined_method
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:435:10 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:448:5 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:452:9 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:455:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:488:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:520:9 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:521:5 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:522:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:523:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:524:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_commands.dart:525:5 • undefined_method
+  error • The method '_generateEnding' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_generateEnding' • lib/mixins/mixin_commands.dart:526:15 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:530:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:533:49 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:535:19 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:545:22 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:583:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:602:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:613:15 • undefined_identifier
+  error • The method '_bloodStatusLabel' isn't defined for the type 'GameCommandsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bloodStatusLabel' • lib/mixins/mixin_commands.dart:617:8 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:632:22 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_commands.dart:643:15 • undefined_identifier
+  error • Only classes and mixins can be used as superclass constraints • lib/mixins/mixin_init.dart:31:24 • mixin_super_class_constraint_non_interface
+  error • Undefined class 'GameProvider'. Try changing the name to the name of an existing class, or creating a class with the name 'GameProvider' • lib/mixins/mixin_init.dart:31:24 • undefined_class
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:33:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:34:26 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:34:54 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:34:71 • undefined_identifier
+  error • The method '_bloodStatusLabel' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bloodStatusLabel' • lib/mixins/mixin_init.dart:38:28 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:75:26 • undefined_identifier
+warning • The declaration '_eraLabel' isn't referenced. Try removing the declaration of '_eraLabel' • lib/mixins/mixin_init.dart:114:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:150:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:151:5 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:152:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:153:5 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:154:5 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:155:5 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:156:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:157:5 • undefined_identifier
+  error • Undefined name 'commandResult'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:158:5 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:159:5 • undefined_identifier
+  error • Undefined name 'isInitializing'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:160:5 • undefined_identifier
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:161:5 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:162:5 • undefined_identifier
+  error • Undefined name 'lastPlayerAction'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:163:5 • undefined_identifier
+  error • Undefined name 'systemPrompt'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:164:5 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:165:5 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:166:5 • undefined_identifier
+  error • Undefined name 'gameWeek'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:167:5 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:168:5 • undefined_identifier
+  error • Undefined name 'pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:169:5 • undefined_identifier
+  error • Undefined name 'totalTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:170:5 • undefined_identifier
+  error • Undefined name 'lastRoundTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:171:5 • undefined_identifier
+  error • Undefined name 'apiCalls'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:172:5 • undefined_identifier
+  error • Undefined name 'openingScene'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:173:5 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:180:5 • undefined_identifier
+  error • Undefined name 'chatService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:182:5 • undefined_identifier
+  error • Undefined name 'chatService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:183:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:184:5 • undefined_method
+  error • The method 'updateClient' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'updateClient' • lib/mixins/mixin_init.dart:217:5 • undefined_method
+  error • Undefined name 'saveService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:220:13 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:224:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:225:5 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:229:42 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:278:7 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:307:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:310:7 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:311:14 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:312:43 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:323:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:323:41 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:325:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:327:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:329:9 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:331:7 • undefined_identifier
+  error • The method '_updateAcademicYearLabel' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_updateAcademicYearLabel' • lib/mixins/mixin_init.dart:332:7 • undefined_method
+  error • Undefined name 'systemPrompt'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:335:7 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:346:11 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:346:29 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:350:11 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_init.dart:351:11 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:354:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:354:33 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:358:34 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:364:7 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_init.dart:365:7 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:366:11 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:367:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:370:20 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:371:26 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:374:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:375:7 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_init.dart:376:7 • undefined_method
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:378:7 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:379:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:380:7 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:385:35 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:404:5 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:405:28 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:409:7 • undefined_identifier
+  error • A value of type 'double' can't be returned from the method '_roll' because it has a return type of 'int' • lib/mixins/mixin_init.dart:453:34 • return_of_invalid_type
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:453:40 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:460:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:462:23 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:484:5 • undefined_identifier
+warning • The declaration '_markIntroducedFromNarrative' isn't referenced. Try removing the declaration of '_markIntroducedFromNarrative' • lib/mixins/mixin_init.dart:489:8 • unused_element
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:490:25 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:495:18 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:579:30 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:615:20 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:635:28 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:641:31 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:656:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:688:7 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:695:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:710:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:712:15 • undefined_identifier
+  error • The method '_bloodStatusLabel' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bloodStatusLabel' • lib/mixins/mixin_init.dart:723:37 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:740:38 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:765:9 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:765:28 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:766:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:767:71 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:768:7 • undefined_identifier
+  error • The method '_appendRecentTurn' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_appendRecentTurn' • lib/mixins/mixin_init.dart:773:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:773:25 • undefined_identifier
+  error • The method '_callDeepSeek' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_callDeepSeek' • lib/mixins/mixin_init.dart:778:30 • undefined_method
+  error • The method '_parseResponse' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_parseResponse' • lib/mixins/mixin_init.dart:779:7 • undefined_method
+  error • The method '_accumulateForSummary' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_accumulateForSummary' • lib/mixins/mixin_init.dart:780:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:780:29 • undefined_identifier
+  error • The method '_appendRecentTurn' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_appendRecentTurn' • lib/mixins/mixin_init.dart:781:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:781:25 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:782:7 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_init.dart:783:7 • undefined_method
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:785:7 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:786:7 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:788:7 • undefined_identifier
+  error • The method '_appendRecentTurn' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_appendRecentTurn' • lib/mixins/mixin_init.dart:789:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:789:25 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:790:7 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_init.dart:791:7 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:796:41 • undefined_identifier
+  error • Undefined name 'openingScene'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:829:13 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:846:20 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:847:18 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:850:18 • undefined_identifier
+  error • A value of type 'double' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int' • lib/mixins/mixin_init.dart:889:28 • invalid_assignment
+  error • A value of type 'double' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int' • lib/mixins/mixin_init.dart:890:27 • invalid_assignment
+  error • A value of type 'double' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int' • lib/mixins/mixin_init.dart:891:27 • invalid_assignment
+  error • A value of type 'double' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int' • lib/mixins/mixin_init.dart:892:28 • invalid_assignment
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:895:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:900:19 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:908:21 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:913:24 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:927:22 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:932:22 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:940:9 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:944:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:945:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:949:7 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_init.dart:950:7 • undefined_method
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:953:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:954:7 • undefined_method
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:957:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameInitMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_init.dart:958:7 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:966:25 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:967:18 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_init.dart:1020:24 • undefined_identifier
+  error • Only classes and mixins can be used as superclass constraints • lib/mixins/mixin_narrative.dart:31:29 • mixin_super_class_constraint_non_interface
+  error • Undefined class 'GameProvider'. Try changing the name to the name of an existing class, or creating a class with the name 'GameProvider' • lib/mixins/mixin_narrative.dart:31:29 • undefined_class
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:33:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:38:29 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:39:49 • undefined_identifier
+  error • The method '_handleLocalCommand' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_handleLocalCommand' • lib/mixins/mixin_narrative.dart:40:23 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:46:31 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:47:13 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:48:13 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:49:14 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:49:41 • undefined_identifier
+  error • Undefined name 'commandResult'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:51:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:51:27 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:52:11 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:53:11 • undefined_identifier
+  error • Undefined name 'commandResult'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:56:11 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:58:9 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_narrative.dart:59:9 • undefined_method
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:67:9 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:67:28 • undefined_identifier
+  error • Undefined name 'commandResult'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:69:5 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:70:5 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:71:5 • undefined_identifier
+  error • Undefined name 'lastPlayerAction'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:72:5 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:73:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:74:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:77:17 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:85:18 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:98:18 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:109:23 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:114:24 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:133:18 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:134:46 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:153:11 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:157:34 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:158:20 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:159:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:169:18 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:176:29 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:182:28 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:227:20 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:228:23 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:234:13 • undefined_identifier
+  error • Undefined name 'pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:246:26 • undefined_identifier
+  error • Undefined name '_pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:247:58 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:254:11 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:254:35 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:262:18 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:262:62 • undefined_identifier
+  error • Undefined name 'pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:288:30 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:289:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:290:7 • undefined_method
+  error • The method '_callDeepSeek' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_callDeepSeek' • lib/mixins/mixin_narrative.dart:294:27 • undefined_method
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:298:9 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:299:9 • undefined_method
+  error • The method '_callDeepSeek' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_callDeepSeek' • lib/mixins/mixin_narrative.dart:301:27 • undefined_method
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:304:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:305:7 • undefined_method
+  error • The method '_parseNarrativeOnly' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_parseNarrativeOnly' • lib/mixins/mixin_narrative.dart:308:7 • undefined_method
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:314:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:315:7 • undefined_method
+  error • The method '_generateChoicesSeparately' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_generateChoicesSeparately' • lib/mixins/mixin_narrative.dart:317:37 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:317:64 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:319:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:323:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:326:29 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:327:25 • undefined_identifier
+  error • The method '_advanceTimeForAction' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_advanceTimeForAction' • lib/mixins/mixin_narrative.dart:328:7 • undefined_method
+  error • The method '_updateNPCsFromAction' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_updateNPCsFromAction' • lib/mixins/mixin_narrative.dart:329:7 • undefined_method
+  error • The method '_updatePlayerImpactScore' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_updatePlayerImpactScore' • lib/mixins/mixin_narrative.dart:330:7 • undefined_method
+  error • Undefined name 'pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:332:37 • undefined_identifier
+  error • Undefined name 'pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:333:9 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:338:12 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:338:35 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:338:68 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:348:7 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:349:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:350:7 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_narrative.dart:351:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:355:7 • undefined_identifier
+  error • The method 'generateFallbackNarrative' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'generateFallbackNarrative' • lib/mixins/mixin_narrative.dart:355:26 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:356:7 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:357:25 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:358:7 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:359:7 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:360:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:361:7 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_narrative.dart:362:7 • undefined_method
+  error • Undefined name '_turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:367:39 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:375:24 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:376:28 • undefined_identifier
+  error • Undefined name 'lastPlayerAction'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:377:26 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:510:5 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:511:12 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:511:33 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:512:7 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:522:5 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:523:9 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:525:19 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:526:7 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:526:37 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:531:9 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:532:7 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:538:19 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:540:12 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:555:5 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:555:35 • undefined_identifier
+  error • Undefined name '_pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:558:4 • undefined_identifier
+  error • The method '_callDeepSeek' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_callDeepSeek' • lib/mixins/mixin_narrative.dart:569:28 • undefined_method
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:581:7 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:582:7 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:583:32 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:592:18 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:616:15 • undefined_identifier
+  error • The method '_attrLabel' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_attrLabel' • lib/mixins/mixin_narrative.dart:626:26 • undefined_method
+  error • The method '_attrLabel' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_attrLabel' • lib/mixins/mixin_narrative.dart:639:59 • undefined_method
+  error • The method '_attrLabel' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_attrLabel' • lib/mixins/mixin_narrative.dart:641:26 • undefined_method
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:647:23 • undefined_identifier
+  error • The method '_formatAffections' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_formatAffections' • lib/mixins/mixin_narrative.dart:656:20 • undefined_method
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:679:16 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:680:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:709:22 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:711:12 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:717:9 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:717:27 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:719:5 • undefined_identifier
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:720:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:721:5 • undefined_method
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:726:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:728:9 • undefined_identifier
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:731:7 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:733:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:734:7 • undefined_method
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:739:22 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:740:19 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:741:25 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:742:28 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:877:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:894:9 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:898:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:899:5 • undefined_method
+  error • The method '_computeHouseLocal' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_computeHouseLocal' • lib/mixins/mixin_narrative.dart:902:21 • undefined_method
+  error • The method '_generateSortingNarrative' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_generateSortingNarrative' • lib/mixins/mixin_narrative.dart:903:25 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:904:7 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_narrative.dart:905:7 • undefined_method
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:907:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:908:7 • undefined_method
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_narrative.dart:911:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameNarrativeMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_narrative.dart:912:7 • undefined_method
+  error • Only classes and mixins can be used as superclass constraints • lib/mixins/mixin_relations.dart:31:29 • mixin_super_class_constraint_non_interface
+  error • Undefined class 'GameProvider'. Try changing the name to the name of an existing class, or creating a class with the name 'GameProvider' • lib/mixins/mixin_relations.dart:31:29 • undefined_class
+warning • The declaration '_generateNewNPC' isn't referenced. Try removing the declaration of '_generateNewNPC' • lib/mixins/mixin_relations.dart:32:8 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:33:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:36:19 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:38:7 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:39:7 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:98:20 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:100:32 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:100:79 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:102:26 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:107:34 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:109:77 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:114:47 • undefined_identifier
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:125:13 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:126:18 • undefined_method
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:136:5 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:143:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:144:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:149:5 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:202:17 • undefined_identifier
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:258:32 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:259:31 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:262:34 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:263:30 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:266:31 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:267:32 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:270:36 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:271:30 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:274:31 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:275:32 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:278:30 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:279:34 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:282:32 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:285:30 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:286:32 • undefined_method
+  error • The method '_roll' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_roll' • lib/mixins/mixin_relations.dart:289:32 • undefined_method
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:339:17 • undefined_identifier
+warning • The declaration '_calculateAge' isn't referenced. Try removing the declaration of '_calculateAge' • lib/mixins/mixin_relations.dart:342:7 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:343:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:347:14 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:354:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:360:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:365:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:366:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_relations.dart:367:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:372:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:377:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:378:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_relations.dart:379:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:384:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:389:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:390:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_relations.dart:391:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:396:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:401:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:402:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_relations.dart:403:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:416:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:419:42 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:419:67 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:420:5 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:422:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:423:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_relations.dart:424:5 • undefined_method
+warning • The declaration '_generateEnding' isn't referenced. Try removing the declaration of '_generateEnding' • lib/mixins/mixin_relations.dart:430:16 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:431:15 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:433:7 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:434:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:435:7 • undefined_method
+  error • The method '_buildRelationshipSnapshot' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_buildRelationshipSnapshot' • lib/mixins/mixin_relations.dart:439:30 • undefined_method
+  error • The method '_eraLabel' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_eraLabel' • lib/mixins/mixin_relations.dart:451:16 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:451:26 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:470:11 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:470:29 • undefined_identifier
+  error • The method '_bloodStatusLabel' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bloodStatusLabel' • lib/mixins/mixin_relations.dart:474:30 • undefined_method
+  error • The method '_eraLabel' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_eraLabel' • lib/mixins/mixin_relations.dart:474:87 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:474:97 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:484:5 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:484:35 • undefined_identifier
+  error • The method '_callDeepSeek' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_callDeepSeek' • lib/mixins/mixin_relations.dart:492:30 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:505:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:506:5 • undefined_identifier
+1029 issues found. (ran in 8.2s)
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:507:5 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:508:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_relations.dart:509:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_relations.dart:510:5 • undefined_method
+warning • The declaration '_formatRelationships' isn't referenced. Try removing the declaration of '_formatRelationships' • lib/mixins/mixin_relations.dart:513:10 • unused_element
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:517:17 • undefined_identifier
+warning • The declaration '_formatLove' isn't referenced. Try removing the declaration of '_formatLove' • lib/mixins/mixin_relations.dart:531:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:532:18 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:543:19 • undefined_identifier
+warning • The declaration '_formatLoveWaiting' isn't referenced. Try removing the declaration of '_formatLoveWaiting' • lib/mixins/mixin_relations.dart:553:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:554:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:555:18 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:556:25 • undefined_identifier
+warning • The declaration '_formatLoveStages' isn't referenced. Try removing the declaration of '_formatLoveStages' • lib/mixins/mixin_relations.dart:577:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:578:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:579:18 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:589:27 • undefined_identifier
+warning • The declaration '_formatNpcRelationship' isn't referenced. Try removing the declaration of '_formatNpcRelationship' • lib/mixins/mixin_relations.dart:616:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:617:9 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:619:14 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:636:20 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:647:22 • undefined_identifier
+warning • The declaration '_formatBoneMode' isn't referenced. Try removing the declaration of '_formatBoneMode' • lib/mixins/mixin_relations.dart:660:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:661:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:662:22 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:663:30 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:671:21 • undefined_identifier
+warning • The declaration '_formatReputation' isn't referenced. Try removing the declaration of '_formatReputation' • lib/mixins/mixin_relations.dart:683:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:684:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:685:15 • undefined_identifier
+warning • The declaration '_formatRumors' isn't referenced. Try removing the declaration of '_formatRumors' • lib/mixins/mixin_relations.dart:701:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:702:20 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:717:15 • undefined_identifier
+warning • The declaration '_formatCourses' isn't referenced. Try removing the declaration of '_formatCourses' • lib/mixins/mixin_relations.dart:726:10 • unused_element
+warning • The declaration '_classroomInteraction' isn't referenced. Try removing the declaration of '_classroomInteraction' • lib/mixins/mixin_relations.dart:741:8 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:742:15 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:744:18 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:749:23 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:771:28 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:779:21 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:781:27 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:782:27 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:799:39 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:802:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:803:5 • undefined_identifier
+warning • The declaration '_formatCollection' isn't referenced. Try removing the declaration of '_formatCollection' • lib/mixins/mixin_relations.dart:806:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:807:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:810:21 • undefined_identifier
+warning • The declaration '_handleLetterCommand' isn't referenced. Try removing the declaration of '_handleLetterCommand' • lib/mixins/mixin_relations.dart:813:8 • unused_element
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:815:7 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:819:7 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:827:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:835:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:838:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:845:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:851:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:858:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:878:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:890:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:897:21 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:911:5 • undefined_identifier
+  error • The method 'updateNpcAffection' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'updateNpcAffection' • lib/mixins/mixin_relations.dart:918:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:932:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:944:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:948:13 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:950:5 • undefined_identifier
+warning • The declaration '_formatBloodRelatives' isn't referenced. Try removing the declaration of '_formatBloodRelatives' • lib/mixins/mixin_relations.dart:980:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:981:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:984:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:984:58 • undefined_identifier
+warning • The declaration '_formatWorldEvolution' isn't referenced. Try removing the declaration of '_formatWorldEvolution' • lib/mixins/mixin_relations.dart:989:10 • unused_element
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:990:15 • undefined_identifier
+  error • The method '_eraLabel' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_eraLabel' • lib/mixins/mixin_relations.dart:991:21 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:991:31 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1027:29 • undefined_identifier
+warning • The declaration '_formatAffections' isn't referenced. Try removing the declaration of '_formatAffections' • lib/mixins/mixin_relations.dart:1036:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1037:18 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1039:11 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1040:54 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1052:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1056:21 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1061:24 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1062:24 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1091:9 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1093:30 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1104:31 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1105:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1108:5 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1149:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1153:13 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1156:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1173:17 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1181:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1182:7 • undefined_identifier
+  error • The method '_bumpImpactScore' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bumpImpactScore' • lib/mixins/mixin_relations.dart:1184:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1185:7 • undefined_identifier
+  error • The method '_bumpImpactScore' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bumpImpactScore' • lib/mixins/mixin_relations.dart:1193:7 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1194:7 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1199:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1204:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1208:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1209:21 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1219:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1228:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1229:5 • undefined_identifier
+  error • The method '_bumpImpactScore' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_bumpImpactScore' • lib/mixins/mixin_relations.dart:1230:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1234:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1242:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1243:5 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1254:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1293:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1304:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1308:40 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1314:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1323:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1326:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1328:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1330:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1334:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1342:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1348:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1352:25 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1357:23 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1366:23 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1375:9 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1381:19 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1386:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1392:32 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1400:25 • undefined_identifier
+warning • The declaration '_checkAllAchievements' isn't referenced. Try removing the declaration of '_checkAllAchievements' • lib/mixins/mixin_relations.dart:1404:8 • unused_element
+warning • The declaration '_incrementWorldLineDeviation' isn't referenced. Try removing the declaration of '_incrementWorldLineDeviation' • lib/mixins/mixin_relations.dart:1421:8 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1422:15 • undefined_identifier
+  error • The method 'updateNpcAffection' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'updateNpcAffection' • lib/mixins/mixin_relations.dart:1431:5 • undefined_method
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1432:17 • undefined_identifier
+  error • The method '_checkLocks' isn't defined for the type 'GameRelationsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkLocks' • lib/mixins/mixin_relations.dart:1434:7 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_relations.dart:1440:15 • undefined_identifier
+  error • Only classes and mixins can be used as superclass constraints • lib/mixins/mixin_response.dart:31:28 • mixin_super_class_constraint_non_interface
+  error • Undefined class 'GameProvider'. Try changing the name to the name of an existing class, or creating a class with the name 'GameProvider' • lib/mixins/mixin_response.dart:31:28 • undefined_class
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:33:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:33:27 • undefined_identifier
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/mixins/mixin_response.dart:96:31 • unnecessary_non_null_assertion
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:106:5 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_response.dart:107:5 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:108:30 • undefined_identifier
+warning • The declaration '_parseNarrativeOnly' isn't referenced. Try removing the declaration of '_parseNarrativeOnly' • lib/mixins/mixin_response.dart:113:8 • unused_element
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:114:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:115:5 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:119:40 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:120:40 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:137:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:151:5 • undefined_identifier
+  error • Undefined name 'lastAffectionSections'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:155:5 • undefined_identifier
+  error • The method '_markIntroducedFromNarrative' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_markIntroducedFromNarrative' • lib/mixins/mixin_response.dart:162:5 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:162:34 • undefined_identifier
+warning • The declaration '_parseResponse' isn't referenced. Try removing the declaration of '_parseResponse' • lib/mixins/mixin_response.dart:168:8 • unused_element
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:170:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:171:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:212:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:214:11 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:220:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:223:15 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:227:51 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:229:17 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:234:17 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:236:17 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:242:49 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:244:15 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:250:13 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:252:13 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:255:18 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:257:45 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:258:34 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:259:11 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:267:28 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:281:7 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:287:9 • undefined_identifier
+  error • Undefined name 'lastAffectionSections'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:293:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:294:68 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:310:21 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:313:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:316:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:317:7 • undefined_identifier
+  error • The method '_markIntroducedFromNarrative' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_markIntroducedFromNarrative' • lib/mixins/mixin_response.dart:327:5 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:327:34 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:329:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:333:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:336:9 • undefined_identifier
+  error • The method '_generateContextualFallbackChoices' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_generateContextualFallbackChoices' • lib/mixins/mixin_response.dart:336:24 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:340:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:341:7 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:341:17 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:344:9 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:344:27 • undefined_identifier
+  error • Undefined name 'lastPlayerAction'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:344:49 • undefined_identifier
+  error • The method 'checkNPCConfessions' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named 'checkNPCConfessions' • lib/mixins/mixin_response.dart:345:7 • undefined_method
+  error • The method '_checkSkillAchievements' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkSkillAchievements' • lib/mixins/mixin_response.dart:348:5 • undefined_method
+  error • The method '_checkWorldChangerAchievement' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkWorldChangerAchievement' • lib/mixins/mixin_response.dart:349:5 • undefined_method
+  error • The method '_checkWarHeroAchievement' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkWarHeroAchievement' • lib/mixins/mixin_response.dart:350:5 • undefined_method
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:353:9 • undefined_identifier
+  error • The method '_incrementWorldLineDeviation' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_incrementWorldLineDeviation' • lib/mixins/mixin_response.dart:354:7 • undefined_method
+  error • The method 'notifyListeners' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_response.dart:360:5 • undefined_method
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:367:40 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:368:40 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:386:25 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:406:7 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:411:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:414:22 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:415:18 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:416:21 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:425:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:430:22 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:466:17 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:489:21 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:491:45 • undefined_identifier
+warning • The declaration '_generateChoicesSeparately' isn't referenced. Try removing the declaration of '_generateChoicesSeparately' • lib/mixins/mixin_response.dart:504:28 • unused_element
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:505:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:507:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:508:24 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:509:23 • undefined_identifier
+  error • Undefined name 'lastPlayerAction'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:510:26 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:549:28 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:559:24 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:597:11 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:602:5 • undefined_identifier
+  error • The method '_callDeepSeek' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_callDeepSeek' • lib/mixins/mixin_response.dart:611:30 • undefined_method
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:624:23 • undefined_identifier
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:626:47 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:645:9 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:682:27 • undefined_identifier
+  error • The method 'updateNpcAffection' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named 'updateNpcAffection' • lib/mixins/mixin_response.dart:695:11 • undefined_method
+  error • The method '_checkLocks' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkLocks' • lib/mixins/mixin_response.dart:703:11 • undefined_method
+  error • The method '_syncRelationshipLevel' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_syncRelationshipLevel' • lib/mixins/mixin_response.dart:704:11 • undefined_method
+  error • The method 'checkAffectionAchievements' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named 'checkAffectionAchievements' • lib/mixins/mixin_response.dart:705:11 • undefined_method
+  error • Undefined name 'GameProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:729:11 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:742:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:742:32 • undefined_identifier
+  error • Undefined name 'lastPlayerAction'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:744:20 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:764:18 • undefined_identifier
+  error • The method '_standaloneNameMentioned' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_standaloneNameMentioned' • lib/mixins/mixin_response.dart:773:13 • undefined_method
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:788:17 • undefined_identifier
+  error • The method 'updateNpcAffection' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named 'updateNpcAffection' • lib/mixins/mixin_response.dart:791:7 • undefined_method
+  error • The method '_checkLocks' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkLocks' • lib/mixins/mixin_response.dart:795:9 • undefined_method
+  error • The method '_syncRelationshipLevel' isn't defined for the type 'GameResponseMixin'. Try correcting the name to the name of an existing method, or defining a method named '_syncRelationshipLevel' • lib/mixins/mixin_response.dart:796:9 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:802:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_response.dart:818:9 • undefined_identifier
+  error • Only classes and mixins can be used as superclass constraints • lib/mixins/mixin_systems.dart:31:27 • mixin_super_class_constraint_non_interface
+  error • Undefined class 'GameProvider'. Try changing the name to the name of an existing class, or creating a class with the name 'GameProvider' • lib/mixins/mixin_systems.dart:31:27 • undefined_class
+warning • The declaration '_advanceTimeForAction' isn't referenced. Try removing the declaration of '_advanceTimeForAction' • lib/mixins/mixin_systems.dart:32:8 • unused_element
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:54:26 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:55:22 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:56:21 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:57:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:60:26 • undefined_identifier
+  error • Undefined name 'gameWeek'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:62:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:67:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:67:40 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:68:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:69:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:70:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:74:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:74:29 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:75:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:75:46 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:76:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:76:40 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:100:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:102:15 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:105:9 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:107:7 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:110:21 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:113:36 • undefined_identifier
+  error • Undefined name 'lastSchoolYearStart'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:114:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:117:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:128:7 • undefined_identifier
+  error • The argument type 'double' can't be assigned to the parameter type 'int'.  • lib/mixins/mixin_systems.dart:132:20 • argument_type_not_assignable
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:141:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:143:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:146:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:148:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:150:7 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:158:23 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:169:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:170:7 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:177:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:179:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:180:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:180:40 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:181:5 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:189:15 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:191:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:192:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:192:40 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:193:5 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:204:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:220:19 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:233:15 • undefined_identifier
+  error • The method '_unlockAchievement' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_systems.dart:236:5 • undefined_method
+  error • The method '_unlockAchievement' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_unlockAchievement' • lib/mixins/mixin_systems.dart:242:7 • undefined_method
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:264:23 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:277:5 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:277:24 • undefined_identifier
+  error • Undefined name '_currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:279:13 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:280:5 • undefined_identifier
+warning • The declaration '_formatGoalProgress' isn't referenced. Try removing the declaration of '_formatGoalProgress' • lib/mixins/mixin_systems.dart:285:10 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:286:15 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:313:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:315:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:317:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:318:19 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:324:12 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:327:24 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:333:5 • undefined_identifier
+  error • Undefined name 'pendingAnchorDirective'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:334:5 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:335:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:336:5 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:341:23 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:348:22 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:349:21 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:395:9 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:396:9 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:398:18 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:401:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:402:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:403:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:406:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:407:7 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:408:31 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:414:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:415:5 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:426:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:472:23 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:494:28 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:505:18 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:509:19 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:511:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:514:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:516:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:521:21 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:522:20 • undefined_identifier
+  error • The method '_checkAllAchievements' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named '_checkAllAchievements' • lib/mixins/mixin_systems.dart:555:5 • undefined_method
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:558:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:564:22 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:565:21 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:567:7 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:569:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:569:29 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:570:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:570:46 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:571:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:571:40 • undefined_identifier
+warning • The declaration '_updateNPCsFromAction' isn't referenced. Try removing the declaration of '_updateNPCsFromAction' • lib/mixins/mixin_systems.dart:579:8 • unused_element
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:581:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:613:23 • undefined_identifier
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:614:32 • undefined_identifier
+  error • The method 'checkAffectionAchievements' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'checkAffectionAchievements' • lib/mixins/mixin_systems.dart:616:9 • undefined_method
+  error • Undefined name 'random'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:621:39 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:627:15 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:630:17 • undefined_identifier
+  error • Undefined name 'notifications'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:633:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:634:5 • undefined_identifier
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:640:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_systems.dart:641:5 • undefined_method
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:643:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_systems.dart:644:5 • undefined_method
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:649:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:652:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:674:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:675:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:676:22 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:677:24 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:682:17 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:683:24 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:684:36 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:688:17 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:690:17 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:695:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_systems.dart:696:5 • undefined_method
+warning • The declaration '_updatePlayerImpactScore' isn't referenced. Try removing the declaration of '_updatePlayerImpactScore' • lib/mixins/mixin_systems.dart:702:8 • unused_element
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:706:9 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:707:25 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:734:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:734:27 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:735:20 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:738:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:738:37 • undefined_identifier
+warning • The declaration '_bumpImpactScore' isn't referenced. Try removing the declaration of '_bumpImpactScore' • lib/mixins/mixin_systems.dart:745:8 • unused_element
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:746:9 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:747:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:747:37 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:749:58 • undefined_identifier
+warning • The declaration '_checkLocks' isn't referenced. Try removing the declaration of '_checkLocks' • lib/mixins/mixin_systems.dart:755:8 • unused_element
+warning • The declaration '_callDeepSeek' isn't referenced. Try removing the declaration of '_callDeepSeek' • lib/mixins/mixin_systems.dart:764:22 • unused_element
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:765:9 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:774:11 • undefined_identifier
+  error • Undefined name 'systemPrompt'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:775:9 • undefined_identifier
+  error • The method 'buildSystemPrompt' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'buildSystemPrompt' • lib/mixins/mixin_systems.dart:775:24 • undefined_method
+  error • Undefined name 'systemPrompt'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:777:31 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:790:26 • undefined_identifier
+  error • Undefined name 'totalPromptTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:799:7 • undefined_identifier
+  error • Undefined name 'totalCompletionTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:800:7 • undefined_identifier
+  error • Undefined name 'totalTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:801:7 • undefined_identifier
+  error • Undefined name 'lastRoundTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:802:7 • undefined_identifier
+  error • Undefined name 'apiCalls'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:803:7 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_systems.dart:804:7 • undefined_method
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:817:9 • undefined_identifier
+  error • Undefined name 'saveService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:818:11 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:819:15 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:820:19 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:821:20 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:822:18 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:823:16 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:824:18 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:827:30 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:828:28 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:829:25 • undefined_identifier
+  error • Undefined name 'gameWeek'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:830:22 • undefined_identifier
+  error • Undefined name 'lastRoundTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:831:30 • undefined_identifier
+  error • Undefined name 'apiCalls'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:832:22 • undefined_identifier
+  error • Undefined name 'totalPromptTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:833:32 • undefined_identifier
+  error • Undefined name 'totalCompletionTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:834:36 • undefined_identifier
+  error • Undefined name 'totalTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:835:25 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:837:29 • undefined_identifier
+  error • Undefined name 'saveService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:845:24 • undefined_identifier
+  error • Undefined name 'player'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:851:5 • undefined_identifier
+  error • Undefined name 'worldState'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:852:5 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:853:5 • undefined_identifier
+  error • Undefined name 'npcRegistry'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:856:7 • undefined_identifier
+  error • Undefined name 'systemPrompt'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:859:5 • undefined_identifier
+  error • The method 'buildSystemPrompt' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'buildSystemPrompt' • lib/mixins/mixin_systems.dart:859:20 • undefined_method
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:861:5 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:862:5 • undefined_identifier
+  error • Undefined name 'turnCount'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:865:5 • undefined_identifier
+  error • Undefined name 'narrativeSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:867:5 • undefined_identifier
+  error • Undefined name 'pendingSummary'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:868:5 • undefined_identifier
+  error • Undefined name 'gameWeek'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:869:5 • undefined_identifier
+  error • Undefined name 'lastRoundTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:870:5 • undefined_identifier
+  error • Undefined name 'apiCalls'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:871:5 • undefined_identifier
+  error • Undefined name 'totalPromptTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:872:5 • undefined_identifier
+  error • Undefined name 'totalCompletionTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:873:5 • undefined_identifier
+  error • Undefined name 'totalTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:874:5 • undefined_identifier
+  error • Undefined name 'memory'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:876:5 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:879:5 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:885:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:885:32 • undefined_identifier
+  error • Undefined name 'recentTurns'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:886:7 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:886:23 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:890:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:890:26 • undefined_identifier
+  error • The method 'generateFallbackChoices' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'generateFallbackChoices' • lib/mixins/mixin_systems.dart:890:36 • undefined_method
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:891:9 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:891:29 • undefined_identifier
+  error • Undefined name 'choices'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:891:39 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:892:9 • undefined_identifier
+  error • Undefined name 'currentNarrative'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:892:35 • undefined_identifier
+  error • The method 'generateFallbackNarrative' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'generateFallbackNarrative' • lib/mixins/mixin_systems.dart:892:54 • undefined_method
+  error • Undefined name 'isLoading'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:896:5 • undefined_identifier
+  error • Undefined name 'isInitializing'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:897:5 • undefined_identifier
+  error • Undefined name 'error'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:898:5 • undefined_identifier
+  error • Undefined name 'loadingStage'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:899:5 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:902:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_systems.dart:903:5 • undefined_method
+  error • The method 'autoSave' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'autoSave' • lib/mixins/mixin_systems.dart:904:5 • undefined_method
+  error • Undefined name 'saveService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:941:12 • undefined_identifier
+  error • Undefined name 'saveService'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:945:12 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:951:9 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:952:22 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:953:18 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:954:9 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:958:9 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:959:22 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:960:18 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:964:9 • undefined_identifier
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:965:22 • undefined_identifier
+  error • Undefined name 'router'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:966:21 • undefined_identifier
+  error • Undefined name 'totalPromptTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:972:5 • undefined_identifier
+  error • Undefined name 'totalCompletionTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:973:5 • undefined_identifier
+  error • Undefined name 'totalTokens'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:974:5 • undefined_identifier
+  error • Undefined name 'apiCalls'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:975:5 • undefined_identifier
+  error • The method 'notifyListeners' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'notifyListeners' • lib/mixins/mixin_systems.dart:976:5 • undefined_method
+warning • The declaration '_bloodStatusLabel' isn't referenced. Try removing the declaration of '_bloodStatusLabel' • lib/mixins/mixin_systems.dart:981:10 • unused_element
+warning • The declaration '_termLabel' isn't referenced. Try removing the declaration of '_termLabel' • lib/mixins/mixin_systems.dart:1023:10 • unused_element
+warning • The declaration '_flowModeLabel' isn't referenced. Try removing the declaration of '_flowModeLabel' • lib/mixins/mixin_systems.dart:1032:10 • unused_element
+warning • The method doesn't override an inherited method. Try updating this class to match the superclass, or removing the override annotation • lib/mixins/mixin_systems.dart:1042:8 • override_on_non_overriding_member
+  error • The method 'saveNow' isn't defined for the type 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'saveNow' • lib/mixins/mixin_systems.dart:1043:5 • undefined_method
+  error • Undefined name 'appProvider'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:1044:5 • undefined_identifier
+  error • Undefined name 'onApiKeyChange'. Try correcting the name to one that is defined, or defining the name • lib/mixins/mixin_systems.dart:1044:32 • undefined_identifier
+  error • The method 'dispose' isn't defined in a superclass of 'GameSystemsMixin'. Try correcting the name to the name of an existing method, or defining a method named 'dispose' in a superclass • lib/mixins/mixin_systems.dart:1045:11 • undefined_super_member
+  error • The name 'notifications' is already defined. Try renaming one of the declarations • lib/providers/game_provider.dart:100:20 • duplicate_definition
+  error • The name 'lastAffectionSections' is already defined. Try renaming one of the declarations • lib/providers/game_provider.dart:101:20 • duplicate_definition
+  error • Undefined name '_turnCount'. Try correcting the name to one that is defined, or defining the name • lib/providers/game_provider.dart:169:49 • undefined_identifier
+  error • Undefined name '_gameWeek'. Try correcting the name to one that is defined, or defining the name • lib/providers/game_provider.dart:169:65 • undefined_identifier
+  error • The final variable 'router' can only be set once. Try making 'router' non-final • lib/providers/game_provider.dart:252:5 • assignment_to_final_local
+  error • The method 'GameChoice' isn't defined for the type '_GameScreenState'. Try correcting the name to the name of an existing method, or defining a method named 'GameChoice' • lib/screens/game_screen.dart:61:11 • undefined_method
+warning • Unused import: '../../models/npc.dart'. Try removing the import directive • lib/screens/other/diary_screen.dart:3:8 • unused_import
+warning • Unused import: '../npc_chat_screen.dart'. Try removing the import directive • lib/screens/other/diary_screen.dart:5:8 • unused_import
+warning • Unused import: '../../utils/ui_helpers.dart'. Try removing the import directive • lib/screens/other/diary_screen.dart:6:8 • unused_import
+warning • Unused import: '../../widgets/npc_avatar.dart'. Try removing the import directive • lib/screens/other/diary_screen.dart:7:8 • unused_import
+warning • Unused import: 'package:provider/provider.dart'. Try removing the import directive • lib/screens/other/forum_screen.dart:2:8 • unused_import
+warning • Unused import: '../../models/npc.dart'. Try removing the import directive • lib/screens/other/forum_screen.dart:3:8 • unused_import
+warning • Unused import: '../../providers/game_provider.dart'. Try removing the import directive • lib/screens/other/forum_screen.dart:4:8 • unused_import
+warning • Unused import: '../npc_chat_screen.dart'. Try removing the import directive • lib/screens/other/forum_screen.dart:5:8 • unused_import
+warning • Unused import: '../../utils/ui_helpers.dart'. Try removing the import directive • lib/screens/other/forum_screen.dart:6:8 • unused_import
+warning • Unused import: '../../widgets/npc_avatar.dart'. Try removing the import directive • lib/screens/other/forum_screen.dart:7:8 • unused_import
+warning • Unused import: '../npc_chat_screen.dart'. Try removing the import directive • lib/screens/other/matchmaker_screen.dart:5:8 • unused_import
+warning • Unused import: '../../widgets/npc_avatar.dart'. Try removing the import directive • lib/screens/other/matchmaker_screen.dart:7:8 • unused_import
+warning • Unused import: 'package:provider/provider.dart'. Try removing the import directive • lib/screens/other/parallel_world_screen.dart:2:8 • unused_import
+warning • Unused import: '../../models/npc.dart'. Try removing the import directive • lib/screens/other/parallel_world_screen.dart:3:8 • unused_import
+warning • Unused import: '../../providers/game_provider.dart'. Try removing the import directive • lib/screens/other/parallel_world_screen.dart:4:8 • unused_import
+warning • Unused import: '../npc_chat_screen.dart'. Try removing the import directive • lib/screens/other/parallel_world_screen.dart:5:8 • unused_import
+warning • Unused import: '../../utils/ui_helpers.dart'. Try removing the import directive • lib/screens/other/parallel_world_screen.dart:6:8 • unused_import
+warning • Unused import: '../../widgets/npc_avatar.dart'. Try removing the import directive • lib/screens/other/parallel_world_screen.dart:7:8 • unused_import
+warning • The value of the local variable 'gp' isn't used. Try removing the variable or using it • lib/screens/shop/shop_tab.dart:31:11 • unused_local_variable
+
+Process completed with exit code 1.
