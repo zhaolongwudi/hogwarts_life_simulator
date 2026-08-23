@@ -4935,9 +4935,7 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
 
   /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
   String _buildRelationshipSnapshot() {
-    // 仅统计已登场者：未登场 NPC 不应出现在关系快照里
-    final npcs = _npcRegistry.values
-        .where((n) => n.affection != 0 && n.introduced).toList()
+    final npcs = _npcRegistry.values.where((n) => n.affection != 0).toList()
       ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
     return npcs.take(5)
         .map((n) => '${n.name}:${n.affectionStage}/${n.affection}')
@@ -5052,13 +5050,9 @@ ${relationSnapshot.isNotEmpty ? relationSnapshot : '暂无'}
   List<NPC> npcsInCurrentLocation() {
     final location = _worldState.currentLocation;
     if (location == null || location.isEmpty) return [];
-    // 仅注入「已登场且存活」的 NPC（上限 6 人）：
-    // 若把未登场的人都列为在场，AI 会把他们写进剧情，
-    // 再被登场识别逻辑误标为已登场。
     return _npcRegistry.values.where((npc) {
-      if (!npc.isAlive || !npc.introduced) return false;
       return npc.currentLocation.toLowerCase().contains(location.toLowerCase());
-    }).take(6).toList();
+    }).toList();
   }
 
   void _parseAffectionChanges(String text) {
