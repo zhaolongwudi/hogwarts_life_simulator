@@ -5,6 +5,17 @@
 
 ---
 
+### v1.7.0 — 2026-08-23
+
+**📋 变更说明**
+fix(P2): 修复6处编译错误 - getter递归/router自赋值/下划线前缀残留引用
+
+修复详情:
+1. 删除notifications/lastAffectionSections同名getter（避免无限递归）
+2. router局部变量重命名为newRouter（避免自赋值空操作）
+3. 修复5处public化字段残留下划线前缀引用:
+   - game_provider:  → ,  →
+
 ### v1.6.9 — 2026-08-23
 
 **📋 变更说明**
