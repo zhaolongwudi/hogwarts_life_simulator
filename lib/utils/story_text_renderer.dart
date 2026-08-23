@@ -66,6 +66,19 @@ class StoryTextRenderer {
     '老魔杖', '接骨木魔杖', '紫杉木魔杖', '冬青木魔杖',
   ];
 
+  // 预排序（长词在前）：实体高亮优先命中长词（如「霍格莫德车站」优先于
+  // 「霍格莫德」、「古灵阁巫师银行」优先于「古灵阁」），且只排序一次，
+  // 避免每次解析时对列表重新排序。
+  static final List<String> _characterNamesByLengthDesc =
+      List<String>.from(_characterNames)
+        ..sort((a, b) => b.length.compareTo(a.length));
+  static final List<String> _locationsByLengthDesc =
+      List<String>.from(_locations)
+        ..sort((a, b) => b.length.compareTo(a.length));
+  static final List<String> _itemsByLengthDesc =
+      List<String>.from(_items)
+        ..sort((a, b) => b.length.compareTo(a.length));
+
   static const Color _narrationColor = Color(0xFFC9D1D9);
   static const Color _dialogueColor = Color(0xFF58A6FF);
   static const Color _dialogueSpeakerColor = Color(0xFFFFA657);
@@ -795,9 +808,11 @@ class StoryTextRenderer {
       }
     }
 
-    final sortedNames = List<String>.from(_characterNames)
-      ..sort((a, b) => b.length.compareTo(a.length));
-    for (final name in sortedNames) {
+    // 三类实体统一用「长词在前」的预排序列表：
+    // 否则「霍格莫德」会先于「霍格莫德车站」命中并占据区间，
+    // 导致长地名/长物品名（古灵阁巫师银行、霍格沃茨特快列车等）
+    // 永远无法整体高亮。
+    for (final name in _characterNamesByLengthDesc) {
       int idx = 0;
       while (true) {
         idx = text.indexOf(name, idx);
@@ -807,7 +822,7 @@ class StoryTextRenderer {
       }
     }
 
-    for (final loc in _locations) {
+    for (final loc in _locationsByLengthDesc) {
       int idx = 0;
       while (true) {
         idx = text.indexOf(loc, idx);
@@ -817,7 +832,7 @@ class StoryTextRenderer {
       }
     }
 
-    for (final item in _items) {
+    for (final item in _itemsByLengthDesc) {
       int idx = 0;
       while (true) {
         idx = text.indexOf(item, idx);
