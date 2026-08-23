@@ -5,6 +5,17 @@
 
 ---
 
+### v1.6.4 — 2026-08-23
+
+**📋 变更说明**
+fix(1-11): 全量修复剧情锚点/资料/魔杖/选项/伪造事件
+
+🔴 4 剧情节点按真实时间进度条件化：EventAnchor 新增 minHour/maxHour/requiredLocation 字段
+   - g1_sep_arrival 特快抵达锚点：需 minHour=11 + currentLocation包含'特快'
+   - anchorsFor() 新增 hour 和 currentLocation 参数；注入点一并透传
+
+🟠 5 玩家资料交叉校验：initializeGame 构建 Player 前修复纯血豪门 vs 麻瓜家庭冲突
+
 ### v1.6.3 — 2026-08-23
 
 **📋 变更说明**
