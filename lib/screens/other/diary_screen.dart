@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/npc.dart';
 import '../../providers/game_provider.dart';
-import '../npc_chat_screen.dart';
-import '../../utils/ui_helpers.dart';
-import '../../widgets/npc_avatar.dart';
 
 // ==================== 日记系统 ====================
 class DiaryScreen extends StatefulWidget {

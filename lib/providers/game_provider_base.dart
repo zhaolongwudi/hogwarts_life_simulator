@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 import 'app_provider.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
@@ -8,6 +7,7 @@ import '../models/world_state.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../services/save_service.dart';
+import '../services/deepseek_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../data/cg_data.dart';
@@ -82,7 +82,6 @@ abstract class GameProviderBase extends ChangeNotifier {
   String attrLabel(String key);
   Future<void> autoSave();
   String bloodStatusLabel(String status);
-  String buildPrompt();
   String buildRelationshipSnapshot();
   String buildSystemPrompt();
   void bumpImpactScore(double delta, {String? debugReason});
@@ -119,9 +118,9 @@ abstract class GameProviderBase extends ChangeNotifier {
   String formatRumors();
   String formatWorldEvolution();
   Future<List<GameChoice>> generateChoicesSeparately(String narrative);
-  abstract List<GameChoice> generateContextualFallbackChoices();
+  List<GameChoice> generateContextualFallbackChoices();
   Future<void> generateEnding();
-  abstract List<GameChoice> generateFallbackChoices();
+  List<GameChoice> generateFallbackChoices();
   String generateFallbackNarrative();
   void generateNewNPC();
   String generateSortingNarrative(String house);

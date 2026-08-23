@@ -1,32 +1,10 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
-import '../services/rate_limiter.dart';
-import '../data/pet_data.dart';
 import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
-import '../services/save_service.dart';
-import '../services/deepseek_service.dart';
-import '../data/cg_data.dart';
 import '../utils/story_text_renderer.dart';
-import '../services/npc_chat_service.dart';
-import '../data/world_rules.dart';
-import '../data/event_anchors.dart';
-import '../models/player.dart';
-import '../utils/prompt_sanitizer.dart';
-import '../data/trait_data.dart';
-import '../data/npc_data.dart';
-import '../prompts/prompts.dart';
-import '../models/long_term_memory.dart';
-import '../data/course_data.dart';
-import '../data/balance_constants.dart';
-import '../data/goal_data.dart';
-import '../data/wand_data.dart';
 import '../services/ai_router.dart';
-import '../models/world_state.dart';
-import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 
 mixin GameResponseMixin on GameProviderBase {
@@ -94,7 +72,7 @@ mixin GameResponseMixin on GameProviderBase {
       '拉文克劳': 'Ravenclaw',
       '赫奇帕奇': 'Hufflepuff',
     };
-    final normalized = matched!.toLowerCase();
+    final normalized = matched.toLowerCase();
     String? en;
     for (final e in cnToEn.entries) {
       if (e.key == matched || e.value.toLowerCase() == normalized) {
@@ -820,6 +798,14 @@ mixin GameResponseMixin on GameProviderBase {
       } catch (e) {
       }
     }
+  }
+
+  /// 判断叙事文本中是否独立提到了某个别名（前后为非字母数字非中文字符边界）
+  bool _standaloneNameMentioned(String text, String name) {
+    if (name.isEmpty) return false;
+    final escaped = RegExp.escape(name);
+    final pattern = RegExp(r'(?<!\p{L})(?<!\p{N})(?<!_)' + escaped + r'(?!\p{L})(?!\p{N})(?!_)', unicode: true);
+    return pattern.hasMatch(text);
   }
 
   // ==================== 更多建议（本地生成，不消耗 token） ====================

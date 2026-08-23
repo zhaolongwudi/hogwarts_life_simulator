@@ -28,7 +28,7 @@ class _ShopTabState extends State<ShopTab> {
 
   @override
   Widget build(BuildContext context) {
-    final gp = context.watch<GameProvider>();
+    context.watch<GameProvider>(); // 监听GameProvider变化以触发UI重建
     return Column(
       children: [
         Padding(

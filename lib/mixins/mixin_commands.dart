@@ -1,32 +1,10 @@
 import 'dart:async';
-import 'dart:math';
-import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
-import '../services/rate_limiter.dart';
 import '../data/pet_data.dart';
-import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
-import '../services/save_service.dart';
-import '../services/deepseek_service.dart';
 import '../data/cg_data.dart';
-import '../utils/story_text_renderer.dart';
-import '../services/npc_chat_service.dart';
-import '../data/world_rules.dart';
-import '../data/event_anchors.dart';
-import '../models/player.dart';
-import '../utils/prompt_sanitizer.dart';
-import '../data/trait_data.dart';
-import '../data/npc_data.dart';
-import '../prompts/prompts.dart';
-import '../models/long_term_memory.dart';
-import '../data/course_data.dart';
-import '../data/balance_constants.dart';
 import '../data/goal_data.dart';
 import '../data/wand_data.dart';
-import '../services/ai_router.dart';
-import '../models/world_state.dart';
-import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 
 mixin GameCommandsMixin on GameProviderBase {
