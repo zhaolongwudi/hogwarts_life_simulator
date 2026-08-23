@@ -1143,18 +1143,20 @@ ${profile.join('｜')}
         contextBuffer.writeln('');
       }
 
+      // 只注入最近 3 回合（而非10），避免历史叙事过多导致 AI 重复输出
       final filteredTurns = <String>[];
       for (int i = _recentTurns.length - 1; i >= 0; i--) {
         final entry = _recentTurns[i];
         filteredTurns.insert(0, entry);
-        if (filteredTurns.length >= 10) break;  // 5→10，多保留前几小时内的连续对话
+        if (filteredTurns.length >= 3) break;
       }
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
           : _currentNarrative;
-      final recent = _truncateNarrativeContext(recentBuffer, 4800);  // 2400→4800，完整保留感官、细节、长对话
-      // 关键改进：明确标注近期剧情是"当前场景上下文"，选项必须基于此
-      contextBuffer.write('【当前场景上下文（以此生成选项）】\n$recent');
+      // 截断到 1600 字（而非4800），只保留末尾用于理解当前处境
+      final recent = _truncateNarrativeContext(recentBuffer, 1600);
+      // 关键改进：明确标注为"已生成的前情"，禁止 AI 重复或改写
+      contextBuffer.write('【前情回顾（已生成内容，严禁重复或改写其中任何段落，仅用于理解当前处境）】\n$recent');
 
       final context = contextBuffer.toString();
       final statusTag = _buildStatusTag(p);
@@ -1184,6 +1186,7 @@ $safeAction
 - 叙事:1500-2500字小说正文，融入感官细节、对话、心理、环境描写，分4-8段用空行分隔
 - 叙事正文严禁使用【】标签、序号、大纲结构
 - 剧情要有实际进展和转折，避免无意义的日常描述
+- 严禁重复【前情回顾】中的任何内容！只写本回合新的剧情发展，从玩家行动之后开始续写
 
 叙事结束后，在末尾输出好感度变化区块（必须严格使用以下格式）：
 【好感度变化】
@@ -4398,6 +4401,11 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
     final timestamp = _worldState.timestamp;
     final playerAction = _lastPlayerAction;
 
+    // 只取叙事末尾 500 字作为选项依据——选项只需知道当前处境，不需要完整叙事
+    final narrativeTail = narrative.length > 500
+        ? narrative.substring(narrative.length - 500)
+        : narrative;
+
     // ---- 注入玩家硬状态：避免生成不可能的选项 ----
     // Player 真实字段：grade(int? 年级), house(String?), health, energy, galleons, bankGalleons
     final grade = p.grade ?? 0;
@@ -4457,12 +4465,13 @@ ${_narrativeSummary.isNotEmpty ? _narrativeSummary : '（这是一段从一年�
   • 精力<25 不允许高强度战斗/长距离奔跑选项
   • 没学会的魔法不能写"用XX咒"；没带的物品不能写"拿出XX"
   • 不能违背未完结事项中的承诺
+  • 严禁选项中出现"利用剧情预知""试探密室入口""寻找有求必应屋"等主角不可能知道的信息——玩家身份见下方【身份模式】
 规则4：每个选项 20~50 字之间，为具体动作+明确意图，不要"随便走走"、"休息一下"这种无意义选项。
 规则5：严格格式，只输出 A./B./C./D. + 内容，每行 1 条，最多 4 行。
 
 ===== 游戏世界背景 =====
 【当前剧情】（你所有选项必须直接回应这段结尾的处境）
-$narrative
+$narrativeTail
 
 【玩家硬状态】
 $timestamp｜$currentLoc｜$yearLabel｜$houseText
@@ -4470,11 +4479,12 @@ $healthText｜$energyText｜$galleonsText
 $spellsText
 $inventoryText
 ${nearbyNpcs.isNotEmpty ? '附近/重要NPC：' + nearbyNpcs : ''}
+【身份模式】${appProvider.identityMode == IdentityMode.transmigration ? '穿越者：对原作命运有隐约记忆，可作为行动依据' : '原住民：对命运走向一无所知，只凭判断与本能行事，选项严禁出现主角不可能知道的信息'}
 【上回合玩家动作】$playerAction
 
 ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
 【T0 核心事实（选项不能违背）】
-${_memory.keyFacts.where((f) => f.importance >= 6).map((f) => '· ${f.fact}').take(10).join('\n')}
+${_memory.keyFacts.where((f) => f.importance >= 4).map((f) => '· ${f.fact}').take(10).join('\n')}
 
 请直接输出 4 行：
 A.xxxxxx
