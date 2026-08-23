@@ -353,6 +353,38 @@ class GameProvider extends ChangeNotifier {
         ? '【档案】${p.name}·${_bloodStatusLabel(p.bloodType)}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}'
         : '';
 
+    // 角色创建时的玩家属性（必须注入，否则 AI 完全不知道玩家选了什么）
+    final characterLines = <String>[];
+    if (p != null) {
+      if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) {
+        characterLines.add('【出生身份】${p.birthIdentity}（必须体现在叙事中：经济条件、家族状态、对血统观念的态度都由此决定）');
+      }
+      if (p.personalityTraits.isNotEmpty) {
+        characterLines.add('【性格】${p.personalityTraits.join('、')}（AI 描写主角心理和言行时必须贴合此性格，严禁写成冷酷控制欲型）');
+      }
+      if (p.appearance != null && p.appearance!.isNotEmpty) {
+        characterLines.add('【外貌】${p.appearance}（叙事中当其他 NPC 第一次看到主角或主角照镜子/被观察时，必须描写外貌）');
+      }
+      if (p.childhoodExperiences.isNotEmpty) {
+        characterLines.add('【童年奇迹】${p.childhoodExperiences.join('；')}（这些是主角的神秘伏笔，可在特殊场景或梦境中暗示，但不宜过多直白提及）');
+      }
+      if (p.beliefs != null && p.beliefs!.isNotEmpty) {
+        characterLines.add('【信念】${p.beliefs}（主角的道德底线和行为准则，严重违背的选项不允许出现在 ABCD 中）');
+      }
+      if (p.politicalTendency != null && p.politicalTendency!.isNotEmpty) {
+        characterLines.add('【政治立场】${p.politicalTendency}（主角对纯血论、麻瓜、混血的态度，NPC 互动和选项需贴合）');
+      }
+      if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
+        characterLines.add('【初始天赋专精】${p.initialTalent}（相关魔法成功率和理解更高，叙事中可体现主角的擅长领域）');
+      }
+      if (p.wandId != null && p.wandId!.isNotEmpty) {
+        final wd = wandById(p.wandId!);
+        if (wd != null) {
+          characterLines.add('【魔杖】${wd.wood}木·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他）');
+        }
+      }
+    }
+
     // 身份模式：穿越者拥有对原作剧情的隐约记忆，原住民则一无所知
     final identityLine = appProvider.identityMode == IdentityMode.transmigration
         ? '【身份模式】穿越者：你对原作的命运走向留有隐约记忆，可作为行动依据，但他人不会轻信"预言"；引用未来信息需克制并举证自洽。'
@@ -368,7 +400,13 @@ class GameProvider extends ChangeNotifier {
     final buffer = StringBuffer()
       ..write(worldRules)
       ..write('\n\n')
-      ..write(profile)
+      ..write(profile);
+    if (characterLines.isNotEmpty) {
+      buffer
+        ..write('\n')
+        ..write(characterLines.join('\n'));
+    }
+    buffer
       ..write('\n【时代】')
       ..write(eraName)
       ..write('\n')
@@ -1124,17 +1162,27 @@ ${profile.join('｜')}
       }
 
       // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
-      // 2026-08-23：6→12 条
+      // 2026-08-23：6→12 条；过滤"好感本周已达上限"这类系统通知刷屏
       final ws = _worldState;
       final worldAnchors = <String>[];
+      final alreadyAnchors = <String>{}; // 去重
       if (ws.recentEvents.isNotEmpty) {
-        for (final e in ws.recentEvents.reversed.take(12)) {
+        for (final e in ws.recentEvents.reversed) {
+          // 过滤系统通知类的无意义事件
+          if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
+          final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
+          if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add(e);
+          if (worldAnchors.length >= 12) break;
         }
       }
       if (ws.recentNarrativeEvents.isNotEmpty) {
-        for (final e in ws.recentNarrativeEvents.reversed.take(12)) {
+        for (final e in ws.recentNarrativeEvents.reversed) {
+          if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
+          final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
+          if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add('剧情锚：$e');
+          if (worldAnchors.length >= 16) break;
         }
       }
       if (worldAnchors.isNotEmpty) {
