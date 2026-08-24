@@ -519,10 +519,19 @@ mixin GameResponseMixin on GameProviderBase {
     s = s.replaceAll(RegExp(r'`+'), '');
     // 清除孤立的下划线
     s = s.replaceAll(RegExp(r'_{2,}'), '');
-    // 清除Emoji（保留中文标点和常用符号）
-    s = s.replaceAll(RegExp(r'[\u{1F300}-\u{1F9FF}]', caseSensitive: false), '');
-    // 清除零宽字符
-    s = s.replaceAll(RegExp(r'[\u{200B}-\u{200D}\u{FEFF}]', caseSensitive: false), '');
+    // 清除Emoji和零宽字符（保留中文标点和常用符号）
+    // 注意：Dart 正则不支持高位 Unicode 范围如 [\u{1F300}-\u{1F9FF}]，
+    // 必须使用 runes 手动过滤，否则会抛 FormatException 导致整页崩溃
+    final runes = s.runes.toList();
+    final filtered = StringBuffer();
+    for (final rune in runes) {
+      // 跳过 Emoji 范围 (U+1F300 ~ U+1FAFF)
+      if (rune >= 0x1F300 && rune <= 0x1FAFF) continue;
+      // 跳过零宽字符 (U+200B ~ U+200D, U+FEFF)
+      if ((rune >= 0x200B && rune <= 0x200D) || rune == 0xFEFF) continue;
+      filtered.writeCharCode(rune);
+    }
+    s = filtered.toString();
 
     // === 最终清理 ===
     s = s.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
