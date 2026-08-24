@@ -204,7 +204,8 @@ mixin GameResponseMixin on GameProviderBase {
             consecutiveChoiceLines++;
             if (consecutiveChoiceLines >= 2) {
               anyExplicitBlockPassed = true;
-              final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+              final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+              final action = sanitizeChoiceText(rawAction);
               if (action.isNotEmpty) {
                 choices.add(GameChoice(text: action, action: action));
               }
@@ -219,7 +220,8 @@ mixin GameResponseMixin on GameProviderBase {
           } else {
             // 正文太短，可能是开局或错误，仍然按选项处理
             anyExplicitBlockPassed = true;
-            final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+            final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+            final action = sanitizeChoiceText(rawAction);
             if (action.isNotEmpty) {
               choices.add(GameChoice(text: action, action: action));
             }
@@ -234,7 +236,8 @@ mixin GameResponseMixin on GameProviderBase {
         }
       } else if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) {
         // 在显式选项区块之后，逐行收集选项
-        final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+        final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+        final action = sanitizeChoiceText(rawAction);
         if (action.isNotEmpty && choices.length < 6) {
           choices.add(GameChoice(text: action, action: action));
         }
@@ -319,6 +322,17 @@ mixin GameResponseMixin on GameProviderBase {
     // 避免出现过多选项：裁剪到 4 个
     if (choices.length > 4) {
       choices = choices.sublist(0, 4);
+    }
+
+    // 选项质量清理：移除不合格的选项（含残余markdown/图片/过长）
+    final beforeClean = choices.length;
+    choices.removeWhere((c) => !isChoiceQualityAcceptable(c.text));
+    if (choices.length < beforeClean) {
+      debugPrint('选项质量清理: ${beforeClean}→${choices.length} (移除含markdown/图片的不合格选项)');
+    }
+    // 如果清理后选项不足，补充兜底选项
+    if (choices.isEmpty) {
+      choices.addAll(_buildFallbackChoices(currentNarrative));
     }
 
     if (turnCount > 0 && (turnCount % 5 == 0 || lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)')))) {
@@ -457,6 +471,91 @@ mixin GameResponseMixin on GameProviderBase {
 
   /// 从AI原始响应文本中智能提取选项（用于解析失败后的兜底提取）
 
+  /// 清理选项文本中的 markdown 图片/链接/HTML 标签/Emoji/乱码
+  /// 防止 AI 返回形如 `A. ![图](url) 仔细查看` 导致选项显示异常
+  /// 采用两遍扫描确保彻底清除嵌套格式
+  static String sanitizeChoiceText(String raw) {
+    var s = raw.trim();
+
+    // === 第一遍：清除结构化 Markdown ===
+    // 删markdown图片 ![alt](url) 或 ![alt][ref]
+    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
+    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\[[^\]]*\]', caseSensitive: false), '');
+    // 删markdown链接 [text](url) → text (保留文字)
+    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false), (m) => m.group(1) ?? '');
+    // 删裸URL
+    s = s.replaceAll(RegExp(r'https?://\S+', caseSensitive: false), '');
+    // 删base64图片
+    s = s.replaceAll(RegExp(r'data:image/[^;]+;base64,[^\s)]+', caseSensitive: false), '');
+    // 删HTML <img> 标签
+    s = s.replaceAll(RegExp(r'<img\s[^>]*>', caseSensitive: false), '');
+    // 删HTML <a> 标签（保留文字）
+    s = s.replaceAllMapped(RegExp(r'<a[^>]*>([\s\S]*?)</a>', caseSensitive: false), (m) {
+      final inner = m.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').trim() ?? '';
+      return inner;
+    });
+    // 删所有HTML标签
+    s = s.replaceAll(RegExp(r'</?[^>]+>', caseSensitive: false), '');
+    // 删inline markdown粗体/斜体/删除线
+    s = s.replaceAllMapped(RegExp(r'\*\*([^*]+)\*\*'), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)'), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(RegExp(r'~~([^~]+)~~'), (m) => m.group(1) ?? '');
+    // 删inline代码
+    s = s.replaceAllMapped(RegExp(r'`([^`]+)`'), (m) => m.group(1) ?? '');
+    // 删HTML实体
+    s = s.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&#39;', "'");
+    // 删反斜杠转义
+    s = s.replaceAllMapped(RegExp(r'\\([\\`*_{}\[\]()#+\-.!])'), (m) => m.group(1) ?? '');
+
+    // === 第二遍：清除第一遍可能残留的破坏结构 ===
+    // 再次扫描残留的markdown图片/链接（处理嵌套情况）
+    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
+    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false), (m) => m.group(1) ?? '');
+    // 清除孤立的方括号（如图片删除后残留的 [alt]）
+    s = s.replaceAll(RegExp(r'\[[^\]]*\]', caseSensitive: false), '');
+    // 清除孤立的星号（如粗体删除后残留的 *）
+    s = s.replaceAll(RegExp(r'\*+', caseSensitive: false), '');
+    // 清除反引号
+    s = s.replaceAll(RegExp(r'`+'), '');
+    // 清除孤立的下划线
+    s = s.replaceAll(RegExp(r'_{2,}'), '');
+    // 清除Emoji（保留中文标点和常用符号）
+    s = s.replaceAll(RegExp(r'[\u{1F300}-\u{1F9FF}]', caseSensitive: false), '');
+    // 清除零宽字符
+    s = s.replaceAll(RegExp(r'[\u{200B}-\u{200D}\u{FEFF}]', caseSensitive: false), '');
+
+    // === 最终清理 ===
+    s = s.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    // 单行限制
+    if (s.length > 100) s = '${s.substring(0, 97).trim()}...';
+    return s;
+  }
+
+  /// 验证选项文本质量：sanitize后不应包含残余markdown/图片/异常格式
+  /// 返回 true 表示质量合格，false 表示需要重试
+  static bool isChoiceQualityAcceptable(String text) {
+    if (text.isEmpty || text.length < 2) return false;
+    // 检查残余markdown图片语法
+    if (RegExp(r'!\[.*\]\(', caseSensitive: false).hasMatch(text)) return false;
+    // 检查残余markdown链接
+    if (RegExp(r'\[.*\]\(.*\)', caseSensitive: false).hasMatch(text)) return false;
+    // 检查孤立的方括号（可能是未清除的markdown残留）
+    if (RegExp(r'\[[^\]]+\]', caseSensitive: false).hasMatch(text)) return false;
+    // 检查base64图像数据
+    if (RegExp(r'data:image/', caseSensitive: false).hasMatch(text)) return false;
+    // 检查HTML标签
+    if (RegExp(r'<\s*(img|a|div|span|p|br|hr)\b', caseSensitive: false).hasMatch(text)) return false;
+    // 检查内联markdown标记（粗体、斜体、删除线、代码）
+    if (RegExp(r'\*\*.*\*\*').hasMatch(text)) return false;
+    if (RegExp(r'`[^`]+`').hasMatch(text)) return false;
+    if (RegExp(r'~~.+~~').hasMatch(text)) return false;
+    // 检查裸URL
+    if (RegExp(r'https?://', caseSensitive: false).hasMatch(text)) return false;
+    // 检查过长
+    if (text.length > 150) return false;
+    return true;
+  }
+
   List<GameChoice> _extractChoicesFromRawText(String text) {
     final choices = <GameChoice>[];
     final lines = text.split('\n');
@@ -465,10 +564,10 @@ mixin GameResponseMixin on GameProviderBase {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
-      // 直接使用预编译的正则，匹配所有选项格式
       final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
       if (match != null) {
-        final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+        final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+        final action = sanitizeChoiceText(rawAction);
         if (action.isNotEmpty && action.length >= 2) {
           choices.add(GameChoice(text: action, action: action));
         }
@@ -478,6 +577,65 @@ mixin GameResponseMixin on GameProviderBase {
     }
 
     return choices;
+  }
+
+  /// 最终兜底选项：当AI连续失败时，基于当前剧情生成4个合理选项
+  List<GameChoice> _buildFallbackChoices(String narrative) {
+    final p = player;
+    if (p == null) {
+      return [
+        GameChoice(text: '继续观察', action: '继续观察当前情况'),
+        GameChoice(text: '采取行动', action: '采取主动行动'),
+        GameChoice(text: '谨慎等待', action: '等待合适的时机'),
+        GameChoice(text: '寻求帮助', action: '寻找周围的帮助'),
+      ];
+    }
+
+    final energy = p.energy;
+    final location = worldState.currentLocation ?? '';
+    final isNight = worldState.timestamp.contains('深夜') ||
+        worldState.timestamp.contains('晚间') ||
+        worldState.timestamp.contains('黄昏');
+    final isClassroom = location.contains('教室') ||
+        location.contains('课堂') ||
+        location.contains('图书馆');
+    final isOutdoors = location.contains('草地') ||
+        location.contains('森林') ||
+        location.contains('走廊');
+
+    final fallback = <GameChoice>[];
+
+    // 选项A：主动型
+    if (energy < 25) {
+      fallback.add(GameChoice(text: '休息恢复精力', action: '找个地方休息，恢复精神和体力'));
+    } else if (isClassroom) {
+      fallback.add(GameChoice(text: '认真听讲并举手发言', action: '专注课堂内容，适时举手提问或回答问题'));
+    } else if (isOutdoors) {
+      fallback.add(GameChoice(text: '主动探索周围环境', action: '仔细观察周围的环境，看看有什么特别的'));
+    } else {
+      fallback.add(GameChoice(text: '主动面对眼前情况', action: '鼓起勇气，直接面对当前的处境'));
+    }
+
+    // 选项B：谨慎型
+    fallback.add(GameChoice(text: '仔细观察再做决定', action: '保持冷静，先仔细观察周围的人和事'));
+
+    // 选项C：社交型
+    if (isNight) {
+      fallback.add(GameChoice(text: '悄悄找个朋友商量', action: '找一个信任的朋友，低声商量接下来的打算'));
+    } else {
+      fallback.add(GameChoice(text: '和身边的人交流', action: '与附近的NPC友好交流，了解更多信息'));
+    }
+
+    // 选项D：特殊型
+    if (isClassroom) {
+      fallback.add(GameChoice(text: '记笔记并整理思路', action: '记下重要内容，同时整理自己的思路'));
+    } else if (energy < 25) {
+      fallback.add(GameChoice(text: '节省体力等待时机', action: '节省体力，耐心等待合适的时机'));
+    } else {
+      fallback.add(GameChoice(text: '换个角度思考问题', action: '换个角度重新审视眼前的情况'));
+    }
+
+    return fallback;
   }
 
   /// 独立生成选项：接收已生成的剧情文本，让 AI 专门基于此生成选项
@@ -578,13 +736,71 @@ $kChoicePromptSuffix''';
 
         final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
         if (match != null) {
-          final action = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+          final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+          final action = sanitizeChoiceText(rawAction);
           if (action.isNotEmpty && action.length >= 2) {
             choices.add(GameChoice(text: action, action: action));
           }
         }
 
         if (choices.length >= 4) break;
+      }
+
+      // 质量检查：检查选项数量和内容质量
+      final qualityPassed = choices.length >= 2 &&
+          choices.every((c) => isChoiceQualityAcceptable(c.text));
+
+      // 兜底: 选项不足2条 或 质量不合格 → 自动重试1次
+      if (!qualityPassed) {
+        final qualityReasons = <String>[];
+        if (choices.length < 2) qualityReasons.add('数量不足(${choices.length}/4)');
+        final badChoices = choices.where((c) => !isChoiceQualityAcceptable(c.text)).toList();
+        if (badChoices.isNotEmpty) qualityReasons.add('${badChoices.length}条含markdown/图片/异常格式');
+        debugPrint('选项质量检测: ${qualityReasons.join("、")}，自动重试...');
+
+        final retryPrompt = '''你是严格的纯文本选项生成器。请生成 4 个玩家选择，绝对禁止使用任何Markdown格式！
+严格规则：
+1. 纯文本输出，不得出现 ![]、[]()、**、*、` 等任何markdown语法
+2. 格式严格为 A.xxx / B.xxx / C.xxx / D.xxx，每行一条
+3. 内容为20-50字的具体动作描述
+4. 直接承接当前剧情结尾
+
+请直接输出4行选项，不要任何其他内容：''';
+
+        final retryResponse = await callDeepSeek(
+          retryPrompt,
+          scene: AiScene.choice,
+        );
+        final retryContent = retryResponse.content.trim();
+        final retryChoices = <GameChoice>[];
+        final retryLines = retryContent.split('\n');
+        for (final line in retryLines) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty) continue;
+          final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
+          if (match != null) {
+            final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
+            final action = sanitizeChoiceText(rawAction);
+            if (action.isNotEmpty && action.length >= 2 && isChoiceQualityAcceptable(action)) {
+              retryChoices.add(GameChoice(text: action, action: action));
+            }
+          }
+          if (retryChoices.length >= 4) break;
+        }
+        // 用重试结果替换全部选项（如果重试结果更好）
+        if (retryChoices.length >= 2) {
+          choices
+            ..clear()
+            ..addAll(retryChoices);
+        } else if (choices.isEmpty) {
+          choices.addAll(retryChoices);
+        }
+      }
+
+      // 最终兜底：如果仍然没有合格选项，生成静态默认选项
+      if (choices.isEmpty) {
+        debugPrint('选项生成全部失败，使用默认兜底选项');
+        choices.addAll(_buildFallbackChoices(narrative));
       }
 
       return choices;

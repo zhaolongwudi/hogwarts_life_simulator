@@ -767,8 +767,8 @@ mixin GameSystemsMixin on GameProviderBase {
       }
       effectiveSystemPrompt = systemPrompt ?? '';
     }
-    // 2026-08-23：maxTokens 按场景精细化分配
-    //   narrative 主剧情：4000（配合 1500-2500 字叙事要求，总 token 约 4000）
+    // 2026-08-24：maxTokens 按场景精细化分配
+    //   narrative 主剧情：4000（配合 600-800 字精练叙事要求，总 token 约 2000-3000）
     //   choice 选项：2500（只输出 4 行 ABCD，每行 20-50 字，2500 绰绰有余）
     //   summary 摘要：4000（输出 800-2400 字摘要）
     //   npcChat NPC聊天：4000（对话场景需要一定长度）

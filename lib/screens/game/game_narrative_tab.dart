@@ -5,6 +5,7 @@ import '../../models/player.dart';
 import '../../models/world_state.dart';
 import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
+import '../../mixins/mixin_response.dart';
 
 class NarrativeTab extends StatefulWidget {
   final Function(int) onNarrativeTapChoice;
@@ -452,6 +453,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         ...gp.choices.asMap().entries.map((entry) {
           final index = entry.key;
           final choice = entry.value;
+          final displayText = GameResponseMixin.sanitizeChoiceText(choice.text);
           return GestureDetector(
             onTap: () => widget.onNarrativeTapChoice(index),
             child: Container(
@@ -463,7 +465,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 border: Border.all(color: Theme.of(context).dividerTheme.color!),
               ),
               child: Text(
-                '${String.fromCharCode(65 + index)}. ${choice.text}',
+                '${String.fromCharCode(65 + index)}. $displayText',
                 style: const TextStyle(fontSize: 14, color: Color(0xFFE6EDF3)),
               ),
             ),
