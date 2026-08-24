@@ -5,6 +5,16 @@
 
 ---
 
+### v1.9.3 — 2026-08-24
+
+**📋 变更说明**
+fix: 修复 sanitizeChoiceText 中高位 Unicode 正则导致的崩溃
+
+- 问题：Dart 正则不支持在字符类中使用 [\u{1F300}-\u{1F9FF}] 高位 Unicode 范围
+- 现象：开局首回合加载选项时抛 FormatException: Range out of order in character class
+- 修复：改用 String.runes 手动过滤 Emoji 和零宽字符，避免正则崩溃
+- 影响：此修复解决了开局灰屏、剧情加载失败的问题
+
 ### v1.9.2 — 2026-08-24
 
 **📋 变更说明**
