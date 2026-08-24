@@ -72,7 +72,12 @@ mixin GameNarrativeMixin on GameProviderBase {
 
         final contextBuffer = StringBuffer();
 
-        final profileLine = '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}';
+        // 优先使用 Player 字段；若为 null，resolveMagicAptitude 会从 T0 核心事实回填
+        // （并写回 Player，避免后续每回合都解析）
+        final effectiveAptitude = resolveMagicAptitude(p);
+        final aptitudeForPrompt = effectiveAptitude.isEmpty ? '普通' : effectiveAptitude;
+
+        final profileLine = '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋$aptitudeForPrompt·精神${p.spirit}·精力${p.energy}';
         final impactLine = '影响力：${_formatImpact(worldState.playerImpactScore)}';
         contextBuffer.writeln('$profileLine｜$impactLine');
         contextBuffer.writeln('');

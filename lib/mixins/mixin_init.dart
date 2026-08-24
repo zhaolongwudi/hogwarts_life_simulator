@@ -23,7 +23,7 @@ mixin GameInitMixin on GameProviderBase {
     final eraName = _eraLabelShort(_parseEra(effectiveEra));
 
     final profile = p != null
-        ? '【档案】${p.name}·${bloodStatusLabel(p.bloodType)}·${p.house ?? '未分院'}·${p.grade}年·天赋${p.magicAptitude ?? '普通'}·精神${p.spirit}·精力${p.energy}'
+        ? '【档案】${p.name}·${bloodStatusLabel(p.bloodType)}·${p.house ?? '未分院'}·${p.grade}年·天赋${resolveMagicAptitude(p).isEmpty ? '普通' : resolveMagicAptitude(p)}·精神${p.spirit}·精力${p.energy}'
         : '';
 
     // 角色创建时的玩家属性（必须注入，否则 AI 完全不知道玩家选了什么）
@@ -50,8 +50,9 @@ mixin GameInitMixin on GameProviderBase {
       if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
         characterLines.add('【初始天赋专精】${p.initialTalent}（相关魔法成功率和理解更高，叙事中可体现主角的擅长领域）');
       }
-      if (p.magicAptitude != null && p.magicAptitude!.isNotEmpty) {
-        characterLines.add('【魔法资质】${p.magicAptitude}（主角学习新魔法的速度、掌握深度、施法威力和稳定性都依此浮动，严禁在叙事中把"资质平平/普通"写成"天才"，也严禁把"天才级"写成"资质普通"）');
+      final aptitude = resolveMagicAptitude(p);
+      if (aptitude.isNotEmpty) {
+        characterLines.add('【魔法资质】$aptitude（主角学习新魔法的速度、掌握深度、施法威力和稳定性都依此浮动，严禁在叙事中把"资质平平/普通"写成"天才"，也严禁把"天才级"写成"资质普通"）');
       }
       if (p.familyBackground != null && p.familyBackground!.isNotEmpty) {
         characterLines.add('【家族背景】${p.familyBackground}（经济条件、在家中的地位、父母亲人对主角的态度、家族在魔法界的名声和人脉——必须体现在 NPC 互动和场景描述里）');
@@ -697,11 +698,18 @@ mixin GameInitMixin on GameProviderBase {
       '走进', '进来', '敲门', '推开', '开门', '向你走', '看到你', '来到',
       '回应你', '你唤', '你叫', '你问', '问你', '对你说', '告诉你',
       '递给你', '你接过', '你握', '拥抱', '拍肩', '微笑着', '点头',
-      '行礼', '鞠躬', '一起坐', '坐下', '上楼', '下楼', '同行', '并肩'
+      '行礼', '鞠躬', '一起坐', '坐下', '上楼', '下楼', '同行', '并肩',
+      '相遇', '遇见', '碰上', '撞见', '结识', '认识', '熟悉'
     ];
 
+    // 获取当前位置，判断玩家是否已经在霍格沃茨
+    final currentLocation = worldState.currentLocation ?? '';
+    final isAtHogwarts = currentLocation.contains('霍格沃茨') ||
+        currentLocation.contains('Hogwarts') ||
+        (player?.house != null && player!.house!.isNotEmpty);
+
     int markedThisRound = 0;
-    const maxPerRound = 5;
+    const maxPerRound = 3; // 减少每回合最大标记数
     final npcs = npcRegistry.values.toList()
       ..sort((a, b) => b.name.length.compareTo(a.name.length));
     for (final npc in npcs) {
@@ -737,15 +745,16 @@ mixin GameInitMixin on GameProviderBase {
             hitMidpoints.add(midpoint);
           }
 
-          final start = idx - 80 < 0 ? 0 : idx - 80;
-          final end = idx + alias.length + 80 > text.length
+          final start = idx - 100 < 0 ? 0 : idx - 100;
+          final end = idx + alias.length + 100 > text.length
               ? text.length
-              : idx + alias.length + 80;
+              : idx + alias.length + 100;
 
           if (!_sliceOverlapsSignature(start, end, signatureRanges)) {
             final slice = text.substring(start, end);
             if (interactionVerbs.any((v) => slice.contains(v))) {
               contextHasInteraction = true;
+              break;
             }
           }
 
@@ -754,9 +763,18 @@ mixin GameInitMixin on GameProviderBase {
         if (contextHasInteraction) break;
       }
 
-      final totalMentionCount = hitMidpoints.length;
-      final shouldMark = contextHasInteraction || totalMentionCount >= 3;
-      if (shouldMark && totalMentionCount > 0) {
+      // 只有当有明确的互动行为时才标记为已结识
+      // 仅名字出现不足以证明"结识"
+      if (contextHasInteraction) {
+        // 关键修复：玩家在开学前（在家中/对角巷/车站等非霍格沃茨位置），
+        // grade==0 的霍格沃茨教职工/幽灵/管理员不可能面对面与玩家互动，
+        // 但他们的别名（如"管理员""图书馆""看门人"）在任何文本都可能被命中，
+        // 必须在此阶段过滤掉 grade==0 的 NPC，避免开局就把"费尔奇/平斯/邓布利多"
+        // 等教职工标记为"已结识"。
+        if (!isAtHogwarts && npc.grade == 0) {
+          continue;
+        }
+
         markNpcIntroduced(npc);
         markedThisRound++;
       }
@@ -977,7 +995,10 @@ mixin GameInitMixin on GameProviderBase {
     if (p.familyBackground != null && p.familyBackground!.isNotEmpty) profile.add('家族：${p.familyBackground}');
     if (p.childhoodExperiences.isNotEmpty) profile.add('童年：${p.childhoodExperiences.join('；')}');
     if (p.beliefs != null && p.beliefs!.isNotEmpty) profile.add('信念：${p.beliefs}');
-    if (p.magicAptitude != null && p.magicAptitude!.isNotEmpty) profile.add('资质：${p.magicAptitude}');
+    final resolvedAptitude = resolveMagicAptitude(p);
+    if (resolvedAptitude.isNotEmpty) {
+      profile.add('资质：$resolvedAptitude');
+    }
     if (p.initialTalent != null && p.initialTalent!.isNotEmpty) profile.add('天赋：${p.initialTalent}');
     if (p.housePreference != null && p.housePreference!.isNotEmpty) profile.add('学院倾向：${p.housePreference}');
     if (p.traits.isNotEmpty) {

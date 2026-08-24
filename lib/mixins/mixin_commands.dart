@@ -383,7 +383,7 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('⚡ 精力：${p.energy}/100')
       ..writeln()
       ..writeln('【魔法能力】')
-      ..writeln('魔法资质：${p.magicAptitude ?? '普通'}')
+      ..writeln('魔法资质：${resolveMagicAptitude(p).isEmpty ? '普通' : resolveMagicAptitude(p)}')
       ..writeln('主修天赋：${p.initialTalent ?? '未设定'}')
       ..writeln('已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒' : '${p.learnedSpells.length}个咒语'}')
       ..writeln()

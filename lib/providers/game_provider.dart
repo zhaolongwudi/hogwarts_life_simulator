@@ -221,7 +221,12 @@ class GameProvider extends GameProviderBase
   void updateNpcAffection(String npcId, int change, {String? reason}) {
     final npc = npcRegistry[npcId];
     if (npc == null) return;
-    if (!npc.introduced) markNpcIntroduced(npc);
+    // 注意：不再在此处自动 markNpcIntroduced。
+    // introduced 必须仅在 markIntroducedFromNarrative（剧情扫描）或
+    // 显式的 markNpcIntroduced 调用路径中触发。否则任何被动好感推断
+    // （如 _inferPassiveAffection 的 +1/+2）都会把尚未见面的 NPC 标记为已结识，
+    // 导致「附近/重要NPC」里出现还没登场的人物。
+    // （如果确实需要在好感变化时引入 NPC，调用方应显式调用 markNpcIntroduced。）
 
     final currentDay = worldState.time.dayOfYear;
     int actualChange = change;

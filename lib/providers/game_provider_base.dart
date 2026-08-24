@@ -70,6 +70,26 @@ abstract class GameProviderBase extends ChangeNotifier {
   String openingScene = 'station';
   int? lastScannedNarrativeHash;
 
+  /// 跨 Mixin 共享：从 Player 或 LongTermMemory 的 T0 核心事实解析魔法资质。
+  /// 初始化失败/旧存档缺失字段时，用 T0 事实回填，并把值写回 Player。
+  String resolveMagicAptitude(Player p) {
+    final direct = p.magicAptitude ?? '';
+    if (direct.isNotEmpty) return direct;
+    for (final fact in memory.keyFacts) {
+      if (fact.importance >= 9 &&
+          fact.category == 'ability' &&
+          fact.id == 'ability:aptitude') {
+        final m = RegExp(r'资质为([^，,。\s]+)').firstMatch(fact.fact);
+        if (m != null && m.group(1) != null) {
+          final value = m.group(1)!;
+          p.magicAptitude = value;
+          return value;
+        }
+      }
+    }
+    return '';
+  }
+
   // ============================================================
   // 跨 Mixin 调用 与 GameProvider 本体方法的 abstract 声明。
   // Dart 3 的 Mixin 静态分析只认识 `on X` 中的 X 类成员，不认识
