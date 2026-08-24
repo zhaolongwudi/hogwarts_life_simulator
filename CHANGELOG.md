@@ -5,6 +5,17 @@
 
 ---
 
+### v1.9.2 — 2026-08-24
+
+**📋 变更说明**
+fix: 修复AI剧情逻辑问题 - 玩家资质丢失、NPC结识标记错误、剧情墨迹
+
+- 修复玩家 magicAptitude 丢失问题：在 LongTermMemory 解析时增加 fallback，确保存档加载后资质不丢失
+- 修复 markIntroducedFromNarrative 过滤失效：改用 NPC.grade=0 判断霍格沃茨教职工，替代原本不存在的 title/role/occupation 字段
+- 修复 updateNpcAffection 自动标记结识：移除好感变动时的 markNpcIntroduced 副作用，仅保留剧情扫描引入
+- 统一 System/Narrative/Commands 三处资质显示逻辑
+- 所有改动均为纯逻辑优化，无破坏性变更
+
 ### v1.9.1 — 2026-08-24
 
 **📋 变更说明**
