@@ -1278,17 +1278,19 @@ mixin GameRelationsMixin on GameProviderBase {
     if (npc.affection >= 20) {
       unlockAchievement('first_friend');
     }
-    _checkCGUnlockByAffection(npc);
+    checkCGUnlockByEvaluator(npc);
   }
 
-  void _checkCGUnlockByAffection(NPC npc) {
+  /// R5：好感→CG 解锁统一入口（由 CgUnlockEvaluator 做数据驱动判定）
+  /// 旧实现：20+ 条 if 硬编码散在 `_checkCGUnlockByAffection` 里；
+  /// 新实现：新增 CG = 加 1 条 CgUnlockCondition，零代码改动。
+  void checkCGUnlockByEvaluator(NPC npc) {
     final p = player;
     if (p == null) return;
     final aff = npc.affection;
     final isCrush = p.loveState.currentCrushName == npc.name;
     final isPartner = p.loveState.partnerId == npc.id;
 
-    // R5：使用 CgUnlockEvaluator 统一判定（替代原 20+ 条 if 硬编码）
     final cgIds = CgUnlockEvaluator.allSatisfiedIds(
       npcAffection: aff,
       npcIsCrush: isCrush,

@@ -3,6 +3,7 @@ import '../data/item_data.dart';
 import '../data/bestiary_data.dart';
 import '../data/quest_data.dart';
 import '../data/pet_data.dart';
+import '../data/pet_narrative_config.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -297,17 +298,21 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
 
-    // 化人形事件（九尾灵狐专属，一次性）
+    // R8：化人形事件（一次性，由 PetNarrativeConfig 统一判定门槛 + 是否开启化形）
+    // 旧实现：petId == 'kyuubi' && petBond >= 60 硬编码特判；
+    // 新实现：新增"会化形的特殊宠物"只改 PetNarrativeConfig 数据，不改 mixin。
+    final petCfg = petNarrativeConfig(p.petId ?? '');
     if (!p.petTransformDone &&
-        p.petId == 'kyuubi' &&
-        p.petBond >= 60) {
+        petCfg.bondGatedTransform &&
+        p.petBond >= petCfg.specialInteractionBondThreshold) {
       p.petTransformDone = true;
+      final species = petById(p.petId ?? '')?.species ?? '神奇生物';
+      final hint = petCfg.specialInteractionHint ?? '化为与主角同龄的人形陪伴左右。';
       buf.writeln('\n—— 一道柔和的光晕忽然从$petName 身上漾开，它的身影在光芒中缓缓拔高，'
-          '幻化作一个与你年纪相仿的少男/少女。绯红的狐耳微微颤动，衣角缀着银白的尾巴尖。'
-          '它/他静静看着你，轻声唤出你的名字。\n\n'
-          '【羁绊已满】九尾灵狐的人形已为你显现，今后它可以在更多场合陪伴你。');
+          '幻化作一个与你年纪相仿的少男/少女。绯色光晕笼罩周身，它/他静静看着你，轻声唤出你的名字。\n\n'
+          '【羁绊已达】${species}$petName：$hint');
       p.relationships.clear();
-      notifications.add('🦊 $petName 已化为人形：羁绊的奇迹在你眼前展开');
+      notifications.add('✨ $petName 展现了新的形态：羁绊的奇迹在你眼前展开');
     }
 
     // 羁绊成就 + pet 类委托进度
