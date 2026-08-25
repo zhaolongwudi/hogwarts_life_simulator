@@ -361,7 +361,7 @@ mixin GameResponseMixin on GameProviderBase {
     }
     // 如果清理后选项不足，补充兜底选项
     if (choices.isEmpty) {
-      choices.addAll(_buildFallbackChoices(currentNarrative));
+      choices.addAll(buildFallbackChoices(currentNarrative));
     }
 
     if (turnCount > 0 && (turnCount % 5 == 0 || lastPlayerAction.contains(RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)')))) {
@@ -624,7 +624,7 @@ mixin GameResponseMixin on GameProviderBase {
   /// 核心原则：从「剧情最末尾的最后一位说话者 / 最后一个未完成动作 / 最后一个氛围钩子」出发，
   ///          产出 A(勇敢/主动) B(谨慎/观察) C(人际/沟通) D(取巧/隐忍) 四个风格，
   ///          玩家点任何一个都会让剧情**自然衔接**，不会出现"选了仔细查看 → 下回合叙事完全跳场景"的断链。
-  List<GameChoice> _buildFallbackChoices(String narrative) {
+  List<GameChoice> buildFallbackChoices(String narrative) {
     final p = player;
     final energy = p?.energy ?? 100;
     final location = worldState.currentLocation ?? '';
@@ -1101,20 +1101,20 @@ $kChoicePromptSuffix''';
       if (choices.isEmpty) {
         debugPrint('选项生成全部失败，使用承接式兜底选项');
         notifications.add('⏱️ 选项生成较慢，已为你基于当前剧情临时生成4个选项（可直接输入自由行动替代）。');
-        choices.addAll(_buildFallbackChoices(narrative));
+        choices.addAll(buildFallbackChoices(narrative));
       }
 
       return choices;
     } catch (e) {
       // 关键修复：以前这里 return [] → 外层走 generateContextualFallbackChoices → 生成不承接剧情末尾的"仔细查看"
       // → 玩家点了之后下一回合叙事就完全跳开上一段剧情结尾，造成"刚生成的剧情没操作就被另一个剧情替换"
-      // 现在统一走 _buildFallbackChoices，严格基于 narrative 末尾 800 字做承接式兜底，保证不断链；同时 UI 明确通知玩家。
+      // 现在统一走 buildFallbackChoices，严格基于 narrative 末尾 800 字做承接式兜底，保证不断链；同时 UI 明确通知玩家。
       debugPrint('独立选项生成异常/超时(使用承接式兜底): $e');
       final msg = e.toString().contains('超时')
           ? '⏱️ 选项生成超时（网络波动或服务商限流），已为你基于剧情末尾临时生成4个承接选项；稍后可通过输入框输入自由行动获得更新鲜选项。'
           : '⏱️ 选项生成异常，已为你基于当前剧情临时生成4个承接选项（不影响剧情，自由行动照常输入）。';
       notifications.add(msg);
-      return _buildFallbackChoices(narrative);
+      return buildFallbackChoices(narrative);
     }
   }
 

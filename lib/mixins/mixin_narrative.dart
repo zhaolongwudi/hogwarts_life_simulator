@@ -442,7 +442,7 @@ $kNarrativeWritingRules
         // 彻底弃用 generateContextualFallbackChoices（它会按关键词匹配出"仔细查看"这种简易选项，
         // 玩家点击后AI拿到与剧情结尾无关的动作，造成"刚生成的剧情没操作就被另一个剧情替换"的断链）。
         debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
-        choices = _buildFallbackChoices(currentNarrative);
+        choices = buildFallbackChoices(currentNarrative);
       }
 
       // --- ContinuityBridge Step A：把本回合叙事的末尾锚点存档，下回合强制衔接 ---

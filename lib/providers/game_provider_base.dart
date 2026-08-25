@@ -155,6 +155,10 @@ abstract class GameProviderBase extends ChangeNotifier {
   Future<void> generateEnding();
   List<GameChoice> generateFallbackChoices();
   String generateFallbackNarrative();
+  // 统一的「叙事末尾承接型兜底选项」入口：
+  // 当独立选项生成超时/内容不合格时，GameNarrativeMixin 和 GameResponseMixin 都走同一套，
+  // 避免一个走老的简易关键词池、一个走新的末尾800字承接池，造成断链。
+  List<GameChoice> buildFallbackChoices(String narrative);
   void generateNewNPC();
   String generateSortingNarrative(String house);
   void handleLetterCommand(List<String> parts);
