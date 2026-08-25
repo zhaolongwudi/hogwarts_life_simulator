@@ -68,11 +68,6 @@ class GameTopBar extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Icon(Icons.bolt, size: 12, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 2),
-                    Text('${player.energy}/5',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
-                    const SizedBox(width: 8),
                     Icon(Icons.schedule, size: 12, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(width: 2),
                     Expanded(
