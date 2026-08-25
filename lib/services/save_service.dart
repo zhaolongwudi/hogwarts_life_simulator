@@ -92,7 +92,8 @@ class SaveService {
       jsonDecode(content);
       final savePath = await _getSavePath(slotId);
       await _atomicWrite(savePath, content);
-      await _updateMeta(slotId, slotName, DateTime.now());
+      final turnCount = saveData['turn_count'] as int? ?? 0;
+      await _updateMeta(slotId, slotName, DateTime.now(), turnCount);
       return slotId;
     });
   }
@@ -194,13 +195,13 @@ class SaveService {
     }
   }
 
-  Future<void> _updateMeta(String id, String name, DateTime savedAt) async {
+  Future<void> _updateMeta(String id, String name, DateTime savedAt, int turnCount) async {
     final existing = await _readMeta();
     final entry = {
       'id': id,
       'name': name,
       'saved_at': savedAt.toIso8601String(),
-      'turn_count': 0,
+      'turn_count': turnCount,
     };
     final index = existing.indexWhere((s) => s['id'] == id);
     if (index >= 0) {

@@ -49,6 +49,17 @@ mixin GameNarrativeMixin on GameProviderBase {
     // 用户自由文本在进入 Prompt 前做注入防御净化
     final safeAction = PromptSanitizer.sanitizeAction(action);
 
+    // 恋爱链路接线：玩家在选择「接受/婉拒表白」选项时直接结算，
+    // 避免表白剧情永远悬置（此前 resolveConfession 无任何调用方）。
+    final love = player!.loveState;
+    if (love.awaitingConfession && love.consideringNpcName != null) {
+      if (action.contains('接受')) {
+        resolveConfession(true, love.consideringNpcName!);
+      } else if (action.contains('婉拒') || action.contains('拒绝')) {
+        resolveConfession(false, love.consideringNpcName!);
+      }
+    }
+
     if (router == null || !router!.hasNarrativeService) return;
 
     commandResult = null; // 提交真实行动时关闭指令面板

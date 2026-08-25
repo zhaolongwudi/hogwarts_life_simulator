@@ -65,6 +65,44 @@ class _ForumScreenState extends State<ForumScreen> {
   final List<String> _categories = ['全部', '校园八卦', '学术讨论', '魁地奇', '食谱分享', '寻人启事'];
   String _selectedCategory = '全部';
 
+  void _showCommentDialog(Map<String, dynamic> post) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('回复帖子'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: '写下你的回复...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty && mounted) {
+                setState(() => post['comments'] = (post['comments'] as int) + 1);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('回复已发布：$text')),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('发布'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,7 +269,7 @@ class _ForumScreenState extends State<ForumScreen> {
                 ),
                 const SizedBox(width: 24),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => _showCommentDialog(post),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -246,7 +284,9 @@ class _ForumScreenState extends State<ForumScreen> {
                 ),
                 const Spacer(),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已复制 ${post['content']} 的链接（假装）')),
+                  ),
                   child: const Icon(Icons.share, size: 18, color: Color(0xFF8B949E)),
                 ),
               ],

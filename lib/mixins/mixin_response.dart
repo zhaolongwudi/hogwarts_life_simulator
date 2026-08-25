@@ -854,8 +854,10 @@ $kChoicePromptSuffix''';
         if (delta == 0 || npcName.isEmpty) continue;
         npcName = npcName.replaceFirst(RegExp(r'[（(].*?[）)]'), '').trim();
         if (npcName.isEmpty) continue;
-        if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
-        if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
+        // 尊重 AI 输出的显式好感幅度（±6~±20 原样生效），
+        // 仅拦截离谱的超大值；每周沉淀上限由 updateNpcAffection 内部按 gameWeek 管控。
+        if (delta > 20) delta = 20;
+        if (delta < -20) delta = -20;
         try {
           NPC? npc;
           int bestScore = 0;
@@ -946,6 +948,8 @@ $kChoicePromptSuffix''';
     for (final npc in npcs) {
       if (excludeIds != null && excludeIds.contains(npc.id)) continue;
       if (!npc.isAlive) continue;
+      // 被动好感只作用于已登场的 NPC，避免未出场的角色被“隔空”加好感
+      if (!npc.introduced) continue;
       // 检查 NPC 是否在剧情文本中出现
       bool mentioned = false;
       for (final alias in npc.allNames) {
@@ -1001,10 +1005,17 @@ $kChoicePromptSuffix''';
     }
   }
 
-  /// 判断叙事文本中是否独立提到了某个别名（前后为非字母数字非中文字符边界）
+  /// 判断叙事文本中是否独立提到了某个别名
+  /// - 中文名：前后不得紧跟汉字（中文无空格，按汉字边界判断，避免“赫敏”被“赫敏格”吞并）
+  /// - 拉丁名：前后不得为字母/数字/下划线
   bool _standaloneNameMentioned(String text, String name) {
     if (name.isEmpty) return false;
     final escaped = RegExp.escape(name);
+    final hasHan = RegExp(r'\p{Script=Han}', unicode: true).hasMatch(name);
+    if (hasHan) {
+      final pattern = RegExp(r'(?<![\p{Script=Han}])' + escaped + r'(?![\p{Script=Han}])', unicode: true);
+      return pattern.hasMatch(text);
+    }
     final pattern = RegExp(r'(?<!\p{L})(?<!\p{N})(?<!_)' + escaped + r'(?!\p{L})(?!\p{N})(?!_)', unicode: true);
     return pattern.hasMatch(text);
   }

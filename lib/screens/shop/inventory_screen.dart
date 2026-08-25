@@ -92,7 +92,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['全部', '武器', '食品', '文具', '药水', '材料'];
+    final categories = ['全部', '武器', '食品', '文具', '药水', '材料', '书籍', '服装'];
     final items = _getDynamicItems();
     final filtered = _filter == '全部' ? items : items.where((i) => i['category'] == _filter).toList();
 

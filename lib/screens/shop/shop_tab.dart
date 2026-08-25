@@ -2,6 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 
+class _OwnedBadge extends StatelessWidget {
+  final String itemName;
+  const _OwnedBadge({required this.itemName});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = context
+            .watch<GameProvider>()
+            .player
+            ?.inventory
+            .where((e) => e.name == itemName)
+            .length ??
+        0;
+    if (count <= 0) return const SizedBox.shrink();
+    return Text(
+      '已拥有 $count',
+      style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color),
+    );
+  }
+}
+
 class ShopTab extends StatefulWidget {
   const ShopTab({super.key});
 
@@ -13,18 +34,28 @@ class _ShopTabState extends State<ShopTab> {
   int _subTab = 0; // 0=淘货, 1=卖闲置
 
   final List<Map<String, dynamic>> _items = [
-    {'name': '巧克力蛙', 'icon': Icons.cookie, 'desc': '会跳的巧克力，附赠著名巫师卡片', 'price': 10},
-    {'name': '酸味爆弹', 'icon': Icons.local_drink, 'desc': '真的很酸，慎入', 'price': 8},
-    {'name': '坩埚蛋糕', 'icon': Icons.cake, 'desc': '迷你坩埚造型，味道不错', 'price': 12},
-    {'name': '新羽毛笔', 'icon': Icons.edit, 'desc': '猫头鹰羽毛，书写流畅', 'price': 20},
-    {'name': '羊皮纸一包', 'icon': Icons.description, 'desc': '优质防泼溅羊皮纸 20 张', 'price': 25},
-    {'name': '标准咒语书', 'icon': Icons.menu_book, 'desc': '一年级课程教材', 'price': 60},
+    {'name': '巧克力蛙', 'icon': Icons.cookie, 'type': '食品', 'desc': '会跳的巧克力，附赠著名巫师卡片', 'price': 10},
+    {'name': '酸味爆弹', 'icon': Icons.local_drink, 'type': '食品', 'desc': '真的很酸，慎入', 'price': 8},
+    {'name': '坩埚蛋糕', 'icon': Icons.cake, 'type': '食品', 'desc': '迷你坩埚造型，味道不错', 'price': 12},
+    {'name': '新羽毛笔', 'icon': Icons.edit, 'type': '文具', 'desc': '猫头鹰羽毛，书写流畅', 'price': 20},
+    {'name': '羊皮纸一包', 'icon': Icons.description, 'type': '文具', 'desc': '优质防泼溅羊皮纸 20 张', 'price': 25},
+    {'name': '标准咒语书', 'icon': Icons.menu_book, 'type': '书籍', 'desc': '一年级课程教材', 'price': 60},
   ];
 
-  final List<Map<String, dynamic>> _sellItems = [
-    {'name': '二手坩埚', 'icon': Icons.restaurant, 'desc': '有些磨损但还能用', 'price': 15},
-    {'name': '多余的羽毛笔', 'icon': Icons.edit, 'desc': '三支中的一支', 'price': 5},
-  ];
+  List<Map<String, dynamic>> _sellItems() {
+    final gp = context.read<GameProvider>();
+    final inventory = gp.player?.inventory ?? [];
+    final sellCatalog = {for (final i in _items) i['name'] as String: (i['price'] as int) ~/ 2};
+    return inventory.map((item) {
+      final basePrice = sellCatalog[item.name] ?? 5;
+      return {
+        'name': item.name,
+        'icon': Icons.sell,
+        'desc': item.description.isNotEmpty ? item.description : '可出售换取加隆',
+        'price': basePrice,
+      };
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +88,7 @@ class _ShopTabState extends State<ShopTab> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: _subTab == 0 ? _buildShopGrid(_items, true) : _buildShopGrid(_sellItems, false),
+          child: _subTab == 0 ? _buildShopGrid(_items, true) : _buildShopGrid(_sellItems(), false),
         ),
       ],
     );
@@ -138,14 +169,11 @@ class _ShopTabState extends State<ShopTab> {
                   color: Theme.of(context).dividerTheme.color,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text('¥${item['price']}', style: const TextStyle(fontSize: 12)),
+                child: Text('${item['price']}加隆', style: const TextStyle(fontSize: 12)),
               ),
               const Spacer(),
-              if (isBuy && item['owned'] != null)
-                Text(
-                  '已拥有 ${item['owned']}',
-                  style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color),
-                ),
+              if (isBuy)
+                _OwnedBadge(itemName: item['name'] as String? ?? ''),
             ],
           ),
           const SizedBox(height: 4),
@@ -161,7 +189,12 @@ class _ShopTabState extends State<ShopTab> {
                 final gp = context.read<GameProvider>();
                 if (isBuy) {
                   final price = item['price'] as int? ?? 10;
-                  final ok = gp.purchaseItem(item['name'] as String? ?? '未知物品', price);
+                  final ok = gp.purchaseItem(
+                    item['name'] as String? ?? '未知物品',
+                    price,
+                    type: item['type'] as String? ?? 'item',
+                    description: item['desc'] as String? ?? '',
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(ok ? '已购买 ${item['name']} (花费 $price 加隆)' : '加隆不足！需要 $price 加隆')),
                   );

@@ -91,7 +91,10 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
         });
         _scrollToBottom();
         await _chatService.saveConversation(widget.npc.id, _messages);
-        _updateAffection(text, response);
+        // 等待落盘后再访问 context，期间可能已退出页面，需要重新确认 mounted
+        if (mounted) {
+          _updateAffection(text, response);
+        }
       }
     } catch (e) {
       if (mounted) {

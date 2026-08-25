@@ -1,4 +1,6 @@
 /// 课程数据：依据设定文档「第十部分 · 课堂系统」
+import '../providers/app_provider.dart';
+
 class CourseData {
   final String id;
   final String name;
@@ -145,3 +147,32 @@ const Map<String, String> eraHeadmaster = {
   'harry_same': '阿不思·邓布利多',
   'post_war': '米勒娃·麦格',
 };
+
+/// 同一门课在不同时代由谁授课。
+/// 用于 formatCourses 展示，避免把 1991 子世代的教授名单套到其他时代
+/// （例如 1892 邓布利多时代出现斯内普、1971 掠夺者时代出现少年斯内普当教授）。
+const Map<String, Map<Era, String>> professorByEra = {
+  'dda': {
+    Era.dumbledore: '时任黑魔法防御术教授',
+    Era.marauders: '某位神秘（甚至有吸血鬼传闻）的黑魔法防御术教授',
+    Era.first_war: '某位神秘（甚至有吸血鬼传闻）的黑魔法防御术教授',
+    Era.harry_same: '奇洛/洛哈特/卢平等',
+    Era.post_war: '威廉·威克斯',
+    Era.random: '临时就任的黑魔法防御术教授',
+  },
+  'potions': {
+    Era.dumbledore: '霍勒斯·斯拉格霍恩',
+    Era.marauders: '霍勒斯·斯拉格霍恩',
+    Era.first_war: '霍勒斯·斯拉格霍恩',
+    Era.harry_same: '西弗勒斯·斯内普',
+    Era.post_war: '霍勒斯·斯拉格霍恩',
+    Era.random: '西弗勒斯·斯内普',
+  },
+};
+
+/// 返回指定课程在指定时代实际授课的教授名，未特化的课程回退到默认值。
+String professorName(String courseId, String fallback, Era era) {
+  final map = professorByEra[courseId];
+  if (map == null) return fallback;
+  return map[era] ?? fallback;
+}

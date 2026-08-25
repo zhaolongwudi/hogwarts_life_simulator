@@ -179,6 +179,7 @@ mixin GameInitMixin on GameProviderBase {
     notifications.clear();
     gameWeek = 1;
     lastSchoolYearStart = 0;
+    lastWeekBucket = 0;
     pendingAnchorDirective = null;
     totalTokens = 0;
     lastRoundTokens = 0;
@@ -343,6 +344,7 @@ mixin GameInitMixin on GameProviderBase {
         worldState.currentLocation = '霍格沃茨新生宿舍';
       }
       lastSchoolYearStart = startYear;
+      lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
       updateAcademicYearLabel();
 
       // 必须在 player 和 worldState 都赋值后再构建系统提示词
@@ -541,7 +543,7 @@ mixin GameInitMixin on GameProviderBase {
     return switch (era) {
       Era.dumbledore => 'dumbledore',
       Era.marauders => 'marauders',
-      Era.first_war => 'marauders',
+      Era.first_war => 'first_war',
       Era.harry_same => 'harry_same',
       Era.post_war => 'post_war',
       Era.random => 'random',

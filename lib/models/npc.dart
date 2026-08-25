@@ -37,6 +37,7 @@ class NPC {
   final List<Map<String, dynamic>> grudges; // 记仇记录：类型+原因+时间
   int affectionGainedThisWeek; // 本周好感增量（第一周上限+30）
   int affectionGainedThisMonth; // 本月好感增量（第一个月上限+50）
+  int affectionMonthKey; // 记录 affectionGainedThisMonth 所属月份（year*12+month），跨月自动重置
   int lastGrudgeDay; // 上次记仇的游戏日
   bool introduced; // 是否已经在剧情中登场/被玩家认识
   bool graduated; // 在校生是否已毕业离校
@@ -73,6 +74,7 @@ class NPC {
     List<Map<String, dynamic>>? grudges,
     this.affectionGainedThisWeek = 0,
     this.affectionGainedThisMonth = 0,
+    this.affectionMonthKey = 0,
     this.lastGrudgeDay = -1,
     this.introduced = false,
     this.graduated = false,
@@ -161,12 +163,20 @@ class NPC {
   }
 
   /// 获取好感沉淀修正值
+  /// 第1周：受单周上限(+30)与首月上限(+50)双重约束；
+  /// 第2~4周：仅受首月上限约束；
+  /// 之后：恢复正常（上限100）。
   int getAffectionGainLimit(int currentDay, int gameWeek) {
+    int remainingWeek = Balance.affectionMax;
     if (gameWeek <= 1) {
-      final remaining = Balance.weekOneAffectionCap - affectionGainedThisWeek;
-      return remaining > 0 ? remaining : 0;
+      remainingWeek = Balance.weekOneAffectionCap - affectionGainedThisWeek;
     }
-    return Balance.affectionMax;
+    int remainingMonth = Balance.affectionMax;
+    if (gameWeek <= 4) {
+      remainingMonth = Balance.monthOneAffectionCap - affectionGainedThisMonth;
+    }
+    final remaining = remainingWeek < remainingMonth ? remainingWeek : remainingMonth;
+    return remaining > 0 ? remaining : 0;
   }
 
   Map<String, dynamic> toJson() => {
@@ -201,6 +211,7 @@ class NPC {
         'grudges': grudges,
         'affection_gained_this_week': affectionGainedThisWeek,
         'affection_gained_this_month': affectionGainedThisMonth,
+        'affection_month_key': affectionMonthKey,
         'last_grudge_day': lastGrudgeDay,
         'introduced': introduced,
         'graduated': graduated,
@@ -243,6 +254,7 @@ class NPC {
           ),
         affectionGainedThisWeek: json['affection_gained_this_week'] ?? 0,
         affectionGainedThisMonth: json['affection_gained_this_month'] ?? 0,
+        affectionMonthKey: json['affection_month_key'] ?? 0,
         lastGrudgeDay: json['last_grudge_day'] ?? -1,
         introduced: json['introduced'] ?? false,
         graduated: json['graduated'] ?? false,

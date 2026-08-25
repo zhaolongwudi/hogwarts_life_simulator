@@ -66,6 +66,13 @@ abstract class GameProviderBase extends ChangeNotifier {
   int apiCalls = 0;
   int gameWeek = 1;
   int lastSchoolYearStart = 0;
+  /// 用于判断跨周：上一状态对应的绝对天数除以 7 的桶编号。
+  /// 与 gameWeek 一同在 new game/load game 时初始化，避免开局几天就跨周。
+  int lastWeekBucket = 0;
+  /// 学年制新NPC上限追踪：当前学年已生成的数量
+  int npcGeneratedThisSchoolYear = 0;
+  /// 记录 npcGeneratedThisSchoolYear 所属学年的起始年份
+  int npcGenerationSchoolYear = 0;
   String? pendingAnchorDirective;
   String openingScene = 'station';
   int? lastScannedNarrativeHash;
@@ -159,11 +166,15 @@ abstract class GameProviderBase extends ChangeNotifier {
   void parseNarrativeOnly(String text);
   void parseResponse(String text);
   Future<void> processChoice(GameChoice choice);
-  bool purchaseItem(String itemName, int price);
+  bool purchaseItem(String itemName, int price, {String type, String description});
   Future<void> quickSave();
+  Future<void> saveGameNamed(String slotName);
+  void recordRomanticEventFor(NPC npc);
   void refreshClient();
   void resetAllState();
   void resetTokenUsage();
+  void resolveConfession(bool accepted, String npcName);
+  void setCurrentLocationLabel(String label);
   int roll(int min, int max);
   Future<void> saveNow();
   bool sellItem(int index, int price);
@@ -174,6 +185,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   void unlockAchievement(String id);
   void unlockCG(CgDef? cg);
   void updateAcademicYearLabel();
+  void updatePlayerSignature(String text);
   Future<void> updateApiKey(String key);
   void updateClient();
   void updateNPCsFromAction(String action);

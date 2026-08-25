@@ -95,16 +95,24 @@ class AiDebugLogger {
     required String timestamp,
     required String scene,
     required String provider,
-    required String action, // 'RESPONSE' / 'ERROR' / 'TIMEOUT'
+    required String action, // 'RESPONSE' / 'ERROR' / 'TIMEOUT' / 'FALLBACK'
     String? responsePreview,
     int? promptTokens,
     int? completionTokens,
     int? totalTokens,
     String? error,
+    bool keepPending = false, // true 表示 fallback 中间失败，不终结本次调用，等最终结果再合并
   }) async {
     if (!_enabled) return;
     try {
       await _ensureLogDir();
+      if (keepPending && callId != null && _pendingCalls.containsKey(callId)) {
+        // 备用模型失败：不终结调用，仅落一条简短的失败说明，等待后续成功/超时合并
+        final line = '  └─ 备用模型 $provider 失败: $error\n';
+        _controller.add(line);
+        await _writeToFile(line);
+        return;
+      }
       StringBuffer buf;
       if (callId != null && _pendingCalls.containsKey(callId)) {
         buf = _pendingCalls.remove(callId)!;
@@ -229,13 +237,53 @@ class AiDebugLogger {
     }
   }
 
+  static const int _maxFileBytes = 4 * 1024 * 1024; // 单日日志文件上限 4MB，防止无限膨胀
+
   Future<void> _writeToFile(String content) async {
     if (_logDir == null) return;
     final now = DateTime.now();
     final fileName = 'ai_log_${now.year}${_pad(now.month)}${_pad(now.day)}.txt';
     final file = File('${_logDir!}/$fileName');
 
-    await file.writeAsString(content, mode: FileMode.append);
+    try {
+      if (await file.exists() && await file.length() > _maxFileBytes) {
+        // 当日日志超过上限：轮转，仅保留最新条目，避免磁盘被日志撑满
+        await file.writeAsString(content, flush: true);
+      } else {
+        await file.writeAsString(content, mode: FileMode.append, flush: true);
+      }
+    } catch (e) {
+      debugPrint('AiDebugLogger 写入失败: $e');
+    }
+
+    await _pruneOldLogs();
+  }
+
+  /// 只保留最近 7 天的日志文件，清理更早的，防止 ai_log 目录无限增长
+  Future<void> _pruneOldLogs() async {
+    if (_logDir == null) return;
+    try {
+      final dir = Directory(_logDir!);
+      if (!await dir.exists()) return;
+      final files = (await dir.list().toList()).whereType<File>().toList();
+      if (files.length <= 7) return;
+      final pairs = <(File, DateTime)>[];
+      for (final f in files) {
+        DateTime modified;
+        try {
+          modified = (await f.stat()).modified;
+        } catch (_) {
+          modified = DateTime.fromMillisecondsSinceEpoch(0);
+        }
+        pairs.add((f, modified));
+      }
+      pairs.sort((a, b) => b.$2.compareTo(a.$2));
+      for (final p in pairs.skip(7)) {
+        try {
+          await p.$1.delete();
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   String _pad(int n) => n.toString().padLeft(2, '0');

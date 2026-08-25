@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/game_systems.dart';
+import '../data/job_data.dart';
 
 class JobScreen extends StatefulWidget {
   const JobScreen({super.key});
@@ -11,7 +12,7 @@ class JobScreen extends StatefulWidget {
 }
 
 class _JobScreenState extends State<JobScreen> {
-  List<Map<String, dynamic>> _jobs = [];
+  List<JobDef> _jobs = [];
 
   @override
   void initState() {
@@ -20,53 +21,7 @@ class _JobScreenState extends State<JobScreen> {
   }
 
   void _generateJobs() {
-    _jobs = [
-      {
-        'title': '魔法部临时文员',
-        'location': '魔法部',
-        'pay': 30,
-        'energy': 2,
-        'duration': '2小时',
-        'requirements': '基础魔法知识',
-        'description': '帮助魔法部整理文件、归档记录。需要细心和基本的魔咒能力。',
-      },
-      {
-        'title': '霍格莫德村服务生',
-        'location': '霍格莫德村·三把扫帚',
-        'pay': 25,
-        'energy': 3,
-        'duration': '3小时',
-        'requirements': '社交能力',
-        'description': '在三把扫帚酒吧帮忙招待客人，可以听到各种八卦消息。',
-      },
-      {
-        'title': '对角巷采购助理',
-        'location': '对角巷',
-        'pay': 40,
-        'energy': 4,
-        'duration': '4小时',
-        'requirements': '识别魔法物品',
-        'description': '协助老顾客挑选魔杖、药水等魔法用品，有机会获得折扣。',
-      },
-      {
-        'title': '古灵阁金币搬运工',
-        'location': '古灵阁',
-        'pay': 50,
-        'energy': 5,
-        'duration': '5小时',
-        'requirements': '力量·无巫术干扰',
-        'description': '帮妖精搬运金币和贵重物品。报酬丰厚但体力消耗大。',
-      },
-      {
-        'title': '神奇动物照看员',
-        'location': '海格小屋',
-        'pay': 35,
-        'energy': 4,
-        'duration': '3小时',
-        'requirements': '对生物有耐心',
-        'description': '帮忙照顾巴克比克等神奇动物，可能被啄伤但很有价值。',
-      },
-    ];
+    _jobs = List<JobDef>.from(jobCatalog);
   }
 
   @override
@@ -260,7 +215,7 @@ class _JobScreenState extends State<JobScreen> {
     );
   }
 
-  Widget _buildJobCard(Map<String, dynamic> job) {
+  Widget _buildJobCard(JobDef job) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -278,13 +233,13 @@ class _JobScreenState extends State<JobScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(job['title'], style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    Text(job.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
                     Row(
                       children: [
                         Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
                         const SizedBox(width: 2),
-                        Text(job['location'], style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                        Text(job.location, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
                       ],
                     ),
                   ],
@@ -296,20 +251,20 @@ class _JobScreenState extends State<JobScreen> {
                   color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('+${job['pay']}加隆', style: const TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.w600)),
+                child: Text('+${job.pay}加隆', style: const TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(job['description'], style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color), maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(job.description, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 10),
           Row(
             children: [
-              _buildTag(Icons.bolt, '体力 ${job['energy']}', Colors.amber),
+              _buildTag(Icons.bolt, '体力 ${job.energyCost}', Colors.amber),
               const SizedBox(width: 8),
-              _buildTag(Icons.timer, job['duration'], Colors.blue),
+              _buildTag(Icons.timer, '${job.minutes ~/ 60}小时', Colors.blue),
               const SizedBox(width: 8),
-              _buildTag(Icons.verified_user, job['requirements'], Colors.purple),
+              _buildTag(Icons.verified_user, job.requirements, Colors.purple),
               const Spacer(),
               SizedBox(
                 height: 32,
@@ -321,9 +276,9 @@ class _JobScreenState extends State<JobScreen> {
                   ),
                   onPressed: () {
                     final gp = context.read<GameProvider>();
-                    final pay = gp.acceptJob(job['id'] as String? ?? 'unknown');
+                    final pay = gp.acceptJob(job.id);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: pay > 0 ? Text('完成岗位 ${job['title']}，获得 $pay 加隆') : const Text('打工失败')),
+                      SnackBar(content: pay > 0 ? Text('完成岗位 ${job.title}，获得 $pay 加隆') : const Text('打工失败')),
                     );
                   },
                   child: const Text('接受', style: TextStyle(fontSize: 13)),

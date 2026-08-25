@@ -30,6 +30,7 @@ class Player {
   int energy; // 精力值
   final Map<String, int> houseDimensions; // 学院四维: courage/wisdom/loyalty/ambition
   String gender;
+  String signature; // 个性签名（可编辑，展示于通讯/地图等界面）
   String? birthDay; // 具体生日
   String? sexOrientation;
   String? appearance; // 外貌与体格描述
@@ -86,6 +87,7 @@ class Player {
     this.energy = 100,
     Map<String, int>? houseDimensions,
     this.gender = '',
+    this.signature = '',
     this.birthDay,
     this.sexOrientation,
     this.appearance,
@@ -202,6 +204,7 @@ class Player {
         'energy': energy,
         'house_dimensions': houseDimensions,
         'gender': gender,
+        'signature': signature,
         'birth_day': birthDay,
         'sex_orientation': sexOrientation,
         'appearance': appearance,
@@ -267,6 +270,7 @@ class Player {
         houseDimensions:
             Map<String, int>.from(json['house_dimensions'] ?? _defaultHouseDimensions),
         gender: json['gender'] ?? '',
+        signature: json['signature'] ?? '',
         birthDay: json['birth_day'],
         sexOrientation: json['sex_orientation'],
         appearance: json['appearance'],

@@ -36,14 +36,15 @@ mixin GameSystemsMixin on GameProviderBase {
       minutes = 60;
     }
 
-    final oldDayOfYear = worldState.time.dayOfYear;
     final oldMonth = worldState.time.month;
     final oldYear = worldState.time.year;
     worldState.time.advanceMinutes(minutes);
 
-    // 游戏周追踪（好感沉淀用）
-    final newDayOfYear = worldState.time.dayOfYear;
-    if ((newDayOfYear ~/ 7) > (oldDayOfYear ~/ 7)) {
+    // 游戏周追踪（好感沉淀用）：以绝对天数 / 7 分桶，
+    // 只有当绝对天数跨过整周边界时才推进游戏周，避免 dayOfYear 头尾截断导致开局即跨周。
+    final newBucket = worldState.time.absoluteDayIndex ~/ 7;
+    if (newBucket > lastWeekBucket) {
+      lastWeekBucket = newBucket;
       gameWeek++;
       _resetWeeklyAffectionCaps();
     }
@@ -560,9 +561,18 @@ mixin GameSystemsMixin on GameProviderBase {
     worldState.dayOfMonth = worldState.time.day;
     worldState.dayOfWeek = GameTime.weekdays[worldState.time.weekday];
     worldState.month = GameTime.months[worldState.time.month - 1];
-    // 快进也要接入学年推进与事件锚点，避免跳过年份
+    // 快进也要接入学年推进、月度演化与事件锚点，避免跳过年份/月份
     _checkSchoolYearTransition(oldMonth, oldYear);
+    _checkMonthlyEvolution(oldMonth, oldYear);
     _checkEventAnchors();
+    _runConsistencyChecks();
+    // 同步游戏周：绝对天数跨过整周边界时推进
+    final newBucket = worldState.time.absoluteDayIndex ~/ 7;
+    if (newBucket > lastWeekBucket) {
+      lastWeekBucket = newBucket;
+      gameWeek++;
+      _resetWeeklyAffectionCaps();
+    }
   }
 
   // ==================== NPC 状态更新 ====================
@@ -612,6 +622,22 @@ mixin GameSystemsMixin on GameProviderBase {
     if (p.loveState.status == '恋爱' && random.nextDouble() < 0.1) {
       _spawnRomanticEvent();
     }
+
+    // 恋爱链路接线：浪漫行动（约会/散步/独处等）为暧昧对象/恋人记录一次浪漫事件
+    if (RegExp(r'(约会|散步|独处|谈心|表白|浪漫|心仪|心动|一起去看|一起吃饭|单独)').hasMatch(action)) {
+      final love = p.loveState;
+      if (love.status == '恋爱' && love.partnerId != null) {
+        final partner = npcRegistry[love.partnerId];
+        if (partner != null) recordRomanticEventFor(partner);
+      } else if (love.currentCrushName != null) {
+        for (final n in npcRegistry.values) {
+          if (n.name == love.currentCrushName) {
+            recordRomanticEventFor(n);
+            break;
+          }
+        }
+      }
+    }
   }
 
   void _spawnRomanticEvent() {
@@ -621,6 +647,7 @@ mixin GameSystemsMixin on GameProviderBase {
     final npc = npcRegistry[partner];
     if (npc == null) return;
 
+    recordRomanticEventFor(npc);
     notifications.add('💕 与${npc.name}之间发生了一段浪漫插曲。');
     worldState.addNarrativeEvent('💕 与${npc.name}之间发生了一段浪漫插曲。', turn: turnCount);
   }
@@ -819,12 +846,45 @@ mixin GameSystemsMixin on GameProviderBase {
         'pending_summary': pendingSummary,
         'recent_turns': recentTurns,
         'game_week': gameWeek,
+        'last_school_year_start': lastSchoolYearStart,
         'last_round_tokens': lastRoundTokens,
         'api_calls': apiCalls,
         'total_prompt_tokens': totalPromptTokens,
         'total_completion_tokens': totalCompletionTokens,
         'total_tokens': totalTokens,
         // 千回合级结构化长期记忆（永不压缩的纯事实层）
+        'long_term_memory': memory.toJson(),
+      },
+    );
+  }
+
+  /// 使用用户自定义名称保存存档（slotId 由名称生成，保证可读且唯一可寻址）
+  Future<void> saveGameNamed(String slotName) async {
+    if (player == null) return;
+    final safeName = slotName
+        .trim()
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+        .replaceAll(RegExp(r'\s+'), '_');
+    if (safeName.isEmpty) return;
+    await saveService.saveGame(
+      player: player!.toJson(),
+      worldState: worldState.toJson(),
+      npcRegistry: npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
+      narrative: currentNarrative,
+      choices: choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
+      turnCount: turnCount,
+      slotName: safeName,
+      extraData: {
+        'narrative_summary': narrativeSummary,
+        'pending_summary': pendingSummary,
+        'recent_turns': recentTurns,
+        'game_week': gameWeek,
+        'last_school_year_start': lastSchoolYearStart,
+        'last_round_tokens': lastRoundTokens,
+        'api_calls': apiCalls,
+        'total_prompt_tokens': totalPromptTokens,
+        'total_completion_tokens': totalCompletionTokens,
+        'total_tokens': totalTokens,
         'long_term_memory': memory.toJson(),
       },
     );
@@ -858,6 +918,8 @@ mixin GameSystemsMixin on GameProviderBase {
     narrativeSummary = extraData['narrative_summary'] as String? ?? '';
     pendingSummary = extraData['pending_summary'] as String? ?? '';
     gameWeek = extraData['game_week'] as int? ?? 1;
+    lastSchoolYearStart = extraData['last_school_year_start'] as int? ?? 0;
+    lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
     lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
     apiCalls = extraData['api_calls'] as int? ?? 0;
     totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;

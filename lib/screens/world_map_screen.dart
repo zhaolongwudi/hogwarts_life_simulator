@@ -120,6 +120,13 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     return _currentArea;
   }
 
+  /// 区域标题：优先显示玩家自定义名称，未设置时回退到地图默认名
+  String _displayHeaderName(BuildContext context) {
+    final label = context.watch<GameProvider>().worldState.currentLocationLabel;
+    if (label != null && label.isNotEmpty) return label;
+    return _displayAreaName;
+  }
+
   String get _displaySubtitle {
     if (_currentSubArea != null) {
       return _subAreas[_currentSubArea]!['subtitle'] as String? ?? '';
@@ -411,7 +418,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                             ],
                             Flexible(
                               child: Text(
-                                _displayAreaName,
+                                _displayHeaderName(context),
+
                                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -429,7 +437,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => _editAreaLabel(context),
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -457,6 +465,44 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       _parentArea = null;
       _selectedLocation = null;
     });
+  }
+
+  void _editAreaLabel(BuildContext context) {
+    final gp = context.read<GameProvider>();
+    final controller = TextEditingController(
+      text: gp.worldState.currentLocationLabel ?? _displayAreaName,
+    );
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('自定义区域名称'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 20,
+          decoration: const InputDecoration(
+            hintText: '给这片区域起个名字...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              gp.setCurrentLocationLabel(controller.text.trim());
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('区域名称已更新')),
+              );
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getAreaSubtitle() {

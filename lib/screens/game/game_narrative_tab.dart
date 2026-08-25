@@ -330,18 +330,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
       'body': body.isEmpty ? null : body,
     };
   }
-  @Deprecated('使用 _buildNarrativeSubTab 代替')
-  Widget _buildNarrativeText(GameProvider gp) {
-    final panel = gp.commandResult;
-    if (panel != null && panel.isNotEmpty) {
-      return _buildCommandResultPanel(gp, panel);
-    }
-    return const SizedBox.shrink();
-  }
-
-
   Widget _buildHeaderCard(String? timestamp, String? location) {
-    final colorScheme = Theme.of(context).colorScheme;
     final dividerColor = const Color(0xFF30363D);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -832,7 +821,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildNarrativeSubTab(GameProvider gp, BoxConstraints constraints) {
-    final narrative = gp.currentNarrative ?? '';
+    final narrative = gp.currentNarrative;
     final commandPanel = gp.commandResult;
     // 命令面板独立显示 + 剧情正文 + 选项同时存在；不要求 narrative 非空
     // （加载中的一回合可能 narrative 为空，但 choices 可能有历史残留）

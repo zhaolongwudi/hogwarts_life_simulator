@@ -79,6 +79,7 @@ class GameProvider extends GameProviderBase
     try {
       player = Player.fromJson(data['player'] as Map<String, dynamic>);
       worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
+      lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
       npcRegistry.clear();
       (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
         npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
@@ -95,6 +96,7 @@ class GameProvider extends GameProviderBase
       narrativeSummary = extraData['narrative_summary'] as String? ?? '';
       pendingSummary = extraData['pending_summary'] as String? ?? '';
       gameWeek = extraData['game_week'] as int? ?? 1;
+      lastSchoolYearStart = extraData['last_school_year_start'] as int? ?? 0;
       lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
       apiCalls = extraData['api_calls'] as int? ?? 0;
       totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
@@ -171,6 +173,7 @@ class GameProvider extends GameProviderBase
           'pending_summary': pendingSummary,
           'recent_turns': recentTurns,
           'game_week': gameWeek,
+          'last_school_year_start': lastSchoolYearStart,
           'last_round_tokens': lastRoundTokens,
           'api_calls': apiCalls,
           'total_prompt_tokens': totalPromptTokens,
@@ -229,6 +232,12 @@ class GameProvider extends GameProviderBase
     // （如果确实需要在好感变化时引入 NPC，调用方应显式调用 markNpcIntroduced。）
 
     final currentDay = worldState.time.dayOfYear;
+    // 跨月自动重置本月好感增量（affectionMonthKey 记录 monthKey）
+    final monthKey = worldState.time.year * 12 + worldState.time.month;
+    if (npc.affectionMonthKey != monthKey) {
+      npc.affectionMonthKey = monthKey;
+      npc.affectionGainedThisMonth = 0;
+    }
     int actualChange = change;
     if (change > 0) {
       final cap = npc.getAffectionGainLimit(currentDay, gameWeek);
@@ -263,6 +272,7 @@ class GameProvider extends GameProviderBase
     if (npc.affection > npc.maxAffectionReached) {
       npc.maxAffectionReached = npc.affection;
     }
+    _advanceLoveStage(npc);
     if (actualChange != 0) {
       final eventText = '好感 ${actualChange > 0 ? '+' : ''}$actualChange：${reason ?? '互动'}';
       npc.recentEvents.insert(0, eventText);
@@ -273,10 +283,45 @@ class GameProvider extends GameProviderBase
     autoSave();
   }
 
+  /// 恋爱链路接线：好感跨过阈值时推进关系阶段（陌生→好感→暧昧）。
+  /// 暧昧阶段是 NPC 主动表白的前置条件，此前该链路无人调用导致表白永远无法触发。
+  void _advanceLoveStage(NPC npc) {
+    final p = player;
+    if (p == null) return;
+    final love = p.loveState;
+    if (love.status != '单身') return;
+    final stage = love.stageFor(npc.name);
+    if (stage == '暧昧' || stage == '亲密') return;
+    final absDay = worldState.time.absoluteDayIndex;
+    if (npc.affection >= Balance.romanceLockThreshold) {
+      love.setStage(npc.name, '暧昧', currentDay: absDay);
+      notifications.add('💗 你和${npc.name}之间的关系变得暧昧起来……');
+      worldState.addNarrativeEvent('💗 你和${npc.name}之间的关系变得暧昧起来……', turn: turnCount);
+    } else if (npc.affection >= Balance.trustLockThreshold && stage == '陌生') {
+      love.setStage(npc.name, '好感');
+    }
+  }
+
   @override
   Future<void> updateApiKey(String key) async {
     await appProvider.saveApiKey(key);
     updateClient();
     chatService.refreshClient();
+  }
+
+  @override
+  void updatePlayerSignature(String text) {
+    final p = player;
+    if (p == null) return;
+    p.signature = text;
+    notifyListeners();
+    autoSave();
+  }
+
+  @override
+  void setCurrentLocationLabel(String label) {
+    worldState.currentLocationLabel = label;
+    notifyListeners();
+    autoSave();
   }
 }

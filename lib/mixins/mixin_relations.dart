@@ -4,6 +4,7 @@ import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/cg_data.dart';
 import '../data/world_rules.dart';
+import '../data/job_data.dart';
 import '../models/player.dart';
 import '../data/course_data.dart';
 import '../data/balance_constants.dart';
@@ -15,8 +16,13 @@ mixin GameRelationsMixin on GameProviderBase {
     final p = player;
     if (p == null) return;
 
-    final count = npcRegistry.values.where((n) => n.isGenerated).length;
-    if (count >= 4) {
+    // 学年制上限：每学年最多生成4位新NPC，跨学年自动重置计数
+    final sy = worldState.time.month >= 9 ? worldState.time.year : worldState.time.year - 1;
+    if (npcGenerationSchoolYear != sy) {
+      npcGenerationSchoolYear = sy;
+      npcGeneratedThisSchoolYear = 0;
+    }
+    if (npcGeneratedThisSchoolYear >= 4) {
       currentNarrative = '新NPC数量已达到上限（每学年最多新增4位）。';
       choices = [GameChoice(text: '返回', action: '继续')];
       return;
@@ -116,6 +122,7 @@ mixin GameRelationsMixin on GameProviderBase {
     );
 
     npcRegistry[id] = npc;
+    npcGeneratedThisSchoolYear++;
     p.relationships[id] = Relationship(
       targetId: id,
       targetName: name,
@@ -338,12 +345,17 @@ mixin GameRelationsMixin on GameProviderBase {
     return p.galleons + p.bankGalleons;
   }
 
-  bool purchaseItem(String itemName, int price) {
+  bool purchaseItem(String itemName, int price, {String type = 'item', String description = ''}) {
     final p = player;
     if (p == null) return false;
     if (p.galleons < price) return false;
     p.galleons -= price;
-    p.inventory.add(InventoryItem(id: DateTime.now().millisecondsSinceEpoch.toString(), name: itemName, description: '购买的$itemName'));
+    p.inventory.add(InventoryItem(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: itemName,
+      type: type,
+      description: description.isEmpty ? '购买的$itemName' : description,
+    ));
     notifications.add('💰 购买了 $itemName，花费 $price 加隆');
     notifyListeners();
     autoSave();
@@ -387,21 +399,28 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   int acceptJob(String jobId) {
-    const jobs = {
-      'flourish_blotts': 15,
-      'apothecary': 25,
-      'gringotts': 30,
-      'honeydukes': 12,
-      'quills': 18,
-    };
-    final pay = jobs[jobId] ?? 10;
     final p = player;
     if (p == null) return 0;
+    JobDef? job;
+    for (final j in jobCatalog) {
+      if (j.id == jobId) {
+        job = j;
+        break;
+      }
+    }
+    final pay = job?.pay ?? 10;
+    final energyCost = job?.energyCost ?? 2;
+    final minutes = job?.minutes ?? 120;
+    final title = job?.title ?? jobId;
     p.galleons += pay;
-    p.jobHistory.add('$jobId: +$pay加隆 (${worldState.time.month}月${worldState.time.day}日)');
-    worldState.time.advanceMinutes(240);
-    p.energy = (p.energy - 15).clamp(0, 100);
-    notifications.add('💼 打工完成（$jobId），获得 $pay 加隆');
+    p.jobHistory.add('$title: +$pay加隆 (${worldState.time.month}月${worldState.time.day}日)');
+    worldState.time.advanceMinutes(minutes);
+    // 同步旧字段，保持时间显示一致
+    worldState.dayOfMonth = worldState.time.day;
+    worldState.dayOfWeek = GameTime.weekdays[worldState.time.weekday];
+    worldState.month = GameTime.months[worldState.time.month - 1];
+    p.energy = (p.energy - energyCost).clamp(0, 100);
+    notifications.add('💼 打工完成（$title），获得 $pay 加隆');
     notifyListeners();
     autoSave();
     return pay;
@@ -706,13 +725,14 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   String formatCourses() {
+    final era = appProvider.era;
     final buf = StringBuffer('【课程系统】\n必修课：\n');
     for (final c in requiredCourses) {
-      buf.writeln('· ${c.name}（${c.professor}）');
+      buf.writeln('· ${c.name}（${professorName(c.id, c.professor, era)}）');
     }
     buf.writeln('\n选修课（三年级起，至少选2门）：');
     for (final c in electiveCourses) {
-      buf.writeln('· ${c.name}（${c.professor}）');
+      buf.writeln('· ${c.name}（${professorName(c.id, c.professor, era)}）');
     }
     buf.writeln('\n（输入 /课堂 互动 进入当前课堂的互动环节）');
     return buf.toString();
@@ -1030,6 +1050,23 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== NPC 主动表白机制 ====================
 
+  /// 恋爱链路接线：记录一次浪漫事件（表白机制要求暧昧期≥2次浪漫事件）。
+  /// 只记录发生在暧昧/亲密阶段或已确定恋爱关系中的互动，纯友情不算。
+  void recordRomanticEventFor(NPC npc) {
+    final p = player;
+    if (p == null) return;
+    final love = p.loveState;
+    final stage = love.stageFor(npc.name);
+    if (love.status == '恋爱' && love.partnerId == npc.id) {
+      love.recordRomanticEvent(npc.name);
+      return;
+    }
+    if (stage == '暧昧' || stage == '亲密') {
+      love.recordRomanticEvent(npc.name);
+      worldState.addNarrativeEvent('💗 你和${npc.name}之间多了一段心动回忆。', turn: turnCount);
+    }
+  }
+
   void checkNPCConfessions() {
     final p = player;
     if (p == null || p.loveState.status != '单身') return;
@@ -1040,7 +1077,8 @@ mixin GameRelationsMixin on GameProviderBase {
     }
 
     // 融合版条件：好感≥85 + 关系阶段为"暧昧" + 浪漫事件≥2次 + 持续≥2周
-    final currentDay = worldState.time.dayOfYear;
+    // 使用 absoluteDayIndex（跨年单调递增），避免 dayOfYear 跨年相减为负
+    final currentDay = worldState.time.absoluteDayIndex;
     final candidates = npcRegistry.values.where((n) {
       if (!n.isAlive || n.affection < Balance.confessionMinAffection || n.confessed) return false;
       if (n.sexOrientation != null && n.sexOrientation != p.sexOrientation) {
@@ -1239,29 +1277,33 @@ mixin GameRelationsMixin on GameProviderBase {
     final isCrush = p.loveState.currentCrushName == npc.name;
     final isPartner = p.loveState.partnerId == npc.id;
 
-    final cgChecks = <int, String>{};
+    // 用列表而非 map：同一阈值可解锁多张CG，避免高阈值覆盖低阈值导致 CG-017 等永久丢失
+    final cgIds = <String>[];
 
-    if (aff >= 20) cgChecks[20] = 'CG-001';
-    if (aff >= 35) cgChecks[35] = 'CG-004';
+    if (aff >= 20) cgIds.add('CG-001');
+    if (aff >= 35) cgIds.add('CG-004');
     if (aff >= 40) {
-      cgChecks[40] = 'CG-005';
-      cgChecks[41] = 'CG-006';
+      cgIds.add('CG-005');
+      cgIds.add('CG-006');
     }
-    if (aff >= 60 && isCrush) cgChecks[60] = 'CG-007';
-    if (aff >= 65 && isCrush) cgChecks[65] = 'CG-008';
-    if (aff >= 70 && isCrush) cgChecks[70] = 'CG-009';
-    if (aff >= 80 && isCrush) cgChecks[80] = 'CG-011';
-    if (aff >= 90 && (isPartner || aff >= 90)) cgChecks[90] = 'CG-013';
-    if (aff >= 92 && aff < 95) cgChecks[92] = 'CG-014';
+    if (aff >= 60 && isCrush) cgIds.add('CG-007');
+    if (aff >= 65 && isCrush) cgIds.add('CG-008');
+    if (aff >= 70 && isCrush) cgIds.add('CG-009');
+    if (aff >= 80 && isCrush) cgIds.add('CG-011');
+    if (aff >= 90 && (isCrush || isPartner)) {
+      cgIds.add('CG-013');
+      cgIds.add('CG-016');
+    }
+    if (aff >= 92 && aff < 95) cgIds.add('CG-014');
     if (aff >= 95) {
-      cgChecks[95] = 'CG-015';
-      cgChecks[96] = 'CG-017';
+      cgIds.add('CG-015');
+      cgIds.add('CG-017');
     }
-    if (aff >= 93) cgChecks[93] = 'CG-018';
-    if (aff >= 96) cgChecks[96] = 'CG-019';
-    if (aff >= 98) cgChecks[98] = 'CG-020';
+    if (aff >= 93) cgIds.add('CG-018');
+    if (aff >= 96) cgIds.add('CG-019');
+    if (aff >= 98) cgIds.add('CG-020');
 
-    for (final cgId in cgChecks.values) {
+    for (final cgId in cgIds) {
       unlockCG(cgById(cgId));
     }
 
