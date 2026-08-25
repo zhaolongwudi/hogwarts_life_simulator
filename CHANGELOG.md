@@ -5,6 +5,17 @@
 
 ---
 
+### v2.0.4 — 2026-08-25
+
+**📋 变更说明**
+feat(macro): 5 项宏观架构修复（OOC/场景图/衔接桥/停滞/好感校验）
+
+M1 通用 NPC OOC 框架：NPC 统一字段 forbiddenActions + bloodSupremacist + 自动反向推导；R3b 改为
+   npcRegistry 全量 allNames × forbiddenActions 笛卡尔匹配；OOC 默认 warn，仅严重才 CRITICAL 防误判熔断
+M2 SceneTransitionGraph：替换 _checkOpeningRailroad 硬切 if/else，7 个节点（开局→收到信→对角巷
+   →国王十字→特快→大礼堂→分院→公共休息室→第一节课）统一走进度门 visitedLocations + dateInt 时间门，
+   不满足依赖不硬切 location 只注入衔接锚点，避免 7/31 直接跳到霍格沃茨大礼堂
+
 ### v2.0.3 — 2026-08-25
 
 **📋 变更说明**
