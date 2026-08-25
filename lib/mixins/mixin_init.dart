@@ -2,6 +2,11 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import '../services/rate_limiter.dart';
 import '../data/pet_data.dart';
+import '../data/pet_narrative_config.dart';
+import '../data/house_sorting_weights.dart';
+import '../data/opening_scene_data.dart';
+import '../data/era_data.dart';
+import '../data/game_config_rules.dart';
 import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -78,7 +83,9 @@ mixin GameInitMixin on GameProviderBase {
         final wd = wandById(p.wandId!);
         if (wd != null) {
           final woodClean = wd.wood.endsWith('木') ? wd.wood : '${wd.wood}木';
-          characterLines.add('【魔杖】$woodClean·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他木材；来源必须为奥利凡德魔杖店选中，绝对不要描写为捡来的木棍/祖传物品/自制）');
+          // R10：wandSources 数据化，去掉多处「奥利凡德魔杖店选中」硬编码
+          final src = wandSources[kDefaultWandSourceId]?.narrativeLine ?? '';
+          characterLines.add('【魔杖】$woodClean·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他木材；$src）');
         }
       }
     }
@@ -123,29 +130,11 @@ mixin GameInitMixin on GameProviderBase {
     return buffer.toString();
   }
 
-  String eraLabel(Era era) {
-    return switch (era) {
-      Era.dumbledore => '邓布利多时代（1892-1899）：少年阿不思·邓布利多在霍格沃茨求学，认识盖勒特·格林德沃。',
-      Era.marauders => '亲世代（1971-1978）：掠夺者四人组与莉莉·伊万斯同窗的时代。',
-      Era.first_war => '第一次巫师战争（1970s后期）：社会氛围紧张，伏地魔崛起的阴影笼罩魔法界。',
-      Era.harry_same => '子世代（1991-1998）：哈利·波特在霍格沃茨的求学时期。',
-      Era.post_war => '现代（2020+）：战后重建的魔法世界，阿不思·波特与斯科皮·马尔福的时代。',
-      Era.random => '随机时代：由叙事开始时随机决定。',
-    };
-  }
+  String eraLabel(Era era) => eraDefByEra(era).label;
 
   /// 短版时代描述（节省 token。系统提示词和开场叙事中使用）
 
-  String _eraLabelShort(Era era) {
-    return switch (era) {
-      Era.dumbledore => '邓布利多时代 1892（少年邓布利多求学）',
-      Era.marauders => '亲世代 1971（掠夺者同窗）',
-      Era.first_war => '一战末期 1976（伏地魔崛起）',
-      Era.harry_same => '子世代 1991（哈利入学）',
-      Era.post_war => '战后 2020（阿不思·波特时代）',
-      Era.random => '随机时代',
-    };
-  }
+  String _eraLabelShort(Era era) => eraDefByEra(era).shortLabel;
 
   Era _parseEra(String eraStr) {
     return Era.values.firstWhere(
@@ -244,24 +233,12 @@ mixin GameInitMixin on GameProviderBase {
       final startYear = _startYearForEra(appProvider.era);
       // letter 起点（收到录取通知书）按原著为 7 月 31 日前后；其它 3 个起点才是 9 月 1 日特快出发日
       // 防止 letter 开局刚收到信，下一回合场景直接跳到 9 月 1 日已在站台导致整个暑假剧情丢失。
-      int startMonth, startDay, startHour, startMinute;
-      switch (openingScene) {
-        case 'letter':
-          startMonth = 7; startDay = 31; startHour = 18; startMinute = 45;
-          break;
-        case 'diagon':
-          startMonth = 8; startDay = 20; startHour = 10; startMinute = 30;
-          break;
-        case 'station':
-          startMonth = 9; startDay = 1; startHour = 10; startMinute = 45; // 10:45才接近发车11点
-          break;
-        case 'eve':
-        case 'hall':
-          startMonth = 9; startDay = 1; startHour = 18; startMinute = 0;
-          break;
-        default:
-          startMonth = 9; startDay = 1; startHour = 9; startMinute = 0;
-      }
+      // R2：开场场景配置数据化（1 处查表替代 3 处 switch）
+      final scene = openingSceneById(openingScene);
+      final startMonth = scene.month;
+      final startDay = scene.day;
+      final startHour = scene.hour;
+      final startMinute = scene.minute;
 
       // ====== 角色资料交叉校验（防止逻辑自相矛盾，AI写崩） ======
       // 校验1：出生身份与家族背景不可冲突
@@ -334,15 +311,8 @@ mixin GameInitMixin on GameProviderBase {
         ),
       );
       // letter 起点时同步 currentLocation 为玩家出生地（避免 prompt 里显示「未知」导致 AI 乱跳地点）
-      if (openingScene == 'letter') {
-        worldState.currentLocation = '${player!.birthLocation}·家中';
-      } else if (openingScene == 'station') {
-        worldState.currentLocation = '伦敦国王十字车站';
-      } else if (openingScene == 'hall') {
-        worldState.currentLocation = '霍格沃茨大礼堂';
-      } else if (openingScene == 'eve') {
-        worldState.currentLocation = '霍格沃茨新生宿舍';
-      }
+      // R2：openingSceneById 提供 locationTemplate（含 ${birthLocation} 模板替换）
+      worldState.currentLocation = scene.resolveLocation(player!.birthLocation);
       lastSchoolYearStart = startYear;
       lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
       updateAcademicYearLabel();
@@ -390,38 +360,20 @@ mixin GameInitMixin on GameProviderBase {
       if (p0.petId != null && p0.petId!.isNotEmpty) {
         final pd = petById(p0.petId!);
         final petName = (p0.petName != null && p0.petName!.isNotEmpty) ? p0.petName! : (pd?.name ?? '宠物');
-        if (p0.petId == 'kyuubi' || (pd?.canTransform ?? false)) {
-          final abilities = pd?.abilities.isNotEmpty ?? false ? '，能力：${pd!.abilities.join('、')}' : '';
-          addT0(
-            'pet:kyuubi',
-            '主角的契约宠物是九尾灵狐"$petName"（绯月），来自东方青丘神话，可化人形$abilities，对主角完全忠诚、绝对听命。',
-            category: 'pet',
-          );
-        } else if (pd != null) {
-          final ab3 = pd.abilities.take(2).join('、');
-          addT0(
-            'pet:${p0.petId}',
-            '主角饲养的宠物是${pd.species}"$petName"${ab3.isNotEmpty ? '，擅长' + ab3 : ''}，是重要的陪伴和伙伴。',
-            category: 'pet',
-          );
-          // 普通宠物 importance 7 即可，不占最高档槽位
-          // 目前 addT0 都写 9；这里手动覆盖为 7
-          memory = memory.addKeyFact(KeyFactRecord(
-            id: 'pet:${p0.petId}',
-            fact: '主角饲养的宠物是${pd.species}"$petName"${ab3.isNotEmpty ? '，擅长' + ab3 : ''}，是重要的陪伴和伙伴。',
-            importance: 7,
-            timestamp: ts0,
-            category: 'pet',
-          ));
-        } else {
-          memory = memory.addKeyFact(KeyFactRecord(
-            id: 'pet:${p0.petId}',
-            fact: '主角的契约伙伴：$petName。',
-            importance: 7,
-            timestamp: ts0,
-            category: 'pet',
-          ));
-        }
+        // R8：使用 PetNarrativeConfig 统一决定 importance + 文案（去掉多处 kyuubi 硬编码特判）
+        final cfg = petNarrativeConfig(p0.petId!);
+        final factText = pd != null
+            ? (cfg.bondGatedTransform
+                ? '主角的契约宠物是${pd.species}"$petName"（${pd.description.split('\n').first}），能力：${pd.abilities.join('、')}；${cfg.specialInteractionHint ?? ''}对主角完全忠诚、绝对听命。'
+                : '主角饲养的宠物是${pd.species}"$petName"${pd.abilities.isNotEmpty ? '，擅长' + pd.abilities.take(2).join('、') : ''}，是重要的陪伴和伙伴。')
+            : '主角的契约伙伴：$petName。';
+        memory = memory.addKeyFact(KeyFactRecord(
+          id: 'pet:${p0.petId}',
+          fact: factText,
+          importance: cfg.memoryImportance,
+          timestamp: ts0,
+          category: 'pet',
+        ));
       }
       // 4. 初始天赋专精：AI容易忽略并写成"天赋平平"，提前写死
       if (p0.initialTalent != null && p0.initialTalent!.isNotEmpty) {
@@ -492,16 +444,7 @@ mixin GameInitMixin on GameProviderBase {
     }
   }
 
-  String _academicYearForEra(Era era) {
-    return switch (era) {
-      Era.dumbledore => '1892-1893',
-      Era.marauders => '1971-1972',
-      Era.first_war => '1976-1977',
-      Era.harry_same => '1991-1992',
-      Era.post_war => '2020-2021',
-      Era.random => '1991-1992',
-    };
-  }
+  String _academicYearForEra(Era era) => eraDefByEra(era).academicYear;
 
   /// 按时代初始化 NPC（数据层 npc_data.dart）
 
@@ -539,16 +482,7 @@ mixin GameInitMixin on GameProviderBase {
     }
   }
 
-  String _eraKey(Era era) {
-    return switch (era) {
-      Era.dumbledore => 'dumbledore',
-      Era.marauders => 'marauders',
-      Era.first_war => 'first_war',
-      Era.harry_same => 'harry_same',
-      Era.post_war => 'post_war',
-      Era.random => 'random',
-    };
-  }
+  String _eraKey(Era era) => eraDefByEra(era).eraKey;
 
   int _initialAffectionFor(NpcSeed seed) {
     if (seed.grade == 0) return roll(0, 10);
@@ -851,16 +785,7 @@ mixin GameInitMixin on GameProviderBase {
 
   /// 时代对应的入学年份（游戏开始年份）
 
-  int _startYearForEra(Era era) {
-    return switch (era) {
-      Era.dumbledore => 1892,
-      Era.marauders => 1971,
-      Era.first_war => 1976,
-      Era.harry_same => 1991,
-      Era.post_war => 2020,
-      Era.random => 1991,
-    };
-  }
+  int _startYearForEra(Era era) => eraDefByEra(era).startYear;
 
   // ==================== 开局特质抽取（软保底） ====================
 
@@ -1014,7 +939,7 @@ mixin GameInitMixin on GameProviderBase {
     profile.add('魔杖：$wandInfo');
     profile.add('宠物：$petInfo');
 
-    final wandSourceLine = '玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。';
+    final wandSourceLine = wandSources[kDefaultWandSourceId]?.narrativeLine ?? '玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。';
     final wandDetail = wandData != null
         ? '${wandData.wood}木·${wandData.core}·${wandData.length}'
         : '指定魔杖';
@@ -1067,40 +992,25 @@ mixin GameInitMixin on GameProviderBase {
     final petId = p.petId;
     final petName = p.petName ?? '';
     if (petId == null) return '未饲养';
-    // 优先使用 PetDef 数据层（避免 UI/Provider 两处硬编码不一致）
+    // R8：优先使用 PetDef 数据层 + PetNarrativeConfig（去掉多处 switch/kyuubi 特判）
     final def = petById(petId);
+    final cfg = petNarrativeConfig(petId);
     if (def != null) {
       final ab = def.abilities.take(3).join('·');
-      final tf = def.canTransform ? '·可化人形' : '';
+      final tf = cfg.bondGatedTransform
+          ? '·可化人形（羁绊≥${cfg.specialInteractionBondThreshold}触发）'
+          : (def.canTransform ? '·可化人形' : '');
       final nm = petName.isNotEmpty ? petName : def.name;
       return '$nm（${def.species}$tf，能力：$ab）';
     }
-    // 数据层找不到时的兜底
-    switch (petId) {
-      case 'owl': return '$petName（猫头鹰·聪明忠诚）';
-      case 'cat': return '$petName（猫·神秘敏感）';
-      case 'toad': return '$petName（蟾蜍·传统伴侣）';
-      case 'rat': return '$petName（老鼠·机灵小巧）';
-      case 'kyuubi': return '绯月（九尾灵狐·东方青丘祥瑞，可化人形·幻术/灵视·完全效忠）';
-      default: return '$petName（特殊伙伴）';
-    }
+    return petName.isEmpty ? '$petName（特殊伙伴）' : '特殊伙伴';
   }
 
-  // ==================== 开场辅助：剧情起点 ====================
+  // ==================== 开场辅助：开场剧情起点文案 ====================
 
   String _buildStartPointNarrative() {
-    switch (openingScene) {
-      case 'letter':
-        return '故事从你收到霍格沃茨录取通知书的那一刻开始——那只迟来的猫头鹰终于叩响了你的窗。';
-      case 'station':
-        return '故事从你站在九又四分之三站台前开始——蒸汽火车冒着白烟等待着你。';
-      case 'hall':
-        return '故事从你第一次踏入霍格沃茨大礼堂开始——金色的烛光在长桌上方摇曳。';
-      case 'eve':
-        return '故事从分院仪式前夜开始——你躺在床上翻来覆去，想着明天会被分到哪个学院。';
-      default:
-        return '故事从你站在九又四分之三站台前开始——蒸汽火车冒着白烟等待着你。';
-    }
+    // R2：查表，替代 5-case switch
+    return openingSceneById(openingScene).startNarrative;
   }
 
   // ==================== 处理选择 / 指令 ====================
@@ -1108,14 +1018,14 @@ mixin GameInitMixin on GameProviderBase {
   String computeHouseLocal() {
     final traits = player!.personalityTraits.join(' ');
     final dims = player!.houseDimensions;
+    final pol = player!.politicalTendency ?? '';
+    final blood = player!.bloodType;
 
     // 学院倾向优先
     final pref = player!.housePreference;
     if (pref != null && pref != '系统判定') {
-      if (pref.contains('格兰芬多')) return 'Gryffindor';
-      if (pref.contains('斯莱特林')) return 'Slytherin';
-      if (pref.contains('拉文克劳')) return 'Ravenclaw';
-      if (pref.contains('赫奇帕奇')) return 'Hufflepuff';
+      final houseKey = houseKeyByDisplayName(pref);
+      if (houseKey != null) return houseKey;
     }
 
     final scores = <String, int>{
@@ -1125,44 +1035,30 @@ mixin GameInitMixin on GameProviderBase {
       'Hufflepuff': 0,
     };
 
-    // 基于性格特质
-    final gryffindorTraits = ['勇敢', '勇气', '无畏', '热情', '骑士', '正义'];
-    final slytherinTraits = ['野心', '精明', '狡猾', '意志', '血统', '领导'];
-    final ravenclawTraits = ['智慧', '聪明', '好奇', '知识', '创造', '学习'];
-    final hufflepuffTraits = ['忠诚', '勤勉', '公平', '坚韧', '正直', '耐心'];
-
-    for (final t in gryffindorTraits) {
-      if (traits.contains(t)) scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 2;
+    // R7：使用 houseSortingWeights 数据驱动（替换原 4 套 List 硬编码 + 4 个 for 循环 + 4 个 if 特判）
+    for (final w in houseSortingWeights) {
+      // 1) 性格关键词加分（每命中 1 个 +2）
+      for (final t in w.traitKeywords) {
+        if (traits.contains(t)) {
+          scores[w.houseKey] = (scores[w.houseKey] ?? 0) + 2;
+        }
+      }
+      // 2) 学院四维直接加权
+      final dimVal = (dims[w.dimKey] ?? 50).toInt();
+      scores[w.houseKey] = (scores[w.houseKey] ?? 0) + dimVal;
+      // 3) 政治倾向加分
+      for (final p in w.politicalTendencyBoost) {
+        if (pol.contains(p)) {
+          scores[w.houseKey] = (scores[w.houseKey] ?? 0) + 1;
+        }
+      }
+      // 4) 血统加分
+      for (final b in w.bloodBoost) {
+        if (blood == b) {
+          scores[w.houseKey] = (scores[w.houseKey] ?? 0) + 1;
+        }
+      }
     }
-    for (final t in slytherinTraits) {
-      if (traits.contains(t)) scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 2;
-    }
-    for (final t in ravenclawTraits) {
-      if (traits.contains(t)) scores['Ravenclaw'] = (scores['Ravenclaw'] ?? 0) + 2;
-    }
-    for (final t in hufflepuffTraits) {
-      if (traits.contains(t)) scores['Hufflepuff'] = (scores['Hufflepuff'] ?? 0) + 2;
-    }
-
-    // 基于学院四维（houseDimensions）
-    final courage = (dims['courage'] ?? 50).toInt();
-    final ambition = (dims['ambition'] ?? 50).toInt();
-    final wisdom = (dims['wisdom'] ?? 50).toInt();
-    final loyalty = (dims['loyalty'] ?? 50).toInt();
-    scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + courage;
-    scores['Slytherin'] = (scores['Slytherin'] ?? 0) + ambition;
-    scores['Ravenclaw'] = (scores['Ravenclaw'] ?? 0) + wisdom;
-    scores['Hufflepuff'] = (scores['Hufflepuff'] ?? 0) + loyalty;
-
-    // 政治倾向加分
-    final pol = player!.politicalTendency ?? '';
-    if (pol.contains('纯血')) scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 1;
-    if (pol.contains('平等') || pol.contains('凤凰社')) scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 1;
-
-    // 血统背景
-    final blood = player!.bloodType;
-    if (blood == 'pureblood') scores['Slytherin'] = (scores['Slytherin'] ?? 0) + 1;
-    if (blood == 'muggleborn') scores['Gryffindor'] = (scores['Gryffindor'] ?? 0) + 1;
 
     // 如果都是0，默认可变随机
     final maxScore = scores.values.reduce((a, b) => a > b ? a : b);

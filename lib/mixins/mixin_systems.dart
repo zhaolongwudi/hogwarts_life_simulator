@@ -5,6 +5,9 @@ import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../services/deepseek_service.dart';
 import '../data/event_anchors.dart';
+import '../data/game_config_rules.dart';
+import '../data/time_cost_rules.dart';
+import '../data/monthly_event_data.dart';
 import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
@@ -15,26 +18,7 @@ import '../providers/game_provider_base.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
   void advanceTimeForAction(String action) {
-    int minutes = 15;
-    if (action.contains('吃饭') || action.contains('用餐') || action.contains('早餐') || action.contains('午餐') || action.contains('晚餐')) {
-      minutes = 30;
-    } else if (action.contains('上课') || action.contains('听课') || action.contains('教室')) {
-      minutes = 90;
-    } else if (action.contains('图书馆') || action.contains('自习') || action.contains('学习') || action.contains('看书')) {
-      minutes = 120;
-    } else if (action.contains('魁地奇') || action.contains('训练')) {
-      minutes = 120;
-    } else if (action.contains('霍格莫德')) {
-      minutes = 300;
-    } else if (action.contains('禁林')) {
-      minutes = 180;
-    } else if (action.contains('睡觉') || action.contains('休息') || action.contains('就寝')) {
-      minutes = 480;
-    } else if (action.contains('对话') || action.contains('聊天') || action.contains('交谈') || action.contains('打招呼')) {
-      minutes = 10;
-    } else if (action.contains('探索') || action.contains('闲逛') || action.contains('散步')) {
-      minutes = 60;
-    }
+    final int minutes = resolveActionCost(action);
 
     final oldMonth = worldState.time.month;
     final oldYear = worldState.time.year;
@@ -315,19 +299,22 @@ mixin GameSystemsMixin on GameProviderBase {
       currentLocation: worldState.currentLocation,
     );
 
+    // R9：事件锚点进度门（白名单数据化，替代原 id 硬编码特判）
     // 「暑假开始」锚点只在"真正上完了一学年之后"才触发：
     // - 学年是9月开学 → 次年6月结束 → 7月放暑假
     // - 所以1991年7月（入学前）不能触发，1992年7月及之后才可以
-    //   （1992年7月 = 上完一年级后的暑假；同理二年级后=1993年7月...）
-    // - 判断依据：GameTime.year == (academicYear的起始年份+1) 且 month=7 才算真·暑假
-    //   例：1991-1992 学年 → 1992年7月放暑假 ✓；1991年7月=入学前 ✗
-    final acYearStart = RegExp(r'^(\d{4})').firstMatch(worldState.academicYear)?.group(1);
-    final acYearStartInt = acYearStart != null ? int.tryParse(acYearStart) : null;
-    if (t.month == 7) {
-      final isTrueSummer = acYearStartInt != null && t.year >= (acYearStartInt + 1);
-      if (!isTrueSummer) {
-        due.removeWhere((a) => a.id == 'common_jul_summer_start');
-        debugPrint('📜 跳过「暑假开始」锚点：当前7月属于入学前/学年开始前，非学年结束后的暑假 (academicYear=${worldState.academicYear}, year=${t.year})');
+    if (due.isNotEmpty) {
+      final acYearStart = RegExp(r'^(\d{4})').firstMatch(worldState.academicYear)?.group(1);
+      final acYearStartInt = acYearStart != null ? int.tryParse(acYearStart) : null;
+      for (final rule in anchorGatedRules) {
+        final matchedAnchors = due.where((a) => a.id == rule.anchorId);
+        for (final anchor in matchedAnchors) {
+          final ok = rule.predicate(t.year, t.month, acYearStartInt);
+          if (!ok) {
+            due.remove(anchor);
+            debugPrint('📜 跳过「${anchor.title}」锚点：${rule.description} (academicYear=${worldState.academicYear}, year=${t.year})');
+          }
+        }
       }
     }
 
@@ -358,50 +345,43 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   void _generateMonthlyEvent(int month, int year) {
-    final templates = <String, List<String>>{
-      'ministry': [
-        '魔法部宣布了新一轮的魔法教育改革方案，涉及到所有魔法学校的课程调整。',
-        '魔法部对黑魔法防御术进行了专项检查，霍格沃茨的师资队伍通过了严格审核。',
-        '魔法部发布了新的禁咒名单，三种黑魔法被列入最高级别管制。',
-        '魔法部与妖精家族达成了新的古灵阁运营协议，加强了对魔法经济的监管。',
-      ],
-      'hogwarts': [
-        '霍格沃茨宣布了本学期的魁地奇比赛安排，各院队长已经开始紧张训练。',
-        '霍格沃茨图书馆收到了一批珍贵的古籍捐赠，其中包括几本失传已久的魔法著作。',
-        '霍格沃茨的幽灵们最近异常活跃，据说地下室里传来了奇怪的声响。',
-        '霍格沃茨大礼堂进行了季节性装饰，墙壁上挂满了与当前月份相关的魔法旗帜。',
-      ],
-      'economy': [
-        '古灵阁的金币汇率本月波动较大，加隆对英镑的比值创下了近年来的新高。',
-        '魔法药品市场供应紧张，几种常用药水的价格上涨了约15%。',
-        '魔法物品交易会在对角巷举行，吸引了来自全国各地的巫师商人。',
-        '由于天气原因，猫头鹰邮递的效率有所下降，信件送达时间延迟了1-2天。',
-      ],
-      'dark': [
-        '黑巫师的活动在欧洲大陆有所增加，魔法部派遣了更多的傲罗前往边境地区。',
-        '一座废弃的城堡被黑巫师占据，魔法界对此高度关注。',
-        '有关黑魔法社团的传闻在学生中流传，霍格沃茨加强了夜间巡逻。',
-        '魔法部截获了一批非法交易的魔法生物，其中包括几只受保护的独角兽幼崽。',
-      ],
-      'creature': [
-        '禁林中的独角兽族群迁徙了新的领地，生物学家对此进行了密切观察。',
-        '一只罕见的凤凰在霍格沃茨上空出现了数天，引发了学生们的热烈讨论。',
-        '家养小精灵权益促进会（S.P.E.W.）发起了新一轮的签名请愿活动。',
-        '挪威脊背龙的幼崽在冰岛被发现，生物学家正在研究它的生活习性。',
-      ],
-    };
+    // R6：月度事件池数据化（带权重、季节筛选、基础概率）
+    final seasonTags = seasonTagsForMonth(month);
 
-    final pool = <String>[];
-    final monthKey = _monthSeasonKey(month);
-    pool.addAll(templates[monthKey] ?? []);
-    pool.addAll(templates['ministry']!);
-    pool.addAll(templates['hogwarts']!);
-    pool.addAll(templates['economy']!);
-    if (random.nextDouble() < 0.3) pool.addAll(templates['dark']!);
-    if (random.nextDouble() < 0.4) pool.addAll(templates['creature']!);
+    // 1) 季节匹配 + 基础概率过滤
+    final candidates = <MonthlyEventDef>[];
+    final rand = random;
+    for (final e in monthlyEventPool) {
+      final seasonMatch = e.seasonTags.isEmpty ||
+          e.seasonTags.any((s) => seasonTags.contains(s));
+      if (!seasonMatch) continue;
+      if (e.baseChance < 1.0 && rand.nextDouble() > e.baseChance) continue;
+      candidates.add(e);
+    }
+    if (candidates.isEmpty) return;
 
-    pool.shuffle(random);
-    final event = '【${year}年${month}月·月度世界演化】${pool.first}';
+    // 2) 权重抽取
+    int totalWeight = 0;
+    for (final e in candidates) {
+      totalWeight += e.weight > 0 ? e.weight : 1;
+    }
+    int pick = rand.nextInt(totalWeight);
+    MonthlyEventDef? selected;
+    for (final e in candidates) {
+      final w = e.weight > 0 ? e.weight : 1;
+      if (pick < w) {
+        selected = e;
+        break;
+      }
+      pick -= w;
+    }
+    selected ??= candidates.last;
+
+    // 3) 互斥事件剔除（同一回合已抽到 selected，其他互斥的不参与后续月份事件）
+    //    这里简化：月度事件每回合只出 1 条，所以只需要把互斥组内其他候选跳过即可
+    //    （实际逻辑 = 本回合就选 1 条，其它互斥检查只在权重池 >1 条时有意义）
+
+    final event = '【${year}年${month}月·月度世界演化】${selected.text}';
 
     worldState.recentEvents.insert(0, NarrativeEvent(event, turn: turnCount));
     if (worldState.recentEvents.length > 50) {
@@ -418,13 +398,6 @@ mixin GameSystemsMixin on GameProviderBase {
 
     notifications.add('🌍 $event');
     worldState.addNarrativeEvent('🌍 $event', turn: turnCount);
-  }
-
-  String _monthSeasonKey(int month) {
-    if (month >= 3 && month <= 5) return 'creature';
-    if (month >= 6 && month <= 8) return 'dark';
-    if (month >= 9 && month <= 11) return 'hogwarts';
-    return 'ministry';
   }
 
   void _runConsistencyChecks() {

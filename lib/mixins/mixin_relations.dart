@@ -3,6 +3,8 @@ import 'package:flutter/widgets.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/cg_data.dart';
+import '../data/cg_unlock_conditions.dart';
+import '../data/game_config_rules.dart';
 import '../data/world_rules.dart';
 import '../data/job_data.dart';
 import '../models/player.dart';
@@ -791,14 +793,17 @@ mixin GameRelationsMixin on GameProviderBase {
         result = '【课堂互动 · 同桌】\n你环顾四周，身边的座位空着，只得独自琢磨刚才的内容。';
       }
     } else {
-      // 特殊意外：纯叙事
-      const events = [
-        '魔药课上，你的坩埚突然冒出诡异的绿烟，被斯内普教授冷冷地盯了三秒。',
-        '温室里，你险些被曼德拉草的尖叫声震晕，幸好及时堵住了耳朵。',
-        '黑魔法防御课上，你被选中上台示范，紧张中竟意外地漂亮完成了动作。',
-        '天文课上，你透过望远镜瞥见了一颗罕见的流星，全班都循声凑了过来。',
-      ];
-      result = '【课堂互动 · 意外】\n${events[random.nextInt(events.length)]}\n\n（一段课堂上的小插曲，世界线纹丝不动）';
+      // 特殊意外：R12 使用 classAccidentPool（支持科目筛选 + 通用池，去除「斯内普教授」硬编码特判）
+      final currentCourse = worldState.currentCourse ?? '';
+      final candidates = classAccidentPool.where((e) {
+        if (e.subjectFilter.isEmpty) return true;
+        return e.subjectFilter.any(
+          (k) => currentCourse.contains(k) || k.contains(currentCourse),
+        );
+      }).toList();
+      final pool = candidates.isNotEmpty ? candidates : classAccidentPool;
+      final text = pool[random.nextInt(pool.length)].text;
+      result = '【课堂互动 · 意外】\n$text\n\n（一段课堂上的小插曲，世界线纹丝不动）';
     }
 
     currentNarrative = result;
@@ -1277,39 +1282,16 @@ mixin GameRelationsMixin on GameProviderBase {
     final isCrush = p.loveState.currentCrushName == npc.name;
     final isPartner = p.loveState.partnerId == npc.id;
 
-    // 用列表而非 map：同一阈值可解锁多张CG，避免高阈值覆盖低阈值导致 CG-017 等永久丢失
-    final cgIds = <String>[];
-
-    if (aff >= 20) cgIds.add('CG-001');
-    if (aff >= 35) cgIds.add('CG-004');
-    if (aff >= 40) {
-      cgIds.add('CG-005');
-      cgIds.add('CG-006');
-    }
-    if (aff >= 60 && isCrush) cgIds.add('CG-007');
-    if (aff >= 65 && isCrush) cgIds.add('CG-008');
-    if (aff >= 70 && isCrush) cgIds.add('CG-009');
-    if (aff >= 80 && isCrush) cgIds.add('CG-011');
-    if (aff >= 90 && (isCrush || isPartner)) {
-      cgIds.add('CG-013');
-      cgIds.add('CG-016');
-    }
-    if (aff >= 92 && aff < 95) cgIds.add('CG-014');
-    if (aff >= 95) {
-      cgIds.add('CG-015');
-      cgIds.add('CG-017');
-    }
-    if (aff >= 93) cgIds.add('CG-018');
-    if (aff >= 96) cgIds.add('CG-019');
-    if (aff >= 98) cgIds.add('CG-020');
-
+    // R5：使用 CgUnlockEvaluator 统一判定（替代原 20+ 条 if 硬编码）
+    final cgIds = CgUnlockEvaluator.allSatisfiedIds(
+      npcAffection: aff,
+      npcIsCrush: isCrush,
+      npcIsPartner: isPartner,
+      npcConfessed: npc.confessed,
+      boneMode: p.boneMode,
+    );
     for (final cgId in cgIds) {
       unlockCG(cgById(cgId));
-    }
-
-    if (p.boneMode) {
-      if (isCrush && npc.confessed) unlockCG(cgById('CG-BONE-001'));
-      if (isPartner && aff >= 95) unlockCG(cgById('CG-BONE-003'));
     }
   }
 
