@@ -966,54 +966,11 @@ $kChoicePromptSuffix''';
     }
 
     // ============================================================
-    // P1-2 好感变化逻辑校验（避免"羞辱了你 → +8 好感"的违和）
+    // P1-2 好感变化逻辑校验（宏观通用·统一出口，避免假好感"羞辱了你 → +8 好感"）
+    // 注意：校验逻辑已封装为独立顶层类 AffectionValidator，与 StagnationDetector 同一层级，
+    //       任何 mixin 解析好感度时都统一调用它，不会出现"这里校验了那里没校验"的不一致。
     // ============================================================
-    // 输入：完整叙事 text（查关键词判断是正面还是负面互动）、NPC名、delta。
-    // 输出：true=通过 / false=丢弃这条好感变化（不打回整段剧情，只丢弃假好感，给玩家真体验）。
-    bool validateAffectionLogic(String npcName, String narrative, int delta) {
-      if (delta == 0) return false;
-      // --- 规则1：叙事里出现明确的负面互动关键词，delta 必须是负数（或 ≤ +1 的极微弱正向） ---
-      final negRe = RegExp(
-        r'(侮辱|羞辱|嘲笑|讥讽|嘲讽|骂|叱责|指责|当众.*丢脸|陷害|背叛|出卖|偷窃|恶意|骗了|欺骗|勒索|霸凌|针对|敌对|决斗|攻击|施咒伤害|下咒|诅咒)',
-      );
-      // --- 规则2：叙事里出现明确的重大正向事件，才允许 |delta|≥10  ---
-      final hugePositiveRe = RegExp(
-        r'(救了.*命|舍身|挡在.*前面|替.*挡|救命|以身犯险|告白|求婚|说出了真心话|坦白|赠予.*贵重|赠送.*传家|为.*背叛.*|不惜.*帮助)',
-      );
-      // --- 规则3：NPC 当前好感阶段必须匹配 delta 强度 ---
-      //   - 陌生人(<0) 不能一下 +10，除非救命级别
-      //   - 敌意阶段(<=-30) 不能一下正面 +5
-      NPC? target;
-      try {
-        target = npcRegistry.values.firstWhere((n) => n.nameMatches(npcName));
-      } catch (_) {
-        target = null;
-      }
-      if (negRe.hasMatch(narrative)) {
-        if (delta > 0) {
-          debugPrint('[P1-2 好感校验] 丢弃「$npcName+$delta」：叙事里含负面互动关键词，好感却正向变化。');
-          return false;
-        }
-      }
-      if (delta.abs() >= 8 && !hugePositiveRe.hasMatch(narrative)) {
-        debugPrint('[P1-2 好感校验] 丢弃「$npcName ${delta > 0 ? '+' : ''}$delta」：变化幅度≥8但叙事里没有"救命/告白/挡刀"等重大事件。');
-        return false;
-      }
-      if (delta.abs() >= 4 && delta > 0 && target != null) {
-        final aff = target.affection;
-        final introduced = target.introduced;
-        if (!introduced) {
-          // 还没认识，不能直接 +4+
-          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：该NPC尚未在剧情中登场(introduced=false)。');
-          return false;
-        }
-        if (aff <= -20) {
-          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：当前好感=$aff（敌对阶段），不能一下正向大跳涨。');
-          return false;
-        }
-      }
-      return true;
-    }
+    const validator = AffectionValidator.instance;
 
     final explicitChanged = <String>{};
 
@@ -1030,7 +987,7 @@ $kChoicePromptSuffix''';
         if (npcName.isEmpty) continue;
 
         // ---- P1-2 好感校验：逻辑不合理就直接丢弃，不更新也不做推断 ----
-        if (!validateAffectionLogic(npcName, text, delta)) continue;
+        if (!validator.validate(npcRegistry, npcName, text, delta)) continue;
 
         if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
         if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
@@ -1197,4 +1154,83 @@ $kChoicePromptSuffix''';
   }
 
   // ==================== 更多建议（本地生成，不消耗 token） ====================
+}
+
+// ============================================================
+// 【宏观通用 M5 · AffectionValidator 好感校验器】
+//
+// 把之前写在 _parseAffectionChanges 内部的私有 validateAffectionLogic 函数，
+// 抽成独立的顶层工具类（同 StagnationDetector 的层级）。
+//
+// 宏观好处：
+// - 任何 mixin / 任何解析点（主动叙事、后台推断、玩家手动事件）只要调用同一个
+//   AffectionValidator.instance.validate()，就能保证校验口径 100% 一致。
+// - 纯函数：所有数据都通过参数传入（npcRegistry / npcName / narrative / delta），
+//   不持有 GameProvider 引用，易于后期写单测。
+// ============================================================
+class AffectionValidator {
+  const AffectionValidator._();
+  static const AffectionValidator instance = AffectionValidator._();
+
+  static final RegExp _negRe = RegExp(
+    r'(侮辱|羞辱|嘲笑|讥讽|嘲讽|骂|叱责|指责|当众.*丢脸|陷害|背叛|出卖|偷窃|恶意|骗了|欺骗|勒索|霸凌|针对|敌对|决斗|攻击|施咒伤害|下咒|诅咒)',
+  );
+
+  static final RegExp _hugePositiveRe = RegExp(
+    r'(救了.*命|舍身|挡在.*前面|替.*挡|救命|以身犯险|告白|求婚|说出了真心话|坦白|赠予.*贵重|赠送.*传家|为.*背叛.*|不惜.*帮助)',
+  );
+
+  /// 统一好感校验入口。
+  /// [npcRegistry] 传当前的 NPC 注册表（用于按 name 反查 NPC 状态）
+  /// [npcName] 要校验的 NPC 名称（含别名/昵称均可）
+  /// [narrative] 完整叙事，用于匹配正向/负向关键词判断互动属性
+  /// [delta] 玩家（AI）声称的好感变化值
+  ///
+  /// return true = 校验通过，允许写入；false = 逻辑不合理，直接丢弃此条变化（不打回整段剧情）
+  bool validate(
+    Map<String, NPC> npcRegistry,
+    String npcName,
+    String narrative,
+    int delta,
+  ) {
+    if (delta == 0) return false;
+    if (npcName.isEmpty || npcRegistry.isEmpty) return false;
+
+    // 规则1：负面互动关键词 → 不允许正向 delta
+    if (_negRe.hasMatch(narrative)) {
+      if (delta > 0) {
+        debugPrint('[P1-2 好感校验] 丢弃「$npcName+$delta」：叙事里含负面互动关键词，好感却正向变化。');
+        return false;
+      }
+    }
+
+    // 规则2：|delta| ≥ 8 必须有救命/告白/挡刀 等重大事件支撑
+    if (delta.abs() >= 8 && !_hugePositiveRe.hasMatch(narrative)) {
+      debugPrint('[P1-2 好感校验] 丢弃「$npcName ${delta > 0 ? '+' : ''}$delta」：变化幅度≥8但叙事里没有"救命/告白/挡刀"等重大事件。');
+      return false;
+    }
+
+    // 规则3：大幅正向（≥+4）需匹配 NPC 当前阶段（是否登场、是否敌对）
+    if (delta >= 4) {
+      NPC? target;
+      for (final n in npcRegistry.values) {
+        if (n.nameMatches(npcName)) {
+          target = n;
+          break;
+        }
+      }
+      if (target != null) {
+        if (!target.introduced) {
+          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：该NPC尚未在剧情中登场(introduced=false)。');
+          return false;
+        }
+        if (target.affection <= -20) {
+          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：当前好感=${target.affection}（敌对阶段），不能一下正向大跳涨。');
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
 }

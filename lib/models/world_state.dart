@@ -65,6 +65,18 @@ class WorldState {
   // 最近 10 条被看门狗拦下的违规，方便调参和定位 AI 风格问题。
   final List<Map<String, dynamic>> consistencyViolations;
 
+  // ====== 【宏观 M3 · ContinuityBridge 全局衔接桥】======
+  // lastNarrativeAnchor：上一回合 narrative 末尾的"衔接锚点"（最后说话者/最后一句对话/最后未完成动作/当前地点）。
+  //  任何时候生成新 narrative（正常/Critical重写/事件触发），都要：
+  //   1) 生成前 → Prompt 强制注入此锚点；
+  //   2) 生成后 → 正则校验新叙事是否与该锚点显式衔接；
+  //   3) 不衔接 → 在叙事开头自动补一句承接过渡（不打回重写，避免"换剧情"观感）。
+  // 用 Map<String,String> 存，便于后期扩展字段而不破旧存档。
+  final Map<String, String> lastNarrativeAnchor;
+
+  // 统计连续"不衔接"的次数，达到阈值会给玩家一条通知，避免一次误判就响警报。
+  int continuityBridgeMisses;
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -90,6 +102,8 @@ class WorldState {
     List<String>? lastTurnAssertions,
     List<String>? previousTurnAssertions,
     List<Map<String, dynamic>>? consistencyViolations,
+    Map<String, String>? lastNarrativeAnchor,
+    this.continuityBridgeMisses = 0,
   })  : time = time ?? GameTime(),
         housePoints = Map<String, int>.from(housePoints ?? const {
           'Gryffindor': 350,
@@ -106,7 +120,8 @@ class WorldState {
         lastTurnAssertions = List<String>.from(lastTurnAssertions ?? const []),
         previousTurnAssertions = List<String>.from(previousTurnAssertions ?? const []),
         consistencyViolations = List<Map<String, dynamic>>.from(
-            consistencyViolations ?? const <Map<String, dynamic>>[]);
+            consistencyViolations ?? const <Map<String, dynamic>>[]),
+        lastNarrativeAnchor = Map<String, String>.from(lastNarrativeAnchor ?? const {});
 
   /// 当前时间戳字符串
   String get timestamp => time.format();
@@ -190,6 +205,8 @@ class WorldState {
         'last_turn_assertions': lastTurnAssertions,
         'previous_turn_assertions': previousTurnAssertions,
         'consistency_violations': consistencyViolations,
+        'last_narrative_anchor': lastNarrativeAnchor,
+        'continuity_bridge_misses': continuityBridgeMisses,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -227,6 +244,10 @@ class WorldState {
       consistencyViolations: (json['consistency_violations'] as List<dynamic>? ?? <dynamic>[])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),
+      lastNarrativeAnchor: Map<String, String>.from(
+          (json['last_narrative_anchor'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k.toString(), v.toString()))),
+      continuityBridgeMisses: json['continuity_bridge_misses'] as int? ?? 0,
     );
   }
 

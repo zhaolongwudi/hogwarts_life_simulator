@@ -303,7 +303,7 @@ mixin GameNarrativeMixin on GameProviderBase {
   ${statusTag.isNotEmpty ? '【状态】$statusTag\n' : ''}
   【当前场景】${worldState.timestamp}｜${worldState.currentLocation ?? '未知'}
   $sceneInfo
-
+  ${buildContinuityBridgePromptLine()}
   $stagnationLine$anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
@@ -312,8 +312,10 @@ $kNarrativeWritingRules
     }
 
     try {
-      // 开局硬骨架守卫（仅前12回合 & 家中开局 & 还没入校才生效），把还没出门的玩家硬推出去
-      _checkOpeningRailroad();
+      // 场景转移图（替换仅前12回合生效的 _checkOpeningRailroad）
+      //  - 开局家中/对角巷/国王十字/特快/分院/公共休息室/第一节课 全阶段通用
+      //  - 所有地点切换强制检查进度门+时间门，不满足只注入衔接锚点，绝不硬切 location
+      runSceneTransitionGraph();
 
       // 场景停滞检测：回合开始时比较地点，若未变则累加停滞计数
       // buildPrompt 会读取 turnsAtSameLocation 决定是否注入强制推进指令
@@ -349,6 +351,15 @@ $kNarrativeWritingRules
 
         // 先解析叙事文本（不含选项）
         parseNarrativeOnly(response);
+
+        // --- ContinuityBridge Step C：新叙事必须承接上回合末尾锚点 ---
+        // 不衔接 → 开头自动补承接过渡句（不打回重写，以防"凭空换剧情"）
+        final bridged = enforceContinuityBridge(currentNarrative, safeAction);
+        if (bridged != currentNarrative) {
+          currentNarrative = bridged;
+          // 重新跑 parseNarrativeOnly（因为 currentNarrative 变了，好感/时间等解析要一致）
+          parseNarrativeOnly(currentNarrative);
+        }
 
         // --- P2-1 禁止词检测（现代物品/跨IP/网络梗）---
         forbiddenHits = detectForbiddenWords(currentNarrative);
@@ -430,6 +441,10 @@ $kNarrativeWritingRules
         debugPrint('独立选项生成失败，切换到本地上下文兜底选项');
         choices = generateContextualFallbackChoices();
       }
+
+      // --- ContinuityBridge Step A：把本回合叙事的末尾锚点存档，下回合强制衔接 ---
+      // 注意：先同步 location（_syncLocationFromNarrative）后再 saveAnchor，确保 location 锚点是最新的
+      saveContinuityAnchor(currentNarrative);
 
       accumulateForSummary(currentNarrative);
       appendRecentTurn(currentNarrative);
@@ -812,71 +827,41 @@ $kNarrativeWritingRules
   // ==================== 场景停滞检测与地点同步 ====================
 
   /// 【场景豁免·地点白名单】：
-  /// 这些场景本来就是"要多回合演剧情"的（上课/分院/购魔杖/图书馆查资料等），
-  /// 如果跟开局家里一样用 2 回合的严格阈值，反而会把重要剧情硬打断。
-  /// 匹配规则：currentLocation 的主名称包含下面任一关键词即豁免。
-  static const List<String> _kStagnationExemptLocations = [
-    '大礼堂',     // 分院、宴会、重要集会 → 可能要3-4回合
-    '教室',       // 上课、小测验、课堂互动 → 可能3-4回合
-    '图书馆',     // 查资料、发现线索、遇NPC → 可能3回合
-    '对角巷',     // 采购魔杖/袍子/书、逛店铺、遇NPC → 可能4-5回合
-    '霍格莫德村', // 周末逛街、三把扫帚、蜂蜜公爵 → 多回合正常
-    '公共休息室', // 社交、练咒、写作业 → 停留正常
-    '禁林',       // 探索、遭遇神奇生物、任务线 → 多回合正常
-    '医疗翼',     // 治伤、养病、剧情 → 多回合正常
-    '霍格沃茨·场地', // 魁地奇训练/比赛、草坪互动 → 多回合正常
-  ];
+  // ============================================================
+  // 【宏观通用 M4 · StagnationDetector 停滞检测器】
+  //
+  // 把之前散落的 3 个独立函数（阈值分级/豁免地点/未解决钩子）+ buildPrompt 里的停滞文案拼接逻辑，
+  // 集中封装成一个独立对象。好处：
+  //   - 后期新增地点、新增"豁免剧情类型"，只改这一处数据 + 规则；
+  //   - mixin_narrative / mixin_response / 未来其它 mixin 调用统一出口，不会出现各自 if 版本不一致；
+  //   - "停滞 → 强制推进文案" 从 buildPrompt 里解耦出来，可单独单测。
+  //
+  // 旧 API（isLocationExemptFromStagnation / stagnationThresholdFor / narrativeHasUnresolvedHook）
+  // 保持对外不变：内部委托给 StagnationDetector，不会破坏 GameProviderBase 的 abstract 签名。
+  // ============================================================
 
-  /// 判断当前地点是否为"重要剧情场景（豁免强制推进）"。
-  /// （跨 Mixin 公开方法：GameProviderBase 声明了 abstract，mixin_response 需要调用）
-  bool isLocationExemptFromStagnation(String location) {
-    if (location.isEmpty) return false;
-    return _kStagnationExemptLocations.any(
-      (keyword) => location.contains(keyword),
-    );
-  }
+  static const StagnationDetector _stagnation = StagnationDetector._();
 
-  /// 【停滞触发阈值·分级】：
-  /// - 起始家中（卧室/庄园/家里等）：2 回合 → 严，防止开局墨迹不出发
-  /// - 豁免地点（大礼堂/教室/对角巷等）：6 回合 → 非常宽松，确保有足够回合演完重要剧情
-  /// - 其它普通地点（车站/走廊/特快等过路型）：4 回合 → 中等，防止在过路费卡
-  /// （跨 Mixin 公开方法：GameProviderBase 声明了 abstract，mixin_response 需要调用）
-  int stagnationThresholdFor(String location) {
-    if (location.isEmpty) return 2;
-    // 开局的"家中·卧室"（含别名）严格按 2 回合
-    const atHomeKeywords = ['家中', '卧室', '住宅', '庄园', '别墅', '家里'];
-    if (atHomeKeywords.any((k) => location.contains(k))) return 2;
-    // 豁免剧情地点放宽到 6 回合
-    if (isLocationExemptFromStagnation(location)) return 6;
-    // 其它：4 回合
-    return 4;
-  }
+  bool isLocationExemptFromStagnation(String location) =>
+      _stagnation.isExempt(location);
+  int stagnationThresholdFor(String location) =>
+      _stagnation.thresholdFor(location);
+  bool narrativeHasUnresolvedHook(String narrative) =>
+      _stagnation.hasUnresolvedHook(narrative);
 
-  /// 【停滞豁免·叙事钩子检测】：
-  /// 如果上一回合叙事**末尾**（最后200字）明确存在"冲突未解决/对话未结束/悬念未落地/正在发生中"
-  /// 的剧情钩子，说明此刻强制推进会毁体验，本回合跳过强制推进，让剧情自然收束。
-  /// 例：分院帽接触头发突然停住、斯内普刚点名叫你、对手举着魔杖等你出招、门被敲响正要去开……
-  /// （跨 Mixin 公开方法：GameProviderBase 声明了 abstract，mixin_response 需要调用）
-  bool narrativeHasUnresolvedHook(String narrative) {
-    if (narrative.isEmpty) return false;
-    final tail = narrative.length > 200
-        ? narrative.substring(narrative.length - 200)
-        : narrative;
-    // 匹配：1) 省略号/破折号结尾的悬念；2) "刚/正要/突然/正在/即将/尚未/还没/没等"这类未完成动作词；
-    //       3) 点名/提问/对话未闭合（"看着你等你回答""点名叫你""注视着你""等你开口""等你回应"）；
-    //       4) 决斗/对峙正酣的关键词（"举起魔杖""瞄准""对峙""剑拔弩张""一触即发""准备迎战"）；
-    //       5) 分院/考试/仪式正进行中。
-    final re = RegExp(
-      r'(\.\.\.|……|——|—\s*$)'
-      r'|(刚|正要|正准备|突然|就在这时|正在|即将|尚未|还没|没等|未等)'
-      r'|(看着你.*(回答|回应|开口)|等你(回答|回应|开口|出招)|点名叫|点了.*的名|注视着你|等你说话)'
-      r'|(举起.*魔杖|瞄准|对峙|剑拔弩张|一触即发|准备迎战|严阵以待|蓄势待发)'
-      r'|(分院帽.*(碰到|落下|停住|思考)|(考试|测验|仪式|宴会).(正在|进行中|刚刚开始|开始了))'
-      r'|(门.*敲响|敲门声|有人敲门|脚步声.*临近|声音从.*传来)',
-      caseSensitive: false,
-    );
-    return re.hasMatch(tail);
-  }
+  String buildStagnationPromptLine({
+    required String currentLocation,
+    required int turnsAtSameLocation,
+    required bool hasUnresolvedHook,
+    required int turnCount,
+  }) =>
+      _stagnation.buildPromptLine(
+        currentLocation: currentLocation,
+        turnsAtSameLocation: turnsAtSameLocation,
+        hasUnresolvedHook: hasUnresolvedHook,
+        turnCount: turnCount,
+      );
+
 
   /// 回合开始时更新地点停滞计数。
   /// 若 currentLocation 与上一回合相同，则 turnsAtSameLocation++；
@@ -1275,6 +1260,139 @@ $kNarrativeWritingRules
     worldState.lastTurnAssertions.addAll(newAssertions);
   }
 
+  // ============================================================
+  // 【宏观通用 M3 · ContinuityBridge 全局衔接桥】
+  //
+  // 目标：**无论触发路径是什么（正常 narrative / CRITICAL 重写 / 用户自定义 action / 兜底叙事）**，
+  //       新生成的 narrative 都必须与**上一段剧情的结尾**自然衔接，不允许"刚生成一段没操作就被另一段替换"。
+  //
+  // Pipeline：
+  //   Step A) 每回合叙事结束 → extractContinuityAnchor(prevNarrative)：
+  //             从上一段末尾 800 字抓 4 要素: last_speaker / last_dialog / last_action / location
+  //             存入 worldState.lastNarrativeAnchor。
+  //   Step B) 下回合 buildPrompt 生成前 → buildContinuityBridgePromptLine()：
+  //             强制把锚点用"第一句必须承接"的约束注入 Prompt，AI 不可以开新场景。
+  //   Step C) parseNarrativeOnly 后 → enforceContinuityBridge(newNarrative)：
+  //             正则检查新叙事是否显式呼应锚点（提了同地点/同一说话者/同一未完成动作的后续）。
+  //             若不衔接：不打回重写（避免"换剧情"观感），而是在 narrative 开头自动插入一句
+  //             "承接过渡句"，把上一段锚点与新叙事的开头软连起来。连续 3 次不衔接 → 给一条通知。
+  // ============================================================
+
+  /// Step A：从一段 narrative 的末尾抓衔接锚点，存入 worldState.lastNarrativeAnchor。
+  /// 之后所有生成新 narrative 的路径（无论哪种）都会被要求承接。
+  void saveContinuityAnchor(String narrative) {
+    if (narrative.isEmpty) {
+      worldState.lastNarrativeAnchor.clear();
+      return;
+    }
+    final tail = narrative.length > 800 ? narrative.substring(narrative.length - 800) : narrative;
+    final anchor = <String, String>{};
+
+    // 1) location
+    final loc = worldState.currentLocation;
+    if (loc != null && loc.isNotEmpty) anchor['location'] = loc;
+
+    // 2) last_speaker + last_dialog
+    final afterQuoteRe = RegExp(
+      r'[」"】][^，。！？\n]*?(养母|养父|海格|邓布利多|阿不思|斯内普|西弗勒斯|麦格|米勒娃|哈利|詹姆|波特|罗恩|韦斯莱|赫敏|格兰杰|马尔福|德拉科|纳威|隆巴顿|卢娜|洛夫古德|金妮|弗雷德|乔治|珀西|亚瑟|莫丽|小天狼星|布莱克|卢平|莱姆斯|教授|级长|妈妈|爸爸|同学|NPC)[^，。！？\n]{0,10}(说|开口|问|道|回答|叹了口气|笑了笑|低声|沉声|看着你)',
+      caseSensitive: false,
+    );
+    final aqm = afterQuoteRe.allMatches(tail);
+    if (aqm.isNotEmpty) anchor['last_speaker'] = aqm.last.group(1) ?? '';
+    final dialogRe = RegExp(r'[「"]([^「"」]{2,40})[」"]', caseSensitive: false);
+    final dm = dialogRe.allMatches(tail);
+    if (dm.isNotEmpty) anchor['last_dialog'] = dm.last.group(1) ?? '';
+
+    // 3) last_action（最后未完成动作）：正则抓"正/正要/刚/准备/就要/等着/听到敲门声/握着门把手/盯着"等时态
+    final hangingRe = RegExp(r'((正要|刚要|准备|就要|等着|正看着|盯着|握着.*把手|听到.*敲门声|敲门声响起|还没|尚未)[^。！？\n]{0,40})');
+    final hm = hangingRe.allMatches(tail);
+    if (hm.isNotEmpty) {
+      anchor['last_action'] = hm.last.group(1) ?? '';
+    } else {
+      // 兜底：最后一个动作动词
+      final genericRe = RegExp(r'((你|你.+)[^。！？\n]{0,30}(站起身|走过去|坐下来|点点头|摇摇头|开口|问|说|笑了笑|叹了口气|伸出手|握住|接过|放下|看向|望向|转身))');
+      final gm = genericRe.allMatches(tail);
+      if (gm.isNotEmpty) anchor['last_action'] = gm.last.group(1) ?? '';
+    }
+
+    worldState.lastNarrativeAnchor.clear();
+    worldState.lastNarrativeAnchor.addAll(anchor);
+  }
+
+  /// Step B：把衔接桥锚点注入 buildPrompt。返回一段文本，直接拼进【当前场景】后面。
+  String buildContinuityBridgePromptLine() {
+    final a = worldState.lastNarrativeAnchor;
+    if (a.isEmpty) return '';
+    final loc = a['location'];
+    final sp = a['last_speaker'];
+    final dg = a['last_dialog'];
+    final ac = a['last_action'];
+    if (loc == null && sp == null && ac == null) return '';
+    final parts = <String>[];
+    if (loc != null && loc.isNotEmpty) parts.add('地点=$loc');
+    if (sp != null && sp.isNotEmpty) parts.add('最后说话者=$sp');
+    if (dg != null && dg.isNotEmpty) parts.add('最后一句="$dg"');
+    if (ac != null && ac.isNotEmpty) parts.add('最后动作/姿态=$ac');
+    return '【🔗 衔接桥·必须遵守】\n'
+        '上一段剧情结尾的锚点是：${parts.join('｜')}。\n'
+        '本回合 narrative 的开头必须**直接承接这一刻**（例如：描写对方说完话后你的反应、继续完成最后那个未完成的动作、从那个地点的状态写起）。\n'
+        '严禁毫无过渡地切换到一个不相关的新场景/新话题，严禁"跳过中间 1~2 小时的过程"直接写结果。\n'
+        '如果本回合玩家行动确实需要换场景，你也必须先写 1~2 句承接段交代"从那个锚点是怎样过渡到新场景的"，再开始写新场景。\n\n';
+  }
+
+  /// Step C：对 AI 新吐出来的 narrative 做衔接校验；若不衔接则在开头自动插入承接句，不打回重写。
+  /// 返回最终要存入 currentNarrative 的文本。
+  String enforceContinuityBridge(String newNarrative, String playerActionText) {
+    final a = worldState.lastNarrativeAnchor;
+    if (a.isEmpty) {
+      worldState.continuityBridgeMisses = 0;
+      return newNarrative;
+    }
+    if (newNarrative.isEmpty) return newNarrative;
+
+    final loc = a['location'] ?? '';
+    final sp = a['last_speaker'] ?? '';
+    final ac = a['last_action'] ?? '';
+    final head = newNarrative.length > 300 ? newNarrative.substring(0, 300) : newNarrative;
+
+    bool matched = false;
+    // 简单判断：新叙事开头 300 字里至少出现锚点其中一个关键词 => 视为已衔接
+    final checkHits = [loc, sp, ac]
+        .where((e) => e.trim().length >= 2)
+        .where((keyword) => head.contains(keyword))
+        .toList();
+    if (checkHits.isNotEmpty) matched = true;
+
+    // 如果玩家本回合行动本身就是"换场景型动作"（出发/前往/动身/回家/去XX），允许直接写换场景，视为已衔接
+    final travelRe = RegExp(r'(前往|出发|动身|去.*(车站|对角巷|大礼堂|特快|霍格沃茨)|回家|返校|走出门|下楼|走进)', caseSensitive: false);
+    if (!matched && travelRe.hasMatch(playerActionText)) matched = true;
+
+    if (matched) {
+      worldState.continuityBridgeMisses = 0;
+      return newNarrative;
+    }
+
+    // ---- 不衔接：在开头补一句承接过渡，**绝对不打回重写**（否则就是玩家观感的"换剧情"） ----
+    worldState.continuityBridgeMisses += 1;
+    final bridgeParts = <String>[];
+    if (loc.isNotEmpty) bridgeParts.add('就在$loc');
+    if (sp.isNotEmpty) bridgeParts.add('${sp}的话音刚落');
+    if (ac.isNotEmpty) bridgeParts.add('你正$ac的那一刻');
+    final bridgeSentence = (bridgeParts.isNotEmpty
+            ? '（承接：${bridgeParts.join('、')}）'
+            : '（承接上一段剧情的结尾）') +
+        '—— 紧接着，';
+    final repaired = bridgeSentence + newNarrative;
+
+    // 连续 3 次不衔接：给一条通知提醒玩家"模型可能被上下文污染，若持续可新开档"，不报警
+    if (worldState.continuityBridgeMisses >= 3) {
+      notifications.add('🔗 衔接桥：最近连续${worldState.continuityBridgeMisses}回合叙事衔接偏弱，已自动在开头补承接过渡句。若剧情仍有断裂感，请把 ai_log 贴给作者调参。');
+      worldState.continuityBridgeMisses = 0; // 清 0，避免每次都刷屏
+    }
+    debugPrint('🔗 ContinuityBridge 自动补承接: anchor=$a 插句长度=${bridgeSentence.length}');
+    return repaired;
+  }
+
   /// 组装要注入给叙事/选项 AI 的断言 Prompt 块（统一格式，避免两端不一致）
   String buildAssertionsPromptBlock() {
     final last = worldState.lastTurnAssertions;
@@ -1399,43 +1517,68 @@ $kNarrativeWritingRules
         }
       }
 
-      // ---- R3b (P1-1)：人设冲突·硬打脸（critical 级会打回重写）----
-      // 常见严重 OOC：斯内普"热情/笑/亲切/主动帮/夸学生"、邓布利多"暴怒/刻薄/针对学生"、
-      // 德拉科"低声下气/热情对待麻瓜出身"、纳威"冷静大胆主导全场"。
-      // 命中规则：人名 + 与人设正相反的关键词 → 判 critical（这些是玩家一眼就出戏的 OOC）
-      // 【重要】正则末尾绝对不能出现 `|)`（末尾空分支），否则永远匹配任意字符串导致 100% 误判。
-      final n = npc.name;
-      if (n == '西弗勒斯·斯内普' || n == '斯内普') {
-        final oocRe = RegExp(
-            r'斯内普[^，。！？]{0,15}(热情地|亲切地|笑呵呵|满脸笑容|大笑|拍.*肩|主动.*帮|大大夸奖|温柔地|宠溺地|给你一个拥抱|搂着你)',
-            caseSensitive: false);
-        if (oocRe.hasMatch(nLower)) {
-          addV('critical', 'R3b_ooc_snape', '人设冲突(CRITICAL)：斯内普的核心人设是刻薄/阴沉/冷漠，不能描写他"热情亲切大笑拍肩"。',
-              evidence: n);
+      // ============================================================
+      // 【宏观通用 R3b 人设防线】替换掉"手写 if(斯内普/邓布利多/马尔福)+各写一份正则"的补丁式实现。
+      // 核心：对 npcRegistry 里 ALL NPC（含动态生成的 isGenerated=true）生效，
+      //      通过 NPC.allNames（全名/别名/姓氏/名字）× NPC.forbiddenActions 做笛卡尔匹配，
+      //      命中「名称+≤15字禁动紧邻」=> OOC。bloodSupremacist 对麻瓜/混血玩家的热情对待另行拦截。
+      //
+      // 之前"手写 if"的 3 个痛点：
+      //   1) 新 NPC/学年 NPC 裸奔，没有人设校验；
+      //   2) 每条正则容易写出末尾空分支 `|)`，导致 100% 误判 CRITICAL 触发重写；
+      //   3) 每条 severity 写死，剧情化 OOC 直接 CRITICAL→整段换剧情，玩家观感断链。
+      // ============================================================
+      if (npc.forbiddenActions.isNotEmpty) {
+        for (final nameVariant in npc.allNames) {
+          if (nameVariant.length < 2) continue;
+          // 注意：下面 forbiddenActions.join('|') 由 forbiddenActions 列表项本身组成，
+          // 列表项是纯短语（由 NPC._autoDeriveForbiddenActions 产生），不含空串，因此不会出现 `|)` 空分支。
+          final joinedFbd = npc.forbiddenActions
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .map(RegExp.escape)
+              .join('|');
+          if (joinedFbd.isEmpty) continue;
+          final oocRe = RegExp(
+            '${RegExp.escape(nameVariant)}[^，。！？]{0,15}($joinedFbd)',
+            caseSensitive: false,
+          );
+          if (oocRe.hasMatch(nLower)) {
+            // 【熔断】默认降为 warn（软提醒下一回合修正），只有"禁动包含严重暴烈关键词(体罚/抽耳光/殴打/虐待/恶意陷害/栽赃)"才升级为 CRITICAL。
+            // 避免误判一次就整段重写 → 玩家感观"剧情被凭空替换"。
+            final m = oocRe.firstMatch(nLower);
+            final hitVerb = m?.group(1) ?? '';
+            final severeRe = RegExp(r'(体罚|抽.*耳光|殴打|虐待|恶意陷害|栽赃|背叛|收受贿赂|徇私)', caseSensitive: false);
+            final isSevere = severeRe.hasMatch(hitVerb);
+            final sev = isSevere ? 'critical' : 'warn';
+            final summary = npc.personality.isNotEmpty
+                ? npc.personality.take(3).join('/')
+                : '默认人设';
+            addV(sev, 'R3b_ooc_generic',
+                '人设冲突(${sev == "critical" ? "严重·会打回重写" : "轻微·仅提醒修正"})：NPC「${npc.name}」人设为「$summary」，不应描写为「$nameVariant … $hitVerb」这类与人设正相反的动作。',
+                evidence: '${npc.name}|$nameVariant|$hitVerb');
+            if (isSevere) {
+              break; // 只要有一个严重禁动命中就记录一次 CRITICAL，避免同段剧情多次 CRITICAL 叠加
+            }
+          }
         }
       }
-      if (n == '阿不思·邓布利多' || n == '邓布利多') {
-        // 注意：末尾不能留 `|)` 空分支！否则任何包含"邓布"的文本都会命中 CRITICAL 被强制重写。
-        // 此外："巧克力蛙卡片提到邓布利多"不算 OOC（只写温和描写就行），只有"邓布利多 + 暴烈动词紧邻"才算。
-        final oocRe = RegExp(
-            r'邓布利多[^，。！？]{0,15}(暴怒地|凶狠地|刻薄地|刁难|针对学生|恶意地|厉声喝骂|抽.*耳光)',
-            caseSensitive: false);
-        if (oocRe.hasMatch(nLower)) {
-          addV('critical', 'R3b_ooc_dumbledore', '人设冲突(CRITICAL)：邓布利多是睿智温和的校长，不能描写他暴怒刻薄体罚学生。',
-              evidence: n);
-        }
-      }
-      if (n == '德拉科·马尔福' || n == '马尔福') {
-        // 对麻瓜出身/非纯血 不能"主动热情交好"
+      // 纯血至上主义 NPC：对麻瓜出身/混血玩家，不能"主动热情交好/低声下气"（通用版马尔福 OOC）
+      if (npc.bloodSupremacist) {
         final blood = player?.bloodType ?? '';
         if (blood == 'muggleborn' || blood == 'halfblood') {
-          final oocRe = RegExp(
-              r'(德拉科|马尔福)[^，。！？]{0,20}(主动凑过来|亲热地|友好地|亲切地|对你有好感地|低声下气|鞠躬|讨好)',
-              caseSensitive: false);
-          if (oocRe.hasMatch(nLower)) {
-            addV('warn', 'R3b_ooc_malfoy_blood',
-                '人设冲突：德拉科·马尔福(纯血至上主义)对${blood == "muggleborn" ? "麻瓜出身" : "混血"}玩家，不应描写为"主动热情交好/低声下气"。',
-                evidence: '$n vs blood=$blood');
+          for (final nameVariant in npc.allNames) {
+            if (nameVariant.length < 2) continue;
+            final oocRe = RegExp(
+              '${RegExp.escape(nameVariant)}[^，。！？]{0,20}(主动凑过来|亲热地|友好地|亲切地|对你有好感地|低声下气|鞠躬|讨好|巴结|谄媚)',
+              caseSensitive: false,
+            );
+            if (oocRe.hasMatch(nLower)) {
+              addV('warn', 'R3b_ooc_blood_supremacist',
+                  '人设冲突：「${npc.name}」为纯血至上主义，对${blood == "muggleborn" ? "麻瓜出身" : "混血"}玩家，不应描写为"主动热情交好/低声下气"。',
+                  evidence: '${npc.name}|blood=$blood');
+              break;
+            }
           }
         }
       }
@@ -1502,102 +1645,186 @@ $kNarrativeWritingRules
     }
   }
 
-  // ==================== P0-3 开局硬骨架守卫（前12回合强制推进链）====================
-  // 开局是 AI 最容易墨迹、玩家印象最深的阶段。
-  // 不依赖 AI 自觉，按 turn 数强塞"海格敲门/养父母催/特快发车"等硬骨架锚点 + 必要时直接切 currentLocation。
-  // 只在前 12 回合生效，12 回合后自动停用（玩家已自由）。
-  void _checkOpeningRailroad() {
-    if (turnCount >= 12) return;
+  // ============================================================
+  // 【宏观通用 M2 · SceneTransitionGraph 场景转移图】
+  // 替换掉"只对开局前 12 回合生效 + 用 if/else 写死 + forcedLocation 硬切地点"的 _checkOpeningRailroad。
+  //
+  // 核心思想：把"剧情应该怎么走"抽象成**带前置依赖的节点图**，任何阶段（开局/学年中/放假/大战前夕）都可以往
+  // _transitionNodes 里加节点即可，不写死在代码分支里。
+  //
+  // 修复 2 个之前的宏观问题：
+  //   1) forcedLocation 直接硬切 currentLocation 导致"7月31日在家→霍格沃茨大礼堂"跳场景 →
+  //      现在：只有节点依赖 100% 满足时才允许更新 currentLocation；不满足则只注入 "过渡叙事锚点" 让 AI 补中间过程。
+  //   2) 只有开局 12 回合有守卫，中后期玩家在地图/事件链上墨迹时完全无兜底 →
+  //      现在：图上所有节点对当前地点匹配生效，不分阶段。
+  // ============================================================
+
+  /// 转移节点：「玩家当前应当位于 currentLocationPattern」→「当 turnsAtSameLocation 超过 turnRange 上限 或 turnCount∈[minT,maxT]」，
+  /// 且 前置条件 requireVisited/requireDateInt/requireFlag 全部满足 → 给玩家注入 transitionAnchor（中间过程剧情要求），
+  /// 最终让玩家抵达 nextLocation。
+  static const List<_TransitionNode> _transitionNodes = [
+    // ---------- 开局骨架链（家中收到信 → 对角巷 → 国王十字 → 特快 → 分院）----------
+    _TransitionNode(
+      id: 'opening_hagrid_visit',
+      currentLocationPattern: r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅|门厅)',
+      requireVisited: const [], // 不需要前置地点
+      requireNotVisited: const [r'(对角巷|国王十字|九又四分之三|站台|特快|列车|霍格沃茨)'],
+      minTurn: 2,
+      maxTurn: 3,
+      requireOpeningScene: 'letter',
+      // 锚点 = 中间过程：海格登门 + 和养父母告别 + 动身去伦敦 → 这一段必须 AI 完整写，不能跳
+      transitionAnchor: '鲁伯·海格亲自登门送你（他受邓布利多委托亲自接新生去对角巷采购），他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦小子/姑娘，再晚就赶不上对角巷奥利凡德的预约了。" 本回合剧情必须自然融入：海格来访 → 和养父母告别 → 动身前往伦敦这三个中间阶段，不能跳帧直接进入采购画面。',
+      nextLocation: null,
+    ),
+    _TransitionNode(
+      id: 'opening_force_diagon_alley',
+      currentLocationPattern: r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅|门厅)',
+      requireVisited: const [],
+      requireNotVisited: const [r'对角巷'],
+      minTurn: 4,
+      maxTurn: 5,
+      requireOpeningScene: 'letter',
+      transitionAnchor: '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。本回合请写出完整的衔接过程：你与海格一同抵达伦敦 → 经过破釜酒吧 → 穿过吧台后的砖墙入口 → 正式进入对角巷开始采购。必须把"从家到对角巷的过程"完整写出来，不能第一句就写"此刻你正在魔杖店门口"。',
+      nextLocation: '对角巷',
+      // 允许在 minT/maxT 到期且已过渡叙事写完后，更新 currentLocation（之前这里直接无依赖切 = 跳场景 bug）
+      forceNextOnlyIfAnchorPresented: true,
+    ),
+    _TransitionNode(
+      id: 'opening_diagon_to_station',
+      currentLocationPattern: r'对角巷',
+      requireVisited: const [r'对角巷'],
+      requireNotVisited: const [r'(国王十字|九又四分之三|站台|特快|列车)'],
+      minTurn: 6,
+      maxTurn: 7,
+      requireOpeningScene: 'letter',
+      transitionAnchor: '采购收尾阶段：魔杖、课本、袍子都已买齐。海格看了看表："哎呀，十一点的特快！再不走就晚了！" 他拉着你通过骑士公共汽车/幻影移形赶往伦敦国王十字车站。本回合剧情必须包含完整过程：结算采购 → 赶车前往国王十字 → 来到 9 又 3/4 站台口 → 拿到霍格沃茨特快车票 → 最后一句必须已经进入站台或已登上特快。',
+      nextLocation: '国王十字车站',
+      forceNextOnlyIfAnchorPresented: true,
+      // 进度门：时间 < 9月1日不允许跳（否则 7月31日就直接到了特快，与原著时间线冲突）
+      minDateInt: 901,
+    ),
+    _TransitionNode(
+      id: 'opening_station_to_express',
+      currentLocationPattern: r'(国王十字|九又四分之三|站台)',
+      requireVisited: const [r'对角巷', r'(国王十字|九又四分之三|站台)'],
+      requireNotVisited: const [r'(特快|列车|火车)'],
+      minTurn: 8,
+      maxTurn: 9,
+      requireOpeningScene: 'letter',
+      minDateInt: 901,
+      transitionAnchor: '你推着行李车穿过了 9 又 3/4 站台的柱子，鲜红色的霍格沃茨特快冒着白烟、汽笛轰鸣。级长扯着嗓子喊："新生快上车！马上就要发车了！" 本回合必须完整写出：穿过柱子 → 登上特快 → 找到包厢/遇见同学 → 列车启动发车离开伦敦这几个阶段。',
+      nextLocation: '霍格沃茨特快列车',
+      forceNextOnlyIfAnchorPresented: true,
+    ),
+    _TransitionNode(
+      id: 'opening_express_to_sorting',
+      currentLocationPattern: r'(特快|列车|火车|霍格莫德|车站)',
+      requireVisited: const [r'(特快|列车|火车)', r'(国王十字|九又四分之三|站台)'],
+      requireNotVisited: const [r'(霍格沃茨大礼堂|大礼堂|城堡内|分院)'],
+      requireUngraded: true, // 还没分院
+      minTurn: 10,
+      maxTurn: 12,
+      requireOpeningScene: 'letter',
+      minDateInt: 901,
+      transitionAnchor: '霍格沃茨特快抵达霍格莫德车站。海格举着巨大的灯笼在站台上喊："一年级新生跟我来！" 你们坐小船渡湖初见霍格沃茨城堡 → 穿过大门来到大礼堂入口 → 麦格教授拿着分院帽和长凳走出来 → 叫到了你的名字 → 分院结果正式公布。本回合剧情必须按顺序把中间过程完整写出来，不能第一句就写"你坐在学院长桌旁"。',
+      nextLocation: '霍格沃茨大礼堂',
+      forceNextOnlyIfAnchorPresented: true,
+    ),
+    // ---------- 开学后通用转移链（开局骨架退役后生效，不再只有前12回合保护）----------
+    _TransitionNode(
+      id: 'hogwarts_hall_to_common_room',
+      currentLocationPattern: r'(霍格沃茨大礼堂|大礼堂)',
+      requireVisited: const [r'(霍格沃茨|大礼堂|分院)'],
+      requireNotVisited: const [r'(公共休息室|宿舍|学院公共)'],
+      minTurn: 13,
+      maxTurn: 14,
+      transitionAnchor: '分院仪式结束，级长带着你们学院的新生穿过走廊与楼梯，说出公共休息室的入口口令（格兰芬多：胖夫人肖像；斯莱特林：石墙；拉文克劳：鹰形门环谜语；赫奇帕奇：厨房旁木桶节奏）→ 你第一次走进学院公共休息室并看到自己的 dorm 床位。',
+      nextLocation: '学院公共休息室',
+      forceNextOnlyIfAnchorPresented: true,
+    ),
+    _TransitionNode(
+      id: 'first_class_next_day',
+      currentLocationPattern: r'(公共休息室|宿舍|学院公共|大礼堂)',
+      requireVisited: const [r'(公共休息室|学院公共|宿舍)'],
+      requireGraded: true,
+      minTurn: 15,
+      maxTurn: 17,
+      transitionAnchor: '第二天清晨被级长/室友叫醒，你去大礼堂吃了早餐后按照课表前往第一节正式课堂（变形课/魔药课/草药课/魔咒课四选一）。本回合必须写出"起床 → 早餐 → 找到对应教室门口 → 走进去坐到座位上 → 教授开始上课"的完整过程，不能跳帧直接写"教授在讲解魔法"。',
+      nextLocation: '霍格沃茨·课堂',
+      forceNextOnlyIfAnchorPresented: true,
+    ),
+  ];
+
+  /// SceneTransitionGraph 主控（替换 _checkOpeningRailroad）
+  /// 原则：
+  ///   1. 遍历全部 _transitionNodes 节点，找 match 当前地点 + turn 范围 + 所有前置依赖满足 → 触发；
+  ///   2. **没有 100% 满足前置依赖（visitedLocations / minDateInt）绝不切 currentLocation**，
+  ///      只注入 transitionAnchor（要求 AI 补完过渡叙事），防止"在家 → 直接大礼堂"这类跳场景 bug；
+  ///   3. 触发后立刻记录到 narrativeEvent，供后续节点判断"已经在走这条链了"，避免多节点同时注入多条锚点。
+  void runSceneTransitionGraph() {
     final p = player;
     if (p == null) return;
     final loc = worldState.currentLocation ?? '';
-    // 只对"家中开局(openingScene=letter)且还没到学校"的玩家起作用：
-    // 若用户一开始就选 station 开局则不需要骨架守卫
-    if (openingScene != 'letter') return;
-    if ((p.house?.isNotEmpty ?? false) && p.grade != null && p.grade! >= 1 && loc.contains('霍格沃茨')) {
-      // 已经分完院并在霍格沃茨里了 → 骨架守卫退役
-      return;
-    }
-
-    final t = turnCount; // 本回合执行前计数（processChoice 里 turnCount++ 发生在更早），实际对应"玩家第t+1次行动"
-    // t=0 是初始化 → 首次行动之前；turnCount++ 之后进入判断，范围刚好
-    final curLoc = worldState.currentLocation ?? '';
-
-    // ---------- 进度门（绝对不能跳！否则玩家 7月31日在家 → 直接被甩到霍格沃茨大礼堂，剧情瞬间混乱）----------
-    // visitedLocations 记录：只要玩家真实到过（包括 AI 剧情里写的被 _syncLocationFromNarrative 同步过来的），门就开了。
-    final hasVisited(String pattern) =>
-        worldState.visitedLocations.any((l) => RegExp(pattern, caseSensitive: false).hasMatch(l));
-    final toHome = RegExp(r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅)', caseSensitive: false);
-    final toDiagon = RegExp(r'(对角巷|奥利凡德|摩金夫人|破釜)', caseSensitive: false);
-    final toStation = RegExp(r'(国王十字|九又四分之三|站台|特快|列车|火车)', caseSensitive: false);
-    final toHogwarts = RegExp(r'(霍格沃茨|大礼堂|城堡)', caseSensitive: false);
-
-    // 绝对不会触发的"时间门"：7月31日收到信的当天，禁止跳到 9月1日之后才会发生的场景（特快/分院）
+    final visited = worldState.visitedLocations;
+    final t = turnCount;
     final month = worldState.time.month;
     final day = worldState.time.day;
-    final dateInt = month * 100 + day; // 0731 / 0901
-    final afterSep1st = dateInt >= 901;
+    final dateInt = month * 100 + day;
 
-    String? forcedAnchor;
-    String? forcedLocation;
+    String? chosenAnchor;
+    String? chosenNextLocation;
+    String? chosenId;
+    bool allowNextUpdate = false;
 
-    // Turn 1~3（在家 2+ 回合还没出门）→ 海格上门
-    if (t >= 2 && t <= 3 && toHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
-      forcedAnchor = '鲁伯·海格亲自登门送你（他受邓布利多委托亲自接新生去对角巷采购），'
-          '他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦小子/姑娘，再晚就赶不上对角巷奥利凡德的预约了。"'
-          ' 这一回合必须自然融入海格来访、和养父母告别、动身前往伦敦的剧情。';
-    }
-    // Turn 4~5 还在家 → 养父母直接催 + 直接把 currentLocation 推到对角巷入口
-    if (t >= 4 && t <= 5 && toHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
-      forcedAnchor = '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。'
-          '（本回合剧情请直接写：海格与你一同抵达伦敦，走进了破釜酒吧后的对角巷入口。采购正式开始。）';
-      forcedLocation = '对角巷';
-    }
-    // Turn 6~7 还没到国王十字/特快 → 对角巷收尾，动身去车站
-    // 【进度门】必须已经真实到过对角巷（hasVisited(对角巷)），否则不能跳到"买完东西去车站"——
-    //           否则上一步还在家陪养父母吃饭，下一帧直接被告别完准备上车，断链感爆炸。
-    if (t >= 6 && t <= 7 && !toStation.hasMatch(curLoc) && pendingAnchorDirective == null) {
-      if ((toDiagon.hasMatch(curLoc) || hasVisited(r'对角巷')) || (toHome.hasMatch(curLoc) && t >= 7)) {
-        forcedAnchor = '采购收尾：魔杖、课本、袍子都已买齐。海格看了看表："哎呀，十一点的特快！再不走就晚了！"'
-            '他一把拉着你幻影移形/乘骑士公共汽车赶往伦敦国王十字车站，'
-            '在9又3/4站台口给了你一张霍格沃茨特快车票并嘱咐你"别撞墙撞错了，对着柱子冲过去就行"。'
-            ' 本回合剧情结尾必须让你登上特快。';
-        if (t >= 7) forcedLocation = '国王十字车站';
+    for (final node in _transitionNodes) {
+      // 1) 当前地点匹配（开局骨架只对 openingScene=letter 生效）
+      if (!RegExp(node.currentLocationPattern, caseSensitive: false).hasMatch(loc)) continue;
+      if (node.requireOpeningScene != null && openingScene != node.requireOpeningScene) continue;
+      // 2) 已触发过的节点跳过（避免每次重复注入同一条锚点）
+      if (worldState.firedAnchorIds.contains(node.id)) continue;
+      // 3) turn 范围
+      if (t < node.minTurn || t > node.maxTurn) continue;
+      // 4) requireGraded / requireUngraded
+      if (node.requireGraded && !(p.house?.isNotEmpty ?? false)) continue;
+      if (node.requireUngraded && (p.house?.isNotEmpty ?? false)) continue;
+      // 5) minDateInt 时间门（保护 7月31不跳特快/分校）
+      if (node.minDateInt != null && dateInt < node.minDateInt!) continue;
+      // 6) requireVisited 进度门（之前没加进度门直接切大礼堂的 bug 根因）
+      bool prereqVisitedOk = node.requireVisited.every(
+          (pat) => visited.any((l) => RegExp(pat, caseSensitive: false).hasMatch(l)));
+      if (!prereqVisitedOk) continue;
+      // 7) requireNotVisited：已经过门过就别再推这条链
+      bool notVisitedOk = node.requireNotVisited.every(
+          (pat) => !visited.any((l) => RegExp(pat, caseSensitive: false).hasMatch(l)));
+      if (!notVisitedOk) continue;
+
+      // OK，命中此节点
+      chosenAnchor = node.transitionAnchor;
+      chosenId = node.id;
+      // 【关键保护】只有 node.forceNextOnlyIfAnchorPresented=false（表示这是"玩家已经在锚点叙事里完成过渡"的节点）
+      // 才允许我们直接改 currentLocation。其他情况一律**只注入锚点，不切 location**，
+      // 让 _syncLocationFromNarrative 在 AI 把过渡叙事写完后自然同步到 nextLocation。
+      allowNextUpdate = !(node.forceNextOnlyIfAnchorPresented ?? true);
+      if (allowNextUpdate) {
+        chosenNextLocation = node.nextLocation;
+      } else {
+        chosenNextLocation = null;
       }
-    }
-    // Turn 8~9 还没到特快 → 直接切到站台并强制"级长喊新生上车"
-    // 【进度门 + 时间门】必须到过对角巷；dateInt >= 901 才允许登上特快（没到9月1日先别跳）
-    if (t >= 8 && t <= 9 && !toStation.hasMatch(curLoc) && pendingAnchorDirective == null && afterSep1st) {
-      if (hasVisited(r'对角巷')) {
-        forcedAnchor = '你已抵达国王十字车站，推着行李车穿过了9又3/4站台的柱子。'
-            '鲜红色的霍格沃茨特快冒着白烟、汽笛轰鸣。级长扯着嗓子喊："新生快上车！马上就要发车了！"'
-            ' 本回合必须写你登上特快、找到包厢坐下的剧情。';
-        forcedLocation = '霍格沃茨特快列车';
-      }
-    }
-    // Turn 10~12 还未分院 → 到霍格莫德 + 坐船/马车去城堡 + 分院
-    // 【进度门 x2 + 时间门】必须到过特快 AND 到过车站；dateInt >= 901
-    //                    绝对不能在家 → 直接甩到大礼堂（之前 7月31日直接被切大礼堂的 bug 就是因为这里没加门）
-    if (t >= 10 && t <= 12 && !(p.house?.isNotEmpty ?? false) && afterSep1st) {
-      if (hasVisited(r'(特快|列车|火车|站台|国王十字)') && !toHome.hasMatch(curLoc)) {
-        forcedAnchor = '霍格沃茨特快抵达霍格莫德车站。海格举着巨大的灯笼在站台上喊："一年级新生跟我来！"'
-            '你们坐小船渡湖初见霍格沃茨城堡，穿过大门来到大礼堂，分院仪式开始。'
-            '麦格教授拿着分院帽和凳子走出来，叫到了你的名字。请自然带出分院剧情并最终确定玩家学院。';
-        if (t >= 11) forcedLocation = '霍格沃茨大礼堂';
-      }
+      break; // 一次只注入一个节点，避免多锚点叠加导致 prompt 爆掉
     }
 
-    if (forcedAnchor != null && pendingAnchorDirective == null) {
-      pendingAnchorDirective = forcedAnchor;
-      notifications.add('🚂 开局骨架推进：下一站剧情已为你安排（turn=$t）');
-      worldState.addNarrativeEvent('🚂 开局骨架：turn=${t} 注入强制推进节点', turn: turnCount);
-      debugPrint('🚂 开局骨架守卫 turn=$t 注入锚点；forcedLocation=$forcedLocation');
+    if (chosenAnchor != null && pendingAnchorDirective == null) {
+      pendingAnchorDirective = chosenAnchor;
+      if (chosenId != null) worldState.firedAnchorIds.add(chosenId);
+      notifications.add('🧭 剧情推进：下一阶段衔接已为你安排（节点=$chosenId）');
+      worldState.addNarrativeEvent('🧭 SceneGraph: 触发节点 $chosenId（turn=$t loc=$loc）', turn: t);
+      debugPrint('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
     }
-    if (forcedLocation != null) {
-      worldState.currentLocation = forcedLocation;
-      lastTrackedLocation = forcedLocation;
+    if (chosenNextLocation != null && allowNextUpdate) {
+      worldState.currentLocation = chosenNextLocation;
+      lastTrackedLocation = chosenNextLocation;
       turnsAtSameLocation = 0;
-      worldState.visitedLocations.add(forcedLocation); // 过门后立刻登记到 visitedLocations，不卡下一关
+      worldState.visitedLocations.add(chosenNextLocation);
     }
   }
 
@@ -1683,5 +1910,139 @@ $kNarrativeWritingRules
       notifyListeners();
       return {'house': 'Gryffindor', 'narrative': ''};
     }
+  }
+}
+
+/// 【宏观通用 M2】SceneTransitionGraph 的单个转移节点。
+/// 把"剧情从 A 到 B"抽象为数据：当前地点、前置依赖（visited/时间/事件）、turn 区间、
+/// 锚点文案（描述"从 A 到 B 的完整中间过程"，AI 必须把这段完整写出来，不能跳帧）、
+/// 下一个地点、以及是否允许跳过过渡叙事直接改 currentLocation（一律默认 true=不允许硬切，除非 AI 已走完过渡叙事）。
+class _TransitionNode {
+  final String id;
+  final String currentLocationPattern;
+  final List<String> requireVisited;
+  final List<String> requireNotVisited;
+  final int minTurn;
+  final int maxTurn;
+  final int? minDateInt; // 月份*100+日，901=9月1日。null=不限制
+  final String? requireOpeningScene; // 'letter' 或 null
+  final bool requireGraded;
+  final bool requireUngraded;
+  final String transitionAnchor; // 必须写入 prompt，让 AI 补完整段过渡
+  final String? nextLocation;
+  final bool? forceNextOnlyIfAnchorPresented; // true=等 AI 把过渡叙事写完后自然同步 location，不在这硬切
+
+  const _TransitionNode({
+    required this.id,
+    required this.currentLocationPattern,
+    this.requireVisited = const [],
+    this.requireNotVisited = const [],
+    required this.minTurn,
+    required this.maxTurn,
+    this.minDateInt,
+    this.requireOpeningScene,
+    this.requireGraded = false,
+    this.requireUngraded = false,
+    required this.transitionAnchor,
+    this.nextLocation,
+    this.forceNextOnlyIfAnchorPresented,
+  });
+}
+
+/// 封装后的"剧情停滞检测器"。
+///
+/// 宏观设计要点：
+/// - 所有阈值/关键词/钩子都集中在这里，避免 mixin_narrative.dart 里到处 if；
+/// - 对外暴露 4 个查询 API：isExempt / thresholdFor / hasUnresolvedHook / buildPromptLine；
+/// - 所有 API 都是纯函数（参数 location/narrative/turnCount），不需要持有 GameProvider 引用，
+///   因而未来能直接做单测。
+class StagnationDetector {
+  const StagnationDetector._();
+  static const StagnationDetector instance = StagnationDetector._();
+
+  // 【豁免地点】：这些场景本身就是"要多回合演剧情"的，阈值放 6 回合，避免把正在进行的
+  // 上课/分院/购魔杖/图书馆查资料/魁地奇训练等硬打断。
+  static const List<String> exemptLocationKeywords = [
+    '大礼堂',
+    '教室',
+    '图书馆',
+    '对角巷',
+    '霍格莫德村',
+    '公共休息室',
+    '禁林',
+    '医疗翼',
+    '霍格沃茨·场地',
+    '魁地奇',
+    '决斗',
+  ];
+
+  // 【开局强压地点关键词】：开局家里 2 回合必须出门，防止墨迹
+  static const List<String> homeKeywords = [
+    '家中', '卧室', '住宅', '庄园', '别墅', '家里', '客厅', '门厅', '书房', '花园',
+  ];
+
+  bool isExempt(String location) {
+    if (location.isEmpty) return false;
+    return exemptLocationKeywords.any((k) => location.contains(k));
+  }
+
+  int thresholdFor(String location) {
+    if (location.isEmpty) return 2;
+    if (homeKeywords.any((k) => location.contains(k))) return 2;
+    if (isExempt(location)) return 6;
+    return 4;
+  }
+
+  bool hasUnresolvedHook(String narrative) {
+    if (narrative.isEmpty) return false;
+    final tail = narrative.length > 200
+        ? narrative.substring(narrative.length - 200)
+        : narrative;
+    final re = RegExp(
+      r'(\.\.\.|……|——|—\s*$)'
+      r'|(刚|正要|正准备|突然|就在这时|正在|即将|尚未|还没|没等|未等)'
+      r'|(看着你.*(回答|回应|开口)|等你(回答|回应|开口|出招)|点名叫|点了.*的名|注视着你|等你说话)'
+      r'|(举起.*魔杖|瞄准|对峙|剑拔弩张|一触即发|准备迎战|严阵以待|蓄势待发)'
+      r'|(分院帽.*(碰到|落下|停住|思考)|(考试|测验|仪式|宴会).(正在|进行中|刚刚开始|开始了))'
+      r'|(门.*敲响|敲门声|有人敲门|脚步声.*临近|声音从.*传来)',
+      caseSensitive: false,
+    );
+    return re.hasMatch(tail);
+  }
+
+  /// 统一输出"停滞强制推进提示"文案（之前散落在 buildPrompt 里）。
+  /// return 为空字符串代表不需要强制推进。
+  String buildPromptLine({
+    required String currentLocation,
+    required int turnsAtSameLocation,
+    required bool hasUnresolvedHook,
+    required int turnCount,
+  }) {
+    final threshold = thresholdFor(currentLocation);
+    if (turnsAtSameLocation < threshold) return '';
+    if (hasUnresolvedHook) return '';
+
+    final stuckTurns = turnsAtSameLocation;
+    final isExempt_ = isExempt(currentLocation);
+    final extraHint = isExempt_
+        ? '（注：你所在的「$currentLocation」是重要剧情场景，通常允许$threshold回合停留；现已达到上限，必须在下一阶段自然转换。）'
+        : '';
+    final earlyGame = (turnCount <= 3 && turnCount >= 1 &&
+        (currentLocation.contains('家中') ||
+            currentLocation.contains('卧室') ||
+            currentLocation.isEmpty));
+    String line;
+    if (earlyGame) {
+      line = '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。';
+    } else if (hasUnresolvedHook && turnsAtSameLocation >= (threshold - 1)) {
+      line = '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。';
+    } else {
+      line = '【⚠️强制推进指令】玩家已在「$currentLocation」停留 $stuckTurns 回合（该场景允许阈值=$threshold），剧情已停滞！'
+          '本回合必须发生场景转换——例如：有人敲门通知该出发、时间到了必须动身前往下一站、'
+          '收到猫头鹰信件催促、窗外发生引人注意的事件、被召唤去某处等。$extraHint'
+          '严禁继续在「$currentLocation」原地打转、反复施法、反复探索同一现象。'
+          '本回合结尾必须让玩家处于「正在前往/即将到达下一场景」的状态。';
+    }
+    return line + '\n\n';
   }
 }

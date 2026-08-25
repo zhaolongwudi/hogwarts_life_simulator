@@ -19,6 +19,14 @@ class NPC {
   final Map<String, int> relationships;
   final List<String> recentEvents;
 
+  // ====== 通用 OOC 人设防线（对所有 NPC 生效，不再手写邓布利多/斯内普/马尔福 if） ======
+  // forbiddenActions: 与 personality 核心人设正相反的动作/语气短语。
+  //   例：温和睿智的邓布利多 -> 暴怒、体罚、刁难学生；阴沉冷漠的斯内普 -> 热情大笑、主动拥抱。
+  //   叙事里出现「该 NPC 任一名称（含 aliases/姓氏/名字） + 禁动紧邻（<=15字）」=> 命中 OOC。
+  // bloodSupremacist: 纯血至上主义人设标记。对麻瓜出身/混血玩家"热情交好/低声下气" => 命中 OOC。
+  final List<String> forbiddenActions;
+  final bool bloodSupremacist;
+
   // ====== 设定文档扩展字段 ======
   final String appearance; // 电影形象外貌描述
   final String? sexOrientation; // 性取向
@@ -52,6 +60,8 @@ class NPC {
     this.isAlive = true,
     this.aliases = const [],
     this.personality = const [],
+    List<String>? forbiddenActions,
+    this.bloodSupremacist = false,
     this.currentLocation = '霍格沃茨',
     this.mood = 50,
     this.knowsAbout = const [],
@@ -78,11 +88,70 @@ class NPC {
     this.lastGrudgeDay = -1,
     this.introduced = false,
     this.graduated = false,
-  })  : reputation = reputation ?? Reputation(),
+  })  : forbiddenActions =
+            forbiddenActions ?? _autoDeriveForbiddenActions(personality, name, bloodSupremacist),
+        reputation = reputation ?? Reputation(),
         recentEvents = List<String>.from(recentEvents ?? const []),
         affectionLocks = List<String>.from(affectionLocks ?? const []),
         grudges = List<Map<String, dynamic>>.from(
             grudges ?? const <Map<String, dynamic>>[]);
+
+  /// 宏观默认 OOC 禁动推导：根据 personality（核心人设关键词）+ 名字 + 纯血人设标记，
+  /// 自动生成"反向动作词"列表，**保证任何新增 NPC 哪怕是动态生成的(isGenerated=true)都不会裸奔无校验**。
+  /// 只做"人设正反向反义词"的粗拦截，不做细粒度。详细剧情化 OOC 用 warn 不重写。
+  static List<String> _autoDeriveForbiddenActions(
+      List<String> personality, String name, bool bloodSupremacist) {
+    final pers = personality.join('、');
+    final lower = pers.toLowerCase();
+    final nameLower = name.toLowerCase();
+    final forbidden = <String>{};
+
+    // ---- 通用正反向映射（只要 personality 命中正向词，对应的反向词就进 forbiddenActions）----
+    final oppositeMap = <List<String>, List<String>>{
+      // 温和组（温和/温柔/慈祥/稳重/睿智/和蔼/亲切/平静）
+      ['温和', '温柔', '慈祥', '睿智', '和蔼', '亲切', '平静', '稳重', '包容']:
+          const ['暴怒', '凶狠', '刻薄', '刁难', '恶意', '厉声喝骂', '抽耳光', '体罚', '殴打', '冷嘲热讽', '针对学生'],
+      // 阴沉/冷漠/刻薄组（斯内普型）
+      ['阴沉', '冷漠', '刻薄', '冷淡', '疏离', '毒舌', '古板']:
+          const ['热情地', '亲切地', '笑呵呵', '满脸笑容', '大笑', '拍肩', '主动帮助', '大大夸奖', '温柔地', '宠溺地', '给你一个拥抱', '搂着你', '亲热地'],
+      // 友善/开朗/热情组（哈利/罗恩/赫敏普通朋友）
+      ['友善', '开朗', '热情', '活泼', '热心', '大方', '外向']:
+          const ['冷漠地', '刻薄地', '厉声喝骂', '恶意陷害', '背后捅刀', '冷嘲热讽', '冷眼旁观'],
+      // 胆小/羞怯/迟钝组（纳威型）
+      ['胆小', '羞怯', '腼腆', '迟钝', '内向', '害羞']:
+          const ['冷静大胆主导全场', '大声呵斥别人', '主动领导', '发号施令', '挺身对峙', '当众斥责'],
+      // 高傲/傲慢/自大组（马尔福型）
+      ['高傲', '傲慢', '自大', '骄傲', '目中无人', '优越感']:
+          const ['低声下气', '讨好', '鞠躬', '谄媚', '哀求', '卑微', '巴结'],
+      // 忠诚/正直/正义组
+      ['忠诚', '正直', '正义', '诚实', '勇敢', '守信']:
+          const ['背叛同伴', '恶意欺骗', '栽赃陷害', '偷东西', '撒谎骗信任', '临阵脱逃'],
+      // 严格/严厉组（麦格/弗立维等教授）
+      ['严格', '严厉', '一丝不苟', '公正']:
+          const ['故意偏袒', '恶意刁难学生', '收受贿赂', '徇私舞弊'],
+    };
+    oppositeMap.forEach((positives, negatives) {
+      if (positives.any((k) => lower.contains(k.toLowerCase()))) {
+        forbidden.addAll(negatives);
+      }
+    });
+
+    // ---- 按名字的原作角色默认兜底（personality 为空时才触发，保证旧档兼容）----
+    // 不是写死 if，而是"名字关键词 + personality 为空"→ 补一组默认禁动，动态生成 NPC 不受影响。
+    if (personality.isEmpty) {
+      if (nameLower.contains('邓布利多') || nameLower.contains('dumbledore')) {
+        forbidden.addAll(['暴怒', '凶狠', '刻薄', '刁难', '恶意', '厉声喝骂', '抽耳光', '体罚', '针对学生']);
+      } else if (nameLower.contains('斯内普') || nameLower.contains('snape')) {
+        forbidden.addAll(['热情地', '亲切地', '笑呵呵', '满脸笑容', '大笑', '拍肩', '主动帮助', '大大夸奖', '温柔地', '宠溺地', '给你一个拥抱', '搂着你']);
+      } else if (nameLower.contains('麦格') || nameLower.contains('mcgonagall')) {
+        forbidden.addAll(['故意偏袒', '恶意刁难学生', '徇私舞弊']);
+      } else if (nameLower.contains('海格') || nameLower.contains('hagrid')) {
+        forbidden.addAll(['虐待动物', '故意伤害神奇动物', '出卖学生', '对孩子恶语相向']);
+      }
+    }
+
+    return forbidden.toList();
+  }
 
   /// 获取所有匹配名称：全名 + 简称 + 自动推导的姓氏
   List<String> get allNames {
@@ -189,6 +258,8 @@ class NPC {
         'is_canon': isCanon,
         'is_alive': isAlive,
         'personality': personality,
+        'forbidden_actions': forbiddenActions,
+        'blood_supremacist': bloodSupremacist,
         'current_location': currentLocation,
         'mood': mood,
         'knows_about': knowsAbout,
@@ -227,6 +298,8 @@ class NPC {
         isCanon: json['is_canon'] ?? false,
         isAlive: json['is_alive'] ?? true,
         personality: List<String>.from(json['personality'] ?? []),
+        forbiddenActions: List<String>.from(json['forbidden_actions'] ?? const []),
+        bloodSupremacist: json['blood_supremacist'] ?? false,
         currentLocation: json['current_location'] ?? '霍格沃茨',
         mood: json['mood'] ?? 50,
         knowsAbout: List<String>.from(json['knows_about'] ?? []),
