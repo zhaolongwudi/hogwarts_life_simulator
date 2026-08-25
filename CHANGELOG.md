@@ -5,6 +5,16 @@
 
 ---
 
+### v2.0.5 — 2026-08-25
+
+**📋 变更说明**
+feat(宏观架构改造·R1-R12): 全面数据化替代硬编码
+
+P0 高危高收益（必改）：
+- R1 指令系统：引入 CommandDef/CommandRegistry（50条命令注册），handleLocalCommand 优先查表 + fallback 旧switch（双活平滑迁移），/帮助 从注册表自动生成，彻底避免「路由 vs 帮助文档不同步」
+- R2 开场场景：OpeningSceneDef + opening_scene_data.dart，1处查表替代 mixin_init 中 3 处 switch（时间/地点/开场文案共享同一定义）
+- R3 时代定义：EraDef + era_data.dart，1处查表替代 mixin_init 中 5 处 Era switch（eraLabel/shortLabel/academicYear/eraKey/startYear 共享同一定义）
+
 ### v2.0.4 — 2026-08-25
 
 **📋 变更说明**
