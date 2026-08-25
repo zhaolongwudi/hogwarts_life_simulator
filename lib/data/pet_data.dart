@@ -24,28 +24,28 @@ const List<PetDef> allPets = [
     name: '雪鸮',
     description: '聪明独立的送信伙伴，能远距离传递信息',
     species: '猫头鹰',
-    abilities: ['送信', '侦察'],
+    abilities: ['送信', '侦察', '护主'],
   ),
   PetDef(
     id: 'cat',
     name: '巫师猫',
     description: '神秘的小巫师，能感知危险，偶尔预知未来',
     species: '猫',
-    abilities: ['预知', '感知魔力'],
+    abilities: ['预知', '感知魔力', '夜视'],
   ),
   PetDef(
     id: 'toad',
     name: '蟾蜍',
     description: '传统而忠诚的伙伴，对魔药原料有天然敏感度',
     species: '蟾蜍',
-    abilities: ['识药'],
+    abilities: ['识药', '安神', '藏匿'],
   ),
   PetDef(
     id: 'rat',
     name: '老鼠',
     description: '小巧机灵，好奇心旺盛，能钻进狭小空间寻宝',
     species: '老鼠',
-    abilities: ['侦察', '寻物'],
+    abilities: ['侦察', '寻物', '钻缝'],
   ),
   PetDef(
     id: 'kyuubi',
@@ -56,7 +56,7 @@ const List<PetDef> allPets = [
 性格温柔聪慧，对主人绝对忠诚。''',
     species: '九尾灵狐',
     canTransform: true,
-    abilities: ['幻术', '魅惑', '预知', '灵视', '化形', '治愈'],
+    abilities: ['幻术', '魅惑', '化形', '治愈'],
   ),
 ];
 

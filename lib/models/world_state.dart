@@ -43,6 +43,7 @@ class WorldState {
   String timeFlowMode; // 预留字段: 设计钩子, normal/story/fast, 当前仅显示不影响时间推进
   final List<String> specialMarkers; // 特殊标记: ⏳命运时刻/🌙满月/📜考试周/🎄圣诞/⚡事件触发
   String? currentLocation;
+  String? currentLocationLabel; // 玩家为当前区域自定义的名称（地图页编辑）
   String? weather;
   int timelineChanges; // 世界线变动次数
   final List<String> timelineBranches; // 已分叉的世界线描述
@@ -79,6 +80,7 @@ class WorldState {
     this.timeFlowMode = 'normal',
     List<String>? specialMarkers,
     this.currentLocation,
+    this.currentLocationLabel,
     this.weather,
     this.timelineChanges = 0,
     List<String>? timelineBranches,
@@ -178,6 +180,7 @@ class WorldState {
         'time_flow_mode': timeFlowMode,
         'special_markers': specialMarkers,
         'current_location': currentLocation,
+        'current_location_label': currentLocationLabel,
         'weather': weather,
         'timeline_changes': timelineChanges,
         'timeline_branches': timelineBranches,
@@ -212,6 +215,7 @@ class WorldState {
       timeFlowMode: json['time_flow_mode'] ?? 'normal',
       specialMarkers: List<String>.from(json['special_markers'] ?? []),
       currentLocation: json['current_location'],
+      currentLocationLabel: json['current_location_label'],
       weather: json['weather'],
       timelineChanges: json['timeline_changes'] ?? 0,
       timelineBranches: List<String>.from(json['timeline_branches'] ?? []),

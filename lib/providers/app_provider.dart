@@ -230,15 +230,22 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _isGameStarted = prefs.getBool('game_started') ?? false;
-    _displayMode = DisplayMode.values[prefs.getInt('display_mode') ?? 0];
+    final savedDisplayIdx = prefs.getInt('display_mode') ?? 0;
+    _displayMode = (savedDisplayIdx >= 0 && savedDisplayIdx < DisplayMode.values.length)
+        ? DisplayMode.values[savedDisplayIdx]
+        : DisplayMode.values.first;
     final savedIdentityIdx = prefs.getInt('identity_mode');
-    if (savedIdentityIdx == null || savedIdentityIdx >= IdentityMode.values.length) {
+    if (savedIdentityIdx == null || savedIdentityIdx < 0 || savedIdentityIdx >= IdentityMode.values.length) {
       _identityMode = IdentityMode.pure;
     } else {
       _identityMode = IdentityMode.values[savedIdentityIdx];
     }
-    _era = Era.values[prefs.getInt('era') ?? 2];
-    _aiProvider = AiProvider.values[prefs.getInt('ai_provider') ?? 0];
+    final savedEraIdx = prefs.getInt('era') ?? 2;
+    _era = (savedEraIdx >= 0 && savedEraIdx < Era.values.length) ? Era.values[savedEraIdx] : Era.harry_same;
+    final savedProviderIdx = prefs.getInt('ai_provider') ?? 0;
+    _aiProvider = (savedProviderIdx >= 0 && savedProviderIdx < AiProvider.values.length)
+        ? AiProvider.values[savedProviderIdx]
+        : AiProvider.values.first;
     _aiModel = prefs.getString('ai_model') ?? 'deepseek-v4-flash';
 
     // 迁移旧版单一明文 api_key → 安全存储

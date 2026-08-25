@@ -1049,6 +1049,8 @@ $kChoicePromptSuffix''';
     for (final npc in npcs) {
       if (excludeIds != null && excludeIds.contains(npc.id)) continue;
       if (!npc.isAlive) continue;
+      // 被动好感只作用于已登场的 NPC，避免未出场的角色被“隔空”加好感
+      if (!npc.introduced) continue;
       // 检查 NPC 是否在剧情文本中出现
       bool mentioned = false;
       for (final alias in npc.allNames) {
@@ -1104,10 +1106,17 @@ $kChoicePromptSuffix''';
     }
   }
 
-  /// 判断叙事文本中是否独立提到了某个别名（前后为非字母数字非中文字符边界）
+  /// 判断叙事文本中是否独立提到了某个别名
+  /// - 中文名：前后不得紧跟汉字（中文无空格，按汉字边界判断，避免“赫敏”被“赫敏格”吞并）
+  /// - 拉丁名：前后不得为字母/数字/下划线
   bool _standaloneNameMentioned(String text, String name) {
     if (name.isEmpty) return false;
     final escaped = RegExp.escape(name);
+    final hasHan = RegExp(r'\p{Script=Han}', unicode: true).hasMatch(name);
+    if (hasHan) {
+      final pattern = RegExp(r'(?<![\p{Script=Han}])' + escaped + r'(?![\p{Script=Han}])', unicode: true);
+      return pattern.hasMatch(text);
+    }
     final pattern = RegExp(r'(?<!\p{L})(?<!\p{N})(?<!_)' + escaped + r'(?!\p{L})(?!\p{N})(?!_)', unicode: true);
     return pattern.hasMatch(text);
   }

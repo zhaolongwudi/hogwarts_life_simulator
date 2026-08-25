@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 import 'game_systems.dart';
+import '../data/quest_data.dart';
 
 const _uuid = Uuid();
 
@@ -30,6 +31,7 @@ class Player {
   int energy; // 精力值
   final Map<String, int> houseDimensions; // 学院四维: courage/wisdom/loyalty/ambition
   String gender;
+  String signature; // 个性签名（可编辑，展示于通讯/地图等界面）
   String? birthDay; // 具体生日
   String? sexOrientation;
   String? appearance; // 外貌与体格描述
@@ -61,6 +63,20 @@ class Player {
   final List<String> rumors; // 舆论传闻
   final List<String> traits; // 开局特质 id 列表
 
+  // ====== 新玩法扩展字段（v1.10） ======
+  final Map<String, String> equipped; // 装备槽 → 物品名（robe/hat/broom/amulet）
+  final List<String> bestiary; // 已发现生物 id
+  final List<QuestRecord> quests; // 已接取委托
+  int houseCupPoints; // 本学年学院杯积分（玩家贡献）
+  int petLastFedDay; // 上次喂食绝对天数（每日限1次）
+  int petInteractDay; // 上次玩耍/训练绝对天数
+  bool petTransformDone; // 化人形事件是否已触发
+  int qSkill; // 魁地奇技巧（50起步）
+  String qPosition; // 位置：找球手/追球手/守门员/击球手
+  int qMatches; // 参赛场次
+  int qWins; // 获胜场次
+  int qLastWeek; // 本周是否已比赛（周数去重）
+
   Player({
     String? id,
     required this.name,
@@ -86,6 +102,7 @@ class Player {
     this.energy = 100,
     Map<String, int>? houseDimensions,
     this.gender = '',
+    this.signature = '',
     this.birthDay,
     this.sexOrientation,
     this.appearance,
@@ -116,6 +133,18 @@ class Player {
     List<Letter>? letters,
     List<String>? rumors,
     List<String>? traits,
+    Map<String, String>? equipped,
+    List<String>? bestiary,
+    List<QuestRecord>? quests,
+    this.houseCupPoints = 0,
+    this.petLastFedDay = -1,
+    this.petInteractDay = -1,
+    this.petTransformDone = false,
+    this.qSkill = 50,
+    this.qPosition = '找球手',
+    this.qMatches = 0,
+    this.qWins = 0,
+    this.qLastWeek = 0,
   })  : id = id ?? _uuid.v4(),
         personalityTraits = List<String>.from(personalityTraits ?? const []),
         attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
@@ -134,7 +163,10 @@ class Player {
         letters = List<Letter>.from(letters ?? const []),
         rumors = List<String>.from(rumors ?? const []),
         traits = List<String>.from(traits ?? const []),
-        jobHistory = List<String>.from(jobHistory ?? const []);
+        jobHistory = List<String>.from(jobHistory ?? const []),
+        equipped = Map<String, String>.from(equipped ?? const {}),
+        bestiary = List<String>.from(bestiary ?? const []),
+        quests = List<QuestRecord>.from(quests ?? const []);
 
   static const Map<String, int> _defaultAttributes = {
     'spell_understanding': 50,
@@ -202,6 +234,7 @@ class Player {
         'energy': energy,
         'house_dimensions': houseDimensions,
         'gender': gender,
+        'signature': signature,
         'birth_day': birthDay,
         'sex_orientation': sexOrientation,
         'appearance': appearance,
@@ -232,6 +265,18 @@ class Player {
         'rumors': rumors,
         'traits': traits,
         'political_tendency': politicalTendency,
+        'equipped': equipped,
+        'bestiary': bestiary,
+        'quests': quests.map((e) => e.toJson()).toList(),
+        'house_cup_points': houseCupPoints,
+        'pet_last_fed_day': petLastFedDay,
+        'pet_interact_day': petInteractDay,
+        'pet_transform_done': petTransformDone,
+        'q_skill': qSkill,
+        'q_position': qPosition,
+        'q_matches': qMatches,
+        'q_wins': qWins,
+        'q_last_week': qLastWeek,
       };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -267,6 +312,7 @@ class Player {
         houseDimensions:
             Map<String, int>.from(json['house_dimensions'] ?? _defaultHouseDimensions),
         gender: json['gender'] ?? '',
+        signature: json['signature'] ?? '',
         birthDay: json['birth_day'],
         sexOrientation: json['sex_orientation'],
         appearance: json['appearance'],
@@ -305,6 +351,21 @@ class Player {
         rumors: List<String>.from(json['rumors'] ?? []),
         traits: List<String>.from(json['traits'] ?? []),
         politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
+        equipped: Map<String, String>.from(json['equipped'] ?? {}),
+        bestiary: List<String>.from(json['bestiary'] ?? []),
+        quests: (json['quests'] as List<dynamic>?)
+                ?.map((e) => QuestRecord.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [],
+        houseCupPoints: json['house_cup_points'] ?? 0,
+        petLastFedDay: json['pet_last_fed_day'] ?? -1,
+        petInteractDay: json['pet_interact_day'] ?? -1,
+        petTransformDone: json['pet_transform_done'] ?? false,
+        qSkill: json['q_skill'] ?? 50,
+        qPosition: json['q_position'] ?? '找球手',
+        qMatches: json['q_matches'] ?? 0,
+        qWins: json['q_wins'] ?? 0,
+        qLastWeek: json['q_last_week'] ?? 0,
       );
 }
 

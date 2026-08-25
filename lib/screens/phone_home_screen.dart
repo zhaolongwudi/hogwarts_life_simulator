@@ -222,7 +222,7 @@ class _PhoneHomeScreenState extends State<PhoneHomeScreen> {
                             const Text('💰', style: TextStyle(fontSize: 12)),
                             const SizedBox(width: 3),
                             Text(
-                              '${player?.gold ?? 0}',
+                              '${player?.galleons ?? 0}',
                               style: const TextStyle(fontSize: 11, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600),
                             ),
                           ],

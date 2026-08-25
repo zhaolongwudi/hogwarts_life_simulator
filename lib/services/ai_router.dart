@@ -226,13 +226,17 @@ class AiRouter {
         lastError = e;
         debugPrint('⚠️ ${provider.name} 调用失败: $e');
         final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+        final isLastCandidate = provider == candidates.last;
         await AiDebugLogger.instance.logComplete(
           callId: callId,
           timestamp: DateTime.now().toIso8601String(),
           scene: sceneLabel,
           provider: getProviderLabel(provider),
-          action: 'ERROR',
+          action: isLastCandidate ? 'ERROR' : 'FALLBACK',
           error: e.toString(),
+          // 非最后候选：保留 START 缓冲，等 fallback 成功后再合并成完整一条，
+          // 避免此前第一条 ERROR 就把 START 取走，导致 fallback 的成功日志变成孤儿条目
+          keepPending: !isLastCandidate,
         );
       }
     }

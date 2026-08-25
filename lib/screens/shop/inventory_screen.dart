@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../data/item_data.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -38,6 +39,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case 'clothing':
       case '服装':
         return Icons.checkroom;
+      case '装备':
+        return Icons.workspace_premium;
       default:
         return Icons.inventory_2;
     }
@@ -92,7 +95,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['全部', '武器', '食品', '文具', '药水', '材料'];
+    final categories = ['全部', '武器', '食品', '文具', '药水', '材料', '书籍', '服装'];
     final items = _getDynamicItems();
     final filtered = _filter == '全部' ? items : items.where((i) => i['category'] == _filter).toList();
 
@@ -221,16 +224,60 @@ class _InventoryScreenState extends State<InventoryScreen> {
           const SizedBox(height: 2),
           Text(item['desc'] as String, style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodyMedium!.color), maxLines: 1, overflow: TextOverflow.ellipsis),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Theme.of(context).dividerTheme.color,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text('x${item['count']}', style: const TextStyle(fontSize: 10)),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerTheme.color,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text('x${item['count']}', style: const TextStyle(fontSize: 10)),
+              ),
+              const Spacer(),
+              if (_actionFor(item['name'] as String) case final String action?)
+                GestureDetector(
+                  onTap: () {
+                    final gp = context.read<GameProvider>();
+                    final name = item['name'] as String? ?? '';
+                    if (action == '使用') {
+                      gp.useItem(name);
+                    } else if (action == '装备') {
+                      gp.equipItem(name);
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('已$action「$name」，详情见游戏对话')), 
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      action,
+                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  /// 返回该物品在背包中可执行的快捷操作：使用/装备；无则 null
+  String? _actionFor(String name) {
+    final gp = context.read<GameProvider>();
+    final def = itemDefByName(name);
+    if (def == null) return null;
+    if (def.isEquippable) {
+      final worn = gp.player?.equipped[def.equipSlot] == name;
+      return worn ? null : '装备';
+    }
+    if (def.usable) return '使用';
+    return null;
   }
 }

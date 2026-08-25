@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../models/player.dart';
 
 class GameTopBar extends StatelessWidget {
   const GameTopBar({super.key});
@@ -19,13 +20,16 @@ class GameTopBar extends StatelessWidget {
     }[player.house ?? ''] ?? '';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            children: [
           Container(
             width: 44,
             height: 44,
@@ -64,11 +68,6 @@ class GameTopBar extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Icon(Icons.bolt, size: 12, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 2),
-                    Text('${player.energy}/5',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
-                    const SizedBox(width: 8),
                     Icon(Icons.schedule, size: 12, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(width: 2),
                     Expanded(
@@ -100,8 +99,63 @@ class GameTopBar extends StatelessWidget {
               child: Icon(Icons.save, size: 20, color: Theme.of(context).colorScheme.primary),
             ),
           ),
+          ],
+          ),
+          const SizedBox(height: 8),
+          _buildResourceBars(player),
         ],
       ),
+    );
+  }
+
+  /// 顶部 HUD：5 条细长状态条（生命/魔力/精神力/饱食/精力），低值变红提醒
+  Widget _buildResourceBars(Player player) {
+    final resources = <({String label, int value, Color color})>[
+      (label: '生命', value: player.health, color: const Color(0xFFDC2626)),
+      (label: '魔力', value: player.magic, color: const Color(0xFF2563EB)),
+      (label: '精神', value: player.spirit, color: const Color(0xFF7C3AED)),
+      (label: '饱食', value: player.satiety, color: const Color(0xFFD97706)),
+      (label: '精力', value: player.energy, color: const Color(0xFF059669)),
+    ];
+    return Row(
+      children: List.generate(resources.length, (i) {
+        final r = resources[i];
+        final low = r.value < 30;
+        final barColor = low ? const Color(0xFFEF4444) : r.color;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i < resources.length - 1 ? 6 : 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(r.label,
+                        style: const TextStyle(fontSize: 9, color: Color(0xFF8B949E))),
+                    Text('${r.value}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: low ? const Color(0xFFEF4444) : const Color(0xFFE6EDF3),
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: (r.value / 100).clamp(0.0, 1.0),
+                    minHeight: 3,
+                    backgroundColor: barColor.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation(barColor),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

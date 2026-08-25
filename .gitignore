@@ -181,3 +181,7 @@ UPDATE_DESC.md
 *.lz
 *.lzma
 *.iso
+
+# AI debug logs
+ai_log*
+临时构建*

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/models/world_state.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
+import 'package:hogwarts_life_simulator/data/balance_constants.dart';
 
 void main() {
   group('NPC好感度系统', () {
@@ -27,10 +28,24 @@ void main() {
       expect(limit, 5); // 30 - 25 = 5
     });
 
-    test('好感沉淀第二周无上限', () {
+    test('好感沉淀第二周受首月上限约束', () {
       final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
       final limit = npc.getAffectionGainLimit(10, 2);
-      expect(limit, 100);
+      // 第2周不再"无上限"，仍受首月+50约束（修复原常量未被应用的问题）
+      expect(limit, Balance.monthOneAffectionCap);
+    });
+
+    test('好感沉淀第三周受首月上限约束', () {
+      final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
+      npc.affectionGainedThisMonth = 30;
+      final limit = npc.getAffectionGainLimit(20, 3);
+      expect(limit, Balance.monthOneAffectionCap - 30);
+    });
+
+    test('好感沉淀第四周之后恢复正常上限', () {
+      final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
+      final limit = npc.getAffectionGainLimit(30, 5);
+      expect(limit, Balance.affectionMax);
     });
 
     test('记仇机制影响好感上限', () {

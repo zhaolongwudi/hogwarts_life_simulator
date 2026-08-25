@@ -60,6 +60,8 @@ class GameTime {
   ];
 
   /// 蔡勒公式计算星期（适用于格里高利历）
+  /// 蔡勒公式中 h=0 为星期六、1 为星期日……6 为星期五；
+  /// 本系统约定 weekday 0=星期日……6=星期六，故映射为 (h + 6) % 7。
   static int _weekdayFor(int y, int m, int d) {
     if (m < 3) {
       m += 12;
@@ -68,7 +70,7 @@ class GameTime {
     final k = y % 100;
     final j = y ~/ 100;
     final h = (d + 13 * (m + 1) ~/ 5 + k + k ~/ 4 + j ~/ 4 + 5 * j) % 7;
-    return (h + 5) % 7;
+    return (h + 6) % 7;
   }
 
   String get periodLabel => TimePeriod.label(TimePeriod.fromHour(hour));
@@ -85,9 +87,15 @@ class GameTime {
     return total;
   }
 
-  /// 自 1991-01-01 起的绝对天数。
+  /// 自 1991-01-01 起的绝对天数（已计入闰年，跨年单调递增）。
   /// 与 WorldEventRecord._estimateAbsoluteDay 保持一致，用于世界事件新鲜度衰减。
-  int get absoluteDayIndex => (year - 1991) * 365 + dayOfYear;
+  int get absoluteDayIndex {
+    var extra = 0;
+    for (var y = 1991; y < year; y++) {
+      if (_isLeapYear(y)) extra += 1;
+    }
+    return (year - 1991) * 365 + extra + dayOfYear;
+  }
 
   /// 格式化时间戳
   String format() {
@@ -497,6 +505,8 @@ class LoveState {
   String stageFor(String npcName) => relationshipStages[npcName] ?? '陌生';
 
   /// 设置某NPC的关系阶段
+  /// [currentDay] 应传入 GameTime.absoluteDayIndex（跨年单调递增），
+  /// 避免用 dayOfYear 在跨年时出现负数导致「暧昧≥2周」判据失效。
   void setStage(String npcName, String stage, {int? currentDay}) {
     relationshipStages[npcName] = stage;
     if (stage == '暧昧' && currentDay != null && currentCrushName != npcName) {
@@ -506,6 +516,7 @@ class LoveState {
   }
 
   /// 检查暧昧是否持续足够时间（≥14天/2周）
+  /// [currentDay] 应传入 GameTime.absoluteDayIndex。
   bool isCrushMature(int currentDay) {
     if (currentCrushName == null || crushStartDay == null) return false;
     return currentDay - crushStartDay! >= Balance.confessionCrushMatureDays;
@@ -569,6 +580,13 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'graduated', name: '七年之约', description: '从霍格沃茨毕业'),
   Achievement(id: 'goal_achieved', name: '得偿所愿', description: '毕业时达成人生目标的数值条件'),
   Achievement(id: 'bone_mode', name: '血脉的悖论', description: '开启骨科模式，踏上禁忌之路'),
+  Achievement(id: 'first_quidditch_win', name: '魁地奇首胜', description: '在魁地奇比赛中取得第一场胜利'),
+  Achievement(id: 'first_duel_win', name: '决斗新星', description: '在巫师决斗中赢得第一场胜利'),
+  Achievement(id: 'first_quest', name: '初试委托', description: '完成第一份支线委托'),
+  Achievement(id: 'bestiary_3', name: '神奇生物学者', description: '图鉴记录 3 种以上魔法生物'),
+  Achievement(id: 'house_cup_winner', name: '学院杯冠军', description: '学年结算时带领学院赢得学院杯'),
+  Achievement(id: 'pet_bond_50', name: '亲密伙伴', description: '与宠物羁绊达到 50'),
+  Achievement(id: 'well_equipped', name: '全副武装', description: '同时穿戴 2 件以上装备'),
 ];
 
 // ==================== 信件 ====================

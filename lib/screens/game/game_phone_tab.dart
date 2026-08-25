@@ -1,10 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../other/other_screens.dart';
 import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';
+
+void _editSignature(BuildContext context) {
+  final gp = context.read<GameProvider>();
+  final controller = TextEditingController(text: gp.player?.signature ?? '');
+  showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('编辑个性签名'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        maxLength: 30,
+        decoration: const InputDecoration(
+          hintText: '写一句想对魔法世界说的话...',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () {
+            gp.updatePlayerSignature(controller.text.trim());
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('签名已更新')),
+            );
+          },
+          child: const Text('保存'),
+        ),
+      ],
+    ),
+  );
+}
 
 class PhoneTab extends StatelessWidget {
   final GameProvider gp;
@@ -103,9 +140,11 @@ class PhoneTab extends StatelessWidget {
                 Text(player?.name ?? '旅人', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => _editSignature(context),
                   child: Text(
-                    '点击这里编辑你的个性签名',
+                    player?.signature.isNotEmpty == true
+                        ? player!.signature
+                        : '点击这里编辑你的个性签名',
                     style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
                   ),
                 ),

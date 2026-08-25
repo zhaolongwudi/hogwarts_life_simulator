@@ -8,8 +8,6 @@ import '../settings/settings_scene_routing.dart';
 import '../settings/settings_preset_pickers.dart';
 import '../settings/settings_token_usage.dart';
 import '../settings/settings_crash_section.dart';
-import '../settings_screen.dart' show ModeOption;
-import '../../models/game_systems.dart';
 import '../../providers/app_provider.dart';
 
 /// 游戏过程中的设置 Tab 直接展示完整设置内容，和独立 SettingsScreen 保持一致

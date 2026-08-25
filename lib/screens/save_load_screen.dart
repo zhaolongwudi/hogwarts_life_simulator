@@ -48,11 +48,11 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     final gp = context.read<GameProvider>();
     setState(() => _isLoading = true);
     try {
-      await gp.quickSave();
+      await gp.saveGameNamed(_nameController.text);
+      await _loadSaves();
       if (!mounted) return;
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ 已保存')),
+        SnackBar(content: Text('✅ 已保存为「${_nameController.text.trim()}」')),
       );
     } catch (e) {
       if (!mounted) return;

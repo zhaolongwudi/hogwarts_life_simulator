@@ -746,15 +746,61 @@ const List<NpcSeed> postWarSeeds = [
   ),
 ];
 
+/// 第一次巫师战争时代（1976级）：掠夺者一代进入六年级。
+/// 亲世代种子 grade+5（1971 一年级 → 1976 六年级）。
+final List<NpcSeed> firstWarSeeds = [
+  for (final s in maraudersSeeds)
+    NpcSeed(
+      id: s.id,
+      name: s.name,
+      aliases: List.of(s.aliases),
+      house: s.house,
+      grade: s.grade + 5,
+      bloodStatus: s.bloodStatus,
+      personality: List.of(s.personality),
+      appearance: s.appearance,
+      era: 'first_war',
+      sexOrientation: s.sexOrientation,
+      giftPrefs: Map.of(s.giftPrefs),
+      personalGoal: s.personalGoal,
+    ),
+];
+
+/// 从 staffSeeds 中按 ID 挑选职员（各时代教职阵容不同，避免跨时代错乱）
+List<NpcSeed> _pickStaff(Set<String> ids) =>
+    [for (final s in staffSeeds) if (ids.contains(s.id)) s];
+
+/// 1892 邓布利多时代职员：只有幽灵宾斯教授
+/// （邓布利多/麦格由 dumbledoreEraSeeds 提供学生版，其余教职角色此时尚未出生）
+final List<NpcSeed> dumbledoreStaff = _pickStaff({'binns'});
+
+/// 1971 掠夺者时代职员：不含 1971 年还是学生的弗立维/特里劳妮，
+/// 少年斯内普由 maraudersSeeds 提供（snape_young）。
+final List<NpcSeed> maraudersStaff = _pickStaff({
+  'dumbledore', 'mcgonagall', 'hagrid', 'sprout', 'hooch',
+  'pince', 'pomfrey', 'binns', 'filch',
+});
+
+/// 2020 后战争时代职员：邓布利多（1997 逝）、斯内普（1998 逝）不再登场，
+/// 由麦格接任校长。
+final List<NpcSeed> postWarStaff = _pickStaff({
+  'mcgonagall', 'hagrid', 'flitwick', 'sprout', 'hooch', 'trelawney',
+  'pince', 'pomfrey', 'binns', 'filch',
+});
+
 /// 各时代 NPC 种子（按 Era 过滤）
-const Map<String, List<NpcSeed>> eraNpcSeeds = {
+final Map<String, List<NpcSeed>> eraNpcSeeds = {
   'dumbledore': [
-    ...staffSeeds,
+    ...dumbledoreStaff,
     ...dumbledoreEraSeeds,
   ],
   'marauders': [
-    ...staffSeeds,
+    ...maraudersStaff,
     ...maraudersSeeds,
+  ],
+  'first_war': [
+    ...maraudersStaff,
+    ...firstWarSeeds,
   ],
   'harry_same': [
     ...staffSeeds,
@@ -765,7 +811,7 @@ const Map<String, List<NpcSeed>> eraNpcSeeds = {
     ...harrySameHufflepuff,
   ],
   'post_war': [
-    ...staffSeeds,
+    ...postWarStaff,
     ...postWarSeeds,
   ],
   'random': [
