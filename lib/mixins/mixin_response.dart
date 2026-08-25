@@ -134,12 +134,13 @@ mixin GameResponseMixin on GameProviderBase {
     final extracted = StoryTextRenderer.extractAffectionSections(text);
     lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
 
+    // R13 修复·好感度同步问题：先标记 NPC 登场，再解析好感度
+    // （旧顺序相反：解析好感时 NPC introduced=false，校验器丢弃好感变化，
+    //   标记登场后 NPC 的 introduced=true 但好感已经被丢掉了）
+    if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
     // 解析好感和声望变化（从原始文本）
     _parseAffectionChanges(text);
     _parseReputationChanges(text);
-
-    // 标记NPC登场
-    if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
 
     // 分院结果自动提取（使用带语境判断的公共函数）
     _tryExtractHouseFromNarrative(text);
@@ -300,14 +301,18 @@ mixin GameResponseMixin on GameProviderBase {
       currentNarrative = generateFallbackNarrative();
     }
 
+    // BUG1 修复·好感度同步问题：先标记 NPC 登场(introduced=true)，再解析好感变化
+    // （旧顺序相反：_parseAffectionChanges 时 NPC introduced=false，
+    //   AffectionValidator 校验直接丢弃 ≥+4 的大好感变化；
+    //   markIntroducedFromNarrative 之后 NPC introduced=true，但好感已被丢）
+    // 注：这个顺序必须与 parseNarrativeOnly() 保持完全一致。
+    if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
+
     // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
     _parseAffectionChanges(text);
 
     // Parse reputation changes
     _parseReputationChanges(text);
-
-    // 根据剧情文本中出现的人名，标记 NPC 为已登场（让世界页和通讯列表更准确）
-    if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
 
     if (choices.isEmpty) {
       // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）
@@ -327,6 +332,30 @@ mixin GameResponseMixin on GameProviderBase {
     // 选项质量清理：移除不合格的选项（含残余markdown/图片/过长）
     final beforeClean = choices.length;
     choices.removeWhere((c) => !isChoiceQualityAcceptable(c.text));
+    // BUG2c 一年级禁咒选项过滤：去掉选项里"一年级不可能会的咒语"（如A选项"吟唱守护神咒"）
+    // （叙事侧的R5_spell_power_creep已经覆盖narrative，这里是选项侧的对称保护）
+    final grade = player?.grade ?? 1;
+    const forbiddenChoiceForFirstYear = [
+      '守护神咒', '呼神护卫', 'Expecto Patronum', '夺魂咒', '魂魄出窍', 'Imperius',
+      '钻心咒', '钻心剜骨', 'Crucio', '杀戮咒', '阿瓦达索命', 'Avada Kedavra',
+      '伏地魔', '魂器', '死亡圣器', '有求必应屋',
+    ];
+    if (grade <= 1) {
+      final beforeSpell = choices.length;
+      choices.removeWhere((c) {
+        final lower = c.text.toLowerCase();
+        for (final w in forbiddenChoiceForFirstYear) {
+          if (lower.contains(w.toLowerCase()) && !(player?.learnedSpells.containsKey(w) ?? false)) {
+            debugPrint('[选项禁咒] 移除一年级禁咒选项「${c.text}」: 命中「$w」');
+            return true;
+          }
+        }
+        return false;
+      });
+      if (choices.length < beforeSpell) {
+        debugPrint('[选项禁咒] 一年级禁咒过滤: $beforeSpell→${choices.length}');
+      }
+    }
     if (choices.length < beforeClean) {
       debugPrint('选项质量清理: ${beforeClean}→${choices.length} (移除含markdown/图片的不合格选项)');
     }
@@ -591,7 +620,7 @@ mixin GameResponseMixin on GameProviderBase {
   /// 最终兜底选项：当AI连续失败时，基于当前剧情生成4个合理选项
   /// 兜底选项（严格基于「剧情末尾800字」生成，不能输出"仔细观察/面对情况"这种会断链的空选项）
   ///
-  /// 触发时机：选项 AI 生成超时(20s) / 返回内容不合格 / 网络异常。
+  /// 触发时机：选项 AI 生成超时(45s，与 ai_router.dart 配置一致) / 返回内容不合格 / 网络异常。
   /// 核心原则：从「剧情最末尾的最后一位说话者 / 最后一个未完成动作 / 最后一个氛围钩子」出发，
   ///          产出 A(勇敢/主动) B(谨慎/观察) C(人际/沟通) D(取巧/隐忍) 四个风格，
   ///          玩家点任何一个都会让剧情**自然衔接**，不会出现"选了仔细查看 → 下回合叙事完全跳场景"的断链。
@@ -618,18 +647,33 @@ mixin GameResponseMixin on GameProviderBase {
     final dm = dialogRe.allMatches(tail);
     if (dm.isNotEmpty) lastDialogTopic = dm.last.group(1);
 
-    // ---------- Step 2: 抓末尾的未完成动作钩子 ----------
-    final hookPacking = tail.contains('收拾') || tail.contains('行李') || tail.contains('整理');
+    // ---------- Step 2: 抓末尾的未完成动作钩子（关键：位置门控，防止场景错位） ----------
+    // 在家中/卧室/客厅/餐厅 才激活的居家专属钩子
+    final hookPacking = atHome && (tail.contains('收拾') || tail.contains('行李') || tail.contains('整理'));
+    final hookDoor = atHome && (tail.contains('敲门') || tail.contains('敲门声') || tail.contains('门外'));
+    // 录取信钩子：只有在家中 + 明确出现「录取通知书」关键词才激活
+    // （霍格沃茨到处都是羊皮纸/信封/霍格沃茨的，去掉这些误判词）
+    final hookLetter = atHome && tail.contains('录取通知书');
+    // 通用钩子不受位置限制
     final hookLeaving = tail.contains('早点休息') || tail.contains('明天') || tail.contains('出发') || tail.contains('车票') || tail.contains('站台');
     final hookGoodbye = tail.contains('圣诞节') || tail.contains('答应我') || tail.contains('一定要回来') || tail.contains('告别') || tail.contains('舍不得');
     final hookAnswer = tail.contains('等你回答') || tail.contains('你的选择') || tail.contains('打算怎么做') || tail.contains('那你打算') || (lastSpeaker != null && (lastDialogTopic?.contains('吗') ?? false));
-    final hookDoor = tail.contains('敲门') || tail.contains('敲门声') || tail.contains('门外');
-    final hookLetter = tail.contains('录取通知书') || tail.contains('信封') || tail.contains('霍格沃茨的') || tail.contains('羊皮纸');
+    // 霍格沃茨场景专属钩子
+    final atHogwarts = location.contains('霍格沃茨') || location.contains('大礼堂') || location.contains('走廊') || location.contains('教室') || location.contains('公共休息室') || location.contains('特快');
+    final hookClass = atHogwarts && (tail.contains('上课') || tail.contains('教授') || tail.contains('课本') || tail.contains('笔记') || tail.contains('作业'));
+    final hookGreatHall = atHogwarts && location.contains('大礼堂');
+    final hogwartsLastNPC = lastSpeaker ?? (tail.contains('麦格') ? '麦格教授' :
+        tail.contains('邓布利多') ? '邓布利多校长' :
+        tail.contains('斯内普') ? '斯内普教授' :
+        tail.contains('海格') ? '海格' :
+        tail.contains('哈利') ? '哈利' :
+        tail.contains('罗恩') ? '罗恩' :
+        tail.contains('赫敏') ? '赫敏' : null);
 
     final fallback = <GameChoice>[];
 
-    // ---- A 勇敢/主动型 ----
-    if (hookGoodbye) {
+    // ---- A 勇敢/主动出击型（推进按钮会优先选这档！）----
+    if (hookGoodbye && atHome) {
       fallback.add(GameChoice(
           text: '和养父母认真告别后收拾行李，明天一早前往国王十字车站',
           action: '和养父母认真拥抱告别，随即开始收拾行李，确认车票、魔杖和加隆都已入箱，准备明天前往国王十字车站的九又四分之三站台'));
@@ -637,7 +681,7 @@ mixin GameResponseMixin on GameProviderBase {
       fallback.add(GameChoice(
           text: '正面回应「${lastSpeaker ?? '对方'}」的问题，说出你的真实想法',
           action: '直面${lastSpeaker ?? '对方'}的提问，坦诚回答你对${lastDialogTopic ?? '这件事'}的真实想法和接下来的打算'));
-    } else if (hookPacking || hookLeaving) {
+    } else if ((hookPacking || hookLeaving) && atHome) {
       fallback.add(GameChoice(
           text: '立刻收拾行李，和家人道晚安后为明天出发做最后确认',
           action: '立刻动手收拾行李，把魔杖匣、课本和换洗衣物装好，去和养父母道晚安，最后确认一遍车票与加隆，准备明天一早前往九又四分之三站台'));
@@ -647,18 +691,32 @@ mixin GameResponseMixin on GameProviderBase {
       fallback.add(GameChoice(
           text: '当着养父母的面拆开录取通知书并仔细阅读全文',
           action: '当着养父母的面撕开火漆，把霍格沃茨录取通知书从头到尾读完，确认开学日期、采购清单和九又四分之三站台说明'));
+    } else if (hookGreatHall) {
+      // 霍格沃茨大礼堂专属A选项：分院刚结束/晚宴进行中
+      fallback.add(GameChoice(
+          text: '主动转向身边的${hogwartsLastNPC ?? '新同学'}打招呼并自我介绍，拉近距离融入新集体',
+          action: '大方转向身边的${hogwartsLastNPC ?? '新同学'}，露出友好笑容做自我介绍，顺势聊起对分院结果和学院的初印象，主动融入新环境'));
+    } else if (hookClass) {
+      fallback.add(GameChoice(
+          text: '鼓起勇气举手回答教授的提问，展现你对魔咒学/当前课堂内容的理解',
+          action: '深吸一口气，鼓起勇气举手回答教授的提问，把自己平时从书本和天赋里积累的理解有条理地说出来，争取给教授留下正面印象'));
+    } else if (atHogwarts && hookLeaving) {
+      // 霍格沃茨场景下的推进/出发动作
+      fallback.add(GameChoice(
+          text: '起身准备前往下一地点：拿起书包确认课程表，大步朝目标方向走去',
+          action: '动作利落地把课本和笔记收进书包，确认一遍下一节课的教室和时间，迈开步伐朝目的地走去，不在原地浪费时间'));
     } else if (energy < 25) {
       fallback.add(GameChoice(text: '先抓紧休息恢复精神体力', action: '不再逞强，找个安全的地方坐下或躺下休息，先把精力恢复到可行动水平再做下一步'));
     } else {
       fallback.add(GameChoice(text: '主动面对眼前状况并迈出第一步', action: '不再犹豫，鼓起勇气直接面对当前的局面，立刻着手处理最紧急的那件事'));
     }
 
-    // ---- B 谨慎/观察/智取 ----
+    // ---- B 谨慎/智取/观察型 ----
     if (hookAnswer) {
       fallback.add(GameChoice(
           text: '不急于回答，先反问「${lastSpeaker ?? '对方'}」几个关键细节再决定',
           action: '先不动声色地反问${lastSpeaker ?? '对方'}两个关于${lastDialogTopic ?? '这件事'}的具体细节，确认信息完全后再做出稳妥的回应'));
-    } else if (hookPacking) {
+    } else if (hookPacking && atHome) {
       fallback.add(GameChoice(
           text: '先列一张行李清单检查不落下必需品，再慢慢收拾',
           action: '拿羊皮纸列出开学必需品清单：魔杖、课本、袍子、加隆、私人物品，逐一核对后再动手收拾，确保不落下关键物件'));
@@ -670,27 +728,43 @@ mixin GameResponseMixin on GameProviderBase {
       fallback.add(GameChoice(
           text: '先收好信不声张，观察养父母的反应再决定下一步',
           action: '不动声色地把录取信先收进怀里，先观察养父母的表情和态度，揣摩他们知道多少内情再决定怎么谈'));
+    } else if (hookGreatHall) {
+      fallback.add(GameChoice(
+          text: '先安静用餐，观察各个学院桌的氛围和同学的气质再决定社交节奏',
+          action: '不急于社交，先拿起刀叉安静享用晚宴，同时暗中观察四个学院长桌的氛围、同学的气质和教授们的神态，把局势看清楚再决定怎么社交'));
+    } else if (atHogwarts) {
+      fallback.add(GameChoice(
+          text: '先找个安静角落把课程表和学院地图理清楚，规划好今日行程',
+          action: '先避开人流，找一个走廊的安静角落，把课程表、学院公共休息室位置和今天要做的事情逐一列清楚，避免走错教室或遗漏重要事项'));
     } else {
       fallback.add(GameChoice(text: '先沉默观察几秒钟，理清所有信息再行动', action: '先不要急着做决定，安静观察周围的人和环境，把已知信息理一遍再选最稳妥的行动'));
     }
 
-    // ---- C 人际/沟通/结盟 ----
+    // ---- C 人际/沟通/结盟型 ----
     if (lastSpeaker != null) {
       fallback.add(GameChoice(
           text: '和「$lastSpeaker」坐下来好好聊清楚${lastDialogTopic ?? '接下来的打算'}再决定',
           action: '拉着$lastSpeaker坐下来，把关于${lastDialogTopic ?? '接下来的安排'}的顾虑、担忧、期望都聊清楚，先把双方理解对齐再行动'));
-    } else if (hookGoodbye || hookLeaving) {
+    } else if ((hookGoodbye || hookLeaving) && atHome) {
       fallback.add(GameChoice(
           text: '坐下来和养父母吃最后一顿晚饭，聊聊对魔法界的担忧与期待',
           action: '先不急着收拾，坐到餐桌边陪养父母再吃一顿饭（哪怕是凉的），把彼此对魔法界的担忧和期待都说出来，给家人一个安心的告别'));
     } else if (atHome) {
       fallback.add(GameChoice(text: '去找养父母或家人聊聊，确认他们的看法和建议', action: '去找养父母或家里最信任的亲人聊一聊，问他们对这件事的真实想法和建议，再决定下一步怎么走'));
+    } else if (hookGreatHall) {
+      fallback.add(GameChoice(
+          text: '向邻座伸出手自我介绍，主动结识同院的第一位朋友',
+          action: '面带微笑转向身边最近的同院同学，礼貌地伸出手做自我介绍，顺势询问对方的名字、出身和对学院的看法，争取在学院里找到第一位朋友'));
+    } else if (atHogwarts) {
+      fallback.add(GameChoice(
+          text: '找路过的${hogwartsLastNPC ?? '学长'}或同学确认下节课的教室方向和注意事项',
+          action: '拦住一位看起来面善的路过的${hogwartsLastNPC ?? '高年级学长'}或同学，礼貌询问下一节课的教室位置、教授的上课风格和注意事项，确保自己不迟到踩雷'));
     } else {
       fallback.add(GameChoice(text: '找附近熟悉的NPC了解情况再做判断', action: '先和周围看起来面善或认识的NPC聊两句，确认一下当前事态、别人都在做什么，避免自己信息不足做错决定'));
     }
 
     // ---- D 取巧/隐忍/代价型 ----
-    if (hookPacking || hookLeaving) {
+    if ((hookPacking || hookLeaving) && atHome) {
       fallback.add(GameChoice(
           text: '先把最重要的魔杖和车票揣进内袋，其余物品明天清早再收拾',
           action: '不做全面打包，只把魔杖匣子、车票和大面额加隆贴身收好，其余衣物课本留到明天清晨再装，先睡一觉保证明天出发时精神饱满'));
@@ -704,6 +778,14 @@ mixin GameResponseMixin on GameProviderBase {
           action: '先假装屋里没人、不去开门，悄悄躲在门后或窗边听外面的脚步声/说话声，确认安全情况再做进一步打算'));
     } else if (atHome && isNight) {
       fallback.add(GameChoice(text: '借口很累先去睡，明早趁家人不注意偷偷出发', action: '借口精神不济先回房间休息，悄悄把最重要的行李整理好，第二天清早趁家人还没睡醒就拿着车票和加隆悄然出发'));
+    } else if (hookGreatHall) {
+      fallback.add(GameChoice(
+          text: '低调坐在长桌角落默默吃饭，不主动社交但暗中观察所有人的互动',
+          action: '端着餐盘悄悄挪到拉文克劳长桌最不起眼的角落坐下，安静吃饭不主动搭话，但暗中观察教授们、级长们和同学们之间的互动，默默收集情报'));
+    } else if (atHogwarts) {
+      fallback.add(GameChoice(
+          text: '拿出提前准备好的笔记，把今天观察到的关键信息快速记下来建立情报优势',
+          action: '掏出随身的羊皮纸小本和羽毛笔，把今天观察到的教授特点、同学性格、重要地点位置快速整理记录，建立属于自己的情报笔记方便日后利用'));
     } else {
       fallback.add(GameChoice(text: '暂时隐忍不表态，等时机更成熟再出手', action: '把情绪压下去，不急于表明立场也不急于行动，先观察局势变化，等对自己最有利的时机出现再出手'));
     }
@@ -719,6 +801,89 @@ mixin GameResponseMixin on GameProviderBase {
     return fallback;
   }
 
+  /// 【推进按钮智能选策略】——替代原先的 choices.first，防止剧情回滚
+  /// 选择优先级：
+  ///  1) 先过滤掉与当前地点/时间完全错位的选项（如在霍格沃茨就去掉「拆录取通知书」「找养父母」）
+  ///  2) 在剩余选项里，优先选含「推进型关键词」的选项（出发/动身/前往/告别/收拾/起程/离开/走下楼梯/走出房间）
+  ///  3) 如果仍有多个候选，优先选 index 为 0 的 A 档（勇敢主动型）
+  ///  4) 最后兜底：choices.first
+  GameChoice pickAutoAdvanceChoice() {
+    if (choices.isEmpty) {
+      return GameChoice(text: '主动面对眼前状况', action: '不再犹豫，鼓起勇气直接面对当前局面，立刻处理最紧急的那件事');
+    }
+    final loc = (worldState.currentLocation ?? '').toLowerCase();
+    final atHome = loc.contains('家中') || loc.contains('卧室') || loc.contains('客厅') || loc.contains('餐厅');
+    final atHogwarts = loc.contains('霍格沃茨') || loc.contains('大礼堂') || loc.contains('走廊') || loc.contains('教室') || loc.contains('公共休息室') || loc.contains('特快') || loc.contains('对角巷') || loc.contains('站台');
+
+    // 居家错位关键词：在霍格沃茨/对角巷/特快 场景下，选项里出现这些词视为错位
+    final homeMisplacedKeywords = const <String>[
+      '养父母', '录取通知书', '撕开火漆', '九又四分之三站台', '德思礼',
+      '弗农姨父', '佩妮姨妈', '麻瓜郊区', '家中的客厅', '家里的卧室', '回家睡', '回家休息',
+    ];
+    // 霍格沃茨错位关键词：在家中场景，选项出现这些词视为错位
+    final hogwartsMisplacedKeywords = const <String>[
+      '大礼堂', '分院', '教授', '学院长桌', '级长', '公共休息室', '走廊', '城堡', '禁林',
+      '魁地奇', '教室', '同学自我介绍', '同院', '霍格沃茨特快',
+    ];
+
+    // Step 1: 过滤错位选项
+    var candidates = List<GameChoice>.from(choices);
+    candidates.retainWhere((c) {
+      final text = c.text + c.action;
+      if (atHogwarts) {
+        // 非居家场景：去掉居家专属词
+        for (final kw in homeMisplacedKeywords) {
+          if (text.contains(kw)) return false;
+        }
+      }
+      if (atHome) {
+        // 居家场景：去掉霍格沃茨专属词
+        for (final kw in hogwartsMisplacedKeywords) {
+          if (text.contains(kw)) return false;
+        }
+      }
+      return true;
+    });
+    if (candidates.isEmpty) candidates = List<GameChoice>.from(choices);
+
+    // Step 2: 推进型关键词加分（优先排序）
+    const advanceKeywords = <String>[
+      '出发', '动身', '前往', '告别', '收拾', '起程', '离开', '走下楼梯',
+      '走出房间', '去车站', '去对角巷', '出发前往', '立刻去', '大步走',
+      '拥抱告别', '转身走向', '动身前往', '准备明天',
+    ];
+    int score(GameChoice c) {
+      var s = 0;
+      final text = c.text + c.action;
+      for (final kw in advanceKeywords) {
+        if (text.contains(kw)) s += 10;
+      }
+      return s;
+    }
+    candidates.sort((a, b) => score(b).compareTo(score(a)));
+
+    // Step 3: 同分/都为0分时，优先原列表更靠前的（A > B > C > D）
+    final topScore = score(candidates.first);
+    final topPool = candidates.where((c) => score(c) == topScore).toList();
+    if (topPool.length <= 1) return topPool.first;
+    // 在最高分池中找原 choices 里 index 最小的
+    GameChoice? best;
+    for (final c in choices) {
+      if (topPool.any((x) => x.action == c.action && x.text == c.text)) {
+        best = c;
+        break;
+      }
+    }
+    return best ?? candidates.first;
+  }
+
+  /// 「推进」按钮入口：调用 pickAutoAdvanceChoice() 后再 processChoice
+  Future<void> processAutoAdvanceChoice() async {
+    final choice = pickAutoAdvanceChoice();
+    debugPrint('▶️ 推进按钮选中: choice=${choice.text.substring(0, choice.text.length > 30 ? 30 : choice.text.length)} (候选池=${choices.length})');
+    return processChoice(choice);
+  }
+
   /// 独立生成选项：接收已生成的剧情文本，让 AI 专门基于此生成选项
   Future<List<GameChoice>> generateChoicesSeparately(String narrative) async {
     if (router == null) return [];
@@ -728,11 +893,16 @@ mixin GameResponseMixin on GameProviderBase {
     final timestamp = worldState.timestamp;
     final playerAction = lastPlayerAction;
 
+    // BUG3a 修复·strip承接标记：在提取末尾800字作为选项依据之前，
+    // 先清理叙事中的内部meta标记（「承接：XXX」「SceneGraph:触发节点」等），
+    // 防止选项 AI 把这些内部衔接说明当作"当前剧情末尾处境"的一部分，
+    // 从而在新叙事里反复输出「（承接：家中·卧室）——紧接着，时间戳...」这种用户可见的调试文本。
+    final cleanNarrativeForChoice = StoryTextRenderer.stripInternalMetaMarkers(narrative);
     // 只取叙事末尾 800 字作为选项依据——重点在「结尾的即时动作/最后一位说话者/场面氛围」
     // 选项必须直接承接这一刻，不得跨越到下一节课/明天/下一个地点。
-    final narrativeTail = narrative.length > 800
-        ? '…（前略，以下为当前剧情的最末尾800字，请严格按结尾最后几行生成选项）\n' + narrative.substring(narrative.length - 800)
-        : narrative;
+    final narrativeTail = cleanNarrativeForChoice.length > 800
+        ? '…（前略，以下为当前剧情的最末尾800字，请严格按结尾最后几行生成选项）\n' + cleanNarrativeForChoice.substring(cleanNarrativeForChoice.length - 800)
+        : cleanNarrativeForChoice;
 
     // ---- 注入玩家硬状态：避免生成不可能的选项 ----
     // Player 真实字段：grade(int? 年级), house(String?), health, energy, galleons, bankGalleons
@@ -927,9 +1097,10 @@ $kChoicePromptSuffix''';
         }
       }
 
-      // 最终兜底：如果仍然没有合格选项，生成静态默认选项
+      // 最终兜底：如果仍然没有合格选项，生成承接式兜底选项并通知玩家
       if (choices.isEmpty) {
-        debugPrint('选项生成全部失败，使用默认兜底选项');
+        debugPrint('选项生成全部失败，使用承接式兜底选项');
+        notifications.add('⏱️ 选项生成较慢，已为你基于当前剧情临时生成4个选项（可直接输入自由行动替代）。');
         choices.addAll(_buildFallbackChoices(narrative));
       }
 
@@ -937,8 +1108,12 @@ $kChoicePromptSuffix''';
     } catch (e) {
       // 关键修复：以前这里 return [] → 外层走 generateContextualFallbackChoices → 生成不承接剧情末尾的"仔细查看"
       // → 玩家点了之后下一回合叙事就完全跳开上一段剧情结尾，造成"刚生成的剧情没操作就被另一个剧情替换"
-      // 现在统一走 _buildFallbackChoices，严格基于 narrative 末尾 800 字做承接式兜底，保证不断链。
-      debugPrint('独立选项生成异常(使用承接式兜底): $e');
+      // 现在统一走 _buildFallbackChoices，严格基于 narrative 末尾 800 字做承接式兜底，保证不断链；同时 UI 明确通知玩家。
+      debugPrint('独立选项生成异常/超时(使用承接式兜底): $e');
+      final msg = e.toString().contains('超时')
+          ? '⏱️ 选项生成超时（网络波动或服务商限流），已为你基于剧情末尾临时生成4个承接选项；稍后可通过输入框输入自由行动获得更新鲜选项。'
+          : '⏱️ 选项生成异常，已为你基于当前剧情临时生成4个承接选项（不影响剧情，自由行动照常输入）。';
+      notifications.add(msg);
       return _buildFallbackChoices(narrative);
     }
   }

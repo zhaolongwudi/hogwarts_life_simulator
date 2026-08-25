@@ -151,12 +151,27 @@ class WorldState {
       '📊', // 好感上限/统计类
       '⚠️', // 信任受限/系统警告类
       '💔', // 记恨/背叛记录类
+      '🧭', // SceneGraph 内部锚点命中提示（只走 notifications，不进事件记录）
     ];
     const blacklistKeywords = <String>[
       '好感本周已达上限',
       '周好感度已达上限',
       '对你的信任因过去的背叛而受限',
       '因你的行为而记恨在心',
+      // ---- 内部 debug 标识（绝不能出现在玩家可见的事件面板里）----
+      'SceneGraph:',
+      'SceneGraph：',
+      'SceneGraph',
+      '触发节点',
+      'opening_',
+      'firedAnchorIds',
+      'turn=',
+      'loc=',
+      // ---- 承接前缀（内部衔接元文本，不能出现在事件记录中）----
+      '承接：',
+      '承接:',
+      '（承接：',
+      '承接上回合',
     ];
     if (blacklistPrefixes.any(event.startsWith)) return true;
     if (blacklistKeywords.any(event.contains)) return true;

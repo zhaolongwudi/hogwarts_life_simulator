@@ -47,7 +47,7 @@ class GameBottomInput extends StatelessWidget {
                   ? null
                   : () {
                       if (gp.choices.isNotEmpty) {
-                        gp.processChoice(gp.choices.first);
+                        gp.processAutoAdvanceChoice();
                       }
                     },
               child: Container(

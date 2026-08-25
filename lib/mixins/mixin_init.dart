@@ -391,6 +391,15 @@ mixin GameInitMixin on GameProviderBase {
           category: 'ability',
         );
       }
+      // 6. BUG2 修复·原创主角≠哈利·波特：绝对禁止把"德思礼一家/女贞路4号"套用到原创凌天的家庭成员
+      //    （AI容易因为"麻瓜养父母"设定直接套用哈利的德思礼家剧情，造成"玛吉·德思礼""弗农姨父敲门"这种杂交bug）
+      if (p0.name.toLowerCase() != '哈利' && !p0.name.contains('波特')) {
+        addT0(
+          'identity:family_is_not_dursley',
+          '⚠️【家庭设定红线】主角是${p0.name}（原创角色），不是哈利·波特。主角的麻瓜养父母一家绝对不是"德思礼一家"，严禁在叙事/对话/好感变化/地点中出现以下任何哈利专属设定：弗农·德思礼、佩妮·德思礼、达力·德思礼、玛吉·德思礼（给养母加姓"德思礼"同样禁止）、女贞路4号、德文郡·德思礼家、姨父/姨妈/表哥这种针对德思礼一家的亲属称谓（仅当提到"德思礼"时禁止）。主角的养母/养父只能被称为"养母""养父""妈妈""爸爸"或原创姓名，绝不能与德思礼/女贞路绑定。',
+          category: 'identity',
+        );
+      }
 
       this.openingScene = openingScene;
       await _generateOpeningScene();

@@ -724,9 +724,53 @@ class StoryTextRenderer {
         (first >= 0x2B00 && first <= 0x2BFF);
   }
 
+  /// 剥离 AI/系统在叙事开头注入的内部 meta 标记。
+  /// 这些标记是程序生成的"衔接说明/调度标记"，不是剧情正文的一部分，
+  /// 绝不能出现在玩家看到的 UI 里，否则会让玩家困惑、造成时间戳识别重复。
+  ///
+  /// 清理示例：
+  ///   "(承接：就在家中-卧室、你正准备好了接受它的指引的那一刻) —紧接着，【时间戳】..."
+  ///   → 清理为 "【时间戳】..."
+  ///   "承接上回合剧情：他刚走出门 ——【时间戳】📅 ..."
+  ///   → 清理为 "【时间戳】📅 ..."
+  static String stripInternalMetaMarkers(String text) {
+    if (text.isEmpty) return text;
+    var s = text;
+
+    // 1) 清理括号包裹的「承接：XXX」（中文括号/英文括号都要处理）
+    //    贪婪匹配到最近的 【时间戳】或段落开头，避免误伤正文括号。
+    s = s.replaceAllMapped(
+      RegExp(r'^\s*[(（][^）)]*承接[^）)]*[）)]\s*[—\-]*\s*'),
+      (m) => '',
+    );
+
+    // 2) 清理行首直接写的「承接：... ——」「承接上回合：... 紧接着」
+    s = s.replaceAllMapped(
+      RegExp(r'^\s*承接[^：:]*[:：][^\n—\-]{0,200}?([—\-]{1,3}|紧接着，?|然后，?)\s*'),
+      (m) => '',
+    );
+
+    // 3) 清理「——紧接着，【时间戳】」这种把「紧接着」放在【时间戳】前面的冗余连接词
+    s = s.replaceAllMapped(
+      RegExp(r'([—\-]{1,3}|紧接着，?|然后，?)\s*(?=【时间戳】|📅)'),
+      (m) => '',
+    );
+
+    // 4) 清理 SceneGraph/Anchor 这类 debug 文本行（整行）
+    s = s.replaceAllMapped(
+      RegExp(r'^\s*(🧭)?\s*SceneGraph[:：].*$\n?', caseSensitive: false, multiLine: true),
+      (m) => '',
+    );
+
+    return s.trimLeft();
+  }
+
   /// 自动段落排版：将长文本按句号/问号/感叹号 + 长度阈值自动分段
   static String autoParagraph(String text) {
     if (text.isEmpty) return '';
+
+    // 先剥离内部 meta 标记（承接/SceneGraph 等内部衔接说明）—— 保证 UI 永远不渲染这些调度信息
+    text = stripInternalMetaMarkers(text);
     
     final buffer = StringBuffer();
     int sentenceCount = 0;

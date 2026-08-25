@@ -116,7 +116,7 @@ class AiRouter {
     }
     if (scene == AiScene.choice) {
       return future.timeout(
-        const Duration(seconds: 20),
+        const Duration(seconds: 45),
         onTimeout: () async {
           cancelToken.cancel('choice timeout');
           await AiDebugLogger.instance.logComplete(
@@ -125,9 +125,9 @@ class AiRouter {
             scene: sceneLabel,
             provider: getProviderLabel(primary),
             action: 'TIMEOUT',
-            error: '选项生成超时（20秒）',
+            error: '选项生成超时（45秒）',
           );
-          throw AiRetryableException('选项生成超时（20秒），请重试');
+          throw AiRetryableException('选项生成超时（45秒），请重试');
         },
       );
     }

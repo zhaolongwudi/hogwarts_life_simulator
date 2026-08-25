@@ -6,6 +6,7 @@ import '../models/game_systems.dart';
 import '../services/deepseek_service.dart';
 import '../models/player.dart';
 import '../utils/prompt_sanitizer.dart';
+import '../utils/story_text_renderer.dart';
 import '../models/long_term_memory.dart';
 import '../services/ai_router.dart';
 import '../utils/crash_logger.dart';
@@ -437,9 +438,11 @@ $kNarrativeWritingRules
       if (separateChoices.isNotEmpty) {
         choices = separateChoices;
       } else {
-        // 独立选项生成失败时，只用本地上下文兜底选项生成器（不碰 AI 的响应文本）
-        debugPrint('独立选项生成失败，切换到本地上下文兜底选项');
-        choices = generateContextualFallbackChoices();
+        // 独立选项生成失败时：直接走与超时同一套「末尾800字承接型」兜底，
+        // 彻底弃用 generateContextualFallbackChoices（它会按关键词匹配出"仔细查看"这种简易选项，
+        // 玩家点击后AI拿到与剧情结尾无关的动作，造成"刚生成的剧情没操作就被另一个剧情替换"的断链）。
+        debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
+        choices = _buildFallbackChoices(currentNarrative);
       }
 
       // --- ContinuityBridge Step A：把本回合叙事的末尾锚点存档，下回合强制衔接 ---
@@ -1285,7 +1288,12 @@ $kNarrativeWritingRules
       worldState.lastNarrativeAnchor.clear();
       return;
     }
-    final tail = narrative.length > 800 ? narrative.substring(narrative.length - 800) : narrative;
+    // BUG3b 修复·strip承接标记：在抓锚点之前，先清理内部 meta 标记
+    // （承接前缀/SceneGraph debug 行），防止锚点被"承接：就在家中·卧室"
+    // 这类元文本污染，导致下回合 enforceContinuityBridge 正则误判匹配、
+    // 以及衔接桥 prompt 里注入用户可见的「承接：XXX」调试说明。
+    final cleanNarrative = StoryTextRenderer.stripInternalMetaMarkers(narrative);
+    final tail = cleanNarrative.length > 800 ? cleanNarrative.substring(cleanNarrative.length - 800) : cleanNarrative;
     final anchor = <String, String>{};
 
     // 1) location
@@ -1531,6 +1539,27 @@ $kNarrativeWritingRules
       if (npc.forbiddenActions.isNotEmpty) {
         for (final nameVariant in npc.allNames) {
           if (nameVariant.length < 2) continue;
+          // ---- 【防误判·通用称谓保护】----
+          // 如果 nameVariant 本身含有"校长/教授/院长"等通用词尾缀（如"邓布利多校长"），
+          // 则额外要求：叙事里**必须同时出现该 NPC 的姓氏或全名**，否则判定为"其他人物 + 通用称谓"的误匹配。
+          // 例：剧情写"麦格教授说..."，此时仅当叙事里也出现"麦格/米勒娃"，才会对"麦格教授"这个 alias 做OOC校验。
+          const genericTitles = ['校长', '教授', '院长', '主任', '老师', '先生', '女士', '级长', '队长'];
+          bool isTitledVariant = genericTitles.any((t) => nameVariant.contains(t));
+          bool npcIdentityAlsoPresent = true;
+          if (isTitledVariant) {
+            final identityHints = <String>[
+              // 拆分全名的姓氏、名字
+              if (npc.name.contains('·')) ...npc.name.split('·'),
+              if (npc.name.contains(' ')) ...npc.name.split(' '),
+              npc.name,
+              // 不含通用词的 aliases（短alias如"老邓"也可作为身份依据）
+              ...npc.aliases.where((a) => !genericTitles.any((t) => a.contains(t))),
+            ];
+            npcIdentityAlsoPresent = identityHints.any((hint) =>
+                hint.length >= 2 && nLower.contains(hint.toLowerCase()));
+          }
+          if (!npcIdentityAlsoPresent) continue;
+
           // 注意：下面 forbiddenActions.join('|') 由 forbiddenActions 列表项本身组成，
           // 列表项是纯短语（由 NPC._autoDeriveForbiddenActions 产生），不含空串，因此不会出现 `|)` 空分支。
           final joinedFbd = npc.forbiddenActions
@@ -1544,10 +1573,19 @@ $kNarrativeWritingRules
             caseSensitive: false,
           );
           if (oocRe.hasMatch(nLower)) {
-            // 【熔断】默认降为 warn（软提醒下一回合修正），只有"禁动包含严重暴烈关键词(体罚/抽耳光/殴打/虐待/恶意陷害/栽赃)"才升级为 CRITICAL。
-            // 避免误判一次就整段重写 → 玩家感观"剧情被凭空替换"。
+            // 【熔断】默认降为 warn（软提醒下一回合修正），只有"禁动包含严重暴烈关键词"才升级为 CRITICAL。
+            // 另外增加最终保护：命中文本中如果紧邻出现否定词（不/没/并非/从不/不会/不是），则忽略（
+            // 避免"邓布利多不会暴怒/并不是刻薄的人"这种反向说明被误判为 OOC）。
             final m = oocRe.firstMatch(nLower);
             final hitVerb = m?.group(1) ?? '';
+            final hitStart = m?.start ?? 0;
+            final beforeHit = hitStart > 8
+                ? nLower.substring(hitStart - 8, hitStart)
+                : (hitStart > 0 ? nLower.substring(0, hitStart) : '');
+            if (RegExp(r'(不|没|并非|从未|从不|不会|不是|何必|何苦)', caseSensitive: false).hasMatch(beforeHit)) {
+              debugPrint('[OOC 跳过·否定词前置] ${npc.name}|$nameVariant|$hitVerb 前置="$beforeHit"');
+              continue;
+            }
             final severeRe = RegExp(r'(体罚|抽.*耳光|殴打|虐待|恶意陷害|栽赃|背叛|收受贿赂|徇私)', caseSensitive: false);
             final isSevere = severeRe.hasMatch(hitVerb);
             final sev = isSevere ? 'critical' : 'warn';
@@ -1629,6 +1667,48 @@ $kNarrativeWritingRules
             addV('warn', 'R5_spell_power_creep',
                 '战力膨胀/剧情预知：一年级新生/主角尚未知道的秘密，本回合叙事直接写了「$spell」的成功释放或预知性互动。',
                 evidence: spell);
+          }
+        }
+      }
+    }
+
+    // ---- BUG2b R3c: 原创主角≠哈利的家庭设定混淆检测（德思礼/女贞路杂交）----
+    if (p != null && p.name.toLowerCase() != '哈利' && !p.name.contains('波特')) {
+      // 命中1：好感变化/叙事里直接出现「XX·德思礼」作为玩家养母/养父（如玛吉·德思礼）
+      final dursleyFamilyRe = RegExp(
+        r'(玛吉|弗农|佩妮|达力)\s*[·.]?\s*德思礼|德思礼\s*(家|一家|夫妇|门口|住宅|姨父|姨妈|表哥)',
+        caseSensitive: false,
+      );
+      final privetDriveRe = RegExp(r'女贞路\s*4\s*号|德文郡.*德思礼', caseSensitive: false);
+      if (dursleyFamilyRe.hasMatch(narrative) || privetDriveRe.hasMatch(narrative)) {
+        addV('critical', 'R3c_family_not_dursley',
+            '家庭设定杂交：主角是原创玩家（非哈利·波特），本回合却出现德思礼一家/女贞路4号等哈利专属的家庭成员和地点。必须把养母/养父称呼为"养母/养父/妈妈/爸爸"或原创姓名，绝不能套用德思礼的姓和住址。',
+            evidence: dursleyFamilyRe.stringMatch(narrative) ?? privetDriveRe.stringMatch(narrative) ?? '');
+      }
+      // 命中2：当"弗农/佩妮/达力"单独出现在"家门/楼下喊你/敲门"这种家庭成员语境时也命中
+      final aloneDursley = RegExp(r'(弗农姨父|佩妮姨妈|达力表哥)', caseSensitive: false);
+      if (aloneDursley.hasMatch(narrative)) {
+        addV('critical', 'R3c_family_not_dursley',
+            '家庭设定杂交：主角不是哈利，叙事里却直接称呼家人为"弗农姨父/佩妮姨妈/达力表哥"（这些是哈利专属亲属称谓）。原创角色的家人必须使用原创称呼或"养父/养母/妈妈/爸爸"。',
+            evidence: aloneDursley.stringMatch(narrative) ?? '');
+      }
+    }
+
+    // ---- BUG5 R1b: 开学时间/阶段错位（7月31日还在暑假却写分院/上课/特快正式开学）----
+    final monthDayMatch = RegExp(r'(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日').firstMatch(nLower);
+    if (monthDayMatch != null) {
+      final m = int.tryParse(monthDayMatch.group(2) ?? '') ?? 0;
+      final d = int.tryParse(monthDayMatch.group(3) ?? '') ?? 0;
+      final md = m * 100 + d;
+      // 7月31日 ~ 8月31日（开学前）绝对不允许出现"分院仪式/坐在学院长桌旁/正式上课/霍格沃茨特快已经开学当日抵达"这种已入学内容
+      if (md >= 701 && md <= 831) {
+        const forbiddenAfterAugust = ['分院仪式', '坐在学院长桌', '学院长桌旁', '正式上课', '第一节课', '分院帽叫到你的名字', '霍格沃茨特快抵达霍格莫德', '渡湖去大礼堂'];
+        for (final fb in forbiddenAfterAugust) {
+          if (nLower.contains(fb)) {
+            addV('warn', 'R1b_school_date_misalign',
+                '时间阶段错位：当前日期是${m}月${d}日（1991年暑假中/开学准备期），却写了"$fb"这种已入学场景。9月1日之前只能写"在家准备→对角巷采购→国王十字候车→登上特快"，正式分院/上课必须到9月1日之后。',
+                evidence: '$md: $fb');
+            break;
           }
         }
       }

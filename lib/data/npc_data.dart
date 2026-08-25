@@ -35,7 +35,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'dumbledore',
     name: '阿不思·邓布利多',
-    aliases: ['老蜜蜂', '老邓', '校长'],
+    aliases: ['老蜜蜂', '老邓', '邓布利多校长'],
     house: 'Gryffindor',
     grade: 0,
     bloodStatus: 'halfblood',
