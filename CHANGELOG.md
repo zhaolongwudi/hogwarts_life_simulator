@@ -5,6 +5,17 @@
 
 ---
 
+### v2.1.0 — 2026-08-25
+
+**📋 变更说明**
+fix(ai_log_macro): 基于AI调度日志的9大问题宏观修复
+
+根据ai_log(57次调用/4次TIMEOUT/12360行)的逐段分析，修复以下根因：
+
+BUG1 好感度同步·parseResponse顺序反了
+- parseResponse() 中 _parseAffectionChanges 跑到 markIntroducedFromNarrative 前面
+- 导致海格首次出场时 introduced=false，AffectionValidator≥+4直接丢弃
+
 ### v2.0.9 — 2026-08-25
 
 **📋 变更说明**
