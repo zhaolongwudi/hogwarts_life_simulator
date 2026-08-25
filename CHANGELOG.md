@@ -5,6 +5,17 @@
 
 ---
 
+### v2.0.3 — 2026-08-25
+
+**📋 变更说明**
+fix(剧情连贯性): 修复邓布利多OOC误判+开局地点跳变+选项超时断链(承接式兜底)
+
+- mixin_narrative.dart:
+  - R3b_ooc 邓布利多正则删除末尾空分支，避免100%误判 CRITICAL 触发强制重写
+  - _checkOpeningRailroad 新增进度门(visitedLocations) 和时间门(dateInt>=901)，
+    禁止 7月31日在家时直接切到霍格沃茨大礼堂
+- mixin_response.dart:
+
 ### v2.0.2 — 2026-08-25
 
 **📋 变更说明**
