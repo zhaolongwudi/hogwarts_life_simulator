@@ -5,6 +5,11 @@
 
 ---
 
+### v2.0.0 — 2026-08-25
+
+**📋 变更说明**
+merge origin/main into 剧情合理性改造分支（解决 game_provider_base 与 mixin_response 两处冲突：保留Quest/Quidditch新玩法声明 + 好感校验P1-2 clamp5）
+
 ### v1.9.9 — 2026-08-25
 
 **📋 变更说明**
