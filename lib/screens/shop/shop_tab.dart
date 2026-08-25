@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/item_data.dart';
+import 'inventory_screen.dart';
 
 class _OwnedBadge extends StatelessWidget {
   final String itemName;
@@ -251,8 +252,23 @@ class _ShopTabState extends State<ShopTab> {
                     type: item['type'] as String? ?? 'item',
                     description: item['desc'] as String? ?? '',
                   );
+                  final isUsable = item['usable'] == true || item['equippable'] == true;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(ok ? '已购买 ${item['name']} (花费 $price 加隆)' : '加隆不足！需要 $price 加隆')),
+                    SnackBar(
+                      content: Text(ok ? '已购买 ${item['name']} (花费 $price 加隆)' : '加隆不足！需要 $price 加隆'),
+                      duration: const Duration(seconds: 3),
+                      action: ok && isUsable
+                          ? SnackBarAction(
+                              label: '去使用',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                                );
+                              },
+                            )
+                          : null,
+                    ),
                   );
                 } else {
                   final price = item['price'] as int? ?? 5;

@@ -841,8 +841,31 @@ mixin GamePlayMixin on GameProviderBase {
       _finishLocal('编号无效。板子上目前有 ${board.length} 条可接受委托（/委托 刷新 查看）。');
       return;
     }
-    final t = board[index];
-    player!.quests.add(QuestRecord.fromTemplate(t, week: gameWeek));
+    acceptQuestTemplate(board[index].id);
+  }
+
+  /// 按模板 ID 接取委托（委托板独立页面使用，避免与随机刷板索引不一致）
+  void acceptQuestTemplate(String id) {
+    final p = player;
+    if (p == null) return;
+    final t = questTemplateById(id);
+    if (t == null) {
+      _finishLocal('这个委托似乎已经从板子上撤下了。');
+      return;
+    }
+    if ((p.grade ?? 1) < t.minGrade) {
+      _finishLocal('「${t.title}」的难度超出了你现在的年级（要求 ${t.minGrade} 年级以上）。先成长一阵子再来吧。');
+      return;
+    }
+    final taken = <String>{};
+    for (final q in p.quests) {
+      taken.add(q.templateId);
+    }
+    if (taken.contains(t.id)) {
+      _finishLocal('你已经接过「${t.title}」这个委托了。');
+      return;
+    }
+    p.quests.add(QuestRecord.fromTemplate(t, week: gameWeek));
     _finishLocal('【已接取委托】\n${t.title}\n\n${t.desc}\n\n'
         '目标：${t.target} ×${t.targetCount} ｜ 奖励：${t.rewardGalleons}加隆 + ${t.rewardHousePoints}分\n\n'
         '完成后输入 /委托 交付 领取奖励。');

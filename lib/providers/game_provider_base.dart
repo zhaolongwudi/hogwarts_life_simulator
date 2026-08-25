@@ -194,6 +194,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   bool withdrawFromBank(int amount);
   // ====== 新玩法（GamePlayMixin）=====
   void acceptQuest(int index);
+  void acceptQuestTemplate(String id);
   void deliverQuest(int index);
   void duelNpc(String? name);
   void equipItem(String name);

@@ -872,6 +872,12 @@ class _NarrativeTabState extends State<NarrativeTab> {
             right: 0,
             child: _buildHeaderCard(timestamp, location),
           ),
+        Positioned(
+          top: hasHeader ? 132 : 10,
+          left: 0,
+          right: 0,
+          child: const _ResourceFloat(),
+        ),
       ],
     );
   }
@@ -997,6 +1003,111 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ),
           )),
         ],
+      ),
+    );
+  }
+}
+
+/// 数值变化浮层：监听玩家关键资源在两次构建间的差值，
+/// 变化时在对话区顶部飘出一行「生命 -15 · 精力 -10」的提示并渐隐。
+class _ResourceFloat extends StatefulWidget {
+  const _ResourceFloat();
+
+  @override
+  State<_ResourceFloat> createState() => _ResourceFloatState();
+}
+
+class _ResourceFloatState extends State<_ResourceFloat>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+  Map<String, int> _prev = const {};
+  String _text = '';
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _check(GameProvider gp) {
+    final p = gp.player;
+    if (p == null) return;
+    final cur = <String, int>{
+      '生命': p.health,
+      '魔力': p.magic,
+      '精神力': p.spirit,
+      '饱食度': p.satiety,
+      '精力': p.energy,
+      '加隆': p.galleons,
+    };
+    if (_prev.isEmpty) {
+      _prev = cur;
+      return;
+    }
+    final parts = <String>[];
+    cur.forEach((k, v) {
+      final d = v - (_prev[k] ?? v);
+      if (d != 0) parts.add('$k ${d > 0 ? '+' : ''}$d');
+    });
+    _prev = cur;
+    if (parts.isEmpty) return;
+    final text = parts.join(' · ');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _text = text);
+      _ctrl
+        ..stop()
+        ..value = 0
+        ..forward().then((_) async {
+          if (!mounted) return;
+          await Future.delayed(const Duration(milliseconds: 1400));
+          if (!mounted) return;
+          _ctrl.reverse();
+        });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gp = context.watch<GameProvider>();
+    _check(gp);
+    final anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: FadeTransition(
+          opacity: anim,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
+                .animate(anim),
+            child: Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFF232A36).withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: const Color(0xFFD3A625).withValues(alpha: 0.6)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                _text,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFF8F6EE),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
