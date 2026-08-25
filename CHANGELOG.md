@@ -5,6 +5,11 @@
 
 ---
 
+### v2.0.1 — 2026-08-25
+
+**📋 变更说明**
+Merge branch 'main' of https://github.com/zhaolongwudi/hogwarts_life_simulator
+
 ### v2.0.0 — 2026-08-25
 
 **📋 变更说明**
