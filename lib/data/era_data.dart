@@ -79,7 +79,8 @@ const List<EraDef> allEraDefs = [
 ];
 
 /// 当字符串解析失败时的回退（与旧 switch orElse 分支一致）
-const EraDef _fallback = allEraDefs[1]; // marauders
+/// 注：不能用 const allEraDefs[1] —— List 的 [] 操作不是 compile-time constant expression。
+final EraDef _fallback = allEraDefs[1]; // marauders
 
 EraDef eraDefByEra(Era era) {
   for (final d in allEraDefs) {
