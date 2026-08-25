@@ -1402,11 +1402,12 @@ $kNarrativeWritingRules
       // ---- R3b (P1-1)：人设冲突·硬打脸（critical 级会打回重写）----
       // 常见严重 OOC：斯内普"热情/笑/亲切/主动帮/夸学生"、邓布利多"暴怒/刻薄/针对学生"、
       // 德拉科"低声下气/热情对待麻瓜出身"、纳威"冷静大胆主导全场"。
-      // 命中规则：人名 + 与人设正相反的关键词 → 判 critical（因为这些是玩家一眼就出戏的 OOC）
+      // 命中规则：人名 + 与人设正相反的关键词 → 判 critical（这些是玩家一眼就出戏的 OOC）
+      // 【重要】正则末尾绝对不能出现 `|)`（末尾空分支），否则永远匹配任意字符串导致 100% 误判。
       final n = npc.name;
       if (n == '西弗勒斯·斯内普' || n == '斯内普') {
         final oocRe = RegExp(
-            r'(斯内普[^，。！？]{0,15}(热情地|亲切地|笑呵呵|满脸笑容|大笑|拍.*肩|主动.*帮|大大夸奖|温柔地|宠溺地|宠溺地|给你一个拥抱|搂着你))',
+            r'斯内普[^，。！？]{0,15}(热情地|亲切地|笑呵呵|满脸笑容|大笑|拍.*肩|主动.*帮|大大夸奖|温柔地|宠溺地|给你一个拥抱|搂着你)',
             caseSensitive: false);
         if (oocRe.hasMatch(nLower)) {
           addV('critical', 'R3b_ooc_snape', '人设冲突(CRITICAL)：斯内普的核心人设是刻薄/阴沉/冷漠，不能描写他"热情亲切大笑拍肩"。',
@@ -1414,10 +1415,12 @@ $kNarrativeWritingRules
         }
       }
       if (n == '阿不思·邓布利多' || n == '邓布利多') {
+        // 注意：末尾不能留 `|)` 空分支！否则任何包含"邓布"的文本都会命中 CRITICAL 被强制重写。
+        // 此外："巧克力蛙卡片提到邓布利多"不算 OOC（只写温和描写就行），只有"邓布利多 + 暴烈动词紧邻"才算。
         final oocRe = RegExp(
-            r'(邓布利多[^，。！？]{0,15}(暴怒地|凶狠地|刻薄地|刁难|针对学生|恶意地|厉声喝骂|抽.*耳光|))',
+            r'邓布利多[^，。！？]{0,15}(暴怒地|凶狠地|刻薄地|刁难|针对学生|恶意地|厉声喝骂|抽.*耳光)',
             caseSensitive: false);
-        if (oocRe.hasMatch(nLower) && nLower.contains('邓布')) {
+        if (oocRe.hasMatch(nLower)) {
           addV('critical', 'R3b_ooc_dumbledore', '人设冲突(CRITICAL)：邓布利多是睿智温和的校长，不能描写他暴怒刻薄体罚学生。',
               evidence: n);
         }
@@ -1520,27 +1523,41 @@ $kNarrativeWritingRules
     // t=0 是初始化 → 首次行动之前；turnCount++ 之后进入判断，范围刚好
     final curLoc = worldState.currentLocation ?? '';
 
+    // ---------- 进度门（绝对不能跳！否则玩家 7月31日在家 → 直接被甩到霍格沃茨大礼堂，剧情瞬间混乱）----------
+    // visitedLocations 记录：只要玩家真实到过（包括 AI 剧情里写的被 _syncLocationFromNarrative 同步过来的），门就开了。
+    final hasVisited(String pattern) =>
+        worldState.visitedLocations.any((l) => RegExp(pattern, caseSensitive: false).hasMatch(l));
+    final toHome = RegExp(r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅)', caseSensitive: false);
+    final toDiagon = RegExp(r'(对角巷|奥利凡德|摩金夫人|破釜)', caseSensitive: false);
+    final toStation = RegExp(r'(国王十字|九又四分之三|站台|特快|列车|火车)', caseSensitive: false);
+    final toHogwarts = RegExp(r'(霍格沃茨|大礼堂|城堡)', caseSensitive: false);
+
+    // 绝对不会触发的"时间门"：7月31日收到信的当天，禁止跳到 9月1日之后才会发生的场景（特快/分院）
+    final month = worldState.time.month;
+    final day = worldState.time.day;
+    final dateInt = month * 100 + day; // 0731 / 0901
+    final afterSep1st = dateInt >= 901;
+
     String? forcedAnchor;
     String? forcedLocation;
 
     // Turn 1~3（在家 2+ 回合还没出门）→ 海格上门
-    final atHome = RegExp(r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅)', caseSensitive: false);
-    if (t >= 2 && t <= 3 && atHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
+    if (t >= 2 && t <= 3 && toHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
       forcedAnchor = '鲁伯·海格亲自登门送你（他受邓布利多委托亲自接新生去对角巷采购），'
           '他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦小子/姑娘，再晚就赶不上对角巷奥利凡德的预约了。"'
           ' 这一回合必须自然融入海格来访、和养父母告别、动身前往伦敦的剧情。';
     }
     // Turn 4~5 还在家 → 养父母直接催 + 直接把 currentLocation 推到对角巷入口
-    if (t >= 4 && t <= 5 && atHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
+    if (t >= 4 && t <= 5 && toHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
       forcedAnchor = '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。'
           '（本回合剧情请直接写：海格与你一同抵达伦敦，走进了破釜酒吧后的对角巷入口。采购正式开始。）';
       forcedLocation = '对角巷';
     }
     // Turn 6~7 还没到国王十字/特快 → 对角巷收尾，动身去车站
-    final atDiagon = RegExp(r'(对角巷|奥利凡德|摩金夫人|破釜)', caseSensitive: false);
-    final atStation = RegExp(r'(国王十字|九又四分之三|站台|特快|列车|火车)', caseSensitive: false);
-    if (t >= 6 && t <= 7 && !atStation.hasMatch(curLoc) && pendingAnchorDirective == null) {
-      if (atDiagon.hasMatch(curLoc) || atHome.hasMatch(curLoc)) {
+    // 【进度门】必须已经真实到过对角巷（hasVisited(对角巷)），否则不能跳到"买完东西去车站"——
+    //           否则上一步还在家陪养父母吃饭，下一帧直接被告别完准备上车，断链感爆炸。
+    if (t >= 6 && t <= 7 && !toStation.hasMatch(curLoc) && pendingAnchorDirective == null) {
+      if ((toDiagon.hasMatch(curLoc) || hasVisited(r'对角巷')) || (toHome.hasMatch(curLoc) && t >= 7)) {
         forcedAnchor = '采购收尾：魔杖、课本、袍子都已买齐。海格看了看表："哎呀，十一点的特快！再不走就晚了！"'
             '他一把拉着你幻影移形/乘骑士公共汽车赶往伦敦国王十字车站，'
             '在9又3/4站台口给了你一张霍格沃茨特快车票并嘱咐你"别撞墙撞错了，对着柱子冲过去就行"。'
@@ -1549,18 +1566,25 @@ $kNarrativeWritingRules
       }
     }
     // Turn 8~9 还没到特快 → 直接切到站台并强制"级长喊新生上车"
-    if (t >= 8 && t <= 9 && !atStation.hasMatch(curLoc) && pendingAnchorDirective == null) {
-      forcedAnchor = '你已抵达国王十字车站，推着行李车穿过了9又3/4站台的柱子。'
-          '鲜红色的霍格沃茨特快冒着白烟、汽笛轰鸣。级长扯着嗓子喊："新生快上车！马上就要发车了！"'
-          ' 本回合必须写你登上特快、找到包厢坐下的剧情。';
-      forcedLocation = '霍格沃茨特快列车';
+    // 【进度门 + 时间门】必须到过对角巷；dateInt >= 901 才允许登上特快（没到9月1日先别跳）
+    if (t >= 8 && t <= 9 && !toStation.hasMatch(curLoc) && pendingAnchorDirective == null && afterSep1st) {
+      if (hasVisited(r'对角巷')) {
+        forcedAnchor = '你已抵达国王十字车站，推着行李车穿过了9又3/4站台的柱子。'
+            '鲜红色的霍格沃茨特快冒着白烟、汽笛轰鸣。级长扯着嗓子喊："新生快上车！马上就要发车了！"'
+            ' 本回合必须写你登上特快、找到包厢坐下的剧情。';
+        forcedLocation = '霍格沃茨特快列车';
+      }
     }
     // Turn 10~12 还未分院 → 到霍格莫德 + 坐船/马车去城堡 + 分院
-    if (t >= 10 && t <= 12 && !(p.house?.isNotEmpty ?? false)) {
-      forcedAnchor = '霍格沃茨特快抵达霍格莫德车站。海格举着巨大的灯笼在站台上喊："一年级新生跟我来！"'
-          '你们坐小船渡湖初见霍格沃茨城堡，穿过大门来到大礼堂，分院仪式开始。'
-          '麦格教授拿着分院帽和凳子走出来，叫到了你的名字。请自然带出分院剧情并最终确定玩家学院。';
-      if (t >= 11) forcedLocation = '霍格沃茨大礼堂';
+    // 【进度门 x2 + 时间门】必须到过特快 AND 到过车站；dateInt >= 901
+    //                    绝对不能在家 → 直接甩到大礼堂（之前 7月31日直接被切大礼堂的 bug 就是因为这里没加门）
+    if (t >= 10 && t <= 12 && !(p.house?.isNotEmpty ?? false) && afterSep1st) {
+      if (hasVisited(r'(特快|列车|火车|站台|国王十字)') && !toHome.hasMatch(curLoc)) {
+        forcedAnchor = '霍格沃茨特快抵达霍格莫德车站。海格举着巨大的灯笼在站台上喊："一年级新生跟我来！"'
+            '你们坐小船渡湖初见霍格沃茨城堡，穿过大门来到大礼堂，分院仪式开始。'
+            '麦格教授拿着分院帽和凳子走出来，叫到了你的名字。请自然带出分院剧情并最终确定玩家学院。';
+        if (t >= 11) forcedLocation = '霍格沃茨大礼堂';
+      }
     }
 
     if (forcedAnchor != null && pendingAnchorDirective == null) {
@@ -1573,6 +1597,7 @@ $kNarrativeWritingRules
       worldState.currentLocation = forcedLocation;
       lastTrackedLocation = forcedLocation;
       turnsAtSameLocation = 0;
+      worldState.visitedLocations.add(forcedLocation); // 过门后立刻登记到 visitedLocations，不卡下一关
     }
   }
 

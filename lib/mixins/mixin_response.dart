@@ -589,61 +589,133 @@ mixin GameResponseMixin on GameProviderBase {
   }
 
   /// 最终兜底选项：当AI连续失败时，基于当前剧情生成4个合理选项
+  /// 兜底选项（严格基于「剧情末尾800字」生成，不能输出"仔细观察/面对情况"这种会断链的空选项）
+  ///
+  /// 触发时机：选项 AI 生成超时(20s) / 返回内容不合格 / 网络异常。
+  /// 核心原则：从「剧情最末尾的最后一位说话者 / 最后一个未完成动作 / 最后一个氛围钩子」出发，
+  ///          产出 A(勇敢/主动) B(谨慎/观察) C(人际/沟通) D(取巧/隐忍) 四个风格，
+  ///          玩家点任何一个都会让剧情**自然衔接**，不会出现"选了仔细查看 → 下回合叙事完全跳场景"的断链。
   List<GameChoice> _buildFallbackChoices(String narrative) {
     final p = player;
-    if (p == null) {
-      return [
-        GameChoice(text: '继续观察', action: '继续观察当前情况'),
-        GameChoice(text: '采取行动', action: '采取主动行动'),
-        GameChoice(text: '谨慎等待', action: '等待合适的时机'),
-        GameChoice(text: '寻求帮助', action: '寻找周围的帮助'),
-      ];
-    }
-
-    final energy = p.energy;
+    final energy = p?.energy ?? 100;
     final location = worldState.currentLocation ?? '';
+    final atHome = location.contains('家中') || location.contains('卧室') || location.contains('客厅') || location.contains('餐厅');
     final isNight = worldState.timestamp.contains('深夜') ||
         worldState.timestamp.contains('晚间') ||
         worldState.timestamp.contains('黄昏');
-    final isClassroom = location.contains('教室') ||
-        location.contains('课堂') ||
-        location.contains('图书馆');
-    final isOutdoors = location.contains('草地') ||
-        location.contains('森林') ||
-        location.contains('走廊');
+    final tail = narrative.length > 800 ? narrative.substring(narrative.length - 800) : narrative;
+
+    // ---------- Step 1: 从末尾 800 字抓最后一位说话者 + 最后一句对话关键词 ----------
+    String? lastSpeaker;
+    String? lastDialogTopic;
+    final afterQuoteRe = RegExp(
+      r'[」"】][^，。！？\n]*?(养母|养父|海格|邓布利多|斯内普|麦格|哈利|罗恩|赫敏|马尔福|教授|同学|级长|妈妈|爸爸|NPC)[^，。！？\n]{0,10}(说|开口|问|道|回答|叹了口气|笑了笑|低声|沉声|看着你)',
+      caseSensitive: false,
+    );
+    final aqm = afterQuoteRe.allMatches(tail);
+    if (aqm.isNotEmpty) lastSpeaker = aqm.last.group(1);
+    final dialogRe = RegExp(r'[「"]([^「"」]{2,40})[」"]', caseSensitive: false);
+    final dm = dialogRe.allMatches(tail);
+    if (dm.isNotEmpty) lastDialogTopic = dm.last.group(1);
+
+    // ---------- Step 2: 抓末尾的未完成动作钩子 ----------
+    final hookPacking = tail.contains('收拾') || tail.contains('行李') || tail.contains('整理');
+    final hookLeaving = tail.contains('早点休息') || tail.contains('明天') || tail.contains('出发') || tail.contains('车票') || tail.contains('站台');
+    final hookGoodbye = tail.contains('圣诞节') || tail.contains('答应我') || tail.contains('一定要回来') || tail.contains('告别') || tail.contains('舍不得');
+    final hookAnswer = tail.contains('等你回答') || tail.contains('你的选择') || tail.contains('打算怎么做') || tail.contains('那你打算') || (lastSpeaker != null && (lastDialogTopic?.contains('吗') ?? false));
+    final hookDoor = tail.contains('敲门') || tail.contains('敲门声') || tail.contains('门外');
+    final hookLetter = tail.contains('录取通知书') || tail.contains('信封') || tail.contains('霍格沃茨的') || tail.contains('羊皮纸');
 
     final fallback = <GameChoice>[];
 
-    // 选项A：主动型
-    if (energy < 25) {
-      fallback.add(GameChoice(text: '休息恢复精力', action: '找个地方休息，恢复精神和体力'));
-    } else if (isClassroom) {
-      fallback.add(GameChoice(text: '认真听讲并举手发言', action: '专注课堂内容，适时举手提问或回答问题'));
-    } else if (isOutdoors) {
-      fallback.add(GameChoice(text: '主动探索周围环境', action: '仔细观察周围的环境，看看有什么特别的'));
-    } else {
-      fallback.add(GameChoice(text: '主动面对眼前情况', action: '鼓起勇气，直接面对当前的处境'));
-    }
-
-    // 选项B：谨慎型
-    fallback.add(GameChoice(text: '仔细观察再做决定', action: '保持冷静，先仔细观察周围的人和事'));
-
-    // 选项C：社交型
-    if (isNight) {
-      fallback.add(GameChoice(text: '悄悄找个朋友商量', action: '找一个信任的朋友，低声商量接下来的打算'));
-    } else {
-      fallback.add(GameChoice(text: '和身边的人交流', action: '与附近的NPC友好交流，了解更多信息'));
-    }
-
-    // 选项D：特殊型
-    if (isClassroom) {
-      fallback.add(GameChoice(text: '记笔记并整理思路', action: '记下重要内容，同时整理自己的思路'));
+    // ---- A 勇敢/主动型 ----
+    if (hookGoodbye) {
+      fallback.add(GameChoice(
+          text: '和养父母认真告别后收拾行李，明天一早前往国王十字车站',
+          action: '和养父母认真拥抱告别，随即开始收拾行李，确认车票、魔杖和加隆都已入箱，准备明天前往国王十字车站的九又四分之三站台'));
+    } else if (hookAnswer) {
+      fallback.add(GameChoice(
+          text: '正面回应「${lastSpeaker ?? '对方'}」的问题，说出你的真实想法',
+          action: '直面${lastSpeaker ?? '对方'}的提问，坦诚回答你对${lastDialogTopic ?? '这件事'}的真实想法和接下来的打算'));
+    } else if (hookPacking || hookLeaving) {
+      fallback.add(GameChoice(
+          text: '立刻收拾行李，和家人道晚安后为明天出发做最后确认',
+          action: '立刻动手收拾行李，把魔杖匣、课本和换洗衣物装好，去和养父母道晚安，最后确认一遍车票与加隆，准备明天一早前往九又四分之三站台'));
+    } else if (hookDoor) {
+      fallback.add(GameChoice(text: '立刻过去开门，看看门外究竟是谁', action: '深吸一口气，快步走向大门，握住门把手直接打开看看门外到底是谁'));
+    } else if (hookLetter) {
+      fallback.add(GameChoice(
+          text: '当着养父母的面拆开录取通知书并仔细阅读全文',
+          action: '当着养父母的面撕开火漆，把霍格沃茨录取通知书从头到尾读完，确认开学日期、采购清单和九又四分之三站台说明'));
     } else if (energy < 25) {
-      fallback.add(GameChoice(text: '节省体力等待时机', action: '节省体力，耐心等待合适的时机'));
+      fallback.add(GameChoice(text: '先抓紧休息恢复精神体力', action: '不再逞强，找个安全的地方坐下或躺下休息，先把精力恢复到可行动水平再做下一步'));
     } else {
-      fallback.add(GameChoice(text: '换个角度思考问题', action: '换个角度重新审视眼前的情况'));
+      fallback.add(GameChoice(text: '主动面对眼前状况并迈出第一步', action: '不再犹豫，鼓起勇气直接面对当前的局面，立刻着手处理最紧急的那件事'));
     }
 
+    // ---- B 谨慎/观察/智取 ----
+    if (hookAnswer) {
+      fallback.add(GameChoice(
+          text: '不急于回答，先反问「${lastSpeaker ?? '对方'}」几个关键细节再决定',
+          action: '先不动声色地反问${lastSpeaker ?? '对方'}两个关于${lastDialogTopic ?? '这件事'}的具体细节，确认信息完全后再做出稳妥的回应'));
+    } else if (hookPacking) {
+      fallback.add(GameChoice(
+          text: '先列一张行李清单检查不落下必需品，再慢慢收拾',
+          action: '拿羊皮纸列出开学必需品清单：魔杖、课本、袍子、加隆、私人物品，逐一核对后再动手收拾，确保不落下关键物件'));
+    } else if (hookDoor) {
+      fallback.add(GameChoice(
+          text: '先从门缝/猫眼确认来人，再决定开门与否',
+          action: '先不急着开门，从门缝或猫眼确认一下门外的人是谁、带什么东西，确认安全后再决定是否开门'));
+    } else if (hookLetter) {
+      fallback.add(GameChoice(
+          text: '先收好信不声张，观察养父母的反应再决定下一步',
+          action: '不动声色地把录取信先收进怀里，先观察养父母的表情和态度，揣摩他们知道多少内情再决定怎么谈'));
+    } else {
+      fallback.add(GameChoice(text: '先沉默观察几秒钟，理清所有信息再行动', action: '先不要急着做决定，安静观察周围的人和环境，把已知信息理一遍再选最稳妥的行动'));
+    }
+
+    // ---- C 人际/沟通/结盟 ----
+    if (lastSpeaker != null) {
+      fallback.add(GameChoice(
+          text: '和「$lastSpeaker」坐下来好好聊清楚${lastDialogTopic ?? '接下来的打算'}再决定',
+          action: '拉着$lastSpeaker坐下来，把关于${lastDialogTopic ?? '接下来的安排'}的顾虑、担忧、期望都聊清楚，先把双方理解对齐再行动'));
+    } else if (hookGoodbye || hookLeaving) {
+      fallback.add(GameChoice(
+          text: '坐下来和养父母吃最后一顿晚饭，聊聊对魔法界的担忧与期待',
+          action: '先不急着收拾，坐到餐桌边陪养父母再吃一顿饭（哪怕是凉的），把彼此对魔法界的担忧和期待都说出来，给家人一个安心的告别'));
+    } else if (atHome) {
+      fallback.add(GameChoice(text: '去找养父母或家人聊聊，确认他们的看法和建议', action: '去找养父母或家里最信任的亲人聊一聊，问他们对这件事的真实想法和建议，再决定下一步怎么走'));
+    } else {
+      fallback.add(GameChoice(text: '找附近熟悉的NPC了解情况再做判断', action: '先和周围看起来面善或认识的NPC聊两句，确认一下当前事态、别人都在做什么，避免自己信息不足做错决定'));
+    }
+
+    // ---- D 取巧/隐忍/代价型 ----
+    if (hookPacking || hookLeaving) {
+      fallback.add(GameChoice(
+          text: '先把最重要的魔杖和车票揣进内袋，其余物品明天清早再收拾',
+          action: '不做全面打包，只把魔杖匣子、车票和大面额加隆贴身收好，其余衣物课本留到明天清晨再装，先睡一觉保证明天出发时精神饱满'));
+    } else if (hookAnswer) {
+      fallback.add(GameChoice(
+          text: '对「${lastSpeaker ?? '对方'}」的问题先模糊应付，保留信息差不亮底牌',
+          action: '面对${lastSpeaker ?? '对方'}关于${lastDialogTopic ?? '这件事'}的提问，先模糊点头/打哈哈应付过去，不把自己真实想法和底牌亮出来，给自己留后路'));
+    } else if (hookDoor) {
+      fallback.add(GameChoice(
+          text: '假装不在房间/没听见，先躲在一边观察外面动静再决定',
+          action: '先假装屋里没人、不去开门，悄悄躲在门后或窗边听外面的脚步声/说话声，确认安全情况再做进一步打算'));
+    } else if (atHome && isNight) {
+      fallback.add(GameChoice(text: '借口很累先去睡，明早趁家人不注意偷偷出发', action: '借口精神不济先回房间休息，悄悄把最重要的行李整理好，第二天清早趁家人还没睡醒就拿着车票和加隆悄然出发'));
+    } else {
+      fallback.add(GameChoice(text: '暂时隐忍不表态，等时机更成熟再出手', action: '把情绪压下去，不急于表明立场也不急于行动，先观察局势变化，等对自己最有利的时机出现再出手'));
+    }
+
+    // 保险：裁剪/补齐到 4 条
+    if (fallback.length > 4) fallback.removeRange(4, fallback.length);
+    if (fallback.length < 4) {
+      fallback.add(GameChoice(text: '先在脑中过一遍所有后果，再选择最稳妥的做法', action: '把接下来可选动作的各种后果在脑子里快速过一遍，评估风险后再选最稳妥的那一步'));
+    }
+    while (fallback.length < 4) {
+      fallback.add(GameChoice(text: '冷静下来整理思路后再决定下一步', action: '先深呼吸让情绪平稳下来，把已知的事实、未知的风险、自己的目标整理清楚，再继续下一步'));
+    }
     return fallback;
   }
 
@@ -863,8 +935,11 @@ $kChoicePromptSuffix''';
 
       return choices;
     } catch (e) {
-      debugPrint('独立选项生成失败(回退到文本解析): $e');
-      return [];
+      // 关键修复：以前这里 return [] → 外层走 generateContextualFallbackChoices → 生成不承接剧情末尾的"仔细查看"
+      // → 玩家点了之后下一回合叙事就完全跳开上一段剧情结尾，造成"刚生成的剧情没操作就被另一个剧情替换"
+      // 现在统一走 _buildFallbackChoices，严格基于 narrative 末尾 800 字做承接式兜底，保证不断链。
+      debugPrint('独立选项生成异常(使用承接式兜底): $e');
+      return _buildFallbackChoices(narrative);
     }
   }
 
