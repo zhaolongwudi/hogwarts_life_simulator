@@ -109,6 +109,16 @@ mixin GameNarrativeMixin on GameProviderBase {
         }
         contextBuffer.writeln('');
       }
+      // ========== 短期断言：上回合生效的物理/姿态/状态事实（防止 AI 失忆打脸） ==========
+      final assertionsBlock = buildAssertionsPromptBlock();
+      if (assertionsBlock.isNotEmpty) {
+        contextBuffer.write(assertionsBlock);
+      }
+      // ========== T1 超期未推进的"别忘了这些重要伏笔"提醒 ==========
+      final loopsHint = _buildOpenLoopsStagnationHint();
+      if (loopsHint.isNotEmpty) {
+        contextBuffer.write(loopsHint);
+      }
       // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚，仅展示已登场NPC）
       final topNpcs = npcRegistry.values
           .where((npc) => npc.introduced == true)
@@ -230,18 +240,19 @@ mixin GameNarrativeMixin on GameProviderBase {
         contextBuffer.writeln('');
       }
 
-      // 只注入最近 3 回合（而非10），避免历史叙事过多导致 AI 重复输出
+      // 只注入最近 2 回合（而非3），避免历史叙事过多导致 AI 被旧场景文本"锚定"而原地打转
       final filteredTurns = <String>[];
       for (int i = recentTurns.length - 1; i >= 0; i--) {
         final entry = recentTurns[i];
         filteredTurns.insert(0, entry);
-        if (filteredTurns.length >= 3) break;
+        if (filteredTurns.length >= 2) break;
       }
       final recentBuffer = filteredTurns.isNotEmpty
           ? filteredTurns.join('\n\n')
           : currentNarrative;
-      // 截断到 1600 字（而非4800），只保留末尾用于理解当前处境
-      final recent = _truncateNarrativeContext(recentBuffer, 1600);
+      // 截断到 800 字（而非1600），只保留末尾用于理解当前处境
+      // 过多的前情文本会让AI认为场景还应该在前一个地点继续
+      final recent = _truncateNarrativeContext(recentBuffer, 800);
       // 关键改进：明确标注为"已生成的前情"，禁止 AI 重复或改写
       contextBuffer.write('【前情回顾（已生成内容，严禁重复或改写其中任何段落，仅用于理解当前处境）】\n$recent');
 
@@ -255,6 +266,26 @@ mixin GameNarrativeMixin on GameProviderBase {
           ? '【剧情节点】本回合请自然融入以下既定剧情骨架（不必生硬转折，可结合玩家行动展开）：\n$pendingAnchorDirective\n\n'
           : '';
 
+      // 场景停滞强制推进：玩家在同一地点停留过久时，注入强制场景转换指令
+      // 这是「最后一道防线」——prompt 规则 + 上下文压缩都失效时的硬性兜底
+      // （已加入三级豁免：地点白名单、叙事钩子未解决、分级阈值，避免打断重要剧情）
+      String stagnationLine = '';
+      final curLoc = worldState.currentLocation ?? '当前地点';
+      final threshold = stagnationThresholdFor(curLoc);
+      final hasHook = narrativeHasUnresolvedHook(currentNarrative);
+      if (turnsAtSameLocation >= threshold && !hasHook) {
+        final stuckTurns = turnsAtSameLocation;
+        final isExempt = isLocationExemptFromStagnation(curLoc);
+        final extraHint = isExempt
+            ? '（注：你所在的「$curLoc」是重要剧情场景，通常允许$threshold回合停留；现已达到上限，必须在下一阶段自然转换。）'
+            : '';
+        stagnationLine = '【⚠️强制推进指令】玩家已在「$curLoc」停留 $stuckTurns 回合（该场景允许阈值=$threshold），剧情已停滞！'
+            '本回合必须发生场景转换——例如：有人敲门通知该出发、时间到了必须动身前往下一站、'
+            '收到猫头鹰信件催促、窗外发生引人注意的事件、被召唤去某处等。$extraHint'
+            '严禁继续在「$curLoc」原地打转、反复施法、反复探索同一现象。'
+            '本回合结尾必须让玩家处于「正在前往/即将到达下一场景」的状态。\n\n';
+      }
+
       return '''【世界上下文】
   $context
 
@@ -262,7 +293,7 @@ mixin GameNarrativeMixin on GameProviderBase {
   【当前场景】${worldState.timestamp}｜${worldState.currentLocation ?? '未知'}
   $sceneInfo
 
-  $anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
+  $stagnationLine$anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
 $kNarrativeWritingRules
@@ -270,29 +301,107 @@ $kNarrativeWritingRules
     }
 
     try {
-      final prompt = buildPrompt();
+      // 开局硬骨架守卫（仅前12回合 & 家中开局 & 还没入校才生效），把还没出门的玩家硬推出去
+      _checkOpeningRailroad();
+
+      // 场景停滞检测：回合开始时比较地点，若未变则累加停滞计数
+      // buildPrompt 会读取 turnsAtSameLocation 决定是否注入强制推进指令
+      _updateLocationTracking();
+
+      String buildPromptInternal() => buildPrompt();
+      String prompt = buildPromptInternal();
       // 记录本回合实际注入的锚点（推进时间后可能产生新锚点，不能误清）
-      final consumedAnchor = pendingAnchorDirective;
+      String? consumedAnchor = pendingAnchorDirective;
       loadingStage = '正在生成剧情...';
       notifyListeners();
 
       String response;
-      try {
-        response = (await callDeepSeek(prompt)).content;
-      } on AiNonRetryableException {
-        rethrow;
-      } catch (e) {
-        loadingStage = '请求失败，正在重试...';
+      int retriesLeft = 1; // 允许 critical 级违规后自动重试 1 次（太多次会慢）
+      List<Map<String, dynamic>> violations = const [];
+      List<Map<String, dynamic>> forbiddenHits = const [];
+      bool needsRetry;
+      do {
+        needsRetry = false;
+        try {
+          response = (await callDeepSeek(prompt)).content;
+        } on AiNonRetryableException {
+          rethrow;
+        } catch (e) {
+          loadingStage = '请求失败，正在重试...';
+          notifyListeners();
+          await Future.delayed(const Duration(milliseconds: 500));
+          response = (await callDeepSeek(prompt)).content;
+        }
+
+        loadingStage = '正在解析剧情...';
         notifyListeners();
-        await Future.delayed(const Duration(milliseconds: 500));
-        response = (await callDeepSeek(prompt)).content;
-      }
 
-      loadingStage = '正在解析剧情...';
-      notifyListeners();
+        // 先解析叙事文本（不含选项）
+        parseNarrativeOnly(response);
 
-      // 先解析叙事文本（不含选项）
-      parseNarrativeOnly(response);
+        // --- P2-1 禁止词检测（现代物品/跨IP/网络梗）---
+        forbiddenHits = detectForbiddenWords(currentNarrative);
+        for (final h in forbiddenHits) {
+          recordConsistencyViolation({
+            'severity': h['severity'],
+            'rule': 'R6_forbidden_${h['category']}',
+            'message': '违和词命中(${h['category']}): ${h['word']} — 霍格沃茨世界观不应出现现代物品/跨IP角色/网络梗。',
+            'evidence': h['word'],
+            'at': DateTime.now().toIso8601String(),
+          });
+        }
+        final criticalForbidden = forbiddenHits.where((h) => h['severity'] == 'critical').toList();
+
+        // --- P0-1 一致性看门狗：6 大类校验 ---
+        violations = validateNarrativeConsistency(currentNarrative);
+        for (final v in violations) {
+          recordConsistencyViolation(v);
+        }
+        final criticalViolations = violations.where((v) => v['severity'] == 'critical').toList();
+
+        // --- P1-2 好感变化校验（放到 _parseAffectionChanges 内部做拦截丢弃）---
+        // 这里不打回整段，只记录 warn 级。
+
+        // 判定：critical 违规 or critical 禁止词命中 → 重试一次
+        if (retriesLeft > 0 && (criticalViolations.isNotEmpty || criticalForbidden.isNotEmpty)) {
+          final msgs = <String>[
+            ...criticalViolations.map((v) => '${v['rule']}: ${v['message']}'),
+            ...criticalForbidden.map((h) => '违和词(${h['category']}): ${h['word']}'),
+          ];
+          debugPrint('⚠️ 叙事一致性 critical 违规，准备重试 ${msgs.length} 条：${msgs.take(3).join(" | ")}');
+          // 给新 prompt 加一段"修正要求"，明确告诉 AI 错在哪
+          final correction = StringBuffer();
+          correction.writeln('【⚠️ 上一次生成被驳回，必须严格修正以下问题再重写】');
+          for (int i = 0; i < msgs.length && i < 5; i++) {
+            correction.writeln('${i + 1}. ${msgs[i]}');
+          }
+          correction.writeln('请按以上要求重写一整段叙事。保持【玩家行动】不变，但剧情走向必须完全符合规则。\n');
+          prompt = correction.toString() + prompt;
+          needsRetry = true;
+          retriesLeft -= 1;
+          loadingStage = '剧情${criticalViolations.length + criticalForbidden.length}处违规，重试中...';
+          notifyListeners();
+          continue;
+        }
+
+        // warn 级违规不必打回，只是记录到 consistencyViolations 并在下回合注入软提醒。
+        // warn 也加到通知里，方便玩家/开发者看到
+        final warnCount = violations.where((v) => v['severity'] == 'warn').length +
+            forbiddenHits.where((h) => h['severity'] == 'warn').length;
+        if (warnCount > 0) {
+          notifications.add('📝 剧情逻辑警告：本回合有 $warnCount 处轻微违和，已记录。');
+        }
+        break; // 走到这里说明不重试
+      } while (needsRetry);
+
+      // 从叙事文本中提取新地点并同步 currentLocation
+      // 这是「场景推进」的闭环：AI 写了换场景 → 状态同步 → 停滞计数清零
+      // 否则 currentLocation 永远停在初始值，AI 会以为玩家还在原地
+      _syncLocationFromNarrative(currentNarrative);
+
+      // --- P0-2 短期断言：从本回合叙事末尾提取生效状态，下回合 Prompt 必注入 ---
+      final newAssertions = extractShortAssertions(currentNarrative);
+      rotateTurnAssertions(newAssertions);
 
       // 独立生成选项：基于已生成的剧情（与主叙事完全解耦，不再从叙事响应提取）
       // 注意：从 2026-08-23 起「写作要求」明确禁止主叙事 AI 输出选项，
@@ -301,6 +410,7 @@ $kNarrativeWritingRules
       loadingStage = '正在生成选项...';
       notifyListeners();
 
+      // ---- 选项端也跑一次禁止词 & OOC软提示（轻微的OOC不会打回，改 prompt 软提醒）----
       final separateChoices = await generateChoicesSeparately(currentNarrative);
       if (separateChoices.isNotEmpty) {
         choices = separateChoices;
@@ -688,6 +798,197 @@ $kNarrativeWritingRules
     }).toList();
   }
 
+  // ==================== 场景停滞检测与地点同步 ====================
+
+  /// 【场景豁免·地点白名单】：
+  /// 这些场景本来就是"要多回合演剧情"的（上课/分院/购魔杖/图书馆查资料等），
+  /// 如果跟开局家里一样用 2 回合的严格阈值，反而会把重要剧情硬打断。
+  /// 匹配规则：currentLocation 的主名称包含下面任一关键词即豁免。
+  static const List<String> _kStagnationExemptLocations = [
+    '大礼堂',     // 分院、宴会、重要集会 → 可能要3-4回合
+    '教室',       // 上课、小测验、课堂互动 → 可能3-4回合
+    '图书馆',     // 查资料、发现线索、遇NPC → 可能3回合
+    '对角巷',     // 采购魔杖/袍子/书、逛店铺、遇NPC → 可能4-5回合
+    '霍格莫德村', // 周末逛街、三把扫帚、蜂蜜公爵 → 多回合正常
+    '公共休息室', // 社交、练咒、写作业 → 停留正常
+    '禁林',       // 探索、遭遇神奇生物、任务线 → 多回合正常
+    '医疗翼',     // 治伤、养病、剧情 → 多回合正常
+    '霍格沃茨·场地', // 魁地奇训练/比赛、草坪互动 → 多回合正常
+  ];
+
+  /// 判断当前地点是否为"重要剧情场景（豁免强制推进）"。
+  /// （跨 Mixin 公开方法：GameProviderBase 声明了 abstract，mixin_response 需要调用）
+  bool isLocationExemptFromStagnation(String location) {
+    if (location.isEmpty) return false;
+    return _kStagnationExemptLocations.any(
+      (keyword) => location.contains(keyword),
+    );
+  }
+
+  /// 【停滞触发阈值·分级】：
+  /// - 起始家中（卧室/庄园/家里等）：2 回合 → 严，防止开局墨迹不出发
+  /// - 豁免地点（大礼堂/教室/对角巷等）：6 回合 → 非常宽松，确保有足够回合演完重要剧情
+  /// - 其它普通地点（车站/走廊/特快等过路型）：4 回合 → 中等，防止在过路费卡
+  /// （跨 Mixin 公开方法：GameProviderBase 声明了 abstract，mixin_response 需要调用）
+  int stagnationThresholdFor(String location) {
+    if (location.isEmpty) return 2;
+    // 开局的"家中·卧室"（含别名）严格按 2 回合
+    const atHomeKeywords = ['家中', '卧室', '住宅', '庄园', '别墅', '家里'];
+    if (atHomeKeywords.any((k) => location.contains(k))) return 2;
+    // 豁免剧情地点放宽到 6 回合
+    if (isLocationExemptFromStagnation(location)) return 6;
+    // 其它：4 回合
+    return 4;
+  }
+
+  /// 【停滞豁免·叙事钩子检测】：
+  /// 如果上一回合叙事**末尾**（最后200字）明确存在"冲突未解决/对话未结束/悬念未落地/正在发生中"
+  /// 的剧情钩子，说明此刻强制推进会毁体验，本回合跳过强制推进，让剧情自然收束。
+  /// 例：分院帽接触头发突然停住、斯内普刚点名叫你、对手举着魔杖等你出招、门被敲响正要去开……
+  /// （跨 Mixin 公开方法：GameProviderBase 声明了 abstract，mixin_response 需要调用）
+  bool narrativeHasUnresolvedHook(String narrative) {
+    if (narrative.isEmpty) return false;
+    final tail = narrative.length > 200
+        ? narrative.substring(narrative.length - 200)
+        : narrative;
+    // 匹配：1) 省略号/破折号结尾的悬念；2) "刚/正要/突然/正在/即将/尚未/还没/没等"这类未完成动作词；
+    //       3) 点名/提问/对话未闭合（"看着你等你回答""点名叫你""注视着你""等你开口""等你回应"）；
+    //       4) 决斗/对峙正酣的关键词（"举起魔杖""瞄准""对峙""剑拔弩张""一触即发""准备迎战"）；
+    //       5) 分院/考试/仪式正进行中。
+    final re = RegExp(
+      r'(\.\.\.|……|——|—\s*$)'                       // 悬念标点结尾
+      r'|(刚|正要|正准备|突然|就在这时|正在|即将|尚未|还没|没等|未等)', // 未完成动作
+      r'|(看着你.*(回答|回应|开口)|等你(回答|回应|开口|出招)|点名叫|点了.*的名|注视着你|等你说话)', // 对话/点名待回应
+      r'|(举起.*魔杖|瞄准|对峙|剑拔弩张|一触即发|准备迎战|严阵以待|蓄势待发)', // 战斗/对峙
+      r'|(分院帽.*(碰到|落下|停住|思考)|(考试|测验|仪式|宴会).(正在|进行中|刚刚开始|开始了))', // 正进行中的关键事件
+      r'|(门.*敲响|敲门声|有人敲门|脚步声.*临近|声音从.*传来)', // 即将发生事件的铺垫
+      , caseSensitive: false,
+    );
+    return re.hasMatch(tail);
+  }
+
+  /// 回合开始时更新地点停滞计数。
+  /// 若 currentLocation 与上一回合相同，则 turnsAtSameLocation++；
+  /// 若已变化（如玩家手动 travelTo），则清零并记录新地点。
+  void _updateLocationTracking() {
+    final cur = worldState.currentLocation ?? '';
+    if (lastTrackedLocation == null) {
+      // 首次追踪：记录但不计停滞
+      lastTrackedLocation = cur;
+      turnsAtSameLocation = 0;
+      return;
+    }
+    if (cur == lastTrackedLocation) {
+      turnsAtSameLocation++;
+    } else {
+      // 地点已变（可能是 travelTo 或上一回合叙事同步触发）
+      lastTrackedLocation = cur;
+      turnsAtSameLocation = 0;
+    }
+  }
+
+  /// HP 世界已知地点关键词表（按开局推进路线排序）。
+  /// 叙事中出现这些关键词即认为玩家已到达该地点。
+  /// 使用 「主要关键词 + 别名列表」结构，匹配任一别名即归入主地点。
+  static const List<(String, List<String>)> _knownLocations = [
+    ('家中·卧室', ['家中', '卧室', '自己的房间']),
+    ('国王十字车站', ['国王十字', '国王十字车站', '九又四分之三站台', '9¾站台', '站台']),
+    ('霍格沃茨特快列车', ['霍格沃茨特快', '特快列车', '火车包厢', '车厢']),
+    ('霍格沃茨大礼堂', ['大礼堂', '分院仪式', '分院帽']),
+    ('霍格沃茨·公共休息室', ['公共休息室', '休息室']),
+    ('霍格沃茨·教室', ['教室', '课堂', '阶梯教室']),
+    ('霍格沃茨·图书馆', ['图书馆', '禁书区']),
+    ('霍格沃茨·医疗翼', ['医疗翼', '医院翼']),
+    ('霍格沃茨·走廊', ['走廊', '楼梯', '移动楼梯']),
+    ('霍格沃茨·场地', ['草坪', '魁地奇球场', '魁地奇看台', '黑湖']),
+    ('禁林', ['禁林', '黑暗森林']),
+    ('对角巷', ['对角巷', '奥利凡德', '摩金夫人']),
+    ('古灵阁', ['古灵阁', '妖精银行']),
+    ('霍格莫德村', ['霍格莫德', '三把扫帚', '蜂蜜公爵']),
+  ];
+
+  /// 从叙事文本中提取玩家当前所在地点，并同步到 worldState.currentLocation。
+  /// 检查两处：1) 开头【地点】标签；2) 叙事末尾 200 字（确保玩家真的抵达）。
+  /// 别名匹配优化：同一主地点的不同细分房间（卧室/花园/书房）统一归到主地点，不造成假阳性转换。
+  /// 同步成功后重置停滞计数，让强制推进指令不再触发。
+  void _syncLocationFromNarrative(String narrative) {
+    if (narrative.isEmpty) return;
+    final cur = worldState.currentLocation ?? '';
+
+    // ---- 第1步：解析开头的【地点】标签（AI 标准输出格式，最准确）----
+    String? detected;
+    final locationTagMatch = RegExp(
+      r'【地点】\s*([^\n]+)',
+      dotAll: false,
+    ).firstMatch(narrative);
+    if (locationTagMatch != null && locationTagMatch.group(1) != null) {
+      final tag = locationTagMatch.group(1)!.trim();
+      // 把标签与已知地点别名做匹配
+      for (final (mainName, aliases) in _knownLocations) {
+        for (final alias in aliases) {
+          if (tag.contains(alias)) {
+            detected = mainName;
+            break;
+          }
+        }
+        if (detected != null) break;
+      }
+      // 如果标签没匹配到已知别名，但标签里提到了具体位置，
+      // 检查是否属于"家中"大类（卧室/花园/书房/密室/起居室 都算家中）
+      if (detected == null) {
+        if (RegExp(r'(家中|家里|住宅|庄园|别墅|卧室|书房|花园|密室|走廊|客厅|门厅)', caseSensitive: false).hasMatch(tag)) {
+          detected = '家中·卧室';
+        }
+      }
+    }
+
+    // ---- 第2步：再检查叙事末尾 200 字的「抵达性」关键词（以防开头标签写错）----
+    // 只认 "抵达/到达/走进/来到/出现在/登上/进入 + 地点" 这类明确到达的语境，
+    // 不认 "想到明天去对角巷" 这种未来的提及
+    final tail = narrative.length > 200
+        ? narrative.substring(narrative.length - 200)
+        : narrative;
+    final arrivalRe = RegExp(
+      r'(抵达|到达|走进|走入|来到|出现在|登上|进入|下车|到站|赶到|踏入|推开.*门.*(发现|看见|来到))',
+    );
+    if (arrivalRe.hasMatch(tail)) {
+      int lastPos = -1;
+      for (final (mainName, aliases) in _knownLocations) {
+        for (final alias in aliases) {
+          int pos = tail.lastIndexOf(alias);
+          if (pos > lastPos) {
+            lastPos = pos;
+            detected = mainName;
+          }
+        }
+      }
+    }
+
+    // ---- 第3步：家中细分场景（卧室/书房/花园/密室）都统一归为「家中·卧室」----
+    // 避免玩家从卧室走到书房就被判定为"换了地点"，停滞计数清零
+    // 导致强制推进不触发
+    const atHomeAliases = ['家中', '家里', '住宅', '庄园', '别墅', '卧室', '书房', '花园', '密室', '客厅', '门厅', '走廊'];
+    if (detected == null) {
+      // 如果【地点】标签和末尾都没识别到，但开头标签里是家中的某个房间，归到家中
+      if (locationTagMatch != null) {
+        final tag = locationTagMatch.group(1)!.trim();
+        if (atHomeAliases.any((a) => tag.contains(a))) {
+          detected = '家中·卧室';
+        }
+      }
+    }
+
+    if (detected == null) return; // 末尾没提到任何已知地点，不改
+
+    // 若检测到的地点与当前不同，则更新并清零停滞计数
+    if (detected != cur) {
+      worldState.currentLocation = detected;
+      lastTrackedLocation = detected;
+      turnsAtSameLocation = 0;
+      debugPrint('📍 地点同步: $cur → $detected (停滞计数已清零)');
+    }
+  }
+
   Future<void> generateMoreSuggestions() async {
     if (player == null || isLoading) return;
 
@@ -862,6 +1163,466 @@ $kNarrativeWritingRules
       }
     }
     return result;
+  }
+
+  // ==================== 短期断言系统（Short Assertions）====================
+
+  /// 从本回合叙事正文提取 3~5 条"当前生效中"的状态断言（纯规则关键词版，稳定）。
+  /// 存入 worldState.lastTurnAssertions，下回合 prompt 强制注入防止 AI 失忆打脸。
+  /// 断言范围：物理状态（门锁/被封）、持有物、位置/姿态、受伤/魔法状态、正发生的关键动作。
+  List<String> extractShortAssertions(String narrative) {
+    if (narrative.isEmpty) return const [];
+    // 只扫末尾 500 字，避免开头过期状态被提回来
+    final tail = narrative.length > 500
+        ? narrative.substring(narrative.length - 500)
+        : narrative;
+    final seen = <String>{};
+    final result = <String>[];
+
+    void addAssertion(String text) {
+      if (text.length < 6) return;
+      final key = text.replaceAll(RegExp(r'\s+'), '');
+      if (seen.add(key) && result.length < 5) {
+        result.add('• $text');
+      }
+    }
+
+    // ---- 1) 物理封锁/屏障类 ----
+    final lockRe = RegExp(
+      r'((门窗|大门|房门|窗户|门|窗|密室入口|走廊)[^，。！？]{0,12}(被|已|已经|用.*|以.*)(锁死|封死|封上|封住|加固|上锁|挡死|堵死|施了锁门咒|施展了锁门咒))',
+    );
+    for (final m in lockRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（玩家行动必须先解锁/破开才能直接通过）');
+    }
+    // 反过来："锁/封被打开/解除/破坏/破开"要覆盖前面的断言
+    final unlockRe = RegExp(
+      r'((锁|封|屏障|封印|加固)[^，。！？]{0,12}(被|已|已经|被你)(打开|解开|破开|破坏|解除|击碎|敲碎|摧毁))',
+    );
+    for (final m in unlockRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（此前的封锁/屏障状态已失效）');
+    }
+
+    // ---- 2) 持有/姿态类：手里拿着 XX，魔杖被缴，你躲在 XX ----
+    final holdRe = RegExp(
+      r'(手里(紧紧)?(攥着|握着|拿着|捏着|握着|举着|提着)[^，。！？]{0,10})',
+    );
+    for (final m in holdRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}');
+    }
+    final disarmRe = RegExp(
+      r'((你的)?魔杖[^，。！？]{0,8}(被击飞|被缴走|脱手|不在手中|丢到了一边|掉在地上))',
+    );
+    for (final m in disarmRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（本回合若无"捡/拾/召唤"动作，不能直接写魔杖重新回到手中）');
+    }
+    final hideRe = RegExp(
+      r'(你(正)?(躲|藏|蹲|蜷缩)[^，。！？]{0,12}(在|到|进)[^，。！？]{0,14})',
+    );
+    for (final m in hideRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（若无"走出来/离开"动作，不能直接出现在别的房间）');
+    }
+
+    // ---- 3) 受伤/状态类：XX 部位受伤，中了 XX 毒/诅咒，精疲力竭 ----
+    final injuryRe = RegExp(
+      r'((你的|你)(手臂|腿|肩膀|头|胸口|腹部|背部)[^，。！？]{0,12}(被划伤|被擦伤|出血|剧痛|麻木|骨折|瘀青|中了|中毒|被诅咒|被击中|受伤))',
+    );
+    for (final m in injuryRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（本回合动作描写要考虑伤势限制）');
+    }
+
+    // ---- 4) 关键物件/仪式生效中：分院帽正扣在头上，分院帽在思考 ----
+    final hatRe = RegExp(
+      r'((分院帽)[^，。！？]{0,10}(扣在|落在|戴在|碰到|触到|停在)[^，。！？]{0,10}|'
+      r'(分院帽)[^，。！？]{0,10}(正在思考|在犹豫|沉吟|没说话|没出声))',
+    );
+    for (final m in hatRe.allMatches(tail)) {
+      addAssertion('${m.group(0)}（分院进行中，玩家本回合不应离开大礼堂）');
+    }
+
+    // ---- 5) 事件未落地：敲门声刚响起、信刚送到、点名刚叫你 ----
+    final knockRe = RegExp(
+      r'((敲门声|门[^，。！？]{0,4}被.*敲|有人敲门)[^，。！？]{0,10}(响起|传来|刚落下|刚响))',
+    );
+    for (final m in knockRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（门外有人，尚未开门。下一动作先回应敲门更自然）');
+    }
+    final calledRe = RegExp(
+      r'((教授|级长|老师|NPC|同学)[^，。！？]{0,6}(点名叫|点了你的名|叫你的名字|喊你|注视着你等你回答))',
+    );
+    for (final m in calledRe.allMatches(tail)) {
+      addAssertion('${m.group(1)}（被点名/提问，优先回应再做别的动作）');
+    }
+
+    return result;
+  }
+
+  /// 每回合末把断言"滚动一代"：上上回合丢弃，上回合→上次，新提取→本回合。
+  void rotateTurnAssertions(List<String> newAssertions) {
+    worldState.previousTurnAssertions.clear();
+    worldState.previousTurnAssertions.addAll(worldState.lastTurnAssertions);
+    worldState.lastTurnAssertions.clear();
+    worldState.lastTurnAssertions.addAll(newAssertions);
+  }
+
+  /// 组装要注入给叙事/选项 AI 的断言 Prompt 块（统一格式，避免两端不一致）
+  String buildAssertionsPromptBlock() {
+    final last = worldState.lastTurnAssertions;
+    final prev = worldState.previousTurnAssertions;
+    if (last.isEmpty && prev.isEmpty) return '';
+    final buf = StringBuffer();
+    if (last.isNotEmpty) {
+      buf.writeln('【上回合生效状态·严禁直接打脸】');
+      buf.writeln('以下是从上一回合剧情末尾提取的、此时仍应有效的物理/姿态/状态事实。'
+          '除非本回合玩家行动里明确写了"解锁/破开/捡起/走出来"等过渡动作，严禁直接跳到相反状态。');
+      buf.writeln(last.join('\n'));
+      buf.writeln('');
+    }
+    if (prev.isNotEmpty) {
+      buf.writeln('【上上回合状态·参考】');
+      buf.writeln('这些状态已过了两回合，可能已经变化，作为参考；若与上回合状态矛盾，以上回合为准。');
+      buf.writeln(prev.join('\n'));
+      buf.writeln('');
+    }
+    return buf.toString();
+  }
+
+  // ==================== P0-1 一致性看门狗（Validate Narrative Consistency）====================
+
+  /// 对 AI 刚吐出来的叙事做 6 大类硬性校验，命中严重违规时要求重试。
+  /// 返回：违规列表（每个违规 {severity: critical/warn, rule: id, message: str, evidence: str}）。
+  /// severity=critical → 本次响应当作废，触发重试一次；severity=warn → 记录但不打回，下一回合 prompt 软提醒。
+  List<Map<String, dynamic>> validateNarrativeConsistency(String narrative) {
+    if (narrative.isEmpty) return const [];
+    final p = player;
+    final ws = worldState;
+    final violations = <Map<String, dynamic>>[];
+    final nLower = narrative;
+
+    void addV(String severity, String rule, String message, {String? evidence}) {
+      violations.add(<String, dynamic>{
+        'severity': severity,
+        'rule': rule,
+        'message': message,
+        if (evidence != null) 'evidence': evidence,
+        'at': DateTime.now().toIso8601String(),
+      });
+    }
+
+    // ---- R1: 时间不倒流。从 narrative 提取📅时间戳与 worldState.time 对比 ----
+    final tsMatch = RegExp(r'📅\s*([^\n]+)').firstMatch(narrative);
+    if (tsMatch != null && p != null) {
+      // 只做粗校验：若旧时间是 7月31日，新叙事不能写 7月30 日或更早的日期
+      final oldMonth = ws.time.month;
+      final oldDay = ws.time.day;
+      final newTxt = tsMatch.group(1) ?? '';
+      final nM = RegExp(r'(\d{1,2})\s*月').firstMatch(newTxt);
+      final nD = RegExp(r'(\d{1,2})\s*日').firstMatch(newTxt);
+      if (nM != null && nD != null) {
+        final newMonth = int.tryParse(nM.group(1)!) ?? 0;
+        final newDay = int.tryParse(nD.group(1)!) ?? 0;
+        if (newMonth > 0 && newDay > 0) {
+          bool earlier = false;
+          if (newMonth < oldMonth) earlier = true;
+          if (newMonth == oldMonth && newDay < oldDay) earlier = true;
+          // 同月同日允许（不同时段）；只有更早的日期判倒流
+          if (earlier) {
+            addV('critical', 'R1_time_regression',
+                '时间倒流：当前世界时间 ${ws.timestamp}，叙事却写了 $newTxt，严禁时间倒退。',
+                evidence: newTxt);
+          }
+        }
+      }
+    }
+
+    // ---- R2: 学年状态自洽：刚入学 grade=1 & 9月开学前 → 不允许"学年结束/放暑假/上学期期末考已结束" ----
+    if (p != null && !ws.graduated) {
+      final grade = p.grade ?? 0;
+      final month = ws.time.month;
+      const summerEndedKeywords = [
+        '学年结束', '暑假开始', '期末考结束', '学期已经结束', '放暑假了', '离校回家',
+        '这一学年告一段落', '学期末尾', '年终宴会',
+      ];
+      bool contradiction = false;
+      if (grade == 1 && month <= 9) {
+        contradiction = summerEndedKeywords.any((k) => nLower.contains(k));
+      }
+      // 通用：月份是开学初(9月)/学期中(10-12/1-5)，不能出现"学年结束暑假开始"
+      if ([9, 10, 11, 12, 1, 2, 3, 4, 5].contains(month)) {
+        if (summerEndedKeywords.any((k) => nLower.contains(k)) && grade >= 1 && grade <= 7) {
+          // 只有月份=6或7才允许写学年结束
+          contradiction = true;
+        }
+      }
+      if (contradiction) {
+        addV('critical', 'R2_academic_contradiction',
+            '学年状态矛盾：玩家 grade=$grade，世界月份=$month月（学期内/刚开学），叙事却写"学年结束/放暑假"等剧情，会造成设定错乱。',
+            evidence: 'month=$month grade=$grade');
+      }
+    }
+
+    // ---- R3: 死人不复活 / 未结识NPC不能熟络对话 ----
+    for (final entry in npcRegistry.entries) {
+      final npc = entry.value;
+      // 死人复活：NPC isAlive=false，但叙事里写了他说话/动作
+      if (!npc.isAlive) {
+        final actionRe = RegExp(
+          '${RegExp.escape(npc.name)}[^，。！？]{0,20}(说|笑|走|看|站|伸出|握住|拍|打|喊|叫|望|转身|回答|点头|摇头)',
+          caseSensitive: false,
+        );
+        if (actionRe.hasMatch(narrative)) {
+          addV('critical', 'R3_dead_npc_active',
+              '死人复活：NPC「${npc.name}」当前已标记死亡(isAlive=false)，但叙事里仍把他写为活人的动作/说话。',
+              evidence: npc.name);
+        }
+      }
+      // 未结识但熟络：introduced=false，不能写"XX笑着拍你肩/跟你熟络聊天/你和XX约定好了"
+      if (!npc.introduced) {
+        final closeRe = RegExp(
+          '${RegExp.escape(npc.name)}[^，。！？]{0,20}(笑着|笑了笑|拍.*肩|熟络|亲热|拍.*背|搂着|挽着|跟你.*商量|和你.*约定|早已认识|老朋友)',
+          caseSensitive: false,
+        );
+        if (closeRe.hasMatch(narrative)) {
+          addV('warn', 'R3_npc_introduced_familiar',
+              '未结识先熟络：NPC「${npc.name}」尚未正式登场(introduced=false)，叙事里却写了熟络互动，下一回合请先写成陌生人碰面。',
+              evidence: npc.name);
+        }
+      }
+
+      // ---- R3b (P1-1)：人设冲突·硬打脸（critical 级会打回重写）----
+      // 常见严重 OOC：斯内普"热情/笑/亲切/主动帮/夸学生"、邓布利多"暴怒/刻薄/针对学生"、
+      // 德拉科"低声下气/热情对待麻瓜出身"、纳威"冷静大胆主导全场"。
+      // 命中规则：人名 + 与人设正相反的关键词 → 判 critical（因为这些是玩家一眼就出戏的 OOC）
+      final n = npc.name;
+      if (n == '西弗勒斯·斯内普' || n == '斯内普') {
+        final oocRe = RegExp(
+            r'(斯内普[^，。！？]{0,15}(热情地|亲切地|笑呵呵|满脸笑容|大笑|拍.*肩|主动.*帮|大大夸奖|温柔地|宠溺地|宠溺地|给你一个拥抱|搂着你))',
+            caseSensitive: false);
+        if (oocRe.hasMatch(nLower)) {
+          addV('critical', 'R3b_ooc_snape', '人设冲突(CRITICAL)：斯内普的核心人设是刻薄/阴沉/冷漠，不能描写他"热情亲切大笑拍肩"。',
+              evidence: n);
+        }
+      }
+      if (n == '阿不思·邓布利多' || n == '邓布利多') {
+        final oocRe = RegExp(
+            r'(邓布利多[^，。！？]{0,15}(暴怒地|凶狠地|刻薄地|刁难|针对学生|恶意地|厉声喝骂|抽.*耳光|))',
+            caseSensitive: false);
+        if (oocRe.hasMatch(nLower) && nLower.contains('邓布')) {
+          addV('critical', 'R3b_ooc_dumbledore', '人设冲突(CRITICAL)：邓布利多是睿智温和的校长，不能描写他暴怒刻薄体罚学生。',
+              evidence: n);
+        }
+      }
+      if (n == '德拉科·马尔福' || n == '马尔福') {
+        // 对麻瓜出身/非纯血 不能"主动热情交好"
+        final blood = player?.bloodType ?? '';
+        if (blood == 'muggleborn' || blood == 'halfblood') {
+          final oocRe = RegExp(
+              r'(德拉科|马尔福)[^，。！？]{0,20}(主动凑过来|亲热地|友好地|亲切地|对你有好感地|低声下气|鞠躬|讨好)',
+              caseSensitive: false);
+          if (oocRe.hasMatch(nLower)) {
+            addV('warn', 'R3b_ooc_malfoy_blood',
+                '人设冲突：德拉科·马尔福(纯血至上主义)对${blood == "muggleborn" ? "麻瓜出身" : "混血"}玩家，不应描写为"主动热情交好/低声下气"。',
+                evidence: '$n vs blood=$blood');
+          }
+        }
+      }
+    }
+
+    // ---- R4: 断言打脸（本回合写的动作直接违反上回合注入的断言）----
+    for (final assertion in ws.lastTurnAssertions) {
+      // 简单匹配：如果断言里含"(锁死/封死/封住)"且叙事出现"你走出门/推开大门/推开窗/走出密室" → 判打脸
+      if (RegExp(r'(锁死|封死|封住|挡死|堵死|施了锁门咒)').hasMatch(assertion)) {
+        final walked = RegExp(r'(你.*(走出门|推开大门|推开门|推开窗|走出密室|走到大厅|离开房间|下楼))',
+            caseSensitive: false);
+        if (walked.hasMatch(narrative)) {
+          // 但如果玩家本回合行动里含"解锁/破开/解除/打开"的话，允许
+          final playerAction = lastPlayerAction;
+          final unlockedByPlayer =
+              RegExp(r'(解锁|开锁|解开|破开|解除|打开|砸开|敲开|使用开锁咒|阿拉霍洞开|解除封)',
+                      caseSensitive: false)
+                  .hasMatch(playerAction);
+          if (!unlockedByPlayer) {
+            addV('warn', 'R4_assertion_lock_violation',
+                '物理状态打脸：上回合断言提到门窗/密室被封死，但本回合叙事直接写玩家"走出/推开"了（没有任何解锁/破开动作过渡）。',
+                evidence: assertion);
+          }
+        }
+      }
+      // 断言"魔杖不在手中"，直接写"你挥杖施法"
+      if (RegExp(r'(魔杖.*不在手中|魔杖.*掉在地上|魔杖.*脱手|魔杖.*被缴走)').hasMatch(assertion)) {
+        if (RegExp(r'(你.*(挥杖|举起魔杖|挥动魔杖|念咒|施了.*咒|施展.*咒))', caseSensitive: false)
+            .hasMatch(narrative)) {
+          addV('warn', 'R4_assertion_wand_violation',
+              '状态打脸：上回合断言说魔杖不在手中，本回合直接施法却没有"捡/拾/召唤"动作过渡。',
+              evidence: assertion);
+        }
+      }
+    }
+
+    // ---- R5: 魔法资质 / 已学会咒语校验（只拦严重的：一年级放守护神咒/夺魂咒这种）----
+    if (p != null) {
+      final grade = p.grade ?? 1;
+      const tooPowerfulForFirst = [
+        '守护神咒', '呼神护卫', 'Expecto Patronum', '夺魂咒', '魂魄出窍', 'Imperius',
+        '钻心咒', '钻心剜骨', 'Crucio', '杀戮咒', '阿瓦达索命', 'Avada Kedavra',
+        '伏地魔', '魂器', '死亡圣器', '有求必应屋', // 主角预知类（对原住民模式）
+      ];
+      if (grade <= 1) {
+        for (final spell in tooPowerfulForFirst) {
+          if (nLower.contains(spell) && !p.learnedSpells.containsKey(spell)) {
+            addV('warn', 'R5_spell_power_creep',
+                '战力膨胀/剧情预知：一年级新生/主角尚未知道的秘密，本回合叙事直接写了「$spell」的成功释放或预知性互动。',
+                evidence: spell);
+          }
+        }
+      }
+    }
+
+    return violations;
+  }
+
+  /// 记录一致性违规（保留最近 20 条，便于 UI 展示和人工调参）
+  void recordConsistencyViolation(Map<String, dynamic> v) {
+    worldState.consistencyViolations.insert(0, v);
+    while (worldState.consistencyViolations.length > 20) {
+      worldState.consistencyViolations.removeLast();
+    }
+  }
+
+  // ==================== P0-3 开局硬骨架守卫（前12回合强制推进链）====================
+  // 开局是 AI 最容易墨迹、玩家印象最深的阶段。
+  // 不依赖 AI 自觉，按 turn 数强塞"海格敲门/养父母催/特快发车"等硬骨架锚点 + 必要时直接切 currentLocation。
+  // 只在前 12 回合生效，12 回合后自动停用（玩家已自由）。
+  void _checkOpeningRailroad() {
+    if (turnCount >= 12) return;
+    final p = player;
+    if (p == null) return;
+    final loc = worldState.currentLocation ?? '';
+    // 只对"家中开局(openingScene=letter)且还没到学校"的玩家起作用：
+    // 若用户一开始就选 station 开局则不需要骨架守卫
+    if (openingScene != 'letter') return;
+    if ((p.house?.isNotEmpty ?? false) && p.grade != null && p.grade! >= 1 && loc.contains('霍格沃茨')) {
+      // 已经分完院并在霍格沃茨里了 → 骨架守卫退役
+      return;
+    }
+
+    final t = turnCount; // 本回合执行前计数（processChoice 里 turnCount++ 发生在更早），实际对应"玩家第t+1次行动"
+    // t=0 是初始化 → 首次行动之前；turnCount++ 之后进入判断，范围刚好
+    final curLoc = worldState.currentLocation ?? '';
+
+    String? forcedAnchor;
+    String? forcedLocation;
+
+    // Turn 1~3（在家 2+ 回合还没出门）→ 海格上门
+    final atHome = RegExp(r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅)', caseSensitive: false);
+    if (t >= 2 && t <= 3 && atHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
+      forcedAnchor = '鲁伯·海格亲自登门送你（他受邓布利多委托亲自接新生去对角巷采购），'
+          '他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦小子/姑娘，再晚就赶不上对角巷奥利凡德的预约了。"'
+          ' 这一回合必须自然融入海格来访、和养父母告别、动身前往伦敦的剧情。';
+    }
+    // Turn 4~5 还在家 → 养父母直接催 + 直接把 currentLocation 推到对角巷入口
+    if (t >= 4 && t <= 5 && atHome.hasMatch(curLoc) && pendingAnchorDirective == null) {
+      forcedAnchor = '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。'
+          '（本回合剧情请直接写：海格与你一同抵达伦敦，走进了破釜酒吧后的对角巷入口。采购正式开始。）';
+      forcedLocation = '对角巷';
+    }
+    // Turn 6~7 还没到国王十字/特快 → 对角巷收尾，动身去车站
+    final atDiagon = RegExp(r'(对角巷|奥利凡德|摩金夫人|破釜)', caseSensitive: false);
+    final atStation = RegExp(r'(国王十字|九又四分之三|站台|特快|列车|火车)', caseSensitive: false);
+    if (t >= 6 && t <= 7 && !atStation.hasMatch(curLoc) && pendingAnchorDirective == null) {
+      if (atDiagon.hasMatch(curLoc) || atHome.hasMatch(curLoc)) {
+        forcedAnchor = '采购收尾：魔杖、课本、袍子都已买齐。海格看了看表："哎呀，十一点的特快！再不走就晚了！"'
+            '他一把拉着你幻影移形/乘骑士公共汽车赶往伦敦国王十字车站，'
+            '在9又3/4站台口给了你一张霍格沃茨特快车票并嘱咐你"别撞墙撞错了，对着柱子冲过去就行"。'
+            ' 本回合剧情结尾必须让你登上特快。';
+        if (t >= 7) forcedLocation = '国王十字车站';
+      }
+    }
+    // Turn 8~9 还没到特快 → 直接切到站台并强制"级长喊新生上车"
+    if (t >= 8 && t <= 9 && !atStation.hasMatch(curLoc) && pendingAnchorDirective == null) {
+      forcedAnchor = '你已抵达国王十字车站，推着行李车穿过了9又3/4站台的柱子。'
+          '鲜红色的霍格沃茨特快冒着白烟、汽笛轰鸣。级长扯着嗓子喊："新生快上车！马上就要发车了！"'
+          ' 本回合必须写你登上特快、找到包厢坐下的剧情。';
+      forcedLocation = '霍格沃茨特快列车';
+    }
+    // Turn 10~12 还未分院 → 到霍格莫德 + 坐船/马车去城堡 + 分院
+    if (t >= 10 && t <= 12 && !(p.house?.isNotEmpty ?? false)) {
+      forcedAnchor = '霍格沃茨特快抵达霍格莫德车站。海格举着巨大的灯笼在站台上喊："一年级新生跟我来！"'
+          '你们坐小船渡湖初见霍格沃茨城堡，穿过大门来到大礼堂，分院仪式开始。'
+          '麦格教授拿着分院帽和凳子走出来，叫到了你的名字。请自然带出分院剧情并最终确定玩家学院。';
+      if (t >= 11) forcedLocation = '霍格沃茨大礼堂';
+    }
+
+    if (forcedAnchor != null && pendingAnchorDirective == null) {
+      pendingAnchorDirective = forcedAnchor;
+      notifications.add('🚂 开局骨架推进：下一站剧情已为你安排（turn=$t）');
+      worldState.addNarrativeEvent('🚂 开局骨架：turn=${t} 注入强制推进节点', turn: turnCount);
+      debugPrint('🚂 开局骨架守卫 turn=$t 注入锚点；forcedLocation=$forcedLocation');
+    }
+    if (forcedLocation != null) {
+      worldState.currentLocation = forcedLocation;
+      lastTrackedLocation = forcedLocation;
+      turnsAtSameLocation = 0;
+    }
+  }
+
+  // ==================== P1-3 T1 未完结事项超期提醒 ====================
+  // 给 narrative Prompt 拼注入文本用（在 buildPrompt 里调用）。
+  String _buildOpenLoopsStagnationHint() {
+    final today = worldState.time.absoluteDayIndex;
+    final stale = <String>[];
+    // 每条 open loop 有 importance 与可能隐含的 lastTouched；
+    // 这里做简化：超过 15 回合仍为 open 状态 & importance >= 6 的，给一条提醒
+    for (final l in memory.openLoops) {
+      if (l.status != 'open') continue;
+      if (l.importance < 6) continue;
+      final lastTouched = l.id.isEmpty
+          ? -1
+          : int.tryParse(RegExp(r't(\d+)$').firstMatch(l.id)?.group(1) ?? '') ?? -1;
+      final turnsPassed = lastTouched >= 0
+          ? turnCount - lastTouched
+          : 15; // 没记录的当 15
+      if (turnsPassed >= 15 && stale.length < 2) {
+        stale.add('• ${l.description}（已悬而未决约${turnsPassed}回合，重要性${l.importance}）');
+      }
+    }
+    if (stale.isEmpty) return '';
+    return '【别忘了这些重要伏笔（别让玩家觉得石沉大海）】\n'
+        '${stale.join('\n')}\n'
+        '提示：本回合可适当推进其中一条，或通过对话/事件给玩家一个"还没忘掉"的信号。\n\n';
+  }
+
+  // ==================== P2 禁止词/违和词表 与 P2-2 咒语分级 ====================
+
+  /// 检查叙事/选项里的违和词：现代物品、跨IP、网络梗。
+  /// 返回命中列表；命中 1+ 条 critical 级则判需重试。
+  List<Map<String, dynamic>> detectForbiddenWords(String text) {
+    const modernItems = <String>[
+      '手机', '智能手机', '电话', '互联网', '因特网', '微信', 'QQ', '电子邮件', 'email', 'E-mail', '推特', 'Twitter',
+      '高铁', '动车', '飞机', '民航', '地铁', '打车', '网约车', '计算机', '电脑', '笔记本电脑', '平板', 'iPad',
+      'APP', 'app', '应用程序', '游戏主机', 'PS5', 'Switch', '电视', '冰箱', '空调',
+      '加隆兑换人民币', '汇率', '电子支付', '扫码', '二维码',
+    ];
+    const crossIp = <String>[
+      '柯南', '工藤新一', '海贼王', '路飞', '火影忍者', '鸣人', '佐助', '原神', '旅行者', '刻晴', '钟离',
+      '斗罗大陆', '唐三', '斗破苍穹', '萧炎', '三体', '逻辑', '三体人', '智子',
+    ];
+    const internetSlang = <String>[
+      'yyds', 'YYDS', '绝绝子', '社死', '打call', '破防了', '内卷', '躺平', 'emo', 'EMO',
+      '栓Q', '666', '233', 'awsl', 'AWSL', 'xswl', 'XSWL', '笑死我了哈哈哈哈',
+      '大冤种', 'emo了', '我不李姐', '咱就是说', '一整个爱住',
+    ];
+    final hits = <Map<String, dynamic>>[];
+    final lower = text;
+    for (final w in modernItems) {
+      if (lower.contains(w)) hits.add({'severity': 'critical', 'category': 'modern', 'word': w});
+    }
+    for (final w in crossIp) {
+      if (lower.contains(w)) hits.add({'severity': 'critical', 'category': 'cross_ip', 'word': w});
+    }
+    for (final w in internetSlang) {
+      if (lower.contains(w)) hits.add({'severity': 'warn', 'category': 'slang', 'word': w});
+    }
+    return hits;
   }
 
   // ==================== 分院仪式（本地逻辑，不消耗 token） ====================

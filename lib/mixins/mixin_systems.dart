@@ -312,9 +312,20 @@ mixin GameSystemsMixin on GameProviderBase {
       currentLocation: worldState.currentLocation,
     );
 
-    // letter起点(7.31刚入学前)屏蔽「暑假开始」类锚点，避免刚开局就写学年结束
-    if (t.month == 7 && t.day <= 31 && openingScene == 'letter' && turnCount < 5) {
-      due.removeWhere((a) => a.id == 'common_jul_summer_start');
+    // 「暑假开始」锚点只在"真正上完了一学年之后"才触发：
+    // - 学年是9月开学 → 次年6月结束 → 7月放暑假
+    // - 所以1991年7月（入学前）不能触发，1992年7月及之后才可以
+    //   （1992年7月 = 上完一年级后的暑假；同理二年级后=1993年7月...）
+    // - 判断依据：GameTime.year == (academicYear的起始年份+1) 且 month=7 才算真·暑假
+    //   例：1991-1992 学年 → 1992年7月放暑假 ✓；1991年7月=入学前 ✗
+    final acYearStart = RegExp(r'^(\d{4})').firstMatch(worldState.academicYear)?.group(1);
+    final acYearStartInt = acYearStart != null ? int.tryParse(acYearStart) : null;
+    if (t.month == 7) {
+      final isTrueSummer = acYearStartInt != null && t.year >= (acYearStartInt + 1);
+      if (!isTrueSummer) {
+        due.removeWhere((a) => a.id == 'common_jul_summer_start');
+        debugPrint('📜 跳过「暑假开始」锚点：当前7月属于入学前/学年开始前，非学年结束后的暑假 (academicYear=${worldState.academicYear}, year=${t.year})');
+      }
     }
 
     if (due.isEmpty) return;

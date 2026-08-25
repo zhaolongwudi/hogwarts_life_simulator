@@ -703,11 +703,56 @@ mixin GameResponseMixin on GameProviderBase {
     //  - 必须 introduced=true（剧情中正式认识/互动过）才会出现。
     //  - 不再用「好感绝对值≥10」作为筛选——开局NPC全被塞了0~15随机好感，会导致"还没见过面就+14"伪造。
     //  - 最多 8 个（12→8），避免 token 被NPC池污染。
-    final nearbyNpcs = npcRegistry.values
-        .where((n) => n.introduced)
-        .take(8)
-        .map((n) => '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection})')
-        .join('、');
+    //  - P1-1 新增：同时注入「人设3关键词 / 说话风格」，防止选项AI写出"斯内普热情邀你一起吃零食"这种 OOC 选项。
+    final nearbyNpcList = npcRegistry.values.where((n) => n.introduced).take(8).toList();
+    String nearbyNpcsFormat(NPC n) {
+      final stage = n.affection >= 60
+          ? '挚友'
+          : n.affection >= 30
+              ? '好友'
+              : n.affection >= 5
+                  ? '朋友'
+                  : n.affection > -5
+                      ? '熟人'
+                      : n.affection > -30
+                          ? '冷淡'
+                          : '敌对';
+      // personality 取前3个作为核心人设；如果是空列表，fallback 给一个默认人设
+      final traits = (n.personality.isNotEmpty ? n.personality.take(3).join('/') : '沉稳/含蓄/有礼貌');
+      return '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection}·$stage｜人设:$traits)';
+    }
+    final nearbyNpcs = nearbyNpcList.map(nearbyNpcsFormat).join('、');
+
+    // P1-1 轻度 OOC 软提醒：上回合有 warn 级违规时，给选项 AI 一段温和提醒（不打回，只提示修正风格）
+    final prevViolations = worldState.consistencyViolations
+        .where((v) => v['severity'] == 'warn')
+        .take(2)
+        .map((v) => '• ${v['message']}')
+        .join('\n');
+    final oocWarn = prevViolations.isNotEmpty
+        ? '【上回合轻微逻辑违和提醒（选项请避免同类问题）】\n$prevViolations\n'
+        : '';
+
+    // 断言块（与叙事AI端共用同一份 buildAssertionsPromptBlock）
+    final assertionsBlock = buildAssertionsPromptBlock();
+
+    // 禁止词对选项的提示：选项 AI 也要避免现代/跨IP/网络梗
+    const forbiddenHint = '【生成选项·禁用词清单·请注意】\n'
+        '严禁出现：手机/互联网/微信/高铁/飞机/扫码 等现代物品；柯南/路飞/原神/三体 等跨IP；yyds/绝绝子/社死/破防/打call/666 等网络梗。';
+
+    // 场景停滞提示：传给选项生成器，让它按规则2b/2c强制提供"推进下一场景"选项
+    // 与叙事AI端保持完全一致的豁免+分级逻辑：
+    //   - 开局家中(2回合)才严厉，重要剧情场景(6回合)宽松，过路点(4回合)中等
+    //   - 叙事末段存在"未解决钩子"时不强制，避免把正在进行中的决斗/点名/悬念硬打断
+    final threshold = stagnationThresholdFor(currentLoc);
+    final unresolved = narrativeHasUnresolvedHook(narrative);
+    final stagnationHint = (turnsAtSameLocation >= threshold && !unresolved)
+        ? '⚠️ 【同一地点停留】玩家已在「$currentLoc」连续停留 $turnsAtSameLocation 回合（该场景允许阈值=$threshold回合），剧情停滞！按规则必须生成至少2个前往下一场景的选项（例：收拾行李去车站、出门、告别家人、动身前往国王十字车站等）。严禁生成4个原地不动的选项。'
+        : (turnCount <= 3 && turnCount >= 1 && (currentLoc.contains('家中') || currentLoc.contains('卧室') || currentLoc.isEmpty)
+            ? '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。'
+            : (unresolved && turnsAtSameLocation >= (threshold - 1))
+                ? '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。'
+                : '');
 
     final choicePrompt = '''$kChoicePromptPreamble
   ===== 游戏世界背景 =====
@@ -722,6 +767,10 @@ mixin GameResponseMixin on GameProviderBase {
   ${nearbyNpcs.isNotEmpty ? '附近/重要NPC：' + nearbyNpcs : ''}
   【身份模式】${appProvider.identityMode == IdentityMode.transmigration ? '穿越者：对原作命运有隐约记忆，可作为行动依据' : '原住民：对命运走向一无所知，只凭判断与本能行事，选项严禁出现主角不可能知道的信息'}
   【上回合玩家动作】$playerAction
+  ${stagnationHint.isNotEmpty ? stagnationHint : ''}
+  ${assertionsBlock.isNotEmpty ? assertionsBlock : ''}
+  ${oocWarn.isNotEmpty ? oocWarn : ''}
+  ${forbiddenHint}
 
   ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
   【T0 核心事实（选项不能违背）】
@@ -841,6 +890,56 @@ $kChoicePromptSuffix''';
       sectionText = _fallbackAffectionScan(text);
     }
 
+    // ============================================================
+    // P1-2 好感变化逻辑校验（避免"羞辱了你 → +8 好感"的违和）
+    // ============================================================
+    // 输入：完整叙事 text（查关键词判断是正面还是负面互动）、NPC名、delta。
+    // 输出：true=通过 / false=丢弃这条好感变化（不打回整段剧情，只丢弃假好感，给玩家真体验）。
+    bool validateAffectionLogic(String npcName, String narrative, int delta) {
+      if (delta == 0) return false;
+      // --- 规则1：叙事里出现明确的负面互动关键词，delta 必须是负数（或 ≤ +1 的极微弱正向） ---
+      final negRe = RegExp(
+        r'(侮辱|羞辱|嘲笑|讥讽|嘲讽|骂|叱责|指责|当众.*丢脸|陷害|背叛|出卖|偷窃|恶意|骗了|欺骗|勒索|霸凌|针对|敌对|决斗|攻击|施咒伤害|下咒|诅咒)',
+      );
+      // --- 规则2：叙事里出现明确的重大正向事件，才允许 |delta|≥10  ---
+      final hugePositiveRe = RegExp(
+        r'(救了.*命|舍身|挡在.*前面|替.*挡|救命|以身犯险|告白|求婚|说出了真心话|坦白|赠予.*贵重|赠送.*传家|为.*背叛.*|不惜.*帮助)',
+      );
+      // --- 规则3：NPC 当前好感阶段必须匹配 delta 强度 ---
+      //   - 陌生人(<0) 不能一下 +10，除非救命级别
+      //   - 敌意阶段(<=-30) 不能一下正面 +5
+      NPC? target;
+      try {
+        target = npcRegistry.values.firstWhere((n) => n.nameMatches(npcName));
+      } catch (_) {
+        target = null;
+      }
+      if (negRe.hasMatch(narrative)) {
+        if (delta > 0) {
+          debugPrint('[P1-2 好感校验] 丢弃「$npcName+$delta」：叙事里含负面互动关键词，好感却正向变化。');
+          return false;
+        }
+      }
+      if (delta.abs() >= 8 && !hugePositiveRe.hasMatch(narrative)) {
+        debugPrint('[P1-2 好感校验] 丢弃「$npcName ${delta > 0 ? '+' : ''}$delta」：变化幅度≥8但叙事里没有"救命/告白/挡刀"等重大事件。');
+        return false;
+      }
+      if (delta.abs() >= 4 && delta > 0 && target != null) {
+        final aff = target.affection;
+        final introduced = target.introduced;
+        if (!introduced) {
+          // 还没认识，不能直接 +4+
+          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：该NPC尚未在剧情中登场(introduced=false)。');
+          return false;
+        }
+        if (aff <= -20) {
+          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：当前好感=$aff（敌对阶段），不能一下正向大跳涨。');
+          return false;
+        }
+      }
+      return true;
+    }
+
     final explicitChanged = <String>{};
 
     if (sectionText != null && sectionText.isNotEmpty) {
@@ -854,6 +953,10 @@ $kChoicePromptSuffix''';
         if (delta == 0 || npcName.isEmpty) continue;
         npcName = npcName.replaceFirst(RegExp(r'[（(].*?[）)]'), '').trim();
         if (npcName.isEmpty) continue;
+
+        // ---- P1-2 好感校验：逻辑不合理就直接丢弃，不更新也不做推断 ----
+        if (!validateAffectionLogic(npcName, text, delta)) continue;
+
         if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
         if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
         try {

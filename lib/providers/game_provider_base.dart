@@ -59,6 +59,11 @@ abstract class GameProviderBase extends ChangeNotifier {
   List<String> lastAffectionSections = [];
   final List<String> notifications = [];
 
+  /// 场景停滞检测：记录玩家当前地点已停留的回合数
+  /// （public 化以供 mixin_narrative 跨文件访问，与其它核心字段一致）
+  String? lastTrackedLocation;
+  int turnsAtSameLocation = 0;
+
   int totalPromptTokens = 0;
   int totalCompletionTokens = 0;
   int totalTokens = 0;
@@ -180,4 +185,19 @@ abstract class GameProviderBase extends ChangeNotifier {
   void updateNpcAffection(String npcId, int change, {String? reason});
   void updatePlayerImpactScore(String action);
   bool withdrawFromBank(int amount);
+
+  // ========== 场景停滞检测（跨 Mixin 访问：mixin_response 需要读取停滞阈值/钩子检测结果）==========
+  // 实现由 mixin_narrative.dart 提供。
+  int stagnationThresholdFor(String location);
+  bool narrativeHasUnresolvedHook(String narrative);
+  bool isLocationExemptFromStagnation(String location);
+
+  // ========== 剧情一致性 & 短期断言（跨 Mixin 访问）==========
+  // 断言提取 & 轮换：mixin_narrative 在回合结束调用；Prompt 两端（叙事+选项）都要读取断言注入。
+  // 一致性校验：mixin_response 在 parseNarrativeOnly 之后调用，失败走重试/兜底。
+  List<String> extractShortAssertions(String narrative);
+  void rotateTurnAssertions(List<String> newAssertions);
+  String buildAssertionsPromptBlock();
+  List<Map<String, dynamic>> validateNarrativeConsistency(String narrative);
+  void recordConsistencyViolation(Map<String, dynamic> v);
 }

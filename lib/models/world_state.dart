@@ -52,6 +52,18 @@ class WorldState {
   bool graduated; // 玩家是否已毕业（七年级后）
   final Set<String> visitedLocations; // 玩家曾经到过的地点（自动去重，用于「探索者」成就校验）
 
+  // ====== 短期断言系统（Short Assertions）======
+  // 解决"上一回合刚做的事（封门/躲起来/受伤/被缴械）下一回合AI就失忆"的逻辑打脸bug。
+  // - lastTurnAssertions：上一回合从叙事末尾提取的 3~5 条"生效中状态"，本回合 Prompt 必注入。
+  //   每回合末轮换：旧的 → previousTurnAssertions，新的 → lastTurnAssertions（实现"断言生效 2 回合后自动过期"）。
+  // - previousTurnAssertions：上上回合的断言，也一起注入给 AI 参考，但标注"可能已变化"，避免单回合内的临时状态跨太久。
+  final List<String> lastTurnAssertions;
+  final List<String> previousTurnAssertions;
+
+  // ====== 剧情一致性违规记录（调试+UI用）======
+  // 最近 10 条被看门狗拦下的违规，方便调参和定位 AI 风格问题。
+  final List<Map<String, dynamic>> consistencyViolations;
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -73,6 +85,9 @@ class WorldState {
     List<String>? firedAnchorIds,
     this.graduated = false,
     Set<String>? visitedLocations,
+    List<String>? lastTurnAssertions,
+    List<String>? previousTurnAssertions,
+    List<Map<String, dynamic>>? consistencyViolations,
   })  : time = time ?? GameTime(),
         housePoints = Map<String, int>.from(housePoints ?? const {
           'Gryffindor': 350,
@@ -85,7 +100,11 @@ class WorldState {
         specialMarkers = List<String>.from(specialMarkers ?? const []),
         timelineBranches = List<String>.from(timelineBranches ?? const []),
         firedAnchorIds = List<String>.from(firedAnchorIds ?? const []),
-        visitedLocations = Set<String>.from(visitedLocations ?? const {});
+        visitedLocations = Set<String>.from(visitedLocations ?? const {}),
+        lastTurnAssertions = List<String>.from(lastTurnAssertions ?? const []),
+        previousTurnAssertions = List<String>.from(previousTurnAssertions ?? const []),
+        consistencyViolations = List<Map<String, dynamic>>.from(
+            consistencyViolations ?? const <Map<String, dynamic>>[]);
 
   /// 当前时间戳字符串
   String get timestamp => time.format();
@@ -165,6 +184,9 @@ class WorldState {
         'fired_anchor_ids': firedAnchorIds,
         'graduated': graduated,
         'visited_locations': visitedLocations.toList(),
+        'last_turn_assertions': lastTurnAssertions,
+        'previous_turn_assertions': previousTurnAssertions,
+        'consistency_violations': consistencyViolations,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -195,7 +217,12 @@ class WorldState {
       timelineBranches: List<String>.from(json['timeline_branches'] ?? []),
       firedAnchorIds: List<String>.from(json['fired_anchor_ids'] ?? []),
       graduated: json['graduated'] ?? false,
-      visitedLocations: Set<String>.from(json['visited_locations'] ?? const []),
+      visitedLocations: Set<String>.from(json['visited_locations'] ?? const {}),
+      lastTurnAssertions: List<String>.from(json['last_turn_assertions'] ?? const []),
+      previousTurnAssertions: List<String>.from(json['previous_turn_assertions'] ?? const []),
+      consistencyViolations: (json['consistency_violations'] as List<dynamic>? ?? <dynamic>[])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
     );
   }
 
