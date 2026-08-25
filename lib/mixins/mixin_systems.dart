@@ -162,6 +162,8 @@ mixin GameSystemsMixin on GameProviderBase {
   void _onSchoolYearStart(int newGrade) {
     final p = player;
     if (p == null) return;
+    // 学年结算：上一学年的学院杯排名揭晓（只结算有贡献的玩家）
+    settleHouseCup();
     notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
     worldState.addNarrativeEvent('🏫 ${worldState.time.year}年9月，你升入${newGrade}年级', turn: turnCount);
     worldState.addMarker('⏳新学年');

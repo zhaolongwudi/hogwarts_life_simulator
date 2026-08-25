@@ -192,4 +192,23 @@ abstract class GameProviderBase extends ChangeNotifier {
   void updateNpcAffection(String npcId, int change, {String? reason});
   void updatePlayerImpactScore(String action);
   bool withdrawFromBank(int amount);
+  // ====== 新玩法（GamePlayMixin）=====
+  void acceptQuest(int index);
+  void deliverQuest(int index);
+  void duelNpc(String? name);
+  void equipItem(String name);
+  void exploreForbiddenForest();
+  String formatBestiary();
+  String formatEquip();
+  String formatHouseCup();
+  String formatItemUseHelp();
+  String formatQuests();
+  String formatQuidditch();
+  void petInteract(String action);
+  void playQuidditch();
+  void refreshQuestBoard();
+  void settleHouseCup();
+  void setQuidditchPosition(String pos);
+  void unequipItem(String slot);
+  void useItem(String name);
 }

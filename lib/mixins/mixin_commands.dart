@@ -112,7 +112,89 @@ mixin GameCommandsMixin on GameProviderBase {
         return true;
 
       case '/宠物':
-        currentNarrative = _formatPet();
+        if (parts.length >= 2 &&
+            ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(parts[1])) {
+          petInteract(parts[1]);
+        } else {
+          currentNarrative = _formatPet();
+          choices = [GameChoice(text: '返回', action: '继续')];
+        }
+        return true;
+
+      case '/使用':
+        if (parts.length < 2) {
+          currentNarrative = formatItemUseHelp();
+          choices = [GameChoice(text: '返回', action: '继续')];
+        } else {
+          useItem(parts.sublist(1).join(' '));
+        }
+        return true;
+
+      case '/装备':
+        if (parts.length < 2) {
+          currentNarrative = formatEquip();
+          choices = [GameChoice(text: '返回', action: '继续')];
+        } else {
+          equipItem(parts.sublist(1).join(' '));
+        }
+        return true;
+
+      case '/卸下':
+        if (parts.length < 2) {
+          currentNarrative = formatEquip();
+          choices = [GameChoice(text: '返回', action: '继续')];
+        } else {
+          unequipItem(parts[1]);
+        }
+        return true;
+
+      case '/魁地奇':
+        if (parts.length >= 2 && parts[1] == '比赛') {
+          playQuidditch();
+        } else if (parts.length >= 3 && parts[1] == '位置') {
+          setQuidditchPosition(parts[2]);
+        } else {
+          currentNarrative = formatQuidditch();
+          choices = [GameChoice(text: '返回', action: '继续')];
+        }
+        return true;
+
+      case '/决斗':
+        duelNpc(parts.length >= 2 ? parts.sublist(1).join(' ') : null);
+        return true;
+
+      case '/禁林':
+        if (parts.length >= 2 && parts[1] == '探险') {
+          exploreForbiddenForest();
+        } else {
+          currentNarrative = '【禁林】\n'
+              '黑暗而神秘的森林，栖息着许多神奇生物，也藏着危险。\n'
+              '输入 /禁林 探险 进入禁林探索（消耗 3 小时，可能遭遇生物、采集材料或受伤）。\n\n'
+              '低年级学生请量力而行——一年级的魔杖在这里还很脆弱。';
+          choices = [GameChoice(text: '返回', action: '继续')];
+        }
+        return true;
+
+      case '/图鉴':
+        currentNarrative = formatBestiary();
+        choices = [GameChoice(text: '返回', action: '继续')];
+        return true;
+
+      case '/委托':
+        if (parts.length >= 2 && parts[1] == '刷新') {
+          refreshQuestBoard();
+        } else if (parts.length >= 3 && parts[1] == '接受') {
+          acceptQuest((int.tryParse(parts[2]) ?? 0) - 1);
+        } else if (parts.length >= 3 && parts[1] == '交付') {
+          deliverQuest((int.tryParse(parts[2]) ?? 0) - 1);
+        } else {
+          currentNarrative = formatQuests();
+          choices = [GameChoice(text: '返回', action: '继续')];
+        }
+        return true;
+
+      case '/学院杯':
+        currentNarrative = formatHouseCup();
         choices = [GameChoice(text: '返回', action: '继续')];
         return true;
 
@@ -396,6 +478,10 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('【恋爱状态】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}')
       ..writeln('【世界线变动率】${(p.worldLineDeviation * 100).toStringAsFixed(1)}%')
       ..writeln()
+      ..writeln('【装备栏】')
+      ..writeln('袍子：${p.equipped['robe'] ?? '（空）'}  帽子：${p.equipped['hat'] ?? '（空）'}')
+      ..writeln('扫帚：${p.equipped['broom'] ?? '（空）'}  饰品：${p.equipped['amulet'] ?? '（空）'}')
+      ..writeln('【学院杯】${p.house != null ? '本学年贡献 ${p.houseCupPoints} 分（/学院杯 查看）' : '未分院，暂未参与'}')
       ..writeln('【当前目标】${p.currentGoal ?? '尚未设定目标'}');
     return buf.toString();
   }
@@ -451,7 +537,15 @@ mixin GameCommandsMixin on GameProviderBase {
   /日记 — 查看CG图鉴（/日记 统计·/日记 [编号]·/日记 重播 [编号]）
   /档案 — 查看角色完整档案
   /成就 — 查看成就
-  /宠物 — 查看宠物状态
+  /宠物 — 查看宠物状态（/宠物 喂食·/宠物 玩耍·/宠物 训练）
+  /使用 <物品名> — 使用背包里的食品/药水/书籍
+  /装备 <物品名> — 穿戴装备；/卸下 <袍子|帽子|扫帚|饰品> 脱下
+  /魁地奇 — 魁地奇（/魁地奇 比赛·/魁地奇 位置 <位置>）
+  /决斗 [NPC名] — 与同学巫师决斗（空参随机挑战）
+  /禁林 探险 — 探索禁林，遭遇神奇生物或采集材料
+  /图鉴 — 查看已发现的魔法生物
+  /委托 — 支线委托板（/委托 刷新·接受 [编号]·交付 [编号]）
+  /学院杯 — 查看学院杯积分与排名规则
   /信 — 查看收到的信件（/信 读 [编号] · /信 回 [编号] [内容] · /信 寄 [NPC] [内容]）
   /新NPC — 生成一位新NPC（每学年限4次）
   /血缘 — 查看血缘亲属
@@ -632,7 +726,9 @@ mixin GameCommandsMixin on GameProviderBase {
       if (def.canTransform) buf.writeln('特性：可化人形（羁绊≥60后会触发人形互动）');
       buf.writeln('简介：${def.description.split('\n').first}');
     }
-    buf.write('羁绊：${p.petBond}/100\n宠物可以帮你送信、在冒险中提供帮助。');
+    buf.write('羁绊：${p.petBond}/100\n');
+    buf.writeln('互动：/宠物 喂食 ｜ /宠物 玩耍 ｜ /宠物 训练（喂食每日一次，玩耍/训练每日共一次）');
+    buf.writeln('羁绊≥40 时宠物可在决斗/探险中助战；${def?.canTransform ?? false ? '九尾灵狐在羁绊≥60 时会化为人形。' : '九尾灵狐在羁绊≥60 时会化为人形。'}');
     return buf.toString();
   }
 

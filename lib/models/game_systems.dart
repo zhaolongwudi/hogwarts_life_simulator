@@ -580,6 +580,13 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'graduated', name: '七年之约', description: '从霍格沃茨毕业'),
   Achievement(id: 'goal_achieved', name: '得偿所愿', description: '毕业时达成人生目标的数值条件'),
   Achievement(id: 'bone_mode', name: '血脉的悖论', description: '开启骨科模式，踏上禁忌之路'),
+  Achievement(id: 'first_quidditch_win', name: '魁地奇首胜', description: '在魁地奇比赛中取得第一场胜利'),
+  Achievement(id: 'first_duel_win', name: '决斗新星', description: '在巫师决斗中赢得第一场胜利'),
+  Achievement(id: 'first_quest', name: '初试委托', description: '完成第一份支线委托'),
+  Achievement(id: 'bestiary_3', name: '神奇生物学者', description: '图鉴记录 3 种以上魔法生物'),
+  Achievement(id: 'house_cup_winner', name: '学院杯冠军', description: '学年结算时带领学院赢得学院杯'),
+  Achievement(id: 'pet_bond_50', name: '亲密伙伴', description: '与宠物羁绊达到 50'),
+  Achievement(id: 'well_equipped', name: '全副武装', description: '同时穿戴 2 件以上装备'),
 ];
 
 // ==================== 信件 ====================

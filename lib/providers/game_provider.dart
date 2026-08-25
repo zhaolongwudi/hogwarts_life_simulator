@@ -27,7 +27,8 @@ class GameProvider extends GameProviderBase
         GameCommandsMixin,
         GameResponseMixin,
         GameRelationsMixin,
-        GameSystemsMixin {
+        GameSystemsMixin,
+        GamePlayMixin {
   @override
   bool markScanIfNew(String narrative) {
     final h = narrative.hashCode;

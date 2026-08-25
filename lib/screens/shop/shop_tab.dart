@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../data/item_data.dart';
 
 class _OwnedBadge extends StatelessWidget {
   final String itemName;
@@ -33,19 +34,54 @@ class ShopTab extends StatefulWidget {
 class _ShopTabState extends State<ShopTab> {
   int _subTab = 0; // 0=淘货, 1=卖闲置
 
-  final List<Map<String, dynamic>> _items = [
-    {'name': '巧克力蛙', 'icon': Icons.cookie, 'type': '食品', 'desc': '会跳的巧克力，附赠著名巫师卡片', 'price': 10},
-    {'name': '酸味爆弹', 'icon': Icons.local_drink, 'type': '食品', 'desc': '真的很酸，慎入', 'price': 8},
-    {'name': '坩埚蛋糕', 'icon': Icons.cake, 'type': '食品', 'desc': '迷你坩埚造型，味道不错', 'price': 12},
-    {'name': '新羽毛笔', 'icon': Icons.edit, 'type': '文具', 'desc': '猫头鹰羽毛，书写流畅', 'price': 20},
-    {'name': '羊皮纸一包', 'icon': Icons.description, 'type': '文具', 'desc': '优质防泼溅羊皮纸 20 张', 'price': 25},
-    {'name': '标准咒语书', 'icon': Icons.menu_book, 'type': '书籍', 'desc': '一年级课程教材', 'price': 60},
-  ];
+  IconData _iconFor(ItemDef def) {
+    switch (def.type) {
+      case '食品':
+        return def.name == '黄油啤酒' || def.name == '比比多味豆'
+            ? Icons.local_cafe
+            : Icons.cookie;
+      case '药水':
+        return Icons.science;
+      case '装备':
+        switch (def.equipSlot) {
+          case 'broom':
+            return Icons.airline_seat_recline_normal;
+          case 'hat':
+            return Icons.workspace_premium;
+          case 'amulet':
+            return Icons.diamond;
+          default:
+            return Icons.checkroom;
+        }
+      case '材料':
+        return Icons.grass;
+      case '书籍':
+        return Icons.menu_book;
+      case '文具':
+        return Icons.edit;
+      default:
+        return Icons.inventory_2;
+    }
+  }
+
+  List<Map<String, dynamic>> _catalog() {
+    return kItemCatalog.map((def) {
+      return {
+        'name': def.name,
+        'icon': _iconFor(def),
+        'type': def.type,
+        'desc': def.desc,
+        'price': def.price,
+        'usable': def.usable,
+        'equippable': def.isEquippable,
+      };
+    }).toList();
+  }
 
   List<Map<String, dynamic>> _sellItems() {
     final gp = context.read<GameProvider>();
     final inventory = gp.player?.inventory ?? [];
-    final sellCatalog = {for (final i in _items) i['name'] as String: (i['price'] as int) ~/ 2};
+    final sellCatalog = {for (final d in kItemCatalog) d.name: d.price ~/ 2};
     return inventory.map((item) {
       final basePrice = sellCatalog[item.name] ?? 5;
       return {
@@ -88,7 +124,7 @@ class _ShopTabState extends State<ShopTab> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: _subTab == 0 ? _buildShopGrid(_items, true) : _buildShopGrid(_sellItems(), false),
+          child: _subTab == 0 ? _buildShopGrid(_catalog(), true) : _buildShopGrid(_sellItems(), false),
         ),
       ],
     );
@@ -172,8 +208,28 @@ class _ShopTabState extends State<ShopTab> {
                 child: Text('${item['price']}加隆', style: const TextStyle(fontSize: 12)),
               ),
               const Spacer(),
-              if (isBuy)
+              if (isBuy) ...[
+                if (item['usable'] == true)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('可用', style: TextStyle(fontSize: 10, color: Colors.orange)),
+                  ),
+                if (item['equippable'] == true)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('可装备', style: TextStyle(fontSize: 10, color: Colors.teal)),
+                  ),
+                const SizedBox(width: 4),
                 _OwnedBadge(itemName: item['name'] as String? ?? ''),
+              ],
             ],
           ),
           const SizedBox(height: 4),

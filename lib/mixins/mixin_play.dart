@@ -1,0 +1,965 @@
+import 'dart:async';
+import '../data/item_data.dart';
+import '../data/bestiary_data.dart';
+import '../data/quest_data.dart';
+import '../data/pet_data.dart';
+import '../models/player.dart';
+import '../models/npc.dart';
+import '../models/game_systems.dart';
+import '../providers/game_provider_base.dart';
+
+/// 新玩法 Mixin（v1.10）：物品使用 / 宠物互动 / 装备穿戴 / 魁地奇 / 决斗 /
+/// 禁林探险 / 魔法生物图鉴 / 支线委托板 / 学院杯积分。
+/// 全部本地判定、零 token 消耗，叙事结果走 currentNarrative + choices 通道。
+mixin GamePlayMixin on GameProviderBase {
+  // ==================== 通用工具 ====================
+
+  void _finishLocal(String narrative) {
+    currentNarrative = narrative;
+    choices = [GameChoice(text: '返回', action: '继续')];
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  bool _hasItem(String name) =>
+      (player?.inventory ?? []).any((e) => e.name == name);
+
+  void _removeItem(String name) {
+    final inv = player?.inventory;
+    if (inv == null) return;
+    final idx = inv.indexWhere((e) => e.name == name);
+    if (idx >= 0) inv.removeAt(idx);
+  }
+
+  void _addItem(String name, {String? type, String? desc}) {
+    final def = itemDefByName(name);
+    player!.inventory.add(InventoryItem(
+      id: def?.id ?? name,
+      name: name,
+      type: type ?? def?.type ?? 'item',
+      description: desc ?? def?.desc ?? '',
+    ));
+  }
+
+  /// 获得一件物品并自动推进 gather 类委托
+  void _gainItem(String name) {
+    _addItem(name);
+    _progressQuest('gather', name, 1);
+  }
+
+  int _attr(String key) => (player?.attributes[key]) ?? 50;
+
+  int _equipmentCombatBonus() {
+    final p = player;
+    if (p == null) return 0;
+    int sum = 0;
+    p.equipped.forEach((slot, name) {
+      final def = itemDefByName(name);
+      if (def != null) sum += def.combatBonus;
+    });
+    return sum;
+  }
+
+  int _equipmentCastBonus() {
+    final p = player;
+    if (p == null) return 0;
+    int sum = 0;
+    p.equipped.forEach((slot, name) {
+      final def = itemDefByName(name);
+      if (def != null) sum += def.castBonus;
+    });
+    return sum;
+  }
+
+  /// 决斗战力：技能熟练度均值 + 装备加成 + 宠物助战（羁绊≥40）
+  double _playerPower() {
+    final p = player!;
+    final base = (_attr('dda') + _attr('spell_understanding') + _attr('magic_control')) / 3;
+    var power = base + _equipmentCombatBonus();
+    if (p.petBond >= 40) power += 3;
+    return power;
+  }
+
+  void _progressQuest(String type, String target, int amount) {
+    final qs = player?.quests;
+    if (qs == null) return;
+    for (final q in qs) {
+      if (q.status != 'active' || q.type != type || q.target != target) continue;
+      q.progress = (q.progress + amount).clamp(0, q.targetCount);
+      if (q.isDone) {
+        q.status = 'completed';
+        notifications.add('📜 委托完成：${q.title}（/委托 交付 领取奖励）');
+      }
+    }
+  }
+
+  // ==================== 1. 物品使用 ====================
+
+  String formatItemUseHelp() {
+    final p = player;
+    final usable = usableItems();
+    final buf = StringBuffer()
+      ..writeln('【物品使用】')
+      ..writeln('输入 /使用 <物品名> 消耗背包中的物品。可使用的物品：');
+    if (p == null || p.inventory.isEmpty) {
+      buf.writeln('（背包空空如也，去对角巷逛逛吧）');
+      return buf.toString();
+    }
+    final owned = <String, int>{};
+    for (final e in p.inventory) {
+      owned[e.name] = (owned[e.name] ?? 0) + 1;
+    }
+    var hasUsable = false;
+    for (final def in usable) {
+      final count = owned[def.name] ?? 0;
+      final mark = count > 0 ? '✅ x$count' : '（未持有）';
+      buf.writeln('· ${def.name} $mark — ${def.desc}');
+      if (count > 0) hasUsable = true;
+    }
+    if (!hasUsable) buf.writeln('（你尚未持有任何可使用的物品）');
+    buf.writeln('装备类物品请使用 /装备，见 /状态 下装备栏。');
+    return buf.toString();
+  }
+
+  void useItem(String name) {
+    final p = player;
+    if (p == null) return;
+    final def = itemDefByName(name);
+    if (def == null || !def.usable) {
+      _finishLocal('「$name」无法使用。\n\n${formatItemUseHelp()}');
+      return;
+    }
+    if (!_hasItem(name)) {
+      _finishLocal('你的背包里没有「$name」。\n\n${formatItemUseHelp()}');
+      return;
+    }
+
+    final effects = def.effect;
+    final buf = StringBuffer();
+    buf.writeln('【使用 · $name】\n');
+
+    // 比比多味豆：随机效果（含彩蛋毒豆）
+    if (effects.containsKey('special')) {
+      const flavors = [
+        ('草莓味，甜得眯起眼睛。', {'satiety': 10}),
+        ('青草味，有点像刚从草坪上薅下来的。', {'satiety': 6}),
+        ('耳屎味！你干呕了一下。', {'health': -3, 'satiety': 5}),
+        ('鼻涕虫味，冰凉黏滑。', {'spirit': -2}),
+        ('神奇地是黄油啤酒味。', {'satiety': 8, 'spirit': 4}),
+      ];
+      final picked = flavors[random.nextInt(flavors.length)];
+      buf.writeln('你丢了一颗进嘴里——${picked.$1}');
+      _applyEffects(p, picked.$2, buf);
+      _removeItem(name);
+      _finishLocal(buf.toString());
+      return;
+    }
+
+    // 标准咒语书：提升魔咒理解，未学咒时自动学会漂浮咒
+    if (effects.containsKey('learn_spell')) {
+      if (p.learnedSpells.isEmpty) {
+        p.learnedSpells['漂浮咒'] = SpellLevel(spellName: '漂浮咒', level: 1, practiceCount: 1);
+        buf.writeln('你翻开《标准咒语书》，第一次学会了「漂浮咒」！');
+      } else {
+        buf.writeln('你温习了《标准咒语书》，许多细节豁然开朗。');
+      }
+    }
+
+    buf.writeln('你把「$name」${_useActionVerb(name)}。');
+    _applyEffects(p, effects, buf);
+    _removeItem(name);
+    _finishLocal(buf.toString());
+  }
+
+  String _useActionVerb(String name) {
+    final def = itemDefByName(name);
+    if (def == null) return '处理了一下';
+    switch (def.type) {
+      case '食品':
+        return '吃（喝）了下去';
+      case '药水':
+        return '一饮而尽';
+      case '书籍':
+        return '研读了一遍';
+      default:
+        return '使用了一下';
+    }
+  }
+
+  void _applyEffects(Player p, Map<String, int> effects, StringBuffer buf) {
+    if (effects.isEmpty) return;
+    final changes = <String>[];
+    effects.forEach((key, value) {
+      if (value == 0) return;
+      switch (key) {
+        case 'health':
+          p.health = (p.health + value).clamp(0, 100);
+          changes.add('生命 ${value > 0 ? '+' : ''}$value');
+          break;
+        case 'magic':
+          p.magic = (p.magic + value).clamp(0, 100);
+          changes.add('魔力 ${value > 0 ? '+' : ''}$value');
+          break;
+        case 'spirit':
+          p.spirit = (p.spirit + value).clamp(0, 100);
+          changes.add('精神力 ${value > 0 ? '+' : ''}$value');
+          break;
+        case 'satiety':
+          p.satiety = (p.satiety + value).clamp(0, 100);
+          changes.add('饱食度 ${value > 0 ? '+' : ''}$value');
+          break;
+        case 'energy':
+          p.energy = (p.energy + value).clamp(0, 100);
+          changes.add('精力 ${value > 0 ? '+' : ''}$value');
+          break;
+        default:
+          p.attributes[key] = ((p.attributes[key] ?? 50) + value).clamp(0, 100);
+          changes.add('${_attrLabelZh(key)} ${value > 0 ? '+' : ''}$value');
+      }
+    });
+    if (changes.isNotEmpty) {
+      buf.writeln('\n效果：${changes.join(' · ')}');
+    }
+  }
+
+  String _attrLabelZh(String key) {
+    const map = {
+      'spell_understanding': '魔咒理解',
+      'transfiguration': '变形术',
+      'potions': '魔药学',
+      'herbology': '草药学',
+      'dda': '黑魔法防御',
+      'flying': '飞行',
+      'magic_control': '魔力控制',
+      'reaction_time': '反应速度',
+      'observation': '洞察力',
+    };
+    return map[key] ?? key;
+  }
+
+  // ==================== 2. 宠物互动 ====================
+
+  void petInteract(String action) {
+    final p = player;
+    if (p == null) return;
+    if (p.petId == null && p.petName == null) {
+      _finishLocal('你还没有宠物，无法互动。可以去对角巷挑选一只猫头鹰、猫或蟾蜍。');
+      return;
+    }
+    final def = p.petId != null ? petById(p.petId!) : null;
+    final petName = (p.petName != null && p.petName!.isNotEmpty) ? p.petName! : (def?.name ?? '宠物');
+    final day = worldState.time.absoluteDayIndex;
+    final buf = StringBuffer('【宠物互动 · $petName】\n');
+
+    if (action == '喂食' || action == '喂' || action == '食物') {
+      if (p.petLastFedDay == day) {
+        _finishLocal('$petName 今天已经吃饱喝足，肚皮圆滚滚地直打瞌睡，明天再喂吧。');
+        return;
+      }
+      p.petLastFedDay = day;
+      final gain = 2 + random.nextInt(3); // +2~+4
+      p.petBond = (p.petBond + gain).clamp(0, 100);
+      buf.writeln('你拿出准备好的食物，$petName 立刻凑了上来，温热的小脑袋在你手心里蹭了又蹭。');
+      buf.writeln('\n羁绊 +$gain（当前 ${p.petBond}/100）');
+    } else if (action == '玩耍' || action == '玩') {
+      if (p.petInteractDay == day) {
+        _finishLocal('$petName 今天已经陪你玩过、练过，现在只想赖在窝里休息。明天再来吧。');
+        return;
+      }
+      p.petInteractDay = day;
+      p.energy = (p.energy - 5).clamp(0, 100);
+      final gain = 1 + random.nextInt(3); // +1~+3
+      p.petBond = (p.petBond + gain).clamp(0, 100);
+      buf.writeln('你陪$petName 在草地上追逐打闹，它银铃般的小动作把你的疲惫都冲淡了几分。');
+      buf.writeln('\n羁绊 +$gain（当前 ${p.petBond}/100）');
+    } else if (action == '训练' || action == '练') {
+      if (p.petInteractDay == day) {
+        _finishLocal('$petName 今天已经累坏了，训练只能等明天。');
+        return;
+      }
+      p.petInteractDay = day;
+      final success = random.nextInt(100) < 65;
+      final gain = success ? 1 + random.nextInt(2) : 1;
+      p.petBond = (p.petBond + gain).clamp(0, 100);
+      if (success) {
+        const pool = ['observation', 'reaction_time', 'flying', 'intuition'];
+        final skill = pool[random.nextInt(pool.length)];
+        p.attributes[skill] = ((p.attributes[skill] ?? 50) + 1).clamp(0, 100);
+        buf.writeln('你引导$petName 完成了几组指令，它领悟得飞快，尾巴都得意地翘了起来。');
+        buf.writeln('\n羁绊 +$gain（当前 ${p.petBond}/100），${_attrLabelZh(skill)} +1');
+      } else {
+        buf.writeln('今天的训练不太顺利，$petName 总是被旁边的动静分心。不过关系也算拉近了一些。');
+        buf.writeln('\n羁绊 +$gain（当前 ${p.petBond}/100）');
+      }
+    } else {
+      _finishLocal('宠物互动指令：/宠物 喂食 ｜ /宠物 玩耍 ｜ /宠物 训练\n\n'
+          '喂食每日一次，玩耍/训练每日共一次。羁绊提升后宠物能提供更多帮助。');
+      return;
+    }
+
+    // 化人形事件（九尾灵狐专属，一次性）
+    if (!p.petTransformDone &&
+        p.petId == 'kyuubi' &&
+        p.petBond >= 60) {
+      p.petTransformDone = true;
+      buf.writeln('\n—— 一道柔和的光晕忽然从$petName 身上漾开，它的身影在光芒中缓缓拔高，'
+          '幻化作一个与你年纪相仿的少男/少女。绯红的狐耳微微颤动，衣角缀着银白的尾巴尖。'
+          '它/他静静看着你，轻声唤出你的名字。\n\n'
+          '【羁绊已满】九尾灵狐的人形已为你显现，今后它可以在更多场合陪伴你。');
+      p.relationships.clear();
+      notifications.add('🦊 $petName 已化为人形：羁绊的奇迹在你眼前展开');
+    }
+
+    // 羁绊成就 + pet 类委托进度
+    if (p.petBond >= 50) unlockAchievement('pet_bond_50');
+    for (final q in p.quests) {
+      if (q.status == 'active' && q.type == 'pet') {
+        q.progress = q.progress < p.petBond ? p.petBond : q.progress;
+        if (q.progress > q.targetCount) q.progress = q.targetCount;
+        if (q.isDone && q.status == 'active') {
+          q.status = 'completed';
+          notifications.add('📜 委托完成：${q.title}（/委托 交付 领取奖励）');
+        }
+      }
+    }
+    _finishLocal(buf.toString());
+  }
+
+  // ==================== 3. 装备穿戴 ====================
+
+  String formatEquip() {
+    final p = player;
+    if (p == null) return '';
+    const slots = [
+      ('robe', '袍子'),
+      ('hat', '帽子'),
+      ('broom', '扫帚'),
+      ('amulet', '饰品'),
+    ];
+    final buf = StringBuffer()
+      ..writeln('【装备栏】')
+      ..writeln('输入 /装备 <物品名> 穿戴，/卸下 <部位> 脱下。');
+    for (final s in slots) {
+      final name = p.equipped[s.$1];
+      buf.writeln('${s.$2}：${name ?? '（空）'}');
+    }
+    final cb = _equipmentCombatBonus();
+    final cast = _equipmentCastBonus();
+    buf.writeln('\n当前加成：战斗 +$cb ｜ 施法成功率 +${(cast / 10).toStringAsFixed(1)}%');
+    final items = equippableItems();
+    buf.writeln('\n【可穿戴装备】');
+    for (final it in items) {
+      final owned = _hasItem(it.name) ? '✅' : ' ';
+      buf.writeln('$owned ${it.name}（$priceLabel(it.price) 加隆，${slotLabel(it.equipSlot!)}）— ${it.desc}');
+    }
+    buf.writeln('\n装备在 /决斗 提供战力加成，施法成功率的提升来自装备的 castBonus。');
+    return buf.toString();
+  }
+
+  String slotLabel(String slot) => switch (slot) {
+        'robe' => '袍子',
+        'hat' => '帽子',
+        'broom' => '扫帚',
+        'amulet' => '饰品',
+        _ => '装备',
+      };
+
+  String priceLabel(int p) => p >= 0 ? p.toString() : '';
+
+  void equipItem(String name) {
+    final p = player;
+    if (p == null) return;
+    final def = itemDefByName(name);
+    if (def == null || !def.isEquippable) {
+      _finishLocal('「$name」不是可穿戴的装备。输入 /装备 查看可穿戴列表。');
+      return;
+    }
+    if (!_hasItem(name)) {
+      _finishLocal('你的背包里没有「$name」，需要先去对角巷购买。');
+      return;
+    }
+    final slot = def.equipSlot!;
+    final old = p.equipped[slot];
+    p.equipped[slot] = name;
+    final buf = StringBuffer('【穿戴 · $name】\n');
+    if (old != null && old != name) {
+      buf.writeln('你换下了原来的${slotLabel(slot)}「$old」，穿上了「$name」。');
+    } else {
+      buf.writeln('你装备上了「$name」（${slotLabel(slot)}）。');
+    }
+    if (def.statBonus.isNotEmpty) {
+      buf.writeln('\n属性加成：${def.statBonus.entries.map((e) => '${_attrLabelZh(e.key)} +${e.value}').join(' · ')}');
+    }
+    if (def.combatBonus > 0) {
+      buf.writeln('战斗加成：+${def.combatBonus}');
+    }
+    if (def.castBonus > 0) {
+      buf.writeln('施法加成：+${(def.castBonus / 10).toStringAsFixed(1)}%');
+    }
+    if (p.equipped.length >= 2) unlockAchievement('well_equipped');
+    _finishLocal(buf.toString());
+  }
+
+  void unequipItem(String slotOrName) {
+    final p = player;
+    if (p == null) return;
+    String? slot = p.equipped.containsKey(slotOrName) ? slotOrName : null;
+    if (slot == null) {
+      for (final s in ['robe', 'hat', 'broom', 'amulet']) {
+        if (slotLabel(s) == slotOrName || s == slotOrName) {
+          slot = s;
+          break;
+        }
+      }
+    }
+    if (slot == null) {
+      _finishLocal('没有这个装备部位（袍子/帽子/扫帚/饰品）。输入 /装备 查看当前穿戴。');
+      return;
+    }
+    final name = p.equipped.remove(slot);
+    if (name == null) {
+      _finishLocal('${slotLabel(slot)}本来就空着，没有可卸下的装备。');
+      return;
+    }
+    _finishLocal('【卸下 · $name】\n你卸下了${slotLabel(slot)}「$name」，它回到你的背包里。');
+  }
+
+  // ==================== 4. 魁地奇 ====================
+
+  String formatQuidditch() {
+    final p = player;
+    if (p == null) return '';
+    final broom = p.equipped['broom'];
+    final buf = StringBuffer()
+      ..writeln('【魁地奇】')
+      ..writeln('位置：${p.qPosition}')
+      ..writeln('技巧：${p.qSkill}/100')
+      ..writeln('战绩：${p.qWins}胜 / ${p.qMatches}场')
+      ..writeln('扫帚：${broom ?? '（未装备）'}');
+    if (broom == null) {
+      buf.writeln('\n⚠️ 参加比赛需要先装备一把飞天扫帚（对角巷购买后 /装备）。');
+    } else {
+      buf.writeln('\n输入 /魁地奇 比赛 开始一场比赛（每周一次，消耗 2 小时）。');
+      buf.writeln('输入 /魁地奇 位置 <找球手|追球手|守门员|击球手> 调整位置。');
+    }
+    buf.writeln('\n赢下一场为学院赢得 30 分学院杯积分，输球也有 5 分。');
+    return buf.toString();
+  }
+
+  void setQuidditchPosition(String pos) {
+    const positions = ['找球手', '追球手', '守门员', '击球手'];
+    final p = player!;
+    if (!positions.contains(pos)) {
+      _finishLocal('位置可选：找球手/追球手/守门员/击球手。当前位置：${p.qPosition}');
+      return;
+    }
+    p.qPosition = pos;
+    _finishLocal('【位置调整】\n你在队内试训后被安排为「$pos」。训练中你不断调整握法，$pos 的职责逐渐得心应手。');
+  }
+
+  void playQuidditch() {
+    final p = player;
+    if (p == null) return;
+    final broom = p.equipped['broom'];
+    if (broom == null) {
+      _finishLocal('你还没有飞天扫帚！对角巷的「飞天扫帚·横扫」或「飞天扫帚·彗星」可以购买，买到后 /装备 即可参赛。');
+      return;
+    }
+    if (p.qLastWeek == gameWeek) {
+      _finishLocal('本周你已经打过一场了，教练让你好好休息、加练技巧。下周再来吧。');
+      return;
+    }
+    if (p.energy < 20) {
+      _finishLocal('你的精力所剩无几（${p.energy}/100），扫帚都握不太稳，先休息一晚吧。');
+      return;
+    }
+
+    p.qLastWeek = gameWeek;
+    advanceTimeForAction('魁地奇比赛');
+    p.energy = (p.energy - 20).clamp(0, 100);
+    p.qMatches++;
+
+    // 双方实力
+    final skill = p.qSkill +
+        ((_attr('flying') - 50) ~/ 3) +
+        ((_attr('reaction_time') - 50) ~/ 5) +
+        (itemDefByName(broom)?.statBonus['flying'] ?? 0);
+    const opponents = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇'];
+    final myHouseCn = switch (p.house) {
+      'Gryffindor' => '格兰芬多',
+      'Slytherin' => '斯莱特林',
+      'Ravenclaw' => '拉文克劳',
+      'Hufflepuff' => '赫奇帕奇',
+      _ => '对手',
+    };
+    final opp = opponents[random.nextInt(opponents.length)];
+    final myScore = 90 + skill ~/ 2 + random.nextInt(31);
+    final oppScore = 70 + random.nextInt(81); // 对手 ~70-150
+    final win = myScore >= oppScore;
+
+    p.qSkill = (p.qSkill + 1 + random.nextInt(2)).clamp(0, 100);
+    final buf = StringBuffer('【魁地奇比赛 · $myHouseCn 对 $opp】\n');
+    buf.writeln('哨声响起，$myHouseCn 队的${p.qPosition}——你，骑着$broom 冲上云霄。'
+        '雨后的空气带着草屑和松脂味，金色飞贼在不远处闪烁。');
+    final posDetail = switch (p.qPosition) {
+      '找球手' => '你在球场上盘旋，目光锁定那颗疾驰的金色飞贼，一个俯冲……',
+      '追球手' => '鬼飞球在你腋下稳稳夹住，你闪开两名对方击球手的防守，奋力掷向球门。',
+      '守门员' => '你守在三个圆环前，紧盯游走球与鬼飞球的轨迹，飞身扑救。',
+      _ => '你抡起球棒，狠狠把游走球抽向对方阵型。',
+    };
+    buf.writeln(posDetail);
+    buf.writeln('\n最终比分：$myHouseCn $myScore — $oppScore $opp');
+
+    if (win) {
+      p.qWins++;
+      p.playerReputation.add('combat', 6);
+      p.playerReputation.add('social', 4);
+      p.houseCupPoints += 30;
+      p.galleons += 15;
+      buf.writeln('\n欢呼声如浪涌来，你为$myHouseCn 赢下了这一场！');
+      buf.writeln('战斗声望 +6 · 社交声望 +4 · 学院杯积分 +30 · 队内奖金 15 加隆');
+      unlockAchievement('first_quidditch_win');
+    } else {
+      p.houseCupPoints += 5;
+      p.galleons += 5;
+      p.playerReputation.add('social', 2);
+      buf.writeln('\n对方守住了最后的攻势，$myHouseCn 惜败。队友拍了拍你的肩：下周赢回来。');
+      buf.writeln('虽败犹荣：社交声望 +2 · 学院杯积分 +5 · 辛苦费 5 加隆');
+    }
+    buf.writeln('\n魁地奇技巧 +1~2（当前 ${p.qSkill}）');
+    _finishLocal(buf.toString());
+  }
+
+  // ==================== 5. 决斗 ====================
+
+  void duelNpc(String? name) {
+    final p = player;
+    if (p == null) return;
+    final alive = npcRegistry.values.where((n) => n.isAlive && !n.graduated).toList();
+    NPC? opponent;
+    if (name != null && name.trim().isNotEmpty) {
+      final kw = name.trim();
+      for (final n in alive) {
+        if (n.name.contains(kw)) {
+          opponent = n;
+          break;
+        }
+      }
+      if (opponent == null) {
+        _finishLocal('没有找到可以挑战的「$kw」。输入 /决斗 随机挑战，或输入认识的同学生名。');
+        return;
+      }
+    } else {
+      if (alive.isEmpty) {
+        _finishLocal('眼前没有可以挑战的对象。');
+        return;
+      }
+      opponent = alive[random.nextInt(alive.length)];
+    }
+
+    final oppPower = 30 +
+        opponent.reputation.combat +
+        opponent.grade * 3 +
+        random.nextInt(25);
+
+    // 防崩坏：一年级无法正面对抗明显强大的对手
+    if ((p.grade ?? 1) <= 1 && oppPower >= 75) {
+      _finishLocal(
+          '你握着魔杖的手有些发冷——${opponent.name}的气场远远压过了你。'
+          '一年级的新生正面对上这样的对手只有送人头的份。\n\n'
+          '你决定把逃跑当成最明智的咒语。');
+      return;
+    }
+    if (p.energy < 10) {
+      _finishLocal('你太疲惫了（精力 ${p.energy}/100），连魔杖都举不太稳。改天再战吧。');
+      return;
+    }
+
+    advanceTimeForAction('对话');
+    p.energy = (p.energy - 10).clamp(0, 100);
+    p.magic = (p.magic - 12).clamp(0, 100);
+
+    // 施法成功率公式：熟练度 × 环境 × 心理 × 装备（简化本地判定）
+    final mastery = (_attr('dda') + _attr('spell_understanding')) / 200;
+    final env = 0.85 + random.nextDouble() * 0.3;
+    final mental = (p.spirit / 100) * 0.5 + 0.5;
+    final equipFactor = 1 + _equipmentCastBonus() / 1000.0;
+    final castChance = (mastery * env * mental * equipFactor).clamp(0.05, 0.95);
+
+    final myPower = _playerPower();
+    final myScore = myPower * castChance + random.nextInt(16);
+    final oppScore = oppPower * 0.6 + random.nextInt(21);
+    final win = myScore >= oppScore;
+
+    final buf = StringBuffer('【巫师决斗 · ${opponent.name}】\n');
+    buf.writeln('你们在场地中央互相致礼，${opponent.name}的眼神带着一丝跃跃欲试。'
+        '你握紧魔杖，心跳与咒语几乎同时升起。');
+    if (castChance < 0.4) {
+      buf.writeln('你的前两记咒语都偏得离谱——紧张让魔杖尖的光晕抖得像风里的烛火。');
+    } else if (castChance >= 0.75) {
+      buf.writeln('咒语一个接一个精准地飞出去，观战的同学发出压低了的惊叹。');
+    } else {
+      buf.writeln('施法有来有回，你稳住了节奏，寻找着对方的破绽。');
+    }
+
+    if (win) {
+      p.health = (p.health - 5 - random.nextInt(6)).clamp(1, 100);
+      p.playerReputation.add('combat', 6 + random.nextInt(6));
+      p.playerReputation.add('moral', 2);
+      p.houseCupPoints += 10;
+      final reward = 10 + random.nextInt(16);
+      p.galleons += reward;
+      opponent.affection = (opponent.affection + 2).clamp(-100, 100);
+      buf.writeln('\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
+      buf.writeln('胜利：战斗声望 +6~11 · 道德声望 +2 · 学院杯 +10 · 赌注 $reward 加隆');
+      unlockAchievement('first_duel_win');
+    } else {
+      p.health = (p.health - 12 - random.nextInt(14)).clamp(1, 100);
+      p.playerReputation.add('combat', 2 + random.nextInt(3));
+      buf.writeln('\n你被${opponent.name}的咒语击中，好在只是擦伤。对方收杖向你点了点头。');
+      buf.writeln('落败：战斗声望 +2~4 · 你受了些轻伤（生命 ${p.health}/100）');
+    }
+    _finishLocal(buf.toString());
+  }
+
+  // ==================== 6. 禁林探险 ====================
+
+  void exploreForbiddenForest() {
+    final p = player;
+    if (p == null) return;
+    if (p.energy < 15) {
+      _finishLocal('你的精力所剩无几（${p.energy}/100）。禁林不是能空手而归的地方，先休息吧。');
+      return;
+    }
+    if (p.satiety < 15) {
+      _finishLocal('你饿得前胸贴后背（饱食度 ${p.satiety}/100），进禁林之前先吃点东西吧。');
+      return;
+    }
+
+    advanceTimeForAction('禁林探险');
+    p.energy = (p.energy - 15).clamp(0, 100);
+    p.satiety = (p.satiety - 5).clamp(0, 100);
+
+    final grade = p.grade ?? 1;
+    final rollValue = random.nextInt(100);
+    final buf = StringBuffer('【禁林探险】\n');
+
+    // 可遭遇生物：按年级限制危险度上限（防崩坏）
+    final maxDanger = grade >= 5
+        ? 5
+        : grade >= 3
+            ? 4
+            : grade >= 2
+                ? 3
+                : 2;
+    final pool = kCreatureCatalog
+        .where((c) => c.danger <= maxDanger)
+        .toList();
+
+    if (rollValue < 30 && pool.isNotEmpty) {
+      // 遭遇生物
+      final weighted = <CreatureDef>[];
+      for (final c in pool) {
+        for (var i = 0; i < (6 - c.danger).clamp(1, 4); i++) {
+          weighted.add(c);
+        }
+      }
+      final creature = weighted[random.nextInt(weighted.length)];
+      _recordCreature(creature);
+      buf.writeln('密林深处传来窸窣声。你屏住呼吸，看到了——${creature.name}。');
+      buf.writeln('${creature.desc}');
+      buf.writeln('\n【图鉴更新】${creature.name}（${dangerLabel(creature.danger)}）已收录');
+
+      if (creature.danger >= 3) {
+        // 对抗判定
+        final escapeP = (0.35 +
+                (_attr('reaction_time') - 50) / 500 +
+                (_attr('observation') - 50) / 500 +
+                (p.petBond >= 40 ? 0.1 : 0) +
+                _equipmentCastBonus() / 1000)
+            .clamp(0.15, 0.85);
+        if (random.nextDouble() < escapeP) {
+          buf.writeln('\n${creature.name} 向你逼近，你抓住它停顿的一瞬，闪身躲进树根后，'
+              '贴着地面退了回去。心跳如擂鼓，但你没受伤。');
+        } else {
+          final creaturePower = creature.danger * 18 + 10;
+          final myPower = _playerPower();
+          final win = (myPower + random.nextInt(21)) >= (creaturePower + random.nextInt(16));
+          if (win) {
+            p.health = (p.health - 5 * creature.danger).clamp(1, 100);
+            p.playerReputation.add('combat', 4 + creature.danger * 2);
+            p.houseCupPoints += 5;
+            buf.writeln('\n你抽出魔杖迎战。经过几个来回，${creature.name} 终于哀鸣着退入黑暗。'
+                '战斗声望 +${4 + creature.danger * 2} · 学院杯 +5');
+            if (creature.loot.isNotEmpty) {
+              final drop = creature.loot[random.nextInt(creature.loot.length)];
+              _gainItem(drop);
+              buf.writeln('你在战利品中找到了「$drop」，收进背包。');
+            }
+            _progressQuest('defeat', creature.name, 1);
+          } else {
+            p.health = (p.health - 15 - 5 * creature.danger).clamp(1, 100);
+            buf.writeln('\n你没能拦住${creature.name}的冲击，被重重撞飞。'
+                '好在它没有追杀，你拖着受伤的身体逃回了城堡。'
+                '（生命 ${p.health}/100，可去校医院用白鲜香精治疗）');
+          }
+        }
+      } else {
+        if (creature.loot.isNotEmpty) {
+          final drop = creature.loot[random.nextInt(creature.loot.length)];
+          _gainItem(drop);
+          buf.writeln('它并不怕你，还在附近留下了「$drop」——你小心翼翼地收了起来。');
+        }
+        buf.writeln('\n你悄悄退开，没有惊扰它。');
+      }
+    } else if (rollValue < 55) {
+      // 采集材料
+      final material = kCommonLootMaterials[random.nextInt(kCommonLootMaterials.length)];
+      _gainItem(material);
+      buf.writeln('你在树根与岩石之间仔细翻找，收获了一份「$material」，塞进背包。');
+    } else if (rollValue < 70) {
+      // 金币
+      final coins = 5 + random.nextInt(16);
+      p.galleons += coins;
+      buf.writeln('你在一条干涸的溪流边捡到一个小皮袋，里面装着 $coins 加隆。'
+          '大概是哪个倒霉鬼掉的。');
+    } else if (rollValue < 85) {
+      buf.writeln('这一趟有惊无险——除了几只不咬人的护树罗锅远远望着你，禁林安静得不像话。'
+          '你几乎空手而归，但至少熟悉了这片林子。');
+    } else {
+      p.health = (p.health - 8 - random.nextInt(8)).clamp(1, 100);
+      if (!p.injuries.contains('禁林擦伤')) p.injuries.add('禁林擦伤');
+      buf.writeln('你在湿滑的苔藓上滑了一跤，撞上裸露的树根，额头擦破了皮。'
+          '（生命 ${p.health}/100，注意包扎）');
+    }
+
+    buf.writeln('\n禁林入口的风从你身后吹来，你决定先返回城堡。');
+    _finishLocal(buf.toString());
+  }
+
+  void _recordCreature(CreatureDef c) {
+    final p = player!;
+    if (!p.bestiary.contains(c.id)) {
+      p.bestiary.add(c.id);
+    }
+    if (p.bestiary.length >= 3) unlockAchievement('bestiary_3');
+  }
+
+  // ==================== 7. 魔法生物图鉴 ====================
+
+  String formatBestiary() {
+    final p = player;
+    final buf = StringBuffer('【魔法生物图鉴】（${p?.bestiary.length ?? 0}/${kCreatureCatalog.length}）\n');
+    if (p == null || p.bestiary.isEmpty) {
+      buf.writeln('\n尚未发现任何生物。去 /禁林 探险，或观察身边的花园与城堡，'
+          '与神奇生物相遇吧。');
+      return buf.toString();
+    }
+    for (final c in kCreatureCatalog) {
+      final found = p.bestiary.contains(c.id);
+      if (!found) continue;
+      buf.writeln('\n『${c.name}』 ${dangerLabel(c.danger)}');
+      buf.writeln('栖息地：${c.habitat}');
+      buf.writeln('${c.desc}');
+      if (c.loot.isNotEmpty) {
+        buf.writeln('可获材料：${c.loot.join('、')}');
+      }
+    }
+    buf.writeln('\n已发现 ${p.bestiary.length} 种。继续探索可解锁全部图鉴。');
+    return buf.toString();
+  }
+
+  // ==================== 8. 支线委托板 ====================
+
+  /// 随机刷新板子：列出 3 个当前未接取的模板
+  List<QuestTemplate> _board() {
+    final p = player;
+    final taken = <String>{};
+    for (final q in p?.quests ?? const <QuestRecord>[]) {
+      taken.add(q.templateId);
+    }
+    final available = kQuestTemplates
+        .where((t) => !taken.contains(t.id) && (t.minGrade <= (p?.grade ?? 1)))
+        .toList()
+      ..shuffle(random);
+    return available.take(3).toList();
+  }
+
+  void refreshQuestBoard() {
+    final board = _board();
+    final buf = StringBuffer('【委托板 · 已刷新】\n');
+    if (board.isEmpty) {
+      buf.writeln('板子上暂时没有适合你的委托。之后再来看看，或者去禁林碰碰运气。');
+    } else {
+      buf.writeln('（可接受的委托）');
+      for (var i = 0; i < board.length; i++) {
+        final q = board[i];
+        buf.writeln('\n${i + 1}. ${q.title}（${_questTypeLabel(q.type)}）');
+        buf.writeln('   ${q.desc}');
+        buf.writeln('   目标：${q.target} ×${q.targetCount} ｜ 奖励：${q.rewardGalleons}加隆 + ${q.rewardHousePoints}分');
+      }
+      buf.writeln('\n输入 /委托 接受 [编号] 接下委托。');
+    }
+    _finishLocal(buf.toString());
+  }
+
+  String _questTypeLabel(String type) => switch (type) {
+        'gather' => '收集',
+        'defeat' => '讨伐',
+        'pet' => '培养',
+        _ => '委托',
+      };
+
+  String formatQuests() {
+    final p = player;
+    final buf = StringBuffer('【支线委托】\n');
+    if (p == null || p.quests.isEmpty) {
+      buf.writeln('你还没有接下任何委托。');
+    } else {
+      for (var i = 0; i < p.quests.length; i++) {
+        final q = p.quests[i];
+        final done = q.isDone;
+        final claimed = q.status == 'claimed';
+        buf.writeln('\n${i + 1}. [${claimed ? '已领取' : done ? '可交付' : '进行中'}] ${q.title}');
+        buf.writeln('   ${q.desc}');
+        buf.writeln('   进度：${q.progress}/${q.targetCount}（${q.target}）');
+        if (claimed) {
+          buf.writeln('   ✅ 奖励已领取');
+        } else if (done) {
+          buf.writeln('   ⭐ 目标达成，/委托 交付 ${i + 1} 领取奖励！');
+        }
+      }
+    }
+    buf.writeln('\n/委托 查看 ｜ /委托 刷新 ｜ /委托 接受 [编号] ｜ /委托 交付 [编号]');
+    buf.writeln('收集与讨伐类委托会在禁林探险中自动推进，培养类随宠物互动增长。');
+    return buf.toString();
+  }
+
+  void acceptQuest(int index) {
+    final board = _board();
+    if (index < 0 || index >= board.length) {
+      _finishLocal('编号无效。板子上目前有 ${board.length} 条可接受委托（/委托 刷新 查看）。');
+      return;
+    }
+    final t = board[index];
+    player!.quests.add(QuestRecord.fromTemplate(t, week: gameWeek));
+    _finishLocal('【已接取委托】\n${t.title}\n\n${t.desc}\n\n'
+        '目标：${t.target} ×${t.targetCount} ｜ 奖励：${t.rewardGalleons}加隆 + ${t.rewardHousePoints}分\n\n'
+        '完成后输入 /委托 交付 领取奖励。');
+  }
+
+  void deliverQuest(int index) {
+    final p = player;
+    if (p == null) return;
+    final qs = p.quests;
+    if (index < 0 || index >= qs.length) {
+      _finishLocal('编号无效。输入 /委托 查看当前委托清单。');
+      return;
+    }
+    final q = qs[index];
+    if (q.status == 'claimed') {
+      _finishLocal('「${q.title}」的奖励你已经领过了。');
+      return;
+    }
+    if (!q.isDone) {
+      _finishLocal('「${q.title}」还未完成：${q.progress}/${q.targetCount}（${q.target}）。继续加油。');
+      return;
+    }
+    q.status = 'claimed';
+    p.galleons += q.rewardGalleons;
+    p.houseCupPoints += q.rewardHousePoints;
+    p.playerReputation.add('academic', 2);
+    p.playerReputation.add('moral', 3);
+    final buf = StringBuffer('【委托交付 · ${q.title}】\n');
+    buf.writeln('你带着${q.target}（${q.progress}/${q.targetCount}）交回委托板，负责的老巫师仔细清点后露出赞许的笑容。');
+    buf.writeln('\n奖励：${q.rewardGalleons} 加隆 · 学院杯 +${q.rewardHousePoints} 分 · 学术声望 +2 · 道德声望 +3');
+    unlockAchievement('first_quest');
+    _finishLocal(buf.toString());
+  }
+
+  // ==================== 9. 学院杯 ====================
+
+  void addHouseCupPoints(int amount, String reason) {
+    player?.houseCupPoints = (player?.houseCupPoints ?? 0) + amount;
+  }
+
+  String formatHouseCup() {
+    final p = player;
+    if (p == null) return '';
+    final myCn = switch (p.house) {
+      'Gryffindor' => '格兰芬多',
+      'Slytherin' => '斯莱特林',
+      'Ravenclaw' => '拉文克劳',
+      'Hufflepuff' => '赫奇帕奇',
+      _ => '（未分院）',
+    };
+    final buf = StringBuffer('【学院杯】\n');
+    if (p.house == null) {
+      buf.writeln('你还没有被分院，暂未参与学院杯竞争。');
+      return buf.toString();
+    }
+    buf.writeln('$myCn 学院杯积分（你的贡献）：${p.houseCupPoints} 分\n');
+    buf.writeln('本学年积累积分途径：');
+    buf.writeln('· 魁地奇取胜 +30，惜败 +5');
+    buf.writeln('· 巫师决斗获胜 +10');
+    buf.writeln('· 禁林战胜危险生物 +5');
+    buf.writeln('· 完成支线委托 +3~10');
+    buf.writeln('\n学年结束时将结算排名，榜首学院获得学院杯。');
+    buf.writeln('其他学院也在暗自较劲——格兰芬多的勇气、斯莱特林的算计、'
+        '拉文克劳的智慧、赫奇帕奇的踏实，各有各的赢法。');
+    return buf.toString();
+  }
+
+  /// 学年结算（由 mixin_systems 学年切换时调用）
+  void settleHouseCup() {
+    final p = player;
+    if (p == null || p.house == null || p.houseCupPoints <= 0) return;
+    final myCn = switch (p.house) {
+      'Gryffindor' => '格兰芬多',
+      'Slytherin' => '斯莱特林',
+      'Ravenclaw' => '拉文克劳',
+      'Hufflepuff' => '赫奇帕奇',
+      _ => p.house!,
+    };
+    // 其它三院基准分（随机），本学院 = 基准 + 玩家贡献
+    final others = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇']
+        .where((h) => h != myCn)
+        .toList();
+    final scores = <String, int>{
+      for (final o in others) o: 120 + random.nextInt(80),
+      myCn: 130 + p.houseCupPoints,
+    };
+    final ranked = scores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final rank = ranked.indexWhere((e) => e.key == myCn) + 1;
+
+    final buf = StringBuffer('【学院杯 · 学年结算】\n');
+    ranked.forEach((e) {
+      buf.writeln('${e.key == myCn ? '★ ' : '  '}${e.key}：${e.value} 分');
+    });
+    buf.writeln('\n你在本学年为$myCn 赢得了 ${p.houseCupPoints} 分。');
+
+    if (rank == 1) {
+      p.galleons += 50;
+      p.playerReputation.add('leadership', 10);
+      p.playerReputation.add('social', 6);
+      p.houseReputation += 15;
+      unlockAchievement('house_cup_winner');
+      buf.writeln('\n$myCn 夺得学院杯！你站在欢呼的人群中央，彩带和掌声淹没了你。');
+      buf.writeln('奖励：50 加隆 · 领导声望 +10 · 社交声望 +6 · 学院声望 +15');
+    } else if (rank == 2) {
+      p.galleons += 20;
+      p.playerReputation.add('social', 4);
+      p.houseReputation += 5;
+      buf.writeln('\n$myCn 获得第二名，离学院杯一步之遥。你的贡献有目共睹。');
+      buf.writeln('奖励：20 加隆 · 社交声望 +4 · 学院声望 +5');
+    } else {
+      p.playerReputation.add('social', 2);
+      buf.writeln('\n$myCn 与学院杯失之交臂。队长拍拍你的肩：明年把金色奖杯搬回来。');
+      buf.writeln('奖励：社交声望 +2');
+    }
+    p.houseCupPoints = 0;
+    notifications.add('🏆 学院杯学年结算：$myCn 排名第$rank 名');
+    _finishLocal(buf.toString());
+  }
+}
