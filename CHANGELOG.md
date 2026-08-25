@@ -5,6 +5,17 @@
 
 ---
 
+### v2.1.1 — 2026-08-25
+
+**📋 变更说明**
+fix(build): _buildFallbackChoices 跨mixin私有访问错误
+
+flutter analyze报错：
+The method _buildFallbackChoices is not defined for GameNarrativeMixin
+
+根因：Dart 下划线前缀=文件级私有，GameResponseMixin里定义的
+_buildFallbackChoices，GameNarrativeMixin作为另一个mixin无法访问。
+
 ### v2.1.0 — 2026-08-25
 
 **📋 变更说明**
