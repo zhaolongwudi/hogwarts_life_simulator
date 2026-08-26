@@ -5,6 +5,17 @@
 
 ---
 
+### v2.1.7 — 2026-08-26
+
+**📋 变更说明**
+fix(test): 最后1个着色测试失败: 括号神态里的"笑"单字误命中叙述动词
+
+仅存失败: 冒号对话「德拉科（冷笑）：何必自讨苦吃。」测试期望
+colorOf("德拉科（冷笑）") == speakerColor，但实际 speaker = "德拉"。
+
+根因: 第二步 afterName 扫 _speechVerbs 时用了 contains()，
+_speechVerbs 有单字动词"笑"→ afterName="（冷笑）".contains("笑") = true
+
 ### v2.1.6 — 2026-08-26
 
 **📋 变更说明**
