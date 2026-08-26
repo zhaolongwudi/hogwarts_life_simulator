@@ -653,6 +653,10 @@ class StoryTextRenderer {
 
   /// 判断 [raw]（冒号前的整段文本）是否为合理说话人。
   /// 返回「纯名字」在 raw 中的结束位置（用于把尾部叙述动词切给叙述色）；不合法返回 -1。
+  /// 
+  /// 关键返回规则：
+  ///  - 返回 raw.length → 整段 raw（直到冒号前）都是说话人色，冒号按对话蓝（例如"赫敏：""德拉科（冷笑）："）
+  ///  - 返回 < raw.length → 0..返回值=说话人橙，返回值..raw.length+1（冒号）=叙述灰 + 冒号叙述灰（例如"罗恩说：""莉娜问道："）
   static int _validSpeakerNameEnd(String raw) {
     if (raw.isEmpty || raw.length > 40) return -1;
     // 结构标记 / 时间戳方括号
@@ -667,75 +671,87 @@ class StoryTextRenderer {
     // emoji 前缀（时间戳 📅 等）
     if (_startsWithEmoji(raw)) return -1;
 
-    // 提取纯名字候选：去掉「（情绪）」「(动作)」「好感+1」等尾部修饰
+    // 第一步：去掉「（情绪）」「(动作)」「好感+1」，提取候选前缀 name（始终是 raw 的前缀，从 0 开始）
     final hasModifier =
         RegExp(r'[（(]').hasMatch(raw) || raw.contains('好感');
     String name = raw;
-    final bracket = name.indexOf(RegExp(r'[（(]'));
-    if (bracket >= 0) name = name.substring(0, bracket);
-    final gk = name.indexOf('好感');
-    if (gk >= 0) name = name.substring(0, gk);
+    int bracketIdx = name.indexOf(RegExp(r'[（(]'));
+    if (bracketIdx < 0) bracketIdx = name.indexOf('好感');
+    if (bracketIdx < 0) bracketIdx = name.length;
+    name = name.substring(0, bracketIdx).trim();
 
-    // 逐步剥掉：情绪/神态短语 → 叙述动词 → 再次情绪短语 → 再次叙述动词
-    // （按长词在前排序，避免贪婪误切）
-    name = name.trim();
+    // 第二步："name 之后到 raw 末尾"的部分（情绪修饰/括号神态等），有没有任何真正的叙述动词？
+    // 叙述动词 _speechVerbs 命中 → 要切成叙述灰；否则（只是括号/微笑/玩味的笑容这类神态）→ 整段按说话人橙
+    final afterName = raw.substring(bracketIdx); // 例如"（冷笑）"
+    bool hasTrueSpeechVerb = false;
+    for (final v in _speechVerbs) {
+      if (afterName.contains(v)) { hasTrueSpeechVerb = true; break; }
+    }
+    // 同时检查剥除的后段有没有叙述动词（循环剥除后也会剥 speechVerbs，所以 afterName 也应扫）
+
+    // 第三步：逐步剥掉 情绪短语 / 叙述动词 / 情绪 / 叙述 ... 最多6轮，得最终 base（仍是前缀）
+    String base = name;
     final sortedMood = List<String>.from(_moodModifiers)
       ..sort((a, b) => b.length.compareTo(a.length));
     final sortedSpeech = List<String>.from(_speechVerbs)
       ..sort((a, b) => b.length.compareTo(a.length));
-
     bool changed = true;
     int safety = 0;
     while (changed && safety++ < 6) {
       changed = false;
       for (final m in sortedMood) {
-        if (name.endsWith(m)) {
-          name = name.substring(0, name.length - m.length).trimRight();
+        if (base.endsWith(m)) {
+          base = base.substring(0, base.length - m.length).trimRight();
           changed = true;
           break;
         }
       }
       if (changed) continue;
       for (final v in sortedSpeech) {
-        if (name.endsWith(v)) {
-          name = name.substring(0, name.length - v.length).trimRight();
+        if (base.endsWith(v)) {
+          base = base.substring(0, base.length - v.length).trimRight();
           changed = true;
+          hasTrueSpeechVerb = true; // 剥到了叙述动词，标记要切成叙述灰
           break;
         }
       }
     }
+    base = base.trim();
+    if (base.isEmpty) return -1;
 
-    if (name.isEmpty) return -1;
-
-    // 情况一：整体（或去修饰后）是已知角色
-    if (_characterNames.contains(name)) {
-      // 返回：角色名的实际结束位置（去掉剥掉的尾部修饰的相对长度）
-      final strippedFromEnd = raw.length - (name.length + (raw.length - raw.trimRight().length));
-      return strippedFromEnd;
-    }
-
-    if (hasModifier) return -1; // 带修饰但提取出的名字不认识 → 不判定
-
-    // 情况二：「已知角色 + 叙述动词/情绪短语」，动词归叙述
-    // 走两次剥除，看看 base 是否落在已知角色上
-    String base = name;
-    for (final v in sortedSpeech) {
-      if (base.endsWith(v)) {
-        base = base.substring(0, base.length - v.length);
-        break;
+    // ========== 分支 1：base 是已知角色 ==========
+    if (_characterNames.contains(base)) {
+      // 判断：这段到冒号前（raw 全段）是否要"整段橙"？
+      // 条件：既没有叙述动词（剥除循环没剥到 _speechVerbs 的词，afterName 里也没有）
+      //       → 也即：raw 从 base 结束之后的内容只是"括号神态/情绪短语/空白"
+      if (!hasTrueSpeechVerb) {
+        // 整段按说话人橙 → 返回 raw.length。这样 seg.nameEnd == seg.speakerEnd → 冒号蓝色。
+        // 测试 2 模式："德拉科（冷笑）：何必自讨苦吃。" → speaker = "德拉科（冷笑）"橙色，冒号蓝
+        // 测试 1 模式："赫敏：我们去图书馆吧。" → speaker = "赫敏"橙色，冒号蓝
+        return raw.length;
       }
-    }
-    if (_characterNames.contains(base.trim())) {
-      final trimmed = base.trim();
-      return raw.length - (name.length - trimmed.length);
+      // 有叙述动词（"罗恩说：""赫敏淡淡的说道："）→ 角色名结束位置 = base 的前缀长度（因为 base 是 raw 前缀）
+      // 测试 3 模式："罗恩说："等等我！"" → nameEnd=2 < speakerEnd=5（冒号位置5），所以"说："叙述灰
+      // 但 base 是从 name 里剥出来的，name 是 raw 的前缀 (raw[0..bracketIdx))，所以 base 是 name 的前缀，也就是 raw 的前缀
+      // 所以 base 相对于 raw 的前缀长度就是 base.length + ？不对：name = raw[0..bracketIdx].trim()，
+      // 但 name 本身是 raw 的前缀，没有被改开头，trim() 只去尾部。那 base 是 name 剥后缀后的，那 base 的长度就是 raw 的前缀长度。
+      // 比如 raw = "罗恩说"，bracketIdx=3，name = "罗恩说"，base = "罗恩"，base.length=2 = raw前缀2 → 正确。
+      // 比如 raw = "赫敏淡淡的说道"，bracketIdx=6，name = "赫敏淡淡的说道"，base = 剥 淡淡的说道 → "赫敏"，base.length=2
+      //   但 raw[0..2] = "赫敏" → 正确。
+      return base.length;
     }
 
-    // 情况三：未知名字（AI 生成的随机 NPC），严格判定（长度/不包虚词/不含数字标点）
+    // ========== 分支 2：带 hasModifier 但 base 不认识 → 严格拒绝（不像人名就跳过，避免误判叙述词）==========
+    if (hasModifier) return -1;
+
+    // ========== 分支 3：未知名字（AI 生成随机 NPC，2~8字，不含虚词/数字/标点）==========
     if (_looksLikeNarrationPhrase(base)) return -1;
     if (base.length < 2 || base.length > 8) return -1;
     if (RegExp(r'[\d]').hasMatch(base)) return -1;
     if (RegExp(r'[，。！？、；：]').hasMatch(base)) return -1;
-    return raw.length - (name.length - base.length);
+    // 同已知角色：有没有叙述动词？有 → 只染 base.length（莉娜），后面"问道："叙述灰（测试4：莉娜问道：今晚要一起自习吗？）
+    //            没 → 整段 raw.length 染橙（莉娜：今晚要一起自习吗？→ 模式）
+    return hasTrueSpeechVerb ? base.length : raw.length;
   }
 
   /// 宽松版说话人判定（冒号后紧跟引号时使用，强对话信号）。
