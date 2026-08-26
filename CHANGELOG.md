@@ -5,6 +5,11 @@
 
 ---
 
+### v2.1.5 — 2026-08-26
+
+**📋 变更说明**
+fix(CI): 3个编译错误修复 - mixin_narrative.dart L679: sanitizeNarrativeForArchive 从 GameResponseMixin 挪到 GameProviderBase   （作为基类 static 公共方法，两个 mixin 都 on GameProviderBase，都能无循环依赖访问） - mixin_response.dart L94: anchorIdx 为 int?，前面 if (anchorIdx==null) return 保证非空，加 ! 断言 - mixin_response.dart L116: finalPick 前面 if (finalPick==null) return flow 已提升非空，去掉多余 !
+
 ### v2.1.4 — 2026-08-26
 
 **📋 变更说明**
