@@ -36,6 +36,37 @@ abstract class GameProviderBase extends ChangeNotifier {
     multiLine: true,
   );
 
+  /// narrative / summary buffer 清洗公共函数（mixin_narrative / mixin_response 共用）
+  /// 
+  /// 剥离：📅 状态栏整行 / 【时间戳】【地点】整行 / -----分隔线 /
+  /// 可选：好感度/声望变化结构化区块（summary不需要，但解析好感的地方要保留）
+  static String sanitizeNarrativeForArchive(String text, {bool keepStructuredBlocks = true}) {
+    var cleaned = text;
+    // 1) 📅 状态栏整行（AI写的：📅 1991年X月X日｜XX｜XX｜学院：XX）
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*📅[^\n]*\n', multiLine: true),
+      (m) => '\n',
+    );
+    // 2) 【时间戳】【地点】整行（AI narrative 输出时写的这些标签，不该进存档/摘要）
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*【(时间戳|地点|时间|当前时间|当前地点)】[^\n]*\n', multiLine: true, caseSensitive: false),
+      (m) => '\n',
+    );
+    // 3) 大段 --- / ─── 分隔线（summary / narrative 输入输出的装饰线）
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*[-─═]{5,}\s*$', multiLine: true),
+      (m) => '\n',
+    );
+    // 4) 如果 keepStructuredBlocks=false，再去掉【好感度变化】【声望变化】
+    if (!keepStructuredBlocks) {
+      cleaned = cleaned.replaceAllMapped(reAffectionSection, (m) => '');
+      cleaned = cleaned.replaceAllMapped(reReputationSection, (m) => '');
+    }
+    // 5) 收敛空行
+    cleaned = cleaned.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    return cleaned;
+  }
+
   // ====== 核心状态字段（已从私有 _xxx public 化，Mixin 需要直接访问） ======
   Player? player;
   WorldState worldState = WorldState();

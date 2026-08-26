@@ -90,7 +90,8 @@ mixin GameResponseMixin on GameProviderBase {
       ).allMatches(text).map((m) => (m.start, m.group(2)!)),
     ];
     // 过滤：必须在强信号锚点之后
-    candidates.removeWhere((c) => c.$1 < anchorIdx);
+    // 注意：L66 已 if (anchorIdx == null) return; 所以这里一定非空
+    candidates.removeWhere((c) => c.$1 < anchorIdx!);
     if (candidates.isEmpty) return;
 
     // 4) 假设/设问过滤：对每个候选，取 ±20 字符做"假设词否定"检查
@@ -111,7 +112,8 @@ mixin GameResponseMixin on GameProviderBase {
     }
     if (finalPick == null) return;
 
-    final matched = finalPick!.$2;
+    // L112 已经判定 finalPick != null，Dart flow analysis 已提升为非空，不需要 !
+    final matched = finalPick.$2;
 
     // 5) 中英转换
     const cnToEn = <String, String>{
@@ -135,36 +137,6 @@ mixin GameResponseMixin on GameProviderBase {
     debugPrint('⚡ [分院解析·强信号通过] 自动提取：${player!.house}（匹配 "$matched" 在 L? 锚点后）');
   }
 
-  /// 清洗 narrative / summary buffer：
-  /// 剥离【时间戳】【地点】整行、AI 乱写的 📅 状态栏、分隔线、选项区块头
-  /// 只保留纯叙事正文 + 【好感度变化】【声望变化】结构化区块（后者给 _parseAffection 用）
-  static String sanitizeNarrativeForArchive(String text, {bool keepStructuredBlocks = true}) {
-    var cleaned = text;
-    // 1) 📅 状态栏整行（AI写的：📅 1991年X月X日｜XX｜XX｜学院：XX）
-    cleaned = cleaned.replaceAllMapped(
-      RegExp(r'^\s*📅[^\n]*\n', multiLine: true),
-      (m) => '\n',
-    );
-    // 2) 【时间戳】【地点】整行（AI narrative 输出时写的这些标签，不该进存档/摘要）
-    cleaned = cleaned.replaceAllMapped(
-      RegExp(r'^\s*【(时间戳|地点|时间|当前时间|当前地点)】[^\n]*\n', multiLine: true, caseSensitive: false),
-      (m) => '\n',
-    );
-    // 3) 大段 --- / ─── 分隔线（summary / narrative 输入输出的装饰线）
-    cleaned = cleaned.replaceAllMapped(
-      RegExp(r'^\s*[-─═]{5,}\s*$', multiLine: true),
-      (m) => '\n',
-    );
-    // 4) 如果 keepStructuredBlocks=false，再去掉【好感度变化】【声望变化】
-    if (!keepStructuredBlocks) {
-      cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
-      cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
-    }
-    // 5) 收敛空行
-    cleaned = cleaned.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
-    return cleaned;
-  }
-
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
   /// 
   /// 返回值：是否解析出了"有效的叙事正文"（BUG-H 防御）。
@@ -178,7 +150,7 @@ mixin GameResponseMixin on GameProviderBase {
 
     // 预清洗：剥离 AI 乱写的 📅 状态栏 / 【时间戳】【地点】整行 / 装饰分隔线
     // BUG-J：这些内容不该进存档/解析/前情回顾
-    var cleaned = sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
+    var cleaned = GameProviderBase.sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
 
     // 移除结构化区块（好感/声望/选项等）
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
@@ -251,7 +223,7 @@ mixin GameResponseMixin on GameProviderBase {
   void parseResponse(String text) {
     // BUG-J：预清洗，剥离 AI 写的 📅 状态栏 / 【时间戳】【地点】整行 / 装饰分隔线
     //       防止这些内容误进 currentNarrative / recentTurns / 存档
-    final sanitized = sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
+    final sanitized = GameProviderBase.sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
     final lines = sanitized.split('\n');
     currentNarrative = '';
     choices = [];

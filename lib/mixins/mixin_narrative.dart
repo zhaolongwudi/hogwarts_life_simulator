@@ -676,7 +676,7 @@ $kNarrativeWritingRules
     //     当作事实吸收进剧情摘要，后续 narrative prompt 就看到这个错误时间
     //  2) AI 写的【地点】标签 / 📅 状态栏（含错误"学院：Slytherin"）污染摘要
     //  3) 好感度变化/声望变化结构化区块干扰 summary 聚焦关系和转折
-    final cleaned = GameResponseMixin.sanitizeNarrativeForArchive(
+    final cleaned = GameProviderBase.sanitizeNarrativeForArchive(
       newNarrative,
       keepStructuredBlocks: false, // summary 不需要好感/声望区块
     );
