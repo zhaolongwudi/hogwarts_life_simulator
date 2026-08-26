@@ -682,12 +682,28 @@ class StoryTextRenderer {
 
     // 第二步："name 之后到 raw 末尾"的部分（情绪修饰/括号神态等），有没有任何真正的叙述动词？
     // 叙述动词 _speechVerbs 命中 → 要切成叙述灰；否则（只是括号/微笑/玩味的笑容这类神态）→ 整段按说话人橙
-    final afterName = raw.substring(bracketIdx); // 例如"（冷笑）"
+    final afterName = raw.substring(bracketIdx); // 例如"（冷笑）"、"说道"、空
     bool hasTrueSpeechVerb = false;
-    for (final v in _speechVerbs) {
-      if (afterName.contains(v)) { hasTrueSpeechVerb = true; break; }
+    final afterNameTrim = afterName.trim();
+    // 快速通道：如果 afterNameTrim 只是一堆（神态）/ (动作) 括号对，中间没有叙述动词的文字
+    // → 说明这是"（冷笑）（审视）"纯神态，绝无可能是"说/道/问道"等叙述动词！
+    //    挡住 _speechVerbs 中"笑"单字 contains 命中"冷笑"的 BUG。
+    final onlyBrackets = RegExp(r'^(\s*[（(][^（）()]{1,10}[）)]\s*)+$').hasMatch(afterNameTrim);
+    if (!onlyBrackets && afterNameTrim.isNotEmpty) {
+      for (final v in _speechVerbs) {
+        if (v.length == 1) {
+          // 单字词（说/道/问/喊/答/叫/笑/叹）：不能直接 contains，因为 contains 会把"冷笑"
+          // 里的"笑"当成独立动词"笑"命中；必须左右都不是中文字（是括号/标点/边界）
+          final around = RegExp(
+            r'(?:^|[^\u4e00-\u9fa5])' + RegExp.escape(v) + r'(?:$|[^\u4e00-\u9fa5])',
+          );
+          if (around.hasMatch(afterNameTrim)) { hasTrueSpeechVerb = true; break; }
+        } else {
+          // 多字词（说道/问道/冷笑一声）→ 直接 contains（足够精确）
+          if (afterNameTrim.contains(v)) { hasTrueSpeechVerb = true; break; }
+        }
+      }
     }
-    // 同时检查剥除的后段有没有叙述动词（循环剥除后也会剥 speechVerbs，所以 afterName 也应扫）
 
     // 第三步：逐步剥掉 情绪短语 / 叙述动词 / 情绪 / 叙述 ... 最多6轮，得最终 base（仍是前缀）
     String base = name;
