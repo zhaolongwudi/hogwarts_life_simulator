@@ -106,6 +106,10 @@ class HomePage extends StatelessWidget {
 
   Widget _buildGameStatus(GameProvider gp, ThemeData theme) {
     final player = gp.player!;
+    // BUG-2 分院前最终防线：只有成就 'sorted' 已解锁，player.house 才真正生效
+    // （即使AI文本OOC解析把 house 写错了，也不显示学院颜色/标签，避免分院前就挂错学院）
+    final sortedUnlocked = player.achievements.contains('sorted');
+    final effectiveHouse = sortedUnlocked ? player.house : null;
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
@@ -120,7 +124,7 @@ class HomePage extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: UiHelpers.getHouseColor(player.house ?? ''),
+                  backgroundColor: UiHelpers.getHouseColor(effectiveHouse ?? ''),
                   child: Text(
                     player.name.isNotEmpty ? player.name.substring(0, 1).toUpperCase() : '?',
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
@@ -134,7 +138,7 @@ class HomePage extends StatelessWidget {
                       Text(player.name,
                           style: const TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
-                      Text('${player.house ?? '未分院'} · ${gp.worldState.academicYear}',
+                      Text('${effectiveHouse ?? '未分院'} · ${gp.worldState.academicYear}',
                           style: theme.textTheme.bodySmall),
                     ],
                   ),
@@ -159,7 +163,7 @@ class HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatItem('📅', '${gp.worldState.month} ${gp.worldState.dayOfMonth}日', theme),
-                _buildStatItem('🏛️', player.house ?? '待分院', theme),
+                _buildStatItem('🏛️', effectiveHouse ?? '待分院', theme),
                 _buildStatItem('❤️', '${player.health}%', theme),
               ],
             ),

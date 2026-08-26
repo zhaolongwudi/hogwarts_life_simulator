@@ -573,9 +573,20 @@ class StoryTextRenderer {
       if (ch != '：' && ch != ':') continue;
       // 时钟时间（数字:数字，如 9:00 / 09:00）不算对话
       if (_isClockColon(text, i)) continue;
-      final speaker =
-          text.substring(_speakerStart(text, lineStart, i), i).trim();
-      if (_validSpeakerNameEnd(speaker) >= 0) return i;
+
+      // ===== BUGFIX-1 强信号：冒号后紧跟引号 → 必然是对话冒号 =====
+      // 不管冒号前是什么叙述修饰（"露出玩味的笑容：""语气一冷："），
+      // 只要冒号后 0~1 个字符内出现引号，就认定这是台词的起点，
+      // 走宽松 speaker 提取规则（允许中间夹带「的/地」等情绪修饰）。
+      final afterColon = text.substring(i + 1, lineEnd).trimLeft();
+      final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
+
+      final speakerStartIdx = _speakerStart(text, lineStart, i);
+      final raw = text.substring(speakerStartIdx, i).trim();
+      final nameEndInRaw = quoteFollow
+          ? _validSpeakerNameEndRelaxed(raw) // 后跟引号→宽松规则
+          : _validSpeakerNameEnd(raw);      // 默认严格规则
+      if (nameEndInRaw >= 0) return i;
     }
     return -1;
   }
@@ -614,16 +625,36 @@ class StoryTextRenderer {
   }
 
   /// 叙述动词（长词在前，保证贪婪匹配）：「赫敏说：」中「说」归叙述、不进说话人。
+  /// 2026-08-26 扩展：AI 极爱写「露出玩味笑容：」「挑眉：」「语气一冷：」这类
+  /// "情绪/表情修饰 + 冒号 + 引号台词"的模式，之前会被整体当成叙述短语漏掉，
+  /// 现在把高频情绪短语也纳入"尾部叙述修饰"，剥掉后再找纯角色名。
   static const List<String> _speechVerbs = [
     '轻声说道', '低声说道', '大声喊道', '笑着说道', '淡淡地说',
+    '玩味地笑', '玩味一笑', '微微一笑', '淡淡一笑', '冷笑一声',
+    '皱起眉头', '挑了挑眉', '挑挑眉梢', '眉头一挑', '眉头微皱',
+    '语气一冷', '语气平淡', '语气不善', '压低声音', '放缓语气',
+    '带着笑意', '收敛笑容', '忽然开口', '率先打破沉默',
     '说道', '问道', '喊道', '笑道', '答道', '叫道', '叹道', '低语', '回答',
-    '说', '道', '问', '喊', '答', '叫',
+    '说', '道', '问', '喊', '答', '叫', '笑', '叹',
+  ];
+
+  /// 情绪/神态/动作修饰短语（剥掉后再找纯角色名，2~8字常见）
+  static const List<String> _moodModifiers = [
+    '玩味的笑容', '玩味的笑意', '一丝玩味的笑容', '一丝玩味的笑意',
+    '淡淡的笑容', '浅浅的笑意', '一抹微笑', '一脸冷笑', '戏谑的表情',
+    '挑了挑眉', '挑挑眉梢', '眉头一挑', '眉头微皱', '皱起眉头',
+    '语气一冷', '语气平淡', '语气不善', '压着声音', '压低声音',
+    '带着笑意', '收敛笑容', '轻轻摇头', '摇了摇头', '点了点头',
+    '轻声', '低声', '大声', '冷冷', '淡淡', '笑眯眯', '笑吟吟', '苦笑',
+    '（冷笑）', '（挑眉）', '（皱眉）', '（摇头）', '（叹气）',
+    '（试探）', '（审视）', '（微笑）', '（警惕）', '（平静）',
+    '（傲慢）', '（玩味）', '（严肃）', '（温柔）', '（好奇）',
   ];
 
   /// 判断 [raw]（冒号前的整段文本）是否为合理说话人。
   /// 返回「纯名字」在 raw 中的结束位置（用于把尾部叙述动词切给叙述色）；不合法返回 -1。
   static int _validSpeakerNameEnd(String raw) {
-    if (raw.isEmpty || raw.length > 24) return -1;
+    if (raw.isEmpty || raw.length > 40) return -1;
     // 结构标记 / 时间戳方括号
     if (raw.contains('【') ||
         raw.contains('】') ||
@@ -644,39 +675,111 @@ class StoryTextRenderer {
     if (bracket >= 0) name = name.substring(0, bracket);
     final gk = name.indexOf('好感');
     if (gk >= 0) name = name.substring(0, gk);
+
+    // 逐步剥掉：情绪/神态短语 → 叙述动词 → 再次情绪短语 → 再次叙述动词
+    // （按长词在前排序，避免贪婪误切）
     name = name.trim();
-    if (name.isEmpty) return -1;
+    final sortedMood = List<String>.from(_moodModifiers)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    final sortedSpeech = List<String>.from(_speechVerbs)
+      ..sort((a, b) => b.length.compareTo(a.length));
 
-    // 情况一：整体（或去修饰后）是已知角色
-    if (_characterNames.contains(name) || _characterNames.contains(raw)) {
-      return raw.length;
-    }
-
-    if (hasModifier) return -1; // 带修饰但提取出的名字不认识 → 不判定
-
-    // 情况二：「已知角色 + 叙述动词」，动词归叙述
-    for (final verb in _speechVerbs) {
-      if (name.length > verb.length && name.endsWith(verb)) {
-        final base = name.substring(0, name.length - verb.length);
-        if (_characterNames.contains(base)) {
-          return raw.length - verb.length;
+    bool changed = true;
+    int safety = 0;
+    while (changed && safety++ < 6) {
+      changed = false;
+      for (final m in sortedMood) {
+        if (name.endsWith(m)) {
+          name = name.substring(0, name.length - m.length).trimRight();
+          changed = true;
+          break;
+        }
+      }
+      if (changed) continue;
+      for (final v in sortedSpeech) {
+        if (name.endsWith(v)) {
+          name = name.substring(0, name.length - v.length).trimRight();
+          changed = true;
+          break;
         }
       }
     }
 
-    // 情况三：未知名字（AI 生成的随机 NPC），先剥尾部叙述动词再严格判定
+    if (name.isEmpty) return -1;
+
+    // 情况一：整体（或去修饰后）是已知角色
+    if (_characterNames.contains(name)) {
+      // 返回：角色名的实际结束位置（去掉剥掉的尾部修饰的相对长度）
+      final strippedFromEnd = raw.length - (name.length + (raw.length - raw.trimRight().length));
+      return strippedFromEnd;
+    }
+
+    if (hasModifier) return -1; // 带修饰但提取出的名字不认识 → 不判定
+
+    // 情况二：「已知角色 + 叙述动词/情绪短语」，动词归叙述
+    // 走两次剥除，看看 base 是否落在已知角色上
     String base = name;
-    for (final verb in _speechVerbs) {
-      if (name.length > verb.length && name.endsWith(verb)) {
-        base = name.substring(0, name.length - verb.length);
+    for (final v in sortedSpeech) {
+      if (base.endsWith(v)) {
+        base = base.substring(0, base.length - v.length);
         break;
       }
     }
+    if (_characterNames.contains(base.trim())) {
+      final trimmed = base.trim();
+      return raw.length - (name.length - trimmed.length);
+    }
+
+    // 情况三：未知名字（AI 生成的随机 NPC），严格判定（长度/不包虚词/不含数字标点）
     if (_looksLikeNarrationPhrase(base)) return -1;
     if (base.length < 2 || base.length > 8) return -1;
     if (RegExp(r'[\d]').hasMatch(base)) return -1;
     if (RegExp(r'[，。！？、；：]').hasMatch(base)) return -1;
     return raw.length - (name.length - base.length);
+  }
+
+  /// 宽松版说话人判定（冒号后紧跟引号时使用，强对话信号）。
+  /// 即使整段 speaker 含"德拉科显然对你冷淡，他玩味的笑容"这类大量叙述，
+  /// 只要最后面能找到一个"已知角色名"或"2-4 字像人名的字符串"，
+  /// 就把它作为说话人（其余内容归叙述色），最大限度不漏对话上色。
+  static int _validSpeakerNameEndRelaxed(String raw) {
+    if (raw.isEmpty || raw.length > 80) return -1;
+    if (raw.contains('【') || raw.contains('】')) return -1;
+    if (_startsWithEmoji(raw)) return -1;
+
+    // 预排序已知角色（长词在前，先找完整全名）
+    final sortedNames = List<String>.from(_characterNames)
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    // 在 raw 的"后半段"（最后 20 个字符或 1/3 长度，取较大者）找最后一个角色命中
+    final lookBack = raw.length > 20 ? 20 : (raw.length ~/ 3).clamp(8, 20);
+    final searchZoneStart = raw.length - lookBack < 0 ? 0 : raw.length - lookBack;
+    String? foundName;
+    int foundNameEnd = -1;
+    for (final name in sortedNames) {
+      final idx = raw.lastIndexOf(name);
+      if (idx >= searchZoneStart || (raw.endsWith(name))) {
+        // 找到的位置必须在末尾（最后一次出现）
+        if (idx + name.length > foundNameEnd) {
+          foundName = name;
+          foundNameEnd = idx + name.length;
+        }
+      }
+    }
+    if (foundName != null && foundNameEnd > 0) {
+      return foundNameEnd; // 命中已知角色，直接使用
+    }
+
+    // Fallback：在最后 12 个字里找"2-4 个汉字、像人名"的片段（标点/虚词结尾不算）
+    final tail = raw.substring(searchZoneStart);
+    final nameLike = RegExp(r'([\u4e00-\u9fa5]{2,4})(?=[，、。！？\s]*$)').firstMatch(tail);
+    if (nameLike != null) {
+      final candidate = nameLike.group(1)!;
+      if (!_looksLikeNarrationPhrase(candidate)) {
+        return searchZoneStart + nameLike.end;
+      }
+    }
+    return -1;
   }
 
   /// 判断短语是否更像叙述而非人名（含虚词/时间词/地点/章节标记/状态标签）。

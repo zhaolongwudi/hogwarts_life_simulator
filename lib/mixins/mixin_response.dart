@@ -1046,6 +1046,43 @@ $kChoicePromptSuffix''';
         if (choices.length >= 4) break;
       }
 
+      // ===== BUG-3 陌生NPC过滤（AI捏造"霍尔"等未出场角色的选项必须丢弃）=====
+      // 选项生成器经常在需要"冲突对手"时随意捏造 NPC 名字（如日志 L1459 的"霍尔"），
+      // 导致玩家点了跟完全不存在的人对话，剧情断链+世界感崩塌。
+      // 过滤规则：选项里提到的"2~4字像人名的词"必须满足其一：
+      //   a) 已 introduced 的 NPC（全名或别名匹配）
+      //   b) narrativeTail（当前剧情末尾）文本里出现过（本回合刚遇到的路人临时允许）
+      //   c) 玩家自己（p.name）
+      final npcWhitelistNames = <String>{};
+      final npcNameAll = <String, bool>{}; // 用于快速判断某字符串是否NPC（不管introduced）
+      for (final n in npcRegistry.values) {
+        npcNameAll[n.name] = true;
+        for (final alias in n.aliases) npcNameAll[alias] = true;
+        if (n.introduced) {
+          npcWhitelistNames.add(n.name);
+          npcWhitelistNames.addAll(n.aliases);
+        }
+      }
+      npcWhitelistNames.add(p.name); // 玩家自己永远允许
+      // 结尾叙事里出现过的候选人名（临时白名单，允许本回合刚碰到的路人/列车员/对角巷店员出现在选项）
+      final tailNameMatches = RegExp(
+        r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
+        unicode: true,
+      ).allMatches(cleanNarrativeForChoice);
+      for (final m in tailNameMatches) {
+        final candidate = m.group(1)!;
+        // 不要把"学院/车站/大厅/列车/走廊/图书馆"这些常见叙述词当成"人名临时白名单"
+        if (!_looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
+      }
+      // "一年级/二年级/新生/学长/学姐" 这种称呼（不是具体人名）允许，
+      // 但我们只在命中"像具体人名的霍尔"这种时才过滤，所以不需要额外加。
+      final beforeFilter = choices.length;
+      choices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
+      final filtered = beforeFilter - choices.length;
+      if (filtered > 0) {
+        debugPrint('[选项NPC门] 丢弃$filtered条选项：提到未登场/捏造的NPC（如"霍尔"）。剩余合格选项:${choices.length}');
+      }
+
       // 质量检查：检查选项数量和内容质量
       final qualityPassed = choices.length >= 2 &&
           choices.every((c) => isChoiceQualityAcceptable(c.text));
@@ -1087,6 +1124,13 @@ $kChoicePromptSuffix''';
           }
           if (retryChoices.length >= 4) break;
         }
+        // 重试选项也要过陌生NPC门（防止重试再生成一堆"霍尔"选项）
+        final retryBefore = retryChoices.length;
+        retryChoices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
+        final retryFiltered = retryBefore - retryChoices.length;
+        if (retryFiltered > 0) {
+          debugPrint('[选项NPC门·重试] 丢弃$retryFiltered条选项（陌生捏造NPC），重试剩余:${retryChoices.length}');
+        }
         // 用重试结果替换全部选项（如果重试结果更好）
         if (retryChoices.length >= 2) {
           choices
@@ -1119,6 +1163,57 @@ $kChoicePromptSuffix''';
   }
 
   /// 基于当前上下文生成的兜底选项（比静态位置选项更智能）
+
+  // ===== BUG-3 辅助：选项是否提到了"未登场/捏造的NPC名"（如"霍尔"）=====
+  // 返回 true = 该选项要丢弃
+  bool _choiceMentionsUnintroducedNpc(
+    String text,
+    Set<String> whitelist,
+    Map<String, bool> npcNameAll,
+  ) {
+    if (text.isEmpty) return false;
+    // 找出所有2~4字的"像人名的候选"：纯汉字、非代词虚词
+    final candidates = RegExp(
+      r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
+      unicode: true,
+    ).allMatches(text).map((m) => m.group(1)!).toSet().toList();
+
+    for (final cand in candidates) {
+      // (1) 白名单（introduced的NPC+别名 / 玩家名 / 正文末尾出现过的路人）命中就放行
+      if (whitelist.contains(cand)) continue;
+      // (2) 明显是叙述词/虚词（教授/夫人/小姐/先生/同学/新生/大家/他们...）→ 放行
+      if (_looksLikeNarrationWord(cand)) continue;
+
+      // (3) 候选命中 npcRegistry 的全名或别名，但是 introduced=false → 说明这是"还没出场的已知角色"
+      //     比如开局前几回合就写"去找斯内普"，玩家根本没见过 → 要丢弃
+      if (npcNameAll.containsKey(cand)) {
+        debugPrint('[选项NPC门] 命中登记但未introduced的NPC：「$cand」，移除选项「${text.substring(0, text.length > 24 ? 24 : text.length)}…」');
+        return true;
+      }
+      // (4) 既不在白名单，也不像叙述词，还不是登记过的NPC → 高概率是AI捏造的"霍尔"等假人 → 丢弃
+      debugPrint('[选项NPC门] 疑似捏造陌生NPC：「$cand」，移除选项「${text.substring(0, text.length > 24 ? 24 : text.length)}…」');
+      return true;
+    }
+    return false;
+  }
+
+  /// 快速过滤：2~4字中文更像"叙述/地点/身份词"还是"人名"
+  static bool _looksLikeNarrationWord(String s) {
+    if (s.length < 2) return true;
+    // 含叙述高频字 → 判定非人名
+    if (RegExp(r'[的地得是去来到处在把让给和与或从向对被和就都也又便很还没不知说道看听闻想走跑站坐笑哭吃打学教练写读感思起起上下出入回开关过好]').hasMatch(s)) return true;
+    // 身份/头衔/场所后缀（这类一般是"列车长/管理员/教授/新生"等，不是具体人名）
+    const suffixes = ['教授', '院长', '夫人', '小姐', '先生', '同学', '新生', '学长', '学姐', '级长',
+      '列车长', '管理员', '老板', '店员', '经理', '裁判', '队长', '队员', '首领', '仆人', '管家',
+      '车站', '礼堂', '大道', '教室', '宿舍', '学院', '走廊', '塔', '图书馆', '书店', '酒吧',
+      '火车', '列车', '公共', '休息', '大厅', '入口', '出口', '今天', '明天', '昨天', '现在',
+      '上午', '下午', '中午', '晚上', '深夜', '大家', '他们', '你们', '我们', '自己', '什么',
+      '怎么', '这样', '那样', '这个', '那个', '这里', '那里', '一点', '一些', '东西', '事情'];
+    for (final sfx in suffixes) {
+      if (s.endsWith(sfx) || s == sfx) return true;
+    }
+    return false;
+  }
 
   void _parseAffectionChanges(String text) {
     if (npcRegistry.isEmpty) return;

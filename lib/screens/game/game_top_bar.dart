@@ -12,12 +12,16 @@ class GameTopBar extends StatelessWidget {
     final player = gp.player;
     if (player == null) return const SizedBox.shrink();
 
+    // BUG-2 分院前人物简介提前显示学院：最终防线
+    // 只有当成就 'sorted' 已解锁（本地逻辑分院/骨架链分院/AI文本解析分院 都会解锁），
+    // 才认为 house 真的有效；即便 player.house 因 OOC 被意外赋值，也不渲染。
+    final houseSorted = player.achievements.contains('sorted');
     final houseLabel = {
       'Gryffindor': '格兰芬多',
       'Slytherin': '斯莱特林',
       'Ravenclaw': '拉文克劳',
       'Hufflepuff': '赫奇帕奇',
-    }[player.house ?? ''] ?? '';
+    }[(houseSorted ? player.house : null) ?? ''] ?? '';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
