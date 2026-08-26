@@ -1188,7 +1188,7 @@ $narrativeTail
 
 【玩家硬状态】
 📅 $timestamp｜${worldState.currentLocation ?? '霍格沃茨'}
-生命：${player?.hp ?? 100}/${player?.maxHp ?? 100}｜精力：${player?.energy ?? 100}/${player?.maxEnergy ?? 100}
+生命：${player?.health ?? 100}｜精力：${player?.energy ?? 100}
 身份模式：${appProvider.identityMode == IdentityMode.transmigration ? "穿越者" : "原住民"}
 
 请直接输出 4 行纯文本选项（不要任何markdown格式）：
