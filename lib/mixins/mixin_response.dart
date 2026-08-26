@@ -148,11 +148,13 @@ mixin GameResponseMixin on GameProviderBase {
     currentNarrative = '';
     choices = [];
 
-    // 预清洗：剥离 AI 乱写的 📅 状态栏 / 【时间戳】【地点】整行 / 装饰分隔线
-    // BUG-J：这些内容不该进存档/解析/前情回顾
-    var cleaned = GameProviderBase.sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
+    // 注意：不再调用 sanitizeNarrativeForArchive 预清洗！
+    // 之前 BUG-J 的 sanitize 会剥离【时间戳】【地点】📅 行 → 用户看不到时间戳/地点。
+    // 正确做法：display narrative 保留 AI 写的【时间戳】【地点】（用户需要看到），
+    //          只在 accumulateForSummary 喂 summary buffer 时才清洗（防污染摘要）。
+    var cleaned = text;
 
-    // 移除结构化区块（好感/声望/选项等）
+    // 移除结构化区块（好感/声望/选项等）— 这些由独立 UI 面板展示，不混在正文里
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
 
@@ -221,10 +223,9 @@ mixin GameResponseMixin on GameProviderBase {
   }
 
   void parseResponse(String text) {
-    // BUG-J：预清洗，剥离 AI 写的 📅 状态栏 / 【时间戳】【地点】整行 / 装饰分隔线
-    //       防止这些内容误进 currentNarrative / recentTurns / 存档
-    final sanitized = GameProviderBase.sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
-    final lines = sanitized.split('\n');
+    // 注意：不再 sanitize — 保留【时间戳】【地点】等行供用户阅读
+    // sanitizeNarrativeForArchive 只在 accumulateForSummary 里使用（防 summary 污染）
+    final lines = text.split('\n');
     currentNarrative = '';
     choices = [];
     // 标记是否遇到过显式的【叙事】标题：遇到后严格按结构化走，
@@ -648,14 +649,14 @@ mixin GameResponseMixin on GameProviderBase {
 
   /// 验证选项文本质量：sanitize后不应包含残余markdown/图片/异常格式
   /// 返回 true 表示质量合格，false 表示需要重试
+  /// BUG-L 修复：方括号检查过于严苛 → "前往[图书馆]"或"[低声]询问"被判废 →
+  ///   4条里1条废就触发重试 → 极简prompt覆盖好结果。现在只拒绝markdown链接/图片语法。
   static bool isChoiceQualityAcceptable(String text) {
     if (text.isEmpty || text.length < 2) return false;
-    // 检查残余markdown图片语法
+    // 检查残余markdown图片语法 ![](
     if (RegExp(r'!\[.*\]\(', caseSensitive: false).hasMatch(text)) return false;
-    // 检查残余markdown链接
+    // 检查残余markdown链接 [text](url)
     if (RegExp(r'\[.*\]\(.*\)', caseSensitive: false).hasMatch(text)) return false;
-    // 检查孤立的方括号（可能是未清除的markdown残留）
-    if (RegExp(r'\[[^\]]+\]', caseSensitive: false).hasMatch(text)) return false;
     // 检查base64图像数据
     if (RegExp(r'data:image/', caseSensitive: false).hasMatch(text)) return false;
     // 检查HTML标签
@@ -1160,26 +1161,43 @@ $kChoicePromptSuffix''';
         debugPrint('[选项NPC门] 丢弃$filtered条选项：提到未登场/捏造的NPC（如"霍尔"）。剩余合格选项:${choices.length}');
       }
 
-      // 质量检查：检查选项数量和内容质量
-      final qualityPassed = choices.length >= 2 &&
-          choices.every((c) => isChoiceQualityAcceptable(c.text));
+      // 质量检查：只要有 ≥2 条合格选项就保留合格子集，不再要求 4 条全部合格
+      // BUG-L 修复：旧代码用 choices.every(...) → 1条不合格就全部重试 →
+      //   极简prompt(411token无上下文)的结果覆盖了完整prompt(2508token)的好结果
+      final goodChoices = choices.where((c) => isChoiceQualityAcceptable(c.text)).toList();
+      final qualityPassed = goodChoices.length >= 2;
 
-      // 兜底: 选项不足2条 或 质量不合格 → 自动重试1次
+      // 只有 <2 条合格才重试，且重试必须带完整剧情上下文
       if (!qualityPassed) {
         final qualityReasons = <String>[];
         if (choices.length < 2) qualityReasons.add('数量不足(${choices.length}/4)');
         final badChoices = choices.where((c) => !isChoiceQualityAcceptable(c.text)).toList();
         if (badChoices.isNotEmpty) qualityReasons.add('${badChoices.length}条含markdown/图片/异常格式');
-        debugPrint('选项质量检测: ${qualityReasons.join("、")}，自动重试...');
+        debugPrint('选项质量检测: ${qualityReasons.join("、")}，自动重试(带完整剧情上下文)...');
 
-        final retryPrompt = '''你是严格的纯文本选项生成器。请生成 4 个玩家选择，绝对禁止使用任何Markdown格式！
-严格规则：
-1. 纯文本输出，不得出现 ![]、[]()、**、*、` 等任何markdown语法
-2. 格式严格为 A.xxx / B.xxx / C.xxx / D.xxx，每行一条
-3. 内容为20-50字的具体动作描述
-4. 直接承接当前剧情结尾
+        // BUG-L 关键修复：重试 prompt 必须包含剧情末尾+玩家状态，不能用极简 prompt！
+        // 旧极简 prompt 只有 411 token 无任何上下文 → 生成通用战斗选项 → 与剧情脱节
+        final narrativeTail = narrative.length > 800
+            ? narrative.substring(narrative.length - 800)
+            : narrative;
+        final retryPrompt = '''$kChoicePromptPreamble
 
-请直接输出4行选项，不要任何其他内容：''';
+===== 游戏世界背景 =====
+【当前剧情末尾处境】（你所有选项必须直接衔接这一段结尾的最后一个动作/对话/场面）
+$narrativeTail
+
+【玩家硬状态】
+📅 $timestamp｜${worldState.currentLocation ?? '霍格沃茨'}
+生命：${player?.hp ?? 100}/${player?.maxHp ?? 100}｜精力：${player?.energy ?? 100}/${player?.maxEnergy ?? 100}
+身份模式：${appProvider.identityMode == IdentityMode.transmigration ? "穿越者" : "原住民"}
+
+请直接输出 4 行纯文本选项（不要任何markdown格式）：
+A.xxxxxx
+B.xxxxxx
+C.xxxxxx
+D.xxxxxx
+---
+$kChoicePromptSuffix''';
 
         final retryResponse = await callDeepSeek(
           retryPrompt,
@@ -1208,13 +1226,34 @@ $kChoicePromptSuffix''';
         if (retryFiltered > 0) {
           debugPrint('[选项NPC门·重试] 丢弃$retryFiltered条选项（陌生捏造NPC），重试剩余:${retryChoices.length}');
         }
-        // 用重试结果替换全部选项（如果重试结果更好）
-        if (retryChoices.length >= 2) {
+        // BUG-L 关键修复：不要无脑 clear() 好选项！
+        // 旧代码：retryChoices.length >= 2 → choices..clear()..addAll(retryChoices)
+        //   → 第一轮的好选项被极简prompt的通用选项覆盖
+        // 新策略：保留第一轮的合格选项，只补充不足的部分
+        final goodRetry = retryChoices.where((c) => isChoiceQualityAcceptable(c.text)).toList();
+        if (goodRetry.length >= 2 && goodRetry.length > goodChoices.length) {
+          // 重试结果整体更好 → 用重试结果
           choices
             ..clear()
-            ..addAll(retryChoices);
-        } else if (choices.isEmpty) {
-          choices.addAll(retryChoices);
+            ..addAll(goodRetry);
+        } else if (goodChoices.isNotEmpty) {
+          // 第一轮已有合格选项 → 只保留合格的，不替换
+          choices
+            ..clear()
+            ..addAll(goodChoices);
+        } else if (goodRetry.isNotEmpty) {
+          // 第一轮全不合格，重试有合格 → 用重试的
+          choices
+            ..clear()
+            ..addAll(goodRetry);
+        }
+      } else {
+        // qualityPassed=true → 只保留合格选项，丢弃不合格的（不重试）
+        if (goodChoices.length < choices.length) {
+          debugPrint('[选项质量] 保留${goodChoices.length}条合格选项，丢弃${choices.length - goodChoices.length}条不合格');
+          choices
+            ..clear()
+            ..addAll(goodChoices);
         }
       }
 
@@ -1333,25 +1372,30 @@ $kChoicePromptSuffix''';
         npcName = npcName.replaceFirst(RegExp(r'[（(].*?[）)]'), '').trim();
         if (npcName.isEmpty) continue;
 
-        // ---- P1-2 好感校验：逻辑不合理就直接丢弃，不更新也不做推断 ----
-        if (!validator.validate(npcRegistry, npcName, text, delta)) continue;
+        // ---- P1-2 好感校验 + NPC 模糊匹配（先匹配再校验）----
+        // BUG-M 修复：AI 会写出"塞德里克·邓布利多"这种混淆名（塞德里克·迪戈里 + 阿不思·邓布利多）
+        // 旧顺序：先 validator.validate(npcRegistry, npcName, ...) → "塞德里克·邓布利多"不在注册表 → 拒绝
+        // 新顺序：先模糊匹配找到最相似的注册NPC → 用真名做校验 → 通过则更新好感
+        NPC? npc;
+        int bestScore = 0;
+        for (final n in npcRegistry.values) {
+          final score = n.nameMatchScore(npcName);
+          if (score > bestScore) {
+            bestScore = score;
+            npc = n;
+          }
+        }
+        if (npc == null || bestScore == 0) {
+          debugPrint('[好感解析] 未找到匹配NPC: $npcName');
+          continue;
+        }
+        // 用匹配到的真名做校验（而不是 AI 写的混淆名）
+        if (!validator.validate(npcRegistry, npc.name, text, delta)) continue;
 
         if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
         if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
         try {
-          NPC? npc;
-          int bestScore = 0;
-          for (final n in npcRegistry.values) {
-            final score = n.nameMatchScore(npcName);
-            if (score > bestScore) {
-              bestScore = score;
-              npc = n;
-            }
-          }
-          if (npc == null || bestScore == 0) {
-            debugPrint('[好感解析] 未找到匹配NPC: $npcName');
-            continue;
-          }
+          // npc 和 bestScore 已在上面模糊匹配阶段赋值，这里直接使用
           debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta (匹配分=$bestScore)');
           final before = npc.affection;
           updateNpcAffection(npc.id, delta, reason: '剧情互动');

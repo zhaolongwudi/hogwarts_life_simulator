@@ -57,6 +57,7 @@ class _GameScreenState extends State<GameScreen> {
 
   void _handleChoice(int index) {
     final gp = context.read<GameProvider>();
+    if (gp.isLoading) return; // 防止快速双击导致并发 processChoice
     if (index < gp.choices.length) {
       gp.processChoice(gp.choices[index]);
     }
