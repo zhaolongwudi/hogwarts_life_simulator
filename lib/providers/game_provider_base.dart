@@ -172,7 +172,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   void markNpcIntroduced(NPC npc);
   bool markScanIfNew(String narrative);
   void onApiKeyChange();
-  void parseNarrativeOnly(String text);
+  bool parseNarrativeOnly(String text);
   void parseResponse(String text);
   Future<void> processChoice(GameChoice choice);
   bool purchaseItem(String itemName, int price, {String type, String description});

@@ -330,12 +330,14 @@ $kNarrativeWritingRules
       notifyListeners();
 
       String response;
-      int retriesLeft = 1; // 允许 critical 级违规后自动重试 1 次（太多次会慢）
+      int retriesLeft = 2; // 允许 critical 级违规 / BUG-H(模型返回选项而非叙事) 自动重试 2 次
       List<Map<String, dynamic>> violations = const [];
       List<Map<String, dynamic>> forbiddenHits = const [];
       bool needsRetry;
+      bool narrativeParseInvalid = false; // BUG-H 标记：模型返回的是选项不是叙事
       do {
         needsRetry = false;
+        narrativeParseInvalid = false;
         try {
           response = (await callDeepSeek(prompt)).content;
         } on AiNonRetryableException {
@@ -351,19 +353,29 @@ $kNarrativeWritingRules
         notifyListeners();
 
         // 先解析叙事文本（不含选项）
-        parseNarrativeOnly(response);
+        final parseOk = parseNarrativeOnly(response);
+        if (!parseOk) {
+          // BUG-H：模型把 narrative 场景当 choice 场景用了，全返回 A.B.C.D.
+          narrativeParseInvalid = true;
+          debugPrint('❌ [BUG-H] 当前 parseNarrativeOnly 返回 false，视为 critical 级异常触发重试');
+        }
 
         // --- ContinuityBridge Step C：新叙事必须承接上回合末尾锚点 ---
         // 不衔接 → 开头自动补承接过渡句（不打回重写，以防"凭空换剧情"）
-        final bridged = enforceContinuityBridge(currentNarrative, safeAction);
-        if (bridged != currentNarrative) {
-          currentNarrative = bridged;
-          // 重新跑 parseNarrativeOnly（因为 currentNarrative 变了，好感/时间等解析要一致）
-          parseNarrativeOnly(currentNarrative);
+        if (!narrativeParseInvalid) {
+          final bridged = enforceContinuityBridge(currentNarrative, safeAction);
+          if (bridged != currentNarrative) {
+            currentNarrative = bridged;
+            // 重新跑 parseNarrativeOnly（因为 currentNarrative 变了，好感/时间等解析要一致）
+            // 注：bridged 是我们自己代码生成的 + 原叙事合并的，已经保证不是选项格式
+            parseNarrativeOnly(currentNarrative);
+          }
         }
 
         // --- P2-1 禁止词检测（现代物品/跨IP/网络梗）---
-        forbiddenHits = detectForbiddenWords(currentNarrative);
+        forbiddenHits = narrativeParseInvalid
+            ? const []
+            : detectForbiddenWords(currentNarrative);
         for (final h in forbiddenHits) {
           recordConsistencyViolation({
             'severity': h['severity'],
@@ -376,22 +388,23 @@ $kNarrativeWritingRules
         final criticalForbidden = forbiddenHits.where((h) => h['severity'] == 'critical').toList();
 
         // --- P0-1 一致性看门狗：6 大类校验 ---
-        violations = validateNarrativeConsistency(currentNarrative);
+        violations = narrativeParseInvalid
+            ? const []
+            : validateNarrativeConsistency(currentNarrative);
         for (final v in violations) {
           recordConsistencyViolation(v);
         }
         final criticalViolations = violations.where((v) => v['severity'] == 'critical').toList();
 
-        // --- P1-2 好感变化校验（放到 _parseAffectionChanges 内部做拦截丢弃）---
-        // 这里不打回整段，只记录 warn 级。
-
-        // 判定：critical 违规 or critical 禁止词命中 → 重试一次
-        if (retriesLeft > 0 && (criticalViolations.isNotEmpty || criticalForbidden.isNotEmpty)) {
+        // --- 判定：critical 违规 / critical 禁止词 / BUG-H(叙事返回选项) → 重试
+        final anyCritical = criticalViolations.isNotEmpty || criticalForbidden.isNotEmpty || narrativeParseInvalid;
+        if (retriesLeft > 0 && anyCritical) {
           final msgs = <String>[
+            if (narrativeParseInvalid) '模型搞错场景了，本应生成剧情正文但返回了选项A/B/C/D。请严格按照【写作要求】输出600-800字剧情叙事，绝对不要包含任何选项格式的行(A./B./C./D.)！',
             ...criticalViolations.map((v) => '${v['rule']}: ${v['message']}'),
             ...criticalForbidden.map((h) => '违和词(${h['category']}): ${h['word']}'),
           ];
-          debugPrint('⚠️ 叙事一致性 critical 违规，准备重试 ${msgs.length} 条：${msgs.take(3).join(" | ")}');
+          debugPrint('⚠️ 叙事 critical 级异常，准备重试（剩余${retriesLeft}次）：${msgs.take(3).join(" | ")}');
           // 给新 prompt 加一段"修正要求"，明确告诉 AI 错在哪
           final correction = StringBuffer();
           correction.writeln('【⚠️ 上一次生成被驳回，必须严格修正以下问题再重写】');
@@ -402,9 +415,21 @@ $kNarrativeWritingRules
           prompt = correction.toString() + prompt;
           needsRetry = true;
           retriesLeft -= 1;
-          loadingStage = '剧情${criticalViolations.length + criticalForbidden.length}处违规，重试中...';
+          loadingStage = narrativeParseInvalid
+              ? '模型返回选项而非剧情，重跑中...'
+              : '剧情${criticalViolations.length + criticalForbidden.length}处违规，重试中...';
           notifyListeners();
           continue;
+        }
+
+        // ====== 重试全部用完还是 BUG-H？ → 直接走本地兜底叙事（保证不是选项） ======
+        if (narrativeParseInvalid && retriesLeft == 0) {
+          debugPrint('❌ [BUG-H] 2次重试后仍返回选项，切换为 generateFallbackNarrative() 本地兜底叙事');
+          currentNarrative = generateFallbackNarrative();
+          // 兜底叙事是 Dart 代码生成的，不会夹带选项，也没有好感度区块
+          // 所以不用再跑 parseNarrativeOnly，但要跑一遍地点同步等后续流程
+          notifications.add('📝 AI 返回了选项而非剧情（偶尔会发生），已为你切换为系统本地过渡剧情，确保不断链。稍后重跑会恢复正常。');
+          break;
         }
 
         // warn 级违规不必打回，只是记录到 consistencyViolations 并在下回合注入软提醒。
@@ -645,7 +670,17 @@ $kNarrativeWritingRules
   static const int _maxPendingSummaryChars = 8000;
 
   void accumulateForSummary(String newNarrative) {
-    pendingSummary += '$newNarrative\n';
+    // BUG-I：喂 summary buffer 之前必须先清洗！
+    // 旧代码直接把 AI 返回的 raw narrative 塞进去，导致：
+    //  1) AI 写的【时间戳】📅1991年9月1日星期六10:45（星期/时间错）被 summary 模型
+    //     当作事实吸收进剧情摘要，后续 narrative prompt 就看到这个错误时间
+    //  2) AI 写的【地点】标签 / 📅 状态栏（含错误"学院：Slytherin"）污染摘要
+    //  3) 好感度变化/声望变化结构化区块干扰 summary 聚焦关系和转折
+    final cleaned = GameResponseMixin.sanitizeNarrativeForArchive(
+      newNarrative,
+      keepStructuredBlocks: false, // summary 不需要好感/声望区块
+    );
+    pendingSummary += '$cleaned\n';
     if (pendingSummary.length > _maxPendingSummaryChars) {
       // 保留最近的剧情（尾部），丢弃最早的部分
       final cut = pendingSummary.length - _maxPendingSummaryChars;

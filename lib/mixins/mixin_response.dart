@@ -9,64 +9,111 @@ import '../providers/game_provider_base.dart';
 import '../prompts/choice_prompts.dart';
 
 mixin GameResponseMixin on GameProviderBase {
+  /// ===== BUG-K 最终防线：分院结果文本解析（极度收紧规则）=====
+  /// 旧问题：AI 写"你想被分进斯莱特林吗？"这种第三人称设问/假设句，
+  /// 正则直接命中"被分进+斯莱特林"→ 分院成就解锁 + player.house 赋值，
+  /// 主角实际上还在霍格沃茨特快上，根本没进大礼堂。
+  ///
+  /// 新规则（必须同时满足）：
+  /// 1. 成就锁：sorted 成就已解锁 → 直接return，绝不再次修改
+  /// 2. 强信号：正文必须出现"分院仪式的强锚点"（二选一）：
+  ///    A. 分院帽+你的名字/头上 信号（分院帽扣在/戴在/落在 你的/凌天的 头上，或者 叫到你的名字/念到了你的名字）
+  ///    B. "分院结果公布/正式宣布你"模式
+  /// 3. 假设句过滤：匹配到的学院名，上下文 ±20字内 不能有
+  ///    "如果/假如/要是/万一/想/想要/会不会/是否/难道/不是/除非/可以吗/或者/？"
+  ///    （设问/假设/条件不是真分院）
+  /// 4. 主语锚定："分到/被分到/分进/被分进/进入了/进了" 这些动词 前10字内
+  ///    必须出现"你/我/凌天/主角"，不能是"马尔福被分进"或"如果他被分进"
+  /// 5. 位置约束：学院名匹配处 必须在 强信号锚点 之后（不能是正文开头提到
+  ///    "回忆去年分院"或"马尔福来自斯莱特林"时的"斯莱特林"）
   void _tryExtractHouseFromNarrative(String text) {
-    if (player == null || player!.house != null) return;
+    if (player == null) return;
+    // 1) 成就锁：sorted一旦解锁，绝不可能再分院
+    if (player!.achievements.contains('sorted')) return;
+    // 兼容防御：house写了但成就没解锁？先清空，等真分院
+    if (player!.house != null) {
+      player!.house = null;
+    }
+
     const houseGroup = '格兰芬多|斯莱特林|拉文克劳|赫奇帕奇'
         '|Gryffindor|Slytherin|Ravenclaw|Hufflepuff';
 
-    // 1. 强语境：必须出现"分院动作词"
-    final hasSortingAction = RegExp(
-      r'分到|分进|被分到|被分进|进入了|进了|戴上分院帽'
-      r'|分院帽.*喊出|分院帽.*叫道|分院帽.*说|分院帽.*唱'
-      r'|Sorting\s*Hat|hat\s*(?:said|shouted|sang)',
-      caseSensitive: false,
-    ).hasMatch(text);
-
-    // 1b. 兜底强信号：分院帽说话模式 + 分院语境同时出现
-    final hasContext = RegExp(
-      r'分院|分院帽|大礼堂|长桌|四大学院|入学典礼',
-      caseSensitive: false,
-    ).hasMatch(text);
-
-    if (!hasSortingAction) {
-      final hatShout = RegExp(
-        '($houseGroup)\\s*[\uff01!]{2,}',
-        caseSensitive: false,
-      ).hasMatch(text);
-      if (!(hasContext && hatShout)) return;
-    }
-
-    // 2. 匹配学院名（三级优先级）
-    final housePatterns = <Pattern>[
-      // 紧邻动作词：分到/分进/被分到/被分进/进入了 XX
-      RegExp(
-        '(?:分到|分进|被分到|被分进|进入了|进了)\\s*($houseGroup)',
-        caseSensitive: false,
-      ),
-      // 分院帽说话：引号包裹 + 连续感叹号
-      RegExp(
-        '["\']?($houseGroup)\\s*[\uff01!]{2,}["\']?',
-        caseSensitive: false,
-      ),
-      // 明确"XX学院"且上文已判定为分院语境
-      RegExp(
-        '($houseGroup)\\s*学院',
-        caseSensitive: false,
-      ),
+    // 2) 强信号A：分院仪式真正发生在主角身上的证据（必须有一个命中）
+    final ceremonyAnchors = <Pattern>[
+      // 分院帽和主角头直接接触
+      RegExp(r'分院帽[^，。！？\n]{0,20}(扣在|戴在|落在|碰到|触到|停在)[^，。！？\n]{0,20}(你的|凌天的|我的|主角的|头上)', caseSensitive: false),
+      // 叫名字（麦格教授/分院仪式上/叫到你的名字）
+      RegExp(r'(叫到|念到|喊道|点到)[^，。！？\n]{0,15}(你的名字|凌天|你了)', caseSensitive: false),
+      // 走流程到你
+      RegExp(r'(终于|终于轮到|下一个就是|走到你面前)[^，。！？\n]{0,20}(你|凌天)', caseSensitive: false),
     ];
-
-    String? matched;
-    for (final pat in housePatterns) {
-      if (pat is RegExp) {
-        final m = pat.firstMatch(text);
-        if (m != null && m.groupCount >= 1) {
-          matched = m.group(1);
-          if (matched != null) break;
-        }
+    int? anchorIdx;
+    for (final p in ceremonyAnchors) {
+      final m = p is RegExp ? p.firstMatch(text) : null;
+      if (m != null) {
+        anchorIdx = m.start;
+        break;
       }
     }
-    if (matched == null) return;
+    // 强信号B：正式宣布结果句式
+    if (anchorIdx == null) {
+      final announce = RegExp(
+        r'(分院仪式上|在大礼堂里|教授宣布|正式宣布|帽子宣布|分院帽[^，。！？\n]{0,5}(喊|叫|说|宣布))',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (announce != null) anchorIdx = announce.start;
+    }
+    if (anchorIdx == null) {
+      // 完全没有分院仪式强信号 → 不解析
+      return;
+    }
+    // 额外：叫到了主角名字但还没到你 → 也不算（比如AI写了"叫到了纳威·隆巴顿"）
+    // => anchorIdx 本身已要求 "叫到 你的名字/凌天/你了"，所以已排除
 
+    // 3) 候选匹配：学院名匹配必须发生在 anchorIdx 之后（不能是正文开头的"马尔福来自斯莱特林"）
+    //    并且满足：紧邻动作词 或 分院帽喊出（!!） 或 结果宣布
+    final candidates = <(int, String)>[
+      // 模式1：动作词+学院（必须主语是你/凌天/我）
+      ...RegExp(
+        '(你|我|凌天|主角)[^，。！？\n]{0,10}(?:分到|分进|被分到|被分进|进入了|进了|分到了|进了)\\s*($houseGroup)',
+        caseSensitive: false,
+      ).allMatches(text).map((m) => (m.start, m.group(2)!)),
+      // 模式2：分院帽喊（连续感叹号+学院名）
+      ...RegExp(
+        '["\']?($houseGroup)\\s*[\uff01!]{2,}["\']?',
+        caseSensitive: false,
+      ).allMatches(text).map((m) => (m.start, m.group(1)!)),
+      // 模式3：结果宣布句式
+      ...RegExp(
+        '(宣布|公布|决定|结果是)[^，。！？\n]{0,15}($houseGroup)',
+        caseSensitive: false,
+      ).allMatches(text).map((m) => (m.start, m.group(2)!)),
+    ];
+    // 过滤：必须在强信号锚点之后
+    candidates.removeWhere((c) => c.$1 < anchorIdx);
+    if (candidates.isEmpty) return;
+
+    // 4) 假设/设问过滤：对每个候选，取 ±20 字符做"假设词否定"检查
+    const forbiddenHypo = ['如果', '假如', '要是', '万一', '想 ', '想要', '想被', '会不会',
+      '是否', '难道', '不是', '除非', '可以吗', '或者', '或许', '可能', '也许', '？', '?'];
+    int safeStart(int i, String s) => i < 0 ? 0 : (i > s.length ? s.length : i);
+    (int, String)? finalPick;
+    for (final cand in candidates) {
+      final (idx, name) = cand;
+      final ctxStart = safeStart(idx - 22, text);
+      final ctxEnd = safeStart(idx + name.length + 22, text);
+      final ctx = text.substring(ctxStart, ctxEnd);
+      bool bad = false;
+      for (final w in forbiddenHypo) {
+        if (ctx.contains(w)) { bad = true; break; }
+      }
+      if (!bad) { finalPick = cand; break; }
+    }
+    if (finalPick == null) return;
+
+    final matched = finalPick!.$2;
+
+    // 5) 中英转换
     const cnToEn = <String, String>{
       '格兰芬多': 'Gryffindor',
       '斯莱特林': 'Slytherin',
@@ -85,17 +132,55 @@ mixin GameResponseMixin on GameProviderBase {
 
     player!.house = en;
     unlockAchievement('sorted');
-    debugPrint('⚡ 分院结果自动提取：${player!.house}（匹配到 "$matched"）');
+    debugPrint('⚡ [分院解析·强信号通过] 自动提取：${player!.house}（匹配 "$matched" 在 L? 锚点后）');
+  }
+
+  /// 清洗 narrative / summary buffer：
+  /// 剥离【时间戳】【地点】整行、AI 乱写的 📅 状态栏、分隔线、选项区块头
+  /// 只保留纯叙事正文 + 【好感度变化】【声望变化】结构化区块（后者给 _parseAffection 用）
+  static String sanitizeNarrativeForArchive(String text, {bool keepStructuredBlocks = true}) {
+    var cleaned = text;
+    // 1) 📅 状态栏整行（AI写的：📅 1991年X月X日｜XX｜XX｜学院：XX）
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*📅[^\n]*\n', multiLine: true),
+      (m) => '\n',
+    );
+    // 2) 【时间戳】【地点】整行（AI narrative 输出时写的这些标签，不该进存档/摘要）
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*【(时间戳|地点|时间|当前时间|当前地点)】[^\n]*\n', multiLine: true, caseSensitive: false),
+      (m) => '\n',
+    );
+    // 3) 大段 --- / ─── 分隔线（summary / narrative 输入输出的装饰线）
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*[-─═]{5,}\s*$', multiLine: true),
+      (m) => '\n',
+    );
+    // 4) 如果 keepStructuredBlocks=false，再去掉【好感度变化】【声望变化】
+    if (!keepStructuredBlocks) {
+      cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
+      cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
+    }
+    // 5) 收敛空行
+    cleaned = cleaned.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    return cleaned;
   }
 
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
-
-  void parseNarrativeOnly(String text) {
+  /// 
+  /// 返回值：是否解析出了"有效的叙事正文"（BUG-H 防御）。
+  ///   若模型搞混了narrative/choice场景，返回了全是A.B.C.D.选项，
+  ///   则解析结果是空/过短的narrative + 一堆choices，这时候返回 false，
+  ///   让调用方（narrative生成流程）按"生成失败"处理：重试/兜底叙事，
+  ///   绝对不允许把A.B.C.D.选项文本写进剧情存档/前情回顾。
+  bool parseNarrativeOnly(String text) {
     currentNarrative = '';
     choices = [];
 
-    // 移除结构化区块（选项、好感、声望等）
-    var cleaned = text;
+    // 预清洗：剥离 AI 乱写的 📅 状态栏 / 【时间戳】【地点】整行 / 装饰分隔线
+    // BUG-J：这些内容不该进存档/解析/前情回顾
+    var cleaned = sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
+
+    // 移除结构化区块（好感/声望/选项等）
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
 
@@ -108,12 +193,18 @@ mixin GameResponseMixin on GameProviderBase {
       cleaned = cleaned.replaceAllMapped(pat, (m) => '');
     }
 
-    // 移除选项行（A.xxx, B.xxx 等）
+    // 移除选项行（A.xxx, B.xxx 等），同时统计：原始文本里选项行有多少
+    final allLines = text.split('\n');
+    int rawChoiceLines = 0;
+    for (final l in allLines) {
+      final t = l.trim();
+      if (GameProviderBase.reChoiceOption.hasMatch(t)) rawChoiceLines++;
+    }
+
     final lines = cleaned.split('\n');
     final narrativeLines = <String>[];
     for (final line in lines) {
       final trimmed = line.trim();
-      // 跳过选项格式的行
       if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) {
         continue;
       }
@@ -121,33 +212,47 @@ mixin GameResponseMixin on GameProviderBase {
     }
 
     var narrative = narrativeLines.join('\n');
-
-    // 清理多余空行
     narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
-
-    // 自动段落排版
     narrative = StoryTextRenderer.autoParagraph(narrative);
-
     currentNarrative = narrative;
+
+    // ===== BUG-H: narrative 返回选项的有效性校验 =====
+    // 判据：
+    // 1. 解析后 narrative 正文 < 150 字（正常 narrative 600~800字）
+    //    同时 原始文本里选项行 >= 3 → 模型大概率搞错场景，返回了选项而非叙事
+    // 2. 或者 narrative 完全为空
+    final bool invalid = (narrative.trim().length < 150 && rawChoiceLines >= 3)
+                      || narrative.trim().isEmpty;
+    if (invalid) {
+      debugPrint('❌ [parseNarrativeOnly·BUG-H] 判定模型返回的是选项而非叙事！'
+          '正文长度=${narrative.trim().length}，选项行数=$rawChoiceLines。标记为失败，'
+          '调用方需走重试/兜底叙事。');
+      currentNarrative = '';
+      choices = [];
+      return false;
+    }
 
     // 提取好感区块用于UI显示
     final extracted = StoryTextRenderer.extractAffectionSections(text);
     lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
 
     // R13 修复·好感度同步问题：先标记 NPC 登场，再解析好感度
-    // （旧顺序相反：解析好感时 NPC introduced=false，校验器丢弃好感变化，
-    //   标记登场后 NPC 的 introduced=true 但好感已经被丢掉了）
     if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
     // 解析好感和声望变化（从原始文本）
     _parseAffectionChanges(text);
     _parseReputationChanges(text);
 
-    // 分院结果自动提取（使用带语境判断的公共函数）
+    // 分院结果自动提取（使用带强信号约束的新版函数）
     _tryExtractHouseFromNarrative(text);
+
+    return true;
   }
 
   void parseResponse(String text) {
-    final lines = text.split('\n');
+    // BUG-J：预清洗，剥离 AI 写的 📅 状态栏 / 【时间戳】【地点】整行 / 装饰分隔线
+    //       防止这些内容误进 currentNarrative / recentTurns / 存档
+    final sanitized = sanitizeNarrativeForArchive(text, keepStructuredBlocks: true);
+    final lines = sanitized.split('\n');
     currentNarrative = '';
     choices = [];
     // 标记是否遇到过显式的【叙事】标题：遇到后严格按结构化走，
