@@ -5,6 +5,17 @@
 
 ---
 
+### v2.1.6 — 2026-08-26
+
+**📋 变更说明**
+fix(test): story_text_renderer 4个着色测试修复
+
+4个着色测试失败根因：_validSpeakerNameEnd 返回值两个层面全错：
+1) "nameEndInRaw" 公式反了：已知角色赫敏(raw=赫敏,name=赫敏) 旧公式
+   raw.length - (name.length + trimRight.diff) 算出来是 0 → nameEnd=0
+   导致 seg.nameEnd(0) < seg.speakerEnd(2) → "赫敏："整段按叙述灰，
+   测试期望"赫敏"橙/冒号蓝 → 全错。
+
 ### v2.1.5 — 2026-08-26
 
 **📋 变更说明**
