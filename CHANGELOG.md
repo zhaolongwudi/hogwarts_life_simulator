@@ -5,6 +5,15 @@
 
 ---
 
+### v2.2.1 — 2026-08-26
+
+**📋 变更说明**
+fix(CI): Player字段名 hp→health, maxHp/maxEnergy不存在直接去掉
+
+Player类只有 health/energy (int, 默认100)，没有 hp/maxHp/maxEnergy 字段。
+retryPrompt 里写的是 player?.hp/maxHp/maxEnergy → 编译报错3个。
+改为 player?.health ?? 100 和 player?.energy ?? 100。
+
 ### v2.2.0 — 2026-08-26
 
 **📋 变更说明**
