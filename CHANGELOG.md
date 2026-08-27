@@ -5,6 +5,16 @@
 
 ---
 
+### v2.2.7 — 2026-08-27
+
+**📋 变更说明**
+fix: 长线剧情一致性宏观修复——接通记忆写入管线
+
+根因：LongTermMemory 系统设计完善但写入链路几乎完全断裂——
+addKeyFact 仅初始化调用2次，addOrUpdateOpenLoop/upsertRelationshipAnchor/
+addWorldEvent 从未被调用。导致数百回合后 T0/T1/T2/T3 记忆库近乎为空，
+AI 只能看到最近2回合+600字模糊摘要，必然出现上下文断裂/跳剧情/选项无关。
+
 ### v2.2.6 — 2026-08-27
 
 **📋 变更说明**
