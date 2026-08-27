@@ -5,6 +5,17 @@
 
 ---
 
+### v2.2.9 — 2026-08-27
+
+**📋 变更说明**
+feat: UI美化——对话气泡/场景插图横幅/说话人头像接入叙事页
+
+- StoryTextRenderer 新增 splitIntoSegments：剧情正文切分为叙述段/对话行
+- 新增 SceneIllustrationBanner：按地点关键词匹配渐变氛围横幅
+- 新增 DialogueBubble：头像+说话人+神态+气泡渲染对话
+- 叙事页接入分段渲染，说话人解析到 NPC 用其头像与学院亮色
+- UiHelpers 新增 getHouseColorBright 提升深色主题可读性
+
 ### v2.2.8 — 2026-08-27
 
 **📋 变更说明**
