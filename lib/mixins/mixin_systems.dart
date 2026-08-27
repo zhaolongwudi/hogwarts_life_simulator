@@ -782,12 +782,12 @@ mixin GameSystemsMixin on GameProviderBase {
     }
     // 2026-08-24：maxTokens 按场景精细化分配
     //   narrative 主剧情：4000（配合 600-800 字精练叙事要求，总 token 约 2000-3000）
-    //   choice 选项：2500（只输出 4 行 ABCD，每行 20-50 字，2500 绰绰有余）
-    //   summary 摘要：4000（输出 800-2400 字摘要）
+    //   choice 选项：1000（只输出 4 行 ABCD ≈ 300 tokens，留余量给思考型模型的推理过程）
+    //   summary 摘要：4000（输出 800-2400 字摘要 + 结构化记忆块）
     //   npcChat NPC聊天：4000（对话场景需要一定长度）
     final maxTokens = switch (scene) {
       AiScene.narrative => 4000,
-      AiScene.choice => 2500,
+      AiScene.choice => 1000,
       AiScene.summary => 4000,
       AiScene.npcChat => 4000,
     };
@@ -982,6 +982,16 @@ mixin GameSystemsMixin on GameProviderBase {
 
   Future<bool> deleteSave(String slotId) async {
     return saveService.deleteSave(slotId);
+  }
+
+  /// 导出存档为 JSON 字符串（用于备份/跨设备迁移）
+  Future<String?> exportSave(String slotId) async {
+    return saveService.exportSave(slotId);
+  }
+
+  /// 从 JSON 字符串导入存档，返回新槽 id
+  Future<String?> importSave(String jsonString) async {
+    return saveService.importSave(jsonString);
   }
 
   // ==================== API 检查 ====================

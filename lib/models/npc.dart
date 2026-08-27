@@ -259,6 +259,7 @@ class NPC {
   }
 
   /// 添加记仇记录
+  /// 上限保护：最多保留最近 10 条（防止反复背叛同一 NPC 导致存档无限膨胀）
   void addGrudge(String type, String reason, int day) {
     grudges.add({
       'type': type,
@@ -266,6 +267,9 @@ class NPC {
       'day': day,
       'affection_at_time': affection,
     });
+    if (grudges.length > 10) {
+      grudges.removeRange(0, grudges.length - 10);
+    }
     lastGrudgeDay = day;
   }
 

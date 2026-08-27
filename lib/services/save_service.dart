@@ -244,4 +244,31 @@ class SaveService {
   Future<void> clearAutoSave() async {
     await deleteSave(autoSaveSlotId);
   }
+
+  /// 导出存档为 JSON 字符串（用于备份/跨设备迁移）
+  /// 返回完整存档 JSON；存档不存在或损坏时返回 null
+  Future<String?> exportSave(String slotId) async {
+    final data = await loadGame(slotId);
+    if (data == null) return null;
+    return jsonEncode(data);
+  }
+
+  /// 从 JSON 字符串导入存档
+  /// 校验关键字段后写入新存档槽，返回新槽 id；非法数据返回 null
+  Future<String?> importSave(String jsonString) async {
+    try {
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+      if (!data.containsKey('player') || !data.containsKey('world_state')) {
+        debugPrint('❌ 导入失败：存档缺少关键字段');
+        return null;
+      }
+      final slotId = _uuid.v4().substring(0, 8);
+      final slotName = data['slot_name'] as String? ?? '导入存档';
+      await _writeSave(slotId: slotId, slotName: slotName, saveData: data);
+      return slotId;
+    } catch (e) {
+      debugPrint('❌ 导入存档失败: $e');
+      return null;
+    }
+  }
 }

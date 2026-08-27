@@ -147,6 +147,9 @@ class ResponseCache {
     final cached = _cache[key];
     if (cached != null &&
         DateTime.now().difference(cached.timestamp) < _maxAge) {
+      // LRU：命中后移到末尾，让最近使用的条目不被优先淘汰
+      _cache.remove(key);
+      _cache[key] = cached;
       return cached.content;
     }
     if (cached != null) {
@@ -157,6 +160,8 @@ class ResponseCache {
 
   void set(String prompt, String content, {String? systemPrompt, double? temperature, int? maxTokens}) {
     final key = _makeKey(prompt, systemPrompt: systemPrompt, temperature: temperature, maxTokens: maxTokens);
+    // 更新已有条目时先移除，保证新条目位于末尾（LRU 语义）
+    _cache.remove(key);
     if (_cache.length >= _maxEntries) {
       _evictOldest();
     }
@@ -164,6 +169,7 @@ class ResponseCache {
   }
 
   void _evictOldest() {
+    // Dart Map 保持插入顺序，keys.first 即最久未使用的条目（LRU）
     final oldestKey = _cache.keys.first;
     _cache.remove(oldestKey);
   }

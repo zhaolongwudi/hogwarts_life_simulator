@@ -165,6 +165,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   bool depositToBank(int amount);
   Future<void> doSave({required bool debounce});
   String eraLabel(Era era);
+  Future<String?> exportSave(String slotId);
   void fastForwardTime(int days);
   String flowModeLabel(String mode);
   String formatAffections({int maxEntries = 8});
@@ -197,6 +198,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   void incrementWorldLineDeviation(double delta);
   Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',  });
   bool isNearby(String npcId);
+  Future<String?> importSave(String jsonString);
   Future<List<Map<String, dynamic>>> listSaves();
   Future<void> loadFromSave(String slotId);
   void markIntroducedFromNarrative(String text);

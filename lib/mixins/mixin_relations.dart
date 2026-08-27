@@ -436,6 +436,10 @@ mixin GameRelationsMixin on GameProviderBase {
     final title = job?.title ?? jobId;
     p.galleons += pay;
     p.jobHistory.add('$title: +$pay加隆 (${worldState.time.month}月${worldState.time.day}日)');
+    // 上限保护：最多保留最近 50 条打工记录，防止存档无限膨胀
+    if (p.jobHistory.length > 50) {
+      p.jobHistory.removeRange(0, p.jobHistory.length - 50);
+    }
     worldState.time.advanceMinutes(minutes);
     // 同步旧字段，保持时间显示一致
     worldState.dayOfMonth = worldState.time.day;
@@ -972,7 +976,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// 添加一封来信
-
+  /// 上限保护：最多保留 50 封信，超出时优先删除最旧的已读信件
   void _addLetter({required String sender, required String content}) {
     player!.letters.add(Letter(
       id: 'L${DateTime.now().microsecondsSinceEpoch}',
@@ -980,6 +984,15 @@ mixin GameRelationsMixin on GameProviderBase {
       content: content,
       date: worldState.time.formatDate(),
     ));
+    if (player!.letters.length > 50) {
+      // 优先删除最旧的已读信件；若全部未读则删除最旧的
+      final readIdx = player!.letters.indexWhere((l) => l.read);
+      if (readIdx >= 0) {
+        player!.letters.removeAt(readIdx);
+      } else {
+        player!.letters.removeAt(0);
+      }
+    }
     notifications.add('📬 收到来自 $sender 的信');
   }
 

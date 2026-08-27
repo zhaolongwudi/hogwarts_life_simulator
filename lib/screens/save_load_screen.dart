@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 
@@ -90,6 +91,52 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         SnackBar(content: Text('删除存档失败: $e')),
       );
     }
+  }
+
+  /// 导出存档到剪贴板（用于备份/跨设备迁移）
+  Future<void> _exportSave(Map<String, dynamic> save) async {
+    try {
+      final json = await context.read<GameProvider>().exportSave(save['id']);
+      if (json == null) {
+        _showSnack('❌ 导出失败：存档不存在或已损坏');
+        return;
+      }
+      await Clipboard.setData(ClipboardData(text: json));
+      _showSnack('✅ 存档已复制到剪贴板，请粘贴到备忘录/文件保存');
+    } catch (e) {
+      _showSnack('❌ 导出失败: $e');
+    }
+  }
+
+  /// 从剪贴板导入存档
+  Future<void> _importSave() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim() ?? '';
+      if (text.isEmpty) {
+        _showSnack('❌ 剪贴板为空，请先复制存档数据');
+        return;
+      }
+      final gp = context.read<GameProvider>();
+      setState(() => _isLoading = true);
+      final slotId = await gp.importSave(text);
+      await _loadSaves();
+      if (!mounted) return;
+      if (slotId != null) {
+        _showSnack('✅ 存档导入成功');
+      } else {
+        _showSnack('❌ 导入失败：剪贴板内容不是有效存档');
+      }
+    } catch (e) {
+      _showSnack('❌ 导入失败: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -194,15 +241,43 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
             const Icon(Icons.storage, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             const Text('暂无存档', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: _importSave,
+              icon: const Icon(Icons.paste),
+              label: const Text('从剪贴板导入存档'),
+            ),
           ],
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _saves.length,
-      itemBuilder: (context, index) =>
-          _buildSaveCard(_saves[index]),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text('共 ${_saves.length} 个存档',
+                    style: const TextStyle(color: Colors.grey)),
+              ),
+              OutlinedButton.icon(
+                onPressed: _importSave,
+                icon: const Icon(Icons.paste, size: 18),
+                label: const Text('导入'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _saves.length,
+            itemBuilder: (context, index) =>
+                _buildSaveCard(_saves[index]),
+          ),
+        ),
+      ],
     );
   }
 
@@ -225,6 +300,11 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            IconButton(
+              icon: const Icon(Icons.copy, color: Colors.blueAccent),
+              tooltip: '导出到剪贴板',
+              onPressed: () => _exportSave(save),
+            ),
             IconButton(
               icon: const Icon(Icons.open_in_new, color: Color(0xFFD3A625)),
               onPressed: () => _loadSave(save['id']),
