@@ -50,7 +50,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
       case AiProvider.agnes:
         return 'agnes-2.5-flash';
       case AiProvider.sensenova:
-        return 'sensenova-6.7-flash-lite';
+        return 'sensenova-6.8-flash-lite';
     }
   }
 

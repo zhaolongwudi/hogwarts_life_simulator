@@ -27,11 +27,25 @@ const Map<AiScene, String> kSceneDescriptions = {
   AiScene.choice: '选项生成：独立于主剧情的选项生成，使用更强模型保证选项质量。默认使用 SenseNova。',
 };
 
-// 提供商简介
+// 提供商简介（含优缺点与限制，帮助用户选择）
 const Map<AiProvider, String> kProviderDescriptions = {
-  AiProvider.deepseek: '付费模型。高质量长文本叙事，中文表现优秀，支持 deepseek-v4-flash/pro/reasoner 等模型。仅在个别场景手动选用，不进入默认路由与自动回退。',
-  AiProvider.agnes: '免费模型。Agnes-2.5-flash，响应速度最快（<1s首字），256K上下文。适合NPC短对话。注意：免费版限20 RPM。',
-  AiProvider.sensenova: '免费模型。SenseNova·商汤日日新，256K长上下文，剧情质量最好，Token效率最高（省60%）。适合主剧情和摘要。注意：每5小时1500次配额。',
+  AiProvider.deepseek:
+      '付费模型。高质量长文本叙事，中文表现优秀。\n'
+      '✅ 优点：推理能力强，支持思考模式，1M上下文\n'
+      '⚠️ 限制：付费按量计费，无免费额度\n'
+      '🎯 推荐：复杂推理、代码审计等高质量场景',
+  AiProvider.agnes:
+      '免费模型。Agnes-2.5-flash，响应速度最快（<1s首字）。\n'
+      '✅ 优点：512K上下文（最长），65.5K输出，Thinking模式，永久免费不限额\n'
+      '⚠️ 限制：20 RPM 硬限制（高频调用易触发429），偶有韩文输出\n'
+      '🎯 推荐：NPC短对话、快速响应、需要长上下文的场景\n'
+      '💡 提示：可注册多个账号获取多个Key，每个Key独立20RPM',
+  AiProvider.sensenova:
+      '免费模型。SenseNova·商汤日日新，多模态智能体模型。\n'
+      '✅ 优点：256K上下文，剧情质量最高（评测顶级），Token效率最高（省60%）\n'
+      '⚠️ 限制：6.8版响应较慢，每5小时1500次配额，deepseek/glm仅500次/5h\n'
+      '🎯 推荐：主剧情、摘要等核心叙事场景（质量优先）\n'
+      '💡 提示：6.8和6.7配额独立计量，可交替使用翻倍额度',
 };
 
 // 场景中文名
@@ -85,7 +99,7 @@ class AiConfig {
   /// 正确端点: https://token.sensenova.cn/v1/chat/completions
   factory AiConfig.sensenova(String apiKey) => AiConfig(
         provider: AiProvider.sensenova,
-        model: 'sensenova-6.7-flash-lite',
+        model: 'sensenova-6.8-flash-lite',
         apiKey: apiKey,
         baseUrl: 'https://token.sensenova.cn',
         chatPath: '/v1/chat/completions',
@@ -170,9 +184,9 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.deepseek:
         return 'deepseek-v4-flash';
       case AiProvider.agnes:
-        return 'agnes-2.5-turbo';
+        return 'agnes-2.5-flash';
       case AiProvider.sensenova:
-        return 'sensenova-6.7-flash-lite';
+        return 'sensenova-6.8-flash-lite';
     }
   }
 
@@ -203,15 +217,16 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.deepseek:
         return ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'];
       case AiProvider.agnes:
-        return ['agnes-2.5-turbo', 'agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
+        return ['agnes-2.5-flash', 'agnes-2.5-turbo', 'agnes-2.5-pro', 'agnes-2.5'];
       case AiProvider.sensenova:
-        // 平台公测版模型（参考 https://platform.sensenova.cn/docs）
-        // sensenova-u1-fast 是信息图生成专用模型，不走 chat completions，
-        // 但用户想通过自定义模型名调用时可以手动输入。
+        // 平台公测版模型（参考 https://platform.sensenova.cn/docs，2026-08更新）
+        // 所有模型公测期间免费，但有调用次数限制（每5小时重置）
         return [
-          'sensenova-6.7-flash-lite', // 主力：256K上下文+多模态+Tool Calls
-          'deepseek-v4-flash',         // SenseNova平台上也提供（公测白嫖配额）
-          'sensenova-u1-fast',         // 信息图生成（chat接口不适用时保留模型项）
+          'sensenova-6.8-flash-lite', // 最新：多模态智能体，1500次/5h
+          'sensenova-6.7-flash-lite', // 稳定版：256K上下文+多模态，1500次/5h
+          'deepseek-v4-flash',         // DeepSeek对话模型，500次/5h
+          'glm-5.2',                   // 智谱旗舰：1M上下文+128K输出，500次/5h
+          'sensenova-u1-fast',         // 信息图生成专用（非chat场景）
         ];
     }
   }
@@ -419,7 +434,13 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.agnes:
         return ['agnes-2.5-flash', 'agnes-2.5-turbo'];
       case AiProvider.sensenova:
-        return ['sensenova-6.7-flash-lite'];
+        // 公测期间全部免费，按调用次数限流（每5小时重置）
+        return [
+          'sensenova-6.8-flash-lite', // 1500次/5h，最新多模态智能体
+          'sensenova-6.7-flash-lite', // 1500次/5h，稳定版
+          'deepseek-v4-flash',         // 500次/5h
+          'glm-5.2',                   // 500次/5h，1M上下文
+        ];
     }
   }
 
@@ -431,7 +452,8 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.agnes:
         return ['agnes-2.5-pro', 'agnes-2.5'];
       case AiProvider.sensenova:
-        return ['deepseek-v4-flash'];
+        // 公测期间暂无付费模型；U1 系列为图像生成专用
+        return ['sensenova-u1-fast'];
     }
   }
 

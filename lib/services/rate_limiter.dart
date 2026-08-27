@@ -52,55 +52,70 @@ class AgnesRateLimiter {
   }
 }
 
-/// SenseNova配额管理器（每5小时1500次）
+/// SenseNova配额管理器（按模型区分，每5小时重置）
+///
+/// 商汤平台不同模型配额不同（参考 https://platform.sensenova.cn/docs，2026-08）：
+///   - sensenova-6.8-flash-lite / sensenova-6.7-flash-lite / sensenova-u1-fast：1500次/5h
+///   - deepseek-v4-flash / glm-5.2：500次/5h（RPM 极低，约1.67次/分钟）
+/// 配额按模型独立计量，一个模型用完不影响其它模型。
 class SenseNovaQuotaManager {
-  static const int _maxCallsPerWindow = 1500;
   static const Duration _windowDuration = Duration(hours: 5);
 
-  final List<DateTime> _callTimes = [];
+  /// 模型 → 每5小时配额上限
+  static int quotaForModel(String model) {
+    if (model.startsWith('sensenova-')) return 1500;
+    // deepseek-v4-flash / glm-5.2 等第三方托管模型
+    return 500;
+  }
+
+  /// 模型 → 调用时间记录
+  final Map<String, List<DateTime>> _callTimesByModel = {};
 
   SenseNovaQuotaManager._privateConstructor();
   static final SenseNovaQuotaManager instance = SenseNovaQuotaManager._privateConstructor();
 
-  bool get canMakeCall {
+  bool canMakeCall(String model) {
     final now = DateTime.now();
-    _callTimes.removeWhere((t) => now.difference(t) > _windowDuration);
-    return _callTimes.length < _maxCallsPerWindow;
+    final times = _callTimesByModel[model] ??= [];
+    times.removeWhere((t) => now.difference(t) > _windowDuration);
+    return times.length < quotaForModel(model);
   }
 
-  int get remainingQuota {
+  int remainingQuota(String model) {
     final now = DateTime.now();
-    _callTimes.removeWhere((t) => now.difference(t) > _windowDuration);
-    return _maxCallsPerWindow - _callTimes.length;
+    final times = _callTimesByModel[model] ??= [];
+    times.removeWhere((t) => now.difference(t) > _windowDuration);
+    return quotaForModel(model) - times.length;
   }
 
-  void recordCall() {
-    _callTimes.add(DateTime.now());
+  void recordCall(String model) {
+    (_callTimesByModel[model] ??= []).add(DateTime.now());
   }
 
   /// 精确等待配额窗口：计算最早一条调用滑出 5 小时窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
-  Future<void> waitForQuota({Duration timeout = const Duration(seconds: 40)}) async {
+  Future<void> waitForQuota(String model, {Duration timeout = const Duration(seconds: 40)}) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
       final now = DateTime.now();
-      _callTimes.removeWhere((t) => now.difference(t) > _windowDuration);
-      if (_callTimes.length < _maxCallsPerWindow) {
-        _callTimes.add(DateTime.now());
+      final times = _callTimesByModel[model] ??= [];
+      times.removeWhere((t) => now.difference(t) > _windowDuration);
+      if (times.length < quotaForModel(model)) {
+        times.add(DateTime.now());
         return;
       }
       if (now.isAfter(deadline)) {
-        throw Exception('SenseNova 配额等待超时（${timeout.inSeconds}秒），已切换备用提供商');
+        throw Exception('SenseNova($model) 配额等待超时（${timeout.inSeconds}秒），已切换备用提供商');
       }
       final waitMs = _windowDuration.inMilliseconds -
-          now.difference(_callTimes.first).inMilliseconds +
+          now.difference(times.first).inMilliseconds +
           50;
       await Future.delayed(Duration(milliseconds: waitMs.clamp(50, 61000).toInt()));
     }
   }
 
   void reset() {
-    _callTimes.clear();
+    _callTimesByModel.clear();
   }
 }
 

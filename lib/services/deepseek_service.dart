@@ -80,7 +80,10 @@ class DeepSeekService {
             'Authorization': 'Bearer ${config.apiKey}',
           },
           connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 30),
+          // SenseNova 6.8 Flash Lite 响应较慢（评测反馈），需要更长超时
+          receiveTimeout: config.provider == AiProvider.sensenova
+              ? const Duration(seconds: 90)
+              : const Duration(seconds: 45),
         ));
 
   Future<ChatResult> chatComplete({

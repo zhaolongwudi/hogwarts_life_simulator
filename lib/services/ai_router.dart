@@ -99,7 +99,7 @@ class AiRouter {
 
     if (scene == AiScene.narrative) {
       return future.timeout(
-        const Duration(seconds: 45),
+        const Duration(seconds: 75),
         onTimeout: () async {
           cancelToken.cancel('narrative timeout');
           await AiDebugLogger.instance.logComplete(
@@ -108,15 +108,15 @@ class AiRouter {
             scene: sceneLabel,
             provider: getProviderLabel(primary),
             action: 'TIMEOUT',
-            error: '剧情生成超时（45秒）',
+            error: '剧情生成超时（75秒）',
           );
-          throw AiRetryableException('剧情生成超时（45秒），请重试或切换提供商');
+          throw AiRetryableException('剧情生成超时（75秒），请重试或切换提供商');
         },
       );
     }
     if (scene == AiScene.choice) {
       return future.timeout(
-        const Duration(seconds: 45),
+        const Duration(seconds: 60),
         onTimeout: () async {
           cancelToken.cancel('choice timeout');
           await AiDebugLogger.instance.logComplete(
@@ -125,9 +125,9 @@ class AiRouter {
             scene: sceneLabel,
             provider: getProviderLabel(primary),
             action: 'TIMEOUT',
-            error: '选项生成超时（45秒）',
+            error: '选项生成超时（60秒）',
           );
-          throw AiRetryableException('选项生成超时（45秒），请重试');
+          throw AiRetryableException('选项生成超时（60秒），请重试');
         },
       );
     }
@@ -184,60 +184,72 @@ class AiRouter {
       final service = _services[provider];
       if (service == null) continue; // 未注册（无 key），跳过
 
-      try {
-        final result = await _executeWithRateLimit(
-          provider: provider,
-          service: service,
-          prompt: prompt,
-          systemPrompt: systemPrompt,
-          temperature: temperature,
-          maxTokens: maxTokens,
-          cancelToken: cancelToken,
-        );
-        // 缓存成功响应
-        if (useCache) {
-          _responseCache.set(
-            prompt,
-            result.content,
+      // 指数退避重试：对可重试错误（429/5xx/网络抖动）先重试同一提供商，
+      // 避免立即切换备用提供商浪费其配额。最多重试 2 次（共 3 次尝试）。
+      const maxRetries = 2;
+      for (var attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          final result = await _executeWithRateLimit(
+            provider: provider,
+            service: service,
+            prompt: prompt,
             systemPrompt: systemPrompt,
             temperature: temperature,
             maxTokens: maxTokens,
+            cancelToken: cancelToken,
           );
+          // 缓存成功响应
+          if (useCache) {
+            _responseCache.set(
+              prompt,
+              result.content,
+              systemPrompt: systemPrompt,
+              temperature: temperature,
+              maxTokens: maxTokens,
+            );
+          }
+          // 记录成功响应（完整保存返回内容，不再截断以便调试）
+          final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+          await AiDebugLogger.instance.logComplete(
+            callId: callId,
+            timestamp: DateTime.now().toIso8601String(),
+            scene: sceneLabel,
+            provider: getProviderLabel(provider),
+            action: 'RESPONSE',
+            responsePreview: result.content,
+            promptTokens: result.usage.promptTokens,
+            completionTokens: result.usage.completionTokens,
+            totalTokens: result.usage.totalTokens,
+          );
+          return result;
+        } catch (e) {
+          if (cancelToken?.isCancelled == true) {
+            rethrow;
+          }
+          lastError = e;
+
+          // 可重试错误且还有重试机会：指数退避后重试同一提供商
+          if (e is AiRetryableException && attempt < maxRetries) {
+            final backoffMs = (attempt + 1) * 2000; // 2s, 4s
+            debugPrint('⚠️ ${provider.name} 第${attempt + 1}次失败，${backoffMs}ms后重试: $e');
+            await Future.delayed(Duration(milliseconds: backoffMs));
+            continue;
+          }
+
+          debugPrint('⚠️ ${provider.name} 调用失败: $e');
+          final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+          final isLastCandidate = provider == candidates.last;
+          await AiDebugLogger.instance.logComplete(
+            callId: callId,
+            timestamp: DateTime.now().toIso8601String(),
+            scene: sceneLabel,
+            provider: getProviderLabel(provider),
+            action: isLastCandidate ? 'ERROR' : 'FALLBACK',
+            error: e.toString(),
+            keepPending: !isLastCandidate,
+          );
+          break; // 重试耗尽或不可重试，切换下一个提供商
         }
-        // 记录成功响应（完整保存返回内容，不再截断以便调试）
-        final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-        await AiDebugLogger.instance.logComplete(
-          callId: callId,
-          timestamp: DateTime.now().toIso8601String(),
-          scene: sceneLabel,
-          provider: getProviderLabel(provider),
-          action: 'RESPONSE',
-          responsePreview: result.content,
-          promptTokens: result.usage.promptTokens,
-          completionTokens: result.usage.completionTokens,
-          totalTokens: result.usage.totalTokens,
-        );
-        return result;
-      } catch (e) {
-        if (cancelToken?.isCancelled == true) {
-          // 上层已超时并通过 CancelToken 取消，不再 fallback 也不再记录错误日志
-          rethrow;
-        }
-        lastError = e;
-        debugPrint('⚠️ ${provider.name} 调用失败: $e');
-        final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-        final isLastCandidate = provider == candidates.last;
-        await AiDebugLogger.instance.logComplete(
-          callId: callId,
-          timestamp: DateTime.now().toIso8601String(),
-          scene: sceneLabel,
-          provider: getProviderLabel(provider),
-          action: isLastCandidate ? 'ERROR' : 'FALLBACK',
-          error: e.toString(),
-          // 非最后候选：保留 START 缓冲，等 fallback 成功后再合并成完整一条，
-          // 避免此前第一条 ERROR 就把 START 取走，导致 fallback 的成功日志变成孤儿条目
-          keepPending: !isLastCandidate,
-        );
       }
     }
 
@@ -267,8 +279,8 @@ class AiRouter {
         );
 
       case AiProvider.sensenova:
-        // SenseNova：使用配额管理器（每5小时1500次）
-        await SenseNovaQuotaManager.instance.waitForQuota();
+        // SenseNova：使用配额管理器（按模型区分：6.8/6.7=1500次/5h，deepseek/glm=500次/5h）
+        await SenseNovaQuotaManager.instance.waitForQuota(service.config.model);
         return service.chatComplete(
           prompt: prompt,
           systemPrompt: systemPrompt ?? '',
