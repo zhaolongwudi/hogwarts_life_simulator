@@ -458,6 +458,7 @@ class StoryTextRenderer {
   static List<_Token> _tokenize(String text) {
     final tokens = <_Token>[];
     int i = 0;
+    final int textLen = text.length; // BUG-CRASH: text 可能在子串操作后被改变？这里固定一份长度缓存，全程用 textLen 校验
 
     final dialoguePatterns = [
       RegExp(r'「[^」]*」'),
@@ -479,21 +480,36 @@ class StoryTextRenderer {
     // 逐行检测，排除时间（09:00）、日期（📅 年月日 星期）、叙述性「说：」等误判。
     final colonSegments = <_ColonSegment>[];
     {
+      final safeMax = text.length; // 闭包级安全边界
       int lineStart = 0;
-      while (lineStart <= text.length) {
+      while (lineStart <= safeMax) {
         final newlineIdx = text.indexOf('\n', lineStart);
-        final lineEnd = newlineIdx == -1 ? text.length : newlineIdx;
+        final lineEnd = newlineIdx == -1 ? safeMax : newlineIdx;
+        if (lineStart > lineEnd || lineStart > safeMax) break;
         final k = _findDialogueColon(text, lineStart, lineEnd);
-        if (k >= 0) {
+        if (k >= lineStart && k < lineEnd) {
           final speakerStartIdx = _speakerStart(text, lineStart, k);
-          final raw = text.substring(speakerStartIdx, k).trim();
+          // BUG-CRASH 修复：speakerStartIdx 必须在 [lineStart, k] 内，否则 substring 越界
+          final safeSpeakerStart = (speakerStartIdx < lineStart || speakerStartIdx > k)
+              ? lineStart
+              : speakerStartIdx;
+          final raw = text.substring(safeSpeakerStart, k).trim();
           final nameEndInRaw = _validSpeakerNameEnd(raw);
+          if (nameEndInRaw < 0) continue; // 无效，跳过这段
+          // BUG-CRASH 修复：nameEndInRaw（raw内）转 absolute 后不能超过 k（冒号前）
+          final safeNameEnd = safeSpeakerStart + nameEndInRaw;
+          if (safeNameEnd < safeSpeakerStart || safeNameEnd > k) continue;
+          // k + 1（colonEnd）不能超 safeMax
+          final colonEnd = k + 1;
+          if (colonEnd > safeMax) continue;
+          // lineEnd（contentEnd）不能超 safeMax
+          final contentEnd = lineEnd;
           colonSegments.add(_ColonSegment(
-            speakerStart: speakerStartIdx,
-            nameEnd: speakerStartIdx + nameEndInRaw,
+            speakerStart: safeSpeakerStart,
+            nameEnd: safeNameEnd,
             speakerEnd: k,
-            colonEnd: k + 1,
-            contentEnd: lineEnd,
+            colonEnd: colonEnd,
+            contentEnd: contentEnd > safeMax ? safeMax : contentEnd,
           ));
         }
         if (newlineIdx == -1) break;
@@ -524,7 +540,8 @@ class StoryTextRenderer {
     int dPointer = 0;
     int cPointer = 0;
 
-    while (i < text.length) {
+    while (i < textLen) {
+      final _Range? segRange = (cPointer < colonSegments.length) ? colonSegments[cPointer] : null;
       // 跳过已被越过（被跨行引号台词范围覆盖）的冒号段落
       while (cPointer < colonSegments.length &&
           i > colonSegments[cPointer].speakerStart) {
@@ -534,30 +551,55 @@ class StoryTextRenderer {
       if (cPointer < colonSegments.length && i == colonSegments[cPointer].speakerStart) {
         flushNarration();
         final seg = colonSegments[cPointer];
-        final speaker = text.substring(seg.speakerStart, seg.nameEnd);
-        final content = text.substring(seg.colonEnd, seg.contentEnd);
+        // BUG-CRASH 终极安全门：所有 substring 边界都用 RangeError.checkValidRange 前的显式钳制
+        int ss = seg.speakerStart;
+        int se = seg.nameEnd;
+        int ce = seg.colonEnd;
+        int spe = seg.speakerEnd;
+        int cte = seg.contentEnd;
+        if (ss < 0) ss = 0;
+        if (se < ss) se = ss; // nameEnd 最小 = speakerStart（空 speaker 也行，不 crash）
+        if (spe < se) spe = se;
+        if (ce < spe) ce = spe;
+        if (cte < ce) cte = ce;
+        if (se > textLen) se = textLen;
+        if (spe > textLen) spe = textLen;
+        if (ce > textLen) ce = textLen;
+        if (cte > textLen) cte = textLen;
+        final speaker = text.substring(ss, se);
+        final content = text.substring(ce, cte);
         addToken(_DialogueSpeakerToken(speaker));
-        if (seg.nameEnd < seg.speakerEnd) {
+        if (se < spe) {
           // 「名字+叙述动词」：动词连同冒号按叙述色渲染（如 赫敏说："…"）
-          addToken(_NarrationToken(text.substring(seg.nameEnd, seg.colonEnd)));
+          final verbAndColon = se <= ce ? text.substring(se, ce) : '';
+          addToken(_NarrationToken(verbAndColon));
         } else {
           // 纯「名字：」：冒号紧贴台词，按对话色渲染
-          addToken(_DialogueToken(text.substring(seg.speakerEnd, seg.colonEnd)));
+          final colonStr = spe <= ce ? text.substring(spe, ce) : '';
+          addToken(_DialogueToken(colonStr));
         }
         addToken(_DialogueToken(content));
-        i = seg.contentEnd;
+        i = cte;
         cPointer++;
         continue;
       }
       if (dPointer < matchedDialogue.length && i == matchedDialogue[dPointer].start) {
         flushNarration();
-        final dEnd = matchedDialogue[dPointer].end;
-        addToken(_DialogueToken(text.substring(i, dEnd)));
+        int dStart = matchedDialogue[dPointer].start;
+        int dEnd = matchedDialogue[dPointer].end;
+        if (dStart < 0) dStart = 0;
+        if (dEnd < dStart) dEnd = dStart;
+        if (dEnd > textLen) dEnd = textLen;
+        addToken(_DialogueToken(text.substring(dStart, dEnd)));
         i = dEnd;
         dPointer++;
       } else {
-        currentNarration.writeCharCode(text.codeUnitAt(i));
-        i++;
+        if (i < textLen) {
+          currentNarration.writeCharCode(text.codeUnitAt(i));
+          i++;
+        } else {
+          break;
+        }
       }
     }
 
@@ -568,6 +610,9 @@ class StoryTextRenderer {
   /// 在 [text] 的 [lineStart, lineEnd) 区间内查找对话冒号（说话人：台词）的位置。
   /// 找不到返回 -1。
   static int _findDialogueColon(String text, int lineStart, int lineEnd) {
+    if (lineStart < 0) lineStart = 0;
+    if (lineEnd > text.length) lineEnd = text.length;
+    if (lineStart >= lineEnd) return -1;
     for (int i = lineStart; i < lineEnd; i++) {
       final ch = text[i];
       if (ch != '：' && ch != ':') continue;
@@ -578,15 +623,21 @@ class StoryTextRenderer {
       // 不管冒号前是什么叙述修饰（"露出玩味的笑容：""语气一冷："），
       // 只要冒号后 0~1 个字符内出现引号，就认定这是台词的起点，
       // 走宽松 speaker 提取规则（允许中间夹带「的/地」等情绪修饰）。
-      final afterColon = text.substring(i + 1, lineEnd).trimLeft();
+      final afterColon = (i + 1 <= lineEnd)
+          ? text.substring(i + 1, lineEnd).trimLeft()
+          : '';
       final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
 
       final speakerStartIdx = _speakerStart(text, lineStart, i);
-      final raw = text.substring(speakerStartIdx, i).trim();
+      final safeSpeakerStart = (speakerStartIdx < lineStart || speakerStartIdx > i)
+          ? lineStart
+          : speakerStartIdx;
+      if (safeSpeakerStart > i) continue;
+      final raw = text.substring(safeSpeakerStart, i).trim();
       final nameEndInRaw = quoteFollow
           ? _validSpeakerNameEndRelaxed(raw) // 后跟引号→宽松规则
           : _validSpeakerNameEnd(raw);      // 默认严格规则
-      if (nameEndInRaw >= 0) return i;
+      if (nameEndInRaw >= 0 && nameEndInRaw <= raw.length) return i;
     }
     return -1;
   }
@@ -786,29 +837,34 @@ class StoryTextRenderer {
     // 在 raw 的"后半段"（最后 20 个字符或 1/3 长度，取较大者）找最后一个角色命中
     final lookBack = raw.length > 20 ? 20 : (raw.length ~/ 3).clamp(8, 20);
     final searchZoneStart = raw.length - lookBack < 0 ? 0 : raw.length - lookBack;
+    final rawLen = raw.length;
+
     String? foundName;
     int foundNameEnd = -1;
     for (final name in sortedNames) {
+      if (name.isEmpty) continue;
       final idx = raw.lastIndexOf(name);
-      if (idx >= searchZoneStart || (raw.endsWith(name))) {
-        // 找到的位置必须在末尾（最后一次出现）
-        if (idx + name.length > foundNameEnd) {
-          foundName = name;
-          foundNameEnd = idx + name.length;
-        }
+      if (idx < 0) continue;
+      final end = idx + name.length;
+      if (end > rawLen) continue; // 超界安全
+      if ((idx >= searchZoneStart || raw.endsWith(name)) && end > foundNameEnd) {
+        foundName = name;
+        foundNameEnd = end;
       }
     }
-    if (foundName != null && foundNameEnd > 0) {
+    if (foundName != null && foundNameEnd > 0 && foundNameEnd <= rawLen) {
       return foundNameEnd; // 命中已知角色，直接使用
     }
 
     // Fallback：在最后 12 个字里找"2-4 个汉字、像人名"的片段（标点/虚词结尾不算）
-    final tail = raw.substring(searchZoneStart);
+    if (searchZoneStart >= rawLen) return -1;
+    final tail = raw.substring(searchZoneStart, rawLen);
     final nameLike = RegExp(r'([\u4e00-\u9fa5]{2,4})(?=[，、。！？\s]*$)').firstMatch(tail);
     if (nameLike != null) {
-      final candidate = nameLike.group(1)!;
-      if (!_looksLikeNarrationPhrase(candidate)) {
-        return searchZoneStart + nameLike.end;
+      final candidate = nameLike.group(1);
+      if (candidate != null && !_looksLikeNarrationPhrase(candidate)) {
+        final result = searchZoneStart + nameLike.end;
+        if (result <= rawLen) return result;
       }
     }
     return -1;
