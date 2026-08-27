@@ -10,6 +10,7 @@ class NpcSeed {
   final List<String> personality;
   final String appearance; // 电影形象描述
   final String era; // dumbledore / marauders / harry_same / post_war / all
+  final String gender; // '男' / '女' / '' = 未知（恋爱取向匹配必需）
   final String? sexOrientation; // default 由生成器决定
   final Map<String, int> giftPrefs; // 挚爱礼物 → 分值
   final String? personalGoal;
@@ -24,6 +25,7 @@ class NpcSeed {
     this.personality = const [],
     this.appearance = '',
     this.era = 'all',
+    this.gender = '',
     this.sexOrientation,
     this.giftPrefs = const {},
     this.personalGoal,
@@ -35,6 +37,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'dumbledore',
     name: '阿不思·邓布利多',
+    gender: '男',
     aliases: ['老蜜蜂', '老邓', '邓布利多校长'],
     house: 'Gryffindor',
     grade: 0,
@@ -48,6 +51,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'mcgonagall',
     name: '米勒娃·麦格',
+    gender: '女',
     aliases: ['麦格教授', '格兰芬多院长'],
     house: 'Gryffindor',
     grade: 0,
@@ -61,6 +65,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'snape',
     name: '西弗勒斯·斯内普',
+    gender: '男',
     aliases: ['斯内普教授', '斯莱特林院长', '混血王子'],
     house: 'Slytherin',
     grade: 0,
@@ -74,6 +79,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'hagrid',
     name: '鲁伯·海格',
+    gender: '男',
     aliases: ['猎场看守', '钥匙管理员'],
     house: 'Gryffindor',
     grade: 0,
@@ -87,6 +93,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'flitwick',
     name: '菲利乌斯·弗立维',
+    gender: '男',
     aliases: ['弗立维教授', '拉文克劳院长', '魔咒课教授'],
     house: 'Ravenclaw',
     grade: 0,
@@ -99,6 +106,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'sprout',
     name: '波莫娜·斯普劳特',
+    gender: '女',
     aliases: ['斯普劳特教授', '赫奇帕奇院长', '草药课教授'],
     house: 'Hufflepuff',
     grade: 0,
@@ -111,6 +119,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'hooch',
     name: '罗兰达·霍琦',
+    gender: '女',
     aliases: ['霍琦夫人', '飞行课教授', '魁地奇裁判'],
     house: '',
     grade: 0,
@@ -123,6 +132,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'trelawney',
     name: '西比尔·特里劳妮',
+    gender: '女',
     aliases: ['特里劳妮教授', '占卜课教授'],
     house: 'Ravenclaw',
     grade: 0,
@@ -135,6 +145,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'filch',
     name: '阿格斯·费尔奇',
+    gender: '男',
     aliases: ['管理员', '看门人'],
     house: '',
     grade: 0,
@@ -147,6 +158,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'pince',
     name: '伊尔玛·平斯',
+    gender: '女',
     aliases: ['平斯夫人', '图书管理员'],
     house: '',
     grade: 0,
@@ -159,6 +171,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'pomfrey',
     name: '波比·庞弗雷',
+    gender: '女',
     aliases: ['庞弗雷夫人', '校医', '护士长'],
     house: '',
     grade: 0,
@@ -171,6 +184,7 @@ const List<NpcSeed> staffSeeds = [
   NpcSeed(
     id: 'binns',
     name: '宾斯教授',
+    gender: '男',
     aliases: ['宾斯', '宾斯先生', '魔法史教授', '幽灵教授'],
     house: '',
     grade: 0,
@@ -187,6 +201,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'harry',
     name: '哈利·波特',
+    gender: '男',
     aliases: ['哈利波特', '大难不死的男孩', '救世之星', '波特先生'],
     house: 'Gryffindor',
     grade: 1,
@@ -200,6 +215,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'hermione',
     name: '赫敏·格兰杰',
+    gender: '女',
     aliases: ['妙丽', '万事通', '赫敏格兰杰'],
     house: 'Gryffindor',
     grade: 1,
@@ -213,6 +229,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'ron',
     name: '罗恩·韦斯莱',
+    gender: '男',
     aliases: ['罗纳德', '罗罗', '罗恩韦斯莱'],
     house: 'Gryffindor',
     grade: 1,
@@ -226,6 +243,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'neville',
     name: '纳威·隆巴顿',
+    gender: '男',
     aliases: ['纳威隆巴顿', '纳胖'],
     house: 'Gryffindor',
     grade: 1,
@@ -239,6 +257,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'lavender',
     name: '拉文德·布朗',
+    gender: '女',
     aliases: ['拉文德布朗', '小文'],
     house: 'Gryffindor',
     grade: 1,
@@ -250,6 +269,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'seamus',
     name: '西莫·斐尼甘',
+    gender: '男',
     aliases: ['西莫斐尼甘', '爆炸王'],
     house: 'Gryffindor',
     grade: 1,
@@ -262,6 +282,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'parvati',
     name: '帕瓦蒂·帕蒂尔',
+    gender: '女',
     aliases: ['帕瓦蒂帕蒂尔', '小帕'],
     house: 'Gryffindor',
     grade: 1,
@@ -274,6 +295,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'dean',
     name: '迪安·托马斯',
+    gender: '男',
     aliases: ['迪安托马斯', '小迪'],
     house: 'Gryffindor',
     grade: 1,
@@ -286,6 +308,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'ginny',
     name: '金妮·韦斯莱',
+    gender: '女',
     aliases: ['金妮韦斯莱', '小金子', '金尼'],
     house: 'Gryffindor',
     grade: 1,
@@ -299,6 +322,7 @@ const List<NpcSeed> harrySameGryffindor = [
   NpcSeed(
     id: 'colin',
     name: '科林·克里维',
+    gender: '男',
     aliases: ['科林克里维', '小摄影师'],
     house: 'Gryffindor',
     grade: 1,
@@ -315,6 +339,7 @@ const List<NpcSeed> harrySameSenior = [
   NpcSeed(
     id: 'percy',
     name: '珀西·韦斯莱',
+    gender: '男',
     aliases: ['珀西韦斯莱', '级长', '学生会主席'],
     house: 'Gryffindor',
     grade: 5,
@@ -326,6 +351,7 @@ const List<NpcSeed> harrySameSenior = [
   NpcSeed(
     id: 'wood',
     name: '奥利弗·伍德',
+    gender: '男',
     aliases: ['奥利弗伍德', '队长大人', '魁地奇队长'],
     house: 'Gryffindor',
     grade: 7,
@@ -337,6 +363,7 @@ const List<NpcSeed> harrySameSenior = [
   NpcSeed(
     id: 'fred',
     name: '弗雷德·韦斯莱',
+    gender: '男',
     aliases: ['弗雷德韦斯莱', '双胞胎', '捣蛋王'],
     house: 'Gryffindor',
     grade: 6,
@@ -348,6 +375,7 @@ const List<NpcSeed> harrySameSenior = [
   NpcSeed(
     id: 'george',
     name: '乔治·韦斯莱',
+    gender: '男',
     aliases: ['乔治韦斯莱', '双胞胎', '捣蛋王'],
     house: 'Gryffindor',
     grade: 6,
@@ -359,6 +387,7 @@ const List<NpcSeed> harrySameSenior = [
   NpcSeed(
     id: 'lee',
     name: '李·乔丹',
+    gender: '男',
     aliases: ['李乔丹', '解说员', '小李'],
     house: 'Gryffindor',
     grade: 6,
@@ -371,6 +400,7 @@ const List<NpcSeed> harrySameSenior = [
   NpcSeed(
     id: 'angelina',
     name: '安吉丽娜·约翰逊',
+    gender: '女',
     aliases: ['安吉丽娜约翰逊', '追球手', '小安'],
     house: 'Gryffindor',
     grade: 6,
@@ -387,6 +417,7 @@ const List<NpcSeed> harrySameSlytherin = [
   NpcSeed(
     id: 'draco',
     name: '德拉科·马尔福',
+    gender: '男',
     aliases: ['德拉克', '小龙', '马尔福少爷'],
     house: 'Slytherin',
     grade: 1,
@@ -400,6 +431,7 @@ const List<NpcSeed> harrySameSlytherin = [
   NpcSeed(
     id: 'crabbe',
     name: '文森特·克拉布',
+    gender: '男',
     aliases: ['文森特克拉布', '小克拉布'],
     house: 'Slytherin',
     grade: 1,
@@ -411,6 +443,7 @@ const List<NpcSeed> harrySameSlytherin = [
   NpcSeed(
     id: 'goyle',
     name: '格雷戈里·高尔',
+    gender: '男',
     aliases: ['格雷戈里高尔', '小高尔'],
     house: 'Slytherin',
     grade: 1,
@@ -422,6 +455,7 @@ const List<NpcSeed> harrySameSlytherin = [
   NpcSeed(
     id: 'pansy',
     name: '潘西·帕金森',
+    gender: '女',
     aliases: ['潘西帕金森', '潘女王'],
     house: 'Slytherin',
     grade: 1,
@@ -434,6 +468,7 @@ const List<NpcSeed> harrySameSlytherin = [
   NpcSeed(
     id: 'blaise',
     name: '布莱斯·沙比尼',
+    gender: '男',
     aliases: ['布莱斯沙比尼', '布莱兹'],
     house: 'Slytherin',
     grade: 1,
@@ -450,6 +485,7 @@ const List<NpcSeed> harrySameRavenclaw = [
   NpcSeed(
     id: 'cho',
     name: '秋·张',
+    gender: '女',
     aliases: ['秋张', '张秋', '初恋姐姐'],
     house: 'Ravenclaw',
     grade: 5,
@@ -461,6 +497,7 @@ const List<NpcSeed> harrySameRavenclaw = [
   NpcSeed(
     id: 'luna',
     name: '卢娜·洛夫古德',
+    gender: '女',
     aliases: ['疯姑娘', '露娜', '卢娜洛夫古德'],
     house: 'Ravenclaw',
     grade: 2,
@@ -474,6 +511,7 @@ const List<NpcSeed> harrySameRavenclaw = [
   NpcSeed(
     id: 'penelope',
     name: '佩内洛·克里瓦特',
+    gender: '女',
     aliases: ['佩内洛克里瓦特', '级长姐姐'],
     house: 'Ravenclaw',
     grade: 5,
@@ -485,6 +523,7 @@ const List<NpcSeed> harrySameRavenclaw = [
   NpcSeed(
     id: 'roger',
     name: '罗杰·戴维斯',
+    gender: '男',
     aliases: ['罗杰戴维斯', '拉文克劳队长'],
     house: 'Ravenclaw',
     grade: 6,
@@ -500,6 +539,7 @@ const List<NpcSeed> harrySameHufflepuff = [
   NpcSeed(
     id: 'cedric',
     name: '塞德里克·迪戈里',
+    gender: '男',
     aliases: ['塞德里克迪戈里', '塞德', '赫奇帕奇英雄'],
     house: 'Hufflepuff',
     grade: 5,
@@ -513,6 +553,7 @@ const List<NpcSeed> harrySameHufflepuff = [
   NpcSeed(
     id: 'hannah',
     name: '汉娜·艾博',
+    gender: '女',
     aliases: ['汉娜艾博', '小汉娜'],
     house: 'Hufflepuff',
     grade: 1,
@@ -524,6 +565,7 @@ const List<NpcSeed> harrySameHufflepuff = [
   NpcSeed(
     id: 'susan',
     name: '苏珊·波恩',
+    gender: '女',
     aliases: ['苏珊波恩', '小苏'],
     house: 'Hufflepuff',
     grade: 1,
@@ -535,6 +577,7 @@ const List<NpcSeed> harrySameHufflepuff = [
   NpcSeed(
     id: 'ernie',
     name: '厄尼·麦克米兰',
+    gender: '男',
     aliases: ['厄尼麦克米兰', '小厄'],
     house: 'Hufflepuff',
     grade: 1,
@@ -546,6 +589,7 @@ const List<NpcSeed> harrySameHufflepuff = [
   NpcSeed(
     id: 'zacharias',
     name: '扎卡赖斯·史密斯',
+    gender: '男',
     aliases: ['扎卡赖斯史密斯', '扎卡里亚斯', '挑剔鬼'],
     house: 'Hufflepuff',
     grade: 1,
@@ -561,6 +605,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'james',
     name: '詹姆·波特',
+    gender: '男',
     aliases: ['詹姆波特', '尖头叉子', '哈利父亲'],
     house: 'Gryffindor',
     grade: 1,
@@ -574,6 +619,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'sirius',
     name: '小天狼星·布莱克',
+    gender: '男',
     aliases: ['西里斯', '大脚板', '教父'],
     house: 'Gryffindor',
     grade: 1,
@@ -587,6 +633,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'remus',
     name: '莱姆斯·卢平',
+    gender: '男',
     aliases: ['莱姆斯卢平', '月亮脸', '卢平教授'],
     house: 'Gryffindor',
     grade: 1,
@@ -600,6 +647,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'pettigrew',
     name: '小矮星彼得',
+    gender: '男',
     aliases: ['彼得', '小矮星', '虫尾巴', '彼德', '叛徒'],
     house: 'Gryffindor',
     grade: 1,
@@ -612,6 +660,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'lily',
     name: '莉莉·伊万斯',
+    gender: '女',
     aliases: ['莉莉伊万斯', '莉莉波特', '哈利母亲'],
     house: 'Gryffindor',
     grade: 1,
@@ -625,6 +674,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'snape_young',
     name: '西弗勒斯·斯内普',
+    gender: '男',
     aliases: ['混血王子', '少年斯内普'],
     house: 'Slytherin',
     grade: 1,
@@ -638,6 +688,7 @@ const List<NpcSeed> maraudersSeeds = [
   NpcSeed(
     id: 'regulus',
     name: '雷古勒斯·布莱克',
+    gender: '男',
     aliases: ['雷古勒斯布莱克', 'R.A.B.', '雷古'],
     house: 'Slytherin',
     grade: 2,
@@ -655,6 +706,7 @@ const List<NpcSeed> dumbledoreEraSeeds = [
   NpcSeed(
     id: 'young_dumbledore',
     name: '阿不思·邓布利多',
+    gender: '男',
     aliases: ['少年邓布利多'],
     house: 'Gryffindor',
     grade: 1,
@@ -668,6 +720,7 @@ const List<NpcSeed> dumbledoreEraSeeds = [
   NpcSeed(
     id: 'grindelwald',
     name: '盖勒特·格林德沃',
+    gender: '男',
     aliases: ['黑魔王', '第一代黑魔王'],
     house: '',
     grade: 0,
@@ -681,6 +734,7 @@ const List<NpcSeed> dumbledoreEraSeeds = [
   NpcSeed(
     id: 'arianna',
     name: '阿利安娜·邓布利多',
+    gender: '女',
     aliases: ['阿利安娜邓布利多', '妹妹', '默然者'],
     house: '',
     grade: 0,
@@ -693,6 +747,7 @@ const List<NpcSeed> dumbledoreEraSeeds = [
   NpcSeed(
     id: 'young_mcgonagall',
     name: '米勒娃·麦格',
+    gender: '女',
     aliases: ['少女麦格'],
     house: 'Gryffindor',
     grade: 1,
@@ -708,6 +763,7 @@ const List<NpcSeed> postWarSeeds = [
   NpcSeed(
     id: 'albus_porter',
     name: '阿不思·西弗勒斯·波特',
+    gender: '男',
     aliases: ['阿不思波特', '小波特', '阿尔'],
     house: 'Slytherin',
     grade: 1,
@@ -721,6 +777,7 @@ const List<NpcSeed> postWarSeeds = [
   NpcSeed(
     id: 'scorpius',
     name: '斯科皮·马尔福',
+    gender: '男',
     aliases: ['斯科皮马尔福', '小马尔福', '蝎子'],
     house: 'Slytherin',
     grade: 1,
@@ -734,6 +791,7 @@ const List<NpcSeed> postWarSeeds = [
   NpcSeed(
     id: 'delphi',
     name: '德尔菲·里德尔',
+    gender: '女',
     aliases: ['德尔菲里德尔', '伏地魔之女', '神秘少女'],
     house: 'Slytherin',
     grade: 0,
@@ -760,6 +818,7 @@ final List<NpcSeed> firstWarSeeds = [
       personality: List.of(s.personality),
       appearance: s.appearance,
       era: 'first_war',
+      gender: s.gender,
       sexOrientation: s.sexOrientation,
       giftPrefs: Map.of(s.giftPrefs),
       personalGoal: s.personalGoal,

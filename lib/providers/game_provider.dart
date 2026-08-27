@@ -232,7 +232,9 @@ class GameProvider extends GameProviderBase
     // 导致「附近/重要NPC」里出现还没登场的人物。
     // （如果确实需要在好感变化时引入 NPC，调用方应显式调用 markNpcIntroduced。）
 
-    final currentDay = worldState.time.dayOfYear;
+    // 统一使用 absoluteDayIndex（跨年单调递增）作为"当前天数"口径，
+    // 避免 dayOfYear 跨年相减为负/口径不一致。
+    final currentDay = worldState.time.absoluteDayIndex;
     // 跨月自动重置本月好感增量（affectionMonthKey 记录 monthKey）
     final monthKey = worldState.time.year * 12 + worldState.time.month;
     if (npc.affectionMonthKey != monthKey) {
@@ -241,7 +243,7 @@ class GameProvider extends GameProviderBase
     }
     int actualChange = change;
     if (change > 0) {
-      final cap = npc.getAffectionGainLimit(currentDay, gameWeek);
+      final cap = npc.getAffectionGainLimit(gameWeek);
       if (cap <= 0) {
         actualChange = 0;
         if (npc.affectionGainedThisWeek == Balance.weekOneAffectionCap) {

@@ -47,7 +47,9 @@ const List<QuestTemplate> kQuestTemplates = [
     targetCount: 1,
     rewardGalleons: 40,
     rewardHousePoints: 8,
-    minGrade: 2,
+    // 修复：八眼巨蛛危险度 4，需 3 年级才能在禁林遭遇（maxDanger 表）。
+    // 旧值 2 会让二年级玩家接了委托却永远遇不到目标生物，形成死锁。
+    minGrade: 3,
   ),
   QuestTemplate(
     id: 'q_dragon_blood',

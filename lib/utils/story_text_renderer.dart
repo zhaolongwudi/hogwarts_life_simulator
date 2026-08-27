@@ -541,7 +541,6 @@ class StoryTextRenderer {
     int cPointer = 0;
 
     while (i < textLen) {
-      final _Range? segRange = (cPointer < colonSegments.length) ? colonSegments[cPointer] : null;
       // 跳过已被越过（被跨行引号台词范围覆盖）的冒号段落
       while (cPointer < colonSegments.length &&
           i > colonSegments[cPointer].speakerStart) {

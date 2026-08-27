@@ -311,7 +311,14 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('\n—— 一道柔和的光晕忽然从$petName 身上漾开，它的身影在光芒中缓缓拔高，'
           '幻化作一个与你年纪相仿的少男/少女。绯色光晕笼罩周身，它/他静静看着你，轻声唤出你的名字。\n\n'
           '【羁绊已达】${species}$petName：$hint');
-      p.relationships.clear();
+      // 修复：化形只是为宠物新增一条关系，绝不能清空玩家与所有 NPC 的既有关系
+      final petRelId = p.petId ?? petName;
+      p.relationships[petRelId] = Relationship(
+        targetId: petRelId,
+        targetName: petName,
+        relationType: '化形羁绊',
+        level: 60,
+      );
       notifications.add('✨ $petName 展现了新的形态：羁绊的奇迹在你眼前展开');
     }
 
@@ -497,7 +504,9 @@ mixin GamePlayMixin on GameProviderBase {
       'Hufflepuff' => '赫奇帕奇',
       _ => '对手',
     };
-    final opp = opponents[random.nextInt(opponents.length)];
+    // 修复：对手池必须排除自己学院，避免"格兰芬多 对 格兰芬多"的荒谬叙事
+    final pool = opponents.where((h) => h != myHouseCn).toList();
+    final opp = pool[random.nextInt(pool.length)];
     final myScore = 90 + skill ~/ 2 + random.nextInt(31);
     final oppScore = 70 + random.nextInt(81); // 对手 ~70-150
     final win = myScore >= oppScore;
@@ -540,7 +549,12 @@ mixin GamePlayMixin on GameProviderBase {
   void duelNpc(String? name) {
     final p = player;
     if (p == null) return;
-    final alive = npcRegistry.values.where((n) => n.isAlive && !n.graduated).toList();
+    // 修复：决斗对象仅限在校生（grade >= 1），排除教职/成人（grade == 0）。
+    // 旧实现只过滤 isAlive && !graduated，导致可以"决斗邓布利多/麦格教授"，
+    // 违背"一年级打不过强者"的设计初衷与原著常识。
+    final alive = npcRegistry.values
+        .where((n) => n.isAlive && !n.graduated && n.grade >= 1)
+        .toList();
     NPC? opponent;
     if (name != null && name.trim().isNotEmpty) {
       final kw = name.trim();
@@ -663,9 +677,22 @@ mixin GamePlayMixin on GameProviderBase {
 
     if (rollValue < 30 && pool.isNotEmpty) {
       // 遭遇生物
+      // 委托目标加成：活跃委托（gather 看掉落、defeat 看生物名）对应的生物
+      // 获得额外权重，避免高价值委托因低危生物权重碾压而永远推不动。
+      final wantedLoot = <String>{};
+      final wantedCreatures = <String>{};
+      for (final q in p.quests) {
+        if (q.status != 'active') continue;
+        if (q.type == 'gather') wantedLoot.add(q.target);
+        if (q.type == 'defeat') wantedCreatures.add(q.target);
+      }
       final weighted = <CreatureDef>[];
       for (final c in pool) {
-        for (var i = 0; i < (6 - c.danger).clamp(1, 4); i++) {
+        var w = (6 - c.danger).clamp(1, 4);
+        final isWanted = c.loot.any(wantedLoot.contains) ||
+            wantedCreatures.contains(c.name);
+        if (isWanted) w += 3; // 委托目标显著加权
+        for (var i = 0; i < w; i++) {
           weighted.add(c);
         }
       }

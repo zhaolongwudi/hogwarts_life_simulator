@@ -29,7 +29,8 @@ class NPC {
 
   // ====== 设定文档扩展字段 ======
   final String appearance; // 电影形象外貌描述
-  final String? sexOrientation; // 性取向
+  final String gender; // 性别：'男' / '女' / '' = 未知（恋爱取向匹配必需）
+  final String? sexOrientation; // 性取向：被吸引的性别（'男'/'女'/'双性'）
   int affection; // 对玩家的好感度 -100 ~ +100
   final List<String> affectionLocks; // 已解锁的好感锁
   final Map<String, int> giftPrefs; // 礼物偏好: 名称 -> 分值
@@ -70,6 +71,7 @@ class NPC {
     this.relationships = const {},
     List<String>? recentEvents,
     this.appearance = '',
+    this.gender = '',
     this.sexOrientation,
     this.affection = 0,
     List<String>? affectionLocks,
@@ -218,6 +220,32 @@ class NPC {
 
   String get affectionStage => affectionStageFor(affection);
 
+  /// 恋爱取向双向兼容性判定。
+  ///
+  /// 正确语义：取向 = "被吸引的性别"。因此需要**双向**校验：
+  ///   1. NPC 的取向包含玩家性别（NPC 喜欢玩家）
+  ///   2. 玩家的取向包含 NPC 性别（玩家喜欢 NPC）
+  /// '双性' 匹配任意性别；性别或取向未知时不拦截（交给叙事层处理）。
+  ///
+  /// 旧实现用 `npc.sexOrientation == player.sexOrientation`（取向对取向），
+  /// 语义颠倒，导致生成的 NPC 取向被设为玩家取向的"反向"后永远无法通过校验。
+  static bool orientationMatches({
+    required String npcGender,
+    required String? npcOrientation,
+    required String playerGender,
+    required String? playerOrientation,
+  }) {
+    bool attracted(String? orientation, String targetGender) {
+      if (orientation == null || orientation.isEmpty) return true;
+      if (orientation == '双性') return true;
+      if (targetGender.isEmpty) return true;
+      return orientation == targetGender;
+    }
+
+    return attracted(npcOrientation, playerGender) &&
+        attracted(playerOrientation, npcGender);
+  }
+
   /// 查询好感锁是否解锁
   bool hasLock(String lockName) => affectionLocks.contains(lockName);
 
@@ -245,7 +273,11 @@ class NPC {
   /// 第1周：受单周上限(+30)与首月上限(+50)双重约束；
   /// 第2~4周：仅受首月上限约束；
   /// 之后：恢复正常（上限100）。
-  int getAffectionGainLimit(int currentDay, int gameWeek) {
+  ///
+  /// 注：本方法只依赖 gameWeek 与累计增量，不需要"当前天数"。
+  /// 旧签名带有一个从未使用的 currentDay 参数，且调用方分别传
+  /// dayOfYear / absoluteDayIndex 两种口径，造成混淆，已移除。
+  int getAffectionGainLimit(int gameWeek) {
     int remainingWeek = Balance.affectionMax;
     if (gameWeek <= 1) {
       remainingWeek = Balance.weekOneAffectionCap - affectionGainedThisWeek;
@@ -278,6 +310,7 @@ class NPC {
         'relationships': relationships,
         'recent_events': recentEvents,
         'appearance': appearance,
+        'gender': gender,
         'sex_orientation': sexOrientation,
         'affection': affection,
         'affection_locks': affectionLocks,
@@ -318,6 +351,7 @@ class NPC {
         relationships: Map<String, int>.from(json['relationships'] ?? {}),
         recentEvents: List<String>.from(json['recent_events'] ?? []),
         appearance: json['appearance'] ?? '',
+        gender: json['gender'] ?? '',
         sexOrientation: json['sex_orientation'],
         affection: json['affection'] ?? 0,
         affectionLocks: List<String>.from(json['affection_locks'] ?? []),

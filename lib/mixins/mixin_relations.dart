@@ -4,6 +4,7 @@ import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/cg_data.dart';
 import '../data/cg_unlock_conditions.dart';
+import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/world_rules.dart';
 import '../data/job_data.dart';
@@ -85,7 +86,20 @@ mixin GameRelationsMixin on GameProviderBase {
       ],
     };
 
-    final isMale = random.nextBool();
+    // NPC 性别：匹配玩家取向所偏好的性别，保证玩家有可能喜欢上 TA。
+    // 玩家取向 '男'→生成男生；'女'→生成女生；'双性'/未设→随机。
+    final String npcGender;
+    switch (p.sexOrientation) {
+      case '男':
+        npcGender = '男';
+        break;
+      case '女':
+        npcGender = '女';
+        break;
+      default:
+        npcGender = random.nextBool() ? '男' : '女';
+    }
+    final isMale = npcGender == '男';
     final givenNames = isMale ? givenMale : givenFemale;
     final name = '${givenNames[random.nextInt(givenNames.length)]}·${surnames[random.nextInt(surnames.length)]}';
     final houses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
@@ -99,9 +113,14 @@ mixin GameRelationsMixin on GameProviderBase {
     final appearanceDesc = (appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇'])[random.nextInt((appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇']).length)];
     final houseLabel = houseNames[house] ?? house;
 
-    final orientationOptions = [p.sexOrientation ?? '女', '男', '女'];
-    orientationOptions.removeWhere((e) => e == p.sexOrientation);
-    final sexOrientation = orientationOptions[random.nextInt(orientationOptions.length)];
+    // NPC 取向：必须包含玩家性别（NPC 喜欢玩家），否则永远无法向玩家表白。
+    // 玩家性别已知 → 取向为玩家性别或'双性'（各50%）；未知 → '双性'。
+    final String sexOrientation;
+    if (p.gender == '男' || p.gender == '女') {
+      sexOrientation = random.nextBool() ? p.gender : '双性';
+    } else {
+      sexOrientation = '双性';
+    }
 
     final npc = NPC(
       id: id,
@@ -111,6 +130,7 @@ mixin GameRelationsMixin on GameProviderBase {
       bloodStatus: 'unknown',
       personality: personality,
       appearance: '$appearanceDesc。这位$houseLabel的${isMale ? '男生' : '女生'}，属于$archetype气质。',
+      gender: npcGender,
       sexOrientation: sexOrientation,
       mood: roll(40, 70),
       affection: roll(5, 15),
@@ -1092,7 +1112,13 @@ mixin GameRelationsMixin on GameProviderBase {
     final currentDay = worldState.time.absoluteDayIndex;
     final candidates = npcRegistry.values.where((n) {
       if (!n.isAlive || n.affection < Balance.confessionMinAffection || n.confessed) return false;
-      if (n.sexOrientation != null && n.sexOrientation != p.sexOrientation) {
+      // 取向双向校验：NPC 喜欢玩家性别 且 玩家喜欢 NPC 性别（详见 NPC.orientationMatches）
+      if (!NPC.orientationMatches(
+        npcGender: n.gender,
+        npcOrientation: n.sexOrientation,
+        playerGender: p.gender,
+        playerOrientation: p.sexOrientation,
+      )) {
         return false;
       }
       // 检查关系阶段
@@ -1410,7 +1436,9 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   void _checkTimeMasterAchievement() {
-    final startYear = 1991;
+    // 修复：起始年份必须取自当前时代的 EraDef，不能硬编码 1991。
+    // 旧实现导致 1892 时代永远无法解锁（年份差为负）、2020 时代开局即解锁。
+    final startYear = eraDefByEra(appProvider.era).startYear;
     final currentYear = worldState.time.year;
     if (currentYear - startYear >= 2) unlockAchievement('time_master');
   }

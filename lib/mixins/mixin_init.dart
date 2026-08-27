@@ -473,6 +473,7 @@ mixin GameInitMixin on GameProviderBase {
         isCanon: true,
         personality: List.of(seed.personality),
         appearance: seed.appearance,
+        gender: seed.gender,
         sexOrientation: seed.sexOrientation,
         giftPrefs: Map.of(seed.giftPrefs),
         personalGoal: seed.personalGoal,
