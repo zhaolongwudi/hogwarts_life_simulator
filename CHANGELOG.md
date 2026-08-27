@@ -5,6 +5,17 @@
 
 ---
 
+### v2.2.3 — 2026-08-27
+
+**📋 变更说明**
+fix(crash): story_text_renderer substring越界崩溃
+
+RangeError (end): Invalid value: Not in inclusive range 564..675: 563
+堆栈指向 _tokenize L537（现在L569附近）:
+  text.substring(seg.speakerStart, seg.nameEnd)
+
+根因（多层）:
+
 ### v2.2.2 — 2026-08-26
 
 **📋 变更说明**
