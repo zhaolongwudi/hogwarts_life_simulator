@@ -3,8 +3,11 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../../models/world_state.dart';
+import '../../models/npc.dart';
 import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
+import '../../utils/ui_helpers.dart';
+import '../../widgets/narrative_visuals.dart';
 import '../../mixins/mixin_response.dart';
 
 class NarrativeTab extends StatefulWidget {
@@ -331,80 +334,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
     };
   }
   Widget _buildHeaderCard(String? timestamp, String? location) {
-    final dividerColor = const Color(0xFF30363D);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C232D),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD3A625), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.55),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: const Color(0xFFD3A625).withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (timestamp != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-              child: Row(
-                children: [
-                  Icon(Icons.access_time_outlined, color: const Color(0xFFD3A625), size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      timestamp,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFF8F6EE),
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (timestamp != null && location != null)
-            Divider(
-              height: 1,
-              color: dividerColor.withAlpha(40),
-              indent: 14,
-              endIndent: 14,
-            ),
-          if (location != null)
-            Padding(
-              padding: EdgeInsets.fromLTRB(14, timestamp != null ? 2 : 10, 14, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.room_outlined, color: Color(0xFF56D364), size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      location,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFE8FBEC),
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SceneIllustrationBanner(
+        location: location,
+        timestamp: timestamp,
       ),
     );
   }
@@ -956,6 +890,72 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildBodyCard(String body) {
+    final gp = context.read<GameProvider>();
+    final segments = StoryTextRenderer.splitIntoSegments(body);
+
+    // 分段失败（全空）时回退到原有整段渲染
+    if (segments.isEmpty) {
+      return _buildPlainBodyCard(body);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < segments.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            if (segments[i].isDialogue)
+              _buildDialogueSegment(gp, segments[i])
+            else
+              RichText(
+                text: TextSpan(
+                  children: StoryTextRenderer.parse(segments[i].text),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 对话段：头像 + 气泡。说话人解析到 NPC 时用其头像与学院色。
+  Widget _buildDialogueSegment(GameProvider gp, NarrativeSegment seg) {
+    final npc = _resolveNpcBySpeaker(gp, seg.speaker);
+    final houseColor = npc != null
+        ? UiHelpers.getHouseColorBright(npc.house)
+        : const Color(0xFFD3A625);
+    return DialogueBubble(
+      speaker: seg.speaker,
+      mood: seg.mood,
+      text: seg.text,
+      npcId: npc?.id,
+      houseColor: houseColor,
+    );
+  }
+
+  /// 按说话人名字在 NPC 注册表中找最佳匹配（复用 NPC.nameMatchScore）。
+  NPC? _resolveNpcBySpeaker(GameProvider gp, String speaker) {
+    if (speaker.isEmpty || gp.npcRegistry.isEmpty) return null;
+    NPC? best;
+    int bestScore = 0;
+    for (final npc in gp.npcRegistry.values) {
+      final score = npc.nameMatchScore(speaker);
+      if (score > bestScore) {
+        bestScore = score;
+        best = npc;
+      }
+    }
+    return best;
+  }
+
+  /// 原有整段渲染（无对话分段时的回退）
+  Widget _buildPlainBodyCard(String body) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

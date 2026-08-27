@@ -18,6 +18,23 @@ class UiHelpers {
     }
   }
 
+  /// 学院色（亮色版）：深色主题下文字/头像边框可读性更好的学院色。
+  /// 深色学院（斯莱特林绿/拉文克劳蓝）提亮，其余保持品牌色。
+  static Color getHouseColorBright(String house) {
+    switch (house.toLowerCase()) {
+      case 'gryffindor':
+        return const Color(0xFFD3A625); // 金红 → 金色（深红在暗底太暗）
+      case 'slytherin':
+        return const Color(0xFF4CAF7D); // 深绿 → 亮绿
+      case 'ravenclaw':
+        return const Color(0xFF5B8DEF); // 深蓝 → 亮蓝
+      case 'hufflepuff':
+        return const Color(0xFFECB939);
+      default:
+        return const Color(0xFFD3A625);
+    }
+  }
+
   static String getHouseLabel(String house) {
     switch (house.toLowerCase()) {
       case 'gryffindor':

@@ -1027,6 +1027,100 @@ class StoryTextRenderer {
     };
   }
 
+  // ==================== 对话气泡支持：叙事分段 ====================
+
+  /// 把剧情正文切分为「叙述段 / 对话行」混合序列，供气泡式 UI 渲染。
+  /// 对话行识别复用 [parse] 的冒号说话人检测（_findDialogueColon +
+  /// _validSpeakerNameEnd/Relaxed），与正文高亮保持同一套判定口径。
+  static List<NarrativeSegment> splitIntoSegments(String text) {
+    if (text.isEmpty) return const [];
+    var cleaned = _stripOutlineLabels(text);
+    cleaned = _stripChoiceBlocks(cleaned);
+    cleaned = _preStripChoices(cleaned);
+
+    final segments = <NarrativeSegment>[];
+    final narrationBuffer = StringBuffer();
+
+    void flushNarration() {
+      final t = narrationBuffer.toString().trim();
+      if (t.isNotEmpty) segments.add(NarrativeSegment.narration(t));
+      narrationBuffer.clear();
+    }
+
+    for (final line in cleaned.split('\n')) {
+      final dialogue = _extractLineDialogue(line);
+      if (dialogue != null) {
+        flushNarration();
+        segments.add(NarrativeSegment.dialogue(
+          speaker: dialogue.speaker,
+          mood: dialogue.mood,
+          text: dialogue.content,
+        ));
+      } else {
+        narrationBuffer.writeln(line);
+      }
+    }
+    flushNarration();
+    return segments;
+  }
+
+  /// 单行对话提取：命中「说话人：台词」返回 (干净名字, 神态, 台词内容)，否则 null。
+  static ({String speaker, String mood, String content})? _extractLineDialogue(String line) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) return null;
+    // 结构化标签行（【好感度变化】等）不当对话
+    if (trimmed.startsWith('【')) return null;
+
+    final k = _findDialogueColon(line, 0, line.length);
+    if (k < 0) return null;
+
+    final afterColon = (k + 1 <= line.length) ? line.substring(k + 1).trim() : '';
+    if (afterColon.isEmpty) return null;
+    // 好感度裸行（莉莉：+5）不是对话
+    if (RegExp(r'^[+-]\d').hasMatch(afterColon)) return null;
+
+    final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
+    final speakerStartIdx = _speakerStart(line, 0, k);
+    final safeStart = (speakerStartIdx < 0 || speakerStartIdx > k) ? 0 : speakerStartIdx;
+    final raw = line.substring(safeStart, k).trim();
+    final nameEnd = quoteFollow
+        ? _validSpeakerNameEndRelaxed(raw)
+        : _validSpeakerNameEnd(raw);
+    if (nameEnd < 0) return null;
+    final safeNameEnd = safeStart + nameEnd;
+    if (safeNameEnd < safeStart || safeNameEnd > k) return null;
+
+    final fullSpeaker = line.substring(safeStart, safeNameEnd).trim();
+    if (fullSpeaker.isEmpty) return null;
+
+    // 拆出尾部括号神态：德拉科（冷笑） → 德拉科 + （冷笑）
+    final moodMatch = RegExp(r'([（(][^（）()]*[）)])\s*$').firstMatch(fullSpeaker);
+    final mood = moodMatch?.group(1) ?? '';
+    final speaker = (moodMatch != null
+            ? fullSpeaker.substring(0, moodMatch.start)
+            : fullSpeaker)
+        .trim();
+    if (speaker.isEmpty) return null;
+
+    final content = _stripOuterQuotes(afterColon);
+    if (content.isEmpty) return null;
+    return (speaker: speaker, mood: mood, content: content);
+  }
+
+  /// 剥掉台词最外层的成对引号（「」/“”/『』/""/''）
+  static String _stripOuterQuotes(String s) {
+    var t = s.trim();
+    const pairs = [('「', '」'), ('“', '”'), ('『', '』'), ('"', '"'), ('‘', '’')];
+    for (final (open, close) in pairs) {
+      if (t.length >= open.length + close.length &&
+          t.startsWith(open) &&
+          t.endsWith(close)) {
+        t = t.substring(open.length, t.length - close.length).trim();
+      }
+    }
+    return t;
+  }
+
   static List<_Token> _splitNarration(String text) {
     final tokens = <_Token>[];
     final replacements = <_Replacement>[];
@@ -1163,4 +1257,30 @@ class _LocationToken extends _Token {
 
 class _ItemToken extends _Token {
   const _ItemToken(super.text);
+}
+
+/// 叙事分段：叙述段（普通正文）或对话行（说话人+台词）。
+/// 供气泡式剧情渲染使用。
+class NarrativeSegment {
+  final bool isDialogue;
+
+  /// 对话说话人（isDialogue=true 时有效，已剥离神态括号）
+  final String speaker;
+
+  /// 说话人神态（如「（冷笑）」），可能为空
+  final String mood;
+
+  /// 正文内容（叙述段全文 / 台词内容）
+  final String text;
+
+  const NarrativeSegment.narration(this.text)
+      : isDialogue = false,
+        speaker = '',
+        mood = '';
+
+  const NarrativeSegment.dialogue({
+    required this.speaker,
+    required this.text,
+    this.mood = '',
+  }) : isDialogue = true;
 }
