@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../providers/app_provider.dart';
 
+/// AI 提供商配置卡片（可折叠）。
+/// 收起态：提供商名称 + 一句话定位 + 当前模型 + 配置状态，一眼总览。
+/// 展开态：完整说明 + API Key（可切换明文）+ 模型预设 + 自定义模型 + 连接测试。
+/// 未配置 Key 的提供商默认展开，引导用户先完成配置。
 class SettingsProviderCard extends StatefulWidget {
   final AiProvider provider;
   final AppProvider appProvider;
@@ -32,6 +36,28 @@ class SettingsProviderCard extends StatefulWidget {
 }
 
 class _SettingsProviderCardState extends State<SettingsProviderCard> {
+  late bool _expanded;
+  bool _obscureKey = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // 未配置的提供商默认展开，引导填写；已配置的收起保持页面整洁
+    _expanded = !widget.appProvider.hasKey(widget.provider);
+    // 模型输入变化时同步刷新收起态头部显示的"当前模型"
+    widget.modelController.addListener(_onModelTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.modelController.removeListener(_onModelTextChanged);
+    super.dispose();
+  }
+
+  void _onModelTextChanged() {
+    if (mounted) setState(() {});
+  }
+
   String defaultBaseUrl(AiProvider p) {
     switch (p) {
       case AiProvider.deepseek:
@@ -62,6 +88,40 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
         return 'Agnes';
       case AiProvider.sensenova:
         return 'SenseNova';
+    }
+  }
+
+  /// 一句话定位（收起态显示，帮助用户快速区分三家）
+  String _tagline(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return '付费 · 高质量长文本';
+      case AiProvider.agnes:
+        return '免费 · 响应最快';
+      case AiProvider.sensenova:
+        return '免费 · 剧情质量最佳';
+    }
+  }
+
+  Color _providerColor(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return const Color(0xFF4D6BFE);
+      case AiProvider.agnes:
+        return const Color(0xFF10B981);
+      case AiProvider.sensenova:
+        return const Color(0xFFFF8A3D);
+    }
+  }
+
+  IconData _providerIcon(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return Icons.water_outlined;
+      case AiProvider.agnes:
+        return Icons.bolt_outlined;
+      case AiProvider.sensenova:
+        return Icons.auto_awesome_outlined;
     }
   }
 
@@ -131,60 +191,136 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// 收起/展开共用的头部行
+  Widget _buildHeader(bool hasKey) {
     final p = widget.provider;
-    final hasKey = widget.appProvider.hasKey(p);
+    final accent = _providerColor(p);
+    final customModel = widget.modelController.text.trim();
+    final displayModel = customModel.isEmpty ? defaultModel(p) : customModel;
+    final isDefaultModel = displayModel == defaultModel(p);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // 提供商标识
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+                border: Border.all(color: accent.withValues(alpha: 0.4)),
+              ),
+              child: Icon(_providerIcon(p), size: 18, color: accent),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        providerNameLabel(p),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _tagline(p),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  // 当前使用的模型
+                  Row(
+                    children: [
+                      const Icon(Icons.memory_outlined, size: 12, color: Color(0xFF6B7280)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          displayModel,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDefaultModel ? const Color(0xFF6B7280) : accent,
+                          ),
+                        ),
+                      ),
+                      if (isDefaultModel)
+                        const Text('默认', style: TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 配置状态徽章
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: hasKey
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasKey
+                      ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                      : Colors.orange.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Text(
+                hasKey ? '已配置' : '未配置',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: hasKey ? const Color(0xFF10B981) : Colors.orange,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              _expanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+              color: const Color(0xFF8B949E),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 展开态：完整配置区
+  Widget _buildExpandedBody(bool hasKey) {
+    final p = widget.provider;
     final desc = kProviderDescriptions[p] ?? '';
     final testResult = widget.testResult;
     final testSuccess = widget.testSuccess;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: hasKey ? const Color(0xFF10B981) : const Color(0xFF374151),
-          width: hasKey ? 1.5 : 1,
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  providerNameLabel(p),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-              ),
-              if (hasKey)
-                const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, size: 14, color: Color(0xFF10B981)),
-                    SizedBox(width: 4),
-                    Text('已配置', style: TextStyle(fontSize: 11, color: Color(0xFF10B981))),
-                  ],
-                )
-              else
-                const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline, size: 14, color: Colors.orange),
-                    SizedBox(width: 4),
-                    Text('未配置', style: TextStyle(fontSize: 11, color: Colors.orange)),
-                  ],
-                ),
-            ],
+          // 详细说明
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C232D),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(desc,
+                style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11.5, height: 1.45)),
           ),
-          const SizedBox(height: 4),
-          Text(desc,
-              style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11.5, height: 1.4)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Text('API Key',
               style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
           const SizedBox(height: 4),
@@ -194,7 +330,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               Expanded(
                 child: TextField(
                   controller: widget.keyController,
-                  obscureText: true,
+                  obscureText: _obscureKey,
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'sk-...',
@@ -202,6 +338,15 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                     helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
                     border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureKey ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 18,
+                        color: const Color(0xFF8B949E),
+                      ),
+                      onPressed: () => setState(() => _obscureKey = !_obscureKey),
+                    ),
+                    suffixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 0),
                   ),
                 ),
               ),
@@ -293,6 +438,50 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 ],
               ),
             ),
+          ],
+          if (!hasKey) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.tips_and_updates_outlined, size: 13, color: Color(0xFFD3A625)),
+                SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '填入 API Key 并点击「保存」后，该提供商才会出现在场景路由的可选列表中',
+                    style: TextStyle(fontSize: 10.5, color: Color(0xFFD3A625)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasKey = widget.appProvider.hasKey(widget.provider);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252C36),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasKey
+              ? const Color(0xFF10B981).withValues(alpha: 0.55)
+              : const Color(0xFF374151),
+          width: hasKey ? 1.3 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(hasKey),
+          if (_expanded) ...[
+            const Divider(height: 1, color: Color(0xFF30363D)),
+            _buildExpandedBody(hasKey),
           ],
         ],
       ),
