@@ -281,9 +281,45 @@ class GameProvider extends GameProviderBase
       npc.recentEvents.insert(0, eventText);
       if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
     }
+    // ====== 长线记忆写入：好感显著变化时更新 T2 关系锚点 ======
+    // 只有 |change| >= 5 的显著变化才写入，避免日常 +1/+2 刷屏记忆库。
+    // 这是"数百回合后 AI 仍记得关系演变"的关键管线。
+    if (actualChange.abs() >= 5) {
+      _recordRelationshipMoment(npc, actualChange, reason);
+    }
     checkAffectionAchievements(npc);
     notifyListeners();
     autoSave();
+  }
+
+  /// 好感显著变化时写入 T2 关系锚点（关键转折点）
+  void _recordRelationshipMoment(NPC npc, int change, String? reason) {
+    final ts = worldState.time.format();
+    final moment = '$ts 好感${change > 0 ? '+' : ''}$change（${reason ?? '互动'}），当前好感${npc.affection}';
+    // 根据好感值推断关系阶段
+    String stage;
+    if (npc.affection <= -30) {
+      stage = '敌对';
+    } else if (npc.affection < 0) {
+      stage = '冷淡';
+    } else if (npc.affection < 20) {
+      stage = '认识';
+    } else if (npc.affection < 50) {
+      stage = '朋友';
+    } else if (npc.affection < 70) {
+      stage = '好友';
+    } else if (npc.affection < 85) {
+      stage = '亲密';
+    } else {
+      stage = '深爱';
+    }
+    memory = memory.upsertRelationshipAnchor(NpcRelationshipAnchor(
+      npcId: npc.id,
+      firstMeeting: '', // 空=保留已有初见记录
+      keyMoments: [moment],
+      currentStage: stage,
+      lastUpdatedTurn: turnCount,
+    ));
   }
 
   /// 恋爱链路接线：好感跨过阈值时推进关系阶段（陌生→好感→暧昧）。

@@ -721,12 +721,127 @@ $kNarrativeWritingRules
       if (rawSummary.length > hardLimit) {
         rawSummary = '${rawSummary.substring(0, hardLimit)}…(已截短)';
       }
-      narrativeSummary = rawSummary;
+
+      // ====== 长线记忆提取：从摘要响应中解析结构化块写入 LongTermMemory ======
+      // 这是记忆管线的核心——复用摘要调用（零额外 API），让数百回合后
+      // AI 仍然拥有结构化的核心事实、未完结事项和世界事件。
+      _extractMemoryFromSummary(rawSummary);
+
+      // 从 narrativeSummary 中剥离结构化块（它们已写入 LongTermMemory，
+      // 不需要在 T4 自然语言摘要中重复，避免 token 浪费）
+      narrativeSummary = _stripStructuredBlocks(rawSummary);
       pendingSummary = '';
       debugPrint('✅ 剧情摘要已更新 (${narrativeSummary.length}字，上限=$hardLimit)');
     } catch (e) {
       debugPrint('❌ 摘要生成失败: $e');
     }
+  }
+
+  /// 从摘要响应中提取结构化记忆块，写入 LongTermMemory
+  void _extractMemoryFromSummary(String rawSummary) {
+    final ts = worldState.time.format();
+
+    // 1. 提取【核心事实】→ T0 keyFacts
+    final factsBlock = _extractBlock(rawSummary, '核心事实');
+    if (factsBlock.isNotEmpty) {
+      final facts = factsBlock
+          .split('\n')
+          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .where((l) => l.isNotEmpty && l != '无' && l.length > 5)
+          .take(10) // 每次摘要最多提取10条，防止爆炸
+          .toList();
+      for (final fact in facts) {
+        // 用事实内容的前20字做去重 id
+        final factId = 'auto_${fact.hashCode.toRadixString(36)}';
+        memory = memory.addKeyFact(KeyFactRecord(
+          id: factId,
+          fact: fact.length > 80 ? fact.substring(0, 80) : fact,
+          importance: 7, // 摘要提取的事实默认重要度7（低于身份级9，高于日常5）
+          timestamp: ts,
+          category: 'auto_extracted',
+        ));
+      }
+      if (facts.isNotEmpty) {
+        debugPrint('📝 记忆提取：${facts.length}条核心事实');
+      }
+    }
+
+    // 2. 提取【伏笔】→ T1 openLoops
+    final loopsBlock = _extractBlock(rawSummary, '伏笔');
+    if (loopsBlock.isNotEmpty) {
+      final loops = loopsBlock
+          .split(RegExp(r'[;；\n]'))
+          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .where((l) => l.isNotEmpty && l != '无' && l.length > 5)
+          .take(8)
+          .toList();
+      for (final loop in loops) {
+        final loopId = 'auto_loop_${loop.hashCode.toRadixString(36)}';
+        // 只添加新的（不覆盖已有的）
+        final existing = memory.openLoops.where((l) => l.id == loopId);
+        if (existing.isEmpty) {
+          memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
+            id: loopId,
+            description: loop.length > 100 ? loop.substring(0, 100) : loop,
+            status: 'open',
+            importance: 6,
+            openedAt: ts,
+            loopType: 'foreshadow',
+          ));
+        }
+      }
+      if (loops.isNotEmpty) {
+        debugPrint('📝 记忆提取：${loops.length}条伏笔/承诺');
+      }
+    }
+
+    // 3. 提取【世界事件】→ T3 worldEvents
+    final eventsBlock = _extractBlock(rawSummary, '世界事件');
+    if (eventsBlock.isNotEmpty) {
+      final events = eventsBlock
+          .split('\n')
+          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .where((l) => l.isNotEmpty && l != '无' && l.contains('|'))
+          .take(6)
+          .toList();
+      for (final ev in events) {
+        final parts = ev.split('|');
+        if (parts.length < 2) continue;
+        final title = parts[0].trim();
+        final desc = parts.sublist(1).join('|').trim();
+        if (title.isEmpty || desc.isEmpty) continue;
+        final evId = 'auto_ev_${title.hashCode.toRadixString(36)}';
+        memory = memory.addWorldEvent(WorldEventRecord(
+          id: evId,
+          timestamp: ts,
+          title: title.length > 12 ? title.substring(0, 12) : title,
+          description: desc.length > 60 ? desc.substring(0, 60) : desc,
+          importance: 6,
+          category: 'wizarding',
+        ));
+      }
+      if (events.isNotEmpty) {
+        debugPrint('📝 记忆提取：${events.length}条世界事件');
+      }
+    }
+  }
+
+  /// 提取摘要响应中指定块的内容
+  String _extractBlock(String text, String blockName) {
+    final pattern = RegExp('【$blockName】\\s*\\n?([\\s\\S]*?)(?=【|\$)');
+    final match = pattern.firstMatch(text);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  /// 从摘要中剥离结构化块（已写入 LongTermMemory，不需要在 T4 中重复）
+  String _stripStructuredBlocks(String text) {
+    var cleaned = text;
+    // 剥离【关系】【伏笔】【核心事实】【世界事件】块
+    cleaned = cleaned.replaceAll(RegExp(r'【关系】[\s\S]*?(?=【|$)'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'【伏笔】[\s\S]*?(?=【|$)'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'【核心事实】[\s\S]*?(?=【|$)'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'【世界事件】[\s\S]*?(?=【|$)'), '');
+    return cleaned.trim();
   }
 
   /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）

@@ -521,7 +521,6 @@ mixin GameInitMixin on GameProviderBase {
   }
 
   /// 显式标记某 NPC 已登场/被玩家认识（并记录认识事件）
-
   void markNpcIntroduced(NPC npc) {
     if (npc.introduced) return;
     npc.introduced = true;
@@ -531,6 +530,26 @@ mixin GameInitMixin on GameProviderBase {
       if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
     }
     worldState.addNarrativeEvent('👤 你结识了 ${npc.name}', turn: turnCount);
+
+    // ====== 长线记忆写入：T2 关系锚点 + T3 世界事件 ======
+    // 这是记忆管线的关键入口——NPC 登场时写入结构化关系锚点，
+    // 确保数百回合后 AI 仍然知道玩家认识谁、关系如何。
+    final ts = worldState.time.format();
+    memory = memory.upsertRelationshipAnchor(NpcRelationshipAnchor(
+      npcId: npc.id,
+      firstMeeting: '$ts 初次见面',
+      currentStage: '认识',
+      lastUpdatedTurn: turnCount,
+    ));
+    memory = memory.addWorldEvent(WorldEventRecord(
+      id: 'meet_${npc.id}_$turnCount',
+      timestamp: ts,
+      title: '结识${npc.name}',
+      description: '主角初次结识了${npc.name}',
+      importance: 5,
+      category: 'personal',
+      npcIds: {npc.id},
+    ));
   }
 
   static const List<String> _signoffKeywords = [

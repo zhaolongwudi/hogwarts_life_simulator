@@ -5,6 +5,7 @@ import 'package:hogwarts_life_simulator/data/era_data.dart';
 import 'package:hogwarts_life_simulator/data/npc_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
+import 'package:hogwarts_life_simulator/models/long_term_memory.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/services/rate_limiter.dart';
@@ -262,6 +263,133 @@ void main() {
           expect(w, 5);
         }
       }
+    });
+  });
+
+  // ==================== 长线记忆管线（LongTermMemory 写入语义） ====================
+  group('LongTermMemory 写入管线', () {
+    test('addKeyFact 同 id 去重且高重要度覆盖', () {
+      var mem = LongTermMemory();
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'f1', fact: '旧事实', importance: 5, timestamp: 't1',
+      ));
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'f1', fact: '新事实', importance: 7, timestamp: 't2',
+      ));
+      expect(mem.keyFacts.length, 1);
+      expect(mem.keyFacts.first.fact, '新事实');
+      expect(mem.keyFacts.first.importance, 7);
+    });
+
+    test('addKeyFact 超上限时淘汰低重要度但保留 importance>=8', () {
+      var mem = LongTermMemory();
+      // 写入 1 条核心事实（importance 9）+ 5 条普通事实
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'core', fact: '身份级事实', importance: 9, timestamp: 't',
+      ));
+      for (int i = 0; i < 5; i++) {
+        mem = mem.addKeyFact(KeyFactRecord(
+          id: 'n$i', fact: '普通事实$i', importance: 3, timestamp: 't',
+        ));
+      }
+      // 上限设为 4：应淘汰普通事实，但核心事实必须保留
+      mem = LongTermMemory(
+        keyFacts: mem.keyFacts,
+        openLoops: mem.openLoops,
+        relationshipAnchors: mem.relationshipAnchors,
+        worldEvents: mem.worldEvents,
+      );
+      final trimmed = mem.addKeyFact(KeyFactRecord(
+        id: 'trigger', fact: '触发淘汰', importance: 4, timestamp: 't',
+      ), maxKeyFacts: 4);
+      expect(trimmed.keyFacts.any((f) => f.id == 'core'), true,
+          reason: 'importance>=8 的核心事实永不被淘汰');
+      expect(trimmed.keyFacts.length, lessThanOrEqualTo(4));
+    });
+
+    test('upsertRelationshipAnchor 合并 keyMoments 且保留初见', () {
+      var mem = LongTermMemory();
+      mem = mem.upsertRelationshipAnchor(NpcRelationshipAnchor(
+        npcId: 'hermione',
+        firstMeeting: '1991年9月1日 特快上初见',
+        currentStage: '认识',
+        lastUpdatedTurn: 1,
+      ));
+      mem = mem.upsertRelationshipAnchor(NpcRelationshipAnchor(
+        npcId: 'hermione',
+        firstMeeting: '', // 空=不覆盖初见
+        keyMoments: ['好感+10（共同对抗巨怪）'],
+        currentStage: '朋友',
+        lastUpdatedTurn: 5,
+      ));
+      final anchor = mem.relationshipAnchors['hermione']!;
+      expect(anchor.firstMeeting, '1991年9月1日 特快上初见',
+          reason: '初见记录永不被空值覆盖');
+      expect(anchor.keyMoments, contains('好感+10（共同对抗巨怪）'));
+      expect(anchor.currentStage, '朋友');
+      expect(anchor.lastUpdatedTurn, 5);
+    });
+
+    test('addOrUpdateOpenLoop 可关闭委托事项', () {
+      var mem = LongTermMemory();
+      mem = mem.addOrUpdateOpenLoop(OpenLoopRecord(
+        id: 'quest_q1', description: '接取委托', status: 'open',
+        importance: 5, openedAt: 't1', loopType: 'quest',
+      ));
+      mem = mem.addOrUpdateOpenLoop(OpenLoopRecord(
+        id: 'quest_q1', description: '完成委托', status: 'done',
+        importance: 5, openedAt: 't1', closedAt: 't2', loopType: 'quest',
+      ));
+      expect(mem.openLoops.length, 1);
+      expect(mem.openLoops.first.status, 'done');
+    });
+
+    test('addWorldEvent 去重且超上限淘汰低分事件', () {
+      var mem = LongTermMemory();
+      mem = mem.addWorldEvent(WorldEventRecord(
+        id: 'ev_major', timestamp: '📅 1991年10月31日',
+        title: '巨怪事件', description: '万圣节巨怪闯入城堡',
+        importance: 9, category: 'hogwarts',
+      ));
+      for (int i = 0; i < 5; i++) {
+        mem = mem.addWorldEvent(WorldEventRecord(
+          id: 'ev$i', timestamp: '📅 1991年9月${i + 1}日',
+          title: '琐事$i', description: '日常事件$i',
+          importance: 2, category: 'personal',
+        ));
+      }
+      final trimmed = mem.addWorldEvent(WorldEventRecord(
+        id: 'ev_trigger', timestamp: '📅 1991年12月25日',
+        title: '触发', description: '触发淘汰',
+        importance: 3, category: 'personal',
+      ), maxEvents: 4);
+      expect(trimmed.worldEvents.any((e) => e.id == 'ev_major'), true,
+          reason: 'importance>=8 的重大事件永不被淘汰');
+      expect(trimmed.worldEvents.length, lessThanOrEqualTo(4));
+    });
+
+    test('记忆序列化往返不丢失', () {
+      var mem = LongTermMemory();
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'f1', fact: '主角是纯血统', importance: 9, timestamp: 't',
+        category: 'identity', npcIds: {'dumbledore'},
+      ));
+      mem = mem.upsertRelationshipAnchor(NpcRelationshipAnchor(
+        npcId: 'ron', firstMeeting: '特快上初见',
+        keyMoments: ['分享巧克力蛙'], currentStage: '好友',
+        lastUpdatedTurn: 10,
+      ));
+      mem = mem.addWorldEvent(WorldEventRecord(
+        id: 'ev1', timestamp: '📅 1991年9月1日',
+        title: '入学', description: '主角入学霍格沃茨',
+        importance: 8, category: 'personal',
+        consequences: ['被分入格兰芬多'],
+      ));
+      final restored = LongTermMemory.fromJson(mem.toJson());
+      expect(restored.keyFacts.length, 1);
+      expect(restored.keyFacts.first.npcIds, contains('dumbledore'));
+      expect(restored.relationshipAnchors['ron']!.currentStage, '好友');
+      expect(restored.worldEvents.first.consequences, contains('被分入格兰芬多'));
     });
   });
 

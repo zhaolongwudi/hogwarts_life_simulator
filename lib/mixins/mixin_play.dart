@@ -7,6 +7,7 @@ import '../data/pet_narrative_config.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
+import '../models/long_term_memory.dart';
 import '../providers/game_provider_base.dart';
 
 /// 新玩法 Mixin（v1.10）：物品使用 / 宠物互动 / 装备穿戴 / 魁地奇 / 决斗 /
@@ -898,6 +899,17 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     p.quests.add(QuestRecord.fromTemplate(t, week: gameWeek));
+    // ====== 长线记忆写入：T1 未完结事项（委托接取） ======
+    // 委托是"承诺/约定"类未完结事项，必须写入 T1 防止 AI 数百回合后遗忘。
+    final ts = worldState.time.format();
+    memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
+      id: 'quest_${t.id}',
+      description: '接取委托「${t.title}」：需收集${t.target}×${t.targetCount}，奖励${t.rewardGalleons}加隆+${t.rewardHousePoints}分',
+      status: 'open',
+      importance: 5,
+      openedAt: ts,
+      loopType: 'quest',
+    ));
     _finishLocal('【已接取委托】\n${t.title}\n\n${t.desc}\n\n'
         '目标：${t.target} ×${t.targetCount} ｜ 奖励：${t.rewardGalleons}加隆 + ${t.rewardHousePoints}分\n\n'
         '完成后输入 /委托 交付 领取奖励。');
@@ -925,6 +937,24 @@ mixin GamePlayMixin on GameProviderBase {
     p.houseCupPoints += q.rewardHousePoints;
     p.playerReputation.add('academic', 2);
     p.playerReputation.add('moral', 3);
+    // ====== 长线记忆写入：关闭 T1 委托事项 + T3 世界事件 ======
+    memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
+      id: 'quest_${q.templateId}',
+      description: '完成委托「${q.title}」：收集${q.target}×${q.targetCount}，获得${q.rewardGalleons}加隆+${q.rewardHousePoints}分',
+      status: 'done',
+      importance: 5,
+      openedAt: worldState.time.format(),
+      closedAt: worldState.time.format(),
+      loopType: 'quest',
+    ));
+    memory = memory.addWorldEvent(WorldEventRecord(
+      id: 'quest_done_${q.templateId}_$turnCount',
+      timestamp: worldState.time.format(),
+      title: '完成委托',
+      description: '主角完成委托「${q.title}」，获得${q.rewardGalleons}加隆与${q.rewardHousePoints}学院分',
+      importance: 4,
+      category: 'personal',
+    ));
     final buf = StringBuffer('【委托交付 · ${q.title}】\n');
     buf.writeln('你带着${q.target}（${q.progress}/${q.targetCount}）交回委托板，负责的老巫师仔细清点后露出赞许的笑容。');
     buf.writeln('\n奖励：${q.rewardGalleons} 加隆 · 学院杯 +${q.rewardHousePoints} 分 · 学术声望 +2 · 道德声望 +3');
