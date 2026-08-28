@@ -14,10 +14,6 @@ InventoryItem? findInInventory(List<InventoryItem> inventory, String name) {
 
 bool hasItem(List<InventoryItem> inventory, String name) =>
     findInInventory(inventory, name) != null;
-
-int countItem(List<InventoryItem> inventory, String name) =>
-    inventory.where((e) => e.name == name).length;
-
 /// 消耗一件，成功返回 true。
 bool removeOneItem(List<InventoryItem> inventory, String name) {
   final idx = inventory.indexWhere((e) => e.name == name);

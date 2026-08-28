@@ -118,20 +118,6 @@ const List<WandData> wands = [
     suitType: '天赋与内心强大',
   ),
 ];
-
-/// 奥利凡德推荐魔杖（含说明）
-Map<String, dynamic> describeWandForPlayer({
-  required String playerName,
-  required List<String> personalityTraits,
-}) {
-  final traitText = personalityTraits.join('、');
-  return {
-    'narrative':
-        '奥利凡德先生用他那双近乎透明的眼睛凝视着你，片刻后低语："有意思……很是有意思。"他在一排排积满灰尘的魔杖盒前缓缓踱步，抽出一根又一根，最终挑中其中一根——它在触及你指尖的瞬间，迸发出一簇暖金色的火花。',
-    'hint': '结合你的性格（$traitText），可依据杖芯特性与搭配选择魔杖。',
-  };
-}
-
 /// 从设定的著名魔杖搭配中查找
 String? canonWandFor(String npcName) {
   const map = {

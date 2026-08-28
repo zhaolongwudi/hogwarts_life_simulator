@@ -56,11 +56,6 @@ const Map<AiScene, String> kSceneLabels = {
   AiScene.npcChat: 'NPC独立聊天',
   AiScene.choice: '选项独立生成',
 };
-
-List<AiProvider> get allProviders => AiProvider.values;
-
-String providerName(AiProvider p) => p.name;
-
 class AiConfig {
   final AiProvider provider;
   final String model;
@@ -148,14 +143,8 @@ class AppProvider extends ChangeNotifier {
   DisplayMode get displayMode => _displayMode;
   IdentityMode get identityMode => _identityMode;
   Era get era => _era;
-  AiProvider get aiProvider => _aiProvider;
   bool get aiDebugLogEnabled => _aiDebugLogEnabled;
-  Map<String, List<String>> get apiKeys => Map.unmodifiable(_apiKeys);
-  Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
   Map<String, String> get models => Map.unmodifiable(_models);
-  Map<String, String> get providerModels => Map.unmodifiable(_models);
-  Map<AiScene, String> get sceneRoute => Map.unmodifiable(_sceneRoute);
-
   String providerModel(AiProvider p) => _models[p.name] ?? _defaultModel(p);
 
   AiProvider providerForScene(AiScene scene) {
@@ -282,20 +271,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ========== 多 Key 支持 ==========
-
-  /// 添加一个 API Key 到指定提供商
-  Future<void> addApiKeyFor(AiProvider provider, String key) async {
-    if (key.trim().isEmpty) return;
-    final existing = keysForProvider(provider);
-    final newList = [...existing, key.trim()];
-    _apiKeys[provider.name] = newList;
-    await KeyStore.instance.writeKeys(provider.name, newList);
-    if (provider == _aiProvider && newList.length == 1) {
-      _apiKey = newList.first;
-    }
-    notifyListeners();
-  }
-
   /// 删除指定提供商的第 index 个 API Key
   Future<void> removeApiKeyAt(AiProvider provider, int index) async {
     final existing = keysForProvider(provider);
@@ -313,39 +288,6 @@ class AppProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-  /// 保存指定提供商的 API Key（安全存储）
-  /// 注意：此方法覆盖所有 key，仅用于兼容旧版 UI。新 UI 应使用 addApiKeyFor/removeApiKeyAt
-  Future<void> saveApiKeyFor(AiProvider provider, String key) async {
-    if (key.isEmpty) {
-      _apiKeys.remove(provider.name);
-      await KeyStore.instance.deleteKey(provider.name);
-    } else {
-      _apiKeys[provider.name] = [key];
-      await KeyStore.instance.writeKeys(provider.name, [key]);
-    }
-    if (provider == _aiProvider) {
-      _apiKey = key.isEmpty ? null : key;
-    }
-    notifyListeners();
-  }
-
-
-  Future<void> setBaseUrl(String url) async {
-    if (url.trim().isEmpty) {
-      _baseUrls.remove(_aiProvider.name);
-    } else {
-      _baseUrls[_aiProvider.name] = url.trim();
-    }
-    final prefs = await SharedPreferences.getInstance();
-    if (url.trim().isEmpty) {
-      await prefs.remove('base_url_${_aiProvider.name}');
-    } else {
-      await prefs.setString('base_url_${_aiProvider.name}', url.trim());
-    }
-    notifyListeners();
-  }
-
   void setGameStarted(bool started) {
     _isGameStarted = started;
     SharedPreferences.getInstance().then((prefs) => prefs.setBool('game_started', started));
@@ -389,10 +331,6 @@ class AppProvider extends ChangeNotifier {
     await prefs.setString('model_${provider.name}', model);
     notifyListeners();
   }
-
-  List<String> availableModelsFor(AiProvider provider) =>
-      defaultsForProvider(provider.name).models;
-
   /// 免费模型（官方提供免费额度 / 极低资费）
   List<String> freeModelsFor(AiProvider provider) {
     switch (provider) {
@@ -423,21 +361,6 @@ class AppProvider extends ChangeNotifier {
         return ['sensenova-u1-fast'];
     }
   }
-
-  void clearApiKey() {
-    _apiKey = null;
-    _apiKeys.remove(_aiProvider.name);
-    _baseUrls.remove(_aiProvider.name);
-    KeyStore.instance.deleteKey(_aiProvider.name);
-    KeyStore.instance.writeKeys(_aiProvider.name, []);
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.remove('api_key');
-      prefs.remove('api_key_${_aiProvider.name}');
-      prefs.remove('base_url_${_aiProvider.name}');
-    });
-    notifyListeners();
-  }
-
   void clearApiKeyFor(AiProvider p) {
     _apiKeys.remove(p.name);
     _baseUrls.remove(p.name);

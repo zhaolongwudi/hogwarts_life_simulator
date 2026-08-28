@@ -51,29 +51,9 @@ class AiRouter {
     (_configs[cfg.provider] ??= []).add(cfg);
     (_services[cfg.provider] ??= []).add(DeepSeekService(config: cfg));
   }
-
-  /// 取消注册一个提供商的所有服务
-  void unregister(AiProvider provider) {
-    _configs.remove(provider);
-    _services.remove(provider);
-  }
-
   /// 是否存在任何可用 AI 服务。任一提供商已注册（配置了 key）即可通过 fallback 生成叙事，
   /// 不再只检查主 narrativeProvider，避免「有备用 key 却被挡死」。
   bool get hasNarrativeService => _configs.values.any((list) => list.isNotEmpty);
-
-  /// 获取所有已配置了至少一个 key 的提供商
-  List<AiProvider> get registeredProviders => _configs.keys
-      .where((p) => _configs[p]!.isNotEmpty)
-      .toList();
-
-  /// 获取指定提供商的所有服务（每个 API Key 一个）
-  List<DeepSeekService>? getServices(AiProvider provider) => _services[provider];
-
-  /// 获取指定提供商的服务数量
-  int serviceCount(AiProvider provider) =>
-      _services[provider]?.length ?? 0;
-
   Future<ChatResult> chatComplete({
     required AiScene scene,
     required String prompt,
@@ -321,18 +301,6 @@ class AiRouter {
         );
     }
   }
-
-  Future<double?> checkBalance(AiProvider provider) async {
-    final services = _services[provider];
-    if (services == null || services.isEmpty) return null;
-    // 尝试第一个 key 的余额查询
-    try {
-      return await services.first.getBalance();
-    } catch (e) {
-      return null;
-    }
-  }
-
   String getProviderLabel(AiProvider provider) {
     switch (provider) {
       case AiProvider.deepseek:

@@ -44,40 +44,6 @@ class KeyStore {
       debugPrint('⚠️ KeyStore 删除失败($provider): $e');
     }
   }
-
-  /// 读取所有已保存的 API Key（返回 provider -> key 的映射）
-  Future<Map<String, String>> readAllKeys() async {
-    try {
-      final all = await _storage.readAll();
-      final result = <String, String>{};
-      all.forEach((key, value) {
-        if (key.startsWith(_prefix)) {
-          result[key.substring(_prefix.length)] = value;
-        }
-      });
-      return result;
-    } catch (e) {
-      debugPrint('⚠️ KeyStore 批量读取失败: $e');
-      return {};
-    }
-  }
-
-  /// 删除所有 API Key
-  Future<void> deleteAll() async {
-    try {
-      final all = await _storage.readAll();
-      for (final key in all.keys) {
-        if (key.startsWith(_prefix)) {
-          await _storage.delete(key: key);
-        }
-      }
-    } catch (e) {
-      debugPrint('⚠️ KeyStore 批量删除失败: $e');
-    }
-  }
-
-  // ========== 多 Key 支持 ==========
-
   /// 读取指定提供商的所有 API Key（返回列表，按索引排序）
   Future<List<String>> readKeys(String provider) async {
     final keys = <String>[];
@@ -98,21 +64,6 @@ class KeyStore {
       await writeKey('${provider}_$i', keys[i]);
     }
   }
-
-  /// 为指定提供商追加一个 API Key
-  Future<void> addKey(String provider, String key) async {
-    final existing = await readKeys(provider);
-    await writeKeys(provider, [...existing, key]);
-  }
-
-  /// 删除指定提供商的第 index 个 API Key（从 0 开始）
-  Future<void> removeKeyAt(String provider, int index) async {
-    final existing = await readKeys(provider);
-    if (index < 0 || index >= existing.length) return;
-    existing.removeAt(index);
-    await writeKeys(provider, existing);
-  }
-
   /// 删除指定提供商的所有多 key（不带索引的旧单 key 也保留）
   Future<void> _deleteAllForProvider(String provider) async {
     for (int i = 0;; i++) {

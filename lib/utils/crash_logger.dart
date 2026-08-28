@@ -34,12 +34,6 @@ class CrashEntry {
         screen: (j['screen'] ?? '').toString(),
         extra: (j['extra'] ?? '').toString(),
       );
-
-  String formatShort() {
-    final ts =
-        '${time.year.toString().padLeft(4, '0')}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    return '⏱ $ts\n❌ $error\n${screen.isNotEmpty ? '📍 场景：$screen\n' : ''}${extra.isNotEmpty ? '💡 补充：$extra\n' : ''}────────';
-  }
 }
 
 class CrashLogger {

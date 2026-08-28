@@ -125,24 +125,12 @@ class WorldState {
 
   /// 当前时间戳字符串
   String get timestamp => time.format();
-
-  /// 特殊标记列表文本
-  String get markersText {
-    if (specialMarkers.isEmpty) return '';
-    return ' ⚡标记: ${specialMarkers.join(' ')}';
-  }
-
   /// 添加特殊标记
   void addMarker(String marker) {
     if (!specialMarkers.contains(marker)) {
       specialMarkers.add(marker);
     }
   }
-
-  void removeMarker(String marker) {
-    specialMarkers.remove(marker);
-  }
-
   /// 判定是否为系统通知类事件。
   /// 系统通知只用于玩家 UI（notifications），不注入到 AI Prompt 的【世界近期重大事件】锚点，
   /// 防止"好感本周已达上限""记恨在心"这类机械状态刷屏挤占真正的剧情事件槽位（20 条上限）。

@@ -188,6 +188,7 @@ void main() {
   _settingsDedupGroup();
   _giftGivingGroup();
   _materialLootGroup();
+  _deadCodeGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1301,6 +1302,83 @@ void _materialLootGroup() {
       final around = src.substring(at, at + 700);
       expect(around.contains('rare'), isTrue);
       expect(around.contains('屏住'), isTrue);
+    });
+  });
+}
+
+// ==================== 死代码不得回潮 ====================
+// 这批成员此前零调用，已删除。这里用源码扫描钉住，避免以后又被人
+// 复制回来或重新声明。
+
+void _deadCodeGroup() {
+  group('已删的死代码不得复活', () {
+    /// 签名 → 当初为什么删
+    const deadSignatures = <String, String>{
+      // AppProvider：被 per-provider 的 keysForProvider / providerModel
+      // / providerForScene 取代，是上一次清理遗留的单例时代接口
+      'Future<void> addApiKeyFor(': 'AppProvider 旧的加 Key 入口，已由 keysForProvider 取代',
+      'void clearApiKey()': 'AppProvider 旧的清 Key 入口，设置页用的是 clearApiKeyFor',
+      'Future<void> saveApiKeyFor(': 'AppProvider 覆盖式存 Key，注释自己写着「仅用于兼容旧版 UI」',
+      'Future<void> setBaseUrl(': 'AppProvider 改 baseUrl，端点已统一读 provider_defaults',
+      'List<String> availableModelsFor(': '与 defaultsForProvider(p.name).models 重复',
+      'Map<String, String> get providerModels': '和 models getter 返回同一个字段的别名',
+      'Map<String, String> get baseUrls': '内部字段的无用公开 getter',
+      'Map<String, List<String>> get apiKeys': '内部字段的无用公开 getter',
+      'Map<AiScene, String> get sceneRoute': '内部字段的无用公开 getter',
+      'AiProvider get aiProvider': '内部字段的无用公开 getter',
+
+      // KeyStore：只有 readKey/readKeys/writeKey/writeKeys/deleteKey 在用
+      'Future<Map<String, String>> readAllKeys()': 'KeyStore 批量读，零调用',
+      'Future<void> deleteAll()': 'KeyStore 批量删，零调用',
+      'Future<void> addKey(': 'KeyStore 追加 Key，零调用',
+      'Future<void> removeKeyAt(': 'KeyStore 按下标删 Key，零调用',
+
+      // AiRouter
+      'void unregister(': 'AiRouter 反注册，零调用',
+      'List<DeepSeekService>? getServices(': 'AiRouter 内部映射的公开 getter',
+      'int serviceCount(': 'AiRouter 服务计数，零调用',
+      'List<AiProvider> get registeredProviders': 'AiRouter 已注册提供商，零调用',
+      'Future<double?> checkBalance(': 'AiRouter 查余额，零调用（余额走 DeepSeekService.getBalance）',
+
+      // 其它
+      'void advanceHours(': 'GameTime 按小时推进，时间系统走 advanceMinutes',
+      'bool get isSchoolTerm': 'GameTime 学期判定，零调用',
+      'int getAffection(': '好感查询，零调用',
+      'String get markersText': 'WorldState 地图标记格式化，零调用',
+      'void removeMarker(': 'WorldState 删标记，零调用',
+      'String formatShort()': 'CrashLogger 短格式，零调用',
+      'Future<Map<String, dynamic>> getUsageStats()': '日志用量统计，零调用',
+    };
+
+    test('删掉的成员没有再被声明', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        final src = File(f).readAsStringSync();
+        for (final entry in deadSignatures.entries) {
+          if (src.contains(entry.key)) {
+            offenders.add('$f -> ${entry.key}（${entry.value}）');
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '这些零调用的接口又出现了：\n${offenders.join('\n')}');
+    });
+
+    test('ai_debug_logger 的旧版 logCall 没有被复制回来', () {
+      // 它自己的注释写着「兼容旧版 API：一次性写入 START/RESPONSE/ERROR
+      // （无配对）」，已被 logComplete 取代，75 行零调用
+      final src = File('lib/utils/ai_debug_logger.dart').readAsStringSync();
+      expect(src.contains('Future<void> logCall('), isFalse);
+      expect(src.contains('Stream<String> get logs'), isFalse);
+    });
+
+    test('限流器没有重新引入「先查后记」的成对接口', () {
+      // waitForSlot 内部已经完成判断与记账，留两套只会让人忘记记账
+      final src = File('lib/services/rate_limiter.dart').readAsStringSync();
+      for (final m in ['canRequest(', 'currentRPM(', 'recordRequest(',
+                       'canMakeCall(', 'remainingQuota(', 'recordCall(']) {
+        expect(src.contains(m), isFalse, reason: '$m 又回来了');
+      }
     });
   });
 }

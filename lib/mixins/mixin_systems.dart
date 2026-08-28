@@ -973,14 +973,6 @@ mixin GameSystemsMixin on GameProviderBase {
     if (npc == null || player == null) return false;
     return npc.currentLocation == (worldState.currentLocation ?? '');
   }
-
-  int getAffection(String npcId) {
-    final rel = player?.relationships[npcId];
-    if (rel != null) return rel.level;
-    final npc = npcRegistry[npcId];
-    return npc?.affection ?? 0;
-  }
-
   void travelTo(String location) {
     worldState.currentLocation = location;
     notifyListeners();

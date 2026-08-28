@@ -121,9 +121,6 @@ class GameTime {
       }
     }
   }
-
-  void advanceHours(int hours) => advanceMinutes(hours * 60);
-
   /// 推进整天（用于「快进/假期跳过」这类大宗时间跳跃）。
   /// 比逐分钟循环快几个数量级：直接按剩余天数折叠进位。
   void advanceDays(int days) {
@@ -160,10 +157,6 @@ class GameTime {
 
   /// 满月判断（简化：以每月十五日为满月）
   bool get isFullMoon => day == 15;
-
-  /// 学期判断：9月-6月为在校期间
-  bool get isSchoolTerm => month >= 9 || month <= 6;
-
   Map<String, dynamic> toJson() => {
         'year': year,
         'month': month,

@@ -19,8 +19,6 @@ class AiDebugLogger {
   final Map<String, StringBuffer> _pendingCalls = {};
 
   bool get enabled => _enabled;
-  Stream<String> get logs => _controller.stream;
-
   Future<void> initialize({bool enabled = false}) async {
     _enabled = enabled;
     if (enabled) {
@@ -162,81 +160,6 @@ class AiDebugLogger {
       debugPrint('AiDebugLogger logComplete 失败: $e');
     }
   }
-
-  /// 兼容旧版 API：一次性写入 START/RESPONSE/ERROR（无配对）
-  Future<void> logCall({
-    required String timestamp,
-    required String scene,
-    required String provider,
-    required String action,
-    String? promptPreview,
-    String? systemPrompt,
-    String? responsePreview,
-    int? promptTokens,
-    int? completionTokens,
-    int? totalTokens,
-    String? error,
-  }) async {
-    if (!_enabled) return;
-
-    try {
-      await _ensureLogDir();
-      final logEntry = StringBuffer();
-      logEntry.writeln('═══════════════════════════════════');
-      logEntry.writeln('时间: $timestamp');
-      logEntry.writeln('场景: $scene');
-      logEntry.writeln('模型: $provider');
-      logEntry.writeln('动作: $action');
-      logEntry.writeln('═══════════════════════════════════');
-
-      if (promptPreview != null) {
-        logEntry.writeln('【发送给模型的 Prompt】');
-        logEntry.writeln('---');
-        logEntry.writeln(promptPreview);
-        logEntry.writeln('---');
-      }
-
-      if (systemPrompt != null && systemPrompt.isNotEmpty) {
-        logEntry.writeln('【System Prompt】');
-        logEntry.writeln('---');
-        logEntry.writeln(systemPrompt);
-        logEntry.writeln('---');
-      }
-
-      if (responsePreview != null) {
-        logEntry.writeln('【模型返回内容】');
-        logEntry.writeln('---');
-        logEntry.writeln(responsePreview);
-        logEntry.writeln('---');
-      }
-
-      if (error != null) {
-        logEntry.writeln('【错误信息】');
-        logEntry.writeln('---');
-        logEntry.writeln(error);
-        logEntry.writeln('---');
-      }
-
-      if (promptTokens != null || completionTokens != null || totalTokens != null) {
-        logEntry.writeln('【Token 统计】');
-        logEntry.writeln('---');
-        logEntry.writeln('输入: ${promptTokens ?? '-'} tokens');
-        logEntry.writeln('输出: ${completionTokens ?? '-'} tokens');
-        logEntry.writeln('总计: ${totalTokens ?? '-'} tokens');
-        logEntry.writeln('---');
-      }
-
-      logEntry.writeln('');
-
-      final logLine = logEntry.toString();
-      _controller.add(logLine);
-
-      await _writeToFile(logLine);
-    } catch (e) {
-      debugPrint('AiDebugLogger 写入失败: $e');
-    }
-  }
-
   static const int _maxFileBytes = 4 * 1024 * 1024; // 单日日志文件上限 4MB，防止无限膨胀
 
   Future<void> _writeToFile(String content) async {
@@ -310,24 +233,6 @@ class AiDebugLogger {
     pairs.sort((a, b) => b.value.compareTo(a.value));
     return pairs.map((e) => e.key.path).toList();
   }
-
-  Future<Map<String, dynamic>> getUsageStats() async {
-    final files = await getLogFiles();
-    int totalCalls = 0;
-    int totalSize = 0;
-    for (final p in files) {
-      final f = File(p);
-      totalSize += await f.length();
-      final content = await f.readAsString();
-      totalCalls += '═══════════════════════════════════'.allMatches(content).length;
-    }
-    return {
-      'files': files.length,
-      'calls': totalCalls,
-      'sizeBytes': totalSize,
-    };
-  }
-
   /// 读取指定路径的日志文件文本（用于设置页 LogViewerDialog）
   Future<String?> readLogFile(String path) async {
     try {
