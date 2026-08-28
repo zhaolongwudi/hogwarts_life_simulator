@@ -5,6 +5,17 @@
 
 ---
 
+### v2.5.7 — 2026-08-28
+
+**📋 变更说明**
+refactor: 血统标签四份手写副本收敛为一份；补上缺失的「幽灵」译名
+
+- 新增 lib/data/blood_status.dart：标签 / 问卷可选项 / 问卷说明 / NPC 别称 的唯一权威
+- mixin_systems.bloodStatusLabel 改为转发
+- intro_screen 删掉 _bloodLabels/_bloodOptions/_bloodDescriptions
+- mixin_systems._bloodLabel（NPC 侧 switch）删除，改用 npcBloodStatusLabel
+- 修 bug：npc_data 里宾斯教授的 bloodStatus 是 'ghost'，标签表里没有，
+
 ### v2.5.6 — 2026-08-28
 
 **📋 变更说明**
