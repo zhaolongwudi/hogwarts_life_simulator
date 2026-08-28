@@ -8,6 +8,9 @@ class SaveService {
   static const String _savesDir = 'saves';
   static const String _metaFileName = 'save_meta.json';
   static const String autoSaveSlotId = 'auto_save';
+  /// 快速存档的固定槽位。必须保持 '快速存档' —— 槽位 id 直接当文件名用，
+  /// 改了会让玩家已有的快速存档读不出来。
+  static const String quickSaveSlotId = '快速存档';
   final _uuid = const Uuid();
 
   /// 串行化所有写操作，避免并发写同一文件导致损坏
@@ -98,6 +101,11 @@ class SaveService {
     });
   }
 
+  /// 写入一个具名存档槽。
+  ///
+  /// [slotId] 缺省时由 [slotName] 派生（自动存档走固定的 autoSaveSlotId）。
+  /// 自动存档以前走的是另一个方法（autoSave），除了槽位固定以外和这里一模
+  /// 一样——两份并存的后果是改一处忘另一处。
   Future<String> saveGame({
     required Map<String, dynamic> player,
     required Map<String, dynamic> worldState,
@@ -106,9 +114,11 @@ class SaveService {
     required List<dynamic> choices,
     required int turnCount,
     String? slotName,
+    String? slotId,
     Map<String, dynamic>? extraData,
   }) async {
-    final slotId = slotName ?? _uuid.v4().substring(0, 8);
+    final resolvedId = slotId ?? slotName ?? _uuid.v4().substring(0, 8);
+    final resolvedName = slotName ?? '自动存档';
     final saveData = {
       'save_version': 2,
       'player': player,
@@ -118,12 +128,12 @@ class SaveService {
       'choices': choices,
       'turn_count': turnCount,
       'saved_at': DateTime.now().toIso8601String(),
-      'slot_name': slotName ?? '自动存档',
+      'slot_name': resolvedName,
       if (extraData != null) 'extra_data': extraData,
     };
     return _writeSave(
-      slotId: slotId,
-      slotName: slotName ?? '自动存档',
+      slotId: resolvedId,
+      slotName: resolvedName,
       saveData: saveData,
     );
   }
@@ -210,31 +220,6 @@ class SaveService {
       existing.add(entry);
     }
     await _writeMeta(existing);
-  }
-
-  Future<String> autoSave({
-    required Map<String, dynamic> player,
-    required Map<String, dynamic> worldState,
-    required Map<String, dynamic> npcRegistry,
-    required String narrative,
-    required List<dynamic> choices,
-    required int turnCount,
-    Map<String, dynamic>? extraData,
-  }) async {
-    const slotId = autoSaveSlotId;
-    final saveData = {
-      'save_version': 2,
-      'player': player,
-      'world_state': worldState,
-      'npc_registry': npcRegistry,
-      'narrative': narrative,
-      'choices': choices,
-      'turn_count': turnCount,
-      'saved_at': DateTime.now().toIso8601String(),
-      'slot_name': '自动存档',
-      if (extraData != null) 'extra_data': extraData,
-    };
-    return _writeSave(slotId: slotId, slotName: '自动存档', saveData: saveData);
   }
 
   Future<Map<String, dynamic>?> loadAutoSave() async {

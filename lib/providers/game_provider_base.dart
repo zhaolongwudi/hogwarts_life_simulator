@@ -261,6 +261,17 @@ abstract class GameProviderBase extends ChangeNotifier {
   bool purchaseItem(String itemName, int price, {String type, String description});
   Future<void> quickSave();
   Future<void> saveGameNamed(String slotName);
+
+  /// 统一的存档写入：自动存档 / 快速存档 / 命名存档三处共用。
+  /// 以前三处各写一份 extraData，漏写一个字段读档时就静默归零。
+  /// 实现在 GameSystemsMixin。
+  Future<void> writeSave({required String slotId, required String slotName});
+
+  /// 把一份存档数据灌回 provider：自动读档与槽位读档共用。
+  /// 含存档迁移（_migrateSave）和一致性检查——自动读档以前漏了这两步。
+  /// 实现在 GameSystemsMixin。
+  void applySaveData(Map<String, dynamic> data);
+
   void recordRomanticEventFor(NPC npc);
   void refreshClient();
   void resetAllState();

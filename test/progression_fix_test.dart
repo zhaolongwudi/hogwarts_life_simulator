@@ -20,6 +20,7 @@ import 'package:hogwarts_life_simulator/data/blood_status.dart';
 import 'package:hogwarts_life_simulator/data/attribute_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 import 'package:hogwarts_life_simulator/data/course_data.dart';
+import 'package:hogwarts_life_simulator/services/save_service.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -202,6 +203,7 @@ void main() {
   _bloodStatusGroup();
   _attributeLabelGroup();
   _questTypeLabelGroup();
+  _saveLoadGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1792,6 +1794,87 @@ void _questTypeLabelGroup() {
       expect(questTypeLabel('defeat'), '讨伐');
       expect(questTypeLabel('pet'), '培养');
       expect(questTypeLabel('escort'), '委托');
+    });
+  });
+}
+
+// ==================== 存档读写只有一份 ====================
+// 之前 quickSave / saveGameNamed / doSave 各写一份 extraData（11 个字段），
+// tryAutoLoad / loadFromSave 各写一份解析。更要命的是自动读档那份漏了
+// _migrateSave：v1 老存档自动加载时不迁移月份字段、不补 time 字段，世界
+// 时间直接错乱——而手动读同一个存档却是好的。
+
+void _saveLoadGroup() {
+  group('存档读写只有一份', () {
+    final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+
+    test('extraData 的写入只在一处', () {
+      // 三处存档各写一份 Map 时，漏写的字段读档时静默归零，不报错也不崩
+      final hits = <String>[];
+      for (final f in _allLibFiles()) {
+        final src = File(f).readAsStringSync();
+        if (src.contains("'narrative_summary'")) hits.add(f);
+      }
+      expect(hits, ['lib/mixins/mixin_systems.dart'],
+          reason: 'extraData 又被抄了一份，应调用 writeSave()：$hits');
+    });
+
+    test('两个读档入口都走 applySaveData', () {
+      // 判定办法：全 lib 里出现 Player.fromJson( 的地方只能有 applySaveData 一处
+      final hits = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.startsWith('lib/models/')) continue; // 那是 Player.fromJson 自己的定义
+        final src = File(f).readAsStringSync();
+        for (final m in RegExp(r'Player\.fromJson\(').allMatches(src)) {
+          // 往上找最近的 void/Future 声明，看是不是 applySaveData
+          final before = src.substring(0, m.start);
+          final decl =
+              RegExp(r'(\w+)\s*\(\s*[^)]*\)\s*\{[^}]*$').allMatches(before).lastOrNull;
+          hits.add('$f → ${decl?.group(1) ?? '?'}');
+        }
+      }
+      expect(hits, hasLength(1), reason: '读档逻辑又被抄了一份：$hits');
+      expect(hits.single, contains('applySaveData'));
+    });
+
+    test('自动读档会做存档迁移（曾经漏过）', () {
+      final load = RegExp(
+        r'void applySaveData\(Map<String, dynamic> data\) \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(systemsSrc);
+      expect(load, isNotNull, reason: '没找到 applySaveData，正则该更新了');
+      final body = load!.group(1)!;
+      expect(body, contains('_migrateSave'), reason: '读档漏了存档迁移');
+      expect(body, contains('_runConsistencyChecks'), reason: '读档漏了一致性检查');
+      expect(body, contains('lastWeekBucket'), reason: '读档漏了周桶复位');
+      expect(body, contains('isInitializing = false'),
+          reason: '读档后不复位 isInitializing 会让"继续游戏"卡住');
+    });
+
+    test('写入字段与读取字段一一对应', () {
+      final write = RegExp(
+        r'Map<String, dynamic> _saveExtraData\(\) => \{(.*?)\n\s*\};',
+        dotAll: true,
+      ).firstMatch(systemsSrc);
+      final load = RegExp(
+        r'void applySaveData\(Map<String, dynamic> data\) \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(systemsSrc);
+      expect(write, isNotNull, reason: '没找到 _saveExtraData，正则该更新了');
+
+      final written = RegExp(r"'([a-z_]+)':").allMatches(write!.group(1)!)
+          .map((m) => m.group(1)!).toSet();
+      expect(written, hasLength(11), reason: '存档字段数变了，读取侧要同步检查');
+      for (final key in written) {
+        expect(load!.group(1)!, contains("extraData['$key']"),
+            reason: '存档写了 $key，读档没读它——存了等于没存');
+      }
+    });
+
+    test('快速存档槽位 id 保持原值（老存档兼容）', () {
+      // slotId 直接当文件名用，改了会让玩家已有的快速存档读不出来
+      expect(SaveService.quickSaveSlotId, '快速存档');
+      expect(SaveService.autoSaveSlotId, 'auto_save');
     });
   });
 }

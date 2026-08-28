@@ -10,6 +10,7 @@ import '../data/time_cost_rules.dart';
 import '../data/monthly_event_data.dart';
 import '../data/blood_status.dart';
 import '../data/attribute_data.dart';
+import '../services/save_service.dart';
 import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
@@ -1091,17 +1092,11 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 从叙事文本中智能提取分院结果并赋值给 player.house
   /// 带语境判断：只有当文本中出现明确分院动作时才匹配。
 
-  Future<void> quickSave() async {
-    if (player == null) return;
-    await saveService.saveGame(
-      player: player!.toJson(),
-      worldState: worldState.toJson(),
-      npcRegistry: npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
-      narrative: currentNarrative,
-      choices: choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
-      turnCount: turnCount,
-      slotName: '快速存档',
-      extraData: {
+  /// 写入存档时附带的扩展字段。
+  ///
+  /// 之前 quickSave / saveGameNamed / doSave 各写一份这个 Map，字段一多就
+  /// 会有人漏写——漏写的字段读档时静默归零，不报错也不崩。合并成一份。
+  Map<String, dynamic> _saveExtraData() => {
         'narrative_summary': narrativeSummary,
         'pending_summary': pendingSummary,
         'recent_turns': recentTurns,
@@ -1114,48 +1109,50 @@ mixin GameSystemsMixin on GameProviderBase {
         'total_tokens': totalTokens,
         // 千回合级结构化长期记忆（永不压缩的纯事实层）
         'long_term_memory': memory.toJson(),
-      },
-    );
-  }
+      };
 
-  /// 使用用户自定义名称保存存档（slotId 由名称生成，保证可读且唯一可寻址）
-  Future<void> saveGameNamed(String slotName) async {
+  /// 统一的存档写入：快速存档 / 命名存档 / 自动存档都走这里。
+  @override
+  Future<void> writeSave({required String slotId, required String slotName}) async {
     if (player == null) return;
-    final safeName = slotName
-        .trim()
-        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
-        .replaceAll(RegExp(r'\s+'), '_');
-    if (safeName.isEmpty) return;
     await saveService.saveGame(
+      slotId: slotId,
       player: player!.toJson(),
       worldState: worldState.toJson(),
       npcRegistry: npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
       narrative: currentNarrative,
       choices: choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
       turnCount: turnCount,
-      slotName: safeName,
-      extraData: {
-        'narrative_summary': narrativeSummary,
-        'pending_summary': pendingSummary,
-        'recent_turns': recentTurns,
-        'game_week': gameWeek,
-        'last_school_year_start': lastSchoolYearStart,
-        'last_round_tokens': lastRoundTokens,
-        'api_calls': apiCalls,
-        'total_prompt_tokens': totalPromptTokens,
-        'total_completion_tokens': totalCompletionTokens,
-        'total_tokens': totalTokens,
-        'long_term_memory': memory.toJson(),
-      },
+      slotName: slotName,
+      extraData: _saveExtraData(),
     );
+  }
+
+  Future<void> quickSave() async {
+    await writeSave(slotId: SaveService.quickSaveSlotId, slotName: '快速存档');
+  }
+
+  /// 使用用户自定义名称保存存档（slotId 由名称生成，保证可读且唯一可寻址）
+  Future<void> saveGameNamed(String slotName) async {
+    final safeName = slotName
+        .trim()
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+        .replaceAll(RegExp(r'\s+'), '_');
+    if (safeName.isEmpty) return;
+    await writeSave(slotId: safeName, slotName: safeName);
   }
 
   static const int _saveVersion = 2;
 
-  Future<void> loadFromSave(String slotId) async {
-    final data = await saveService.loadGame(slotId);
-    if (data == null) return;
-
+  /// 把一份存档数据灌回 provider。
+  ///
+  /// 自动读档（tryAutoLoad）和槽位读档（loadFromSave）必须走同一套逻辑。
+  /// 之前 tryAutoLoad 是复制粘贴出来的，漏了两件事：
+  ///  1. _migrateSave —— v1 老存档自动加载时月份字段不迁移、time 字段不补全，
+  ///     世界时间直接错乱；而手动读同一个存档却是好的。
+  ///  2. _runConsistencyChecks —— 损坏的自动存档不会被钳制，可能载入负血值。
+  @override
+  void applySaveData(Map<String, dynamic> data) {
     final version = data['save_version'] as int? ?? 1;
     _migrateSave(data, version);
 
@@ -1212,6 +1209,13 @@ mixin GameSystemsMixin on GameProviderBase {
     loadingStage = '';
 
     _runConsistencyChecks();
+  }
+
+  Future<void> loadFromSave(String slotId) async {
+    final data = await saveService.loadGame(slotId);
+    if (data == null) return;
+    applySaveData(data);
+    // _applySaveData 里已经把 isLoading/isInitializing 复位了
     appProvider.setGameStarted(true);
     notifyListeners();
     unawaited(autoSave());

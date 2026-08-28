@@ -10,11 +10,10 @@ import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../services/rate_limiter.dart';
 import '../utils/crash_logger.dart';
-import '../models/player.dart';
-import '../models/world_state.dart';
 import '../models/npc.dart';
-import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
+// 裸导入是为了拿 CgDef 类型；别名导入是为了调到顶层 cgById()，
+// 不然会和下面的 cgById 方法名撞上。两个都需要。
 import '../data/cg_data.dart';
 import '../data/cg_data.dart' as cgData;
 
@@ -89,49 +88,12 @@ class GameProvider extends GameProviderBase
       return;
     }
     try {
-      player = Player.fromJson(data['player'] as Map<String, dynamic>);
-      worldState = WorldState.fromJson(data['world_state'] as Map<String, dynamic>);
-      lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
-      npcRegistry.clear();
-      (data['npc_registry'] as Map<String, dynamic>).forEach((k, v) {
-        npcRegistry[k] = NPC.fromJson(v as Map<String, dynamic>);
-      });
-      systemPrompt = buildSystemPrompt();
+      // 与槽位读档共用一套灌数据逻辑（含存档迁移 + 一致性检查）。
+      // 之前这里是复制粘贴的，漏了 _migrateSave：v1 老存档自动加载时月份
+      // 字段不迁移、time 字段不补全，世界时间直接错乱，而手动读同一个存档
+      // 却是好的。_applySaveData 内部已复位 isLoading/isInitializing/error。
+      applySaveData(data);
 
-      currentNarrative = data['narrative'] as String? ?? '';
-      choices = (data['choices'] as List<dynamic>?)
-          ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
-          .toList() ?? [];
-      turnCount = data['turn_count'] as int? ?? 0;
-
-      final extraData = data['extra_data'] as Map<String, dynamic>? ?? {};
-      narrativeSummary = extraData['narrative_summary'] as String? ?? '';
-      pendingSummary = extraData['pending_summary'] as String? ?? '';
-      gameWeek = extraData['game_week'] as int? ?? 1;
-      lastSchoolYearStart = extraData['last_school_year_start'] as int? ?? 0;
-      lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
-      apiCalls = extraData['api_calls'] as int? ?? 0;
-      totalPromptTokens = extraData['total_prompt_tokens'] as int? ?? 0;
-      totalCompletionTokens = extraData['total_completion_tokens'] as int? ?? 0;
-      totalTokens = extraData['total_tokens'] as int? ?? 0;
-      memory = LongTermMemory.fromJson(extraData['long_term_memory'] as Map<String, dynamic>?);
-      recentTurns
-        ..clear()
-        ..addAll((extraData['recent_turns'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            []);
-      if (recentTurns.isEmpty && currentNarrative.isNotEmpty) {
-        recentTurns.add(currentNarrative);
-      }
-      if (choices.isEmpty) choices = generateFallbackChoices();
-      if (choices.length > 4) choices = choices.sublist(0, 4);
-      if (currentNarrative.isEmpty) currentNarrative = generateFallbackNarrative();
-
-      isLoading = false;
-      isInitializing = false;
-      error = null;
-      loadingStage = '';
       debugPrint('✅ 自动存档加载成功: ${player?.name} 第$turnCount回合 (第$gameWeek周) 叙事${currentNarrative.length}字');
       notifyListeners();
     } catch (e) {
@@ -183,26 +145,9 @@ class GameProvider extends GameProviderBase
       if (debounce) {
         await Future.delayed(const Duration(milliseconds: 300));
       }
-      await saveService.autoSave(
-        player: player!.toJson(),
-        worldState: worldState.toJson(),
-        npcRegistry: npcRegistry.map((k, v) => MapEntry(k, v.toJson())),
-        narrative: currentNarrative,
-        choices: choices.map((c) => {'text': c.text, 'action': c.action}).toList(),
-        turnCount: turnCount,
-        extraData: {
-          'narrative_summary': narrativeSummary,
-          'pending_summary': pendingSummary,
-          'recent_turns': recentTurns,
-          'game_week': gameWeek,
-          'last_school_year_start': lastSchoolYearStart,
-          'last_round_tokens': lastRoundTokens,
-          'api_calls': apiCalls,
-          'total_prompt_tokens': totalPromptTokens,
-          'total_completion_tokens': totalCompletionTokens,
-          'total_tokens': totalTokens,
-          'long_term_memory': memory.toJson(),
-        },
+      await writeSave(
+        slotId: SaveService.autoSaveSlotId,
+        slotName: '自动存档',
       );
     } catch (e) {
       debugPrint('❌ 自动存档失败: $e');
