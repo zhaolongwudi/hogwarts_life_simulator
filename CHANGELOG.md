@@ -5,6 +5,17 @@
 
 ---
 
+### v2.3.3 — 2026-08-28
+
+**📋 变更说明**
+feat: 多API Key策略 - Agnes按Key独立20 RPM限流 + 商汤按模型独立配额计量 + 设置页可折叠多Key配置
+
+核心变更：
+1. AppProvider: _apiKeys改为Map<String, List<String>>，支持多Key存储/读取/删除
+2. KeyStore: 新增readKeys/writeKeys/addKey/removeKeyAt多Key持久化
+3. AiRouter: 支持多Key注册 + 轮询选择 + 同提供商内Key级Fallback
+4. AgnesRateLimiter: 重构为按KeyHash独立统计RPM，每个Key独立20 RPM
+
 ### v2.3.2 — 2026-08-28
 
 **📋 变更说明**
