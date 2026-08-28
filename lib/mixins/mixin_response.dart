@@ -183,6 +183,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     player!.house = en;
     unlockAchievement('sorted');
+    unlockCG(this.cgById('CG-002')); // 分院帽下的对视
     // 分院解析日志已移除
   }
 
@@ -279,6 +280,9 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     // 解析好感和声望变化（从原始文本）
     parseAffectionChanges(text);
     parseReputationChanges(text);
+
+    // 拉郎配：两人同时出现在本回合叙事中才推进羁绊（挂机刷不了）
+    this.advanceShippings(currentNarrative);
 
     // 分院结果自动提取（使用带强信号约束的新版函数）
     _tryExtractHouseFromNarrative(text);

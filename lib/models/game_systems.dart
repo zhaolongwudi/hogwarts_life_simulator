@@ -455,6 +455,12 @@ class LoveState {
   String? currentCrushName; // 当前暧昧对象
   int? crushStartDay; // 暧昧开始日期（用于计算≥2周）
 
+  // ====== 婚姻 / 生育（此前 status 预留了「订婚/结婚」但没有任何代码写入）======
+  String? engagedDate; // 订婚日期文本
+  String? marriedDate; // 结婚日期文本
+  int? marriedAbsDay; // 结婚时的绝对天数（婚后计时基准）
+  int? pregnantSinceAbsDay; // 怀孕起始绝对天数；null = 未怀孕
+
   LoveState({
     this.status = '单身',
     this.partnerId,
@@ -466,6 +472,10 @@ class LoveState {
     Map<String, String>? relationshipStages,
     this.currentCrushName,
     this.crushStartDay,
+    this.engagedDate,
+    this.marriedDate,
+    this.marriedAbsDay,
+    this.pregnantSinceAbsDay,
   })  : history = List<Map<String, String>>.from(history ?? const []),
         romanticEventCounts = Map<String, int>.from(romanticEventCounts ?? {}),
         relationshipStages = Map<String, String>.from(relationshipStages ?? {});
@@ -481,6 +491,10 @@ class LoveState {
         'relationship_stages': relationshipStages,
         'current_crush': currentCrushName,
         'crush_start_day': crushStartDay,
+        'engaged_date': engagedDate,
+        'married_date': marriedDate,
+        'married_abs_day': marriedAbsDay,
+        'pregnant_since_abs_day': pregnantSinceAbsDay,
       };
 
   factory LoveState.fromJson(Map<String, dynamic> json) => LoveState(
@@ -500,6 +514,10 @@ class LoveState {
         ),
         currentCrushName: json['current_crush'],
         crushStartDay: json['crush_start_day'] as int?,
+        engagedDate: json['engaged_date'],
+        marriedDate: json['married_date'],
+        marriedAbsDay: json['married_abs_day'] as int?,
+        pregnantSinceAbsDay: json['pregnant_since_abs_day'] as int?,
       );
 
   // ====== 融合版方法 ======
@@ -598,6 +616,9 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'house_cup_winner', name: '学院杯冠军', description: '学年结算时带领学院赢得学院杯'),
   Achievement(id: 'pet_bond_50', name: '亲密伙伴', description: '与宠物羁绊达到 50'),
   Achievement(id: 'well_equipped', name: '全副武装', description: '同时穿戴 2 件以上装备'),
+  Achievement(id: 'married', name: '誓言与戒指', description: '与心爱的人结婚'),
+  Achievement(id: 'first_child', name: '新的啼哭', description: '迎来第一个孩子'),
+  Achievement(id: 'matchmaker', name: '红娘', description: '撮合的一对NPC羁绊达到60'),
 ];
 
 // ==================== 信件 ====================

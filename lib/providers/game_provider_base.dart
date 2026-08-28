@@ -173,6 +173,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   int calculateAge();
   Future<ChatResult> callDeepSeek(String prompt, {AiScene scene = AiScene.narrative});
   void checkAffectionAchievements(NPC npc);
+  CgDef? cgById(String id);
   void checkAllAchievements();
   Future<bool> checkConnection();
   void checkLocks(NPC npc);
@@ -266,6 +267,15 @@ abstract class GameProviderBase extends ChangeNotifier {
   bool sellItem(int index, int price);
   void syncRelationshipLevel(NPC npc);
   String termLabel(String term);
+  String? startShipping(String nameA, String nameB);
+  void stopShipping(int index);
+  void advanceShippings(String narrative);
+  String formatShippings();
+  String? proposeMarriage();
+  String? holdWedding();
+  String? tryConceive();
+  void advancePregnancy();
+  String formatFamily();
   void travelTo(String location);
   Future<void> tryAutoLoad();
   void unlockAchievement(String id);

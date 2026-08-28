@@ -1421,6 +1421,7 @@ $kNarrativeWritingRules
       final narrative = generateSortingNarrative(house);
       player!.house = house;
       unlockAchievement('sorted');
+      unlockCG(this.cgById('CG-002')); // 分院帽下的对视
 
       isLoading = false;
       notifyListeners();

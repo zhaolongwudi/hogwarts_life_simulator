@@ -55,6 +55,11 @@ final Map<String, List<CgUnlockCondition>> cgUnlockConditions = {
     CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 80),
     CgUnlockCondition(CgConditionType.relationIsCrush),
   ],
+  // 湖畔的初吻：确定恋爱关系之后、感情足够深时解锁（此前无任何解锁路径）
+  'CG-012': const [
+    CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 85),
+    CgUnlockCondition(CgConditionType.relationIsPartner),
+  ],
 
   // ===== 深情与宿命之章 =====
   'CG-013': const [

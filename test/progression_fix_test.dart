@@ -169,4 +169,167 @@ void main() {
       expect(block.contains("'罗辑'"), isTrue);
     });
   });
+
+  _contentGroup();
+}
+
+// ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
+// 这一组是"内容可达性"回归：数据里定义了的内容，游戏里必须有实际路径拿到。
+// 之前 33 张 CG 里有 11 张（含全部 6 张拉郎配 CG）永远拿不到——
+// 数据有、系统没有。这些测试就是防止这类"死内容"再次出现。
+
+void _contentGroup() {
+  group('内容可达性：每张 CG 都必须有解锁路径', () {
+    final cgSrc = File('lib/data/cg_data.dart').readAsStringSync();
+    final condSrc =
+        File('lib/data/cg_unlock_conditions.dart').readAsStringSync();
+    final allIds = RegExp(r"CgDef\(id: '([^']+)'")
+        .allMatches(cgSrc)
+        .map((m) => m.group(1)!)
+        .toList();
+    final condIds = RegExp(r"^\s*'(CG-[^']+)':\s*const", multiLine: true)
+        .allMatches(condSrc)
+        .map((m) => m.group(1)!)
+        .toSet();
+
+    // lib/ 下除 data/ 目录外的所有源码（data 里出现 id 只是数据定义，不算路径）
+    final codeBuf = StringBuffer();
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      if (entity.path.contains('/data/')) continue;
+      codeBuf.writeln(entity.readAsStringSync());
+    }
+    final code = codeBuf.toString();
+
+    test('CG 数据表非空', () => expect(allIds.length, greaterThan(30)));
+
+    for (final id in allIds) {
+      test('$id 有解锁路径', () {
+        final hasPath = condIds.contains(id) || code.contains(id);
+        expect(hasPath, isTrue, reason: '$id 在数据表里定义了但游戏里拿不到');
+      });
+    }
+
+    test('6 张拉郎配 CG 全部登记在 _shipCgIds', () {
+      final relSrc = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+      final start = relSrc.indexOf('_shipCgIds = [');
+      final end = relSrc.indexOf('];', start);
+      final block = relSrc.substring(start, end);
+      for (var i = 1; i <= 6; i++) {
+        expect(block.contains('CG-LP-00$i'), isTrue);
+      }
+    });
+  });
+
+  group('拉郎配推进规则', () {
+    final relSrc = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+
+    test('必须两人同时出现才加羁绊（防止挂机刷满）', () {
+      final start = relSrc.indexOf('void advanceShippings(');
+      final end = relSrc.indexOf('\n  }', start);
+      final body = relSrc.substring(start, end);
+      expect(body.contains('narrative.contains(s.npcA)'), isTrue);
+      expect(body.contains('narrative.contains(s.npcB)'), isTrue);
+    });
+
+    test('撮合数量有上限', () {
+      expect(relSrc.contains('shippings.length >= 5'), isTrue);
+    });
+
+    test('advanceShippings 每回合被调用（叙事落定后）', () {
+      final respSrc = File('lib/mixins/mixin_response.dart').readAsStringSync();
+      expect(respSrc.contains('advanceShippings('), isTrue);
+    });
+  });
+
+  group('婚姻 / 生育链路', () {
+    final relSrc = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+    final sysSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+    final cmdSrc = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+
+    test('求婚 / 结婚 / 生育 / 家庭 四个指令都已注册', () {
+      for (final c in ['求婚', '结婚', '生育', '家庭', '拉郎配']) {
+        expect(cmdSrc.contains("primary: '$c'"), isTrue,
+            reason: '/$c 指令未注册');
+      }
+    });
+
+    test('孕期推进挂在世界时钟上（/快进 也能推进）', () {
+      expect(sysSrc.contains('advancePregnancy()'), isTrue);
+    });
+
+    test('status 的「订婚」「结婚」有真实写入方', () {
+      expect(relSrc.contains("love.status = '订婚'"), isTrue);
+      expect(relSrc.contains("love.status = '结婚'"), isTrue);
+    });
+
+    test('第一个孩子解锁 CG-021', () {
+      final start = relSrc.indexOf('void advancePregnancy()');
+      final end = relSrc.indexOf('\n  }', start);
+      final body = relSrc.substring(start, end);
+      expect(body.contains("cgById('CG-021')"), isTrue);
+    });
+
+    test('成就目录包含 married / first_child / matchmaker', () {
+      final gs = File('lib/models/game_systems.dart').readAsStringSync();
+      for (final id in ['married', 'first_child', 'matchmaker']) {
+        expect(gs.contains("id: '$id'"), isTrue);
+      }
+    });
+  });
+
+  group('存档往返：新字段不得丢', () {
+    test('Player.children 有 toJson / fromJson', () {
+      final p = File('lib/models/player.dart').readAsStringSync();
+      expect(p.contains("'children': children.map((e) => e.toJson()).toList()"),
+          isTrue);
+      expect(p.contains("children: (json['children'] as List<dynamic>? ?? [])"),
+          isTrue);
+    });
+
+    test('LoveState 婚姻/孕期字段有 toJson / fromJson', () {
+      final gs = File('lib/models/game_systems.dart').readAsStringSync();
+      for (final k in [
+        "'engaged_date'",
+        "'married_date'",
+        "'married_abs_day'",
+        "'pregnant_since_abs_day'",
+      ]) {
+        expect(gs.contains(k), isTrue, reason: '$k 未序列化');
+      }
+    });
+
+    test('ChildRecord JSON 往返', () {
+      final c = ChildRecord(
+        name: '林星河',
+        gender: '女',
+        bornOn: '1998年3月2日',
+        bornAbsDay: 1234,
+        otherParentName: '赫敏',
+        traits: ['好奇', '爱笑'],
+      );
+      final back = ChildRecord.fromJson(c.toJson());
+      expect(back.name, '林星河');
+      expect(back.gender, '女');
+      expect(back.bornOn, '1998年3月2日');
+      expect(back.bornAbsDay, 1234);
+      expect(back.otherParentName, '赫敏');
+      expect(back.traits, ['好奇', '爱笑']);
+    });
+
+    test('ShipRecord.keyOf 与顺序无关', () {
+      expect(ShipRecord.keyOf('甲', '乙'), ShipRecord.keyOf('乙', '甲'));
+      expect(ShipRecord.keyOf('甲', '乙'), isNot(ShipRecord.keyOf('甲', '丙')));
+    });
+
+    test('ShipRecord.copyWith 保留身份、只改数值', () {
+      const s = ShipRecord(npcA: '甲', npcB: '乙', bond: 10, stage: 0);
+      final s2 = s.copyWith(bond: 70, stage: 3);
+      expect(s2.npcA, '甲');
+      expect(s2.npcB, '乙');
+      expect(s2.bond, 70);
+      expect(s2.stage, 3);
+      expect(s2.pairLabel, '甲 × 乙');
+    });
+  });
 }

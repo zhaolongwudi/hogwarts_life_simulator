@@ -67,6 +67,8 @@ class Player {
   int get factionReputation =>
       (playerReputation.dark - playerReputation.moral).clamp(-100, 100);
   final List<DiaryEntry> diary; // 玩家手记
+  final List<ShipRecord> shippings; // 拉郎配（玩家撮合的 NPC 配对）
+  final List<ChildRecord> children; // 婚后子女
   final List<String> collection; // 收藏品
   final Map<String, CgRecord> cgRecords; // 已解锁CG
   final List<String> achievements; // 已解锁成就
@@ -137,6 +139,8 @@ class Player {
     Reputation? playerReputation,
     this.houseReputation = 0,
     List<DiaryEntry>? diary,
+    List<ShipRecord>? shippings,
+    List<ChildRecord>? children,
     List<String>? collection,
     Map<String, CgRecord>? cgRecords,
     List<String>? achievements,
@@ -172,6 +176,8 @@ class Player {
         loveState = loveState ?? LoveState(),
         playerReputation = playerReputation ?? Reputation(),
         diary = List<DiaryEntry>.from(diary ?? const []),
+        shippings = List<ShipRecord>.from(shippings ?? const []),
+        children = List<ChildRecord>.from(children ?? const []),
         collection = List<String>.from(collection ?? const []),
         cgRecords = Map<String, CgRecord>.from(cgRecords ?? const {}),
         achievements = List<String>.from(achievements ?? const []),
@@ -274,6 +280,8 @@ class Player {
         'player_reputation': playerReputation.toJson(),
         'house_reputation': houseReputation,
         'diary': diary.map((e) => e.toJson()).toList(),
+        'shippings': shippings.map((e) => e.toJson()).toList(),
+        'children': children.map((e) => e.toJson()).toList(),
         'collection': collection,
         'cg_records': cgRecords.map((k, v) => MapEntry(k, v.toJson())),
         'achievements': achievements,
@@ -356,6 +364,12 @@ class Player {
         diary: (json['diary'] as List<dynamic>? ?? [])
             .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
+        shippings: (json['shippings'] as List<dynamic>? ?? [])
+            .map((e) => ShipRecord.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        children: (json['children'] as List<dynamic>? ?? [])
+            .map((e) => ChildRecord.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
         collection: List<String>.from(json['collection'] ?? []),
         cgRecords: (json['cg_records'] as Map<String, dynamic>?)
                 ?.map((k, v) => MapEntry(k, CgRecord.fromJson(v))) ??
@@ -388,6 +402,100 @@ class Player {
         qMatches: json['q_matches'] ?? 0,
         qWins: json['q_wins'] ?? 0,
         qLastWeek: json['q_last_week'] ?? 0,
+      );
+}
+
+/// 子女记录。
+///
+/// CG-021（第一个孩子的啼哭）此前不可解锁：整个项目里没有任何
+/// 结婚 / 生育系统——LoveState.status 虽然预留了「订婚/结婚」两个字符串，
+/// 但没有任何代码会写入它们。现在补上完整的 求婚 → 订婚 → 结婚 → 怀孕 → 生育 链路。
+class ChildRecord {
+  final String name;
+  final String gender;
+  final String bornOn; // 出生时的游戏内日期文本
+  final int bornAbsDay;
+  final String otherParentName;
+  final List<String> traits;
+
+  ChildRecord({
+    required this.name,
+    required this.gender,
+    required this.bornOn,
+    required this.bornAbsDay,
+    required this.otherParentName,
+    List<String>? traits,
+  }) : traits = List<String>.from(traits ?? const <String>[]);
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'gender': gender,
+        'born_on': bornOn,
+        'born_abs_day': bornAbsDay,
+        'other_parent': otherParentName,
+        'traits': traits,
+      };
+
+  factory ChildRecord.fromJson(Map<String, dynamic> json) => ChildRecord(
+        name: json['name'] ?? '',
+        gender: json['gender'] ?? '女',
+        bornOn: json['born_on'] ?? '',
+        bornAbsDay: json['born_abs_day'] ?? 0,
+        otherParentName: json['other_parent'] ?? '',
+        traits: List<String>.from(json['traits'] ?? const []),
+      );
+}
+
+/// 拉郎配（玩家撮合的一对 NPC）记录。
+///
+/// 之前「拉郎配」整章（CG-LP-001 ~ CG-LP-006）在 cg_data 里有定义，
+/// 但游戏里没有任何配对系统：红娘页面只是把 NPC 两两算个分数显示出来，
+/// 算完就丢，没有任何状态落盘 → 这 6 张 CG 永远不可能解锁。
+class ShipRecord {
+  final String npcA;
+  final String npcB;
+
+  /// 羁绊值 0~100：两名 NPC 同时出现在同一段叙事里时增长
+  final int bond;
+
+  /// 已解锁到第几个阶段（0~6，对应 CG-LP-001 ~ CG-LP-006）
+  final int stage;
+
+  const ShipRecord({
+    required this.npcA,
+    required this.npcB,
+    this.bond = 0,
+    this.stage = 0,
+  });
+
+  /// 稳定唯一键（无序："甲|乙" 与 "乙|甲" 同一个键）
+  static String keyOf(String a, String b) {
+    final list = [a, b]..sort();
+    return '${list[0]}|${list[1]}';
+  }
+
+  String get key => keyOf(npcA, npcB);
+  String get pairLabel => '$npcA × $npcB';
+
+  ShipRecord copyWith({int? bond, int? stage}) => ShipRecord(
+        npcA: npcA,
+        npcB: npcB,
+        bond: bond ?? this.bond,
+        stage: stage ?? this.stage,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'npc_a': npcA,
+        'npc_b': npcB,
+        'bond': bond,
+        'stage': stage,
+      };
+
+  factory ShipRecord.fromJson(Map<String, dynamic> json) => ShipRecord(
+        npcA: json['npc_a'] ?? '',
+        npcB: json['npc_b'] ?? '',
+        bond: json['bond'] ?? 0,
+        stage: json['stage'] ?? 0,
       );
 }
 

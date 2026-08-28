@@ -66,6 +66,9 @@ mixin GameSystemsMixin on GameProviderBase {
       _checkEventAnchors();
     }
 
+    // 孕期推进（结婚 → 备孕 → 分娩）
+    this.advancePregnancy();
+
     _runConsistencyChecks();
 
     _checkMonthlyEvolution(oldMonth, oldYear);

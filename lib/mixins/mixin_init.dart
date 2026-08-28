@@ -434,6 +434,7 @@ mixin GameInitMixin on GameProviderBase {
           player!.house = house;
           bumpImpactScore(0.05, debugReason: '分院仪式');
           unlockAchievement('sorted');
+          unlockCG(this.cgById('CG-002')); // 分院帽下的对视
           // 合并：本地分院叙事拼接在开场叙事后面
           if (sortingNarrative.trim().isNotEmpty) {
             currentNarrative = (currentNarrative.trim() +
@@ -569,6 +570,11 @@ mixin GameInitMixin on GameProviderBase {
       category: 'personal',
       npcIds: {npc.id},
     ));
+
+    // 初次相遇 → CG-003（对角巷的偶然回眸）。
+    // 这张 2 星卡此前没有任何解锁路径：cgUnlockConditions 里没登记，
+    // 硬编码分支里也没写，玩家永远拿不到。
+    this.unlockCG(this.cgById('CG-003'));
   }
 
   static const List<String> _signoffKeywords = [

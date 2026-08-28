@@ -15,6 +15,8 @@ import '../models/world_state.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
+import '../data/cg_data.dart';
+import '../data/cg_data.dart' as cgData;
 
 /// GameProvider 本体：只保留 constructor / autoSave / saveNow / onApiKeyChange
 /// / updateClient / refreshClient / updateNpcAffection / updateApiKey 等调度入口。
@@ -41,6 +43,12 @@ class GameProvider extends GameProviderBase
     lastScannedNarrativeHash = h;
     return true;
   }
+
+  /// CG 数据表查询。实现直接复用 cg_data.dart 的顶层同名函数
+  /// （用 show-as 别名避开与自身方法名冲突）。
+  /// 声明在基类上是为了让各 mixin 也能通过基类接口访问它。
+  @override
+  CgDef? cgById(String id) => cgData.cgById(id);
   @override
   final AppProvider appProvider;
   @override

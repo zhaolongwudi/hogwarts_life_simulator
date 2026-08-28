@@ -224,6 +224,99 @@ mixin GameCommandsMixin on GameProviderBase {
           return true;
         },
       ),
+      CommandDef(
+        primary: '家庭',
+        aliases: ['婚姻', '配偶', '孩子', '子女'],
+        group: '关系&情感',
+        helpText: '查看婚姻/怀孕/子女状态',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m.currentNarrative = m.formatFamily();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '求婚',
+        aliases: ['求婚戒指'],
+        group: '关系&情感',
+        helpText: '向恋人求婚（需恋爱中、好感≥95、五年级以上）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          final err = m.proposeMarriage();
+          m.currentNarrative = err != null
+              ? '【求婚】\n$err\n\n${m.formatFamily()}'
+              : '你单膝跪地，把戒指举到对方面前。\n\n${m.formatFamily()}';
+          m.choices = [
+            if (err == null) GameChoice(text: '筹备婚礼', action: '/结婚'),
+            GameChoice(text: '返回', action: '继续'),
+          ];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '结婚',
+        aliases: ['婚礼', '举行婚礼'],
+        group: '关系&情感',
+        helpText: '举行婚礼（需已订婚）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          final err = m.holdWedding();
+          m.currentNarrative = err != null
+              ? '【婚礼】\n$err\n\n${m.formatFamily()}'
+              : '礼堂里洒满了花瓣，你们在众人的注视下交换了誓言。\n\n${m.formatFamily()}';
+          m.choices = [
+            if (err == null) GameChoice(text: '要个孩子', action: '/生育'),
+            GameChoice(text: '返回', action: '继续'),
+          ];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '生育',
+        aliases: ['备孕', '要孩子', '怀孕'],
+        group: '关系&情感',
+        helpText: '婚后备孕（孕期 120 天，可用 /快进 推进）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          final err = m.tryConceive();
+          m.currentNarrative = err != null
+              ? '【生育】\n$err\n\n${m.formatFamily()}'
+              : '你们决定迎接一个新生命。\n\n${m.formatFamily()}';
+          m.choices = [
+            if (err == null) GameChoice(text: '快进一个月', action: '/快进 下月'),
+            GameChoice(text: '返回', action: '继续'),
+          ];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '拉郎配',
+        aliases: ['撮合', '拉郎', '配对', '磕cp', '磕CP'],
+        group: '关系&情感',
+        helpText: '撮合两位NPC：/拉郎配 [甲] [乙]（/拉郎配 放弃 [编号] 放手）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          final a = ctx.arg(0);
+          final b = ctx.arg(1);
+          if (a != null && a == '放弃') {
+            final idx = int.tryParse(b ?? '');
+            if (idx == null) {
+              m.currentNarrative = '请输入要放手的编号：/拉郎配 放弃 [编号]';
+            } else {
+              m.stopShipping(idx - 1);
+              m.currentNarrative = m.formatShippings();
+            }
+          } else if (a != null && b != null) {
+            final err = m.startShipping(a, b);
+            m.currentNarrative = err != null ? '【拉郎配】\n$err' : m.formatShippings();
+          } else {
+            m.currentNarrative = m.formatShippings();
+          }
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
     ]);
 
     // —— 学业 & 成就 & 收藏类 ——
