@@ -435,16 +435,22 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '宠物',
         group: '物品&宠物',
-        helpText: '宠物：查看 / 喂食 / 玩耍 / 训练',
+        helpText: '宠物：查看 / 喂食 / 玩耍 / 训练 / 购买',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 &&
-              ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(ctx.arg(0))) {
-            m.petInteract(ctx.arg(0)!);
+          final sub = ctx.arg(0);
+          if (sub != null &&
+              ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(sub)) {
+            m.petInteract(sub);
+          } else if (sub != null &&
+              ['购买', '买', '选购', '挑选'].contains(sub)) {
+            // 以前没宠物时 /宠物 会让人「去对角巷挑选」，但商店里没宠物卖。
+            // 现在这里真能买。
+            m.currentNarrative = m.buyPet(ctx.tailFrom(1));
           } else {
             m.currentNarrative = m._formatPet();
-            m.choices = [GameChoice(text: '返回', action: '继续')];
           }
+          m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
       ),
@@ -1196,7 +1202,9 @@ $knownRegions
   String _formatPet() {
     final p = player!;
     if (p.petId == null && p.petName == null) {
-      return '【宠物】\n你还没有宠物。可以去对角巷挑选一只猫头鹰、猫或蟾蜍。';
+      // 以前这里让人「去对角巷挑选」，但商店里没宠物卖，是条死路。
+      // 现在 /宠物 购买 真能买，把清单直接列出来。
+      return '【宠物】\n你还没有宠物。\n\n${formatPetShop()}';
     }
     final def = p.petId != null ? petById(p.petId!) : null;
     // R8：使用 petNarrativeConfig 去除「九尾灵狐羁绊≥60 化形」硬编码

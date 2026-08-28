@@ -9,6 +9,7 @@ import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/utils/npc_lookup.dart';
 import 'package:hogwarts_life_simulator/data/provider_defaults.dart';
+import 'package:hogwarts_life_simulator/data/pet_data.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/data/political_stance.dart';
 import 'package:hogwarts_life_simulator/data/gift_rules.dart';
@@ -204,6 +205,7 @@ void main() {
   _attributeLabelGroup();
   _questTypeLabelGroup();
   _saveLoadGroup();
+  _petReachabilityGroup();
   _equipmentAndProviderGroup();
 }
 
@@ -1095,6 +1097,23 @@ List<String> _allLibFiles() {
   return out;
 }
 
+/// 读一个源文件并去掉整行注释。
+///
+/// 扫描「游戏里不该再出现的文案」时必须用它——否则注释里引用旧文案也会被
+/// 当成违规（我们习惯在注释里写「以前这里是 xxx」，一扫就误报）。
+///
+/// 注意只去掉 `//` 整行注释，且要保住 `://`（URL）和字符串里的 `//`。
+String _codeOnly(String path) {
+  final lines = File(path).readAsStringSync().split('\n');
+  final out = <String>[];
+  for (final line in lines) {
+    final trimmed = line.trimLeft();
+    if (trimmed.startsWith('//')) continue;
+    out.add(line);
+  }
+  return out.join('\n');
+}
+
 // ==================== 送礼玩法 ====================
 // giftPrefs 此前是一条完整的死链：数据被生成、被写进存档，但没有任何地方
 // 读过它；「赠送礼物（一般/喜欢/挚爱）」三条规则也一次都没被引用。送礼
@@ -1795,6 +1814,88 @@ void _questTypeLabelGroup() {
       expect(questTypeLabel('defeat'), '讨伐');
       expect(questTypeLabel('pet'), '培养');
       expect(questTypeLabel('escort'), '委托');
+    });
+  });
+}
+
+// ==================== 宠物必须买得到 ====================
+// /宠物 在没有宠物时会说「可以去对角巷挑选一只猫头鹰、猫或蟾蜍」，但商店里
+// 根本没有宠物卖。开局问卷跳过宠物的玩家再也拿不到宠物，喂食/玩耍/训练三个
+// 子指令和「宠物助战」「羁绊化形」全部作废。
+
+void _petReachabilityGroup() {
+  group('宠物必须买得到', () {
+    test('游戏内不再有指向不存在商店的提示', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (_codeOnly(f).contains('去对角巷挑选')) offenders.add(f);
+      }
+      expect(offenders, isEmpty,
+          reason: '又把人指到没有宠物卖的对角巷了，应给 /宠物 购买：$offenders');
+    });
+
+    test('在售宠物都有售价、都能查到', () {
+      expect(kPetPrices, isNotEmpty);
+      for (final id in kPetPrices.keys) {
+        final pet = petById(id);
+        expect(pet, isNotNull, reason: '售价表里的 $id 在 allPets 里不存在');
+        expect(kPetPrices[id]!, greaterThan(0), reason: '$id 售价不是正数');
+      }
+      // 售价表必须是 allPets 的子集（不能卖没定义的宠物）
+      for (final pet in allPets) {
+        if (!kPetPrices.containsKey(pet.id)) continue;
+        expect(findPet(pet.name), pet, reason: '${pet.name} 查不到自己');
+      }
+    });
+
+    test('不卖的宠物也要能被 findPet 找到（否则问卷选了没法用）', () {
+      for (final pet in allPets) {
+        expect(findPet(pet.id), pet, reason: '按 id 找不到 ${pet.id}');
+        expect(findPet(pet.name), pet, reason: '按名字找不到 ${pet.name}');
+        expect(findPet(pet.species), pet, reason: '按物种找不到 ${pet.species}');
+      }
+    });
+
+    test('玩家说得出口的叫法也能命中', () {
+      expect(findPet('猫头鹰')?.id, 'owl'); // 物种是「猫头鹰」，名字是「雪鸮」
+      expect(findPet('owl')?.id, 'owl');
+      expect(findPet('九尾灵狐')?.id, 'kyuubi');
+      expect(findPet('蟾蜍')?.id, 'toad');
+      expect(findPet('不存在的东西'), isNull);
+      expect(findPet(''), isNull);
+    });
+
+    test('默认名字表覆盖全部宠物', () {
+      for (final pet in allPets) {
+        final name = kPetDefaultNames[pet.id];
+        expect(name, isNotNull, reason: '${pet.id} 没有默认名字');
+        expect(name!.trim(), isNotEmpty);
+      }
+    });
+
+    test('购买指令已注册且能走到实现', () {
+      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      expect(src.contains("primary: '宠物'"), isTrue);
+      expect(src.contains("'购买'"), isTrue, reason: '/宠物 购买 没有接上');
+      expect(src.contains('buyPet'), isTrue);
+      // 实现在 GamePlayMixin，必须声明在基类上，否则 mixin_commands 解析不到
+      final base = File('lib/providers/game_provider_base.dart').readAsStringSync();
+      expect(base, contains('String buyPet(String keyword);'));
+      expect(base, contains('String formatPetShop();'));
+    });
+
+    test('/宠物 购买 的分支不会把人卡死', () {
+      // 空参数必须返回在售清单而不是报错，否则玩家敲了 /宠物 购买 就没下文了
+      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final body = RegExp(
+        r'String buyPet\(String keyword\) \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(src);
+      expect(body, isNotNull, reason: '没找到 buyPet，正则该更新了');
+      final text = body!.group(1)!;
+      expect(text, contains('kw.isEmpty'), reason: '空参数要返回清单');
+      expect(text, contains('galleons < price'), reason: '买不起要有提示');
+      expect(text, contains('p.petId != null'), reason: '已有宠物要挡住，别把羁绊清了');
     });
   });
 }

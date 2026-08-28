@@ -333,6 +333,13 @@ abstract class GameProviderBase extends ChangeNotifier {
   String formatQuests();
   String formatQuidditch();
   void petInteract(String action);
+
+  /// 对角巷「咿啦猫头鹰商店」的在售清单。实现在 GamePlayMixin。
+  String formatPetShop();
+
+  /// 买一只宠物；[keyword] 为空时返回在售清单。实现在 GamePlayMixin。
+  String buyPet(String keyword);
+
   void playQuidditch();
   void refreshQuestBoard();
   void settleHouseCup();

@@ -5,6 +5,7 @@ import '../providers/game_provider.dart';
 import '../data/wand_data.dart';
 import '../data/political_stance.dart';
 import '../data/blood_status.dart';
+import '../data/pet_data.dart';
 
 /// 十三轮初始设定流程
 class IntroScreen extends StatefulWidget {
@@ -289,25 +290,11 @@ class _IntroScreenState extends State<IntroScreen> {
     ];
     appProvider.setEra(eraMap[_eraIndex]);
 
+    // 默认名字统一走 kPetDefaultNames——对角巷买宠物用的是同一张表，
+    // 免得问卷里叫「猫」、买回来叫「巫师猫」。
     String? petName;
     if (_petId != null && _petName == null) {
-      switch (_petId) {
-        case 'owl':
-          petName = '雪鸮';
-          break;
-        case 'cat':
-          petName = '猫';
-          break;
-        case 'toad':
-          petName = '蟾蜍';
-          break;
-        case 'rat':
-          petName = '老鼠';
-          break;
-        case 'kyuubi':
-          petName = '绯月';
-          break;
-      }
+      petName = kPetDefaultNames[_petId];
     }
 
     String _openingSceneKey = 'station';

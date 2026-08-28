@@ -66,3 +66,58 @@ PetDef? petById(String id) {
   }
   return null;
 }
+
+/// 对角巷「咿啦猫头鹰商店」的在售宠物与售价（加隆）。
+///
+/// 之前 /宠物 在没有宠物时会告诉玩家「可以去对角巷挑选一只猫头鹰、猫或
+/// 蟾蜍」——但商店里根本没有宠物卖，这句提示把人指到了一条死路上：
+/// 开局问卷跳过宠物的玩家再也拿不到宠物，而 /宠物 喂食 /玩耍 /训练
+/// 三个子指令和「宠物助战」「羁绊化形」这些机制也全都废了。
+///
+/// 九尾灵狐是契约灵兽，只在开局问卷里结缘，不卖。
+const Map<String, int> kPetPrices = {
+  'owl': 30,
+  'cat': 25,
+  'toad': 12,
+  'rat': 8,
+};
+
+/// 能在对角巷买到的宠物。
+Iterable<PetDef> get purchasablePets =>
+    allPets.where((p) => kPetPrices.containsKey(p.id));
+
+/// 宠物的默认名字（玩家没起名时用）。
+///
+/// 开局问卷和"买了还没起名"两种情况共用一份，免得两处各写一份 switch。
+const Map<String, String> kPetDefaultNames = {
+  'owl': '雪鸮',
+  'cat': '猫',
+  'toad': '蟾蜍',
+  'rat': '老鼠',
+  'kyuubi': '绯月',
+};
+
+/// 按 id / 名字 / 物种 / 别名找宠物。
+///
+/// 玩家会输入「猫头鹰」（物种）而不是「雪鸮」（名字），也可能直接敲
+/// 「owl」，所以三个字段都得试。
+PetDef? findPet(String keyword) {
+  final kw = keyword.trim().toLowerCase();
+  if (kw.isEmpty) return null;
+  for (final p in allPets) {
+    if (p.id.toLowerCase() == kw ||
+        p.name.toLowerCase() == kw ||
+        p.species.toLowerCase() == kw) {
+      return p;
+    }
+  }
+  // 退一步：包含匹配（"猫" 命中"巫师猫"、"狐狸" 命中"九尾灵狐"）
+  for (final p in allPets) {
+    if (p.name.toLowerCase().contains(kw) ||
+        p.species.toLowerCase().contains(kw) ||
+        kw.contains(p.species.toLowerCase())) {
+      return p;
+    }
+  }
+  return null;
+}

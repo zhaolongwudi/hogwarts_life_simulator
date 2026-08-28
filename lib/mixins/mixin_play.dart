@@ -235,7 +235,9 @@ mixin GamePlayMixin on GameProviderBase {
     final p = player;
     if (p == null) return;
     if (p.petId == null && p.petName == null) {
-      _finishLocal('你还没有宠物，无法互动。可以去对角巷挑选一只猫头鹰、猫或蟾蜍。');
+      // 以前这句让人「去对角巷挑选」，但商店里根本没有宠物卖，是一条死路。
+      // 现在有 /宠物 购买 了，直接把可执行的指令给出来。
+      _finishLocal('你还没有宠物，无法互动。\n\n${formatPetShop()}');
       return;
     }
     final def = p.petId != null ? petById(p.petId!) : null;
@@ -326,6 +328,65 @@ mixin GamePlayMixin on GameProviderBase {
       }
     }
     _finishLocal(buf.toString());
+  }
+
+  /// 「咿啦猫头鹰商店」的在售清单。
+  ///
+  /// 之前 /宠物 在没有宠物时会说「可以去对角巷挑选一只猫头鹰、猫或蟾蜍」，
+  /// 但商店里没有宠物卖——开局问卷跳过宠物的玩家会被指到一条死路上，
+  /// 喂食/玩耍/训练三个子指令和宠物助战、羁绊化形全废。
+  String formatPetShop() {
+    final buf = StringBuffer()
+      ..writeln('【咿啦猫头鹰商店】')
+      ..writeln('输入 /宠物 购买 <名字> 带一只回家，例如 /宠物 购买 猫头鹰');
+    for (final pet in purchasablePets) {
+      final price = kPetPrices[pet.id]!;
+      final owned = player?.petId == pet.id ? '（你已拥有）' : '';
+      buf.writeln('· ${pet.name}（${pet.species}）$price 加隆$owned');
+      buf.writeln('    ${pet.description.split('\n').first}');
+    }
+    buf.writeln('\n你身上有 ${player?.galleons ?? 0} 加隆。');
+    return buf.toString();
+  }
+
+  /// 买一只宠物。[keyword] 为空时只列出在售清单。
+  String buyPet(String keyword) {
+    final p = player;
+    if (p == null) return '还没开始游戏。';
+
+    final kw = keyword.trim();
+    if (kw.isEmpty) return formatPetShop();
+
+    final pet = findPet(kw);
+    if (pet == null) {
+      return '咿啦猫头鹰商店里没有「$kw」。\n\n${formatPetShop()}';
+    }
+    final price = kPetPrices[pet.id];
+    if (price == null) {
+      return '${pet.name}是契约灵兽，不卖。它只在入学前的缘分里出现——'
+          '若你开新档时在问卷里结缘过，它才会在你身边。\n\n${formatPetShop()}';
+    }
+    if (p.petId != null) {
+      final cur = petById(p.petId!)?.name ?? p.petName ?? '现在的伙伴';
+      return '你已经有 $cur 了。对角巷的老规矩：一只巫师一生只认一个伙伴，'
+          '换宠会让它带着所有羁绊离开。';
+    }
+    if (p.galleons < price) {
+      return '${pet.name}要 $price 加隆，你身上只有 ${p.galleons} 加隆。'
+          '先去禁林采集点材料卖钱，或者把用不上的东西拿到对角巷出手。';
+    }
+
+    p.galleons -= price;
+    p.petId = pet.id;
+    p.petName = kPetDefaultNames[pet.id];
+    p.petBond = 0;
+    notifyListeners();
+
+    return '【咿啦猫头鹰商店】\n'
+        '你花 $price 加隆带走了${pet.name}（${pet.species}）。\n'
+        '${pet.description.split('\n').first}\n\n'
+        '它从笼子里跳到你肩上，用小脑袋蹭了蹭你的耳朵。\n'
+        '互动：/宠物 喂食 ｜ /宠物 玩耍 ｜ /宠物 训练（羁绊≥40 可在决斗与探险中助战）';
   }
 
   // ==================== 3. 装备穿戴 ====================
