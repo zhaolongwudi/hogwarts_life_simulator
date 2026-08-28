@@ -1142,8 +1142,6 @@ mixin GameSystemsMixin on GameProviderBase {
     await writeSave(slotId: safeName, slotName: safeName);
   }
 
-  static const int _saveVersion = 2;
-
   /// 把一份存档数据灌回 provider。
   ///
   /// 自动读档（tryAutoLoad）和槽位读档（loadFromSave）必须走同一套逻辑。
@@ -1250,7 +1248,7 @@ mixin GameSystemsMixin on GameProviderBase {
           };
         }
       }
-      data['save_version'] = _saveVersion;
+      data['save_version'] = kSaveVersion;
     }
   }
 

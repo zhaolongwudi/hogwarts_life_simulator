@@ -4,6 +4,16 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+/// 当前存档格式版本号。
+///
+/// 只有这一处定义。以前写入端（SaveService.saveGame）硬编码一个 2，读档端
+/// （mixin_systems 的 _saveVersion）又定义了一个 2，两边互不知情：等哪天
+/// 加了 v3 迁移，写档还是盖 v2 的章，于是新存的档每次读都要过一遍 v3 迁移
+/// 逻辑——而迁移代码是按"老格式"写的，等于拿新档喂给它。
+///
+/// 升级流程：把这里 +1，并在 _migrateSave 里补上对应分支。
+const int kSaveVersion = 2;
+
 class SaveService {
   static const String _savesDir = 'saves';
   static const String _metaFileName = 'save_meta.json';
@@ -120,7 +130,7 @@ class SaveService {
     final resolvedId = slotId ?? slotName ?? _uuid.v4().substring(0, 8);
     final resolvedName = slotName ?? '自动存档';
     final saveData = {
-      'save_version': 2,
+      'save_version': kSaveVersion,
       'player': player,
       'world_state': worldState,
       'npc_registry': npcRegistry,

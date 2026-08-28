@@ -220,6 +220,7 @@ void main() {
   _locationResolveGroup();
   _promptConstantGroup();
   _unboundedLoopGroup();
+  _saveVersionGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2730,6 +2731,52 @@ void _unboundedLoopGroup() {
       expect(kMaxKeysPerProvider > 0, isTrue);
       expect(kMaxKeysPerProvider <= 1000, isTrue,
           reason: '上限大得离谱就失去意义了');
+    });
+  });
+}
+
+// ==================== 存档版本号 ====================
+// 写入端（SaveService.saveGame）原先硬编码一个 2，读档端（mixin_systems）
+// 又自己定义了一个 _saveVersion = 2，两边互不知情。等哪天加了 v3 迁移，写
+// 档还是盖 v2 的章，新存的档每次读都要过一遍按老格式写的迁移逻辑。
+void _saveVersionGroup() {
+  group('存档版本号只有一个来源', () {
+    test('kSaveVersion 定义在存档服务里，写入端用它', () {
+      final src = _codeOnly('lib/services/save_service.dart');
+      expect(src, contains('const int kSaveVersion ='));
+      expect(src, contains("'save_version': kSaveVersion"),
+          reason: '写档必须盖 kSaveVersion 的章，不能写死数字');
+      // 源码里不许再出现 'save_version': 数字 这种写法
+      expect(RegExp(r"'save_version':\s*\d").hasMatch(src), isFalse);
+    });
+
+    test('读档端不再自己定义一个版本号', () {
+      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      expect(RegExp(r'_saveVersion\s*=').hasMatch(src), isFalse,
+          reason: '版本号只能有一处定义');
+      expect(src, contains('kSaveVersion'),
+          reason: '迁移完成后补章要用同一个常量');
+    });
+
+    test('lib 里只剩一处 kSaveVersion 的定义', () {
+      final hits = <String>[];
+      for (final f in _allLibFiles()) {
+        final src = _codeOnly(f);
+        if (RegExp(r'const int kSaveVersion\s*=').hasMatch(src)) hits.add(f);
+      }
+      expect(hits, hasLength(1), reason: '定义出现在多处：$hits');
+    });
+
+    test('当前版本有对应的迁移分支兜底', () {
+      // 版本号 >1 就意味着 _migrateSave 里应该存在处理旧版本的分支，
+      // 否则老存档读进来什么都不做，字段缺失会直接炸在 fromJson 上。
+      expect(kSaveVersion, greaterThanOrEqualTo(1));
+      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      expect(src, contains('void _migrateSave'));
+      if (kSaveVersion > 1) {
+        expect(RegExp(r'if \(version < \d+\)').hasMatch(src), isTrue,
+            reason: '版本号是 $kSaveVersion，但没有迁移旧版本的分支');
+      }
     });
   });
 }
