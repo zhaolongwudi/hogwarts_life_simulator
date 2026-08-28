@@ -5,6 +5,16 @@
 
 ---
 
+### v2.4.1 — 2026-08-28
+
+**📋 变更说明**
+fix: 修复缺失 import / 乱码 / const 构造问题
+
+- 添加 5 个缺失的 import（mixin 间依赖、CrashLogger、debugPrint、GameResponseChoiceMixin）
+- 清除 mixin_response.dart 中残留的 1154→ 行号前缀
+- StagnationDetector._() 私有构造 → StagnationDetector.instance
+- 清理 mixin_narrative_continuity.dart 的 6 个 unused import
+
 ### v2.4.0 — 2026-08-28
 
 **📋 变更说明**
