@@ -28,41 +28,63 @@ class AffectionValidator {
     if (delta == 0) return false;
     if (npcName.isEmpty || npcRegistry.isEmpty) return false;
 
+    // 先定位目标 NPC —— 规则 1/2 需要用它圈定上下文范围
+    NPC? target;
+    for (final n in npcRegistry.values) {
+      if (n.nameMatches(npcName)) {
+        target = n;
+        break;
+      }
+    }
+
+    // 判定范围：正文中「提到该 NPC」的句子。
+    // 旧实现直接对整段叙事做负面词匹配，于是
+    //   「马尔福嘲笑你，但你救了罗恩」
+    // 里罗恩的 +3 会因为别人那半句的「嘲笑」被一起丢弃。
+    // 冲突密集的 HP 剧情下，这会让正向好感系统性漏计。
+    final scoped = _contextFor(narrative, npcName, target);
+    final scope = scoped.isEmpty ? narrative : scoped;
+
     // 规则1：负面互动关键词 → 不允许正向 delta
-    if (_negRe.hasMatch(narrative)) {
+    if (_negRe.hasMatch(scope)) {
       if (delta > 0) {
-        // [P1-2 好感校验] 丢弃日志已移除
         return false;
       }
     }
 
     // 规则2：|delta| ≥ 8 必须有救命/告白/挡刀 等重大事件支撑
-    if (delta.abs() >= 8 && !_hugePositiveRe.hasMatch(narrative)) {
-      // [P1-2 好感校验] 丢弃日志已移除（幅度≥8无重大事件）
+    if (delta.abs() >= 8 && !_hugePositiveRe.hasMatch(scope)) {
       return false;
     }
 
     // 规则3：大幅正向（≥+4）需匹配 NPC 当前阶段（是否登场、是否敌对）
-    if (delta >= 4) {
-      NPC? target;
-      for (final n in npcRegistry.values) {
-        if (n.nameMatches(npcName)) {
-          target = n;
-          break;
-        }
-      }
-      if (target != null) {
-        if (!target.introduced) {
-          // [P1-2 好感校验] 丢弃日志已移除（未登场NPC）
-          return false;
-        }
-        if (target.affection <= -20) {
-          // [P1-2 好感校验] 丢弃日志已移除（敌对阶段不能大跳）
-          return false;
-        }
-      }
+    if (delta >= 4 && target != null) {
+      if (!target.introduced) return false;
+      if (target.affection <= -20) return false;
     }
 
     return true;
+  }
+
+  /// 抽出正文中提到该 NPC 的句子（上下文窗口）。
+  ///
+  /// 抽不到（AI 用代词指代）时返回空串，调用方会退回全文判定。
+  static String _contextFor(String narrative, String npcName, NPC? target) {
+    final names = <String>{npcName};
+    if (target != null) {
+      names.addAll(target.allNames);
+    }
+    // 兜底：中文名取后两字（"德拉科·马尔福" → "尔福"）这类截断意义不大，
+    // 这里只补「3 字及以上名字去掉姓氏前缀」的常见称呼（"哈利·波特" → "哈利"）
+    if (npcName.contains('·')) {
+      final first = npcName.split('·').first;
+      if (first.length >= 2) names.add(first);
+    }
+
+    final sentences = narrative.split(RegExp(r'(?<=[。！？!?])|\n'));
+    final hits = sentences
+        .where((s) => names.any((n) => n.length >= 2 && s.contains(n)))
+        .toList();
+    return hits.join('\n');
   }
 }

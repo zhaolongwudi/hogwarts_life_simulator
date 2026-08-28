@@ -9,6 +9,7 @@ import '../data/cg_data.dart';
 import '../data/goal_data.dart';
 import '../data/wand_data.dart';
 import '../providers/game_provider_base.dart';
+import 'mixin_systems.dart';
 
 mixin GameCommandsMixin on GameProviderBase {
   // ================ R1：注册命令到注册表（初始化时调用一次即可） ================
@@ -41,6 +42,41 @@ mixin GameCommandsMixin on GameProviderBase {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatTime();
           m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '快进',
+        aliases: ['跳过', '时间跳跃', 'skip'],
+        group: '基础信息',
+        helpText: '快进时间：/快进 [天数|明天|下周|下月|假期|暑假|开学]',
+        handler: (ctx) {
+          final m = ctx.provider as GameSystemsMixin;
+          final days = m.resolveFastForwardDays(ctx.tailFrom(0));
+          final before = m.worldState.time.formatDate();
+          final produced = m.fastForwardDays(days);
+          final after = m.worldState.time.formatDate();
+          final buf = StringBuffer()
+            ..writeln('【时间快进】')
+            ..writeln('$before → $after（共 $days 天）');
+          if (produced.isNotEmpty) {
+            buf.writeln('\n期间发生：');
+            for (final n in produced.take(12)) {
+              buf.writeln('· $n');
+            }
+            if (produced.length > 12) {
+              buf.writeln('……等共 ${produced.length} 条（/通知 查看全部）');
+            }
+          } else {
+            buf.writeln('\n这段日子里没有发生什么值得一提的事。');
+          }
+          buf.writeln('\n接下来你想做些什么？');
+          m.currentNarrative = buf.toString();
+          m.choices = [
+            GameChoice(text: '继续', action: '继续'),
+            GameChoice(text: '再快进一个月', action: '/快进 下月'),
+          ];
+          m.notifyListeners();
           return true;
         },
       ),
@@ -167,8 +203,8 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '查询两位NPC间的关系（/关系网络 [NPC1] [NPC2]）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 3) {
-            m.currentNarrative = m.formatNpcRelationship(ctx.parts[1], ctx.parts[2]);
+          if (ctx.parts.length >= 2) {
+            m.currentNarrative = m.formatNpcRelationship(ctx.arg(0)!, ctx.arg(1)!);
           } else {
             m.currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
           }
@@ -209,7 +245,7 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '触发课堂互动（/课堂 互动）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 && ctx.parts[1] == '互动') {
+          if (ctx.parts.length >= 1 && ctx.arg(0) == '互动') {
             m.classroomInteraction();
           } else {
             m.currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
@@ -235,12 +271,12 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: 'CG图鉴：统计/详情/重播（/日记 统计·/日记 [编号]·/日记 重播 [编号]）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 && ctx.parts[1] == '统计') {
+          if (ctx.parts.length >= 1 && ctx.arg(0) == '统计') {
             m.currentNarrative = m._formatDiaryStats();
-          } else if (ctx.parts.length >= 3 && ctx.parts[1] == '重播') {
-            m.currentNarrative = m._replayCg(ctx.parts[2]);
-          } else if (ctx.parts.length >= 2) {
-            m.currentNarrative = m._formatCgDetail(ctx.parts[1]);
+          } else if (ctx.parts.length >= 2 && ctx.arg(0) == '重播') {
+            m.currentNarrative = m._replayCg(ctx.arg(1)!);
+          } else if (ctx.parts.length >= 1) {
+            m.currentNarrative = m._formatCgDetail(ctx.arg(0)!);
           } else {
             m.currentNarrative = m._formatDiary();
           }
@@ -280,9 +316,9 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '宠物：查看 / 喂食 / 玩耍 / 训练',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 &&
-              ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(ctx.parts[1])) {
-            m.petInteract(ctx.parts[1]);
+          if (ctx.parts.length >= 1 &&
+              ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(ctx.arg(0))) {
+            m.petInteract(ctx.arg(0)!);
           } else {
             m.currentNarrative = m._formatPet();
             m.choices = [GameChoice(text: '返回', action: '继续')];
@@ -296,10 +332,10 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '使用背包物品：/使用 <物品名>',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length < 2) {
+          if (ctx.parts.isEmpty) {
             m.currentNarrative = m.formatItemUseHelp();
           } else {
-            m.useItem(ctx.parts.sublist(1).join(' '));
+            m.useItem(ctx.tailFrom(0));
           }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -311,10 +347,10 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '穿戴装备：/装备 <物品名>',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length < 2) {
+          if (ctx.parts.isEmpty) {
             m.currentNarrative = m.formatEquip();
           } else {
-            m.equipItem(ctx.parts.sublist(1).join(' '));
+            m.equipItem(ctx.tailFrom(0));
           }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -326,10 +362,10 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '脱下装备：/卸下 <袍子|帽子|扫帚|饰品>',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length < 2) {
+          if (ctx.parts.isEmpty) {
             m.currentNarrative = m.formatEquip();
           } else {
-            m.unequipItem(ctx.parts[1]);
+            m.unequipItem(ctx.arg(0)!);
           }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -345,10 +381,10 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '魁地奇：/魁地奇 比赛·/魁地奇 位置 <位置>',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 && ctx.parts[1] == '比赛') {
+          if (ctx.parts.length >= 1 && ctx.arg(0) == '比赛') {
             m.playQuidditch();
-          } else if (ctx.parts.length >= 3 && ctx.parts[1] == '位置') {
-            m.setQuidditchPosition(ctx.parts[2]);
+          } else if (ctx.parts.length >= 2 && ctx.arg(0) == '位置') {
+            m.setQuidditchPosition(ctx.arg(1)!);
           } else {
             m.currentNarrative = m.formatQuidditch();
             m.choices = [GameChoice(text: '返回', action: '继续')];
@@ -362,7 +398,7 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '与NPC巫师决斗：/决斗 [NPC名]（空参随机）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          final arg = ctx.parts.length >= 2 ? ctx.parts.sublist(1).join(' ') : null;
+          final arg = ctx.parts.isNotEmpty ? ctx.tailFrom(0) : null;
           m.duelNpc(arg);
           return true;
         },
@@ -373,7 +409,7 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '禁林探险：/禁林 探险',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 && ctx.parts[1] == '探险') {
+          if (ctx.parts.length >= 1 && ctx.arg(0) == '探险') {
             m.exploreForbiddenForest();
           } else {
             m.currentNarrative = '【禁林】\n'
@@ -402,12 +438,12 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '支线委托板：/委托 刷新·接受 [编号]·交付 [编号]',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 && ctx.parts[1] == '刷新') {
+          if (ctx.parts.length >= 1 && ctx.arg(0) == '刷新') {
             m.refreshQuestBoard();
-          } else if (ctx.parts.length >= 3 && ctx.parts[1] == '接受') {
-            m.acceptQuest((int.tryParse(ctx.parts[2]) ?? 0) - 1);
-          } else if (ctx.parts.length >= 3 && ctx.parts[1] == '交付') {
-            m.deliverQuest((int.tryParse(ctx.parts[2]) ?? 0) - 1);
+          } else if (ctx.parts.length >= 2 && ctx.arg(0) == '接受') {
+            m.acceptQuest((int.tryParse(ctx.arg(1)!) ?? 0) - 1);
+          } else if (ctx.parts.length >= 2 && ctx.arg(0) == '交付') {
+            m.deliverQuest((int.tryParse(ctx.arg(1)!) ?? 0) - 1);
           } else {
             m.currentNarrative = m.formatQuests();
             m.choices = [GameChoice(text: '返回', action: '继续')];
@@ -481,13 +517,14 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '查看/设定人生目标（/目标 [编号]·/目标 进度）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 2 && (ctx.parts[1] == '进度' || ctx.parts[1] == 'progress')) {
+          if (ctx.parts.length >= 1 &&
+              (ctx.arg(0) == '进度' || ctx.arg(0) == 'progress')) {
             m.currentNarrative = m.formatGoalProgress();
             m.choices = [GameChoice(text: '返回', action: '继续')];
             return true;
           }
-          if (ctx.parts.length >= 2) {
-            final arg = ctx.tailFrom(1);
+          if (ctx.parts.length >= 1) {
+            final arg = ctx.tailFrom(0);
             LifeGoal? goal;
             final idx = int.tryParse(arg);
             if (idx != null && idx >= 1 && idx <= lifeGoalCatalog.length) {
@@ -749,7 +786,7 @@ mixin GameCommandsMixin on GameProviderBase {
         return true;
 
       case '/信':
-        handleLetterCommand(parts);
+        handleLetterCommand(parts.sublist(1));
         return true;
 
       case '/血缘':
@@ -836,7 +873,7 @@ mixin GameCommandsMixin on GameProviderBase {
         return true;
 
       case '/cheat':
-        _handleCheat(parts);
+        _handleCheat(parts.sublist(1));
         return true;
     }
     return false;
@@ -844,21 +881,22 @@ mixin GameCommandsMixin on GameProviderBase {
 
   // ==================== 作弊指令（设定 8.1-8.5） ====================
 
+  /// [parts] 为「去掉 /cheat 命令本身」后的子参数列表，parts[0] 即子命令。
   void _handleCheat(List<String> parts) {
     final p = player;
     if (p == null) return;
-    if (parts.length < 2) {
+    if (parts.isEmpty) {
       currentNarrative = _formatCheatHelp();
       choices = [GameChoice(text: '返回', action: '继续')];
       return;
     }
-    final sub = parts[1];
+    final sub = parts[0];
 
     switch (sub) {
       case '好感':
       case 'affection':
-        if (parts.length >= 4) {
-          final nameKey = parts[2];
+        if (parts.length >= 3) {
+          final nameKey = parts[1];
           NPC? npc;
           for (final n in npcRegistry.values) {
             if (n.name.contains(nameKey)) { npc = n; break; }
@@ -869,7 +907,7 @@ mixin GameCommandsMixin on GameProviderBase {
             currentNarrative = '未找到NPC "$nameKey"。可用：$allNames';
             break;
           }
-          final delta = int.tryParse(parts[3]);
+          final delta = int.tryParse(parts[2]);
           if (delta != null) {
             npc.affection = (npc.affection + delta).clamp(-100, 100);
             currentNarrative = '已调整「${npc.name}」的好感度：${npc.affection}（${npc.affectionStage}）';
@@ -879,9 +917,9 @@ mixin GameCommandsMixin on GameProviderBase {
 
       case '资源':
       case 'resources':
-        if (parts.length >= 4) {
-          final amount = int.tryParse(parts[2]) ?? 0;
-          switch (parts[3]) {
+        if (parts.length >= 3) {
+          final amount = int.tryParse(parts[1]) ?? 0;
+          switch (parts[2]) {
             case '魔力':
             case 'mp':
               p.magic = (p.magic + amount).clamp(0, 100);
@@ -909,25 +947,25 @@ mixin GameCommandsMixin on GameProviderBase {
 
       case '声望':
       case 'reputation':
-        if (parts.length >= 4) {
-          final amount = int.tryParse(parts[2]) ?? 0;
-          p.playerReputation.add(parts[3], amount);
+        if (parts.length >= 3) {
+          final amount = int.tryParse(parts[1]) ?? 0;
+          p.playerReputation.add(parts[2], amount);
           currentNarrative =
-              '${p.playerReputation.labelOf(parts[3])} ${p.playerReputation.get(parts[3])}';
+              '${p.playerReputation.labelOf(parts[2])} ${p.playerReputation.get(parts[2])}';
         }
         break;
 
       case '时间':
       case 'time':
-        if (parts.length >= 3) {
-          final days = int.tryParse(parts[2]);
+        if (parts.length >= 2) {
+          final days = int.tryParse(parts[1]);
           if (days != null) fastForwardTime(days);
           currentNarrative = '时间已推进 $days 天。\n${worldState.timestamp}';
         }
         break;
 
       case '骨科':
-        if (parts.length >= 3 && parts[2] == '无视') {
+        if (parts.length >= 2 && parts[1] == '无视') {
           p.boneMode = true;
           unlockAchievement('bone_mode');
           notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
@@ -942,11 +980,11 @@ mixin GameCommandsMixin on GameProviderBase {
 
       case '舆论':
       case 'rumor':
-        if (parts.length >= 3 && parts[2] == '重置') {
+        if (parts.length >= 2 && parts[1] == '重置') {
           p.rumors.clear();
           currentNarrative = '已清除所有舆论传闻。';
-        } else if (parts.length >= 4 && parts[2] == '清除') {
-          final key = parts.sublist(3).join(' ');
+        } else if (parts.length >= 3 && parts[1] == '清除') {
+          final key = parts.sublist(2).join(' ');
           final before = p.rumors.length;
           p.rumors.removeWhere((r) => r.contains(key));
           currentNarrative = '已清除 ${before - p.rumors.length} 条相关传闻。';
@@ -957,8 +995,8 @@ mixin GameCommandsMixin on GameProviderBase {
 
       case '解锁CG':
       case 'cg':
-        if (parts.length >= 3) {
-          final cg = cgById(parts[2]);
+        if (parts.length >= 2) {
+          final cg = cgById(parts[1]);
           if (cg != null) {
             unlockCG(cg);
             currentNarrative = '已解锁 CG：${cg.name}';

@@ -10,6 +10,53 @@ import '../prompts/choice_prompts.dart';
 import 'mixin_response_choices.dart';
 import 'mixin_response_affection.dart';
 
+/// 需要从正文中剥离的「结构化区块名」全集。
+/// AI 输出的选项块标题并不总是【可选行动】——不同 prompt 版本会写成
+/// 行动建议 / 备选行动 / 剧情选项 / 下回合选择 / 选择建议 等。
+/// 之前只有两处硬编码（且只写了 2 个名字），漏网的选项会直接泄漏进正文。
+const List<String> kStripSectionNames = [
+  '可选行动',
+  '自由行动',
+  '行动建议',
+  '备选行动',
+  '剧情选项',
+  '下回合选择',
+  '选择建议',
+  '行动选项',
+  '你可以',
+];
+
+/// 从叙事文本中剥离所有结构化区块（好感/声望/各类选项块）。
+/// [toEnd] 为 true 时把命中区块之后的内容一并截断（用于展示文本兜底，
+/// 因为选项块后面通常只剩零散尾巴），否则只删到下一个【 前（用于精确解析）。
+String stripStructuredSections(
+  String text, {
+  bool toEnd = false,
+  bool bareLabel = false,
+}) {
+  var out = text;
+  for (final section in kStripSectionNames) {
+    final name = RegExp.escape(section);
+    String pattern;
+    if (toEnd) {
+      pattern = '【$name】[\\s\\S]*\$';
+    } else if (bareLabel) {
+      // 允许「可选行动：」这种没加【】的写法，一直删到下一个行首【 或文末。
+      // 注意：这里必须用 \z（输入末尾）而不是 $——multiLine 模式下 $ 会匹配
+      // 行尾，惰性量词会立刻在标题行结尾处停下，导致只删标题、留下选项正文。
+      pattern =
+          '(?:【$name】|^\\s*$name\\s*[：:])[\\s\\S]*?(?=\\n【|\\z)';
+    } else {
+      pattern = '【$name】[\\s\\S]*?(?=【|\$)';
+    }
+    out = out.replaceAllMapped(
+      RegExp(pattern, multiLine: bareLabel),
+      (m) => '',
+    );
+  }
+  return out;
+}
+
 mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameResponseAffectionMixin {
   /// ===== BUG-K 最终防线：分院结果文本解析（极度收紧规则）=====
   /// 旧问题：AI 写"你想被分进斯莱特林吗？"这种第三人称设问/假设句，
@@ -146,7 +193,18 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
   ///   则解析结果是空/过短的narrative + 一堆choices，这时候返回 false，
   ///   让调用方（narrative生成流程）按"生成失败"处理：重试/兜底叙事，
   ///   绝对不允许把A.B.C.D.选项文本写进剧情存档/前情回顾。
-  bool parseNarrativeOnly(String text) {
+  /// 解析叙事正文。
+  ///
+  /// [applySideEffects] = false 时只做「纯解析」：产出 currentNarrative / choices /
+  /// lastAffectionSections，但**不**改动任何游戏状态（好感度、声望、分院、NPC登场）。
+  ///
+  /// 为什么要分开：叙事生成带重试——critical 违规会把 response 打回重写。
+  /// 若每次解析都落库副作用，被驳回的那次剧情的好感/声望已经写进 NPC 却不会回滚，
+  /// 一次玩家行动会叠加 2~3 回合的好感变化；更糟的是分院提取一旦被错误触发
+  /// （如"走进了拉文克劳休息室"），成就锁会让错误学院永久化。
+  /// 现在由调用方在**确定最终采纳的 response 之后**统一调用
+  /// [_applyNarrativeSideEffects] 一次。
+  bool parseNarrativeOnly(String text, {bool applySideEffects = true}) {
     currentNarrative = '';
     choices = [];
 
@@ -162,14 +220,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     // ❗重要：时间戳和地点是头部元数据，由独立卡片展示，不应该混在正文，但也不应该被完全移除（否则_extractHeader找不到）
     // 我们只移除选项相关的区块，保留时间戳/地点给_extractHeader提取。
-    const stripSections = [
-      '可选行动', '自由行动', '行动建议', '备选行动',
-      '剧情选项', '下回合选择', '选择建议',
-    ];
-    for (final section in stripSections) {
-      final pat = RegExp(r'【' + RegExp.escape(section) + r'】[\s\S]*?(?=【|$)');
-      cleaned = cleaned.replaceAllMapped(pat, (m) => '');
-    }
+    cleaned = stripStructuredSections(cleaned);
 
     // 移除选项行（A.xxx, B.xxx 等），同时统计：原始文本里选项行有多少
     final allLines = text.split('\n');
@@ -214,6 +265,15 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     final extracted = StoryTextRenderer.extractAffectionSections(text);
     lastAffectionSections = extracted['affectionSections'] as List<String>? ?? [];
 
+    if (applySideEffects) applyNarrativeSideEffects(text);
+    return true;
+  }
+
+  /// 把一段最终采纳的叙事写入游戏状态（好感度/声望/分院/NPC登场）。
+  ///
+  /// 一个回合只能调用一次，且必须在重试循环结束、叙事定稿之后。
+  @override
+  void applyNarrativeSideEffects(String text) {
     // R13 修复·好感度同步问题：先标记 NPC 登场，再解析好感度
     if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
     // 解析好感和声望变化（从原始文本）
@@ -222,8 +282,6 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     // 分院结果自动提取（使用带强信号约束的新版函数）
     _tryExtractHouseFromNarrative(text);
-
-    return true;
   }
 
   void parseResponse(String text) {
@@ -365,10 +423,10 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       RegExp(r'【声望变化?】[\s\S]*?(?=【|$)'), (m) => '');
     narrativeForDisplay = narrativeForDisplay.replaceAll(RegExp(r'\n{3,}'), '\n\n');
 
-    narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
-      RegExp(r'【可选行动】[\s\S]*$'), (m) => '').trimRight();
-    narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
-      RegExp(r'【自由行动】[\s\S]*$'), (m) => '').trimRight();
+    // 使用与 parseResponse 一致的完整区块名列表，避免 AI 写成
+    // 【行动建议】/【剧情选项】时选项整块泄漏进正文
+    narrativeForDisplay =
+        stripStructuredSections(narrativeForDisplay, toEnd: true).trimRight();
 
     // 自动段落排版（为无分行的 AI 输出插入合理段落）
     narrativeForDisplay = StoryTextRenderer.autoParagraph(narrativeForDisplay);
@@ -473,18 +531,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
 
     // 2. 删除其他已知结构化区块（整体移除，连同标题行一起）
-    const stripSections = [
-      '可选行动', '自由行动', '行动建议', '备选行动',
-      '剧情选项', '下回合选择', '选择建议',
-    ];
-    for (final s in stripSections) {
-      // 从出现 【$s】 或 行首 $s： 开始，到下一个【 标题 或 末尾结束
-      final pat = RegExp(
-        r'(?:【' + RegExp.escape(s) + r'】|^\s*' + RegExp.escape(s) + r'\s*[：:])[\s\S]*?(?=\n【|$)',
-        multiLine: true,
-      );
-      cleaned = cleaned.replaceAllMapped(pat, (m) => '');
-    }
+    cleaned = stripStructuredSections(cleaned, bareLabel: true);
 
     // 3. 找到「选项区块」的起点：某一行以「A./B./1./一、A)」开头且后面是文字
     //    把起点之后的内容全部认为是选项而丢弃

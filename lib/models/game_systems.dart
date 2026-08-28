@@ -124,6 +124,17 @@ class GameTime {
 
   void advanceHours(int hours) => advanceMinutes(hours * 60);
 
+  /// 推进整天（用于「快进/假期跳过」这类大宗时间跳跃）。
+  /// 比逐分钟循环快几个数量级：直接按剩余天数折叠进位。
+  void advanceDays(int days) {
+    if (days <= 0) return;
+    for (var i = 0; i < days; i++) {
+      _advanceDay();
+    }
+    hour = 8;
+    minute = 0;
+  }
+
   void _advanceDay() {
     day += 1;
     weekday = (weekday + 1) % 7;

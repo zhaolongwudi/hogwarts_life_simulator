@@ -49,8 +49,23 @@ class Player {
   LoveState loveState; // 恋爱状态
   Reputation playerReputation; // 玩家声望
   int houseReputation; // 学院声望
-  int wizardingReputation; // 魔法界声望
-  int factionReputation; // 阵营声望
+  // 说明：wizardingReputation / factionReputation 原本是独立 int 字段，
+  // 但全项目没有任何写入点 → 永远显示 0，与六维声望系统完全脱节。
+  // 现已改为由 playerReputation 派生的 getter（见下方），保证显示真实值。
+
+  /// 魔法界声望（派生）：五维正向声望的均值（0~100）。
+  /// 黑魔法声望不计入——它在巫师界是贬义，混入均值会让"恶名"变"美名"。
+  int get wizardingReputation {
+    final r = playerReputation;
+    return ((r.academic + r.social + r.combat + r.moral + r.leadership) / 5)
+        .round()
+        .clamp(0, 100);
+  }
+
+  /// 阵营声望（派生）：黑魔法声望 − 道德声望，范围 −100~100。
+  /// 正值＝在黑暗阵营那边有口碑，负值＝在凤凰社一方有口碑。
+  int get factionReputation =>
+      (playerReputation.dark - playerReputation.moral).clamp(-100, 100);
   final List<String> collection; // 收藏品
   final Map<String, CgRecord> cgRecords; // 已解锁CG
   final List<String> achievements; // 已解锁成就
@@ -120,8 +135,6 @@ class Player {
     LoveState? loveState,
     Reputation? playerReputation,
     this.houseReputation = 0,
-    this.wizardingReputation = 0,
-    this.factionReputation = 0,
     List<String>? collection,
     Map<String, CgRecord>? cgRecords,
     List<String>? achievements,
@@ -167,6 +180,12 @@ class Player {
         equipped = Map<String, String>.from(equipped ?? const {}),
         bestiary = List<String>.from(bestiary ?? const []),
         quests = List<QuestRecord>.from(quests ?? const []);
+
+  /// 是否为合法属性键。
+  ///
+  /// 物品/奖励的 effect map 里会混进控制标记（如 `learn_spell` 学咒、
+  /// `special` 随机口味），它们不是属性，绝不能写进 attributes。
+  static bool isAttributeKey(String key) => _defaultAttributes.containsKey(key);
 
   static const Map<String, int> _defaultAttributes = {
     'spell_understanding': 50,
@@ -251,8 +270,6 @@ class Player {
         'love_state': loveState.toJson(),
         'player_reputation': playerReputation.toJson(),
         'house_reputation': houseReputation,
-        'wizarding_reputation': wizardingReputation,
-        'faction_reputation': factionReputation,
         'collection': collection,
         'cg_records': cgRecords.map((k, v) => MapEntry(k, v.toJson())),
         'achievements': achievements,
@@ -332,8 +349,6 @@ class Player {
         playerReputation: Reputation.fromJson(
             Map<String, dynamic>.from(json['player_reputation'] ?? {})),
         houseReputation: json['house_reputation'] ?? 0,
-        wizardingReputation: json['wizarding_reputation'] ?? 0,
-        factionReputation: json['faction_reputation'] ?? 0,
         collection: List<String>.from(json['collection'] ?? []),
         cgRecords: (json['cg_records'] as Map<String, dynamic>?)
                 ?.map((k, v) => MapEntry(k, CgRecord.fromJson(v))) ??

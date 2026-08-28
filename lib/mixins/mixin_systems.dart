@@ -17,19 +17,32 @@ import '../models/world_state.dart';
 import '../providers/game_provider_base.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
-  void advanceTimeForAction(String action) {
-    final int minutes = resolveActionCost(action);
-
+  /// 推进世界时钟，并统一执行所有周期性检查
+  /// （游戏周、满月、学年切换、事件锚点、一致性、月度演化）。
+  ///
+  /// [days] 不为 null 时按整天快进（/快进 指令），否则按分钟推进。
+  /// [fireAnchors] 为 false 时跳过事件锚点检测——长距离跳跃只在终点触发一次，
+  /// 否则一次跳跃会灌入十几个剧情节点通知。
+  void _advanceWorldClock(
+    int minutes, {
+    int? days,
+    bool fireAnchors = true,
+  }) {
     final oldMonth = worldState.time.month;
     final oldYear = worldState.time.year;
-    worldState.time.advanceMinutes(minutes);
+    if (days != null) {
+      worldState.time.advanceDays(days);
+    } else {
+      worldState.time.advanceMinutes(minutes);
+    }
 
     // 游戏周追踪（好感沉淀用）：以绝对天数 / 7 分桶，
     // 只有当绝对天数跨过整周边界时才推进游戏周，避免 dayOfYear 头尾截断导致开局即跨周。
     final newBucket = worldState.time.absoluteDayIndex ~/ 7;
     if (newBucket > lastWeekBucket) {
+      // 补齐跨过的所有整周（快进时一次可能跨很多周）
+      gameWeek += newBucket - lastWeekBucket;
       lastWeekBucket = newBucket;
-      gameWeek++;
       _resetWeeklyAffectionCaps();
     }
 
@@ -49,11 +62,113 @@ mixin GameSystemsMixin on GameProviderBase {
     _checkSchoolYearTransition(oldMonth, oldYear);
 
     // 事件锚点检测（按月份触发手写剧情骨架）
-    _checkEventAnchors();
+    if (fireAnchors) {
+      _checkEventAnchors();
+    }
 
     _runConsistencyChecks();
 
     _checkMonthlyEvolution(oldMonth, oldYear);
+  }
+
+  void advanceTimeForAction(String action) {
+    _advanceWorldClock(resolveActionCost(action));
+  }
+
+  // ==================== 时间快进（/快进） ====================
+
+  /// 距本月最后一天还剩几天（返回 0 表示今天就是月末）。
+  int _daysLeftInMonth(int year, int month, int day) {
+    const dims = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    var dim = dims[(month - 1).clamp(0, 11)];
+    if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0)) {
+      dim = 29;
+    }
+    return (dim - day).clamp(0, dim);
+  }
+
+  /// 快进若干天。
+  ///
+  /// 动机：一回合平均只推进 60~90 分钟，七年制毕业需要约 6 万回合，
+  /// 毕业结局、学院杯、高年级专属锚点实际上永远达不到。
+  /// 快进让玩家能主动跳到"下一个假期/下一学年"，同时仍然逐步结算
+  /// 月度演化与学年切换，不会把中间的过程整个吞掉。
+  ///
+  /// 返回本次快进产生的新通知列表（供 UI 汇总展示）。
+  List<String> fastForwardDays(int days) {
+    if (days <= 0) return const [];
+    if (player == null) return const [];
+
+    final startLabel = worldState.time.formatDate();
+    final notifyFrom = notifications.length;
+
+    var remaining = days;
+    var guard = 0;
+    while (remaining > 0 && guard++ < 200) {
+      final t = worldState.time;
+      // 每次最多走到次月 1 日：保证 _checkMonthlyEvolution 每个月都能触发
+      final step = min(remaining, _daysLeftInMonth(t.year, t.month, t.day) + 1);
+      final isLastStep = step >= remaining;
+      _advanceWorldClock(0, days: step, fireAnchors: isLastStep);
+      remaining -= step;
+    }
+
+    // 快进后清空停滞计数并同步追踪地点：玩家显然已经不在原来那个场景里了
+    turnsAtSameLocation = 0;
+    lastTrackedLocation = worldState.currentLocation;
+
+    final endLabel = worldState.time.formatDate();
+    worldState.addNarrativeEvent('⏩ 时间快进 $days 天（$startLabel → $endLabel）',
+        turn: turnCount);
+
+    if (notifications.length > notifyFrom) {
+      return notifications.sublist(notifyFrom);
+    }
+    return const [];
+  }
+
+  /// 把「明天 / 下周 / 下月 / 下学期 / 假期 / 下学年 / N天」解析成天数。
+  int resolveFastForwardDays(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return 7;
+    final n = int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), ''));
+    if (n != null && n > 0) return min(n, 365);
+
+    final t = worldState.time;
+    if (s.contains('明天')) return 1;
+    if (s.contains('下周')) return 7;
+    if (s.contains('两周')) return 14;
+    if (s.contains('下月') || s.contains('下个月')) return 30;
+    if (s.contains('圣诞') || s.contains('假期') || s.contains('放假')) {
+      // 跳到下一个假期起点：12月(圣诞)或7月(暑假)
+      return _daysUntilMonth(t.month == 12 ? 7 : 12);
+    }
+    if (s.contains('暑假')) return _daysUntilMonth(7);
+    if (s.contains('学期') || s.contains('开学')) return _daysUntilMonth(9);
+    if (s.contains('下学年') || s.contains('明年') || s.contains('下一年')) {
+      return _daysUntilMonth(9);
+    }
+    return 7;
+  }
+
+  /// 从当前日期跳到下一个第 [targetMonth] 月 1 日，需要多少天
+  int _daysUntilMonth(int targetMonth) {
+    final t = worldState.time;
+    var days = _daysLeftInMonth(t.year, t.month, t.day) + 1; // 到次月1日
+    var m = t.month + 1;
+    var y = t.year;
+    while (m != targetMonth) {
+      const dims = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      var dim = dims[(m - 1) % 12];
+      if (m == 2 && ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)) dim = 29;
+      days += dim;
+      m++;
+      if (m > 12) {
+        m = 1;
+        y++;
+      }
+    }
+    return max(1, days);
   }
 
   // ==================== 学年推进系统 ====================
@@ -94,6 +209,11 @@ mixin GameSystemsMixin on GameProviderBase {
 
     if (newGrade > 7) {
       // 毕业
+      // 先结算最后一学年的学院杯：原本这条分支直接毕业，导致七年级全年
+      // 攒下的 houseCupPoints 永不结算、永不清零，house_cup_winner 成就
+      // 在最后一年也无法达成。同届 NPC 同样需要走一次晋升/毕业。
+      _promoteNpcs(yearsPassed);
+      settleHouseCup();
       p.grade = 7;
       worldState.graduated = true;
       _onPlayerGraduated(oldGrade);

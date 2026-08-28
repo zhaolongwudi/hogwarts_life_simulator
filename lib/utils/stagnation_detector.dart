@@ -79,9 +79,12 @@ class StagnationDetector {
     final tail = narrative.length > 200
         ? narrative.substring(narrative.length - 200)
         : narrative;
+    // 注意别把「——」「正在」「突然」「刚」这类高频标点/副词算作未决钩子：
+    // 中文叙事几乎必然命中，hasUnresolvedHook 恒为 true，
+    // 会让下面的「⚠️强制推进」永远发不出去，停滞兜底形同虚设。
     final re = RegExp(
-      r'(\.\.\.|……|——|—\s*$)'
-      r'|(刚|正要|正准备|突然|就在这时|正在|即将|尚未|还没|没等|未等)'
+      r'(\.\.\.|……)'
+      r'|(刚想|刚要|正要|正准备|就在这时|话音未落|还没来得及|话还没说完|尚未|没等|未等)'
       r'|(看着你.*(回答|回应|开口)|等你(回答|回应|开口|出招)|点名叫|点了.*的名|注视着你|等你说话)'
       r'|(举起.*魔杖|瞄准|对峙|剑拔弩张|一触即发|准备迎战|严阵以待|蓄势待发)'
       r'|(分院帽.*(碰到|落下|停住|思考)|(考试|测验|仪式|宴会).(正在|进行中|刚刚开始|开始了))'
@@ -101,7 +104,14 @@ class StagnationDetector {
   }) {
     final threshold = thresholdFor(currentLocation);
     if (turnsAtSameLocation < threshold) return '';
-    if (hasUnresolvedHook) return '';
+
+    // ❗顺序很重要：旧代码在这里无条件 `if (hasUnresolvedHook) return '';`，
+    // 导致下面 else-if 里那条「💡剧情进行中」分支永远不可达（死分支）。
+    // 正确语义：有未决钩子 = 剧情正在推进 → 给软提示，不发强制指令。
+    if (hasUnresolvedHook) {
+      return '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；'
+          '但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。\n\n';
+    }
 
     final stuckTurns = turnsAtSameLocation;
     final isExempt_ = isExempt(currentLocation);
@@ -115,8 +125,6 @@ class StagnationDetector {
     String line;
     if (earlyGame) {
       line = '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。';
-    } else if (hasUnresolvedHook && turnsAtSameLocation >= (threshold - 1)) {
-      line = '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。';
     } else {
       line = '【⚠️强制推进指令】玩家已在「$currentLocation」停留 $stuckTurns 回合（该场景允许阈值=$threshold），剧情已停滞！'
           '本回合必须发生场景转换——例如：有人敲门通知该出发、时间到了必须动身前往下一站、'

@@ -82,6 +82,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   String? commandResult;
   bool isLoading = false;
   bool isInitializing = false;
+  bool isSummarizing = false;
   String? error;
   int turnCount = 0;
   String lastPlayerAction = '';
@@ -89,6 +90,15 @@ abstract class GameProviderBase extends ChangeNotifier {
   String loadingStage = '';
   List<String> lastAffectionSections = [];
   final List<String> notifications = [];
+
+  /// 当前委托板上展示的模板 ID（按展示顺序）。
+  /// 旧实现每次调 _board() 都重新 shuffle，玩家看到「1. 收集月光草」
+  /// 后输入 `/委托 接受 1` 却会接到另一个随机委托。
+  /// 现在板子内容缓存到此处，只有显式 `/委托 刷新`、跨周补货或缓存失效才重排。
+  List<String> questBoardIds = [];
+
+  /// 上次补货的游戏周。跨周时委托板自动进新货，避免板面万年不变。
+  int questBoardWeek = 0;
 
   /// 场景停滞检测：记录玩家当前地点已停留的回合数
   /// （public 化以供 mixin_narrative 跨文件访问，与其它核心字段一致）
@@ -205,7 +215,10 @@ abstract class GameProviderBase extends ChangeNotifier {
   void markNpcIntroduced(NPC npc);
   bool markScanIfNew(String narrative);
   void onApiKeyChange();
-  bool parseNarrativeOnly(String text);
+  bool parseNarrativeOnly(String text, {bool applySideEffects = true});
+
+  /// 叙事定稿后落库副作用（好感度/声望/分院/NPC登场），每回合只调一次
+  void applyNarrativeSideEffects(String text);
   void parseResponse(String text);
   void parseAffectionChanges(String text);
   void parseReputationChanges(String text);

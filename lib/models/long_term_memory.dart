@@ -88,6 +88,9 @@ class OpenLoopRecord {
   final String? closedAt;   // 关闭时间戳
   final Set<String> npcIds; // 涉及NPC
   final String? loopType;   // promise/debt/quest/appointment/question/grudge
+  /// 开启时的游戏回合数，用于计算「已悬而未决多少回合」的超期提醒。
+  /// 旧存档没有该字段，读档时按 0 处理（视为很久以前开启）。
+  final int openedTurn;
 
   const OpenLoopRecord({
     required this.id,
@@ -98,6 +101,7 @@ class OpenLoopRecord {
     this.closedAt,
     this.npcIds = const {},
     this.loopType,
+    this.openedTurn = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -109,6 +113,7 @@ class OpenLoopRecord {
         'closed_at': closedAt,
         'npc_ids': npcIds.toList(),
         'loop_type': loopType,
+        'opened_turn': openedTurn,
       };
 
   factory OpenLoopRecord.fromJson(Map<String, dynamic> json) => OpenLoopRecord(
@@ -123,6 +128,7 @@ class OpenLoopRecord {
                 .toSet() ??
             const {},
         loopType: json['loop_type'] as String?,
+        openedTurn: (json['opened_turn'] as num?)?.toInt() ?? 0,
       );
 }
 

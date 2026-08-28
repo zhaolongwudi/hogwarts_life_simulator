@@ -160,6 +160,8 @@ mixin GameInitMixin on GameProviderBase {
     commandResult = null;
     isLoading = false;
     isInitializing = false;
+    // this. 不能省：mixin 体内未限定的标识符解析不到基类声明的字段
+    this.isSummarizing = false;
     error = null;
     turnCount = 0;
     lastPlayerAction = '';
@@ -171,10 +173,23 @@ mixin GameInitMixin on GameProviderBase {
     lastWeekBucket = 0;
     pendingAnchorDirective = null;
     totalTokens = 0;
+    totalPromptTokens = 0;
+    totalCompletionTokens = 0;
     lastRoundTokens = 0;
     apiCalls = 0;
     openingScene = 'station';
     lastScannedNarrativeHash = null;
+    // 地点追踪/停滞计数：不清的话新开局第一回合就会继承上一局的
+    // 「已在此地滞留 N 回合」，触发莫名的强制推进提示
+    lastTrackedLocation = null;
+    turnsAtSameLocation = 0;
+    // 原创 NPC 每学年生成配额：不清的话，上一局在同一学年用满 4 次后
+    // 开新局（不换时代）会一直被「本学年已达上限」拒绝
+    npcGeneratedThisSchoolYear = 0;
+    npcGenerationSchoolYear = 0;
+    // 委托板缓存：不清的话新开局会沿用上一局的板面
+    questBoardIds = [];
+    questBoardWeek = 0;
     // 清除响应缓存（重要：防止旧剧情数据泄漏到新游戏）
     ResponseCache.instance.clear();
     // 清除速率限制器状态

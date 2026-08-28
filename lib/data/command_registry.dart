@@ -23,7 +23,10 @@ class CommandContext {
 
   const CommandContext(this.parts, this.provider);
 
-  /// 获取第 idx 个参数（0 = 第一个子参数，即 parts[1] 对应 idx=0）
+  /// 获取第 idx 个子参数（0 = 第一个子参数，即 parts[0]）。
+  ///
+  /// handler 里请统一用 arg()/tailFrom() 取参，**不要**直接写 `parts[1]`：
+  /// 本列表已去掉命令本身，parts[0] 就是第一个真实参数。
   String? arg(int idx) => (idx >= 0 && idx < parts.length) ? parts[idx] : null;
 
   /// parts[idx:] 拼接成的字符串（用于 /目标 xxx xxx 这种带空格的内容）

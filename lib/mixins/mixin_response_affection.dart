@@ -122,11 +122,13 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
 
     final action = lastPlayerAction.toLowerCase();
     // 判断玩家行动的情感倾向
+    // 注意：不要放「和/与/跟」这类连词——中文行动描述几乎必然包含它们，
+    // 会导致「骂了马尔福」也被判成正面互动，反向加好感。
     final positiveKeywords = [
       '聊天', '对话', '帮助', '帮', '救', '约', '邀', '送礼', '送',
       '陪伴', '陪', '鼓励', '安慰', '保护', '支持', '信任', '赞同',
       '微笑', '友好', '亲切', '称赞', '夸', '感谢', '谢',
-      '一起', '散步', '聊天', '聊天', '和', '与', '跟',
+      '一起', '散步',
     ];
     final negativeKeywords = [
       '攻击', '打', '骂', '辱骂', '欺骗', '骗', '背叛', '出卖',
@@ -161,13 +163,16 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       }
     }
 
-    // 最多 3 个 NPC 获得被动好感
-    final maxPassive = 3;
+    // 负面优先：同时命中正负关键词时（如「骂了和罗恩吵架的马尔福」）
+    // 按负面处理，否则歧义行动会反向加好感。
+    // 且负面只惩罚最相关的一位——在场旁观者不该被连坐。
+    final negative = isNegative;
+    final maxPassive = negative ? 1 : 3;
     for (int i = 0; i < candidates.length && i < maxPassive; i++) {
       final npc = candidates[i];
-      final delta = isPositive
-          ? 1 + random.nextInt(2)  // +1 or +2
-          : -1;                     // -1
+      final delta = negative
+          ? -1
+          : 1 + random.nextInt(2); // +1 or +2
       final before = npc.affection;
       updateNpcAffection(npc.id, delta, reason: '剧情互动(推断)');
       final after = npc.affection;
@@ -190,14 +195,20 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     for (final line in section.split('\n')) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
-      final match = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)').firstMatch(trimmed);
+      // 兼容 AI 常见的写法变体：全角冒号、全角加号、"学术声望 +3（原因）"、
+      // "· 战斗：+2" 这类带项目符号的行
+      final match = RegExp(r'^[\s\-•·*]*([^:：+\-0-9]{1,10}?)\s*[:：]?\s*([+＋-]?\d+)')
+          .firstMatch(trimmed);
       if (match == null) continue;
       final dim = match.group(1)!.trim();
-      final delta = int.tryParse(match.group(2)!) ?? 0;
+      final raw = match.group(2)!.replaceAll('＋', '+');
+      final delta = int.tryParse(raw) ?? 0;
       if (delta == 0 || dim.isEmpty) continue;
       try {
-        player!.playerReputation.add(dim, delta);
+        // AI 偶尔会写出 +50 这种离谱值，这里限幅到 ±5（与 prompt 约定一致）
+        player!.playerReputation.add(dim, delta.clamp(-5, 5));
       } catch (e) {
+        // 维度名不在白名单里（AI 自造词）→ 静默忽略，不影响其它维度
       }
     }
   }

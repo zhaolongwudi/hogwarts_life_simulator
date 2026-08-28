@@ -389,6 +389,18 @@ mixin GameRelationsMixin on GameProviderBase {
     if (p == null) return false;
     if (index < 0 || index >= p.inventory.length) return false;
     final item = p.inventory.removeAt(index);
+
+    // 兜底：若卖掉的正是身上穿着的装备，同步卸下，
+    // 否则装备栏会残留已售物品的名字（继续享受属性/施法加成）。
+    // 正常流程下装备不在背包里，这主要防护旧存档迁移过来的数据。
+    final equippedSlot = p.equipped.entries
+        .where((e) => e.value == item.name)
+        .map((e) => e.key)
+        .toList();
+    for (final slot in equippedSlot) {
+      p.equipped.remove(slot);
+    }
+
     p.galleons += price;
     notifications.add('💰 出售了 ${item.name}，获得 $price 加隆');
     notifyListeners();
@@ -707,6 +719,15 @@ mixin GameRelationsMixin on GameProviderBase {
     return buf.toString();
   }
 
+  /// 阵营倾向的文字解读，让「阵营声望」这个派生数字有实际含义
+  String _factionLeanLabel(int lean) {
+    if (lean >= 40) return '（黑暗阵营一方颇有名气）';
+    if (lean >= 15) return '（被黑暗势力注意到）';
+    if (lean <= -40) return '（凤凰社一方的可靠盟友）';
+    if (lean <= -15) return '（偏向邓布利多一方）';
+    return '（尚未明确站位）';
+  }
+
   String formatReputation() {
     final rep = player!.playerReputation;
     final p = player!;
@@ -719,8 +740,9 @@ mixin GameRelationsMixin on GameProviderBase {
   黑魔法声望：${rep.dark}（${reputationGrade(rep.dark)}）
 
   学院声望：${p.houseReputation}
-  魔法界声望：${p.wizardingReputation}
-  阵营声望：${p.factionReputation}''';
+  魔法界声望：${p.wizardingReputation}（五维均值，黑魔法不计入）
+  阵营声望：${p.factionReputation}${_factionLeanLabel(p.factionReputation)}
+  （阵营声望 = 黑魔法声望 − 道德声望）''';
   }
 
   /// 舆论/传闻系统（设定文档 7.3 / 第十三部分）
@@ -847,38 +869,39 @@ mixin GameRelationsMixin on GameProviderBase {
     return '【收藏】\n${player!.collection.map((c) => '· $c').join('\n')}';
   }
 
+  /// [parts] 为「去掉 /信 命令本身」后的子参数列表，parts[0] 即子命令。
   void handleLetterCommand(List<String> parts) {
     final back = () {
       choices = [GameChoice(text: '返回', action: '继续')];
     };
 
-    if (parts.length < 2) {
+    if (parts.isEmpty) {
       currentNarrative = _formatLetters();
       back();
       return;
     }
 
-    switch (parts[1]) {
+    switch (parts[0]) {
       case '读':
-        final idx = int.tryParse(parts.length > 2 ? parts[2] : '');
+        final idx = int.tryParse(parts.length > 1 ? parts[1] : '');
         currentNarrative = idx == null
             ? '【信件】\n请输入信件编号：/信 读 [编号]'
             : _formatLetterDetail(idx);
         back();
         return;
       case '回':
-        final idx = int.tryParse(parts.length > 2 ? parts[2] : '');
+        final idx = int.tryParse(parts.length > 1 ? parts[1] : '');
         if (idx == null) {
           currentNarrative = '【回信】\n请输入：/信 回 [编号] [回信内容]';
         } else {
-          final content = parts.length > 3 ? parts.sublist(3).join(' ') : '';
+          final content = parts.length > 2 ? parts.sublist(2).join(' ') : '';
           currentNarrative = _replyToLetter(idx, content);
         }
         back();
         return;
       case '寄':
-        final name = parts.length > 2 ? parts[2] : '';
-        final content = parts.length > 3 ? parts.sublist(3).join(' ') : '';
+        final name = parts.length > 1 ? parts[1] : '';
+        final content = parts.length > 2 ? parts.sublist(2).join(' ') : '';
         currentNarrative = name.isEmpty
             ? '【寄信】\n请输入：/信 寄 [NPC名字] [信件内容]'
             : _sendLetterToNpc(name, content);

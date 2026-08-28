@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../data/item_data.dart';
 import '../data/bestiary_data.dart';
 import '../data/quest_data.dart';
@@ -215,6 +216,15 @@ mixin GamePlayMixin on GameProviderBase {
           changes.add('精力 ${value > 0 ? '+' : ''}$value');
           break;
         default:
+          // 只认真正的属性键。effect map 里混有控制标记：
+          //   'learn_spell'（学咒）— 已在 useItem 里单独处理
+          //   'special'（随机口味）— 已走随机分支早退
+          // 若落到这里会被当成属性写进存档，产生 attributes['learn_spell']=51
+          // 这类垃圾键，还会被一致性检查当成合法属性钳制。
+          if (!Player.isAttributeKey(key)) {
+            debugPrint('⚠️ 物品效果含非属性 key「$key」，已忽略（控制标记或拼写错误）');
+            return;
+          }
           p.attributes[key] = ((p.attributes[key] ?? 50) + value).clamp(0, 100);
           changes.add('${_attrLabelZh(key)} ${value > 0 ? '+' : ''}$value');
       }
@@ -393,10 +403,17 @@ mixin GamePlayMixin on GameProviderBase {
     }
     final slot = def.equipSlot!;
     final old = p.equipped[slot];
+
+    // 装备实体从背包移入装备栏（否则它同时存在于两处：
+    // 玩家可以把它卖掉，而装备栏仍留着名字 → 继续白嫖属性/施法加成）。
+    _removeItem(name);
     p.equipped[slot] = name;
+
     final buf = StringBuffer('【穿戴 · $name】\n');
     if (old != null && old != name) {
       buf.writeln('你换下了原来的${slotLabel(slot)}「$old」，穿上了「$name」。');
+      // 换下的旧装备回到背包（旧存档里它可能仍在背包中，避免重复添加）
+      if (!_hasItem(old)) _addItem(old);
     } else {
       buf.writeln('你装备上了「$name」（${slotLabel(slot)}）。');
     }
@@ -434,6 +451,8 @@ mixin GamePlayMixin on GameProviderBase {
       _finishLocal('${slotLabel(slot)}本来就空着，没有可卸下的装备。');
       return;
     }
+    // 装备实体回到背包（若背包里已有一件——比如旧存档——就不再重复添加）
+    if (!_hasItem(name)) _addItem(name);
     _finishLocal('【卸下 · $name】\n你卸下了${slotLabel(slot)}「$name」，它回到你的背包里。');
   }
 
@@ -804,22 +823,44 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 8. 支线委托板 ====================
 
-  /// 随机刷新板子：列出 3 个当前未接取的模板
-  List<QuestTemplate> _board() {
+  /// 列出板上 3 个当前可接取的模板。
+  /// 结果会缓存进 [questBoardIds]，保证「看到的编号」与「接到的委托」一致；
+  /// 只有 [forceRefresh] 为 true（玩家显式 /委托 刷新）或缓存条目已失效时才重排。
+  List<QuestTemplate> _board({bool forceRefresh = false}) {
     final p = player;
     final taken = <String>{};
     for (final q in p?.quests ?? const <QuestRecord>[]) {
       taken.add(q.templateId);
     }
+    final grade = p?.grade ?? 1;
+
+    // 跨周自动补货，让委托板随时间变化而不是一进游戏就定死
+    if (questBoardWeek != gameWeek) {
+      questBoardWeek = gameWeek;
+      forceRefresh = true;
+    }
+
+    if (!forceRefresh && questBoardIds.isNotEmpty) {
+      final cached = questBoardIds
+          .map(questTemplateById)
+          .whereType<QuestTemplate>()
+          .where((t) => !taken.contains(t.id) && t.minGrade <= grade)
+          .take(3)
+          .toList();
+      if (cached.isNotEmpty) return cached;
+    }
+
     final available = kQuestTemplates
-        .where((t) => !taken.contains(t.id) && (t.minGrade <= (p?.grade ?? 1)))
+        .where((t) => !taken.contains(t.id) && (t.minGrade <= grade))
         .toList()
       ..shuffle(random);
-    return available.take(3).toList();
+    final picked = available.take(3).toList();
+    questBoardIds = picked.map((t) => t.id).toList();
+    return picked;
   }
 
   void refreshQuestBoard() {
-    final board = _board();
+    final board = _board(forceRefresh: true);
     final buf = StringBuffer('【委托板 · 已刷新】\n');
     if (board.isEmpty) {
       buf.writeln('板子上暂时没有适合你的委托。之后再来看看，或者去禁林碰碰运气。');
@@ -909,6 +950,7 @@ mixin GamePlayMixin on GameProviderBase {
       importance: 5,
       openedAt: ts,
       loopType: 'quest',
+      openedTurn: turnCount,
     ));
     _finishLocal('【已接取委托】\n${t.title}\n\n${t.desc}\n\n'
         '目标：${t.target} ×${t.targetCount} ｜ 奖励：${t.rewardGalleons}加隆 + ${t.rewardHousePoints}分\n\n'
@@ -946,6 +988,7 @@ mixin GamePlayMixin on GameProviderBase {
       openedAt: worldState.time.format(),
       closedAt: worldState.time.format(),
       loopType: 'quest',
+      openedTurn: turnCount,
     ));
     memory = memory.addWorldEvent(WorldEventRecord(
       id: 'quest_done_${q.templateId}_$turnCount',

@@ -10,6 +10,7 @@ import '../utils/prompt_sanitizer.dart';
 import '../models/long_term_memory.dart';
 import '../services/ai_router.dart';
 import '../utils/stagnation_detector.dart';
+import '../utils/confession_reply.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/narrative_prompts.dart';
@@ -56,11 +57,14 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     // 避免表白剧情永远悬置（此前 resolveConfession 无任何调用方）。
     final love = player!.loveState;
     if (love.awaitingConfession && love.consideringNpcName != null) {
-      if (action.contains('接受')) {
-        resolveConfession(true, love.consideringNpcName!);
-      } else if (action.contains('婉拒') || action.contains('拒绝')) {
-        resolveConfession(false, love.consideringNpcName!);
+      // 用语义解析代替子串匹配：「不接受」「拒绝接受」都含「接受」，
+      // 简单 contains('接受') 会把拒绝当成答应，恋爱状态机直接推反。
+      final reply = parseConfessionReply(safeAction);
+      if (reply != null) {
+        resolveConfession(reply, love.consideringNpcName!);
       }
+      // 无法判断表态时不改动任何状态，交给后续 AI 叙事按玩家原文推进，
+      // 避免 awaitingConfession 悬挂期间被无关文本误结算。
     }
 
     if (router == null || !router!.hasNarrativeService) return;
@@ -337,6 +341,8 @@ $kNarrativeWritingRules
       List<Map<String, dynamic>> forbiddenHits = const [];
       bool needsRetry;
       bool narrativeParseInvalid = false; // BUG-H 标记：模型返回的是选项不是叙事
+      bool usedFallbackNarrative = false; // 走了本地兜底叙事 → 不再应用 AI 副作用
+      String? finalResponseText; // 最终采纳的原始响应文本（供副作用解析）
       do {
         needsRetry = false;
         narrativeParseInvalid = false;
@@ -355,7 +361,11 @@ $kNarrativeWritingRules
         notifyListeners();
 
         // 先解析叙事文本（不含选项）
-        final parseOk = parseNarrativeOnly(response);
+        // ❗applySideEffects: false —— 重试循环内绝不落库好感/声望/分院，
+        // 否则被打回的那次剧情的副作用不会回滚，一次行动会被结算多次。
+        // 副作用统一在循环结束后对最终采纳的 response 执行一次。
+        finalResponseText = response;
+        final parseOk = parseNarrativeOnly(response, applySideEffects: false);
         if (!parseOk) {
           // BUG-H：模型把 narrative 场景当 choice 场景用了，全返回 A.B.C.D.
           narrativeParseInvalid = true;
@@ -374,7 +384,9 @@ $kNarrativeWritingRules
             currentNarrative = bridged;
             // 重新跑 parseNarrativeOnly，但只重新解析头部位置/时间戳提取，不覆盖好感度
             // 因为好感变化区块在原始完整响应中已经提取过了
-            parseNarrativeOnly(currentNarrative);
+            // （applySideEffects: false —— 桥接后的正文已无好感区块，
+            //  再跑一次副作用会让被动好感被重复结算一遍）
+            parseNarrativeOnly(currentNarrative, applySideEffects: false);
             // 如果重新解析没有提取到新的好感度（本来就没有），恢复保存的好感度
             if (lastAffectionSections.isEmpty && savedAffectionSections.isNotEmpty) {
               lastAffectionSections = savedAffectionSections;
@@ -436,8 +448,10 @@ $kNarrativeWritingRules
         if (narrativeParseInvalid && retriesLeft == 0) {
           debugPrint('❌ [BUG-H] 2次重试后仍返回选项，切换为 generateFallbackNarrative() 本地兜底叙事');
           currentNarrative = generateFallbackNarrative();
+          usedFallbackNarrative = true;
           // 兜底叙事是 Dart 代码生成的，不会夹带选项，也没有好感度区块
-          // 所以不用再跑 parseNarrativeOnly，但要跑一遍地点同步等后续流程
+          // 所以不用再跑 parseNarrativeOnly，也不应用任何 AI 副作用，
+          // 但要跑一遍地点同步等后续流程
           notifications.add('📝 AI 返回了选项而非剧情（偶尔会发生），已为你切换为系统本地过渡剧情，确保不断链。稍后重跑会恢复正常。');
           break;
         }
@@ -451,6 +465,12 @@ $kNarrativeWritingRules
         }
         break; // 走到这里说明不重试
       } while (needsRetry);
+
+      // ====== 叙事定稿：副作用此时才落库，且整回合只落一次 ======
+      // 重试循环内被驳回的 response 不再污染好感度/声望/分院状态。
+      if (!usedFallbackNarrative) {
+        applyNarrativeSideEffects(finalResponseText);
+      }
 
       // 从叙事文本中提取新地点并同步 currentLocation
       // 这是「场景推进」的闭环：AI 写了换场景 → 状态同步 → 停滞计数清零
@@ -706,10 +726,20 @@ $kNarrativeWritingRules
   }
 
   Future<void> _summarizeNarrative() async {
+    // 并发保护：摘要请求在飞时不重复发起（否则同一段剧情会被摘要两次）
+    if (isSummarizing) return;
     if (pendingSummary.length < 50) {
       pendingSummary = '';
       return;
     }
+    isSummarizing = true;
+
+    // ❗先把本次要摘要的内容「取走」，再发起异步请求。
+    // 旧代码在 await 返回后才清空 pendingSummary，于是请求在飞期间
+    // accumulateForSummary 新积累的回合会被一起清掉 —— 那段剧情永远
+    // 进不了 narrativeSummary，长线剧情出现断档。
+    final chunk = pendingSummary;
+    pendingSummary = '';
 
     // 摘要长度随游戏进度逐步放宽
     // 2026-08-23：模型能力升级，整体翻倍放开
@@ -721,7 +751,7 @@ $kNarrativeWritingRules
     final prompt = buildSummaryPrompt(
       limit: limit,
       previousSummary: narrativeSummary,
-      newChunk: pendingSummary,
+      newChunk: chunk,
       relSnapshot: relationSnapshot,
     );
 
@@ -747,10 +777,14 @@ $kNarrativeWritingRules
       // 从 narrativeSummary 中剥离结构化块（它们已写入 LongTermMemory，
       // 不需要在 T4 自然语言摘要中重复，避免 token 浪费）
       narrativeSummary = _stripStructuredBlocks(rawSummary);
-      pendingSummary = '';
-      // 剧情摘要更新日志已移除
+      // 注意：这里不再清空 pendingSummary —— 待摘要内容在请求发出前就已取走，
+      // 请求在飞期间新积累的回合仍留在缓冲里，等待下一次摘要。
     } catch (e) {
       debugPrint('❌ 摘要生成失败: $e');
+      // 失败则把内容还回缓冲头部，下回合重试，避免剧情永久丢失
+      pendingSummary = chunk + pendingSummary;
+    } finally {
+      isSummarizing = false;
     }
   }
 
@@ -804,6 +838,7 @@ $kNarrativeWritingRules
             importance: 6,
             openedAt: ts,
             loopType: 'foreshadow',
+            openedTurn: turnCount,
           ));
         }
       }
@@ -1114,17 +1149,35 @@ $kNarrativeWritingRules
     final tail = narrative.length > 200
         ? narrative.substring(narrative.length - 200)
         : narrative;
+    // 抵达动词必须「紧贴」地点名：
+    // 旧实现是「末尾 200 字里只要有任意一个抵达动词，就取全文中最后出现的地点别名」，
+    // 于是「你走进教室，听说了关于禁林的故事」会被判成抵达禁林，
+    // 「你进入了梦乡，梦里你来到国王十字车站」也会把玩家硬切去车站。
+    // 现在改为：以动词为锚点，只在其后 16 字且不跨句边界的窗口内找地点名。
     final arrivalRe = RegExp(
-      r'(抵达|到达|走进|走入|来到|出现在|登上|进入|下车|到站|赶到|踏入|推开.*门.*(发现|看见|来到))',
+      r'(?:抵达|到达|走进|走入|来到|出现在|登上|进入|下车|到站|赶到|踏入|推门而入)',
     );
-    if (arrivalRe.hasMatch(tail)) {
-      int lastPos = -1;
+    // 梦境/回忆/打算/假设：这类语境里的抵达不是真实移动，不能同步地点
+    const nonActualContextRe = r'(梦里|梦中|梦见|梦境|幻想|想象|回忆|回想|想起|想起那时|仿佛|似乎|好像|如果|假如|要是|打算|计划|准备去|想要去|听说|据说|传闻)';
+    int lastArrivalAt = -1;
+    for (final match in arrivalRe.allMatches(tail)) {
+      final windowStart = match.end;
+      final windowEnd = windowStart + 16 > tail.length ? tail.length : windowStart + 16;
+      final rawWindow = tail.substring(windowStart, windowEnd);
+      // 窗口内一旦遇到句子边界就截断，避免跨句误连
+      final boundary = RegExp(r'[。！？!?\n；;]').firstMatch(rawWindow);
+      final scope =
+          boundary != null ? rawWindow.substring(0, boundary.start) : rawWindow;
+      if (scope.isEmpty) continue;
+      // 动词前后 10 字内出现梦境/假设类词 → 视为非真实抵达
+      final ctxStart = match.start - 10 < 0 ? 0 : match.start - 10;
+      final ctx = tail.substring(ctxStart, windowEnd);
+      if (RegExp(nonActualContextRe).hasMatch(ctx)) continue;
       for (final (mainName, aliases) in _knownLocations) {
         for (final alias in aliases) {
-          int pos = tail.lastIndexOf(alias);
-          if (pos > lastPos) {
-            lastPos = pos;
-            detected = mainName;
+          if (scope.contains(alias) && match.end > lastArrivalAt) {
+            detected = mainName; // 后发生的抵达事件覆盖先发生的
+            lastArrivalAt = match.end;
           }
         }
       }

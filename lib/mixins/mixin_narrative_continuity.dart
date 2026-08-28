@@ -754,12 +754,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     for (final l in memory.openLoops) {
       if (l.status != 'open') continue;
       if (l.importance < 6) continue;
-      final lastTouched = l.id.isEmpty
-          ? -1
-          : int.tryParse(RegExp(r't(\d+)$').firstMatch(l.id)?.group(1) ?? '') ?? -1;
-      final turnsPassed = lastTouched >= 0
-          ? turnCount - lastTouched
-          : 15; // 没记录的当 15
+      // 旧实现从 id 尾部正则解析 `t<回合>`，但实际 id 形如
+      // `auto_loop_<hash>` / `quest_<id>`，永远匹配不到 → lastTouched 恒 -1
+      // → 新伏笔一诞生就被标注「已悬而未决约 15 回合」，提醒完全失真。
+      // 改为直接用记录上的 openedTurn（旧存档为 0，按「很久以前」处理）。
+      final turnsPassed = l.openedTurn > 0 ? turnCount - l.openedTurn : 15;
       if (turnsPassed >= 15 && stale.length < 2) {
         stale.add('• ${l.description}（已悬而未决约${turnsPassed}回合，重要性${l.importance}）');
       }
