@@ -1,7 +1,7 @@
 name: hogwarts_life_simulator
 description: HogwartLige - 霍格沃茨AI人生模拟器
 publish_to: 'none'
-version: 2.5.5+255
+version: 2.5.6+256
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
