@@ -32,11 +32,18 @@ mixin GameSystemsMixin on GameProviderBase {
   }) {
     final oldMonth = worldState.time.month;
     final oldYear = worldState.time.year;
+    final oldHour = worldState.time.hour;
+    final oldDayIndex = worldState.time.absoluteDayIndex;
     if (days != null) {
       worldState.time.advanceDays(days);
     } else {
       worldState.time.advanceMinutes(minutes);
     }
+    // 时钟是**跳**过去的，不是一格一格走的。事件锚点的时段窗口必须按
+    // "经过的区间"来匹配，否则睡一觉（480 分钟）就能把窗口整个跨过去，
+    // 那条剧情节点就静默消失了。
+    final hourFrom = oldHour;
+    final dayDelta = worldState.time.absoluteDayIndex - oldDayIndex;
 
     // 游戏周追踪（好感沉淀用）：以绝对天数 / 7 分桶，
     // 只有当绝对天数跨过整周边界时才推进游戏周，避免 dayOfYear 头尾截断导致开局即跨周。
@@ -65,7 +72,7 @@ mixin GameSystemsMixin on GameProviderBase {
 
     // 事件锚点检测（按月份触发手写剧情骨架）
     if (fireAnchors) {
-      _checkEventAnchors();
+      _checkEventAnchors(hourFrom: hourFrom, dayDelta: dayDelta);
     }
 
     // 孕期推进（结婚 → 备孕 → 分娩）
@@ -475,7 +482,9 @@ mixin GameSystemsMixin on GameProviderBase {
 
   /// 按当前月份/年级/时代检查并触发手写事件锚点
 
-  void _checkEventAnchors() {
+  /// [hourFrom] / [dayDelta] 来自本次时钟推进前的时刻，用来判断时段窗口
+  /// 是不是被"跨过去"了（详见 anchorsFor 的说明）。
+  void _checkEventAnchors({int? hourFrom, int dayDelta = 0}) {
     final p = player;
     if (p == null) return;
     if (worldState.graduated) return; // 毕业后不再触发校内锚点
@@ -490,6 +499,8 @@ mixin GameSystemsMixin on GameProviderBase {
       era: worldState.era,
       firedIds: fired,
       hour: t.hour,
+      hourFrom: hourFrom,
+      dayDelta: dayDelta,
       currentLocation: worldState.currentLocation,
     );
 

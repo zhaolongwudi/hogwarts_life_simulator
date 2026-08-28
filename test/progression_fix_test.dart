@@ -13,6 +13,8 @@ import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/data/political_stance.dart';
 import 'package:hogwarts_life_simulator/data/gift_rules.dart';
 import 'package:hogwarts_life_simulator/data/item_data.dart';
+import 'package:hogwarts_life_simulator/data/event_anchors.dart';
+import 'package:hogwarts_life_simulator/data/locations.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -190,6 +192,7 @@ void main() {
   _materialLootGroup();
   _deadCodeGroup();
   _achievementReachabilityGroup();
+  _eventAnchorGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1379,6 +1382,140 @@ void _deadCodeGroup() {
       for (final m in ['canRequest(', 'currentRPM(', 'recordRequest(',
                        'canMakeCall(', 'remainingQuota(', 'recordCall(']) {
         expect(src.contains(m), isFalse, reason: '$m 又回来了');
+      }
+    });
+  });
+}
+
+// ==================== 事件锚点表 ====================
+// 事件锚点是学年日历的确定性骨架，30 条手写剧情节点。一个写错的月份、
+// 一个反了的时段窗口、一个永远匹配不上的地点约束，都会让那条剧情静默消失——
+// 不报错、不崩溃，只是玩家再也遇不到。
+
+void _eventAnchorGroup() {
+  group('事件锚点表数据完整性', () {
+    test('锚点 id 不重复', () {
+      final seen = <String>{};
+      final dup = <String>[];
+      for (final a in eventAnchors) {
+        if (!seen.add(a.id)) dup.add(a.id);
+      }
+      expect(dup, isEmpty, reason: '重复 id 会导致后一条永远触发不了：$dup');
+    });
+
+    test('月份与年级都在合法范围', () {
+      for (final a in eventAnchors) {
+        expect(a.month, inInclusiveRange(1, 12),
+            reason: '${a.id} 月份 ${a.month} 不在 1-12');
+        if (a.grade != null) {
+          expect(a.grade, inInclusiveRange(1, 7),
+              reason: '${a.id} 年级 ${a.grade} 不在 1-7');
+        }
+      }
+    });
+
+    test('时段窗口没有写反', () {
+      for (final a in eventAnchors) {
+        if (a.minHour == null || a.maxHour == null) continue;
+        expect(a.minHour! <= a.maxHour!, isTrue,
+            reason: '${a.id} 时段 ${a.minHour}-${a.maxHour} 是空区间，永远触发不了');
+        expect(a.minHour, inInclusiveRange(0, 23), reason: '${a.id} minHour 越界');
+        expect(a.maxHour, inInclusiveRange(0, 23), reason: '${a.id} maxHour 越界');
+      }
+    });
+
+    test('位置约束能匹配到已知地点', () {
+      // 反例：requiredLocation 写了个错别字（比如"特快列车"写成"特快车"），
+      // 这条锚点就永远等不到玩家"到达"那个地方
+      final bad = <String>[];
+      for (final a in eventAnchors) {
+        final req = a.requiredLocation;
+        if (req == null) continue;
+        if (!locationKeywordResolvable(req)) bad.add('${a.id} → $req');
+      }
+      expect(bad, isEmpty,
+          reason: '这些锚点要求的位置在地点表里不存在，永远触发不了：$bad');
+    });
+
+    test('每个月都有锚点（学年节奏不出现整月空窗）', () {
+      final months = eventAnchors.map((a) => a.month).toSet();
+      final missing = [
+        for (var m = 1; m <= 12; m++)
+          if (!months.contains(m)) m,
+      ];
+      expect(missing, isEmpty, reason: '这几个月没有任何事件锚点：$missing');
+    });
+
+    test('一年级九月入学锚点的时段窗口覆盖得到特快抵达', () {
+      // 开局 9月1日 10:45 在国王十字，特快 11 点发车、12-14 点到霍格莫德。
+      // 这条锚点专门钉住：窗口既不能早到车还没开，也不能晚到玩家已下車。
+      final a = eventAnchors.firstWhere((x) => x.id == 'g1_sep_arrival');
+      expect(a.month, 9);
+      expect(a.grade, 1);
+      expect(a.requiredLocation, '特快');
+      expect(a.minHour, 12, reason: '11 点才发车，12 点前不该描写抵达');
+      expect(a.maxHour, greaterThanOrEqualTo(14),
+          reason: '12-14 点才到霍格莫德，窗口关太早会漏掉抵达');
+    });
+
+    test('时段窗口被大跨度时间跳跃跨过去时依然能触发', () {
+      // 睡觉一次推进 480 分钟。如果只判断落地那一刻的小时数，
+      // 11 点上床、19 点起床就把 [12,15] 这个窗口整个跨过去了。
+      final fired = <String>{};
+      final hit = anchorsFor(
+        month: 9,
+        grade: 1,
+        era: 'harry_same',
+        firedIds: fired,
+        hour: 19,
+        hourFrom: 11,
+        dayDelta: 0,
+        currentLocation: '霍格沃茨特快列车',
+      );
+      expect(hit.map((a) => a.id), contains('g1_sep_arrival'));
+    });
+
+    test('还没到窗口就是不该触发', () {
+      // 反向保护：区间匹配不能宽到失去意义，10:45 车还没开
+      final hit = anchorsFor(
+        month: 9,
+        grade: 1,
+        era: 'harry_same',
+        firedIds: <String>{},
+        hour: 11,
+        hourFrom: 10,
+        dayDelta: 0,
+        currentLocation: '霍格沃茨特快列车',
+      );
+      expect(hit.map((a) => a.id), isNot(contains('g1_sep_arrival')));
+    });
+  });
+
+  group('已知地点表', () {
+    test('主名不重复', () {
+      final names = kLocationNames;
+      expect(names.toSet().length, names.length);
+    });
+
+    test('每条都有至少一个别名', () {
+      for (final (name, aliases) in kKnownLocations) {
+        expect(aliases, isNotEmpty, reason: '$name 没有任何别名，匹配不到叙事文本');
+      }
+    });
+
+    test('别名能解析回主名', () {
+      for (final (name, aliases) in kKnownLocations) {
+        for (final alias in aliases) {
+          expect(resolveLocationName('你来到了$alias。'), name,
+              reason: '别名「$alias」没有解析回「$name」');
+        }
+      }
+    });
+
+    test('主名本身也能命中', () {
+      for (final name in kLocationNames) {
+        expect(resolveLocationName(name), isNotNull,
+            reason: '主名「$name」自己都没法解析');
       }
     });
   });

@@ -54,7 +54,8 @@ const List<EventAnchor> eventAnchors = [
     id: 'g1_sep_arrival',
     month: 9,
     grade: 1,
-    minHour: 11, // 特快早上11点发车→12-14点才到霍格莫德
+    minHour: 12, // 特快11点发车，抵达不会早于12点
+    maxHour: 15, // 再晚就该写分院仪式了，不是"抵达"
     requiredLocation: '特快',
     title: '入学·霍格沃茨特快',
     directive:
@@ -303,14 +304,28 @@ const List<EventAnchor> eventAnchors = [
 ];
 
 /// 查找指定月份、年级、时代下应触发的锚点（排除已触发的）
+///
+/// [hourFrom] → [hour] 是这次时钟推进**经过**的时段，不是一个点。
+/// 这一点很关键：睡觉一次推进 480 分钟、霍格莫德一日游 300 分钟，
+/// 如果只看落地那一刻的小时数，窗口被整个跨过去的锚点就永远触发不了
+/// （「11点发车→12-15点抵达」这种窗口，睡一觉直接从 11 点跨到 19 点）。
+/// 跨天（[dayDelta] ≥ 1 或 hourFrom > hour）时视为经过了整天，不再卡时段。
 List<EventAnchor> anchorsFor({
   required int month,
   required int grade,
   required String era,
   required Set<String> firedIds,
   int? hour,
+  int? hourFrom,
+  int dayDelta = 0,
   String? currentLocation,
 }) {
+  // 跨越整天 → 时段不再设限；否则取 [hourFrom, hour] 这段区间
+  final bool spansWholeDay =
+      dayDelta >= 1 || (hourFrom != null && hour != null && hourFrom > hour);
+  final int? winFrom = spansWholeDay ? null : hourFrom;
+  final int? winTo = spansWholeDay ? null : hour;
+
   final result = <EventAnchor>[];
   for (final a in eventAnchors) {
     if (a.month != month) continue;
@@ -318,8 +333,7 @@ List<EventAnchor> anchorsFor({
     if (a.grade != null && a.grade != grade) continue;
     if (a.era != null && a.era != era) continue;
     // 时段门槛：防止特快刚发车(10:45)就被要求描写"抵达霍格莫德"（正常应12-15点抵达）
-    if (a.minHour != null && hour != null && hour < a.minHour!) continue;
-    if (a.maxHour != null && hour != null && hour > a.maxHour!) continue;
+    if (!_hourWindowHit(a, winFrom, winTo)) continue;
     // 位置门槛：锚点要求在特定场景才触发
     if (a.requiredLocation != null &&
         currentLocation != null &&
@@ -328,4 +342,18 @@ List<EventAnchor> anchorsFor({
     result.add(a);
   }
   return result;
+}
+
+/// 锚点的时段窗口 [minHour, maxHour] 是否与本次经过的 [from, to] 有交集。
+///
+/// [from]/[to] 为 null（跨天或调用方没给）时不做时段限制。
+/// 只有一端给了就退化成原来的"单点判断"。
+bool _hourWindowHit(EventAnchor a, int? from, int? to) {
+  final int lo = a.minHour ?? 0;
+  final int hi = a.maxHour ?? 23;
+  if (from == null && to == null) return true;
+  final int f = from ?? to!;
+  final int t = to ?? from!;
+  // 区间相交：窗口起点不晚于经过区间的终点，且窗口终点不早于区间起点
+  return lo <= t && hi >= f;
 }

@@ -82,9 +82,13 @@ const List<TimeCostRule> timeCostRules = [
 /// 默认耗时（所有规则都不匹配时）
 const int kDefaultActionMinutes = 15;
 
+/// 按优先级降序排好的规则表。排序结果只算一次——原来每次调用
+/// resolveActionCost 都要复制一份列表再排一遍。
+final List<TimeCostRule> _rulesByPriority = [...timeCostRules]
+  ..sort((a, b) => b.priority.compareTo(a.priority));
+
 int resolveActionCost(String action) {
-  final sorted = [...timeCostRules]..sort((a, b) => b.priority.compareTo(a.priority));
-  for (final rule in sorted) {
+  for (final rule in _rulesByPriority) {
     if (rule.matches(action)) return rule.minutes;
   }
   return kDefaultActionMinutes;

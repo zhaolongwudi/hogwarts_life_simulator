@@ -13,6 +13,7 @@ import '../utils/stagnation_detector.dart';
 import '../utils/confession_reply.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
+import '../data/locations.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
@@ -1108,25 +1109,9 @@ $kNarrativeWritingRules
     }
   }
 
-  /// HP 世界已知地点关键词表（按开局推进路线排序）。
-  /// 叙事中出现这些关键词即认为玩家已到达该地点。
-  /// 使用 「主要关键词 + 别名列表」结构，匹配任一别名即归入主地点。
-  static const List<(String, List<String>)> _knownLocations = [
-    ('家中·卧室', ['家中', '卧室', '自己的房间']),
-    ('国王十字车站', ['国王十字', '国王十字车站', '九又四分之三站台', '9¾站台', '站台']),
-    ('霍格沃茨特快列车', ['霍格沃茨特快', '特快列车', '火车包厢', '车厢']),
-    ('霍格沃茨大礼堂', ['大礼堂', '分院仪式', '分院帽']),
-    ('霍格沃茨·公共休息室', ['公共休息室', '休息室']),
-    ('霍格沃茨·教室', ['教室', '课堂', '阶梯教室']),
-    ('霍格沃茨·图书馆', ['图书馆', '禁书区']),
-    ('霍格沃茨·医疗翼', ['医疗翼', '医院翼']),
-    ('霍格沃茨·走廊', ['走廊', '楼梯', '移动楼梯']),
-    ('霍格沃茨·场地', ['草坪', '魁地奇球场', '魁地奇看台', '黑湖']),
-    ('禁林', ['禁林', '黑暗森林']),
-    ('对角巷', ['对角巷', '奥利凡德', '摩金夫人']),
-    ('古灵阁', ['古灵阁', '妖精银行']),
-    ('霍格莫德村', ['霍格莫德', '三把扫帚', '蜂蜜公爵']),
-  ];
+  // 地点表已挪到 lib/data/locations.dart（纯数据，测试和事件锚点校验都要用）。
+  // 这里保留一个别名，让 _syncLocationFromNarrative 的循环不用改。
+  static const List<(String, List<String>)> _knownLocations = kKnownLocations;
 
   /// 从叙事文本中提取玩家当前所在地点，并同步到 worldState.currentLocation。
   /// 检查两处：1) 开头【地点】标签；2) 叙事末尾 200 字（确保玩家真的抵达）。
