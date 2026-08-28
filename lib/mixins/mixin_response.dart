@@ -288,7 +288,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
             if (consecutiveChoiceLines >= 2) {
               anyExplicitBlockPassed = true;
               final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
-              final action = sanitizeChoiceText(rawAction);
+              final action = GameResponseChoiceMixin.sanitizeChoiceText(rawAction);
               if (action.isNotEmpty) {
                 choices.add(GameChoice(text: action, action: action));
               }
@@ -304,7 +304,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
             // 正文太短，可能是开局或错误，仍然按选项处理
             anyExplicitBlockPassed = true;
             final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
-            final action = sanitizeChoiceText(rawAction);
+            final action = GameResponseChoiceMixin.sanitizeChoiceText(rawAction);
             if (action.isNotEmpty) {
               choices.add(GameChoice(text: action, action: action));
             }
@@ -320,7 +320,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       } else if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) {
         // 在显式选项区块之后，逐行收集选项
         final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
-        final action = sanitizeChoiceText(rawAction);
+        final action = GameResponseChoiceMixin.sanitizeChoiceText(rawAction);
         if (action.isNotEmpty && choices.length < 6) {
           choices.add(GameChoice(text: action, action: action));
         }
@@ -413,7 +413,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     // 选项质量清理：移除不合格的选项（含残余markdown/图片/过长）
     final beforeClean = choices.length;
-    choices.removeWhere((c) => !isChoiceQualityAcceptable(c.text));
+    choices.removeWhere((c) => !GameResponseChoiceMixin.isChoiceQualityAcceptable(c.text));
     // BUG2c 一年级禁咒选项过滤：去掉选项里"一年级不可能会的咒语"（如A选项"吟唱守护神咒"）
     // （叙事侧的R5_spell_power_creep已经覆盖narrative，这里是选项侧的对称保护）
     final grade = player?.grade ?? 1;
@@ -1027,7 +1027,7 @@ $kChoicePromptSuffix''';
         final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
         if (match != null) {
           final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
-          final action = sanitizeChoiceText(rawAction);
+          final action = GameResponseChoiceMixin.sanitizeChoiceText(rawAction);
           if (action.isNotEmpty && action.length >= 2) {
             choices.add(GameChoice(text: action, action: action));
           }
@@ -1089,14 +1089,14 @@ $kChoicePromptSuffix''';
       // 质量检查：只要有 ≥2 条合格选项就保留合格子集，不再要求 4 条全部合格
       // BUG-L 修复：旧代码用 choices.every(...) → 1条不合格就全部重试 →
       //   极简prompt(411token无上下文)的结果覆盖了完整prompt(2508token)的好结果
-      final goodChoices = choices.where((c) => isChoiceQualityAcceptable(c.text)).toList();
+      final goodChoices = choices.where((c) => GameResponseChoiceMixin.isChoiceQualityAcceptable(c.text)).toList();
       final qualityPassed = goodChoices.length >= 2;
 
       // 只有 <2 条合格才重试，且重试必须带完整剧情上下文
       if (!qualityPassed) {
         final qualityReasons = <String>[];
         if (choices.length < 2) qualityReasons.add('数量不足(${choices.length}/4)');
-        final badChoices = choices.where((c) => !isChoiceQualityAcceptable(c.text)).toList();
+        final badChoices = choices.where((c) => !GameResponseChoiceMixin.isChoiceQualityAcceptable(c.text)).toList();
         if (badChoices.isNotEmpty) qualityReasons.add('${badChoices.length}条含markdown/图片/异常格式');
         debugPrint('选项质量检测: ${qualityReasons.join("、")}，自动重试(带完整剧情上下文)...');
 
@@ -1137,8 +1137,8 @@ $kChoicePromptSuffix''';
           final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
           if (match != null) {
             final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
-            final action = sanitizeChoiceText(rawAction);
-            if (action.isNotEmpty && action.length >= 2 && isChoiceQualityAcceptable(action)) {
+            final action = GameResponseChoiceMixin.sanitizeChoiceText(rawAction);
+            if (action.isNotEmpty && action.length >= 2 && GameResponseChoiceMixin.isChoiceQualityAcceptable(action)) {
               retryChoices.add(GameChoice(text: action, action: action));
             }
           }
@@ -1164,7 +1164,7 @@ $kChoicePromptSuffix''';
         // 旧代码：retryChoices.length >= 2 → choices..clear()..addAll(retryChoices)
         //   → 第一轮的好选项被极简prompt的通用选项覆盖
         // 新策略：保留第一轮的合格选项，只补充不足的部分
-        final goodRetry = retryChoices.where((c) => isChoiceQualityAcceptable(c.text)).toList();
+        final goodRetry = retryChoices.where((c) => GameResponseChoiceMixin.isChoiceQualityAcceptable(c.text)).toList();
         if (goodRetry.length >= 2 && goodRetry.length > goodChoices.length) {
           // 重试结果整体更好 → 用重试结果
           choices

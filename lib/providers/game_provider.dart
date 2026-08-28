@@ -23,8 +23,8 @@ import '../models/long_term_memory.dart';
 class GameProvider extends GameProviderBase
     with
         GameInitMixin,
-        GameNarrativeMixin,
         GameNarrativeContinuityMixin,
+        GameNarrativeMixin,
         GameCommandsMixin,
         GameResponseChoiceMixin,
         GameResponseAffectionMixin,

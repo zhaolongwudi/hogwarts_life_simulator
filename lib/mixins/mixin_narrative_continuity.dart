@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
