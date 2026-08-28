@@ -4,6 +4,7 @@ import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/cg_data.dart';
 import '../data/cg_unlock_conditions.dart';
+import '../data/archetype_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/world_rules.dart';
@@ -136,7 +137,7 @@ mixin GameRelationsMixin on GameProviderBase {
       affection: roll(5, 15),
       isGenerated: true,
       generatedProfile: '$archetype气质｜$houseLabel｜${isMale ? '男' : '女'}生｜与你同年级',
-      giftPrefs: _generateGiftPrefs(archetype),
+      giftPrefs: generateGiftPrefsFor(archetype),
       personalGoal: _generatePersonalGoal(archetype, house),
       schedule: _generateNpcSchedule(house, grade),
       knowsAbout: _generateKnownFacts(archetype),
@@ -166,28 +167,9 @@ mixin GameRelationsMixin on GameProviderBase {
     _checkGenerationArtistAchievement();
   }
 
-  Map<String, int> _generateGiftPrefs(String archetype) {
-    switch (archetype) {
-      case '勇敢型':
-        return {'魁地奇徽章': 8, '勇气勋章': 6, '巧克力蛙': 2};
-      case '智慧型':
-        return {'旧书': 8, '羽毛笔': 5, '巧克力蛙': 2};
-      case '温柔型':
-        return {'花束': 7, '手写贺卡': 5, '巧克力蛙': 3};
-      case '野心型':
-        return {'计划书': 7, '银色钢笔': 6, '巧克力蛙': 2};
-      case '忠诚型':
-        return {'编织围巾': 8, '自制点心': 5, '巧克力蛙': 3};
-      case '神秘型':
-        return {'神秘符号': 8, '魔法道具': 6, '巧克力蛙': 2};
-      case '幽默型':
-        return {'恶作剧玩具': 7, '笑话集': 5, '巧克力蛙': 3};
-      case '叛逆型':
-        return {'朋克饰品': 8, '摇滚专辑': 6, '巧克力蛙': 2};
-      default:
-        return {'巧克力蛙': 2};
-    }
-  }
+  /// 原型 → 礼物偏好（数据层实现，见 lib/data/archetype_data.dart）
+  Map<String, int> generateGiftPrefsFor(String archetype) =>
+      giftPrefsForArchetype(archetype);
 
   String? _generatePersonalGoal(String archetype, String house) {
     final goals = <String, List<String>>{
@@ -380,7 +362,7 @@ mixin GameRelationsMixin on GameProviderBase {
     ));
     notifications.add('💰 购买了 $itemName，花费 $price 加隆');
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
     return true;
   }
 
@@ -404,7 +386,7 @@ mixin GameRelationsMixin on GameProviderBase {
     p.galleons += price;
     notifications.add('💰 出售了 ${item.name}，获得 $price 加隆');
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
     return true;
   }
 
@@ -416,7 +398,7 @@ mixin GameRelationsMixin on GameProviderBase {
     p.bankGalleons += amount;
     notifications.add('🏦 存入古灵阁 $amount 加隆');
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
     return true;
   }
 
@@ -428,7 +410,7 @@ mixin GameRelationsMixin on GameProviderBase {
     p.galleons += amount;
     notifications.add('🏦 从古灵阁取出 $amount 加隆');
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
     return true;
   }
 
@@ -460,7 +442,7 @@ mixin GameRelationsMixin on GameProviderBase {
     p.energy = (p.energy - energyCost).clamp(0, 100);
     notifications.add('💼 打工完成（$title），获得 $pay 加隆');
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
     return pay;
   }
 
@@ -546,7 +528,7 @@ mixin GameRelationsMixin on GameProviderBase {
     isLoading = false;
     loadingStage = '';
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 
   String formatRelationships() {

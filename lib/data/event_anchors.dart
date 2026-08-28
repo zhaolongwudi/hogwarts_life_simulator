@@ -254,6 +254,31 @@ const List<EventAnchor> eventAnchors = [
     directive:
         '情人节氛围：匿名情书、小精灵送花（可视时代调整）、走廊里的八卦。可与玩家的好感/暧昧状态自然联动，但不强制恋爱剧情。',
   ),
+  // ===== 3月：此前整月没有任何锚点，一整个月的游戏内时间都是空白 =====
+  EventAnchor(
+    id: 'common_mar_spring_thaw',
+    month: 3,
+    title: '三月·解冻',
+    directive:
+        '三月：积雪消融，禁林边缘开始出现活动迹象，温室里的魔法植物进入疯长期。'
+        '可安排草药课相关的剧情，或学生在泥泞的场地上追打闹的轻松桥段。',
+  ),
+  EventAnchor(
+    id: 'common_mar_midterm',
+    month: 3,
+    title: '学年中期考核',
+    directive:
+        '学年过半，教授们开始集中布置论文与随堂测验：图书馆一座难求，'
+        '熬夜赶论文的学生、借笔记的人情往来。可安排与学业属性直接挂钩的剧情。',
+  ),
+  EventAnchor(
+    id: 'common_mar_hogsmeade',
+    month: 3,
+    title: '霍格莫德周末',
+    directive:
+        '三月的霍格莫德周末：风大、路泥泞，但三把扫帚的热蜂蜜酒和蜂蜜公爵的糖果依然吸引人。'
+        '可安排与好友结伴出行、送礼、或撞见不该撞见的事。',
+  ),
   EventAnchor(
     id: 'common_apr_easter',
     month: 4,

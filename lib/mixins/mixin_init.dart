@@ -14,6 +14,7 @@ import '../data/world_rules.dart';
 import '../models/player.dart';
 import '../data/trait_data.dart';
 import '../data/npc_data.dart';
+import '../data/archetype_data.dart';
 import '../data/wand_data.dart';
 import '../models/world_state.dart';
 import '../models/long_term_memory.dart';
@@ -459,7 +460,7 @@ mixin GameInitMixin on GameProviderBase {
       }
       isLoading = false;
       notifyListeners();
-      autoSave();
+      unawaited(autoSave());
     } catch (e) {
       error = e.toString();
       isLoading = false;
@@ -495,7 +496,11 @@ mixin GameInitMixin on GameProviderBase {
         appearance: seed.appearance,
         gender: seed.gender,
         sexOrientation: seed.sexOrientation,
-        giftPrefs: Map.of(seed.giftPrefs),
+        // 预设 NPC 的 giftPrefs 在 npc_data.dart 里全是空的，
+        // 这里按人格反推原型补一份，让送礼对他们也有差异化反馈。
+        giftPrefs: seed.giftPrefs.isNotEmpty
+            ? Map.of(seed.giftPrefs)
+            : giftPrefsForArchetype(archetypeOfPersonality(seed.personality)),
         personalGoal: seed.personalGoal,
         affection: _initialAffectionFor(seed),
         reputation: Reputation(
@@ -1022,7 +1027,7 @@ mixin GameInitMixin on GameProviderBase {
       accumulateForSummary(currentNarrative);
       appendRecentTurn(currentNarrative);
       notifyListeners();
-      autoSave();
+      unawaited(autoSave());
     } catch (e) {
       error = e.toString();
       currentNarrative =
@@ -1030,7 +1035,7 @@ mixin GameInitMixin on GameProviderBase {
       choices = [GameChoice(text: '继续', action: '继续')];
       appendRecentTurn(currentNarrative);
       notifyListeners();
-      autoSave();
+      unawaited(autoSave());
       unawaited(CrashLogger.instance.record(
         e,
         StackTrace.current,

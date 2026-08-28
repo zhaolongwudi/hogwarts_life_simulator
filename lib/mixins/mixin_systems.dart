@@ -136,7 +136,7 @@ mixin GameSystemsMixin on GameProviderBase {
       ),
     );
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 
   void removeDiaryEntry(int index) {
@@ -144,7 +144,7 @@ mixin GameSystemsMixin on GameProviderBase {
     if (p == null || index < 0 || index >= p.diary.length) return;
     p.diary.removeAt(index);
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 
   // ==================== 时间快进（/快进） ====================
@@ -1132,7 +1132,7 @@ mixin GameSystemsMixin on GameProviderBase {
     _runConsistencyChecks();
     appProvider.setGameStarted(true);
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 
   void _migrateSave(Map<String, dynamic> data, int version) {

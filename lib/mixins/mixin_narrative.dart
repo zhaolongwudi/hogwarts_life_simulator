@@ -45,7 +45,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
           commandResult = null;
         }
         notifyListeners();
-        autoSave();
+        unawaited(autoSave());
         return;
       }
     }
@@ -534,7 +534,7 @@ $kNarrativeWritingRules
       loadingStage = '';
       isLoading = false;
       notifyListeners();
-      autoSave();
+      unawaited(autoSave());
     } catch (e) {
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
       debugPrint('❌ 剧情生成失败，启用本地兜底叙事: $e');
@@ -552,7 +552,7 @@ $kNarrativeWritingRules
       loadingStage = '';
       isLoading = false;
       notifyListeners();
-      autoSave();
+      unawaited(autoSave());
       unawaited(CrashLogger.instance.record(
         e,
         StackTrace.current,

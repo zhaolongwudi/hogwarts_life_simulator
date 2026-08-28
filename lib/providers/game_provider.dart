@@ -162,8 +162,18 @@ class GameProvider extends GameProviderBase
   @override
   Future<void> saveNow() async {
     if (player == null) return;
-    if (_saveScheduled) return;
-    _saveScheduled = true;
+    // 旧实现：`if (_saveScheduled) return;` —— 手动存档时若恰好有一次
+    // 自动存档在途（300ms 防抖 + 写盘），这次手动保存会被**静默丢弃**，
+    // 玩家以为存了，其实没存。改成先等在途的那次落地，再立刻无条件存一次。
+    final pending = _pendingSave;
+    if (pending != null) {
+      try {
+        await pending;
+      } catch (_) {
+        // 在途自动存档失败不影响手动存档，继续往下走
+      }
+    }
+    _saveScheduled = false;
     await doSave(debounce: false);
   }
 
@@ -304,7 +314,7 @@ class GameProvider extends GameProviderBase
     }
     checkAffectionAchievements(npc);
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 
   /// 好感显著变化时写入 T2 关系锚点（关键转折点）
@@ -369,13 +379,13 @@ class GameProvider extends GameProviderBase
     if (p == null) return;
     p.signature = text;
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 
   @override
   void setCurrentLocationLabel(String label) {
     worldState.currentLocationLabel = label;
     notifyListeners();
-    autoSave();
+    unawaited(autoSave());
   }
 }

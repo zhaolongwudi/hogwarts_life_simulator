@@ -825,6 +825,238 @@ final List<NpcSeed> firstWarSeeds = [
     ),
 ];
 
+/// 第一次巫师战争（1976-1977）时代原创名录。
+///
+/// 为什么需要这份：first_war 时代此前一个专属 NPC 都没有——
+/// firstWarSeeds 只是把掠夺者四人组 grade+5 复刻了一遍，
+/// 于是「伏地魔崛起、社会撕裂」这个设定里，玩家身边全是熟面孔，
+/// 没有真正属于这个时代的阵容：既没有未来的食死徒同学，
+/// 也没有未来的凤凰社成员，时代氛围完全立不起来。
+///
+/// 1976-77 学年在校的学生，正是几年后各自选边、彼此为敌的那一代。
+const List<NpcSeed> firstWarOriginals = [
+  // ===== 未来的食死徒（在校生）=====
+  NpcSeed(
+    id: 'evan_rosier',
+    name: '埃文·罗齐尔',
+    gender: '男',
+    aliases: ['罗齐尔', '埃文罗齐尔'],
+    house: 'Slytherin',
+    grade: 6,
+    bloodStatus: 'pureblood',
+    personality: ['冷酷', '精明', '傲慢', '内敛'],
+    appearance:
+        '瘦高的少年，深色头发梳理得一丝不苟，斯莱特林长袍永远熨得笔挺。'
+        '笑意很浅，话不多，眼神里却有种让人不舒服的笃定。',
+    era: 'first_war',
+    personalGoal: '让纯血统重新站到魔法界之上',
+  ),
+  NpcSeed(
+    id: 'mulciber',
+    name: '穆尔塞伯',
+    gender: '男',
+    aliases: ['穆尔塞伯同学'],
+    house: 'Slytherin',
+    grade: 6,
+    bloodStatus: 'pureblood',
+    personality: ['残忍', '野心', '阴郁', '果断'],
+    appearance:
+        '肩膀厚实，动作缓慢而用力。很少大声说话，但走廊里有学生会在他经过时绕开走。',
+    era: 'first_war',
+    personalGoal: '掌握让人屈服的手段',
+  ),
+  NpcSeed(
+    id: 'travers',
+    name: '特拉弗斯',
+    gender: '男',
+    aliases: ['特拉弗斯同学'],
+    house: 'Slytherin',
+    grade: 7,
+    bloodStatus: 'pureblood',
+    personality: ['沉默', '忠诚', '深沉', '固执'],
+    appearance:
+        '七年级，身形结实。脸上几乎没有表情，习惯站在人群后面听，然后一言不发地走开。',
+    era: 'first_war',
+    personalGoal: '服侍那个他认为会赢的人',
+  ),
+
+  // ===== 未来的凤凰社成员（在校生）=====
+  NpcSeed(
+    id: 'marlene',
+    name: '马琳·麦金农',
+    gender: '女',
+    aliases: ['马琳麦金农', '麦金农'],
+    house: 'Gryffindor',
+    grade: 6,
+    bloodStatus: 'pureblood',
+    personality: ['开朗', '勇敢', '直率', '幽默'],
+    appearance:
+        '金色长发束成高马尾，笑起来声音很大。格兰芬多公共休息室里最能带动气氛的人之一。',
+    era: 'first_war',
+    personalGoal: '不让任何人替她决定该站在哪一边',
+  ),
+  NpcSeed(
+    id: 'dorcas',
+    name: '多卡斯·梅多斯',
+    gender: '女',
+    aliases: ['多卡斯梅多斯', '梅多斯'],
+    house: 'Gryffindor',
+    grade: 7,
+    bloodStatus: 'halfblood',
+    personality: ['机智', '勇敢', '善于交际', '敏锐'],
+    appearance:
+        '深色卷发，眼尾有一点笑纹。说话快而俏皮，但课堂上记的笔记是全年级最整齐的。',
+    era: 'first_war',
+    personalGoal: '在越来越紧的风声里守住朋友',
+  ),
+  NpcSeed(
+    id: 'gideon',
+    name: '吉迪翁·普威特',
+    gender: '男',
+    aliases: ['吉迪翁普威特', '普威特兄弟'],
+    house: 'Gryffindor',
+    grade: 7,
+    bloodStatus: 'pureblood',
+    personality: ['幽默', '勇敢', '乐观', '护短'],
+    appearance:
+        '红发，和孪生弟弟几乎一模一样，只是笑起来更张扬些。兄弟俩总是一起出现。',
+    era: 'first_war',
+    personalGoal: '和弟弟一起笑着熬过这个时代',
+  ),
+  NpcSeed(
+    id: 'fabian',
+    name: '费比安·普威特',
+    gender: '男',
+    aliases: ['费比安普威特', '普威特兄弟'],
+    house: 'Gryffindor',
+    grade: 7,
+    bloodStatus: 'pureblood',
+    personality: ['幽默', '勇敢', '随和', '固执'],
+    appearance:
+        '红发，比哥哥安静一点点，但被惹到时第一个站出来的往往是他。',
+    era: 'first_war',
+    personalGoal: '不让恐惧决定自己怎么活',
+  ),
+  NpcSeed(
+    id: 'edgar',
+    name: '埃德加·博恩斯',
+    gender: '男',
+    aliases: ['埃德加博恩斯', '博恩斯'],
+    house: 'Hufflepuff',
+    grade: 7,
+    bloodStatus: 'halfblood',
+    personality: ['正直', '可靠', '勤勉', '温和'],
+    appearance:
+        '方脸，肩膀宽，握手很有力。级长徽章擦得锃亮，做事一板一眼。',
+    era: 'first_war',
+    personalGoal: '证明出身不决定立场',
+  ),
+  NpcSeed(
+    id: 'benjy',
+    name: '本吉·芬威克',
+    gender: '男',
+    aliases: ['本吉芬威克', '芬威克'],
+    house: 'Hufflepuff',
+    grade: 6,
+    bloodStatus: 'halfblood',
+    personality: ['忠诚', '好奇', '乐观', '耐心'],
+    appearance:
+        '圆脸，头发总是乱的。喜欢蹲在温室后面观察神奇生物，口袋里常塞着零食。',
+    era: 'first_war',
+    personalGoal: '弄明白黑魔法到底是怎么蛊惑人的',
+  ),
+  NpcSeed(
+    id: 'caradoc',
+    name: '卡拉多克·迪尔伯恩',
+    gender: '男',
+    aliases: ['卡拉多克迪尔伯恩', '迪尔伯恩'],
+    house: 'Ravenclaw',
+    grade: 6,
+    bloodStatus: 'halfblood',
+    personality: ['神秘', '独立', '聪明', '内敛'],
+    appearance:
+        '总是独自坐在图书馆靠窗的位置。有人说他同时在做三件互不相干的事，没人证实过。',
+    era: 'first_war',
+    personalGoal: '在所有人选边之前先看清棋盘',
+  ),
+  NpcSeed(
+    id: 'emmeline',
+    name: '埃米琳·万斯',
+    gender: '女',
+    aliases: ['埃米琳万斯', '万斯'],
+    house: 'Hufflepuff',
+    grade: 5,
+    bloodStatus: 'halfblood',
+    personality: ['善良', '坚韧', '体贴', '正义'],
+    appearance:
+        '深色头发编成辫子垂在肩侧，说话轻声细语，但在走廊上看到不公平的事会立刻走过去。',
+    era: 'first_war',
+    personalGoal: '在分裂的校园里维持一点体面',
+  ),
+
+  // ===== 成人：傲罗 / 食死徒 / 灰色地带 =====
+  NpcSeed(
+    id: 'moody_young',
+    name: '阿拉斯托·穆迪',
+    gender: '男',
+    aliases: ['疯眼汉穆迪', '穆迪', '阿拉斯托穆迪'],
+    house: '',
+    grade: 0,
+    bloodStatus: 'halfblood',
+    personality: ['警惕', '强硬', '正直', '多疑'],
+    appearance:
+        '三十来岁的傲罗，身材精悍。左眼还是好的，但脸上一道新鲜的伤疤。'
+        '说话时总在扫视出口，握手前会先看对方的手。',
+    era: 'first_war',
+    personalGoal: '在黑魔王得手前多抓几个人',
+  ),
+  NpcSeed(
+    id: 'lucius',
+    name: '卢修斯·马尔福',
+    gender: '男',
+    aliases: ['卢修斯马尔福', '马尔福先生'],
+    house: '',
+    grade: 0,
+    bloodStatus: 'pureblood',
+    personality: ['傲慢', '精明', '野心', '圆滑'],
+    appearance:
+        '一头铂金色长发垂到肩头，手杖顶端是银质蛇首。'
+        '语调永远温和有礼，礼貌底下是毫不掩饰的优越感。',
+    era: 'first_war',
+    personalGoal: '让马尔福家族站到胜利者那一边',
+  ),
+  NpcSeed(
+    id: 'bellatrix',
+    name: '贝拉特里克斯·布莱克',
+    gender: '女',
+    aliases: ['贝拉', '贝拉特里克斯布莱克', '贝拉特里克斯'],
+    house: '',
+    grade: 0,
+    bloodStatus: 'pureblood',
+    personality: ['狂热', '傲慢', '残忍', '美貌'],
+    appearance:
+        '浓密的黑色长卷发，眼窝深陷，五官张扬而凌厉。'
+        '笑的时候像在享受什么只有自己知道的事。',
+    era: 'first_war',
+    personalGoal: '把自己献给那个她认为值得献祭的人',
+  ),
+  NpcSeed(
+    id: 'aberforth',
+    name: '阿不福思·邓布利多',
+    gender: '男',
+    aliases: ['阿不福思邓布利多', '阿不福思', '猪头老板'],
+    house: '',
+    grade: 0,
+    bloodStatus: 'halfblood',
+    personality: ['古怪', '直率', '内敛', '固执'],
+    appearance:
+        '和哥哥一样留着长须，但胡须凌乱、衣着随意。'
+        '在猪头酒吧擦杯子的时候，不太愿意被人认出自己姓什么。',
+    era: 'first_war',
+    personalGoal: '守着这家酒吧，不掺和任何大事',
+  ),
+];
+
 /// 从 staffSeeds 中按 ID 挑选职员（各时代教职阵容不同，避免跨时代错乱）
 List<NpcSeed> _pickStaff(Set<String> ids) =>
     [for (final s in staffSeeds) if (ids.contains(s.id)) s];
@@ -860,6 +1092,7 @@ final Map<String, List<NpcSeed>> eraNpcSeeds = {
   'first_war': [
     ...maraudersStaff,
     ...firstWarSeeds,
+    ...firstWarOriginals,
   ],
   'harry_same': [
     ...staffSeeds,

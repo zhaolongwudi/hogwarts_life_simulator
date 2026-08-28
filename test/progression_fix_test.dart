@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
+import 'package:hogwarts_life_simulator/data/archetype_data.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 
 void main() {
@@ -171,6 +172,7 @@ void main() {
   });
 
   _contentGroup();
+  _contentCoverageGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -330,6 +332,93 @@ void _contentGroup() {
       expect(s2.bond, 70);
       expect(s2.stage, 3);
       expect(s2.pairLabel, '甲 × 乙');
+    });
+  });
+}
+/// 内容覆盖度：数据层不该出现"整片空白"。
+void _contentCoverageGroup() {
+  group('内容覆盖度', () {
+    test('12 个月每个月都有事件锚点（此前 3 月整月空白）', () {
+      final src = File('lib/data/event_anchors.dart').readAsStringSync();
+      final months = RegExp(r'month:\s*(\d+)')
+          .allMatches(src)
+          .map((m) => int.parse(m.group(1)!))
+          .toSet();
+      final missing = [
+        for (var i = 1; i <= 12; i++)
+          if (!months.contains(i)) i
+      ];
+      expect(missing, isEmpty, reason: '这些月份没有任何事件锚点：$missing');
+    });
+
+    test('事件锚点 id 不重复', () {
+      final src = File('lib/data/event_anchors.dart').readAsStringSync();
+      final ids = RegExp(r"id:\s*'([^']+)'")
+          .allMatches(src)
+          .map((m) => m.group(1)!)
+          .toList();
+      expect(ids.length, ids.toSet().length);
+    });
+
+    test('每个时代都有专属 NPC 阵容（first_war 此前全靠复刻掠夺者）', () {
+      final src = File('lib/data/npc_data.dart').readAsStringSync();
+      for (final listName in [
+        'dumbledoreEraSeeds',
+        'maraudersSeeds',
+        'firstWarOriginals',
+      ]) {
+        final m = RegExp(
+          '(?:const|final) List<NpcSeed> $listName = \\[(.*?)\n];',
+          dotAll: true,
+        ).firstMatch(src);
+        expect(m, isNotNull, reason: '$listName 列表不存在');
+        expect(m!.group(1)!.contains('NpcSeed('), isTrue,
+            reason: '$listName 是空的');
+      }
+      // first_war 必须把原创名录挂进去，否则白写
+      final eraMap = src.substring(src.indexOf('eraNpcSeeds = {'));
+      expect(eraMap.contains('...firstWarOriginals'), isTrue);
+    });
+
+    test('NPC seed 的 id 全局唯一', () {
+      final src = File('lib/data/npc_data.dart').readAsStringSync();
+      final ids =
+          RegExp(r"id: '([a-z0-9_]+)'").allMatches(src).map((m) => m.group(1)!);
+      expect(ids.length, ids.toSet().length);
+    });
+  });
+
+  group('礼物偏好：预设 NPC 不再全员空白', () {
+    test('archetypeOfPersonality 能对每套人格给出原型', () {
+      const cases = <List<String>, String>{
+        ['勇敢', '直率']: '勇敢型',
+        ['理性', '聪明']: '智慧型',
+        ['善良', '温柔']: '温柔型',
+        ['野心', '精明']: '野心型',
+        ['忠诚', '正直']: '忠诚型',
+        ['神秘', '内敛']: '神秘型',
+        ['幽默', '乐观']: '幽默型',
+        ['叛逆', '不羁']: '叛逆型',
+      };
+      for (final e in cases.entries) {
+        expect(archetypeOfPersonality(e.key), e.value);
+      }
+      // 无命中时退回神秘型而不是抛错/返回空
+      expect(archetypeOfPersonality(['???']), '神秘型');
+    });
+
+    test('每种原型都有非空礼物表', () {
+      for (final a in kArchetypeGiftPrefs.keys) {
+        expect(giftPrefsForArchetype(a).isNotEmpty, isTrue, reason: a);
+      }
+      // 未知原型也要有兜底
+      expect(giftPrefsForArchetype('不存在的原型').isNotEmpty, isTrue);
+    });
+
+    test('装载预设 NPC 时会补礼物偏好', () {
+      final initSrc = File('lib/mixins/mixin_init.dart').readAsStringSync();
+      expect(initSrc.contains('giftPrefsForArchetype(archetypeOfPersonality('),
+          isTrue);
     });
   });
 }
