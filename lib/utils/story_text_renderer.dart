@@ -1,11 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../data/item_data.dart';
+import '../data/locations.dart';
+import '../data/npc_data.dart';
+
 class StoryTextRenderer {
   // ====== 解析缓存（key=文本内容，避免 hash 冲突） ======
   static final Map<String, List<TextSpan>> _cache = {};
   static const int _maxCacheSize = 32;
 
-  static final List<String> _characterNames = [
+  // ====== 实体词表 ======
+  //
+  // 三张表原先都是手抄的字面量，抄完就跟数据层脱钩了：
+  //  - 角色：71 个 NPC 里有 22 个从来没被高亮过，第一次巫师战争时代的 12 个
+  //    原创 NPC 全军覆没。而这张表的用途远不止染色——好感行的识别正则、台
+  //    词说话人判定都拿它拼，所以那个时代的玩家「马琳：+3」这类好感变化根
+  //    本显示不出来。
+  //  - 物品：53 个物品名只覆盖了 3 个。
+  //  这已经是本项目第七次栽在「同一份表手抄 N 遍」上（房屋表 5 遍、CG 条件
+  //  2 遍…），统一改成从数据层派生，加 NPC / 加物品自动跟上。
+  //
+  // 派生之后仍保留一份「补充词」，补的是数据层里没有、但剧情会提到的东西
+  // （德思礼一家这类不在册人物、AI 爱用的简称、传说道具等）。
+
+  /// NPC 名录之外的人物：有剧情但没进 NPC 表的角色，以及 AI 常用的简称。
+  static const List<String> _extraCharacterWords = [
     '哈利·波特', '赫敏·格兰杰', '罗恩·韦斯莱', '纳威·隆巴顿',
     '查理·韦斯莱',
     '拉文德·布朗', '西莫·斐尼甘', '帕瓦蒂·帕蒂尔', '迪安·托马斯',
@@ -33,7 +52,8 @@ class StoryTextRenderer {
     '查理',
   ];
 
-  static final List<String> _locations = [
+  /// 地点表（lib/data/locations.dart）之外的地名。
+  static const List<String> _extraLocationWords = [
     '霍格沃茨', '霍格沃茨城堡', '霍格莫德', '霍格莫德村',
     '对角巷', '翻倒巷', '伦敦', '魔法部',
     '大礼堂', '天文塔', '拉文克劳塔', '格兰芬多塔', '斯莱特林地牢',
@@ -51,7 +71,8 @@ class StoryTextRenderer {
     '霍格沃茨特快', '霍格沃茨特快列车',
   ];
 
-  static final List<String> _items = [
+  /// 物品表（lib/data/item_data.dart）之外的道具：传说器物、货币、刊物等。
+  static const List<String> _extraItemWords = [
     '魔杖', '飞天扫帚', '光轮2000', '光轮2001', '火弩箭',
     '魂器', '死亡圣器', '魔法石', '贤者之石',
     '分院帽', '冥想盆', '厄里斯魔镜', '时间转换器',
@@ -65,6 +86,67 @@ class StoryTextRenderer {
     '活点地图', '真正的魔杖', '魂器碎片',
     '老魔杖', '接骨木魔杖', '紫杉木魔杖', '冬青木魔杖',
   ];
+
+  /// 别名里的通用称谓/名词，不进高亮表。
+  ///
+  /// NPC 别名本来是给命令解析用的（玩家输入「送礼物 老邓」也认），里面混着
+  /// 「妹妹」「叛徒」「级长」这类普通名词。直接拿来高亮的话，「他是个叛徒」
+  /// 「双胞胎走进来」这种叙述文字会被染成角色色，比不高亮还糟。
+  ///
+  /// 这里显式排除。每个词都必须真的出现在某个 NPC 的别名里——有测试盯着，
+  /// 免得这份清单以后变成一堆没人认领的字符串。
+  static const Set<String> _aliasesTooGeneric = {
+    '双胞胎', '叛徒', '妹妹', '护士长',
+    '校医', '教父', '看门人', '管理员',
+    '级长', '追球手', '解说员', '蝎子',
+  };
+
+  /// 角色名 = 补充词 + NPC 全名 + NPC 别名（去掉通用称谓）。
+  static final Set<String> _characterNameSet = <String>{
+    ..._extraCharacterWords,
+    for (final npc in kAllNpcSeeds) npc.name,
+    for (final npc in kAllNpcSeeds)
+      ...npc.aliases.where((a) => a.isNotEmpty && !_aliasesTooGeneric.contains(a)),
+  };
+
+  static final List<String> _characterNames = _characterNameSet.toList();
+
+  /// 物品名 = 补充词 + 物品目录 + 采集材料，去掉已被角色名占掉的。
+  static final List<String> _items = _unclaimed(
+    <String>[
+      ..._extraItemWords,
+      ...kItemCatalog.map((i) => i.name),
+      ...kCommonLootMaterials,
+      ...kRareLootMaterials,
+    ],
+    _characterNameSet,
+  );
+
+  /// 地点名 = 补充词 + 地点表的主名与别名，去掉已被角色名/物品名占掉的。
+  ///
+  /// 为什么物品排在地点前面：地点表里的别名是「关联词」而不是「地名词」——
+  /// 霍格沃茨大礼堂的别名里挂着「分院帽」「分院仪式」，一个是物件一个是
+  /// 活动，都不算地名。照单全收去高亮，就会把「分院帽」染成地点绿，而它
+  /// 本来是物品紫。
+  static final List<String> _locations = _unclaimed(
+    <String>[..._extraLocationWords, ...allLocationAliases],
+    <String>{..._characterNameSet, ..._items},
+  );
+
+  /// 已被优先级更高的类别占掉的词不再重复收录。
+  ///
+  /// _splitNarration 按 角色 → 地点 → 物品 的顺序占位，先到先得，所以一个
+  /// 词同时属于两类时必须先在这里去掉，否则低优先级那份永远轮不到，染出
+  /// 来的颜色取决于哪份列表先被遍历——这种顺序依赖出一次问题要查半天。
+  static List<String> _unclaimed(Iterable<String> words, Set<String> claimed) {
+    final out = <String>[];
+    final seen = <String>{};
+    for (final w in words) {
+      if (w.isEmpty || claimed.contains(w)) continue;
+      if (seen.add(w)) out.add(w);
+    }
+    return out;
+  }
 
   // 预排序（长词在前）：实体高亮优先命中长词（如「霍格莫德车站」优先于
   // 「霍格莫德」、「古灵阁巫师银行」优先于「古灵阁」），且只排序一次，
@@ -305,28 +387,34 @@ class StoryTextRenderer {
   ///
   ///   莉莉：-3（背叛）、马尔福 +2、好感度：哈利 +10
   ///   → 同样识别
+  /// 行内好感变化正则。
+  ///
+  /// 名字表改成从 NPC 数据派生后有 300 多个分支，而这个正则是在解析缓存
+  /// 之前构造的（见 parseWithAffectionStyle），原先每次渲染都重新拼一遍
+  /// 字符串、重新编译一次。名字表是静态的，正则也应该是静态的。
+  static final RegExp _lineAffection = RegExp(
+    r'^(?<prefix>.*?)'
+    r'(?:'
+      r'(?<name>' + _affectionNameUnion + r')\s*[：:]?\s*'
+      r'(?<delta>[+-]\d{1,3})'
+      r'\s*(?<note>[（(][^）)\n]*[）)])?'
+    r'|'
+      r'(?:好感度?变化?|声望变化?)\s*[：:]\s*.+'
+    r')'
+    r'\s*$',
+    multiLine: true,
+    unicode: true,
+  );
+
+  /// 名字分支（长名在前，保证「哈利·波特」优先于「哈利」）。
+  static final String _affectionNameUnion = (_characterNames.toList()
+        ..sort((a, b) => b.length.compareTo(a.length)))
+      .map(RegExp.escape)
+      .join('|');
+
   static String _promoteAffectionLines(String text) {
     // 按行扫描，找：角色名 + 冒号? + [+-]数字 + 可选括号说明
     // 同时允许下一行紧跟着的（说明）一起包进去
-    final sortedNames = List<String>.from(_characterNames)
-      ..sort((a, b) => b.length.compareTo(a.length));
-    final nameUnion = sortedNames.map(RegExp.escape).join('|');
-
-    // 模式1: 行内包含 "姓名：+/-N" 或 "姓名 +/-N"（必须是行末，不跟其他叙述文字混在同一行非好感内容后面）
-    // 模式2: 独立的好感度标签（"好感度变化："/"好感："前缀）
-    final lineAffection = RegExp(
-      r'^(?<prefix>.*?)'
-      r'(?:'
-        r'(?<name>' + nameUnion + r')\s*[：:]?\s*'
-        r'(?<delta>[+-]\d{1,3})'
-        r'\s*(?<note>[（(][^）)\n]*[）)])?'
-      r'|'
-        r'(?:好感度?变化?|声望变化?)\s*[：:]\s*.+'
-      r')'
-      r'\s*$',
-      multiLine: true,
-      unicode: true,
-    );
 
     final lines = text.split('\n');
     final buffer = <String>[];
@@ -343,7 +431,7 @@ class StoryTextRenderer {
 
     while (i < lines.length) {
       final line = lines[i];
-      final match = lineAffection.firstMatch(line);
+      final match = _lineAffection.firstMatch(line);
 
       if (match != null) {
         final prefix = match.namedGroup('prefix') ?? '';

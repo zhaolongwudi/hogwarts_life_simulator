@@ -1057,6 +1057,39 @@ const List<NpcSeed> firstWarOriginals = [
   ),
 ];
 
+/// 全部 NPC 种子（按 id 去重）。
+///
+/// 剧情渲染器（lib/utils/story_text_renderer.dart）靠这份表决定「哪些词该当
+/// 角色名处理」。以前它在自己文件里手抄了一份名单，抄的是哈利时代那批熟
+/// 面孔，于是第一次巫师战争时代的 12 个原创 NPC 一个都不在里面：
+///  - 剧情里没有一个角色名被染色；
+///  - 「马琳：+3」这种好感行识别不出来，因为渲染器那句好感正则是拿名单拼的；
+///  - 说话人判定也认不出他们，台词不上色。
+/// 现在从数据层派生，以后往任何一个时代加 NPC，渲染自动跟上。
+///
+/// firstWarSeeds 是 maraudersSeeds 改年级后的副本（id 相同），不必重复收。
+final List<NpcSeed> kAllNpcSeeds = _dedupById([
+  ...staffSeeds,
+  ...harrySameGryffindor,
+  ...harrySameSenior,
+  ...harrySameSlytherin,
+  ...harrySameRavenclaw,
+  ...harrySameHufflepuff,
+  ...maraudersSeeds,
+  ...dumbledoreEraSeeds,
+  ...postWarSeeds,
+  ...firstWarOriginals,
+]);
+
+List<NpcSeed> _dedupById(List<NpcSeed> src) {
+  final seen = <String>{};
+  final out = <NpcSeed>[];
+  for (final s in src) {
+    if (seen.add(s.id)) out.add(s);
+  }
+  return out;
+}
+
 /// 从 staffSeeds 中按 ID 挑选职员（各时代教职阵容不同，避免跨时代错乱）
 List<NpcSeed> _pickStaff(Set<String> ids) =>
     [for (final s in staffSeeds) if (ids.contains(s.id)) s];
