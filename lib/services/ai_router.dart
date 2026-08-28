@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../providers/app_provider.dart';
 import '../utils/ai_debug_logger.dart';
+import '../data/provider_defaults.dart';
 import 'deepseek_service.dart';
 import 'rate_limiter.dart';
 
@@ -301,15 +302,9 @@ class AiRouter {
         );
     }
   }
-  String getProviderLabel(AiProvider provider) {
-    switch (provider) {
-      case AiProvider.deepseek:
-        return 'DeepSeek';
-      case AiProvider.agnes:
-        return 'Agnes';
-      case AiProvider.sensenova:
-        return 'SenseNova';
-    }
-  }
+  /// 提供商展示名。表在 lib/data/provider_defaults.dart 的 displayName 字段
+  /// （设置页卡片用的是同一个值，以前这里是手抄的第二份）。
+  String getProviderLabel(AiProvider provider) =>
+      providerDisplayName(provider.name);
 
   }

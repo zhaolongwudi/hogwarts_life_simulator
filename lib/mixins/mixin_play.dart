@@ -57,27 +57,13 @@ mixin GamePlayMixin on GameProviderBase {
 
   int _attr(String key) => (player?.attributes[key]) ?? 50;
 
-  int _equipmentCombatBonus() {
-    final p = player;
-    if (p == null) return 0;
-    int sum = 0;
-    p.equipped.forEach((slot, name) {
-      final def = itemDefByName(name);
-      if (def != null) sum += def.combatBonus;
-    });
-    return sum;
-  }
+  /// 装备加成走 lib/data/item_data.dart 的纯函数——装备页显示的数字和
+  /// 打决斗实际用的必须是同一个算法。
+  int _equipmentCombatBonus() =>
+      player == null ? 0 : equippedCombatBonus(player!.equipped);
 
-  int _equipmentCastBonus() {
-    final p = player;
-    if (p == null) return 0;
-    int sum = 0;
-    p.equipped.forEach((slot, name) {
-      final def = itemDefByName(name);
-      if (def != null) sum += def.castBonus;
-    });
-    return sum;
-  }
+  int _equipmentCastBonus() =>
+      player == null ? 0 : equippedCastBonus(player!.equipped);
 
   /// 决斗战力：技能熟练度均值 + 装备加成 + 宠物助战（羁绊≥40）
   double _playerPower() {

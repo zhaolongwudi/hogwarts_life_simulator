@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../providers/app_provider.dart';
 import '../../services/ai_router.dart';
+import '../../data/provider_defaults.dart';
 
 class SettingsSceneRouting extends StatelessWidget {
   final AppProvider appProvider;
@@ -25,16 +26,8 @@ class SettingsSceneRouting extends StatelessWidget {
     }
   }
 
-  String providerNameLabel(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return 'DeepSeek';
-      case AiProvider.agnes:
-        return 'Agnes';
-      case AiProvider.sensenova:
-        return 'SenseNova';
-    }
-  }
+  /// 提供商展示名，统一走数据层（settings_provider_card 用的是同一个值）。
+  String providerNameLabel(AiProvider p) => providerDisplayName(p.name);
 
   @override
   Widget build(BuildContext context) {

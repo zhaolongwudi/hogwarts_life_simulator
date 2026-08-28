@@ -517,3 +517,27 @@ String rollLootMaterial(int rollPerThousand) {
       : kCommonLootMaterials;
   return pool[rollPerThousand % pool.length];
 }
+
+/// 已穿戴装备的决斗战力加成总和。
+///
+/// 之前 mixin_play._equipmentCombatBonus 和 game_play_screens._combatBonus
+/// 各写一遍同样的循环。装备页显示的加成和实际打决斗用的加成一旦算法分叉，
+/// 玩家会看到「+5」打出来却只有「+3」。
+int equippedCombatBonus(Map<String, String> equipped) {
+  var sum = 0;
+  equipped.forEach((slot, name) {
+    final def = itemDefByName(name);
+    if (def != null) sum += def.combatBonus;
+  });
+  return sum;
+}
+
+/// 已穿戴装备的施法成功率加成总和（千分比，20 表示 +2%）。
+int equippedCastBonus(Map<String, String> equipped) {
+  var sum = 0;
+  equipped.forEach((slot, name) {
+    final def = itemDefByName(name);
+    if (def != null) sum += def.castBonus;
+  });
+  return sum;
+}

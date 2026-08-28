@@ -118,7 +118,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
 
   String defaultModel(AiProvider p) => defaultsForProvider(p.name).model;
 
-  String providerNameLabel(AiProvider p) => defaultsForProvider(p.name).displayName;
+  String providerNameLabel(AiProvider p) => providerDisplayName(p.name);
 
   /// 一句话定位（收起态显示，帮助用户快速区分三家）
   String _tagline(AiProvider p) => defaultsForProvider(p.name).tagline;

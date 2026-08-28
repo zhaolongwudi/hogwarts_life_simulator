@@ -91,3 +91,15 @@ const Map<String, ProviderDefault> kProviderDefaults = {
 /// 免得每处调用方都写一遍 `?? const ...`。
 ProviderDefault defaultsForProvider(String providerName) =>
     kProviderDefaults[providerName] ?? kProviderDefaults['deepseek']!;
+
+/// AiProvider 枚举 → 展示名。
+///
+/// 之前 ai_router.getProviderLabel 和 settings_scene_routing.providerNameLabel
+/// 各手抄了一份 switch（内容还和这里的 displayName 完全一样），等于展示名
+/// 有三份；而 settings_provider_card 直接用 defaultsForProvider().displayName。
+/// 统一到数据层，改一个名字只改一处。
+///
+/// 注意枚举是定义在 providers/app_provider.dart 的，为了避免数据层反向依赖
+/// provider 层，这里收 String 参数，调用方传 `p.name`。
+String providerDisplayName(String providerName) =>
+    defaultsForProvider(providerName).displayName;

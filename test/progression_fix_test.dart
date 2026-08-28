@@ -204,6 +204,7 @@ void main() {
   _attributeLabelGroup();
   _questTypeLabelGroup();
   _saveLoadGroup();
+  _equipmentAndProviderGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1794,6 +1795,72 @@ void _questTypeLabelGroup() {
       expect(questTypeLabel('defeat'), '讨伐');
       expect(questTypeLabel('pet'), '培养');
       expect(questTypeLabel('escort'), '委托');
+    });
+  });
+}
+
+// ==================== 装备加成 / 提供商名只有一份 ====================
+
+void _equipmentAndProviderGroup() {
+  group('装备加成与提供商名只有一份', () {
+    test('装备加成不再有手写循环', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.endsWith('data/item_data.dart')) continue; // 纯函数本身
+        final src = File(f).readAsStringSync();
+        // 只拦「求和」循环；单件装备展示自己的 combatBonus 是正常的
+        if (src.contains('sum += def.combatBonus') ||
+            src.contains('sum += def.castBonus')) {
+          offenders.add(f);
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '装备加成算法又被抄了一份，应改用 equippedCombatBonus/'
+              'equippedCastBonus：$offenders');
+    });
+
+    test('加成算法本身正确', () {
+      expect(equippedCombatBonus({}), 0);
+      expect(equippedCastBonus({}), 0);
+      // 槽位里放一个目录里不存在的东西不该崩，也不该算加成
+      expect(equippedCombatBonus({'wand': '不存在的魔杖'}), 0);
+      // 用真实目录数据跑一遍
+      final withCombat =
+          kItemCatalog.where((d) => d.combatBonus > 0).toList(growable: false);
+      expect(withCombat, isNotEmpty, reason: '目录里没有任何带战斗加成的装备？');
+      final one = withCombat.first;
+      expect(equippedCombatBonus({'wand': one.name}), one.combatBonus);
+      expect(equippedCastBonus({'wand': one.name}), one.castBonus);
+    });
+
+    test('提供商展示名不再有手写 switch', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.endsWith('data/provider_defaults.dart')) continue; // 数据表本身
+        final src = File(f).readAsStringSync();
+        // 只拦「按 provider 分支返回展示名」的 switch；按 provider 选服务的
+        // 分支（case AiProvider.deepseek: return service.chatComplete(...)）
+        // 是正常的业务逻辑
+        final labelSwitch = RegExp(
+          r"case AiProvider\.\w+:\s*return '(?:DeepSeek|Agnes|SenseNova)'",
+        );
+        if (labelSwitch.hasMatch(src)) {
+          offenders.add(f);
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '提供商名又手抄了一份 switch，应改用 providerDisplayName()：$offenders');
+    });
+
+    test('每个 AiProvider 都能拿到展示名', () {
+      for (final p in AiProvider.values) {
+        final label = providerDisplayName(p.name);
+        expect(label.trim(), isNotEmpty, reason: '${p.name} 没有展示名');
+        // 必须来自数据表，而不是 defaultsForProvider 的 deepseek 兜底
+        expect(kProviderDefaults.containsKey(p.name), isTrue,
+            reason: '${p.name} 在 kProviderDefaults 里没有条目，'
+                'providerDisplayName 会静默兜底成 DeepSeek');
+      }
     });
   });
 }

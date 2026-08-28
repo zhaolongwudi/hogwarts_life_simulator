@@ -304,27 +304,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     ('amulet', '饰品'),
   ];
 
-  int _combatBonus(GameProvider gp) {
-    final p = gp.player;
-    if (p == null) return 0;
-    int sum = 0;
-    p.equipped.forEach((slot, name) {
-      final def = itemDefByName(name);
-      if (def != null) sum += def.combatBonus;
-    });
-    return sum;
-  }
+  // 加成算法在 lib/data/item_data.dart，和 /决斗 实际用的是同一个。
+  int _combatBonus(GameProvider gp) =>
+      gp.player == null ? 0 : equippedCombatBonus(gp.player!.equipped);
 
-  int _castBonus(GameProvider gp) {
-    final p = gp.player;
-    if (p == null) return 0;
-    int sum = 0;
-    p.equipped.forEach((slot, name) {
-      final def = itemDefByName(name);
-      if (def != null) sum += def.castBonus;
-    });
-    return sum;
-  }
+  int _castBonus(GameProvider gp) =>
+      gp.player == null ? 0 : equippedCastBonus(gp.player!.equipped);
 
   @override
   Widget build(BuildContext context) {
