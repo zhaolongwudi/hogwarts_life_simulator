@@ -5,6 +5,17 @@
 
 ---
 
+### v2.6.8 — 2026-08-28
+
+**📋 变更说明**
+fix: 玩家在 Android 上改一次 API Key 就卡死——清理循环靠 delete 抛异常退出
+
+KeyStore._deleteAllForProvider 原来是：
+
+    for (int i = 0;; i++) {
+      try { await _storage.delete(key: '..._$i'); }
+      catch (_) { break; }        // ← 唯一的出口
+
 ### v2.6.7 — 2026-08-28
 
 **📋 变更说明**
