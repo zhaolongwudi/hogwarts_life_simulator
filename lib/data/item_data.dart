@@ -431,6 +431,49 @@ const List<ItemDef> kItemCatalog = [
     price: 25,
     desc: '金色的凤凰尾羽，无比珍稀',
   ),
+  // 稀有材料：只在禁林深处、委托奖励里出现，不在普通采集池里
+  ItemDef(
+    id: 'mandrake_leaf',
+    name: '曼德拉草叶',
+    type: '材料',
+    price: 35,
+    desc: '成熟曼德拉草的叶片，采摘时最好塞住耳朵',
+  ),
+  ItemDef(
+    id: 'moonstone_powder',
+    name: '月长石粉',
+    type: '材料',
+    price: 30,
+    desc: '研磨到极细的月长石，魔药的稳定剂',
+  ),
+  ItemDef(
+    id: 'troll_nail',
+    name: '巨怪指甲',
+    type: '材料',
+    price: 28,
+    desc: '厚硬发黄，气味不太好闻，但很值钱',
+  ),
+  ItemDef(
+    id: 'grindylow_hair',
+    name: '水妖毛发',
+    type: '材料',
+    price: 40,
+    desc: '从黑湖边的水妖巢附近捡到的，泡过水的那种滑腻触感',
+  ),
+  ItemDef(
+    id: 'ashwinder_egg',
+    name: '火灰蛇蛋',
+    type: '材料',
+    price: 45,
+    desc: '从壁炉余烬里刨出来的，握在手里烫得惊人',
+  ),
+  ItemDef(
+    id: 'thestral_tail',
+    name: '夜骐尾羽',
+    type: '材料',
+    price: 55,
+    desc: '只有见过死亡的人才能看见它原来的主人',
+  ),
 ];
 
 ItemDef? itemDefByName(String name) {
@@ -453,4 +496,28 @@ List<ItemDef> equippableItems() =>
 List<ItemDef> usableItems() => kItemCatalog.where((d) => d.usable).toList();
 
 /// 禁林/委托产出材料（统一来源，避免各处硬编码）
+///
+/// 分两档而不是一个大池子：此前禁林采集是在 4 种里均匀取一，跑十趟禁林
+/// 拿到的东西大同小异，「翻树根」这件事很快就没什么可期待的了。
 const List<String> kCommonLootMaterials = ['独角兽毛', '蛇的毒牙', '龙血', '凤羽'];
+
+/// 稀有材料：出得少、卖得贵，也是送礼时的高价值选择。
+const List<String> kRareLootMaterials = [
+  '曼德拉草叶',
+  '月长石粉',
+  '巨怪指甲',
+  '水妖毛发',
+  '火灰蛇蛋',
+  '夜骐尾羽',
+];
+
+/// 稀有材料在采集时的占比（千分比）。
+const int kRareLootRatePerThousand = 150;
+
+/// 按稀有度摇一种采集产物。传入 0~999 的随机数便于测试固定结果。
+String rollLootMaterial(int rollPerThousand) {
+  final pool = rollPerThousand < kRareLootRatePerThousand
+      ? kRareLootMaterials
+      : kCommonLootMaterials;
+  return pool[rollPerThousand % pool.length];
+}

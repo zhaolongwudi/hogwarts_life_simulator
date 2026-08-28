@@ -809,10 +809,16 @@ mixin GamePlayMixin on GameProviderBase {
         buf.writeln('\n你悄悄退开，没有惊扰它。');
       }
     } else if (rollValue < 55) {
-      // 采集材料
-      final material = kCommonLootMaterials[random.nextInt(kCommonLootMaterials.length)];
+      // 采集材料：稀有档单独摇一次，让「再翻一次」值得期待
+      final material = rollLootMaterial(random.nextInt(1000));
+      final rare = kRareLootMaterials.contains(material);
       _gainItem(material);
-      buf.writeln('你在树根与岩石之间仔细翻找，收获了一份「$material」，塞进背包。');
+      if (rare) {
+        buf.writeln('你拨开一丛暗色的苔藓，底下的东西让你屏住了呼吸——「$material」。'
+            '这种东西可不是随便就能碰上的，你小心翼翼地收好。');
+      } else {
+        buf.writeln('你在树根与岩石之间仔细翻找，收获了一份「$material」，塞进背包。');
+      }
     } else if (rollValue < 70) {
       // 金币
       final coins = 5 + random.nextInt(16);

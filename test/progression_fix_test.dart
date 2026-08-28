@@ -187,6 +187,7 @@ void main() {
   _providerDefaultsGroup();
   _settingsDedupGroup();
   _giftGivingGroup();
+  _materialLootGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1236,6 +1237,70 @@ void _giftGivingGroup() {
       // mixin_relations 送礼时必须调用它
       final rel = File('lib/mixins/mixin_relations.dart').readAsStringSync();
       expect(rel.contains('removeOneItem('), isTrue);
+    });
+  });
+}
+
+// ==================== 材料产出分层 ====================
+// 此前禁林采集是在 4 种材料里均匀取一，跑十趟拿到的东西大同小异，
+// 「去禁林翻树根」很快就没有可期待的东西了。
+
+void _materialLootGroup() {
+  group('材料产出分档', () {
+    test('常见与稀有两个池子不重叠', () {
+      final overlap =
+          kRareLootMaterials.toSet().intersection(kCommonLootMaterials.toSet());
+      expect(overlap, isEmpty,
+          reason: '这些材料同时出现在两个池子里：$overlap');
+    });
+
+    test('池子里的每个名字都能在目录里找到', () {
+      for (final n in [...kCommonLootMaterials, ...kRareLootMaterials]) {
+        expect(itemDefByName(n), isNotNull, reason: '$n 不在 kItemCatalog 里');
+      }
+    });
+
+    test('稀有材料的售价比常见材料高一截', () {
+      int price(String n) => itemDefByName(n)!.price;
+      final commonMax =
+          kCommonLootMaterials.map(price).reduce((a, b) => a > b ? a : b);
+      final rareMin =
+          kRareLootMaterials.map(price).reduce((a, b) => a < b ? a : b);
+      expect(rareMin, greaterThan(commonMax),
+          reason: '稀有材料最低价 $rareMin 应该高于常见材料最高价 $commonMax');
+    });
+
+    test('低 roll 出稀有、高 roll 出常见', () {
+      expect(kRareLootMaterials.contains(rollLootMaterial(0)), isTrue);
+      expect(kRareLootMaterials.contains(rollLootMaterial(149)), isTrue);
+      expect(kCommonLootMaterials.contains(rollLootMaterial(150)), isTrue);
+      expect(kCommonLootMaterials.contains(rollLootMaterial(999)), isTrue);
+    });
+
+    test('稀有率与实际分布一致', () {
+      var rare = 0;
+      const samples = 1000;
+      for (var i = 0; i < samples; i++) {
+        if (kRareLootMaterials.contains(rollLootMaterial(i))) rare++;
+      }
+      expect(rare, kRareLootRatePerThousand,
+          reason: '稀有材料实际占 ${rare / 10}%，与设定的 '
+              '${kRareLootRatePerThousand / 10}% 不符');
+    });
+
+    test('禁林采集已经用上分档而不是直接摇常见池', () {
+      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      expect(src.contains('rollLootMaterial('), isTrue,
+          reason: '采集点还在直接摇 kCommonLootMaterials，稀有材料永远出不来');
+    });
+
+    test('稀有产出有区别于常见的叙事反馈', () {
+      // 拿到稀有材料和拿到一撮独角兽毛，文本不该一样
+      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final at = src.indexOf('rollLootMaterial(');
+      final around = src.substring(at, at + 700);
+      expect(around.contains('rare'), isTrue);
+      expect(around.contains('屏住'), isTrue);
     });
   });
 }
