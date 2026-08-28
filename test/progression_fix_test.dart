@@ -225,6 +225,7 @@ void main() {
   _locationMatchGroup();
   _loveReputationGroup();
   _worldlineGroup();
+  _asyncSetStateGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2982,6 +2983,48 @@ void _worldlineGroup() {
           contains('classAccidentPool'));
       expect(_codeOnly('lib/mixins/mixin_relations.dart'),
           contains('classAccidentPool'));
+    });
+  });
+}
+
+// ==================== 异步回调里的 setState ====================
+// await 之后页面可能已经被关掉，此时 setState 会在已卸载的 State 上抛异常。
+// 这类崩溃只在"手快退出页面"时才出现，本地点几下点不出来。
+void _asyncSetStateGroup() {
+  group('异步回调里的 setState 有 mounted 保护', () {
+    test('await 到 setState 之间必须判过 mounted', () {
+      final offenders = <String>[];
+      for (final path in _allLibFiles()) {
+        if (!path.startsWith('lib/screens/') &&
+            !path.startsWith('lib/widgets/')) continue;
+        final lines = File(path).readAsStringSync().split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].trimLeft().startsWith('//')) continue;
+          if (!lines[i].contains('await ')) continue;
+          final awaitIndent = lines[i].length - lines[i].trimLeft().length;
+          for (var j = i + 1; j < lines.length && j <= i + 10; j++) {
+            final raw = lines[j];
+            final t = raw.trim();
+            // 缩进不比 await 更深的 `}` = 当前函数结束，往后是另一个函数，不
+            // 该算到这次 await 的账上（_saveAllKeys 末尾的 await 紧跟下一个
+            // 方法的 setState，就是这种情况）。
+            if (t.startsWith('}') &&
+                (raw.length - raw.trimLeft().length) <= awaitIndent) {
+              break;
+            }
+            if (t.startsWith('//')) continue;
+            if (!t.startsWith('setState(')) continue;
+            final window = lines.sublist(i, j + 1).join('\n');
+            if (!window.contains('mounted')) {
+              offenders.add('$path:${j + 1}  $t');
+            }
+            break;
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'await 之后直接 setState，中间没判 mounted——页面在这期间被'
+              '关掉就会抛异常：\n${offenders.join('\n')}');
     });
   });
 }

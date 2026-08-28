@@ -219,12 +219,14 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                     : () async {
                         await CrashLogger.instance.clear();
                         widget.onCleared?.call();
+                        // 清日志要写文件，中途页面可能已经被关掉。下面那句
+                        // ScaffoldMessenger 记得判 mounted，setState 却没判——
+                        // 同一个回调里两种口径，漏的那个会在页面已卸载时抛异常。
+                        if (!mounted) return;
                         setState(() {});
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('崩溃日志已清除')),
-                          );
-                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('崩溃日志已清除')),
+                        );
                       },
                 style: TextButton.styleFrom(
                   minimumSize: const Size(0, 0),

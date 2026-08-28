@@ -112,6 +112,8 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   Future<void> _importSave() async {
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
+      // 读剪贴板是一次平台通道调用，期间玩家可能已经退出这一页
+      if (!mounted) return;
       final text = data?.text?.trim() ?? '';
       if (text.isEmpty) {
         _showSnack('❌ 剪贴板为空，请先复制存档数据');
