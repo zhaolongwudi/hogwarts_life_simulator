@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../data/wand_data.dart';
 import '../data/political_stance.dart';
+import '../data/blood_status.dart';
 
 /// 十三轮初始设定流程
 class IntroScreen extends StatefulWidget {
@@ -77,36 +78,11 @@ class _IntroScreenState extends State<IntroScreen> {
   // 4. 家族与血统（第75章 · 11个血统选项）
   String _bloodStatus = 'muggleborn';
   String _familyBackground = '出生于普通麻瓜家庭';
-  static const List<String> _bloodOptions = [
-    'muggleborn', 'halfblood', 'pureblood_side', 'pureblood_sacred',
-    'squib', 'obscurial', 'veela', 'werewolf', 'half_giant', 'muggle_family', 'custom',
-  ];
-  static const Map<String, String> _bloodLabels = {
-    'muggleborn': '麻瓜出身',
-    'halfblood': '混血巫师',
-    'pureblood_side': '纯血旁支',
-    'pureblood_sacred': '神圣二十八族',
-    'squib': '哑炮',
-    'obscurial': '默然者（高风险）',
-    'veela': '混血媚娃',
-    'werewolf': '狼人',
-    'half_giant': '半巨人',
-    'muggle_family': '麻瓜家庭',
-    'custom': '自定义',
-  };
-  static const Map<String, String> _bloodDescriptions = {
-    'muggleborn': '父母均为麻瓜，十一岁前对魔法世界一无所知',
-    'halfblood': '父母一方巫师一方麻瓜，魔法能力未必弱于纯血',
-    'pureblood_side': '纯血家族非核心成员，有姓氏便利也背负期望',
-    'pureblood_sacred': '古老纯血家族核心成员，拥有财富与人脉',
-    'squib': '出生于巫师家庭但无法使用魔法，地位尴尬',
-    'obscurial': '幼年压抑魔法诞生的危险黑暗力量，极高不稳定',
-    'veela': '拥有媚娃血统，外貌魅惑但面临偏见',
-    'werewolf': '被狼人咬伤，满月变形，面临严重就业歧视',
-    'half_giant': '巨人血统，体型庞大力量惊人，被主流社会排斥',
-    'muggle_family': '完全的麻瓜家庭，若非巫师则与魔法无关',
-    'custom': '由玩家自定义血统与出身',
-  };
+  // 血统可选项 / 标签 / 说明统一放在 lib/data/blood_status.dart —— 游戏内
+  // 文案（状态栏、档案、AI prompt）读的是同一张表，问卷里再手抄一份迟早
+  // 对不上（原来这里「默然者」就比游戏内多带了个「（高风险）」）。
+  // 注意标签要走 bloodStatusOptionLabel：只有它才给高风险血统加标注，
+  // 而那个标注只属于问卷 UI，不能混进存档文案。
   // 出生身份（第75章）
   String _birthIdentity = '普通巫师家庭';
   static const List<String> _birthIdentityOptions = [
@@ -612,10 +588,10 @@ class _IntroScreenState extends State<IntroScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _bloodOptions.map((val) {
+            children: kBloodStatusOptions.map((val) {
               final selected = _bloodStatus == val;
               return FilterChip(
-                label: Text(_bloodLabels[val]!, style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                label: Text(bloodStatusOptionLabel(val), style: TextStyle(color: selected ? Colors.white : Colors.white70)),
                 selected: selected,
                 onSelected: (_) => setState(() => _bloodStatus = val),
                 backgroundColor: const Color(0xFF21262d),
@@ -625,7 +601,7 @@ class _IntroScreenState extends State<IntroScreen> {
               );
             }).toList(),
           ),
-          if (_bloodDescriptions[_bloodStatus] != null) ...[
+          if (kBloodStatusDescriptions[_bloodStatus] != null) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(10),
@@ -640,7 +616,7 @@ class _IntroScreenState extends State<IntroScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _bloodDescriptions[_bloodStatus]!,
+                      kBloodStatusDescriptions[_bloodStatus]!,
                       style: const TextStyle(fontSize: 12, color: Color(0xFFD3A625)),
                     ),
                   ),
@@ -991,7 +967,7 @@ class _IntroScreenState extends State<IntroScreen> {
           _buildSummaryRow('时代', _eraOptions[_eraIndex]),
           _buildSummaryRow('姓名', _nameController.text.trim()),
           _buildSummaryRow('性别', _gender),
-          _buildSummaryRow('血统', _bloodLabels[_bloodStatus]!),
+          _buildSummaryRow('血统', bloodStatusOptionLabel(_bloodStatus)),
           _buildSummaryRow('出生身份', _birthIdentity),
           _buildSummaryRow('外貌', _appearance),
           _buildSummaryRow('童年', _selectedChildhood.join('；')),

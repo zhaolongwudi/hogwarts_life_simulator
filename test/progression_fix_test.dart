@@ -16,6 +16,7 @@ import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
 import 'package:hogwarts_life_simulator/data/house_data.dart';
+import 'package:hogwarts_life_simulator/data/blood_status.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -195,6 +196,7 @@ void main() {
   _achievementReachabilityGroup();
   _eventAnchorGroup();
   _houseNameGroup();
+  _bloodStatusGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1569,6 +1571,108 @@ void _houseNameGroup() {
       expect(kHouseNames, hasLength(kHouseKeys.length));
       for (var i = 0; i < kHouseKeys.length; i++) {
         expect(kHouseNames[i], houseDisplayName(kHouseKeys[i]));
+      }
+    });
+  });
+}
+
+// ==================== 血统标签只有一份 ====================
+// 血统 key→中文名 原先有 4 份手写副本：mixin_systems.bloodStatusLabel（13 项）、
+// intro_screen._bloodLabels（11 项，其中「默然者」还多带「（高风险）」）、
+// intro_screen._bloodDescriptions、mixin_systems._bloodLabel（NPC 侧别称版）。
+// 玩家在问卷里看到的名字和写进存档、显示在状态栏上的名字可以对不上。
+
+void _bloodStatusGroup() {
+  group('血统标签只有一份', () {
+    test('lib 下不再有手写的血统标签分支', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.endsWith('data/blood_status.dart')) continue; // 映射表本身
+        final src = File(f).readAsStringSync();
+        for (final key in kBloodStatusLabels.keys) {
+          // 「'muggleborn': '麻瓜出身'」/「'pure' || 'pureblood' => '纯血'」
+          // 这类按 key 分支的写法才要拦
+          if (src.contains("'$key': '") || src.contains("'$key' => '")) {
+            offenders.add('$f → $key');
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '又有人手写了血统标签分支，应改用 blood_status.dart：$offenders');
+    });
+
+    test('问卷可选项都有标签和说明', () {
+      expect(kBloodStatusOptions, isNotEmpty);
+      for (final key in kBloodStatusOptions) {
+        expect(kBloodStatusLabels.containsKey(key), isTrue,
+            reason: '$key 可选但没有中文名');
+        final desc = kBloodStatusDescriptions[key];
+        expect(desc, isNotNull, reason: '$key 没有问卷说明');
+        expect(desc!.trim(), isNotEmpty, reason: '$key 的说明是空的');
+      }
+    });
+
+    test('问卷可选项不重复且都是规范 key', () {
+      final seen = <String>{};
+      for (final key in kBloodStatusOptions) {
+        expect(seen.add(key), isTrue, reason: '$key 在可选项里重复了');
+        expect(kBloodStatusAliases.containsKey(key), isFalse,
+            reason: '$key 是别称，不该直接放进可选项');
+      }
+    });
+
+    test('风险标注不会泄漏到游戏内文案', () {
+      // 「（高风险）」只属于问卷 UI。状态栏/档案/AI prompt 走 bloodStatusLabelOf，
+      // 那里必须干干净净——否则玩家会在状态栏上看到「默然者（高风险）」。
+      for (final key in kBloodStatusLabels.keys) {
+        expect(bloodStatusLabelOf(key), isNot(contains('高风险')),
+            reason: '$key 的游戏内文案混进了问卷专属标注');
+      }
+      for (final key in kBloodStatusRisky) {
+        expect(bloodStatusOptionLabel(key), contains('高风险'));
+      }
+      // 非高风险血统两种写法一致
+      expect(bloodStatusOptionLabel('muggleborn'), bloodStatusLabelOf('muggleborn'));
+    });
+
+    test('未知 key 原样返回（比显示「未知」好排查）', () {
+      expect(bloodStatusLabelOf('half_giant'), '半巨人');
+      expect(bloodStatusLabelOf('some_new_blood'), 'some_new_blood');
+    });
+
+    test('NPC 侧认别称，unknown 显示「血统不明」', () {
+      expect(npcBloodStatusLabel('pure'), '纯血');
+      expect(npcBloodStatusLabel('pureblood'), '纯血');
+      expect(npcBloodStatusLabel('half'), '混血巫师');
+      expect(npcBloodStatusLabel('halfblood'), '混血巫师');
+      expect(npcBloodStatusLabel('muggle'), '麻瓜出身');
+      expect(npcBloodStatusLabel('muggleborn'), '麻瓜出身');
+      expect(npcBloodStatusLabel('unknown'), '血统不明');
+      expect(npcBloodStatusLabel(''), '血统不明');
+      // 幽灵（宾斯教授）是 NPC 侧专属取值，也要有正经译名
+      expect(npcBloodStatusLabel('ghost'), '幽灵');
+      // 完全没见过的 key 沿用原值，不下断言式翻译
+      expect(npcBloodStatusLabel('zombie'), 'zombie');
+    });
+
+    test('npc_data 里用到的血统都能翻出来', () {
+      // 兜底：将来往 NPC 数据里加血统时，忘了补标签表会在这里炸出来
+      final src = File('lib/data/npc_data.dart').readAsStringSync();
+      final re = RegExp(r"bloodStatus: *'([^']+)'");
+      final used = <String>{};
+      for (final m in re.allMatches(src)) {
+        used.add(m.group(1)!);
+      }
+      expect(used, isNotEmpty, reason: '没扫到 bloodStatus 字段，正则该更新了');
+      for (final key in used) {
+        final label = npcBloodStatusLabel(key);
+        expect(label, isNot(contains('bloodStatus')), reason: 'NPC 血统 $key 没翻出来');
+      }
+      // 除了 unknown（本来就该显示「血统不明」），其余都应该有正经译名
+      for (final key in used) {
+        if (key == 'unknown') continue;
+        expect(kBloodStatusLabels.containsKey(key), isTrue,
+            reason: 'NPC 数据用了血统 $key，但标签表里没有它');
       }
     });
   });

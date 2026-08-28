@@ -8,6 +8,7 @@ import '../data/event_anchors.dart';
 import '../data/game_config_rules.dart';
 import '../data/time_cost_rules.dart';
 import '../data/monthly_event_data.dart';
+import '../data/blood_status.dart';
 import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
@@ -870,7 +871,7 @@ mixin GameSystemsMixin on GameProviderBase {
     final buf = StringBuffer('【查看 · ${npc.name}】\n');
     final house = npc.house.isEmpty ? '未知学院' : npc.house;
     final gender = npc.gender.isEmpty ? '' : '｜${npc.gender}';
-    buf.writeln('$house｜${npc.grade}年级$gender｜${_bloodLabel(npc.bloodStatus)}');
+    buf.writeln('$house｜${npc.grade}年级$gender｜${npcBloodStatusLabel(npc.bloodStatus)}');
     buf.writeln('所在：${npc.currentLocation}｜${_moodLabel(npc.mood)}'
         '${npc.isAlive ? '' : '｜已故'}');
 
@@ -945,14 +946,6 @@ mixin GameSystemsMixin on GameProviderBase {
     if (visible.length > 12) buf.writeln('…另有 ${visible.length - 12} 人');
     return buf.toString();
   }
-
-  String _bloodLabel(String s) => switch (s) {
-        'pure' || 'pureblood' => '纯血',
-        'half' || 'halfblood' => '混血',
-        'muggle' || 'muggleborn' => '麻瓜出身',
-        'unknown' => '血统不明',
-        _ => s,
-      };
 
   String _moodLabel(int mood) => switch (mood) {
         >= 80 => '心情极好',
@@ -1285,23 +1278,8 @@ mixin GameSystemsMixin on GameProviderBase {
 
   // ==================== 辅助方法 ====================
 
-  String bloodStatusLabel(String status) {
-    return {
-      'muggleborn': '麻瓜出身',
-      'halfblood': '混血巫师',
-      'pureblood': '纯血',
-      'pureblood_side': '纯血旁支',
-      'pureblood_sacred': '神圣二十八族',
-      'special': '特殊家庭',
-      'squib': '哑炮',
-      'obscurial': '默然者',
-      'veela': '混血媚娃',
-      'werewolf': '狼人',
-      'half_giant': '半巨人',
-      'muggle_family': '麻瓜家庭',
-      'custom': '自定义',
-    }[status] ?? status;
-  }
+  /// 血统 key → 中文名。表本身在 lib/data/blood_status.dart（问卷 UI 共用）。
+  String bloodStatusLabel(String status) => bloodStatusLabelOf(status);
 
   String attrLabel(String key) {
     return {
