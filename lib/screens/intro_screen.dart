@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../data/wand_data.dart';
+import '../data/political_stance.dart';
 
 /// 十三轮初始设定流程
 class IntroScreen extends StatefulWidget {
@@ -186,15 +187,8 @@ class _IntroScreenState extends State<IntroScreen> {
   ];
 
   // 9d. 初始政治倾向（第75章）
-  String _politicalTendency = '血统平等';
-  static const List<String> _politicalOptions = [
-    '血统平等',
-    '纯血保守',
-    '中立投机',
-    '凤凰社支持',
-    '食死徒同情',
-    '自由独立',
-  ];
+  String _politicalTendency = kPoliticalStanceNames.first;
+  static const List<String> _politicalOptions = kPoliticalStanceNames;
 
   // 9e. 模拟风格（第75章）
   String _simulationStyle = '混合模式';

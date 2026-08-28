@@ -10,6 +10,7 @@ import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/utils/npc_lookup.dart';
 import 'package:hogwarts_life_simulator/data/provider_defaults.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
+import 'package:hogwarts_life_simulator/data/political_stance.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -182,6 +183,7 @@ void main() {
   _mapLayoutGroup();
   _unwiredFeatureGroup();
   _providerDefaultsGroup();
+  _settingsDedupGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -828,10 +830,10 @@ void _unwiredFeatureGroup() {
 
 void _providerDefaultsGroup() {
   group('提供商默认值只有一份', () {
+    // 两个设置页已瘦身为 SettingsBody 的壳，helper 随之收进 body 里。
     const files = [
       'lib/providers/app_provider.dart',
-      'lib/screens/settings_screen.dart',
-      'lib/screens/game/game_settings_tab.dart',
+      'lib/screens/settings/settings_body.dart',
       'lib/screens/settings/settings_provider_card.dart',
     ];
 
@@ -921,4 +923,153 @@ void _providerDefaultsGroup() {
           defaultsForProvider('deepseek').model);
     });
   });
+}
+
+// ==================== 设置页去重 ====================
+// settings_screen 与 game_settings_tab 此前各有一份 460 行、逐行 86% 相同的
+// 正文。改一个开关要改两处，且已经漏过（剧情回放只存在于 Tab，从手机主页进
+// 设置的用户根本看不到）。现在两边共用 SettingsBody，本组防止副本复活。
+
+void _settingsDedupGroup() {
+  group('设置页只有一份正文', () {
+    const body = 'lib/screens/settings/settings_body.dart';
+    const callers = [
+      'lib/screens/settings_screen.dart',
+      'lib/screens/game/game_settings_tab.dart',
+    ];
+
+    test('两份设置页都改为复用 SettingsBody', () {
+      for (final f in callers) {
+        final src = File(f).readAsStringSync();
+        expect(src.contains('settings_body.dart'), isTrue,
+            reason: '$f 没有引用 settings_body.dart，正文又被复制了一份');
+      }
+    });
+
+    test('设置正文只存在于 SettingsBody', () {
+      // '🤖 AI 服务配置' 是正文第一个区块的标题，是副本最明显的指纹
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f == body) continue;
+        if (File(f).readAsStringSync().contains('🤖 AI 服务配置')) {
+          offenders.add(f);
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '设置正文被复制到：$offenders。应改为复用 SettingsBody');
+    });
+
+    test('两份设置页都不再各自维护政治立场样式', () {
+      // 原先两边各写一份 _stanceDesc/_stanceIcon/_stanceColor，共 6×3 个分支
+      for (final f in callers) {
+        final src = File(f).readAsStringSync();
+        for (final fn in ['_stanceDesc', '_stanceIcon', '_stanceColor']) {
+          expect(src.contains(fn), isFalse,
+              reason: '$f 又定义了 $fn，应改为读 lib/data/political_stance.dart');
+        }
+      }
+    });
+
+    test('独立设置页现在也有剧情回放入口', () {
+      // SettingsBody 默认打开剧情回放，且入口在共享正文里，两边都能看到
+      final src = File(body).readAsStringSync();
+      expect(src.contains('StoryHistoryScreen'), isTrue,
+          reason: '剧情回放入口从共享正文里消失了');
+      expect(src.contains('showStoryReplay'), isTrue);
+    });
+
+    test('「开始新游戏」的退栈行为可配置', () {
+      // 独立设置页需要额外 pop 退出，Tab 内不需要。差异必须走回调而不是复制正文
+      final src = File('lib/screens/settings_screen.dart').readAsStringSync();
+      expect(src.contains('onAfterNewGame'), isTrue,
+          reason: '独立设置页没有传 onAfterNewGame，确认新游戏后不会退出设置页');
+      final tabSrc = File('lib/screens/game/game_settings_tab.dart')
+          .readAsStringSync()
+          .split('\n')
+          .map((l) => l.replaceAll(RegExp(r'//.*$'), ''))
+          .join('\n');
+      expect(tabSrc.contains('onAfterNewGame'), isFalse,
+          reason: 'Tab 内传了 onAfterNewGame，会把整个 Tab 栈弹掉');
+    });
+
+    test('两个设置页文件都瘦到 30 行以内', () {
+      for (final f in callers) {
+        final lines = File(f).readAsLinesSync().length;
+        expect(lines, lessThan(30),
+            reason: '$f 有 $lines 行，正文似乎又被塞回来了');
+      }
+    });
+  });
+
+  group('政治立场只有一份定义', () {
+    test('名称常量表与完整定义逐项一致', () {
+      // kPoliticalStanceNames 为了能在 const 上下文使用而写死，
+      // 靠这条断言保证它没和 kPoliticalStances 漂移
+      expect(kPoliticalStanceNames.length, kPoliticalStances.length);
+      for (var i = 0; i < kPoliticalStances.length; i++) {
+        expect(kPoliticalStanceNames[i], kPoliticalStances[i].name,
+            reason: '第 $i 项不一致：常量表 ${kPoliticalStanceNames[i]} vs '
+                '定义 ${kPoliticalStances[i].name}');
+      }
+    });
+
+    test('六个立场都有描述、图标与配色', () {
+      final seen = <String>{};
+      final argbs = <int>{};
+      for (final s in kPoliticalStances) {
+        expect(s.desc.isNotEmpty, isTrue, reason: '${s.name} 缺描述');
+        expect(s.iconKey.isNotEmpty, isTrue, reason: '${s.name} 缺图标');
+        expect(seen.add(s.name), isTrue, reason: '立场名重复：${s.name}');
+        expect(argbs.add(s.argb), isTrue, reason: '配色重复：${s.name}');
+      }
+      expect(kPoliticalStances.length, 6);
+    });
+
+    test('立场中文名只出现在 data 层', () {
+      const dataFile = 'lib/data/political_stance.dart';
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f == dataFile) continue;
+        final src = File(f).readAsStringSync();
+        for (final name in kPoliticalStanceNames) {
+          // 允许出现在注释里（说明性文字），只拦代码
+          final code = src
+              .split('\n')
+              .map((l) => l.replaceAll(RegExp(r'//.*$'), ''))
+              .join('\n');
+          if (code.contains("'$name'")) offenders.add('$f -> $name');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '政治立场名在 data 层之外被硬编码：$offenders');
+    });
+
+    test('未知立场名回落到默认而不是抛异常', () {
+      expect(stanceFor('不存在的立场').name, kDefaultPoliticalStance);
+      expect(stanceFor('血统平等').desc, isNotEmpty);
+    });
+
+    test('默认立场本身必须在列表里', () {
+      expect(kPoliticalStanceNames.contains(kDefaultPoliticalStance), isTrue,
+          reason: '默认立场 $kDefaultPoliticalStance 不在可选列表里，'
+              '设置页会高亮一个不存在的选项');
+    });
+  });
+}
+
+/// lib 下所有 dart 文件，相对包根。
+List<String> _allLibFiles() {
+  final out = <String>[];
+  void walk(Directory d) {
+    for (final e in d.listSync(followLinks: false)) {
+      if (e is Directory) {
+        walk(e);
+      } else if (e is File && e.path.endsWith('.dart')) {
+        out.add(e.path);
+      }
+    }
+  }
+
+  walk(Directory('lib'));
+  return out;
 }
