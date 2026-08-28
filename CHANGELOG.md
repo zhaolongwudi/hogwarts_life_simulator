@@ -5,6 +5,16 @@
 
 ---
 
+### v2.4.2 — 2026-08-28
+
+**📋 变更说明**
+修复 flutter analyze 报告的16个问题
+
+- 添加 foundation.dart 导入修复 mixin_narrative_continuity.dart 中3处 debugPrint 未定义
+- 修复 mixin_response.dart 中10处静态方法调用，添加 GameResponseChoiceMixin 前缀
+- 调整 game_provider.dart 中 GameNarrativeContinuityMixin 在 GameNarrativeMixin 之前
+- 清理2处未使用的 import
+
 ### v2.4.1 — 2026-08-28
 
 **📋 变更说明**
