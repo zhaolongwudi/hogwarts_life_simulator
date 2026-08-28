@@ -238,8 +238,13 @@ class PhoneTab extends StatelessWidget {
             _buildAppItem(context, Icons.store_mall_directory, '魔法商店', Color(0xFFF59E0B), () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
             }),
-            _buildAppItem(context, Icons.apps, '应用商店', Color(0xFF10B981), () {
-              _notReady(context, '应用商店');
+            // 以前这一格是「应用商店」，点了只弹「还在开发中」。
+            // 姻缘红娘（MatchmakerScreen，460 行）早就在代码里，可它的唯一
+            // 入口在 phone_home_screen.dart——那个文件从来没被 import 过，
+            // 于是整个界面谁也打不开。换掉这个占位，把它接出来。
+            _buildAppItem(context, Icons.favorite, '姻缘红娘', Color(0xFFF43F5E), () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
             }),
             _buildAppItem(context, Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), () {
               Navigator.push(context,
@@ -303,6 +308,11 @@ class PhoneTab extends StatelessWidget {
           }),
           _buildQuickItem(context, Icons.work, '找点活干', Color(0xFF10B981), () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
+          }),
+          // 好感排行榜：同样是从没人 import 的 phone_home_screen.dart 里救出来的
+          _buildQuickItem(context, Icons.leaderboard, '好感排行', Color(0xFFF97316), () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AffectionAggregateScreen()));
           }),
         ],
       ),

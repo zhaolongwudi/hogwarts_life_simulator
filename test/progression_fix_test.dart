@@ -213,6 +213,7 @@ void main() {
   _equipmentAndProviderGroup();
   _cgConditionGroup();
   _shopUiGroup();
+  _screenReachabilityGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2439,6 +2440,120 @@ void _shopUiGroup() {
     test('宠物页已经接进商店的 barrel 导出', () {
       final src = File('lib/screens/shop/shop_inventory_screens.dart').readAsStringSync();
       expect(src.contains("export 'pet_shop_tab.dart';"), isTrue);
+    });
+  });
+}
+
+// ==================== 界面可达性 ====================
+// phone_home_screen.dart 有 1025 行，写完了却从来没有文件 import 它，于是
+// 里面的「姻缘红娘」「好感度汇总排行榜」做完即失联——玩家永远打不开。
+// 这类死界面静态分析查不出（它自己编译得过），只能靠扫引用。
+
+void _screenReachabilityGroup() {
+  group('界面可达性', () {
+    test('没有哪个界面是自己文件里自嗨的死代码', () {
+      final dir = Directory('lib/screens');
+      final files = dir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .toList();
+      // 收集所有非界面文件的源码（界面类只应该被它们或别的界面引用）
+      final allOther = <String, String>{};
+      for (final f in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        if (f.path.startsWith('lib/screens')) continue;
+        allOther[f.path] = f.readAsStringSync();
+      }
+      final dead = <String>[];
+      for (final f in files) {
+        final src = f.readAsStringSync();
+        if (src.trim().startsWith('export ')) continue; // barrel 文件
+        for (final m in
+            RegExp(r'^class (\w+) extends (?:StatefulWidget|StatelessWidget)', multiLine: true)
+                .allMatches(src)) {
+          final name = m.group(1)!;
+          if (name.startsWith('_')) continue;
+          // 在别的界面文件、或任何非界面文件里被引用过
+          var referenced = false;
+          for (final other in files) {
+            if (other.path == f.path) continue;
+            if (other.readAsStringSync().contains(name)) {
+              referenced = true;
+              break;
+            }
+          }
+          if (!referenced) {
+            for (final entry in allOther.entries) {
+              if (entry.value.contains(name)) {
+                referenced = true;
+                break;
+              }
+            }
+          }
+          if (!referenced) dead.add('${f.path} → $name');
+        }
+      }
+      expect(dead, isEmpty,
+          reason: '这些界面没有任何入口，做完即失联：\n  ${dead.join('\n  ')}');
+    });
+
+    test('手机页里的每个图标入口都跳得出去', () {
+      final src = _codeOnly('lib/screens/game/game_phone_tab.dart');
+      // 每个 _buildAppItem / _buildQuickItem 都应该带一个 Navigator.push。
+      // 用括号配平取整个调用，不用正则——入口有的是一行、有的跨两行，
+      // 缩进也不一样（AppItem 在 Row 里多缩进一级）。
+      final bodies = <String>[];
+      var i = 0;
+      while (true) {
+        final nextApp = src.indexOf('_buildAppItem(context', i);
+        final nextQuick = src.indexOf('_buildQuickItem(context', i);
+        final starts = [nextApp, nextQuick].where((v) => v >= 0).toList();
+        if (starts.isEmpty) break;
+        final start = starts.reduce((a, b) => a < b ? a : b);
+        final open = src.indexOf('(', start);
+        var depth = 0;
+        var j = open;
+        while (j < src.length) {
+          if (src[j] == '(') depth++;
+          if (src[j] == ')') {
+            depth--;
+            if (depth == 0) break;
+          }
+          j++;
+        }
+        bodies.add(src.substring(start, j));
+        i = j;
+      }
+      expect(bodies.length, greaterThanOrEqualTo(7),
+          reason: '手机页入口数量异常，可能改坏了');
+      for (final body in bodies) {
+        expect(
+          body.contains('Navigator.push') || body.contains('_editSignature'),
+          isTrue,
+          reason: '有个手机入口点了没有任何跳转：${body.trim()}',
+        );
+      }
+    });
+
+    test('姻缘红娘和好感排行接到了在用的手机页', () {
+      final src = _codeOnly('lib/screens/game/game_phone_tab.dart');
+      expect(src.contains('MatchmakerScreen'), isTrue,
+          reason: '手机页没有姻缘红娘入口，MatchmakerScreen 又成了死界面');
+      expect(src.contains('AffectionAggregateScreen'), isTrue,
+          reason: '手机页没有好感排行入口');
+    });
+
+    test('救出来的好感榜不再依赖死文件', () {
+      // 用 _codeOnly：新文件头注释里提到了 phone_home_screen.dart 的来历，
+      // 直接扫原文会被自己写的注释绊倒。
+      final src = _codeOnly('lib/screens/other/affection_aggregate_screen.dart');
+      expect(src.contains('phone_home_screen'), isFalse);
+      expect(Directory('lib/screens').listSync().any((f) => f.path.endsWith('phone_home_screen.dart')),
+          isFalse,
+          reason: 'phone_home_screen.dart 又回来了，它是 1025 行没有任何入口的死代码');
     });
   });
 }
