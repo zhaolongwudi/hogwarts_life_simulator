@@ -212,6 +212,7 @@ void main() {
   _petReachabilityGroup();
   _equipmentAndProviderGroup();
   _cgConditionGroup();
+  _shopUiGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2367,6 +2368,77 @@ void _cgConditionGroup() {
         expect(textFn.contains('case CgConditionType.$t:'), isTrue,
             reason: 'CgConditionType.$t 在文案生成器里没有分支，玩家看不到这条要求');
       }
+    });
+  });
+}
+
+// ==================== 商店界面接线 ====================
+// ShopScreen 外层有「淘货/卖闲置/古灵阁」三个标签，ShopTab 内部又有一模一样
+// 的「淘货/卖闲置」二级标签，而外层只写了 `_tab == 2 ? 古灵阁 : ShopTab()`。
+// 于是点外层的「卖闲置」只是切了高亮，里面还是淘货网格——那个标签点了等于
+// 没点。宠物购买也只有命令行入口，商店界面里根本没有入口。
+
+void _shopUiGroup() {
+  group('商店界面接线', () {
+    test('外层标签和内层标签不再重复做同一件事', () {
+      final tab = _codeOnly('lib/screens/shop/shop_tab.dart');
+      expect(tab.contains('_subTab'), isFalse,
+          reason: 'ShopTab 又自己搞了一套二级标签，会和外层 ShopScreen 的标签打架');
+      // 模式必须由外层传入
+      expect(RegExp(r'ShopTab\(\{[^}]*sellMode').hasMatch(tab), isTrue,
+          reason: 'ShopTab 应该有一个 sellMode 参数由外层驱动');
+    });
+
+    test('外层的每个标签都渲染不同的内容', () {
+      final src = _codeOnly('lib/screens/shop/shop_screen.dart');
+      final body = RegExp(
+        r'child: switch \(_tab\) \{(.*?)\n            \},',
+        dotAll: true,
+      ).firstMatch(src);
+      expect(body, isNotNull, reason: '商店主体应该是一个覆盖全部标签的 switch');
+      final text = body!.group(1)!;
+      // 每个 case 分支对应的 widget 必须互不相同
+      final widgets = RegExp(r'=> const (\w+)\(').allMatches(text).map((m) => m.group(1)).toList();
+      final args = RegExp(r'=> const \w+\(([^)]*)\)').allMatches(text).map((m) => m.group(1)).toList();
+      expect(widgets.length, 4, reason: '四个标签都要有对应分支，实际只有 ${widgets.length} 个');
+      final sig = [for (var i = 0; i < widgets.length; i++) '${widgets[i]}(${args[i]})'];
+      expect(sig.toSet().length, sig.length,
+          reason: '有两个标签渲染了完全一样的内容：$sig');
+    });
+
+    test('「卖闲置」标签真的展示背包', () {
+      final src = _codeOnly('lib/screens/shop/shop_screen.dart');
+      expect(
+        RegExp(r"1\s*=>\s*const ShopTab\(sellMode:\s*true\)").hasMatch(src),
+        isTrue,
+        reason: '卖闲置标签没有传 sellMode: true，点进去还是淘货',
+      );
+    });
+
+    test('商店界面里有宠物入口', () {
+      final src = _codeOnly('lib/screens/shop/shop_screen.dart');
+      expect(src.contains('PetShopTab'), isTrue,
+          reason: '商店里没有宠物标签，/宠物 购买 这条路对只用 UI 的玩家等于不存在');
+      expect(src.contains("import 'pet_shop_tab.dart';"), isTrue,
+          reason: '引用了 PetShopTab 却没导入');
+    });
+
+    test('宠物页在售的宠物都有价、都能买', () {
+      final src = _codeOnly('lib/screens/shop/pet_shop_tab.dart');
+      expect(src.contains('purchasablePets'), isTrue);
+      expect(src.contains('kPetPrices'), isTrue);
+      expect(src.contains('gp.buyPet'), isTrue,
+          reason: '宠物页没有接到 buyPet，买按钮点了不会真的扣钱');
+      for (final pet in purchasablePets) {
+        expect(kPetPrices[pet.id], isNotNull,
+            reason: '${pet.name} 在售清单里却没有定价');
+        expect(kPetPrices[pet.id]! > 0, isTrue);
+      }
+    });
+
+    test('宠物页已经接进商店的 barrel 导出', () {
+      final src = File('lib/screens/shop/shop_inventory_screens.dart').readAsStringSync();
+      expect(src.contains("export 'pet_shop_tab.dart';"), isTrue);
     });
   });
 }

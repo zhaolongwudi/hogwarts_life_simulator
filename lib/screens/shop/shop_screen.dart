@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import 'shop_tab.dart';
+import 'pet_shop_tab.dart';
 import 'gringotts_tab.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -12,13 +13,14 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
+  // 0=淘货 1=卖闲置 2=宠物 3=古灵阁
   int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
     final gp = context.watch<GameProvider>();
     return Scaffold(
-      appBar: AppBar(title: Text(_tab == 2 ? '古灵阁·魔法银行' : '魔法商店')),
+      appBar: AppBar(title: Text(_tab == 3 ? '古灵阁·魔法银行' : '魔法商店')),
       body: Column(
         children: [
           Padding(
@@ -26,10 +28,12 @@ class _ShopScreenState extends State<ShopScreen> {
             child: Row(
               children: [
                 Expanded(child: _buildTabButton('淘货', 0, Icons.shopping_cart)),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(child: _buildTabButton('卖闲置', 1, Icons.sell)),
-                const SizedBox(width: 10),
-                Expanded(child: _buildTabButton('古灵阁', 2, Icons.account_balance)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildTabButton('宠物', 2, Icons.pets)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildTabButton('古灵阁', 3, Icons.account_balance)),
               ],
             ),
           ),
@@ -41,7 +45,7 @@ class _ShopScreenState extends State<ShopScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Theme.of(context).dividerTheme.color!),
             ),
-            child: _tab == 2
+            child: _tab == 3
                 ? Column(
                     children: [
                       Row(
@@ -80,7 +84,12 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: _tab == 2 ? const GringottsTab() : const ShopTab(),
+            child: switch (_tab) {
+              1 => const ShopTab(sellMode: true),
+              2 => const PetShopTab(),
+              3 => const GringottsTab(),
+              _ => const ShopTab(),
+            },
           ),
         ],
       ),

@@ -26,7 +26,15 @@ class _OwnedBadge extends StatelessWidget {
 }
 
 class ShopTab extends StatefulWidget {
-  const ShopTab({super.key});
+  /// true = 卖闲置，false = 淘货。
+  ///
+  /// 以前这个模式由 ShopTab 内部的二级标签（淘货/卖闲置）控制，而外层
+  /// ShopScreen 也有一模一样的一级标签。两级标签做同一件事，结果点外层
+  /// 的「卖闲置」只是把外层高亮切过去，里面还是淘货网格——那个标签点了
+  /// 等于没点。现在只保留外层一级标签，模式由外面传进来。
+  final bool sellMode;
+
+  const ShopTab({super.key, this.sellMode = false});
 
   @override
   State<ShopTab> createState() => _ShopTabState();
@@ -47,12 +55,6 @@ class _ShopTabState extends State<ShopTab> {
       if (mounted) setState(() => _trading = false);
     }
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-  int _subTab = 0; // 0=淘货, 1=卖闲置
 
   IconData _iconFor(ItemDef def) {
     switch (def.type) {
@@ -118,61 +120,20 @@ class _ShopTabState extends State<ShopTab> {
   @override
   Widget build(BuildContext context) {
     context.watch<GameProvider>(); // 监听GameProvider变化以触发UI重建
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildTabButton(
-                  '淘货',
-                  0,
-                  Icons.shopping_cart,
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildTabButton(
-                  '卖闲置',
-                  1,
-                  Icons.sell,
-                  Colors.red,
-                ),
-              ),
-            ],
-          ),
+    final isBuy = !widget.sellMode;
+    if (isBuy) {
+      return _buildShopGrid(_catalog(), true);
+    }
+    final items = _sellItems();
+    if (items.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('背包里没有可出售的东西。\n去禁林采集点材料，或者上课得点奖励。'),
         ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: _subTab == 0 ? _buildShopGrid(_catalog(), true) : _buildShopGrid(_sellItems(), false),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabButton(String label, int index, IconData icon, Color activeColor) {
-    final isActive = _subTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _subTab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? activeColor : Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Theme.of(context).dividerTheme.color!),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: isActive ? Colors.white : null),
-            const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: isActive ? Colors.white : null)),
-          ],
-        ),
-      ),
-    );
+      );
+    }
+    return _buildShopGrid(items, false);
   }
 
   Widget _buildShopGrid(List<Map<String, dynamic>> items, bool isBuy) {
