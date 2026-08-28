@@ -75,6 +75,42 @@ mixin GameSystemsMixin on GameProviderBase {
     _advanceWorldClock(resolveActionCost(action));
   }
 
+  // ==================== 每日活动次数上限 ====================
+
+  /// 每个游戏日允许的高收益活动次数上限。
+  static const Map<String, int> kDailyActivityLimits = {
+    'duel': 3,
+    'quidditch': 2,
+    'forest': 4,
+  };
+
+  /// 今日该活动已进行的次数（跨天自动归零）。
+  int dailyCountOf(String activity) {
+    _rollDailyActivityIfNeeded();
+    return dailyActivityCount[activity] ?? 0;
+  }
+
+  int dailyLimitOf(String activity) => kDailyActivityLimits[activity] ?? 99;
+
+  /// 今日是否还能进行该活动。
+  bool canDoDaily(String activity) =>
+      dailyCountOf(activity) < dailyLimitOf(activity);
+
+  /// 记录一次活动。
+  void recordDailyActivity(String activity) {
+    _rollDailyActivityIfNeeded();
+    dailyActivityCount[activity] = (dailyActivityCount[activity] ?? 0) + 1;
+  }
+
+  void _rollDailyActivityIfNeeded() {
+    final t = worldState.time;
+    final today = '$t.year-$t.month-$t.day';
+    if (today != activityDate) {
+      activityDate = today;
+      dailyActivityCount.clear();
+    }
+  }
+
   // ==================== 玩家手记 ====================
 
   /// 新增一条手记。写入 Player 并落盘，返回后不会丢。

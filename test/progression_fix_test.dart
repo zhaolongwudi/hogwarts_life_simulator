@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
@@ -120,6 +122,51 @@ void main() {
       final p = makePlayer(Reputation(academic: 100));
       expect(p.wizardingReputation, 20);
       expect(p.wizardingReputation, isNot(0));
+    });
+  });
+
+  group('高收益活动每日上限（源码扫描）', () {
+    final playSrc = File('lib/mixins/mixin_play.dart').readAsStringSync();
+    final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+
+    test('决斗必须有每日次数上限（否则声望/加隆可无限刷）', () {
+      final duelBody = playSrc.substring(
+        playSrc.indexOf('void duelNpc('),
+        playSrc.indexOf('// ==================== 6. 禁林探险'),
+      );
+      expect(duelBody.contains("canDoDaily('duel')"), isTrue);
+      expect(duelBody.contains("recordDailyActivity('duel')"), isTrue);
+    });
+
+    test('禁林必须有每日次数上限', () {
+      final forestBody = playSrc.substring(
+        playSrc.indexOf('void exploreForbiddenForest('),
+      );
+      expect(forestBody.contains("canDoDaily('forest')"), isTrue);
+    });
+
+    test('决斗时间开销不得再按「对话」计（10 分钟能刷一场）', () {
+      expect(playSrc.contains("advanceTimeForAction('对话')"), isFalse);
+      expect(playSrc.contains("advanceTimeForAction('决斗')"), isTrue);
+    });
+
+    test('上限表与计数实现都存在', () {
+      expect(systemsSrc.contains('kDailyActivityLimits'), isTrue);
+      expect(systemsSrc.contains('_rollDailyActivityIfNeeded'), isTrue);
+    });
+  });
+
+  group('禁词表不得误伤常用中文词', () {
+    final contSrc =
+        File('lib/mixins/mixin_narrative_continuity.dart').readAsStringSync();
+
+    test('「逻辑」不得出现在 crossIp 禁词表（三体角色是「罗辑」）', () {
+      final start = contSrc.indexOf('const crossIp = <String>[');
+      final end = contSrc.indexOf('];', start);
+      final block = contSrc.substring(start, end);
+      expect(block.contains("'逻辑'"), isFalse,
+          reason: '「逻辑」是中文常用词，放在 critical 级会让几乎每回合叙事都被判违和');
+      expect(block.contains("'罗辑'"), isTrue);
     });
   });
 }

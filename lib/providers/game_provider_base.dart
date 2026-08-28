@@ -100,6 +100,17 @@ abstract class GameProviderBase extends ChangeNotifier {
   /// 上次补货的游戏周。跨周时委托板自动进新货，避免板面万年不变。
   int questBoardWeek = 0;
 
+  /// 当日已完成的活动计数（key = 活动名），配合 [_activityDate] 跨天清零。
+  /// 用于给高收益活动（决斗、魁地奇、禁林）加每日次数上限，
+  /// 防止玩家在一个游戏日里无限刷奖励。
+  final Map<String, int> dailyActivityCount = {};
+
+  /// [dailyActivityCount] 对应的游戏日期（"年-月-日"），跨天即清零重计。
+  String activityDate = '';
+
+  /// 上一场决斗的对手 id（同一天不能连着挑战同一个人）。
+  String? lastDuelOpponentId;
+
   /// 场景停滞检测：记录玩家当前地点已停留的回合数
   /// （public 化以供 mixin_narrative 跨文件访问，与其它核心字段一致）
   String? lastTrackedLocation;
@@ -229,6 +240,18 @@ abstract class GameProviderBase extends ChangeNotifier {
 
   /// 手动清掉错误提示条
   void clearError();
+
+  /// 今日该高收益活动已进行的次数（跨天自动归零）
+  int dailyCountOf(String activity);
+
+  /// 该活动每日次数上限
+  int dailyLimitOf(String activity);
+
+  /// 今日是否还能进行该活动
+  bool canDoDaily(String activity);
+
+  /// 记录一次活动
+  void recordDailyActivity(String activity);
   bool purchaseItem(String itemName, int price, {String type, String description});
   Future<void> quickSave();
   Future<void> saveGameNamed(String slotName);

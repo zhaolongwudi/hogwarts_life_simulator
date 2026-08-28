@@ -190,6 +190,10 @@ mixin GameInitMixin on GameProviderBase {
     // 委托板缓存：不清的话新开局会沿用上一局的板面
     questBoardIds = [];
     questBoardWeek = 0;
+    // 每日活动计数：不清的话新开局会继承上一局的决斗/魁地奇次数
+    dailyActivityCount.clear();
+    activityDate = '';
+    lastDuelOpponentId = null;
     // 清除响应缓存（重要：防止旧剧情数据泄漏到新游戏）
     ResponseCache.instance.clear();
     // 清除速率限制器状态

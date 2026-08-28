@@ -15,6 +15,9 @@ import '../providers/game_provider_base.dart';
 /// 禁林探险 / 魔法生物图鉴 / 支线委托板 / 学院杯积分。
 /// 全部本地判定、零 token 消耗，叙事结果走 currentNarrative + choices 通道。
 mixin GamePlayMixin on GameProviderBase {
+  /// 已被击败过的 NPC id（打赢只加一次好感，避免反复刷同一个对手）
+  final Set<String> _duelBeatenNpcIds = {};
+
   // ==================== 通用工具 ====================
 
   void _finishLocal(String narrative) {
@@ -569,6 +572,16 @@ mixin GamePlayMixin on GameProviderBase {
   void duelNpc(String? name) {
     final p = player;
     if (p == null) return;
+    // 每日次数上限：旧实现无冷却，一场决斗只花 10 分钟 + 10 精力，
+    // 赢了给 10~25 加隆 + 6~11 战斗声望 → 十几场就能把战斗声望刷满、
+    // 加隆花不完，学院杯与声望系统全部失去意义。
+    if (!this.canDoDaily('duel')) {
+      _finishLocal(
+          '你今天已经比了 ${this.dailyLimitOf('duel')} 场决斗，手臂酸得连魔杖都快握不住了。'
+          '麦格教授远远瞥了你一眼——再打下去就要被请去喝茶了。\n\n'
+          '明天再来吧。');
+      return;
+    }
     // 修复：决斗对象仅限在校生（grade >= 1），排除教职/成人（grade == 0）。
     // 旧实现只过滤 isAlive && !graduated，导致可以"决斗邓布利多/麦格教授"，
     // 违背"一年级打不过强者"的设计初衷与原著常识。
@@ -613,8 +626,18 @@ mixin GamePlayMixin on GameProviderBase {
       _finishLocal('你太疲惫了（精力 ${p.energy}/100），连魔杖都举不太稳。改天再战吧。');
       return;
     }
+    // 同一天里连续找同一个人决斗，对方也会烦（也防止刷好感）
+    if (lastDuelOpponentId == opponent.id) {
+      _finishLocal(
+          '${opponent.name} 摆了摆手：「今天已经比过一场了，改天吧。」\n\n'
+          '你收拾魔杖，决定换个对手，或者等明天。');
+      return;
+    }
 
-    advanceTimeForAction('对话');
+    // 决斗按 60 分钟计（旧实现传的是'对话'，只推进 10 分钟）
+    advanceTimeForAction('决斗');
+    this.recordDailyActivity('duel');
+    lastDuelOpponentId = opponent.id;
     p.energy = (p.energy - 10).clamp(0, 100);
     p.magic = (p.magic - 12).clamp(0, 100);
 
@@ -643,14 +666,26 @@ mixin GamePlayMixin on GameProviderBase {
 
     if (win) {
       p.health = (p.health - 5 - random.nextInt(6)).clamp(1, 100);
-      p.playerReputation.add('combat', 6 + random.nextInt(6));
+      // 当日第 N 场递减：越往后对手越有准备、观战的人越少，收益自然下降。
+      // 旧实现每场收益恒定，一天刷十几场就能吃满所有成长曲线。
+      final nth = this.dailyCountOf('duel'); // 已 recordDailyActivity，1 表示当天第一场
+      final decay = nth <= 1 ? 1.0 : (nth == 2 ? 0.6 : 0.3);
+      final repGain = ((6 + random.nextInt(6)) * decay).round().clamp(1, 11);
+      final reward = ((10 + random.nextInt(16)) * decay).round().clamp(1, 25);
+      p.playerReputation.add('combat', repGain);
       p.playerReputation.add('moral', 2);
-      p.houseCupPoints += 10;
-      final reward = 10 + random.nextInt(16);
+      p.houseCupPoints += (10 * decay).round().clamp(1, 10);
       p.galleons += reward;
-      opponent.affection = (opponent.affection + 2).clamp(-100, 100);
+      // 打赢对方会让人更服气，但只加一次：反复刷同一个人不该刷出满好感
+      if (!_duelBeatenNpcIds.contains(opponent.id)) {
+        _duelBeatenNpcIds.add(opponent.id);
+        opponent.affection = (opponent.affection + 2).clamp(-100, 100);
+      }
       buf.writeln('\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
-      buf.writeln('胜利：战斗声望 +6~11 · 道德声望 +2 · 学院杯 +10 · 赌注 $reward 加隆');
+      buf.writeln('胜利：战斗声望 +$repGain · 道德声望 +2 · 学院杯 +${(10 * decay).round().clamp(1, 10)} · 赌注 $reward 加隆');
+      if (nth > 1) {
+        buf.writeln('（今日第 $nth 场，对手已有准备，收获比第一场少）');
+      }
       unlockAchievement('first_duel_win');
     } else {
       p.health = (p.health - 12 - random.nextInt(14)).clamp(1, 100);
@@ -674,7 +709,16 @@ mixin GamePlayMixin on GameProviderBase {
       _finishLocal('你饿得前胸贴后背（饱食度 ${p.satiety}/100），进禁林之前先吃点东西吧。');
       return;
     }
+    // 每日次数上限：禁林是材料/生物图鉴的主要来源，不设限的话
+    // 一个下午就能把图鉴刷满、材料堆成山，后期采集玩法直接失去意义。
+    if (!this.canDoDaily('forest')) {
+      _finishLocal(
+          '海格远远朝你摆手：「今天进去 ${this.dailyLimitOf('forest')} 趟啦，林子也得喘口气。」\n\n'
+          '天色确实不早了，明天再来吧。');
+      return;
+    }
 
+    this.recordDailyActivity('forest');
     advanceTimeForAction('禁林探险');
     p.energy = (p.energy - 15).clamp(0, 100);
     p.satiety = (p.satiety - 5).clamp(0, 100);

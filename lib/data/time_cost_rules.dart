@@ -35,6 +35,14 @@ const List<TimeCostRule> timeCostRules = [
     minutes: 180,
     priority: 90,
   ),
+  // 决斗是一场正经对抗：一场至少要约场地、行礼、打完收场，
+  // 旧实现走的是默认 15 分钟（duelNpc 里传的是'对话'），
+  // 导致一回合 10 分钟就能刷一次奖励，经济与声望双双通胀。
+  TimeCostRule(
+    patterns: ['决斗'],
+    minutes: 60,
+    priority: 95,
+  ),
 
   // ====== 中优先级（明确动作）======
   TimeCostRule(
