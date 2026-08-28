@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../providers/app_provider.dart';
+import 'rate_limiter.dart';
 
 class TokenUsage {
   final int promptTokens;
@@ -86,6 +87,31 @@ class DeepSeekService {
               : const Duration(seconds: 45),
         ));
 
+  /// 本地区分不同 API Key 的限流桶标识。
+  ///
+  /// 只用 hashCode，不落盘也不进日志——它只需要在内存里把同一个 Key 的请求
+  /// 归到同一个桶，不需要也不应该能反推出 Key 本身。
+  String get _keyHash => config.apiKey.hashCode.abs().toRadixString(36);
+
+  /// 发请求前过一遍提供商侧的配额闸门。
+  ///
+  /// Agnes 免费版限 20 RPM，SenseNova 按模型每 5 小时有配额上限，超了服务方
+  /// 直接返 429，玩家看到的就是「AI 卡住了」。这两个闸门此前一次都没被调用过，
+  /// 现在在这里接上。等待超时会抛异常，由上层重试/切换提供商兜住。
+  Future<void> _acquireSlot() async {
+    switch (config.provider) {
+      case AiProvider.agnes:
+        await AgnesRateLimiter.instance.waitForSlot(_keyHash);
+        break;
+      case AiProvider.sensenova:
+        await SenseNovaQuotaManager.instance.waitForQuota(config.model);
+        break;
+      case AiProvider.deepseek:
+        // DeepSeek 按量计费，无限流闸门
+        break;
+    }
+  }
+
   Future<ChatResult> chatComplete({
     required String prompt,
     String systemPrompt = '',
@@ -94,6 +120,7 @@ class DeepSeekService {
     CancelToken? cancelToken,
   }) async {
     try {
+      await _acquireSlot();
       final response = await _dio.post(
         normalizePath(config.chatPath),
         data: jsonEncode({
@@ -119,35 +146,6 @@ class DeepSeekService {
         throw Exception('Empty response from AI');
       }
       return ChatResult(content: content, usage: usage);
-    } on DioException catch (e) {
-      _handleError(e);
-      rethrow;
-    }
-  }
-
-  Future<String> chatWithMessages({
-    required List<Map<String, dynamic>> messages,
-    double temperature = 0.8,
-    int maxTokens = 4096,
-  }) async {
-    try {
-      final response = await _dio.post(
-        normalizePath(config.chatPath),
-        data: jsonEncode({
-          'model': config.model,
-          'messages': messages,
-          'temperature': temperature,
-          'max_tokens': maxTokens,
-          'stream': false,
-        }),
-      );
-
-      final data = response.data;
-      final content = data['choices']?[0]['message']['content'] as String? ?? '';
-      if (content.isEmpty) {
-        throw Exception('Empty response from AI');
-      }
-      return content;
     } on DioException catch (e) {
       _handleError(e);
       rethrow;
@@ -266,9 +264,4 @@ class DeepSeekService {
     }
   }
 
-  Future<Map<String, dynamic>?> getQuotaInfo() async {
-    final path = config.balancePath;
-    if (path == null) return null;
-    return null;
-  }
 }

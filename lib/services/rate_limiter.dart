@@ -1,9 +1,18 @@
 import 'dart:async';
 
+// 本文件的两个闸门此前完全没接进请求路径，等于裸奔：Agnes 免费版 20 RPM、
+// SenseNova 每 5 小时有配额上限，超了服务方直接返 429。现在由
+// DeepSeekService.chatComplete 在发请求前调用 waitForSlot / waitForQuota。
+//
+// 这里只保留「等待并占位」的入口。canRequest / currentRPM / recordRequest
+// 这类「先查后记」的成对接口一并删除——waitForSlot 内部已经完成判断与记账，
+// 留两套接口只会给调用方制造忘记记账的机会。
+
 /// Agnes速率限制器（免费版限20 RPM）
 /// 支持多 API Key：每个 Key 独立统计 RPM，互不影响。
 class AgnesRateLimiter {
-  static const int _maxRPM = 18; // 留2个余量
+  /// 公开给测试与诊断：Agnes 免费版上限 20 RPM，这里留 2 个余量。
+  static const int maxRPM = 18;
 
   /// keyHash → 请求时间记录列表
   final Map<String, List<DateTime>> _requestTimesByKey = {};
@@ -16,27 +25,6 @@ class AgnesRateLimiter {
     return _requestTimesByKey.putIfAbsent(keyHash, () => []);
   }
 
-  /// 检查指定 Key 是否可发送请求
-  bool canRequest(String keyHash) {
-    final now = DateTime.now();
-    final times = _timesForKey(keyHash);
-    times.removeWhere((t) => now.difference(t) > Duration(minutes: 1));
-    return times.length < _maxRPM;
-  }
-
-  /// 获取指定 Key 的当前 RPM
-  int currentRPM(String keyHash) {
-    final now = DateTime.now();
-    final times = _timesForKey(keyHash);
-    times.removeWhere((t) => now.difference(t) > Duration(minutes: 1));
-    return times.length;
-  }
-
-  /// 记录一次请求（指定 Key）
-  void recordRequest(String keyHash) {
-    _timesForKey(keyHash).add(DateTime.now());
-  }
-
   /// 精确等待可用名额（替代固定 3 秒轮询）：
   /// 直接计算最早一条请求滑出 60 秒窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
@@ -47,7 +35,7 @@ class AgnesRateLimiter {
       final now = DateTime.now();
       final times = _timesForKey(keyHash);
       times.removeWhere((t) => now.difference(t) > const Duration(minutes: 1));
-      if (times.length < _maxRPM) {
+      if (times.length < maxRPM) {
         times.add(DateTime.now());
         return;
       }
@@ -55,10 +43,14 @@ class AgnesRateLimiter {
         throw Exception('Agnes($keyHash) 限流等待超时（${timeout.inSeconds}秒），已切换备用提供商');
       }
       // 最早一条请求在 oldest+60s 滑出窗口，精确睡到该时刻（+50ms 缓冲）
+      // 但不能睡过 deadline——否则 timeout 形同虚设：窗口是 60 秒，
+      // 一次 sleep 就要睡满 60 秒，上层永远等不到「超时切换提供商」。
       final waitMs = const Duration(minutes: 1).inMilliseconds -
           now.difference(times.first).inMilliseconds +
           50;
-      await Future.delayed(Duration(milliseconds: waitMs.clamp(50, 61000).toInt()));
+      final untilDeadline = deadline.difference(now).inMilliseconds;
+      final sleepMs = waitMs.clamp(50, untilDeadline < 50 ? 50 : untilDeadline);
+      await Future.delayed(Duration(milliseconds: sleepMs.toInt()));
     }
   }
 
@@ -89,24 +81,6 @@ class SenseNovaQuotaManager {
   SenseNovaQuotaManager._privateConstructor();
   static final SenseNovaQuotaManager instance = SenseNovaQuotaManager._privateConstructor();
 
-  bool canMakeCall(String model) {
-    final now = DateTime.now();
-    final times = _callTimesByModel[model] ??= [];
-    times.removeWhere((t) => now.difference(t) > _windowDuration);
-    return times.length < quotaForModel(model);
-  }
-
-  int remainingQuota(String model) {
-    final now = DateTime.now();
-    final times = _callTimesByModel[model] ??= [];
-    times.removeWhere((t) => now.difference(t) > _windowDuration);
-    return quotaForModel(model) - times.length;
-  }
-
-  void recordCall(String model) {
-    (_callTimesByModel[model] ??= []).add(DateTime.now());
-  }
-
   /// 精确等待配额窗口：计算最早一条调用滑出 5 小时窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
   Future<void> waitForQuota(String model, {Duration timeout = const Duration(seconds: 40)}) async {
@@ -125,7 +99,10 @@ class SenseNovaQuotaManager {
       final waitMs = _windowDuration.inMilliseconds -
           now.difference(times.first).inMilliseconds +
           50;
-      await Future.delayed(Duration(milliseconds: waitMs.clamp(50, 61000).toInt()));
+      // 同上：不能睡过 deadline，否则 5 小时的窗口会让 timeout 完全失效
+      final untilDeadline = deadline.difference(now).inMilliseconds;
+      final sleepMs = waitMs.clamp(50, untilDeadline < 50 ? 50 : untilDeadline);
+      await Future.delayed(Duration(milliseconds: sleepMs.toInt()));
     }
   }
 
@@ -188,8 +165,6 @@ class ResponseCache {
     final oldestKey = _cache.keys.first;
     _cache.remove(oldestKey);
   }
-
-  int get cacheSize => _cache.length;
 
   void clear() {
     _cache.clear();

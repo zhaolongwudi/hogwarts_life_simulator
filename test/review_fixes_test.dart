@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/balance_constants.dart';
 import 'package:hogwarts_life_simulator/data/bestiary_data.dart';
@@ -478,6 +479,79 @@ void main() {
       ResponseCache.instance.set(prompt, '短答案', maxTokens: 200);
       expect(ResponseCache.instance.get(prompt, maxTokens: 2000), isNull);
       expect(ResponseCache.instance.get(prompt, maxTokens: 200), '短答案');
+    });
+  });
+
+  group('AI 请求限流闸门', () {
+    test('Agnes 未满 20 RPM 时不阻塞', () async {
+      AgnesRateLimiter.instance.reset();
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < AgnesRateLimiter.maxRPM; i++) {
+        await AgnesRateLimiter.instance.waitForSlot('test-key');
+      }
+      sw.stop();
+      expect(sw.elapsed.inMilliseconds, lessThan(500),
+          reason: '配额充足时不应有任何等待');
+    });
+
+    test('Agnes 配额耗尽后按超时抛异常而不是无限卡住', () async {
+      // 上一用例已把 test-key 填满；第 maxRPM+1 次必须走超时分支
+      await expectLater(
+        AgnesRateLimiter.instance.waitForSlot(
+          'test-key',
+          timeout: const Duration(milliseconds: 60),
+        ),
+        throwsA(isA<Exception>()),
+      );
+      AgnesRateLimiter.instance.reset();
+    });
+
+    test('Agnes 每个 Key 独立计量', () async {
+      AgnesRateLimiter.instance.reset();
+      for (var i = 0; i < AgnesRateLimiter.maxRPM; i++) {
+        await AgnesRateLimiter.instance.waitForSlot('key-a');
+      }
+      // key-b 是另一个桶，不该被 key-a 拖住
+      final sw = Stopwatch()..start();
+      await AgnesRateLimiter.instance.waitForSlot('key-b');
+      sw.stop();
+      expect(sw.elapsed.inMilliseconds, lessThan(500));
+      AgnesRateLimiter.instance.reset();
+    });
+
+    test('SenseNova 自研模型配额高于托管模型', () {
+      expect(SenseNovaQuotaManager.quotaForModel('sensenova-6.8-flash-lite'), 1500);
+      expect(SenseNovaQuotaManager.quotaForModel('deepseek-v4-flash'), 500,
+          reason: '托管模型配额低得多，混为一谈会让玩家过早撞上限额');
+    });
+
+    test('SenseNova 配额充足时不阻塞', () async {
+      SenseNovaQuotaManager.instance.reset();
+      final sw = Stopwatch()..start();
+      await SenseNovaQuotaManager.instance.waitForQuota('sensenova-6.8-flash-lite');
+      sw.stop();
+      expect(sw.elapsed.inMilliseconds, lessThan(500));
+    });
+
+    test('限流闸门确实接进了请求路径', () {
+      // 这两个闸门此前一次都没被调用过：注释里写着「让上层 AiRouter 捕获」，
+      // 但 DeepSeekService.chatComplete 直接就发了 dio.post
+      final src = File('lib/services/deepseek_service.dart').readAsStringSync();
+      expect(src.contains("import 'rate_limiter.dart'"), isTrue,
+          reason: 'DeepSeekService 没有引入 rate_limiter');
+      expect(src.contains('waitForSlot'), isTrue,
+          reason: 'Agnes 限流没有接进请求路径，超 20 RPM 会直接吃 429');
+      expect(src.contains('waitForQuota'), isTrue,
+          reason: 'SenseNova 配额管理没有接进请求路径');
+    });
+
+    test('三个提供商在闸门里都有分支', () {
+      final src = File('lib/services/deepseek_service.dart').readAsStringSync();
+      final gate = src.substring(src.indexOf('_acquireSlot'));
+      for (final p in ['agnes', 'sensenova', 'deepseek']) {
+        expect(gate.contains('AiProvider.$p'), isTrue,
+            reason: '闸门漏了 $p，新增提供商时容易忘记补');
+      }
     });
   });
 }
