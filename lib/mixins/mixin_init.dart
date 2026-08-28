@@ -4,6 +4,7 @@ import '../services/rate_limiter.dart';
 import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
 import '../data/house_sorting_weights.dart';
+import '../data/house_data.dart';
 import '../data/opening_scene_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
@@ -1141,13 +1142,7 @@ mixin GameInitMixin on GameProviderBase {
   }
 
   String generateSortingNarrative(String house) {
-    final houseName = switch (house) {
-      'Gryffindor' => '格兰芬多',
-      'Slytherin' => '斯莱特林',
-      'Ravenclaw' => '拉文克劳',
-      'Hufflepuff' => '赫奇帕奇',
-      _ => '格兰芬多',
-    };
+    final houseName = houseDisplayName(house, fallback: '格兰芬多');
 
     final thoughts = [
       '嗯……有意思。这个孩子有${player!.personalityTraits.join('、')}的特质。',

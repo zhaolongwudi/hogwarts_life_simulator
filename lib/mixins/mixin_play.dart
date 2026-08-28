@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/item_data.dart';
+import '../data/house_data.dart';
 import '../data/bestiary_data.dart';
 import '../data/quest_data.dart';
 import '../data/pet_data.dart';
@@ -519,14 +520,8 @@ mixin GamePlayMixin on GameProviderBase {
         ((_attr('flying') - 50) ~/ 3) +
         ((_attr('reaction_time') - 50) ~/ 5) +
         (itemDefByName(broom)?.statBonus['flying'] ?? 0);
-    const opponents = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇'];
-    final myHouseCn = switch (p.house) {
-      'Gryffindor' => '格兰芬多',
-      'Slytherin' => '斯莱特林',
-      'Ravenclaw' => '拉文克劳',
-      'Hufflepuff' => '赫奇帕奇',
-      _ => '对手',
-    };
+    final opponents = kHouseNames;
+    final myHouseCn = houseDisplayName(p.house, fallback: '对手');
     // 修复：对手池必须排除自己学院，避免"格兰芬多 对 格兰芬多"的荒谬叙事
     final pool = opponents.where((h) => h != myHouseCn).toList();
     final opp = pool[random.nextInt(pool.length)];
@@ -1072,13 +1067,7 @@ mixin GamePlayMixin on GameProviderBase {
   String formatHouseCup() {
     final p = player;
     if (p == null) return '';
-    final myCn = switch (p.house) {
-      'Gryffindor' => '格兰芬多',
-      'Slytherin' => '斯莱特林',
-      'Ravenclaw' => '拉文克劳',
-      'Hufflepuff' => '赫奇帕奇',
-      _ => '（未分院）',
-    };
+    final myCn = houseDisplayName(p.house, fallback: '（未分院）');
     final buf = StringBuffer('【学院杯】\n');
     if (p.house == null) {
       buf.writeln('你还没有被分院，暂未参与学院杯竞争。');
@@ -1110,13 +1099,7 @@ mixin GamePlayMixin on GameProviderBase {
   void settleHouseCup() {
     final p = player;
     if (p == null || p.house == null || p.houseCupPoints <= 0) return;
-    final myCn = switch (p.house) {
-      'Gryffindor' => '格兰芬多',
-      'Slytherin' => '斯莱特林',
-      'Ravenclaw' => '拉文克劳',
-      'Hufflepuff' => '赫奇帕奇',
-      _ => p.house!,
-    };
+    final myCn = houseDisplayName(p.house, fallback: p.house!);
     // 其它三院基准分（随机），本学院 = 基准 + 玩家贡献
     final others = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇']
         .where((h) => h != myCn)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/npc.dart';
+import '../data/house_data.dart';
 
 class UiHelpers {
   static Color getHouseColor(String house) {
@@ -35,20 +36,9 @@ class UiHelpers {
     }
   }
 
-  static String getHouseLabel(String house) {
-    switch (house.toLowerCase()) {
-      case 'gryffindor':
-        return '格兰芬多';
-      case 'slytherin':
-        return '斯莱特林';
-      case 'ravenclaw':
-        return '拉文克劳';
-      case 'hufflepuff':
-        return '赫奇帕奇';
-      default:
-        return '未分院';
-    }
-  }
+  /// 学院中文名。映射本身在 lib/data/house_data.dart（数据层），
+  /// 这里只是给 UI 层的一个命名顺手的转发，不再自己维护一份。
+  static String getHouseLabel(String house) => houseDisplayName(house);
 
   static String getAffectionLabel(int affection) {
     if (affection >= 95) return '灵魂伴侣 💞';

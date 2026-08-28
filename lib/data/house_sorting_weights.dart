@@ -55,11 +55,5 @@ const List<HouseSortingWeight> houseSortingWeights = [
   ),
 ];
 
-/// 根据 "斯莱特林" / "Slytherin" 返回 houseKey（Gryffindor 等）
-String? houseKeyByDisplayName(String text) {
-  if (text.contains('格兰芬多') || text.contains('Gryffindor')) return 'Gryffindor';
-  if (text.contains('斯莱特林') || text.contains('Slytherin')) return 'Slytherin';
-  if (text.contains('拉文克劳') || text.contains('Ravenclaw')) return 'Ravenclaw';
-  if (text.contains('赫奇帕奇') || text.contains('Hufflepuff')) return 'Hufflepuff';
-  return null;
-}
+// houseKeyByDisplayName 已挪到 lib/data/house_data.dart —— 学院名与学院 key
+// 的双向映射放一起，改译名时不用跨文件找。

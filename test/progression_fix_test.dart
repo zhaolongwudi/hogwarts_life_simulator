@@ -15,6 +15,7 @@ import 'package:hogwarts_life_simulator/data/gift_rules.dart';
 import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
+import 'package:hogwarts_life_simulator/data/house_data.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -193,6 +194,7 @@ void main() {
   _deadCodeGroup();
   _achievementReachabilityGroup();
   _eventAnchorGroup();
+  _houseNameGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1516,6 +1518,57 @@ void _eventAnchorGroup() {
       for (final name in kLocationNames) {
         expect(resolveLocationName(name), isNotNull,
             reason: '主名「$name」自己都没法解析');
+      }
+    });
+  });
+}
+
+// ==================== 学院名只有一份 ====================
+// 学院 key→中文名 原先有 5 份手写副本（mixin_init / mixin_play 三处 /
+// UiHelpers.getHouseLabel），且各自默认值还不一样。改一个译名要改 5 个地方。
+
+void _houseNameGroup() {
+  group('学院名映射只有一份', () {
+    test('lib 下不再有手写的学院名 switch', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        final src = File(f).readAsStringSync();
+        for (final key in kHouseKeys) {
+          // 「'Gryffindor' => '格兰芬多'」这种按 key 分支的写法才要拦；
+          // 数据文件里出现中文院名是正常的（那是映射表本身）
+          if (src.contains("'$key' => '")) offenders.add('$f → $key');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '又有人手写了学院名分支，应改用 houseDisplayName()：$offenders');
+    });
+
+    test('中英文互为逆运算', () {
+      for (final key in kHouseKeys) {
+        final cn = houseDisplayName(key);
+        expect(houseKeyByDisplayName(cn), key, reason: '$cn 反查不回 $key');
+        expect(houseKeyByDisplayName(key), key, reason: '$key 英文 key 反查失败');
+      }
+    });
+
+    test('默认值按调用方语境走', () {
+      // 四处调用方原本的默认值分别是 '对手' / '（未分院）' / 原 key / '格兰芬多'
+      expect(houseDisplayName(null), '未分院');
+      expect(houseDisplayName(''), '未分院');
+      expect(houseDisplayName('Gryffindor', fallback: '对手'), '格兰芬多');
+      expect(houseDisplayName('Unknown', fallback: '对手'), '对手');
+      expect(houseDisplayName('Unknown', fallback: '（未分院）'), '（未分院）');
+    });
+
+    test('大小写不敏感（老存档和 NPC 数据里两种都有）', () {
+      expect(houseDisplayName('gryffindor'), '格兰芬多');
+      expect(houseDisplayName('SLYTHERIN'), '斯莱特林');
+    });
+
+    test('kHouseNames 与 kHouseKeys 顺序一致', () {
+      expect(kHouseNames, hasLength(kHouseKeys.length));
+      for (var i = 0; i < kHouseKeys.length; i++) {
+        expect(kHouseNames[i], houseDisplayName(kHouseKeys[i]));
       }
     });
   });
