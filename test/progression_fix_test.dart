@@ -18,6 +18,7 @@ import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
 import 'package:hogwarts_life_simulator/data/world_rules.dart';
 import 'package:hogwarts_life_simulator/data/balance_constants.dart';
+import 'package:hogwarts_life_simulator/services/key_store.dart';
 import 'package:hogwarts_life_simulator/data/house_data.dart';
 import 'package:hogwarts_life_simulator/data/blood_status.dart';
 import 'package:hogwarts_life_simulator/data/attribute_data.dart';
@@ -218,6 +219,7 @@ void main() {
   _screenReachabilityGroup();
   _locationResolveGroup();
   _promptConstantGroup();
+  _unboundedLoopGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2669,6 +2671,65 @@ void _promptConstantGroup() {
       // 反过来，引用的常量必须真的在
       expect(src.contains(r'${Balance.affectionMin}'), isTrue);
       expect(src.contains(r'${Balance.confessionMinAffection}'), isTrue);
+    });
+  });
+}
+
+// ==================== 无界循环 ====================
+// KeyStore._deleteAllForProvider 原来是 `for (int i = 0;; i++)`，靠
+// 「delete 一个不存在的 key 会抛异常」来退出。Android 端 delete 的实现是
+// `editor.remove(key); editor.apply();`——静默成功，永不抛异常，于是这个
+// 循环在 Android 上永远出不来，玩家每次保存/修改 API Key 都卡死在
+// writeKeys 里。iOS 的 Keychain 碰巧会报错，所以在模拟器/iOS 上看不出来。
+
+void _unboundedLoopGroup() {
+  group('无界循环', () {
+    test('lib 里不许出现 for (;;) 这种没有终止条件的循环', () {
+      final bad = <String>[];
+      for (final f in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        final src = _codeOnly(f.path);
+        for (final m in RegExp(r'for\s*\(([^;]*);\s*;([^)]*)\)').allMatches(src)) {
+          final line = src.substring(0, m.start).split('\n').length;
+          bad.add('${f.path}:$line  for (${m.group(1)!.trim()}; ;${m.group(2)!.trim()})');
+        }
+      }
+      expect(bad, isEmpty,
+          reason: '无界循环只能靠循环体里的 break/return 退出，静态看不出是否'
+              '真能退出。请改写成有界循环或 while + 明确条件：\n  ${bad.join('\n  ')}');
+    });
+
+    test('KeyStore 的清理循环用 read 判空来退出', () {
+      final src = _codeOnly('lib/services/key_store.dart');
+      // 终止条件必须是前置的 read 判空：delete 在 Android 上删空 key 不抛
+      // 异常，靠它退出就是死循环。（delete 外面那层 try/catch 可以留着当
+      // 第二道防线——delete 真出错时也别死磕——但它不能是唯一的出口。）
+      expect(
+        RegExp(r'final existing = await readKey\(').hasMatch(src),
+        isTrue,
+        reason: '清理循环应该先用 read 确认这个位置还有没有 key，而不是直接删',
+      );
+      expect(
+        RegExp(r'if \(existing == null \|\| existing\.isEmpty\) break;').hasMatch(src),
+        isTrue,
+        reason: 'read 到空就要 break，否则又变成靠 delete 抛异常退出',
+      );
+      // 循环必须有界
+      expect(
+        RegExp(r'for \(int i = 0; i < kMaxKeysPerProvider; i\+\+\)')
+            .allMatches(src)
+            .length,
+        greaterThanOrEqualTo(2),
+        reason: 'readKeys 和 _deleteAllForProvider 都该受 kMaxKeysPerProvider 约束',
+      );
+    });
+
+    test('多 key 读写有上限，读到的和写进去的对得上', () {
+      expect(kMaxKeysPerProvider > 0, isTrue);
+      expect(kMaxKeysPerProvider <= 1000, isTrue,
+          reason: '上限大得离谱就失去意义了');
     });
   });
 }
