@@ -296,7 +296,7 @@ class _CgCard extends StatelessWidget {
           children: [
             Text('${cg.id} · ${cg.chapter} · ${cg.starText}'),
             const SizedBox(height: 10),
-            Text('解锁条件：${cg.condition}'),
+            Text('解锁条件：${cg.conditionText}'),
             const SizedBox(height: 10),
             Text('解锁于：${rec!.unlockedDate}'),
           ],

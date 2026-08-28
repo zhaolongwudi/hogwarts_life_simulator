@@ -1,9 +1,15 @@
+import 'cg_unlock_conditions.dart';
+
 /// CG 数据：依据设定文档「第十五部分 · 特殊CG系统」
 class CgDef {
   final String id;
   final String name;
   final int stars; // 1-5
   final String chapter; // 相遇/暧昧/深情/珍贵/表白心碎/拉郎配/骨科
+
+  /// 构造器里写的条件文案。只对「解锁条件写在代码里的」CG（拉郎配、硬编码
+  /// 剧情点）有效；凡是在 cgUnlockConditions 里声明了条件的 CG，一律以
+  /// [conditionText] 为准，这里的原文只作为兜底。
   final String condition;
 
   const CgDef({
@@ -15,6 +21,16 @@ class CgDef {
   });
 
   String get starText => '★' * stars;
+
+  /// 给玩家看的解锁条件，也是唯一应该被显示的那份。
+  ///
+  /// 条件表和条件文案曾经是两份手抄，早就漂了（CG-001 文案写「初遇」，实际
+  /// 判定是好感≥20；CG-011 文案写「好感≥80」，实际还要求对方是暗恋对象）。
+  /// 现在表内的 CG 直接由条件表生成文案，表外的沿用声明原文。
+  String get conditionText {
+    final generated = cgConditionTextOf(id);
+    return generated.isNotEmpty ? generated : condition;
+  }
 }
 
 /// 相遇与暗恋之章

@@ -1148,11 +1148,11 @@ $knownRegions
     if (rec == null) {
       return '【${cg.id} ${cg.name}】🔒 尚未解锁\n'
           '章节：${cg.chapter}｜等级：${cg.starText}\n'
-          '解锁条件：${cg.condition}';
+          '解锁条件：${cg.conditionText}';
     }
     return '【${cg.id} ${cg.name}】${cg.starText}\n'
         '章节：${cg.chapter}\n'
-        '解锁条件：${cg.condition}\n'
+        '解锁条件：${cg.conditionText}\n'
         '解锁于：${rec.unlockedDate}';
   }
 
@@ -1165,7 +1165,7 @@ $knownRegions
     }
     final rec = player!.cgRecords[cg.id];
     if (rec == null) {
-      return '【${cg.id} ${cg.name}】尚未解锁，无法重播。\n解锁条件：${cg.condition}';
+      return '【${cg.id} ${cg.name}】尚未解锁，无法重播。\n解锁条件：${cg.conditionText}';
     }
     return '【重播 · ${cg.name}】${cg.starText}\n\n'
         '—— 记忆被重新点亮。\n\n'

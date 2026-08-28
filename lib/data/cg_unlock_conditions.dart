@@ -4,12 +4,16 @@
 /// 新实现：每条 CG 把它的解锁条件声明在 `unlockConditions` 里，
 ///         由统一的 `CgUnlockEvaluator` 判定是否满足。
 ///
-/// 条件类型：
-///   - affectionAtLeast:  NPC 好感 ≥ threshold
-///   - relationAtLeast:   恋爱关系阶段（0陌生人→6深爱）≥ stage 且 NPC == crush/partner
-///   - npcConfessed:      NPC 对玩家已表白
-///   - flagSet:           WorldState.specialMarkers / Player.flags 中包含该 key
-///   - npcRelationIs:     指定 NPC 的 relationType（'crush' / 'partner' / 'bone_partner'）
+/// 条件类型（以 [CgConditionType] 枚举为准）：
+///   - affectionAtLeast:         NPC 好感 ≥ intValue
+///   - relationIsCrush:          该 NPC 是玩家的暗恋对象
+///   - relationIsPartner:        该 NPC 是玩家的恋爱对象／配偶
+///   - relationIsCrushOrPartner: 暗恋或恋爱，二者皆可
+///   - npcConfessed:             该 NPC 已对玩家表白
+///   - boneMode:                 玩家开启了骨科（血亲）线
+///
+/// 枚举里没有 relationAtLeast / flagSet / npcRelationIs——这三个只存在于旧版
+/// 注释里，照着老注释写条件编译不过。
 ///
 /// 一条 CG 的所有 conditions 用 AND 语义（全满足才解锁）。
 enum CgConditionType {
@@ -75,13 +79,26 @@ final Map<String, List<CgUnlockCondition>> cgUnlockConditions = {
     // 上界 <95 是个比较特殊的范围约束（仅"好感刚过92不久"的阶段解锁一次）
     // 这里保留"≥92"即可，unlockCG 内部会幂等跳过已解锁
   ],
-  'CG-015': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 95)],
+  // 长吻：以前只看好感，和一个没谈恋爱的朋友到了 95 也会解锁
+  'CG-015': const [
+    CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 95),
+    CgUnlockCondition(CgConditionType.relationIsCrushOrPartner),
+  ],
   'CG-017': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 95)],
   'CG-018': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 93)],
 
   // ===== 珍贵之章 =====
-  'CG-019': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 96)],
-  'CG-020': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 98)],
+  // 私奔：同上，得是在一起的人
+  'CG-019': const [
+    CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 96),
+    CgUnlockCondition(CgConditionType.relationIsCrushOrPartner),
+  ],
+  // 婚礼：五星 CG，名字就叫婚礼。以前只要求好感≥98，跟谁做朋友做到 98 都能
+  // 拿到，而真正结婚解锁的是 CG-021（第一个孩子）。改成必须是恋爱对象。
+  'CG-020': const [
+    CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 98),
+    CgUnlockCondition(CgConditionType.relationIsPartner),
+  ],
 
   // ===== 骨科 CG =====
   'CG-BONE-001': const [
@@ -95,6 +112,41 @@ final Map<String, List<CgUnlockCondition>> cgUnlockConditions = {
     CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 95),
   ],
 };
+
+/// 把一份条件表翻译成给玩家看的文案。
+///
+/// 之前 cg_data.dart 每条 CG 手抄一遍 condition 文案、这里又写一遍机器判定，
+/// 两份手抄很快就漂了：CG-011 文案写「好感≥80」，实际还要求对方是暗恋对象，
+/// 玩家达标了却什么都没发生；CG-001 文案写「初遇」，实际要的是好感≥20。
+/// 现在表内的 CG 一律由这里生成文案，改条件即改文案。
+String cgConditionTextOf(String cgId) {
+  final conditions = cgUnlockConditions[cgId];
+  if (conditions == null || conditions.isEmpty) return '';
+  final parts = <String>[];
+  for (final c in conditions) {
+    switch (c.type) {
+      case CgConditionType.affectionAtLeast:
+        parts.add('好感≥${c.intValue ?? 0}');
+        break;
+      case CgConditionType.relationIsCrush:
+        parts.add('对方是你的暗恋对象');
+        break;
+      case CgConditionType.relationIsPartner:
+        parts.add('对方是你的恋人');
+        break;
+      case CgConditionType.relationIsCrushOrPartner:
+        parts.add('与对方互生情愫');
+        break;
+      case CgConditionType.npcConfessed:
+        parts.add('对方已向你表白');
+        break;
+      case CgConditionType.boneMode:
+        parts.add('骨科线已开启');
+        break;
+    }
+  }
+  return parts.join('，');
+}
 
 class CgUnlockEvaluator {
   const CgUnlockEvaluator._();

@@ -22,6 +22,8 @@ import 'package:hogwarts_life_simulator/data/attribute_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 import 'package:hogwarts_life_simulator/data/course_data.dart';
 import 'package:hogwarts_life_simulator/services/save_service.dart';
+import 'package:hogwarts_life_simulator/data/cg_data.dart';
+import 'package:hogwarts_life_simulator/data/cg_unlock_conditions.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -209,6 +211,7 @@ void main() {
   _commandReferenceGroup();
   _petReachabilityGroup();
   _equipmentAndProviderGroup();
+  _cgConditionGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2241,6 +2244,128 @@ void _achievementReachabilityGroup() {
       }.entries) {
         expect(File(pair.key).readAsStringSync().contains(pair.value), isFalse,
             reason: '${pair.value} 又回来了');
+      }
+    });
+  });
+}
+
+// ==================== CG 解锁条件 ====================
+// 条件表和玩家看到的条件文案曾经是两份手抄，很快就漂了：
+//   CG-001 文案写「初遇」，实际判定是好感≥20
+//   CG-011 文案写「好感≥80」，实际还要求对方是暗恋对象
+// 玩家照着文案达标却什么都没发生，属于最难自查的一类 bug。
+
+void _cgConditionGroup() {
+  group('CG 解锁条件', () {
+    test('每条 CG 的文案都由条件表生成，不再手抄', () {
+      for (final cg in allCgs()) {
+        final generated = cgConditionTextOf(cg.id);
+        if (generated.isNotEmpty) {
+          expect(cg.conditionText, generated,
+              reason: '${cg.id} 显示的条件和判定条件不是同一份');
+        } else {
+          // 表外的 CG（拉郎配、硬编码剧情点）沿用声明原文
+          expect(cg.conditionText, cg.condition,
+              reason: '${cg.id} 不在条件表里，应该直接用声明的文案');
+        }
+      }
+    });
+
+    test('条件表里的 CG 都真实存在', () {
+      final ids = allCgs().map((c) => c.id).toSet();
+      for (final k in cgUnlockConditions.keys) {
+        expect(ids.contains(k), isTrue,
+            reason: '条件表里的 $k 不在 CG 目录里，白写');
+      }
+    });
+
+    test('文案里的好感阈值和判定阈值一致', () {
+      for (final e in cgUnlockConditions.entries) {
+        for (final c in e.value) {
+          if (c.type != CgConditionType.affectionAtLeast) continue;
+          final threshold = c.intValue ?? 0;
+          expect(
+            cgConditionTextOf(e.key).contains('好感≥$threshold'),
+            isTrue,
+            reason: '${e.key} 判定要好感≥$threshold，文案却写成「${cgConditionTextOf(e.key)}」',
+          );
+        }
+      }
+    });
+
+    test('带关系要求的 CG，文案里必须写清楚', () {
+      for (final e in cgUnlockConditions.entries) {
+        final types = e.value.map((c) => c.type).toSet();
+        final needsRelation = types.contains(CgConditionType.relationIsCrush) ||
+            types.contains(CgConditionType.relationIsPartner) ||
+            types.contains(CgConditionType.relationIsCrushOrPartner);
+        if (!needsRelation) continue;
+        final text = cgConditionTextOf(e.key);
+        expect(
+          text.contains('暗恋') || text.contains('恋人') || text.contains('情愫'),
+          isTrue,
+          reason: '${e.key} 实际要求特定关系，玩家看到的文案却是「$text」，'
+              '会以为光刷好感就够',
+        );
+      }
+    });
+
+    test('婚礼和私奔不能只靠好感解锁', () {
+      final wedding = cgUnlockConditions['CG-020'];
+      expect(wedding, isNotNull, reason: '婚礼 CG 没有解锁条件，永远拿不到');
+      expect(
+        wedding!.map((c) => c.type).contains(CgConditionType.relationIsPartner),
+        isTrue,
+        reason: '「霍格沃茨的婚礼」以前只要求好感≥98，跟谁做朋友做到 98 都能拿到',
+      );
+      final elope = cgUnlockConditions['CG-019'];
+      expect(
+        elope!.map((c) => c.type).contains(CgConditionType.relationIsCrushOrPartner),
+        isTrue,
+        reason: '「私奔的月光」不该在纯友谊下解锁',
+      );
+    });
+
+    test('注释里提到的条件类型都真的存在于枚举里', () {
+      // 老注释列了 relationAtLeast / flagSet / npcRelationIs，枚举里一个都没有。
+      // 照着注释加条件会直接编译不过。
+      final src = File('lib/data/cg_unlock_conditions.dart').readAsStringSync();
+      final enumBody = RegExp(
+        r'enum CgConditionType \{(.*?)\}',
+        dotAll: true,
+      ).firstMatch(src)!.group(1)!;
+      final declared = RegExp(r'(\w+),?')
+          .allMatches(enumBody)
+          .map((m) => m.group(1)!)
+          .where((s) => s.isNotEmpty && s != '//')
+          .toSet();
+      // 只看文件头部文档块（enum 之前那一段）
+      final docBlock = src.substring(0, src.indexOf('enum CgConditionType'));
+      for (final m in RegExp(r'^///\s+-\s+(\w+):', multiLine: true).allMatches(docBlock)) {
+        expect(declared.contains(m.group(1)), isTrue,
+            reason: '文档里写了条件类型 ${m.group(1)}，但 CgConditionType 里没有它');
+      }
+    });
+
+    test('新加的条件类型必须被 evaluate 和文案生成同时处理', () {
+      // 漏掉 evaluate 分支 → 条件从不生效；漏掉文案分支 → 玩家看不到这条要求。
+      final src = File('lib/data/cg_unlock_conditions.dart').readAsStringSync();
+      final enumBody = RegExp(
+        r'enum CgConditionType \{(.*?)\}',
+        dotAll: true,
+      ).firstMatch(src)!.group(1)!;
+      final types = RegExp(r'^\s*(\w+),', multiLine: true)
+          .allMatches(enumBody)
+          .map((m) => m.group(1)!)
+          .toList();
+      expect(types.length, greaterThanOrEqualTo(6));
+      for (final t in types) {
+        expect(src.contains('case CgConditionType.$t:'), isTrue,
+            reason: 'CgConditionType.$t 在 evaluate 里没有分支，条件永远不会生效');
+        // 文案生成器里的 case（cgConditionTextOf）
+        final textFn = src.substring(src.indexOf('String cgConditionTextOf'));
+        expect(textFn.contains('case CgConditionType.$t:'), isTrue,
+            reason: 'CgConditionType.$t 在文案生成器里没有分支，玩家看不到这条要求');
       }
     });
   });
