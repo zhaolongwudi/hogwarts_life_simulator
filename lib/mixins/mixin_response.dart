@@ -8,7 +8,7 @@ import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/choice_prompts.dart';
 
-mixin GameResponseMixin on GameProviderBase {
+mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameResponseAffectionMixin {
   /// ===== BUG-K 最终防线：分院结果文本解析（极度收紧规则）=====
   /// 旧问题：AI 写"你想被分进斯莱特林吗？"这种第三人称设问/假设句，
   /// 正则直接命中"被分进+斯莱特林"→ 分院成就解锁 + player.house 赋值，
@@ -396,7 +396,7 @@ mixin GameResponseMixin on GameProviderBase {
 
     if (choices.isEmpty) {
       // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）
-      final extractedChoices = _extractChoicesFromRawText(text);
+      final extractedChoices = extractChoicesFromRawText(text);
       if (extractedChoices.isNotEmpty) {
         choices.addAll(extractedChoices);
       } else {
@@ -1061,7 +1061,7 @@ $kChoicePromptSuffix''';
       for (final m in tailNameMatches) {
         final candidate = m.group(1)!;
         // 不要把"学院/车站/大厅/列车/走廊/图书馆"这些常见叙述词当成"人名临时白名单"
-        if (!_looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
+        if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
       }
       // "一年级/二年级/新生/学长/学姐" 这种称呼（不是具体人名）允许，
       // 但我们只在命中"像具体人名的霍尔"这种时才过滤，所以不需要额外加。
@@ -1074,11 +1074,11 @@ $kChoicePromptSuffix''';
       ).allMatches(cleanNarrativeForChoice.length > 800 ? narrative : cleanNarrativeForChoice);
       for (final m in fullNarrativeNameMatches) {
         final candidate = m.group(1)!;
-        if (!_looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
+        if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
       }
 
       final beforeFilter = choices.length;
-      choices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
+      choices.removeWhere((c) => choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
       final filtered = beforeFilter - choices.length;
       if (filtered > 0) {
         // [选项NPC门] 过滤日志已移除
@@ -1150,10 +1150,10 @@ $kChoicePromptSuffix''';
         ).allMatches(narrativeTail);
         for (final m in fullRetryNarrativeNameMatches) {
           final candidate = m.group(1)!;
-          if (!_looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
-        }
-        final retryBefore = retryChoices.length;
-        retryChoices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
+          if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
+1154→        }
+1155→        final retryBefore = retryChoices.length;
+1156→        retryChoices.removeWhere((c) => choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
         final retryFiltered = retryBefore - retryChoices.length;
         if (retryFiltered > 0) {
           // [选项NPC门·重试] 日志已移除

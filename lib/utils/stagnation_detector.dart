@@ -1,4 +1,4 @@
-class _TransitionNode {
+class TransitionNode {
   final String id;
   final String currentLocationPattern;
   final List<String> requireVisited;
@@ -13,7 +13,7 @@ class _TransitionNode {
   final String? nextLocation;
   final bool? forceNextOnlyIfAnchorPresented; // true=等 AI 把过渡叙事写完后自然同步 location，不在这硬切
 
-  const _TransitionNode({
+  const TransitionNode({
     required this.id,
     required this.currentLocationPattern,
     this.requireVisited = const [],

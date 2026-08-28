@@ -6,6 +6,7 @@ import '../models/npc.dart';
 import '../models/player.dart';
 import '../models/game_systems.dart';
 import '../utils/stagnation_detector.dart';
+import '../utils/story_text_renderer.dart';
 
 /// 叙事连续性 Mixin — 从 [GameNarrativeMixin] 中拆分。
 ///
@@ -585,9 +586,9 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   /// 转移节点：「玩家当前应当位于 currentLocationPattern」→「当 turnsAtSameLocation 超过 turnRange 上限 或 turnCount∈[minT,maxT]」，
   /// 且 前置条件 requireVisited/requireDateInt/requireFlag 全部满足 → 给玩家注入 transitionAnchor（中间过程剧情要求），
   /// 最终让玩家抵达 nextLocation。
-  static const List<_TransitionNode> _transitionNodes = [
+  static const List<TransitionNode> _transitionNodes = [
     // ---------- 开局骨架链（家中收到信 → 对角巷 → 国王十字 → 特快 → 分院）----------
-    _TransitionNode(
+    TransitionNode(
       id: 'opening_hagrid_visit',
       currentLocationPattern: r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅|门厅)',
       requireVisited: const [], // 不需要前置地点
@@ -599,7 +600,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       transitionAnchor: '鲁伯·海格亲自登门送你（他受邓布利多委托亲自接新生去对角巷采购），他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦小子/姑娘，再晚就赶不上对角巷奥利凡德的预约了。" 本回合剧情必须自然融入：海格来访 → 和养父母告别 → 动身前往伦敦这三个中间阶段，不能跳帧直接进入采购画面。',
       nextLocation: null,
     ),
-    _TransitionNode(
+    TransitionNode(
       id: 'opening_force_diagon_alley',
       currentLocationPattern: r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅|门厅)',
       requireVisited: const [],
@@ -612,7 +613,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       // 允许在 minT/maxT 到期且已过渡叙事写完后，更新 currentLocation（之前这里直接无依赖切 = 跳场景 bug）
       forceNextOnlyIfAnchorPresented: true,
     ),
-    _TransitionNode(
+    TransitionNode(
       id: 'opening_diagon_to_station',
       currentLocationPattern: r'对角巷',
       requireVisited: const [r'对角巷'],
@@ -626,7 +627,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       // 进度门：时间 < 9月1日不允许跳（否则 7月31日就直接到了特快，与原著时间线冲突）
       minDateInt: 901,
     ),
-    _TransitionNode(
+    TransitionNode(
       id: 'opening_station_to_express',
       currentLocationPattern: r'(国王十字|九又四分之三|站台)',
       requireVisited: const [r'对角巷', r'(国王十字|九又四分之三|站台)'],
@@ -639,7 +640,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       nextLocation: '霍格沃茨特快列车',
       forceNextOnlyIfAnchorPresented: true,
     ),
-    _TransitionNode(
+    TransitionNode(
       id: 'opening_express_to_sorting',
       currentLocationPattern: r'(特快|列车|火车|霍格莫德|车站)',
       requireVisited: const [r'(特快|列车|火车)', r'(国王十字|九又四分之三|站台)'],
@@ -654,7 +655,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       forceNextOnlyIfAnchorPresented: true,
     ),
     // ---------- 开学后通用转移链（开局骨架退役后生效，不再只有前12回合保护）----------
-    _TransitionNode(
+    TransitionNode(
       id: 'hogwarts_hall_to_common_room',
       currentLocationPattern: r'(霍格沃茨大礼堂|大礼堂)',
       requireVisited: const [r'(霍格沃茨|大礼堂|分院)'],
@@ -665,7 +666,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       nextLocation: '学院公共休息室',
       forceNextOnlyIfAnchorPresented: true,
     ),
-    _TransitionNode(
+    TransitionNode(
       id: 'first_class_next_day',
       currentLocationPattern: r'(公共休息室|宿舍|学院公共|大礼堂)',
       requireVisited: const [r'(公共休息室|学院公共|宿舍)'],
@@ -751,7 +752,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   }
   // ==================== P1-3 T1 未完结事项超期提醒 ====================
   // 给 narrative Prompt 拼注入文本用（在 buildPrompt 里调用）。
-  String _buildOpenLoopsStagnationHint() {
+  String buildOpenLoopsStagnationHint() {
     final stale = <String>[];
     // 每条 open loop 有 importance 与可能隐含的 lastTouched；
     // 这里做简化：超过 15 回合仍为 open 状态 & importance >= 6 的，给一条提醒

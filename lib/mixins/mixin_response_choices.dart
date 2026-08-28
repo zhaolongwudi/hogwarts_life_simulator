@@ -1,7 +1,5 @@
-import 'dart:async';
-import 'package:flutter/widgets.dart';
+
 import '../providers/game_provider_base.dart';
-import '../models/npc.dart';
 import '../models/game_systems.dart';
 
 mixin GameResponseChoiceMixin on GameProviderBase {
@@ -90,7 +88,7 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     if (text.length > 150) return false;
     return true;
   }
-  List<GameChoice> _extractChoicesFromRawText(String text) {
+  List<GameChoice> extractChoicesFromRawText(String text) {
     final choices = <GameChoice>[];
     final lines = text.split('\n');
 
@@ -125,7 +123,7 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     }
     return s;
   }
-  bool _choiceMentionsUnintroducedNpc(
+  bool choiceMentionsUnintroducedNpc(
     String text,
     Set<String> whitelist,
     Map<String, bool> npcNameAll,
@@ -141,7 +139,7 @@ mixin GameResponseChoiceMixin on GameProviderBase {
       // (1) 白名单（introduced的NPC+别名 / 玩家名 / 正文末尾出现过的路人）命中就放行
       if (whitelist.contains(cand)) continue;
       // (2) 明显是叙述词/虚词（教授/夫人/小姐/先生/同学/新生/大家/他们...）→ 放行
-      if (_looksLikeNarrationWord(cand)) continue;
+      if (looksLikeNarrationWord(cand)) continue;
 
       // (3) 候选命中 npcRegistry 的全名或别名，但是 introduced=false → 说明这是"还没出场的已知角色"
       //     比如开局前几回合就写"去找斯内普"，玩家根本没见过 → 要丢弃
@@ -172,7 +170,7 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     }
     return true;
   }
-  static bool _looksLikeNarrationWord(String s) {
+  static bool looksLikeNarrationWord(String s) {
     if (s.length < 2) return true;
     // 含叙述高频字 → 判定非人名
     if (RegExp(r'[的地得是去来到处在把让给和与或从向对被和就都也又便很还没不知说道看听闻想走跑站坐笑哭吃打学教练写读感思起起上下出入回开关过好]').hasMatch(s)) return true;
@@ -188,7 +186,7 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     }
     return false;
   }
-  bool _standaloneNameMentioned(String text, String name) {
+  bool standaloneNameMentioned(String text, String name) {
     if (name.isEmpty) return false;
     final escaped = RegExp.escape(name);
     final hasHan = RegExp(r'\p{Script=Han}', unicode: true).hasMatch(name);

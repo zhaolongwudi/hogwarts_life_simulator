@@ -1,8 +1,5 @@
-import 'dart:async';
-import 'package:flutter/widgets.dart';
 import '../providers/game_provider_base.dart';
 import '../models/npc.dart';
-import '../models/game_systems.dart';
 import '../utils/affection_validator.dart';
 import 'mixin_response_choices.dart';
 
@@ -153,7 +150,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       bool mentioned = false;
       for (final alias in npc.allNames) {
         if (alias.runes.length < 2) continue;
-        if (_standaloneNameMentioned(narrativeText, alias)) {
+        if (standaloneNameMentioned(narrativeText, alias)) {
           mentioned = true;
           break;
         }

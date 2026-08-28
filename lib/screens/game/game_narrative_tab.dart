@@ -430,7 +430,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         ...gp.choices.asMap().entries.map((entry) {
           final index = entry.key;
           final choice = entry.value;
-          final displayText = GameResponseMixin.sanitizeChoiceText(choice.text);
+          final displayText = GameResponseChoiceMixin.sanitizeChoiceText(choice.text);
           return GestureDetector(
             onTap: () => widget.onNarrativeTapChoice(index),
             child: Container(

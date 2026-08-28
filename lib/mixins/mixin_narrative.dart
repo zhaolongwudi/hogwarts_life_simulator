@@ -9,12 +9,12 @@ import '../utils/prompt_sanitizer.dart';
 import '../utils/story_text_renderer.dart';
 import '../models/long_term_memory.dart';
 import '../services/ai_router.dart';
-import '../utils/crash_logger.dart';
+import '../utils/stagnation_detector.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 
-mixin GameNarrativeMixin on GameProviderBase {
+mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
 
@@ -127,7 +127,7 @@ mixin GameNarrativeMixin on GameProviderBase {
         contextBuffer.write(assertionsBlock);
       }
       // ========== T1 超期未推进的"别忘了这些重要伏笔"提醒 ==========
-      final loopsHint = _buildOpenLoopsStagnationHint();
+      final loopsHint = buildOpenLoopsStagnationHint();
       if (loopsHint.isNotEmpty) {
         contextBuffer.write(loopsHint);
       }
