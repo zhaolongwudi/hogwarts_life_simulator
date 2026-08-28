@@ -115,6 +115,58 @@ void main() {
       );
     });
 
+  // ==================== 别名可达性 ====================
+  // handleLocalCommand 只拿第一个空格前的 token 去 registry.find，所以带空格
+  // 的别名永远按不到；而别名撞上别的命令的 primary 时，find 先命中前者，后
+  // 注册的命令也就永远按不到了。
+  group('指令别名真的按得下去', () {
+    final raw = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+    final src = raw
+        .split('\n')
+        .map((l) => l.replaceAll(RegExp(r'//.*\$'), ''))
+        .join('\n');
+
+    List<String> _primaries() => RegExp(r"primary:\s*'([^']+)'")
+        .allMatches(src)
+        .map((m) => m.group(1)!)
+        .toList();
+
+    List<String> _aliases() {
+      final out = <String>[];
+      for (final m in RegExp(r'aliases:\s*\[([^\]]*)\]').allMatches(src)) {
+        out.addAll(RegExp("'([^']+)'")
+            .allMatches(m.group(1)!)
+            .map((t) => t.group(1)!));
+      }
+      return out;
+    }
+
+    test('没有带空格的别名', () {
+      final bad = _aliases().where((a) => a.contains(RegExp(r'\s'))).toList();
+      expect(bad, isEmpty,
+          reason: '调度只用第一个空格前的 token 去 find，带空格的别名匹配不上：$bad');
+    });
+
+    test('primary 不重复', () {
+      final ps = _primaries();
+      expect(ps.toSet(), hasLength(ps.length), reason: 'primary 有重复：$ps');
+    });
+
+    test('别名不重复，也不撞上任何命令的 primary', () {
+      final as = _aliases();
+      expect(as.toSet(), hasLength(as.length), reason: '别名有重复：$as');
+      final clash = as.toSet().intersection(_primaries().toSet());
+      expect(clash, isEmpty,
+          reason: 'find 按注册顺序返回首个命中，这些别名会让同名的命令永远按不到：$clash');
+    });
+
+    test('helpText 里提到的 /谣言 真的输得进去', () {
+      // 曾经「谣言」只写在 helpText 里，玩家照着输得到的是「未知指令」
+      expect(_aliases(), contains('谣言'));
+      expect(_aliases(), contains('传闻'));
+    });
+  });
+
     test('信件指令按子参数约定取参', () {
       expect(
         relationsSrc.contains(RegExp(r'switch \(parts\[1\]\)')),

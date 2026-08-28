@@ -181,7 +181,8 @@ mixin GameCommandsMixin on GameProviderBase {
       ),
       CommandDef(
         primary: '舆论',
-        aliases: ['传闻'],
+        // 「谣言」以前只出现在 helpText 里，玩家照着输会得到一个「未知指令」
+        aliases: ['传闻', '谣言'],
         group: '关系&情感',
         helpText: '查看校园里的传闻/谣言',
         handler: (ctx) {
@@ -206,7 +207,8 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '恋爱等待',
         group: '关系&情感',
         helpText: '查看等待中的恋爱事件',
-        aliases: ['恋爱 等待'],
+        // 别加带空格的别名：调度只拿 parts[0] 去 find，永远匹配不上
+        aliases: const [],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatLoveWaiting();
@@ -227,7 +229,8 @@ mixin GameCommandsMixin on GameProviderBase {
       ),
       CommandDef(
         primary: '关系网络',
-        aliases: ['关系 网络'],
+        // 同上：带空格的别名匹配不上。真正能用的是 /关系网络
+        aliases: const [],
         group: '关系&情感',
         helpText: '查询两位NPC间的关系（/关系网络 [NPC1] [NPC2]）',
         handler: (ctx) {
