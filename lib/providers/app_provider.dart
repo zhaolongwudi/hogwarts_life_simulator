@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/provider_defaults.dart';
 import '../services/ai_router.dart';
 import '../services/key_store.dart';
 
@@ -79,31 +80,36 @@ class AiConfig {
     this.balancePath,
   });
 
-  factory AiConfig.deepseek(String apiKey) => AiConfig(
+  /// 三家工厂统一从 kProviderDefaults 取值。
+  /// 原先这里各自写死 model/baseUrl，与 AppProvider._defaultModel 和
+  /// 设置页的三份副本取值不一致（Agnes 一边 turbo 一边 flash）。
+  factory AiConfig.deepseek(String apiKey) => AiConfig._fromDefaults(
         provider: AiProvider.deepseek,
-        model: 'deepseek-v4-flash',
         apiKey: apiKey,
-        baseUrl: 'https://api.deepseek.com',
-        balancePath: '/user/balance',
       );
 
-  factory AiConfig.agnes(String apiKey) => AiConfig(
-        provider: AiProvider.agnes,
-        model: 'agnes-2.5-turbo',
-        apiKey: apiKey,
-        baseUrl: 'https://api.agnes-ai.cn',
-        chatPath: '/v1/chat/completions',
-      );
+  factory AiConfig.agnes(String apiKey) =>
+      AiConfig._fromDefaults(provider: AiProvider.agnes, apiKey: apiKey);
 
   /// 商汤日日新 SenseNova
-  /// 正确端点: https://token.sensenova.cn/v1/chat/completions
-  factory AiConfig.sensenova(String apiKey) => AiConfig(
-        provider: AiProvider.sensenova,
-        model: 'sensenova-6.8-flash-lite',
-        apiKey: apiKey,
-        baseUrl: 'https://token.sensenova.cn',
-        chatPath: '/v1/chat/completions',
-      );
+  factory AiConfig.sensenova(String apiKey) =>
+      AiConfig._fromDefaults(provider: AiProvider.sensenova, apiKey: apiKey);
+
+  factory AiConfig._fromDefaults({
+    required AiProvider provider,
+    required String apiKey,
+  }) {
+    final d = defaultsForProvider(provider.name);
+    return AiConfig(
+      provider: provider,
+      model: d.model,
+      apiKey: apiKey,
+      baseUrl: d.baseUrl,
+      chatPath: d.chatPath,
+      modelsPath: d.modelsPath,
+      balancePath: d.balancePath,
+    );
+  }
 
   AiConfig copyWith({
     AiProvider? provider,
@@ -131,7 +137,6 @@ class AppProvider extends ChangeNotifier {
   IdentityMode _identityMode = IdentityMode.pure;
   Era _era = Era.harry_same;
   AiProvider _aiProvider = AiProvider.deepseek;
-  String _aiModel = 'deepseek-chat';
   Map<String, List<String>> _apiKeys = {};
   Map<String, String> _baseUrls = {};
   Map<String, String> _models = {};
@@ -144,7 +149,6 @@ class AppProvider extends ChangeNotifier {
   IdentityMode get identityMode => _identityMode;
   Era get era => _era;
   AiProvider get aiProvider => _aiProvider;
-  String get aiModel => _aiModel;
   bool get aiDebugLogEnabled => _aiDebugLogEnabled;
   Map<String, List<String>> get apiKeys => Map.unmodifiable(_apiKeys);
   Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
@@ -180,22 +184,6 @@ class AppProvider extends ChangeNotifier {
     }).toList();
   }
 
-  /// 返回指定提供商的第一个 API Key 的配置（兼容旧版单 key 调用）
-  AiConfig configForProvider(AiProvider provider) {
-    final configs = configsForProvider(provider);
-    if (configs.isNotEmpty) return configs.first;
-    // 没有 key 时返回空 key 配置，由调用方处理
-    final model = _models[provider.name] ?? _defaultModel(provider);
-    final customBaseUrl = _baseUrls[provider.name];
-    switch (provider) {
-      case AiProvider.deepseek:
-        return AiConfig.deepseek('').copyWith(model: model, baseUrl: customBaseUrl);
-      case AiProvider.agnes:
-        return AiConfig.agnes('').copyWith(model: model, baseUrl: customBaseUrl);
-      case AiProvider.sensenova:
-        return AiConfig.sensenova('').copyWith(model: model, baseUrl: customBaseUrl);
-    }
-  }
 
   /// 指定提供商是否有至少一个 API Key
   bool hasKey(AiProvider provider) => keysForProvider(provider).isNotEmpty;
@@ -207,69 +195,9 @@ class AppProvider extends ChangeNotifier {
   List<String> keysForProvider(AiProvider provider) =>
       _apiKeys[provider.name] ?? [];
 
-  String _defaultModel(AiProvider provider) {
-    switch (provider) {
-      case AiProvider.deepseek:
-        return 'deepseek-v4-flash';
-      case AiProvider.agnes:
-        return 'agnes-2.5-flash';
-      case AiProvider.sensenova:
-        return 'sensenova-6.8-flash-lite';
-    }
-  }
+  String _defaultModel(AiProvider provider) =>
+      defaultsForProvider(provider.name).model;
 
-  AiConfig get aiConfig {
-    final keys = keysForProvider(_aiProvider);
-    final key = keys.isNotEmpty ? keys.first : (_apiKey ?? '');
-    final customBaseUrl = _baseUrls[_aiProvider.name];
-    switch (_aiProvider) {
-      case AiProvider.deepseek:
-        return AiConfig.deepseek(key).copyWith(
-          model: _aiModel,
-          baseUrl: customBaseUrl,
-        );
-      case AiProvider.agnes:
-        return AiConfig.agnes(key).copyWith(
-          model: _aiModel,
-          baseUrl: customBaseUrl,
-        );
-      case AiProvider.sensenova:
-        return AiConfig.sensenova(key).copyWith(
-          model: _aiModel,
-          baseUrl: customBaseUrl,
-        );
-    }
-  }
-
-  List<String> get availableModels {
-    switch (_aiProvider) {
-      case AiProvider.deepseek:
-        return ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'];
-      case AiProvider.agnes:
-        return ['agnes-2.5-flash', 'agnes-2.5-turbo', 'agnes-2.5-pro', 'agnes-2.5'];
-      case AiProvider.sensenova:
-        // 平台公测版模型（参考 https://platform.sensenova.cn/docs，2026-08更新）
-        // 所有模型公测期间免费，但有调用次数限制（每5小时重置）
-        return [
-          'sensenova-6.8-flash-lite', // 最新：多模态智能体，1500次/5h
-          'sensenova-6.7-flash-lite', // 稳定版：256K上下文+多模态，1500次/5h
-          'deepseek-v4-flash',         // DeepSeek对话模型，500次/5h
-          'glm-5.2',                   // 智谱旗舰：1M上下文+128K输出，500次/5h
-          'sensenova-u1-fast',         // 信息图生成专用（非chat场景）
-        ];
-    }
-  }
-
-  String get providerLabel {
-    switch (_aiProvider) {
-      case AiProvider.deepseek:
-        return 'DeepSeek';
-      case AiProvider.agnes:
-        return 'Agnes';
-      case AiProvider.sensenova:
-        return 'SenseNova·商汤日日新';
-    }
-  }
 
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -290,7 +218,6 @@ class AppProvider extends ChangeNotifier {
     _aiProvider = (savedProviderIdx >= 0 && savedProviderIdx < AiProvider.values.length)
         ? AiProvider.values[savedProviderIdx]
         : AiProvider.values.first;
-    _aiModel = prefs.getString('ai_model') ?? 'deepseek-v4-flash';
 
     // 迁移旧版单一明文 api_key → 安全存储
     final legacyApiKey = prefs.getString('api_key');
@@ -403,28 +330,6 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setAiProvider(AiProvider provider) async {
-    _aiProvider = provider;
-    final keys = _apiKeys[provider.name];
-    if (keys != null && keys.isNotEmpty) _apiKey = keys.first;
-    final defaults = {
-      AiProvider.deepseek: 'deepseek-v4-flash',
-      AiProvider.agnes: 'agnes-2.5-turbo',
-      AiProvider.sensenova: 'sensenova-6.7-flash-lite',
-    };
-    _aiModel = defaults[provider] ?? 'deepseek-v4-flash';
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('ai_provider', provider.index);
-    await prefs.setString('ai_model', _aiModel);
-    notifyListeners();
-  }
-
-  Future<void> setAiModel(String model) async {
-    _aiModel = model;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ai_model', model);
-    notifyListeners();
-  }
 
   Future<void> setBaseUrl(String url) async {
     if (url.trim().isEmpty) {
@@ -482,23 +387,11 @@ class AppProvider extends ChangeNotifier {
     _models[provider.name] = model;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('model_${provider.name}', model);
-    if (_aiProvider == provider) {
-      _aiModel = model;
-      await prefs.setString('ai_model', model);
-    }
     notifyListeners();
   }
 
-  List<String> availableModelsFor(AiProvider provider) {
-    switch (provider) {
-      case AiProvider.deepseek:
-        return ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'];
-      case AiProvider.agnes:
-        return ['agnes-2.5-turbo', 'agnes-2.5-flash', 'agnes-2.5-pro', 'agnes-2.5'];
-      case AiProvider.sensenova:
-        return ['sensenova-6.7-flash-lite', 'deepseek-v4-flash'];
-    }
-  }
+  List<String> availableModelsFor(AiProvider provider) =>
+      defaultsForProvider(provider.name).models;
 
   /// 免费模型（官方提供免费额度 / 极低资费）
   List<String> freeModelsFor(AiProvider provider) {

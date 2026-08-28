@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../data/provider_defaults.dart';
 import '../providers/game_provider.dart';
 import '../services/deepseek_service.dart';
 import '../utils/ai_debug_logger.dart';
@@ -131,36 +132,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String defaultBaseUrl(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return 'https://api.deepseek.com';
-      case AiProvider.agnes:
-        return 'https://api.agnes-ai.cn';
-      case AiProvider.sensenova:
-        return 'https://token.sensenova.cn';
-    }
-  }
+  // 默认端点/模型统一读 lib/data/provider_defaults.dart。此前两份设置页各写一份
+  // switch，且与 AiConfig 工厂、AppProvider._defaultModel 的取值不一致
+  // （SenseNova 界面上写 6.7、fallback 用 6.8）。
+  String defaultBaseUrl(AiProvider p) => defaultsForProvider(p.name).baseUrl;
 
-  String defaultChatPath(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-      case AiProvider.agnes:
-      case AiProvider.sensenova:
-        return '/v1/chat/completions';
-    }
-  }
+  String defaultChatPath(AiProvider p) => defaultsForProvider(p.name).chatPath;
 
-  String defaultModel(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return 'deepseek-v4-flash';
-      case AiProvider.agnes:
-        return 'agnes-2.5-flash';
-      case AiProvider.sensenova:
-        return 'sensenova-6.7-flash-lite';
-    }
-  }
+  String defaultModel(AiProvider p) => defaultsForProvider(p.name).model;
 
   @override
   Widget build(BuildContext context) {

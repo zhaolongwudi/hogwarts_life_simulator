@@ -175,7 +175,6 @@ abstract class GameProviderBase extends ChangeNotifier {
   void checkAffectionAchievements(NPC npc);
   CgDef? cgById(String id);
   void checkAllAchievements();
-  Future<bool> checkConnection();
   void checkLocks(NPC npc);
   void checkNPCConfessions();
   void checkSkillAchievements();

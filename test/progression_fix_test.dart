@@ -8,6 +8,8 @@ import 'package:hogwarts_life_simulator/screens/world_map_screen.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/utils/npc_lookup.dart';
+import 'package:hogwarts_life_simulator/data/provider_defaults.dart';
+import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -179,6 +181,7 @@ void main() {
   _codeHygieneGroup();
   _mapLayoutGroup();
   _unwiredFeatureGroup();
+  _providerDefaultsGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -815,6 +818,107 @@ void _unwiredFeatureGroup() {
       expect(back.houseCupPoints, 35);
       expect(back.houseCupSources['魁地奇取胜'], 30);
       expect(back.houseCupSources['决斗获胜'], 5);
+    });
+  });
+}
+
+// ==================== AI 提供商默认值 ====================
+// 出厂模型/端点原先散在 6 处且互相打架（Agnes 一边 turbo 一边 flash），
+// 已收敛到 lib/data/provider_defaults.dart。本组防止副本复活。
+
+void _providerDefaultsGroup() {
+  group('提供商默认值只有一份', () {
+    const files = [
+      'lib/providers/app_provider.dart',
+      'lib/screens/settings_screen.dart',
+      'lib/screens/game/game_settings_tab.dart',
+      'lib/screens/settings/settings_provider_card.dart',
+    ];
+
+    /// 去掉行注释再扫描，否则注释里引用的旧值会被当成真实代码。
+    String strip(String src) => src
+        .split('\n')
+        .map((l) => l.replaceAll(RegExp(r'//.*$'), ''))
+        .join('\n');
+
+    test('任何文件都不再写死 baseUrl', () {
+      final offenders = <String>[];
+      for (final path in files) {
+        final src = strip(File(path).readAsStringSync());
+        for (final m in RegExp(r'https://[a-z.\-]+').allMatches(src)) {
+          offenders.add('$path -> ${m.group(0)}');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '端点地址应统一在 kProviderDefaults 里：\n${offenders.join('\n')}');
+    });
+
+    test('免费/付费模型清单必须是总表的子集', () {
+      // 这两份是给设置页做分组展示的策展清单，允许单独维护，
+      // 但绝不能列出 kProviderDefaults 里没有的模型——
+      // 否则玩家会选到一个下拉里存在、实际却发不出去的模型。
+      final app = AppProvider();
+      for (final p in AiProvider.values) {
+        final all = defaultsForProvider(p.name).models;
+        for (final m in app.freeModelsFor(p)) {
+          expect(all.contains(m), isTrue,
+              reason: '${p.name} 的免费清单含 $m，但出厂列表里没有它');
+        }
+        for (final m in app.popularPaidModelsFor(p)) {
+          expect(all.contains(m), isTrue,
+              reason: '${p.name} 的付费清单含 $m，但出厂列表里没有它');
+        }
+      }
+    });
+
+    test('四个文件的默认值 helper 都委托给了 defaultsForProvider', () {
+      for (final path in files) {
+        final src = strip(File(path).readAsStringSync());
+        expect(src.contains('defaultsForProvider'), isTrue, reason: path);
+      }
+    });
+
+    test('kProviderDefaults 覆盖全部三个提供商', () {
+      for (final p in ['deepseek', 'agnes', 'sensenova']) {
+        final d = defaultsForProvider(p);
+        expect(d.model, isNotEmpty, reason: p);
+        expect(d.models, isNotEmpty, reason: p);
+        expect(d.baseUrl, startsWith('https://'), reason: p);
+        expect(d.chatPath, isNotEmpty, reason: p);
+        expect(d.displayName, isNotEmpty, reason: p);
+        expect(d.tagline, isNotEmpty, reason: p);
+      }
+    });
+
+    test('出厂默认模型必须在可选列表中', () {
+      for (final p in ['deepseek', 'agnes', 'sensenova']) {
+        final d = defaultsForProvider(p);
+        expect(d.models.contains(d.model), isTrue,
+            reason: '$p 的默认模型 ${d.model} 不在可选列表里，'
+                '设置页会显示一个下拉里根本不存在的选项');
+      }
+    });
+
+    test('AiConfig 工厂返回的模型与出厂默认一致', () {
+      // 这是原先的实际 bug：AiConfig.agnes 用 turbo，fallback 用 flash，
+      // 界面显示的和请求发出去的不是同一个模型
+      expect(AiConfig.agnes('k').model, defaultsForProvider('agnes').model);
+      expect(AiConfig.deepseek('k').model, defaultsForProvider('deepseek').model);
+      expect(AiConfig.sensenova('k').model,
+          defaultsForProvider('sensenova').model);
+    });
+
+    test('AiConfig 工厂的端点与出厂默认一致', () {
+      expect(AiConfig.agnes('k').baseUrl, defaultsForProvider('agnes').baseUrl);
+      expect(AiConfig.deepseek('k').baseUrl,
+          defaultsForProvider('deepseek').baseUrl);
+      expect(AiConfig.sensenova('k').baseUrl,
+          defaultsForProvider('sensenova').baseUrl);
+    });
+
+    test('未知 provider 回落到 deepseek，不抛异常', () {
+      expect(defaultsForProvider('nope').model,
+          defaultsForProvider('deepseek').model);
     });
   });
 }

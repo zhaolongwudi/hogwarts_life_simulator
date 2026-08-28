@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/provider_defaults.dart';
 import '../../providers/app_provider.dart';
 
 /// AI 提供商配置卡片（可折叠）。
@@ -111,50 +112,16 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     }
   }
 
-  String defaultBaseUrl(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return 'https://api.deepseek.com';
-      case AiProvider.agnes:
-        return 'https://api.agnes-ai.cn';
-      case AiProvider.sensenova:
-        return 'https://token.sensenova.cn';
-    }
-  }
+  // 以下四项原先各写一份 switch，与 AiConfig 工厂、AppProvider._defaultModel
+  // 以及两个设置页的副本取值不一致。统一读 lib/data/provider_defaults.dart。
+  String defaultBaseUrl(AiProvider p) => defaultsForProvider(p.name).baseUrl;
 
-  String defaultModel(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return 'deepseek-v4-flash';
-      case AiProvider.agnes:
-        return 'agnes-2.5-flash';
-      case AiProvider.sensenova:
-        return 'sensenova-6.8-flash-lite';
-    }
-  }
+  String defaultModel(AiProvider p) => defaultsForProvider(p.name).model;
 
-  String providerNameLabel(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return 'DeepSeek';
-      case AiProvider.agnes:
-        return 'Agnes';
-      case AiProvider.sensenova:
-        return 'SenseNova';
-    }
-  }
+  String providerNameLabel(AiProvider p) => defaultsForProvider(p.name).displayName;
 
   /// 一句话定位（收起态显示，帮助用户快速区分三家）
-  String _tagline(AiProvider p) {
-    switch (p) {
-      case AiProvider.deepseek:
-        return '付费 · 高质量长文本';
-      case AiProvider.agnes:
-        return '免费 · 响应最快';
-      case AiProvider.sensenova:
-        return '免费 · 剧情质量最佳';
-    }
-  }
+  String _tagline(AiProvider p) => defaultsForProvider(p.name).tagline;
 
   Color _providerColor(AiProvider p) {
     switch (p) {

@@ -1280,28 +1280,6 @@ mixin GameSystemsMixin on GameProviderBase {
     return saveService.importSave(jsonString);
   }
 
-  // ==================== API 检查 ====================
-
-  Future<bool> checkConnection() async {
-    if (router == null) return false;
-    final provider = appProvider.aiProvider;
-    return await router!.checkBalance(provider) != null ||
-        appProvider.hasKey(provider);
-  }
-
-  Future<double?> get balance async {
-    if (router == null) return null;
-    final provider = appProvider.aiProvider;
-    return await router!.checkBalance(provider);
-  }
-
-  Future<Map<String, dynamic>?> get quotaInfo async {
-    if (router == null) return null;
-    final provider = appProvider.aiProvider;
-    final services = router!.getServices(provider);
-    if (services == null || services.isEmpty) return null;
-    return await services.first.getQuotaInfo();
-  }
 
   void resetTokenUsage() {
     totalPromptTokens = 0;
