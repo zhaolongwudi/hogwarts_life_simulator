@@ -5,6 +5,17 @@
 
 ---
 
+### v2.4.0 — 2026-08-28
+
+**📋 变更说明**
+fix: 修复代码拆分后跨文件引用错误
+
+- 添加 mixin on 子句依赖（GameNarrativeMixin→GameNarrativeContinuityMixin,
+  GameResponseMixin→GameResponseChoiceMixin+GameResponseAffectionMixin）
+- 私有方法改为公开(_buildOpenLoopsStagnationHint/_extractChoicesFromRawText等)
+- _TransitionNode 改为公开 TransitionNode 类
+- 添加缺失的 import（stagnation_detector, story_text_renderer）
+
 ### v2.3.9 — 2026-08-28
 
 **📋 变更说明**
