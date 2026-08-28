@@ -679,7 +679,7 @@ mixin GamePlayMixin on GameProviderBase {
       // 打赢对方会让人更服气，但只加一次：反复刷同一个人不该刷出满好感
       if (!_duelBeatenNpcIds.contains(opponent.id)) {
         _duelBeatenNpcIds.add(opponent.id);
-        opponent.affection = (opponent.affection + 2).clamp(-100, 100);
+        this.updateNpcAffection(opponent.id, 2, reason: '决斗获胜');
       }
       buf.writeln('\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
       buf.writeln('胜利：战斗声望 +$repGain · 道德声望 +2 · 学院杯 +${(10 * decay).round().clamp(1, 10)} · 赌注 $reward 加隆');

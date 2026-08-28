@@ -173,6 +173,7 @@ void main() {
 
   _contentGroup();
   _contentCoverageGroup();
+  _codeHygieneGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -419,6 +420,88 @@ void _contentCoverageGroup() {
       final initSrc = File('lib/mixins/mixin_init.dart').readAsStringSync();
       expect(initSrc.contains('giftPrefsForArchetype(archetypeOfPersonality('),
           isTrue);
+    });
+  });
+}
+
+/// 代码卫生：用源码扫描把"容易悄悄退化"的约束固定下来。
+void _codeHygieneGroup() {
+  /// 去掉行注释再扫描，否则注释里引用的旧代码会被当成真实代码。
+  String stripComments(String src) => src
+      .split('\n')
+      .map((l) => l.replaceAll(RegExp(r'//.*$'), ''))
+      .join('\n');
+
+  group('好感度必须走统一入口', () {
+    /// 白名单：这些地方直接写 npc.affection 是刻意且正确的
+    /// - mixin_commands.dart：/作弊 好感（刻意绕过上限，已补状态同步）
+    /// - mixin_systems.dart：一致性检查里的钳制与记恨上限修正
+    const whitelist = <String>{
+      'lib/mixins/mixin_commands.dart',
+      'lib/mixins/mixin_systems.dart',
+    };
+
+    test('mixins/screens 下不得绕过 updateNpcAffection', () {
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final path = entity.path.replaceAll(r'\', '/');
+        if (!path.contains('/mixins/') && !path.contains('/screens/')) continue;
+        if (whitelist.contains(path)) continue;
+        final lines = stripComments(entity.readAsStringSync()).split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i].trim();
+          if (!RegExp(r'\.affection\s*(\+=|-=|=)').hasMatch(line)) continue;
+          if (line.contains('==') || line.contains('!=')) continue;
+          if (RegExp(r'\.affection\s*[<>]=?').hasMatch(line)) continue;
+          offenders.add(path + ':' + (i + 1).toString() + '  ' + line);
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '这些地方绕过了 updateNpcAffection：\n' + offenders.join('\n'));
+    });
+
+    test('/作弊 好感 在改数值后补了状态同步', () {
+      final src = stripComments(
+          File('lib/mixins/mixin_commands.dart').readAsStringSync());
+      final i = src.indexOf("npc.affection = (npc.affection + delta)");
+      expect(i, greaterThan(-1));
+      final tail = src.substring(i, i + 400);
+      expect(tail.contains('syncRelationshipLevel(npc)'), isTrue);
+      expect(tail.contains('checkAffectionAchievements(npc)'), isTrue);
+    });
+
+    test('updateNpcAffection 仍是唯一写入管线', () {
+      final src = File('lib/providers/game_provider.dart').readAsStringSync();
+      expect(src.contains('void updateNpcAffection('), isTrue);
+    });
+  });
+
+  group('存档调用不得静默丢弃', () {
+    test('saveNow 不再用 _saveScheduled 直接 return', () {
+      final src = stripComments(
+          File('lib/providers/game_provider.dart').readAsStringSync());
+      final start = src.indexOf('Future<void> saveNow() async {');
+      final end = src.indexOf('\n  }', start);
+      final body = src.substring(start, end);
+      expect(body.contains('if (_saveScheduled) return;'), isFalse,
+          reason: '在途自动存档会让手动存档被静默丢弃');
+      expect(body.contains('await pending;'), isTrue);
+    });
+
+    test('所有不等待的 autoSave 都显式标注了 unawaited', () {
+      final bare = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final src = stripComments(entity.readAsStringSync());
+        for (final m in
+            RegExp(r'^(\s*)autoSave\(\);', multiLine: true).allMatches(src)) {
+          bare.add(entity.path.replaceAll(r'\', '/') +
+              ' -> ' +
+              m.group(0)!.trim());
+        }
+      }
+      expect(bare, isEmpty, reason: '未标注的 autoSave()：\n' + bare.join('\n'));
     });
   });
 }

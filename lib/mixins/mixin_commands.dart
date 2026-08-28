@@ -802,7 +802,15 @@ mixin GameCommandsMixin on GameProviderBase {
           }
           final delta = int.tryParse(parts[2]);
           if (delta != null) {
+            // 作弊指令刻意绕过好感上限，这里只补上状态同步：
+            // 恋爱阶段与关系等级原本会停在旧值，导致面板与实际数值对不上。
             npc.affection = (npc.affection + delta).clamp(-100, 100);
+            if (npc.affection > npc.maxAffectionReached) {
+              npc.maxAffectionReached = npc.affection;
+            }
+            syncRelationshipLevel(npc);
+            checkAffectionAchievements(npc);
+            notifyListeners();
             currentNarrative = '已调整「${npc.name}」的好感度：${npc.affection}（${npc.affectionStage}）';
           }
         }

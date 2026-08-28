@@ -788,11 +788,12 @@ mixin GameSystemsMixin on GameProviderBase {
       p.energy = min(100, p.energy + 3);
     }
 
-    // 每日随机触发好感微调
-    for (final npc in npcRegistry.values) {
+    // 每日随机触发好感微调。
+    // 改走 updateNpcAffection：直接改字段会绕过每周好感上限、记恨上限、
+    // recentEvents 与长线记忆管线，等于给所有已认识的人开了个无上限的口子。
+    for (final npc in npcRegistry.values.toList()) {
       if (npc.affection > 0 && random.nextDouble() < 0.05) {
-        npc.affection = (npc.affection + 1).clamp(-100, 100);
-        checkAffectionAchievements(npc);
+        this.updateNpcAffection(npc.id, 1, reason: '日常相处');
       }
     }
 

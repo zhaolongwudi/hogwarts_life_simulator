@@ -812,7 +812,7 @@ mixin GameRelationsMixin on GameProviderBase {
       if (alive.isNotEmpty) {
         final npc = alive[random.nextInt(alive.length)];
         final delta = 1 + random.nextInt(2); // +1 ~ +2
-        npc.affection = (npc.affection + delta).clamp(-100, 100);
+        this.updateNpcAffection(npc.id, delta, reason: '课堂同桌');
         result = '【课堂互动 · 同桌】\n'
             '趁教授转身，${npc.name}悄悄递来一张纸条，上面写着刚才没听懂的笔记要点。\n'
             '你冲对方感激地笑了笑。\n'
@@ -1266,7 +1266,7 @@ mixin GameRelationsMixin on GameProviderBase {
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'
           '你们在月色下相视而笑，霍格沃茨的钟声在远处敲响，仿佛在为这段感情祝福。';
     } else {
-      npc.affection -= 5;
+      this.updateNpcAffection(npc.id, -5, reason: '婉拒表白');
       unlockCG(cgById('CG-CF-002'));
       _addRumor('听说${npc.name}向你表白，却被你拒绝了。');
       bumpImpactScore(npc.isCanon ? 0.03 : 0.015, debugReason: '婉拒${npc.name}表白');
