@@ -59,7 +59,7 @@ class _DiaryScreenState extends State<DiaryScreen>
       body: TabBarView(
         controller: _tab,
         children: [
-          _CgGalleryTab(recs: gp.player?.cgRecords ?? const {}),
+          CgGalleryTab(recs: gp.player?.cgRecords ?? const {}),
           const _JournalTab(),
         ],
       ),
@@ -177,10 +177,15 @@ class _DiaryScreenState extends State<DiaryScreen>
 
 // ---------------- CG 图鉴（真实数据） ----------------
 
-class _CgGalleryTab extends StatelessWidget {
+/// CG 图鉴本体。
+///
+/// 公开是为了让「你的回忆」页（lib/screens/memory_screen.dart）复用同一份
+/// 实现。那一页的 CG 画廊原本是写死的「暂无CG」占位，照着这里再抄一遍就
+/// 是本项目第九处「同一份东西手抄 N 遍」——两边迟早长得不一样。
+class CgGalleryTab extends StatelessWidget {
   final Map<String, CgRecord> recs;
 
-  const _CgGalleryTab({required this.recs});
+  const CgGalleryTab({required this.recs});
 
   @override
   Widget build(BuildContext context) {

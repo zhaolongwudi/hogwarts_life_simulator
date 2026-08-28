@@ -7,14 +7,6 @@ import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';
 
-/// 手机上还没实现的入口：与其让点击毫无反应（用户会以为 app 卡了），
-/// 不如明确告知状态。
-void _notReady(BuildContext context, String name) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$name 还在开发中'), duration: const Duration(seconds: 2)),
-  );
-}
-
 void _editSignature(BuildContext context) {
   final gp = context.read<GameProvider>();
   final controller = TextEditingController(text: gp.player?.signature ?? '');
@@ -100,8 +92,6 @@ class PhoneTab extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _buildCompactProfile(context, player),
-              const SizedBox(height: 12),
-              _buildCompactMusicPlayer(context),
               const SizedBox(height: 16),
               _buildPhoneAppGrid(context),
               const SizedBox(height: 16),
@@ -160,56 +150,6 @@ class PhoneTab extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCompactMusicPlayer(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _notReady(context, '背景音乐'),
-        child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.music_note, color: Theme.of(context).colorScheme.primary, size: 22),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('背景音乐', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text('尚未上线', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
-              ],
-            ),
-          ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
-          ),
-            ],
-          ),
-        ),
       ),
     );
   }

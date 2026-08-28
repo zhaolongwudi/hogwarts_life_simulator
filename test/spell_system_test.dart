@@ -272,6 +272,57 @@ void main() {
     });
   });
 
+  group('界面不许挂着兑现不了的承诺', () {
+    test('没有「还在开发中」「即将上线」这类占位文案', () {
+      // 「背景音乐 / 尚未上线」那张卡片挂了很久：项目里既没有音频依赖，
+      // assets 下也没有任何音频文件，它永远不可能兑现。同类占位一律清掉
+      // ——与其让一个漂亮的按钮告诉玩家「还没做」，不如不放这个按钮。
+      const placeholders = [
+        '还在开发中',
+        '即将上线',
+        '尚未上线',
+        '敬请期待',
+        '功能未开放',
+      ];
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        final src = _codeOnly(f);
+        for (final w in placeholders) {
+          if (src.contains(w)) offenders.add('$f → $w');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '这些文案承诺了不存在的功能：$offenders');
+    });
+
+    test('「你的回忆」三个分页都读真实数据', () {
+      final src = _codeOnly('lib/screens/memory_screen.dart');
+      for (final read in [
+        'recentNarrativeEvents',
+        'player?.collection',
+        'cgRecords',
+      ]) {
+        expect(src.contains(read), isTrue,
+            reason: '回忆页没有读 $read，那一栏又是写死的占位');
+      }
+      // 写死的样板不能再回来
+      expect(src.contains('全文完'), isFalse);
+      expect(src.contains('第1年·9月'), isFalse);
+    });
+
+    test('CG 画廊只有一份实现，回忆页复用日记页那一份', () {
+      final memory = _codeOnly('lib/screens/memory_screen.dart');
+      final diary = _codeOnly('lib/screens/other/diary_screen.dart');
+      expect(memory.contains('CgGalleryTab('), isTrue,
+          reason: '回忆页没有复用日记页的 CG 画廊，八成又抄了一份');
+      // 「按章节分组」的逻辑只该出现一次
+      final grouped = RegExp(r'putIfAbsent\(cg\.chapter')
+          .allMatches(memory + diary)
+          .length;
+      expect(grouped, 1, reason: '按章节分组 CG 的逻辑出现了 $grouped 份');
+    });
+  });
+
   group('收藏品不再是空的许诺', () {
     test('收藏品 id 不重复', () {
       final ids = kCollectibleCatalog.map((c) => c.id).toList();
