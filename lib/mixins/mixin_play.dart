@@ -7,6 +7,7 @@ import '../data/quest_data.dart';
 import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
 import '../data/attribute_data.dart';
+import '../data/spell_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -154,8 +155,14 @@ mixin GamePlayMixin on GameProviderBase {
       if (p.learnedSpells.isEmpty) {
         p.learnedSpells['漂浮咒'] = SpellLevel(spellName: '漂浮咒', level: 1, practiceCount: 1);
         buf.writeln('你翻开《标准咒语书》，第一次学会了「漂浮咒」！');
+        buf.writeln('（以后学新咒语用 /咒语 学习，练熟用 /咒语 练习）');
       } else {
+        // 以前这句只是句空话——读完什么都没发生，"豁然开朗"没有对应的数值。
+        // 现在它真的推进魔咒理解：书是给已经会咒的人磨熟练度用的。
+        p.attributes['spell_understanding'] =
+            ((p.attributes['spell_understanding'] ?? 50) + 2).clamp(0, 100);
         buf.writeln('你温习了《标准咒语书》，许多细节豁然开朗。');
+        buf.writeln('魔咒理解 +2（当前 ${p.attributes['spell_understanding']}）');
       }
     }
 
@@ -228,6 +235,204 @@ mixin GamePlayMixin on GameProviderBase {
   /// 属性 key → 中文名。表本身在 lib/data/attribute_data.dart
   /// （attrLabel 那边共用同一份，两边翻译曾经互相矛盾过）。
   String _attrLabelZh(String key) => attributeLabel(key);
+
+  // ==================== 1b. 咒语学习与练习 ====================
+
+  /// 咒语一览：已学会的按等级排，再列当前年级还能学的。
+  ///
+  /// 这是玩家唯一能看到「哪些咒语存在」的地方。以前没有这张表，learnedSpells
+  /// 里最多躺着一条「漂浮咒」，成就「书虫」要求学会 10 个——玩家连第 2 个咒
+  /// 的名字都无从得知。
+  String formatSpells() {
+    final p = player;
+    if (p == null) return '你还没有开始学业。';
+    final grade = p.grade ?? 1;
+    final buf = StringBuffer('【魔咒】（已学 ${p.learnedSpells.length}/${spellCatalog.length}）\n');
+
+    if (p.learnedSpells.isEmpty) {
+      buf.writeln('你还一个咒语都没学会。/咒语 学习 咒语名 可以开始。');
+    } else {
+      final known = p.learnedSpells.values.toList()
+        ..sort((a, b) => b.level.compareTo(a.level));
+      for (final s in known) {
+        final def = spellByName(s.spellName);
+        final cap = def == null ? 100 : def.levelCapFor(_attr(def.attribute));
+        final full = s.level >= cap;
+        buf.writeln('· ${s.spellName}　Lv.${s.level}'
+            '${full ? '（已达当前上限 $cap，先提高${def == null ? '熟练度' : _attrLabelZh(def.attribute)}）' : '（上限 $cap）'}'
+            '　练过 ${s.practiceCount} 次');
+      }
+    }
+
+    final locked = spellsLearnableAt(grade)
+        .where((s) => !p.learnedSpells.containsKey(s.name))
+        .toList();
+    buf.writeln();
+    if (locked.isEmpty) {
+      buf.writeln('$grade 年级能学的咒语你都学过了。');
+    } else {
+      buf.writeln('当前年级还可以学：');
+      for (final s in locked) {
+        final attr = _attr(s.attribute);
+        final ok = attr >= s.requiredAttribute;
+        buf.writeln('· ${s.name}（${s.incantation}）'
+            '　${_attrLabelZh(s.attribute)} ${attr}/${s.requiredAttribute}${ok ? '' : '（不够）'}'
+            '　${s.effect}');
+      }
+    }
+    buf.writeln();
+    buf.write('用法：/咒语 学习 咒语名 ｜ /咒语 练习 咒语名 ｜ /咒语 详情 咒语名\n'
+        '每天学 1 个新咒、练 ${dailyLimitOf('spell')} 次。');
+    return buf.toString();
+  }
+
+  String formatSpellDetail(String name) {
+    final s = spellByName(name);
+    if (s == null) return '没有「$name」这个咒语。输入 /咒语 看看能学什么。';
+    final p = player;
+    final learned = p?.learnedSpells[s.name];
+    final buf = StringBuffer('【${s.name}】\n')
+      ..writeln('咒文：${s.incantation}')
+      ..writeln('类别：${s.category.label}　难度：${'★' * s.difficulty}')
+      ..writeln('最低年级：${s.minGrade} 年级')
+      ..writeln('关联熟练度：${_attrLabelZh(s.attribute)}（需 ${s.requiredAttribute} 才能学，也决定等级上限）')
+      ..writeln('效果：${s.effect}');
+    if (learned != null) {
+      buf.writeln('你的进度：Lv.${learned.level}（上限 ${s.levelCapFor(_attr(s.attribute))}），练过 ${learned.practiceCount} 次');
+    } else {
+      buf.writeln('你还没有学会这个咒语。');
+    }
+    return buf.toString();
+  }
+
+  /// 学一个新咒语。
+  ///
+  /// 年级与熟练度两道门槛是必要的：咒语等级会被关联属性压着，让一年级新生
+  /// 直接学走杀戮咒，既不符合设定，也会让「一年级禁咒」的一致性检查失去意义
+  /// （那条检查正是拿 learnedSpells 当白名单的）。
+  void learnSpell(String name) {
+    final p = player;
+    if (p == null) return;
+    final def = spellByName(name);
+    if (def == null) {
+      _finishLocal('没有「$name」这个咒语。输入 /咒语 看看当前年级能学什么。');
+      return;
+    }
+    if (p.learnedSpells.containsKey(def.name)) {
+      _finishLocal('你已经会「${def.name}」了，想提高等级就 /咒语 练习 ${def.name}。');
+      return;
+    }
+    final grade = p.grade ?? 1;
+    if (grade < def.minGrade) {
+      _finishLocal('「${def.name}」是 $grade 年级还够不着的内容（需 ${def.minGrade} 年级）。\n'
+          '现在练好手上这几个咒，比硬啃难的更有用。');
+      return;
+    }
+    final attr = _attr(def.attribute);
+    if (attr < def.requiredAttribute) {
+      _finishLocal('你试了几次，杖尖只是冒了点烟。\n\n'
+          '「${def.name}」需要${_attrLabelZh(def.attribute)}达到 ${def.requiredAttribute}'
+          '（当前 $attr）。先去 /课堂 互动 练练基本功。');
+      return;
+    }
+    if (!canDoDaily('learn_spell')) {
+      _finishLocal('一天啃一个新咒已经够呛了，明天再学吧。\n\n'
+          '（每天只能学 1 个新咒语；已学会的可以练 ${dailyLimitOf('spell')} 次）');
+      return;
+    }
+    if (p.energy < 10) {
+      _finishLocal('你的精力只剩 ${p.energy}/100，握着魔杖的手都在晃。先休息吧。');
+      return;
+    }
+
+    recordDailyActivity('learn_spell');
+    advanceTimeForAction('学习魔咒');
+    p.energy = (p.energy - 10).clamp(0, 100);
+    p.learnedSpells[def.name] =
+        SpellLevel(spellName: def.name, level: 1, practiceCount: 1);
+
+    final buf = StringBuffer('【学会新咒语】\n')
+      ..writeln('你对着垫子念出「${def.incantation}」，杖尖终于给了回应。')
+      ..writeln('${def.effect}')
+      ..writeln()
+      ..writeln('学会：${def.name}（Lv.1，等级上限 ${def.levelCapFor(attr)}）')
+      ..writeln('精力 -10');
+    notifications.add('✨ 学会新咒语：${def.name}');
+    worldState.addNarrativeEvent('✨ 学会新咒语：${def.name}', turn: turnCount);
+    checkAllAchievements();
+    _finishLocal(buf.toString());
+  }
+
+  /// 练习一个已学会的咒语，提高它的等级。
+  ///
+  /// 等级被关联熟练度封顶（SpellDef.levelCapFor），所以「反复练同一个咒」
+  /// 顶不出满级；熟练度不够时得回头去上课。练习本身也有小概率推进熟练度，
+  /// 让「练咒 → 变强 → 等级上限抬高」形成闭环，而不是各涨各的。
+  void practiseSpell(String name) {
+    final p = player;
+    if (p == null) return;
+    final def = spellByName(name);
+    if (def == null) {
+      _finishLocal('没有「$name」这个咒语。输入 /咒语 看看能学什么。');
+      return;
+    }
+    final cur = p.learnedSpells[def.name];
+    if (cur == null) {
+      _finishLocal('你还不会「${def.name}」。先 /咒语 学习 ${def.name}。');
+      return;
+    }
+    if (!canDoDaily('spell')) {
+      _finishLocal('今天已经练了 ${dailyLimitOf('spell')} 次，手腕酸得抬不起来。\n\n'
+          '（练习次数每天重置；学新咒另有 1 次）');
+      return;
+    }
+    if (p.energy < 8) {
+      _finishLocal('你的精力只剩 ${p.energy}/100，再挥杖要伤到自己了。先休息吧。');
+      return;
+    }
+
+    recordDailyActivity('spell');
+    advanceTimeForAction('练习魔咒');
+    p.energy = (p.energy - 8).clamp(0, 100);
+
+    final cap = def.levelCapFor(_attr(def.attribute));
+    final grown = cur.level < cap;
+    var gain = 0;
+    if (grown) {
+      gain = 1 + random.nextInt((6 - def.difficulty).clamp(1, 5));
+      // 高段位成长放缓：Lv.60 之后每次只有一半，避免几十次就顶到上限。
+      if (cur.level >= 60) gain = (gain / 2).ceil().clamp(1, 5);
+    }
+
+    // 练咒反过来磨熟练度——顺便让「优等生」这条成就真正够得着。
+    final attrGain = random.nextInt(100) < 35 ? 1 : 0;
+    if (attrGain > 0) {
+      p.attributes[def.attribute] =
+          ((p.attributes[def.attribute] ?? 50) + attrGain).clamp(0, 100);
+    }
+
+    final level = (cur.level + gain).clamp(0, cap);
+    p.learnedSpells[def.name] = SpellLevel(
+      spellName: def.name,
+      level: level,
+      practiceCount: cur.practiceCount + 1,
+    );
+
+    final buf = StringBuffer('【练习 · ${def.name}】\n')
+      ..writeln(grown
+          ? '你一遍遍念着「${def.incantation}」，第 ${cur.practiceCount + 1} 次总算稳住了。'
+          : '你又练了一遍「${def.incantation}」，手感还在，可等级已经顶到当前上限了。')
+      ..writeln()
+      ..writeln(grown ? '等级 ${cur.level} → $level' : '等级 $level（已达上限 $cap）');
+    if (attrGain > 0) {
+      buf.writeln('${_attrLabelZh(def.attribute)} +$attrGain（当前 ${_attr(def.attribute)}）');
+    } else if (!grown) {
+      buf.writeln('想继续提高，得先把${_attrLabelZh(def.attribute)}练上去（/课堂 互动）。');
+    }
+    buf.writeln('精力 -8');
+    checkAllAchievements();
+    _finishLocal(buf.toString());
+  }
 
   // ==================== 2. 宠物互动 ====================
 

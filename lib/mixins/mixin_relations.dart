@@ -16,6 +16,7 @@ import '../utils/npc_lookup.dart';
 import '../utils/inventory_ops.dart';
 import '../data/gift_rules.dart';
 import '../data/item_data.dart';
+import '../data/attribute_data.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 
@@ -1669,7 +1670,9 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   void checkAffectionAchievements(NPC npc) {
-    if (npc.affection >= 20) {
+    // 门槛问好感阶段表要，不在代码里另写一个 20——描述写的是「关系达到
+    // 好感」，阶段表的区间一改，成就跟着变，不会出现文案和判定对不上。
+    if (npc.affection >= affectionStageMin('好感')) {
       unlockAchievement('first_friend');
     }
     checkCGUnlockByEvaluator(npc);
@@ -1700,8 +1703,14 @@ mixin GameRelationsMixin on GameProviderBase {
   void checkSkillAchievements() {
     final p = player;
     if (p == null) return;
-    for (final s in p.learnedSpells.values) {
-      if (s.level >= 90) {
+    // 「优等生」判的是学业熟练度（课程表会提升的那几项属性）。
+    //
+    // 旧实现查的是 learnedSpells 的等级，而咒语等级当年只有一个写入点、
+    // 且写进去就是 1，于是这条成就永远差 89 点。咒语系统补齐之后等级倒是
+    // 能涨了，但成就名写的是「技能熟练度」，指的本来是课程属性，不该跟着
+    // 咒语表走——两件事分清楚，各查各的。
+    for (final key in kStudyAttributeKeys) {
+      if ((p.attributes[key] ?? 0) >= 90) {
         unlockAchievement('honor_student');
         return;
       }

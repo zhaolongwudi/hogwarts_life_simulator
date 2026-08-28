@@ -45,6 +45,14 @@ const List<TimeCostRule> timeCostRules = [
   ),
 
   // ====== 中优先级（明确动作）======
+  // 练一个咒语（/咒语 练习）比上课短、比聊天长：一次 3 遍魔杖挥下来，
+  // 一小时是合理的。以前没有这条规则，"练习魔咒"会落到默认 15 分钟，
+  // 每天 3 次只花 45 分钟就能把熟练度往上推，学业节奏整个垮掉。
+  TimeCostRule(
+    patterns: ['练习'],
+    minutes: 60,
+    priority: 85,
+  ),
   TimeCostRule(
     patterns: ['图书馆', '自习', '学习', '看书'],
     minutes: 120,

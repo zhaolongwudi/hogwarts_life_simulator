@@ -220,6 +220,18 @@ String affectionStageFor(int level) {
   return level > 100 ? '灵魂伴侣' : '死敌';
 }
 
+/// 某个好感阶段的门槛值（[label] 阶段的 min）。
+///
+/// 给「按阶段名设条件」的地方用：成就「第一位朋友」写的是「关系达到好感」，
+/// 判定写的是 affection >= 20。20 是「好感」段的下沿，但阶段表一改，两边就
+/// 各说各话了——阶段名在表之外只应出现这一次。
+int affectionStageMin(String label) {
+  for (final s in affectionStages) {
+    if (s.label == label) return s.min;
+  }
+  throw ArgumentError('没有「$label」这个好感阶段');
+}
+
 /// 好感度变化规则（设定 11.2）
 class AffectionChange {
   final String type;
@@ -643,14 +655,21 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'first_letter', name: '猫头鹰的信', description: '收到霍格沃茨录取通知书'),
   Achievement(id: 'sorted', name: '分院仪式', description: '被分院帽分入学院'),
   Achievement(id: 'first_wand', name: '魔杖的选择', description: '在奥利凡德买到魔杖'),
-  Achievement(id: 'first_friend', name: '第一位朋友', description: '好感度达到友好'),
+  Achievement(id: 'first_friend', name: '第一位朋友', description: '与某位NPC的关系达到「好感」'),
   Achievement(id: 'first_confession', name: '月光下的告白', description: '被NPC表白'),
   Achievement(id: 'in_love', name: '恋爱开始', description: '进入恋爱阶段'),
-  Achievement(id: 'world_changer', name: '世界线变动者', description: '世界线变动率达到10%'),
-  Achievement(id: 'honor_student', name: '优等生', description: '任一技能熟练度达到90'),
-  Achievement(id: 'war_hero', name: '战争英雄', description: '参与关键战役'),
+  // 双条件判据：世界线变动率与玩家影响力要同时达标，描述里两个都得写出来。
+  // 旧描述只提了前者，玩家看着「变动率 12%」却拿不到成就，只能当成 bug。
+  Achievement(id: 'world_changer', name: '世界线变动者', description: '世界线变动率≥10% 且世界影响力≥50%'),
+  // 判的是学业熟练度（Player.attributes 里 kStudyAttributeKeys 那几项），
+  // 不是咒语等级——后者曾经被当作「技能熟练度」，而咒语等级上限恒为 1。
+  Achievement(id: 'honor_student', name: '优等生', description: '任意一门学业熟练度达到90'),
+  // 这个游戏里没有「战役」事件，判的是战斗声望（决斗/禁林累积）。
+  // 旧描述写「参与关键战役」，玩家打赢十几场决斗后才发现条件对不上。
+  Achievement(id: 'war_hero', name: '战争英雄', description: '战斗声望达到80'),
   Achievement(id: 'explorer', name: '探索者', description: '访问5个以上不同地点'),
-  Achievement(id: 'rich_wizard', name: '小富翁', description: '累计拥有1500加隆'),
+  // 判的是「当前持有」（身上 + 古灵阁），不是累计：花掉就不算了。
+  Achievement(id: 'rich_wizard', name: '小富翁', description: '身上与古灵阁合计持有1500加隆'),
   Achievement(id: 'bookworm', name: '书虫', description: '学习10个以上魔咒'),
   Achievement(id: 'social_butterfly', name: '社交蝴蝶', description: '认识10个以上NPC'),
   Achievement(id: 'deep_relationship', name: '挚友', description: '与NPC好感度达到80'),
@@ -658,8 +677,9 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'monthly_evolution', name: '时代见证者', description: '经历3次以上月度世界演化'),
   Achievement(id: 'generation_artist', name: '创作者', description: '生成5位原创NPC'),
   Achievement(id: 'cg_collector', name: '收藏大师', description: '解锁10张以上CG'),
-  Achievement(id: 'relationship_master', name: '关系大师', description: '同时与3位NPC保持高好感'),
-  Achievement(id: 'time_master', name: '时间行者', description: '游戏内时间推进超过1年'),
+  Achievement(id: 'relationship_master', name: '关系大师', description: '同时与3位NPC的好感达到60'),
+  // 判的是 currentYear - eraStartYear >= 2，描述曾经写「超过1年」，差一整年。
+  Achievement(id: 'time_master', name: '时间行者', description: '游戏内时间推进满2年'),
   Achievement(id: 'graduated', name: '七年之约', description: '从霍格沃茨毕业'),
   Achievement(id: 'goal_achieved', name: '得偿所愿', description: '毕业时达成人生目标的数值条件'),
   Achievement(id: 'bone_mode', name: '血脉的悖论', description: '开启骨科模式，踏上禁忌之路'),

@@ -380,6 +380,51 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
       CommandDef(
+        primary: '咒语',
+        group: '学业&成长',
+        helpText: '魔咒一览（/咒语 学习 漂浮咒 ｜ /咒语 练习 漂浮咒 ｜ /咒语 详情 漂浮咒）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          final verb = ctx.arg(0) ?? '';
+          final rest = ctx.tailFrom(1);
+          switch (verb) {
+            case '学习':
+            case '学':
+              if (rest.isEmpty) {
+                m.currentNarrative = '要学哪个咒语？用法：/咒语 学习 漂浮咒\n\n'
+                    '不知道能学什么就先输入 /咒语';
+                m.choices = [GameChoice(text: '返回', action: '继续')];
+              } else {
+                m.learnSpell(rest);
+              }
+            case '练习':
+            case '练':
+              if (rest.isEmpty) {
+                m.currentNarrative = '要练哪个咒语？用法：/咒语 练习 漂浮咒';
+                m.choices = [GameChoice(text: '返回', action: '继续')];
+              } else {
+                m.practiseSpell(rest);
+              }
+            case '详情':
+              if (rest.isEmpty) {
+                m.currentNarrative = '要查哪个咒语？用法：/咒语 详情 漂浮咒';
+                m.choices = [GameChoice(text: '返回', action: '继续')];
+              } else {
+                m.currentNarrative = m.formatSpellDetail(rest);
+                m.choices = [GameChoice(text: '返回', action: '继续')];
+              }
+            case '':
+              m.currentNarrative = m.formatSpells();
+              m.choices = [GameChoice(text: '返回', action: '继续')];
+            default:
+              // 没带动词时把它当成咒语名，等价于 /咒语 详情 xxx
+              m.currentNarrative = m.formatSpellDetail(ctx.tailFrom(0));
+              m.choices = [GameChoice(text: '返回', action: '继续')];
+          }
+          return true;
+        },
+      ),
+      CommandDef(
         primary: '收藏',
         group: '学业&成长',
         helpText: '查看收藏品',
@@ -1004,7 +1049,9 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('【魔法能力】')
       ..writeln('魔法资质：${aptitude.isEmpty ? '普通' : aptitude}')
       ..writeln('主修天赋：${p.initialTalent ?? '未设定'}')
-      ..writeln('已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒' : '${p.learnedSpells.length}个咒语'}')
+      // 这一行以前永远是「尚未学会任何魔咒」或「1个咒语」——咒语没有学习
+      // 入口。现在 /咒语 能学能练，这里顺手指一下，玩家才知道有这条路。
+      ..writeln('已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒（/咒语 查看可学的）' : '${p.learnedSpells.length}个咒语（/咒语 查看详情）'}')
       ..writeln()
       ..writeln('【学院四维】')
       ..writeln('勇气：${p.houseDimensions['courage']}  智慧：${p.houseDimensions['wisdom']}')
