@@ -79,6 +79,8 @@ class _ShopTabState extends State<ShopTab> {
         return Icons.menu_book;
       case '文具':
         return Icons.edit;
+      case '礼物':
+        return Icons.card_giftcard;
       default:
         return Icons.inventory_2;
     }

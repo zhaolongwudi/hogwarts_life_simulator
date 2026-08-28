@@ -13,6 +13,9 @@ import '../models/player.dart';
 import '../data/course_data.dart';
 import '../data/balance_constants.dart';
 import '../utils/npc_lookup.dart';
+import '../utils/inventory_ops.dart';
+import '../data/gift_rules.dart';
+import '../data/item_data.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 
@@ -1804,6 +1807,83 @@ mixin GameRelationsMixin on GameProviderBase {
     if (rel != null) {
       rel.level = npc.affection.clamp(0, 100);
     }
+  }
+
+  // ==================== 送礼 ====================
+
+  /// 把背包里的一件东西送给某位 NPC。
+  ///
+  /// giftPrefs 数据此前被生成、被存档，却从没被读过——送礼只是被动好感
+  /// 推断里的一个关键词（+1~+2），送什么完全不影响结果。这里把它接上。
+  String giveGift(String npcKeyword, String itemName) {
+    final p = player;
+    if (p == null) return '你还没有开始游戏。';
+
+    final kw = npcKeyword.trim();
+    final gift = itemName.trim();
+    if (kw.isEmpty || gift.isEmpty) {
+      return '【送礼】\n用法：/送礼 [名字] [物品]，例如 /送礼 赫敏 旧书\n'
+          '（只写名字则列出对方可能喜欢的东西）';
+    }
+
+    final npc = findNpcByKeyword(npcRegistry.values, kw);
+    if (npc == null) {
+      return '【送礼】\n你不认识叫「$kw」的人。';
+    }
+
+    // 只写名字：给个提示，不消耗任何东西
+    if (!hasItem(p.inventory, gift)) {
+      final owned = p.inventory
+          .where((e) => itemDefByName(e.name)?.type == '礼物' ||
+              itemDefByName(e.name)?.type == '材料')
+          .map((e) => e.name)
+          .toSet()
+          .toList();
+      final buf = StringBuffer('【送礼 · ${npc.name}】\n');
+      if (gift.isEmpty) {
+        buf.writeln('你想送点什么？');
+      } else {
+        buf.writeln('你身上没有「$gift」。');
+      }
+      if (owned.isEmpty) {
+        buf.writeln('你身上没有任何能拿得出手的东西——去对角巷转转吧。');
+      } else {
+        buf.writeln('你身上有：${owned.join('、')}');
+      }
+      return buf.toString().trimRight();
+    }
+
+    final verdict = evaluateGift(npc.giftPrefs, gift);
+    final delta =
+        verdict.minGain + random.nextInt(verdict.maxGain - verdict.minGain + 1);
+
+    removeOneItem(p.inventory, gift);
+    adjustAffection(npc.id, delta, reason: verdict.ruleName);
+
+    final buf = StringBuffer('【送礼 · ${npc.name}】\n');
+    switch (verdict.reaction) {
+      case GiftReaction.beloved:
+        buf.writeln('你把$gift递过去。${npc.name}愣了一下，随即笑得很亮：'
+            '「你怎么知道我想要这个？」');
+        buf.writeln('（${verdict.ruleName}，好感 +$delta → ${npc.affection}）');
+      case GiftReaction.liked:
+        buf.writeln('${npc.name}把$gift翻来覆去看了两遍，收进袍子口袋：'
+            '「挺合我心意的，谢了。」');
+        buf.writeln('（${verdict.ruleName}，好感 +$delta → ${npc.affection}）');
+      case GiftReaction.neutral:
+        buf.writeln('${npc.name}道了谢，把$gift随手搁在一边——'
+            '不算讨厌，也说不上喜欢。');
+        buf.writeln('（${verdict.ruleName}，好感 +$delta → ${npc.affection}）');
+      case GiftReaction.unknown:
+        buf.writeln('${npc.name}礼貌地收下$gift，但你没看出他有多高兴。'
+            '也许该换一样试试。');
+        buf.writeln('（好感 +$delta → ${npc.affection}）');
+        final wishes = topWishes(npc.giftPrefs, limit: 2);
+        if (wishes.isNotEmpty) {
+          buf.writeln('（听说${npc.name}更中意这类东西：${wishes.join('、')}）');
+        }
+    }
+    return buf.toString().trimRight();
   }
 
   // ==================== DeepSeek 调用 ====================

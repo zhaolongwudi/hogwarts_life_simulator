@@ -52,6 +52,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return Icons.workspace_premium;
       case '道具':
         return Icons.toys;
+      case '文具':
+        return Icons.edit;
+      case '礼物':
+        return Icons.card_giftcard;
       default:
         return Icons.inventory_2;
     }
@@ -88,6 +92,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return Colors.amber;
       case '道具':
         return Colors.deepOrange;
+      case '文具':
+        return Colors.indigo;
+      case '礼物':
+        return Colors.pinkAccent;
       default:
         return Colors.grey;
     }
@@ -106,6 +114,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     '材料',
     '书籍',
     '文具',
+    '礼物',
   ];
 
   List<Map<String, dynamic>> _getDynamicItems() {

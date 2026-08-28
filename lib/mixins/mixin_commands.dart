@@ -141,6 +141,23 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
       CommandDef(
+        primary: '送礼',
+        aliases: ['送', '赠', '赠送', '给'],
+        group: '关系&情感',
+        helpText: '把背包里的东西送给NPC：/送礼 [名字] [物品]，例如 /送礼 赫敏 旧书'
+            '（只写名字则提示对方喜好）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          // 「/送礼 赫敏 旧书」：首词是人名，其余是物品名
+          // （物品名本身可能含空格，所以取剩下整段而不是 arg(1)）
+          final who = ctx.arg(0) ?? '';
+          final what = ctx.tailFrom(1);
+          m.currentNarrative = m.giveGift(who, what);
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
         primary: '恋爱',
         group: '关系&情感',
         helpText: '查看恋爱状态',

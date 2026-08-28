@@ -11,6 +11,8 @@ import 'package:hogwarts_life_simulator/utils/npc_lookup.dart';
 import 'package:hogwarts_life_simulator/data/provider_defaults.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/data/political_stance.dart';
+import 'package:hogwarts_life_simulator/data/gift_rules.dart';
+import 'package:hogwarts_life_simulator/data/item_data.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -184,6 +186,7 @@ void main() {
   _unwiredFeatureGroup();
   _providerDefaultsGroup();
   _settingsDedupGroup();
+  _giftGivingGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1072,4 +1075,167 @@ List<String> _allLibFiles() {
 
   walk(Directory('lib'));
   return out;
+}
+
+// ==================== 送礼玩法 ====================
+// giftPrefs 此前是一条完整的死链：数据被生成、被写进存档，但没有任何地方
+// 读过它；「赠送礼物（一般/喜欢/挚爱）」三条规则也一次都没被引用。送礼
+// 退化成被动好感推断里的一个关键词（+1~+2），送什么完全不影响结果。
+
+void _giftGivingGroup() {
+  group('送礼判定', () {
+    const prefs = {'旧书': 8, '花束': 7, '手写贺卡': 5, '巧克力蛙': 2};
+
+    test('分档与原型表的分值分布吻合', () {
+      expect(evaluateGift(prefs, '旧书').reaction, GiftReaction.beloved);
+      expect(evaluateGift(prefs, '花束').reaction, GiftReaction.liked);
+      expect(evaluateGift(prefs, '手写贺卡').reaction, GiftReaction.liked);
+      expect(evaluateGift(prefs, '巧克力蛙').reaction, GiftReaction.neutral);
+      expect(evaluateGift(prefs, '龙血').reaction, GiftReaction.unknown);
+    });
+
+    test('三档正反馈的区间落在设定 11.2 的范围内', () {
+      for (final v in [
+        evaluateGift(prefs, '旧书'),
+        evaluateGift(prefs, '花束'),
+        evaluateGift(prefs, '巧克力蛙'),
+      ]) {
+        expect(v.minGain, greaterThan(0));
+        expect(v.maxGain, greaterThanOrEqualTo(v.minGain));
+      }
+    });
+
+    test('送偏了不掉好感', () {
+      // 花钱花物品去试探偏好，为探索本身扣分太苛刻
+      final v = evaluateGift(prefs, '完全不在表里的东西');
+      expect(v.reaction, GiftReaction.unknown);
+      expect(v.minGain, greaterThanOrEqualTo(0));
+    });
+
+    test('空偏好表一律最低档，不用平均值糊弄', () {
+      expect(evaluateGift({}, '巧克力蛙').reaction, GiftReaction.unknown);
+    });
+
+    test('判定幅度与 affectionChangeRules 一致', () {
+      // 设定表会被写进给 AI 的提示词，两边对不上会出现
+      // 「AI 写得情深义重、数值只涨 1 点」的割裂
+      expect(giftRuleMismatches(), isEmpty,
+          reason: giftRuleMismatches().join('；'));
+    });
+
+    test('ruleName 能在设定表里找到对应项', () {
+      for (final r in GiftReaction.values) {
+        if (r == GiftReaction.unknown) continue; // 无感档是本地补充，设定表里没有
+        final v = GiftVerdict(reaction: r, score: 8, minGain: 1, maxGain: 2);
+        expect(
+          affectionChangeRules.any((e) => e.type == v.ruleName),
+          isTrue,
+          reason: '${v.ruleName} 不在 affectionChangeRules 里',
+        );
+      }
+    });
+
+    test('topWishes 按分值降序', () {
+      expect(topWishes(prefs), ['旧书', '花束', '手写贺卡']);
+      expect(topWishes(prefs, limit: 1), ['旧书']);
+    });
+  });
+
+  group('送礼数据必须对得上物品目录', () {
+    test('每个原型偏好的每件礼物都能买到', () {
+      // 这是此前的实际 bug：偏好表写着「魁地奇徽章」「花束」「羽毛笔」，
+      // 但目录里一样都没有，玩家送不出任何一件 NPC 真心喜欢的东西
+      final missing = <String>[];
+      for (final entry in kArchetypeGiftPrefs.entries) {
+        for (final name in entry.value.keys) {
+          if (itemDefByName(name) == null) {
+            missing.add('${entry.key} -> $name');
+          }
+        }
+      }
+      expect(missing, isEmpty,
+          reason: '这些礼物不在 kItemCatalog 里，玩家永远送不出：$missing');
+    });
+
+    test('每个原型至少有一件挚爱档（8分）礼物', () {
+      // 没有挚爱档，送礼的天花板就只有「喜欢」的 5~8 分
+      for (final entry in kArchetypeGiftPrefs.entries) {
+        expect(entry.value.values.any((v) => v >= 8), isTrue,
+            reason: '${entry.key} 没有挚爱档礼物');
+      }
+    });
+
+    test('材料也能当礼物送出去', () {
+      // 禁林采集是材料唯一产出途径，此前材料没有任何消耗途径
+      final withMaterial = kArchetypeGiftPrefs.values
+          .expand((m) => m.keys)
+          .where((n) => itemDefByName(n)?.type == '材料')
+          .toSet();
+      expect(withMaterial.length, greaterThanOrEqualTo(3),
+          reason: '偏好材料的原型太少，材料依然会堆在背包里');
+    });
+
+    test('礼物在目录里有独立的类型，UI 也能分组', () {
+      expect(kItemCatalog.where((d) => d.type == '礼物').length,
+          greaterThanOrEqualTo(10));
+      final inv = File('lib/screens/shop/inventory_screen.dart').readAsStringSync();
+      expect(inv.contains("'礼物',"), isTrue,
+          reason: '背包分类列表里没有「礼物」，新加的礼物玩家筛不到');
+    });
+  });
+
+  group('装备槽位有升级空间', () {
+    test('每个装备槽至少两件可选', () {
+      // 此前 hat 和 amulet 各只有 1 件，买了就到头，装备系统在这两个槽
+      // 位上等于不存在
+      final bySlot = <String, int>{};
+      for (final d in kItemCatalog.where((d) => d.isEquippable)) {
+        bySlot[d.equipSlot!] = (bySlot[d.equipSlot] ?? 0) + 1;
+      }
+      for (final slot in bySlot.keys) {
+        expect(bySlot[slot], greaterThanOrEqualTo(2),
+            reason: '$slot 槽只有 ${bySlot[slot]} 件，没有选择余地');
+      }
+      expect(bySlot.keys.toSet(), containsAll(['robe', 'hat', 'amulet', 'broom']));
+    });
+
+    test('同槽内高价装备的属性加成不低于低价装备', () {
+      final bySlot = <String, List<ItemDef>>{};
+      for (final d in kItemCatalog.where((d) => d.isEquippable)) {
+        (bySlot[d.equipSlot!] ??= []).add(d);
+      }
+      int total(ItemDef d) =>
+          d.statBonus.values.fold(0, (a, b) => a + b) + d.combatBonus + d.castBonus;
+      for (final entry in bySlot.entries) {
+        final sorted = entry.value.toList()..sort((a, b) => a.price.compareTo(b.price));
+        for (var i = 1; i < sorted.length; i++) {
+          expect(total(sorted[i]), greaterThanOrEqualTo(total(sorted[i - 1])),
+              reason: '${entry.key} 槽：${sorted[i].name}(${sorted[i].price}) 比 '
+                  '${sorted[i - 1].name}(${sorted[i - 1].price}) 贵却没有更强');
+        }
+      }
+    });
+  });
+
+  group('送礼命令已接线', () {
+    test('命令表里注册了送礼', () {
+      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      expect(src.contains("primary: '送礼'"), isTrue);
+      expect(src.contains('giveGift'), isTrue);
+    });
+
+    test('giveGift 在基类里有声明', () {
+      // 跨 mixin 文件调用需要基类声明，否则编译不过
+      final src = File('lib/providers/game_provider_base.dart').readAsStringSync();
+      expect(src.contains('String giveGift('), isTrue);
+    });
+
+    test('消耗物品走共享实现而不是各自 indexWhere', () {
+      final ops = File('lib/utils/inventory_ops.dart').readAsStringSync();
+      expect(ops.contains('removeOneItem'), isTrue);
+      // mixin_relations 送礼时必须调用它
+      final rel = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+      expect(rel.contains('removeOneItem('), isTrue);
+    });
+  });
 }
