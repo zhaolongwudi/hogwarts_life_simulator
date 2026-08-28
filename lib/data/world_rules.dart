@@ -1,5 +1,11 @@
+import 'balance_constants.dart';
+
 // 世界观规则常量 - 融合版（两份大纲精华整合）
 // 基于"玩家不是天命主角"核心理念 + 完整系统架构
+//
+// 凡是 Balance 里有的阈值，一律插值引用，不写死数字。这些数字是给 AI 看的
+// 规则说明；写死了，改 Balance 时提示词不会跟着变，AI 就会按旧阈值写剧情
+// （比如提示词说"好感≥85 才表白"，而代码已经调成 90）。
 
 /// 融合版系统提示词（完整版）
 /// 整合了两份大纲的核心设定
@@ -55,14 +61,14 @@ const String kWorldRulesFused = '''
 斯莱特林：野心/精明/血统纯正｜绿与银｜血人巴罗
 
 ━━━ 核心系统 ━━━
-【好感度系统】-100至+100
-- 第一周上限+30，第一个月上限+50（好感沉淀）
-- 50级解锁"共享秘密"，70级解锁"浪漫事件"
+【好感度系统】${Balance.affectionMin}至+${Balance.affectionMax}
+- 第一周上限+${Balance.weekOneAffectionCap}，第一个月上限+${Balance.monthOneAffectionCap}（好感沉淀）
+- ${Balance.trustLockThreshold}级解锁"共享秘密"，${Balance.romanceLockThreshold}级解锁"浪漫事件"
 - NPC记住背叛/欺骗/伤害，不会清零
 - 好感变化有明确归因（帮助+4~+8，救命+10~+20，背叛-15~-30）
 
 【表白系统】NPC主动发起
-- 触发条件：好感≥85 + 关系暧昧≥2周 + 共同经历≥2次浪漫事件
+- 触发条件：好感≥${Balance.confessionMinAffection} + 关系暧昧≥${Balance.confessionCrushMatureDays ~/ 7}周 + 共同经历≥${Balance.confessionMinRomanticEvents}次浪漫事件
 - 玩家只能选择接受或拒绝
 - 接受：进入恋爱阶段，解锁CG，触发舆论
 - 拒绝：好感-10~-20，解锁心碎CG
@@ -149,11 +155,11 @@ const String kWorldRulesFusedCompact = '''
 【四大时代】
 邓布利多时代(1892)｜亲世代(1971)｜子世代(1991)｜现代(2020+)
 
-【好感系统】-100至+100
-- 第一周上限+30，首月上限+50
-- 50级解锁秘密，70级解锁浪漫
+【好感系统】${Balance.affectionMin}至+${Balance.affectionMax}
+- 第一周上限+${Balance.weekOneAffectionCap}，首月上限+${Balance.monthOneAffectionCap}
+- ${Balance.trustLockThreshold}级解锁秘密，${Balance.romanceLockThreshold}级解锁浪漫
 - NPC记仇也记恩
-- 表白由NPC主动发起（需≥85好感+暧昧≥2周）
+- 表白由NPC主动发起（需≥${Balance.confessionMinAffection}好感+暧昧≥${Balance.confessionCrushMatureDays ~/ 7}周）
 
 【核心规则】
 - 一年级无法对抗成年黑巫师

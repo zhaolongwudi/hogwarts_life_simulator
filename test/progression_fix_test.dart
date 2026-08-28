@@ -16,6 +16,8 @@ import 'package:hogwarts_life_simulator/data/gift_rules.dart';
 import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
+import 'package:hogwarts_life_simulator/data/world_rules.dart';
+import 'package:hogwarts_life_simulator/data/balance_constants.dart';
 import 'package:hogwarts_life_simulator/data/house_data.dart';
 import 'package:hogwarts_life_simulator/data/blood_status.dart';
 import 'package:hogwarts_life_simulator/data/attribute_data.dart';
@@ -215,6 +217,7 @@ void main() {
   _shopUiGroup();
   _screenReachabilityGroup();
   _locationResolveGroup();
+  _promptConstantGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2598,6 +2601,74 @@ void _locationResolveGroup() {
         reason: '_syncLocationFromNarrative 里还留着手抄的别名循环');
       expect(src.contains('_knownLocations = kKnownLocations'), isFalse,
           reason: '_knownLocations 这个只为手抄循环存在的别名该删了');
+    });
+  });
+}
+
+// ==================== AI 提示词里的数值 ====================
+// kWorldRulesFused / Compact 是写给 AI 看的规则说明，里面把好感区间、表白
+// 阈值这些都写死了数字。改 Balance 时提示词不会跟着变，AI 就照着旧阈值写
+// 剧情——玩家看到"好感 87 了怎么还不表白"，而代码其实已经是 90。
+
+void _promptConstantGroup() {
+  group('AI 提示词里的数值跟着 Balance 走', () {
+    test('好感区间与好感锁阈值不是写死的', () {
+      for (final prompt in [kWorldRulesFused, kWorldRulesFusedCompact]) {
+        expect(
+          prompt.contains('${Balance.affectionMin}至+${Balance.affectionMax}'),
+          isTrue,
+          reason: '提示词里的好感区间和 Balance 对不上，AI 会按错误范围写剧情',
+        );
+        expect(
+          prompt.contains('${Balance.trustLockThreshold}级解锁'),
+          isTrue,
+          reason: '信任锁阈值在提示词里写死了',
+        );
+        expect(
+          prompt.contains('${Balance.romanceLockThreshold}级解锁'),
+          isTrue,
+          reason: '情感锁阈值在提示词里写死了',
+        );
+      }
+    });
+
+    test('表白条件与 Balance 一致', () {
+      expect(
+        kWorldRulesFused.contains('好感≥${Balance.confessionMinAffection}'),
+        isTrue,
+        reason: '提示词说的表白好感门槛和 Balance.confessionMinAffection 不一致',
+      );
+      expect(
+        kWorldRulesFused.contains('${Balance.confessionMinRomanticEvents}次浪漫事件'),
+        isTrue,
+        reason: '提示词说的浪漫事件次数和 Balance 不一致',
+      );
+      expect(
+        kWorldRulesFusedCompact.contains('≥${Balance.confessionMinAffection}好感'),
+        isTrue,
+        reason: '精简版提示词的表白门槛和 Balance 不一致',
+      );
+    });
+
+    test('提示词源码里不再写死 Balance 的数字', () {
+      // 扫源码而不是插值后的结果——插值出来的文本本来就和写死的一模一样，
+      // 只有源码能区分「引用的常量」和「抄下来的数字」。
+      final src = _codeOnly('lib/data/world_rules.dart');
+      for (final p in [
+        r'好感度系统】-100至',
+        r'好感系统】-100至',
+        r'好感≥85 \+',
+        r'上限\+30',
+        r'上限\+50',
+        r'- 50级解锁',
+        r'- 70级解锁',
+      ]) {
+        expect(RegExp(p).hasMatch(src), isFalse,
+            reason: '提示词里又出现了写死的 $p，改 Balance 时它不会跟着变');
+      }
+      // 反过来，引用的常量必须真的在
+      expect(src.contains(r'${Balance.affectionMin}'), isTrue);
+      expect(src.contains(r'${Balance.confessionMinAffection}'), isTrue);
     });
   });
 }
