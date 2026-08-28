@@ -88,9 +88,31 @@ void main() {
       // 注册表 handler：ctx.parts 本身就是子参数，直接透传即可
       expect(commandsSrc.contains('handleLetterCommand(ctx.parts)'), isTrue);
       expect(commandsSrc.contains('_handleCheat(ctx.parts)'), isTrue);
-      // fallback switch：parts 含命令名，必须 sublist(1) 剥离
-      expect(commandsSrc.contains('handleLetterCommand(parts.sublist(1))'), isTrue);
-      expect(commandsSrc.contains('_handleCheat(parts.sublist(1))'), isTrue);
+      // 旧的 fallback switch 已被删除（42 个 case 全部可由注册表命中），
+      // 不得再出现「含命令名的 parts」被直接透传给子命令解析器
+      expect(
+        commandsSrc.contains('handleLetterCommand(parts.sublist(1))'),
+        isFalse,
+        reason: 'fallback switch 已删除，只剩注册表一条链路',
+      );
+      expect(commandsSrc.contains('_handleCheat(parts.sublist(1))'), isFalse);
+    });
+
+    test('不得复活 fallback switch-case（路由唯一入口是注册表）', () {
+      expect(
+        commandsSrc.contains(RegExp(r"^\s*case '(/[^']+)':", multiLine: true)),
+        isFalse,
+        reason: '所有指令必须注册进 CommandRegistry，'
+            '散落的 switch-case 会与 /帮助 文档脱同步',
+      );
+    });
+
+    test('未知指令要有候选提示，不能当成自由行动发给 AI', () {
+      expect(
+        commandsSrc.contains('_formatUnknownCommand'),
+        isTrue,
+        reason: '以 / 开头但查不到的输入必须给出候选指令，而不是返回 false',
+      );
     });
 
     test('信件指令按子参数约定取参', () {

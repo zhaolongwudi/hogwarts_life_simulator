@@ -608,275 +608,75 @@ mixin GameCommandsMixin on GameProviderBase {
       return def.handler(ctx);
     }
 
-    // ===== Fallback：旧 switch-case（保留到全部命令测试通过后移除） =====
-    switch (cmd) {
-      case '/状态':
-        currentNarrative = _formatStatus();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/时间':
-        currentNarrative = _formatTime();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/地图':
-        currentNarrative = _formatMap();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/通知':
-        currentNarrative = _formatNotifications();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/帮助':
-        currentNarrative = _formatHelp();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/关系':
-        currentNarrative = formatRelationships();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/恋爱':
-        currentNarrative = formatLove();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/声望':
-        currentNarrative = formatReputation();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/舆论':
-      case '/传闻':
-        currentNarrative = formatRumors();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/课程':
-        currentNarrative = formatCourses();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/课堂':
-        if (parts.length >= 2 && parts[1] == '互动') {
-          classroomInteraction();
-        } else {
-          currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
-          choices = [GameChoice(text: '返回', action: '继续')];
-        }
-        return true;
-
-      case '/收藏':
-        currentNarrative = formatCollection();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/日记':
-        if (parts.length >= 2 && parts[1] == '统计') {
-          currentNarrative = _formatDiaryStats();
-        } else if (parts.length >= 3 && parts[1] == '重播') {
-          currentNarrative = _replayCg(parts[2]);
-        } else if (parts.length >= 2) {
-          currentNarrative = _formatCgDetail(parts[1]);
-        } else {
-          currentNarrative = _formatDiary();
-        }
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/档案':
-        currentNarrative = _formatArchive();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/成就':
-        currentNarrative = _formatAchievements();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/宠物':
-        if (parts.length >= 2 &&
-            ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(parts[1])) {
-          petInteract(parts[1]);
-        } else {
-          currentNarrative = _formatPet();
-          choices = [GameChoice(text: '返回', action: '继续')];
-        }
-        return true;
-
-      case '/使用':
-        if (parts.length < 2) {
-          currentNarrative = formatItemUseHelp();
-          choices = [GameChoice(text: '返回', action: '继续')];
-        } else {
-          useItem(parts.sublist(1).join(' '));
-        }
-        return true;
-
-      case '/装备':
-        if (parts.length < 2) {
-          currentNarrative = formatEquip();
-          choices = [GameChoice(text: '返回', action: '继续')];
-        } else {
-          equipItem(parts.sublist(1).join(' '));
-        }
-        return true;
-
-      case '/卸下':
-        if (parts.length < 2) {
-          currentNarrative = formatEquip();
-          choices = [GameChoice(text: '返回', action: '继续')];
-        } else {
-          unequipItem(parts[1]);
-        }
-        return true;
-
-      case '/魁地奇':
-        if (parts.length >= 2 && parts[1] == '比赛') {
-          playQuidditch();
-        } else if (parts.length >= 3 && parts[1] == '位置') {
-          setQuidditchPosition(parts[2]);
-        } else {
-          currentNarrative = formatQuidditch();
-          choices = [GameChoice(text: '返回', action: '继续')];
-        }
-        return true;
-
-      case '/决斗':
-        duelNpc(parts.length >= 2 ? parts.sublist(1).join(' ') : null);
-        return true;
-
-      case '/禁林':
-        if (parts.length >= 2 && parts[1] == '探险') {
-          exploreForbiddenForest();
-        } else {
-          currentNarrative = '【禁林】\n'
-              '黑暗而神秘的森林，栖息着许多神奇生物，也藏着危险。\n'
-              '输入 /禁林 探险 进入禁林探索（消耗 3 小时，可能遭遇生物、采集材料或受伤）。\n\n'
-              '低年级学生请量力而行——一年级的魔杖在这里还很脆弱。';
-          choices = [GameChoice(text: '返回', action: '继续')];
-        }
-        return true;
-
-      case '/图鉴':
-        currentNarrative = formatBestiary();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/委托':
-        if (parts.length >= 2 && parts[1] == '刷新') {
-          refreshQuestBoard();
-        } else if (parts.length >= 3 && parts[1] == '接受') {
-          acceptQuest((int.tryParse(parts[2]) ?? 0) - 1);
-        } else if (parts.length >= 3 && parts[1] == '交付') {
-          deliverQuest((int.tryParse(parts[2]) ?? 0) - 1);
-        } else {
-          currentNarrative = formatQuests();
-          choices = [GameChoice(text: '返回', action: '继续')];
-        }
-        return true;
-
-      case '/学院杯':
-        currentNarrative = formatHouseCup();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/信':
-        handleLetterCommand(parts.sublist(1));
-        return true;
-
-      case '/血缘':
-        currentNarrative = formatBloodRelatives();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/联动':
-        currentNarrative = '【联动系统】\n当前时代：${eraLabel(appProvider.era)}\n'
-            '联动系统允许你在特定节点与其他时代剧情产生关联（例如在子世代时遇到亲世代留下的物品或信件）。\n'
-            '当前已触发的联动痕迹：\n${worldState.timelineBranches.isEmpty ? '暂无。' : worldState.timelineBranches.map((b) => '· $b').join('\n')}';
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/世界演化':
-        currentNarrative = formatWorldEvolution();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/新NPC':
-        generateNewNPC();
-        return true;
-
-      case '/恋爱等待':
-      case '/恋爱 等待':
-        currentNarrative = formatLoveWaiting();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/恋爱阶段':
-        currentNarrative = formatLoveStages();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/关系网络':
-      case '/关系 网络':
-        if (parts.length >= 4) {
-          currentNarrative = formatNpcRelationship(parts[2], parts[3]);
-        } else {
-          currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
-        }
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/骨科':
-      case '/骨科状态':
-        currentNarrative = formatBoneMode();
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/目标':
-        if (parts.length >= 2 && (parts[1] == '进度' || parts[1] == 'progress')) {
-          currentNarrative = formatGoalProgress();
-          choices = [GameChoice(text: '返回', action: '继续')];
-          return true;
-        }
-        if (parts.length >= 2) {
-          final arg = parts.sublist(1).join(' ');
-          LifeGoal? goal;
-          final idx = int.tryParse(arg);
-          if (idx != null && idx >= 1 && idx <= lifeGoalCatalog.length) {
-            goal = lifeGoalCatalog[idx - 1];
-          } else {
-            goal = goalById(arg) ?? goalByName(arg);
-          }
-          if (goal != null) {
-            p.currentGoal = goal.name;
-            currentNarrative = '✅ 已设定人生目标：${goal.name}\n'
-                '『${goal.description}』\n\n'
-                '这条目标将牵引后续剧情方向，但你仍可自由行动。\n'
-                '输入 /目标 可重新查看或更换。';
-          } else {
-            currentNarrative = '未找到目标"$arg"。输入 /目标 查看全部目标。';
-          }
-        } else {
-          currentNarrative = _formatGoals();
-        }
-        choices = [GameChoice(text: '返回', action: '继续')];
-        return true;
-
-      case '/结局':
-      case '/终章':
-        _startEndingSequence();
-        return true;
-
-      case '/cheat':
-        _handleCheat(parts.sublist(1));
-        return true;
+    // 未注册指令：给出可点选的近似指令，而不是把 "/状态统计" 当成自由行动发给 AI。
+    if (cmd.startsWith('/')) {
+      currentNarrative = _formatUnknownCommand(slashless);
+      choices = [
+        ..._suggestCommands(slashless).take(3).map(
+            (c) => GameChoice(text: '/${c.primary}', action: '/${c.primary}')),
+        GameChoice(text: '查看全部指令', action: '/帮助'),
+      ];
+      return true;
     }
     return false;
+  }
+
+  /// 未知指令提示：按「前缀/包含/编辑距离」给出最接近的几条候选，
+  /// 比直接返回 false（把 /状态统计 当成自由行动文本发给 AI）友好得多。
+  List<CommandDef> _suggestCommands(String input) {
+    final scored = <(CommandDef, int)>[];
+    for (final c in CommandRegistry.instance.all) {
+      var best = 1 << 30;
+      for (final name in [c.primary, ...c.aliases]) {
+        final n = name.replaceAll(' ', '');
+        final s = input.replaceAll(' ', '');
+        final d = n.startsWith(s) || s.startsWith(n)
+            ? 0
+            : (n.contains(s) || s.contains(n) ? 1 : _levenshtein(s, n));
+        if (d < best) best = d;
+      }
+      if (best <= 3) scored.add((c, best));
+    }
+    scored.sort((a, b) => a.$2.compareTo(b.$2));
+    return scored.map((e) => e.$1).toList();
+  }
+
+  String _formatUnknownCommand(String input) {
+    final suggestions = _suggestCommands(input);
+    final buf = StringBuffer()..writeln('❓ 没有「/$input」这条指令。');
+    if (suggestions.isNotEmpty) {
+      buf.writeln('\n你是不是想输入：');
+      for (final c in suggestions.take(4)) {
+        buf.writeln('  /${c.primary} — ${c.helpText}');
+      }
+    } else {
+      buf.writeln('\n输入 /帮助 查看全部可用指令。'
+          '\n如果你想把这段话当成自由行动交给 AI，请把开头的「/」去掉。');
+    }
+    return buf.toString();
+  }
+
+  /// 标准编辑距离（候选词都很短，O(n·m) 完全够用）
+  int _levenshtein(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+    var prev = List<int>.generate(b.length + 1, (i) => i);
+    var cur = List<int>.filled(b.length + 1, 0);
+    for (var i = 1; i <= a.length; i++) {
+      cur[0] = i;
+      for (var j = 1; j <= b.length; j++) {
+        cur[j] = [
+          prev[j] + 1,
+          cur[j - 1] + 1,
+          prev[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1),
+        ].reduce((x, y) => x < y ? x : y);
+      }
+      final t = prev;
+      prev = cur;
+      cur = t;
+    }
+    return prev[b.length];
   }
 
   // ==================== 作弊指令（设定 8.1-8.5） ====================
@@ -1104,12 +904,6 @@ $knownRegions
       return '【通知】\n暂无新通知。';
     }
     return '【通知】\n${notifications.reversed.take(10).map((n) => '· $n').join('\n')}';
-  }
-
-  String _formatHelp() {
-    // R1：注册表自动生成帮助，天然与路由一致（不再需要双维护）
-    _ensureCommandsRegistered();
-    return CommandRegistry.instance.buildHelpText();
   }
 
   // ==================== 人生目标系统 ====================
