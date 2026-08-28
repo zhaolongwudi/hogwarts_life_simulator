@@ -288,22 +288,34 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // 场景停滞强制推进：玩家在同一地点停留过久时，注入强制场景转换指令
       // 这是「最后一道防线」——prompt 规则 + 上下文压缩都失效时的硬性兜底
       // （已加入三级豁免：地点白名单、叙事钩子未解决、分级阈值，避免打断重要剧情）
-      String stagnationLine = '';
       final curLoc = worldState.currentLocation ?? '当前地点';
       final threshold = stagnationThresholdFor(curLoc);
       final hasHook = narrativeHasUnresolvedHook(currentNarrative);
-      if (turnsAtSameLocation >= threshold && !hasHook) {
-        final stuckTurns = turnsAtSameLocation;
-        final isExempt = isLocationExemptFromStagnation(curLoc);
-        final extraHint = isExempt
-            ? '（注：你所在的「$curLoc」是重要剧情场景，通常允许$threshold回合停留；现已达到上限，必须在下一阶段自然转换。）'
-            : '';
-        stagnationLine = '【⚠️强制推进指令】玩家已在「$curLoc」停留 $stuckTurns 回合（该场景允许阈值=$threshold），剧情已停滞！'
-            '本回合必须发生场景转换——例如：有人敲门通知该出发、时间到了必须动身前往下一站、'
-            '收到猫头鹰信件催促、窗外发生引人注意的事件、被召唤去某处等。$extraHint'
-            '严禁继续在「$curLoc」原地打转、反复施法、反复探索同一现象。'
-            '本回合结尾必须让玩家处于「正在前往/即将到达下一场景」的状态。\n\n';
-      }
+      // 判定统一走 StagnationDetector.evaluate，措辞按叙事 AI 的口径组织。
+      // 此前这里只认「强制」一档，「开局」与「剧情进行中」两档在叙事端永远发不出去。
+      final level = _stagnation.evaluate(
+        currentLocation: curLoc,
+        turnsAtSameLocation: turnsAtSameLocation,
+        hasUnresolvedHook: hasHook,
+        turnCount: turnCount,
+      );
+      final stagnationLine = switch (level) {
+        StagnationLevel.forced =>
+          '【⚠️强制推进指令】玩家已在「$curLoc」停留 $turnsAtSameLocation 回合（该场景允许阈值=$threshold），剧情已停滞！'
+              '本回合必须发生场景转换——例如：有人敲门通知该出发、时间到了必须动身前往下一站、'
+              '收到猫头鹰信件催促、窗外发生引人注意的事件、被召唤去某处等。'
+              '${_stagnation.exemptHint(curLoc)}'
+              '严禁继续在「$curLoc」原地打转、反复施法、反复探索同一现象。'
+              '本回合结尾必须让玩家处于「正在前往/即将到达下一场景」的状态。\n\n',
+        StagnationLevel.earlyGame =>
+          '📌 【开局阶段】现在是「收到信 → 准备出发」这一段，本回合叙事请把玩家推向离家：'
+              '收拾行李、与家人道别、动身前往九又四分之三站台。不要让剧情继续停在$curLoc 原地打转。\n\n',
+        StagnationLevel.inProgress =>
+          '💡 【剧情进行中】上一回合收尾留有未解决的冲突或悬念，本回合优先把它收掉；'
+              '收尾之后请带出场景转换的趋势（例如"做完这件事便动身前往下一处"），'
+              '不要整回合停在「$curLoc」不动。\n\n',
+        StagnationLevel.none => '',
+      };
 
       return '''【世界上下文】
   $context
@@ -1064,32 +1076,17 @@ $kNarrativeWritingRules
   //   - mixin_narrative / mixin_response / 未来其它 mixin 调用统一出口，不会出现各自 if 版本不一致；
   //   - "停滞 → 强制推进文案" 从 buildPrompt 里解耦出来，可单独单测。
   //
-  // 旧 API（isLocationExemptFromStagnation / stagnationThresholdFor / narrativeHasUnresolvedHook）
+  // 旧 API（stagnationThresholdFor / narrativeHasUnresolvedHook）
   // 保持对外不变：内部委托给 StagnationDetector，不会破坏 GameProviderBase 的 abstract 签名。
+  // isLocationExemptFromStagnation 已移除：判定收敛进 evaluate 后没有任何调用者。
   // ============================================================
 
   static const StagnationDetector _stagnation = StagnationDetector.instance;
 
-  bool isLocationExemptFromStagnation(String location) =>
-      _stagnation.isExempt(location);
   int stagnationThresholdFor(String location) =>
       _stagnation.thresholdFor(location);
   bool narrativeHasUnresolvedHook(String narrative) =>
       _stagnation.hasUnresolvedHook(narrative);
-
-  String buildStagnationPromptLine({
-    required String currentLocation,
-    required int turnsAtSameLocation,
-    required bool hasUnresolvedHook,
-    required int turnCount,
-  }) =>
-      _stagnation.buildPromptLine(
-        currentLocation: currentLocation,
-        turnsAtSameLocation: turnsAtSameLocation,
-        hasUnresolvedHook: hasUnresolvedHook,
-        turnCount: turnCount,
-      );
-
 
   /// 回合开始时更新地点停滞计数。
   /// 若 currentLocation 与上一回合相同，则 turnsAtSameLocation++；

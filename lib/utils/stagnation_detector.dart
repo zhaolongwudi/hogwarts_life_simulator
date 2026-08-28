@@ -94,44 +94,70 @@ class StagnationDetector {
     return re.hasMatch(tail);
   }
 
-  /// 统一输出"停滞强制推进提示"文案（之前散落在 buildPrompt 里）。
-  /// return 为空字符串代表不需要强制推进。
-  String buildPromptLine({
+  /// 判定当前该发哪一档推进提示。
+  ///
+  /// 判定逻辑曾经有三份，而且已经漂移了：
+  ///
+  /// * `mixin_narrative` 里内联一份，只认「强制」那一档，开局与"剧情进行中"
+  ///   两档在叙事端**根本发不出去**；
+  /// * `mixin_response` 里内联一份（给选项生成器），三档齐全，且"剧情进行中"
+  ///   提前一回合（`threshold - 1`）就发；
+  /// * 本类里的 `buildPromptLine` 一份——写得最完整，却**零调用**。
+  ///
+  /// 三份并存意味着改一次阈值语义，叙事端和选项端就会给出互相矛盾的指令。
+  /// 这里收敛成唯一的判定入口，取三份里最合理的语序与时机
+  /// （沿用选项端的：开局提示不等阈值、"剧情进行中"提前一回合）；
+  /// 措辞仍由各端自己组织——叙事 AI 要的是"本回合必须转换场景"，
+  /// 选项 AI 要的是"必须生成至少 2 个离开的选项"，本来就不该共用一句话。
+  StagnationLevel evaluate({
     required String currentLocation,
     required int turnsAtSameLocation,
     required bool hasUnresolvedHook,
     required int turnCount,
   }) {
     final threshold = thresholdFor(currentLocation);
-    if (turnsAtSameLocation < threshold) return '';
+    final stuck = turnsAtSameLocation >= threshold;
 
-    // ❗顺序很重要：旧代码在这里无条件 `if (hasUnresolvedHook) return '';`，
-    // 导致下面 else-if 里那条「💡剧情进行中」分支永远不可达（死分支）。
-    // 正确语义：有未决钩子 = 剧情正在推进 → 给软提示，不发强制指令。
-    if (hasUnresolvedHook) {
-      return '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；'
-          '但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。\n\n';
+    if (stuck && !hasUnresolvedHook) return StagnationLevel.forced;
+
+    if (turnCount >= 1 &&
+        turnCount <= 3 &&
+        (currentLocation.isEmpty || isHome(currentLocation))) {
+      return StagnationLevel.earlyGame;
     }
 
-    final stuckTurns = turnsAtSameLocation;
-    final isExempt_ = isExempt(currentLocation);
-    final extraHint = isExempt_
-        ? '（注：你所在的「$currentLocation」是重要剧情场景，通常允许$threshold回合停留；现已达到上限，必须在下一阶段自然转换。）'
-        : '';
-    final earlyGame = (turnCount <= 3 && turnCount >= 1 &&
-        (currentLocation.contains('家中') ||
-            currentLocation.contains('卧室') ||
-            currentLocation.isEmpty));
-    String line;
-    if (earlyGame) {
-      line = '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。';
-    } else {
-      line = '【⚠️强制推进指令】玩家已在「$currentLocation」停留 $stuckTurns 回合（该场景允许阈值=$threshold），剧情已停滞！'
-          '本回合必须发生场景转换——例如：有人敲门通知该出发、时间到了必须动身前往下一站、'
-          '收到猫头鹰信件催促、窗外发生引人注意的事件、被召唤去某处等。$extraHint'
-          '严禁继续在「$currentLocation」原地打转、反复施法、反复探索同一现象。'
-          '本回合结尾必须让玩家处于「正在前往/即将到达下一场景」的状态。';
+    // 剧情正在推进（有未决钩子）：提前一回合给软提示，别等真停滞了才说
+    if (hasUnresolvedHook && turnsAtSameLocation >= threshold - 1) {
+      return StagnationLevel.inProgress;
     }
-    return line + '\n\n';
+    return StagnationLevel.none;
   }
+
+  /// 开局"家里/卧室"这类必须尽快离开的地点。
+  bool isHome(String location) =>
+      location.isEmpty ? true : homeKeywords.any((k) => location.contains(k));
+
+  /// 「重要剧情场景」到达上限时的补充说明（豁免地点专用）。
+  String exemptHint(String currentLocation) {
+    final threshold = thresholdFor(currentLocation);
+    return isExempt(currentLocation)
+        ? '（注：你所在的「$currentLocation」是重要剧情场景，通常允许$threshold回合停留；'
+            '现已达到上限，必须在下一阶段自然转换。）'
+        : '';
+  }
+}
+
+/// 推进提示的档位，由 [StagnationDetector.evaluate] 判定。
+enum StagnationLevel {
+  /// 无需提示
+  none,
+
+  /// 📌 开局前 3 回合在家里：该出门了
+  earlyGame,
+
+  /// 💡 叙事末尾有未决钩子：承接悬念，但别全员原地打转
+  inProgress,
+
+  /// ⚠️ 已停滞：本回合必须转换场景
+  forced,
 }

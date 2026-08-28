@@ -294,7 +294,6 @@ abstract class GameProviderBase extends ChangeNotifier {
   // 实现由 mixin_narrative.dart 提供。
   int stagnationThresholdFor(String location);
   bool narrativeHasUnresolvedHook(String narrative);
-  bool isLocationExemptFromStagnation(String location);
 
   // ========== 剧情一致性 & 短期断言（跨 Mixin 访问）==========
   // 断言提取 & 轮换：mixin_narrative 在回合结束调用；Prompt 两端（叙事+选项）都要读取断言注入。

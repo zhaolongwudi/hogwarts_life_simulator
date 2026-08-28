@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../utils/story_text_renderer.dart';
+import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/choice_prompts.dart';
@@ -1023,19 +1024,25 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     const forbiddenHint = '【生成选项·禁用词清单·请注意】\n'
         '严禁出现：手机/互联网/微信/高铁/飞机/扫码 等现代物品；柯南/路飞/原神/三体 等跨IP；yyds/绝绝子/社死/破防/打call/666 等网络梗。';
 
-    // 场景停滞提示：传给选项生成器，让它按规则2b/2c强制提供"推进下一场景"选项
-    // 与叙事AI端保持完全一致的豁免+分级逻辑：
-    //   - 开局家中(2回合)才严厉，重要剧情场景(6回合)宽松，过路点(4回合)中等
-    //   - 叙事末段存在"未解决钩子"时不强制，避免把正在进行中的决斗/点名/悬念硬打断
+    // 场景停滞提示：传给选项生成器，让它按规则2b/2c强制提供"推进下一场景"选项。
+    // 判定与叙事端共用 StagnationDetector.evaluate——原先两处各自内联一份 if 链，
+    // 阈值语义一变就会给出互相矛盾的指令。措辞仍按选项 AI 的口径组织。
     final threshold = stagnationThresholdFor(currentLoc);
     final unresolved = narrativeHasUnresolvedHook(narrative);
-    final stagnationHint = (turnsAtSameLocation >= threshold && !unresolved)
-        ? '⚠️ 【同一地点停留】玩家已在「$currentLoc」连续停留 $turnsAtSameLocation 回合（该场景允许阈值=$threshold回合），剧情停滞！按规则必须生成至少2个前往下一场景的选项（例：收拾行李去车站、出门、告别家人、动身前往国王十字车站等）。严禁生成4个原地不动的选项。'
-        : (turnCount <= 3 && turnCount >= 1 && (currentLoc.contains('家中') || currentLoc.contains('卧室') || currentLoc.isEmpty)
-            ? '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。'
-            : (unresolved && turnsAtSameLocation >= (threshold - 1))
-                ? '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。'
-                : '');
+    final stagnationHint = switch (StagnationDetector.instance.evaluate(
+      currentLocation: currentLoc,
+      turnsAtSameLocation: turnsAtSameLocation,
+      hasUnresolvedHook: unresolved,
+      turnCount: turnCount,
+    )) {
+      StagnationLevel.forced =>
+        '⚠️ 【同一地点停留】玩家已在「$currentLoc」连续停留 $turnsAtSameLocation 回合（该场景允许阈值=$threshold回合），剧情停滞！按规则必须生成至少2个前往下一场景的选项（例：收拾行李去车站、出门、告别家人、动身前往国王十字车站等）。严禁生成4个原地不动的选项。',
+      StagnationLevel.earlyGame =>
+        '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。',
+      StagnationLevel.inProgress =>
+        '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。',
+      StagnationLevel.none => '',
+    };
 
     final choicePrompt = '''$kChoicePromptPreamble
   ===== 游戏世界背景 =====
