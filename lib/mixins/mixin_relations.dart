@@ -17,6 +17,7 @@ import '../utils/inventory_ops.dart';
 import '../data/gift_rules.dart';
 import '../data/item_data.dart';
 import '../data/attribute_data.dart';
+import '../data/collectible_data.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 
@@ -365,6 +366,10 @@ mixin GameRelationsMixin on GameProviderBase {
       type: type,
       description: description.isEmpty ? '购买的$itemName' : description,
     ));
+    // 买了就收进册子（如魁地奇徽章）。/收藏 以前永远是空的——没有任何
+    // 地方往 collection 里写过东西。
+    final collectibleId = collectibleForPurchase[itemName];
+    if (collectibleId != null) addCollectible(collectibleId);
     notifications.add('💰 购买了 $itemName，花费 $price 加隆');
     notifyListeners();
     unawaited(autoSave());
@@ -844,10 +849,38 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   String formatCollection() {
-    if (player!.collection.isEmpty) {
-      return '【收藏】\n暂无收藏品。在冒险中收集独特物品，如巧克力蛙画片、日记本等。';
+    final p = player;
+    if (p == null) return '你还没有开始收集。';
+    final buf = StringBuffer('【收藏】'
+        '（${p.collection.length}/${kCollectibleCatalog.length}）\n');
+    if (p.collection.isEmpty) {
+      // 以前的空态文案许诺了两件根本拿不到的东西：「巧克力蛙画片」（当时
+      // 没有掉落逻辑）和「日记本」（这个东西在任何地方都不存在）。改成写
+      // 实：只说真的有来源的那几样。
+      buf.writeln('还一件都没有。可以这么开始：');
+      buf.writeln('· 吃一只「巧克力蛙」，包装里会附赠著名巫师画片；');
+      buf.writeln('· 去对角巷买「魁地奇徽章」，买下就收进册子；');
+      buf.writeln('· 进 /禁林 转转，运气好能捡到独角兽尾毛。');
+      return buf.toString();
     }
-    return '【收藏】\n${player!.collection.map((c) => '· $c').join('\n')}';
+    for (final series in collectibleSeries) {
+      final all = collectiblesInSeries(series);
+      final owned = all.where((c) => p.collection.contains(c.id)).toList();
+      buf.writeln();
+      buf.writeln('【$series】${owned.length}/${all.length}');
+      for (final c in all) {
+        final has = p.collection.contains(c.id);
+        buf.writeln('${has ? '✅' : '🔒'} ${has ? c.name : '？？？'}'
+            '${has ? '　${c.starText}' : ''}');
+      }
+    }
+    final unknown =
+        p.collection.where((id) => collectibleById(id) == null).toList();
+    if (unknown.isNotEmpty) {
+      buf.writeln();
+      buf.writeln('（有 ${unknown.length} 件旧存档里的收藏品已不在目录中）');
+    }
+    return buf.toString();
   }
 
   /// [parts] 为「去掉 /信 命令本身」后的子参数列表，parts[0] 即子命令。

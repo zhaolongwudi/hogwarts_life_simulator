@@ -444,6 +444,7 @@ mixin GameInitMixin on GameProviderBase {
           player!.house = house;
           bumpImpactScore(0.05, debugReason: '分院仪式');
           unlockAchievement('sorted');
+          addCollectible('souvenir_sorting'); // 分院帽上掉下来的一小片布
           unlockCG(this.cgById('CG-002')); // 分院帽下的对视
           // 合并：本地分院叙事拼接在开场叙事后面
           if (sortingNarrative.trim().isNotEmpty) {
@@ -459,6 +460,9 @@ mixin GameInitMixin on GameProviderBase {
 
       appProvider.setGameStarted(true);
       unlockAchievement('first_letter');
+      // 那张带你来九又四分之三站台的车票，顺手收进收藏册。
+      // （/收藏 以前永远空着：全项目没有任何地方往 collection 里写过东西）
+      addCollectible('souvenir_platform');
       if (player!.letters.isEmpty) {
         player!.letters.add(Letter(
           id: 'L_admission',

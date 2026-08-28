@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/attribute_data.dart';
+import 'package:hogwarts_life_simulator/data/collectible_data.dart';
+import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/spell_data.dart';
 import 'package:hogwarts_life_simulator/data/time_cost_rules.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
@@ -269,7 +271,86 @@ void main() {
           reason: '描述写羁绊 $bond，但 stage $need 的门槛不是 $bond');
     });
   });
+
+  group('收藏品不再是空的许诺', () {
+    test('收藏品 id 不重复', () {
+      final ids = kCollectibleCatalog.map((c) => c.id).toList();
+      expect(ids.toSet().length, ids.length);
+    });
+
+    test('每一件收藏品都至少有一个真实的获取途径', () {
+      // /收藏 曾经永远显示「暂无收藏品。在冒险中收集独特物品，如巧克力蛙
+      // 画片、日记本等」——而全项目对 collection 的写入一处都没有。这句提
+      // 示承诺了两件根本拿不到的东西。现在反过来钉住：目录里不许出现拿不
+      // 到的条目。
+      final libSrc = <String, String>{};
+      for (final f in _allLibFiles()) {
+        libSrc[f] = _codeOnly(f);
+      }
+      bool reachable(String id) => libSrc.values.any((src) => src.contains("'$id'"));
+
+      final orphans = <String>[];
+      for (final c in kCollectibleCatalog) {
+        // 画片系列走「使用某物品随机掉落」，靠系列名而不是逐个 id 命中
+        final bySeries = collectibleSeriesForUse.values.contains(c.series);
+        final byPurchase = collectibleForPurchase.containsValue(c.id);
+        if (!reachable(c.id) && !bySeries && !byPurchase) {
+          orphans.add('${c.id}（${c.name}）');
+        }
+      }
+      expect(orphans, isEmpty,
+          reason: '这些收藏品没有任何获取途径，/收藏 里会永远锁着：$orphans');
+    });
+
+    test('会掉收藏品的物品在物品表里买得到', () {
+      for (final name in collectibleSeriesForUse.keys) {
+        expect(itemDefByName(name), isNotNull,
+            reason: '物品表里没有「$name」，掉了也没人吃得到');
+      }
+      for (final name in collectibleForPurchase.keys) {
+        expect(itemDefByName(name), isNotNull,
+            reason: '物品表里没有「$name」，商店里买不到');
+      }
+    });
+
+    test('画片系列确实非空，否则巧克力蛙什么也不掉', () {
+      for (final entry in collectibleSeriesForUse.entries) {
+        expect(collectiblesInSeries(entry.value), isNotEmpty,
+            reason: '系列「${entry.value}」是空的');
+      }
+    });
+
+    test('/收藏 的空态文案不再许诺拿不到的东西', () {
+      final src = _codeOnly('lib/mixins/mixin_relations.dart');
+      final body = src.substring(src.indexOf('String formatCollection()'));
+      final empty = body.substring(0, body.indexOf('return buf.toString();'));
+      expect(empty.contains('日记本'), isFalse,
+          reason: '「日记本」在任何地方都不存在，不该再出现在提示里');
+      expect(empty.contains('巧克力蛙'), isTrue,
+          reason: '巧克力蛙是唯一稳定的收藏品来源，得告诉玩家');
+    });
+
+    test('收藏品的来源分散在开局/分院/购买/掉落，不是只有一处', () {
+      // 写入本身收在 addCollectible 一个漏斗里（好事），所以这里数的是调用
+      // 点：来源只有一处的话，玩家错过这一次就再也拿不到了。
+      var sites = 0;
+      var seriesDrops = 0;
+      for (final f in _allLibFiles()) {
+        final src = _codeOnly(f);
+        // 购买那条传的是变量而不是字面量，所以数调用次数而不是字符串字面量，
+        // 再减掉方法自身的声明。
+        sites += RegExp(r'addCollectible\(').allMatches(src).length -
+            RegExp(r'bool addCollectible\(').allMatches(src).length;
+        seriesDrops += RegExp(r'_addCollectibleFromSeries\(').allMatches(src).length;
+      }
+      expect(sites, greaterThanOrEqualTo(5),
+          reason: 'addCollectible 只有 $sites 个调用点，收集玩法的来源太单一');
+      expect(seriesDrops, greaterThanOrEqualTo(1),
+          reason: '没有任何地方走「使用物品掉落收藏品」这条线');
+    });
+  });
 }
+
 
 // ==================== 扫描工具 ====================
 

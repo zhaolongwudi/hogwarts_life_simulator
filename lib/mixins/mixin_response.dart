@@ -196,6 +196,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     player!.house = en;
     unlockAchievement('sorted');
+    addCollectible('souvenir_sorting'); // 分院帽上掉下来的一小片布
     unlockCG(this.cgById('CG-002')); // 分院帽下的对视
     // 分院解析日志已移除
   }

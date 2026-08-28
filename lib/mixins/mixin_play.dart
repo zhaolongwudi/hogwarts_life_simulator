@@ -8,6 +8,7 @@ import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
 import '../data/attribute_data.dart';
 import '../data/spell_data.dart';
+import '../data/collectible_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -166,10 +167,81 @@ mixin GamePlayMixin on GameProviderBase {
       }
     }
 
+    // 会掉收藏品的物品（巧克力蛙 → 著名巫师画片）。
+    // 巧克力蛙的物品描述写着「附赠著名巫师卡片」，而收藏栏此前永远是空的
+    // ——全项目对 collection 的写入一处都没有。这里把那句话兑现掉。
+    final series = collectibleSeriesForUse[name];
+    if (series != null) {
+      _addCollectibleFromSeries(series, buf);
+    }
+
     buf.writeln('你把「$name」${_useActionVerb(name)}。');
     _applyEffects(p, effects, buf);
     _removeItem(name);
     _finishLocal(buf.toString());
+  }
+
+  /// 从 [series] 里抽一张还没拥有的收藏品，抽不到就给张重复的。
+  ///
+  /// 权重按稀有度反过来算：★ 越多越难抽到。全收齐之后提示一句，不再重复
+  /// 掉落——否则吃一百只蛙会看到一百句「又是邓布利多」。
+  void _addCollectibleFromSeries(String series, StringBuffer buf) {
+    final p = player;
+    if (p == null) return;
+    final all = collectiblesInSeries(series);
+    if (all.isEmpty) return;
+    final missing = all.where((c) => !p.collection.contains(c.id)).toList();
+    if (missing.isEmpty) {
+      buf.writeln('（「$series」你已经收齐了，这一包是重复的。）');
+      return;
+    }
+    var total = 0;
+    for (final c in missing) {
+      total += 6 - c.rarity;
+    }
+    var pick = random.nextInt(total);
+    CollectibleDef chosen = missing.last;
+    for (final c in missing) {
+      pick -= 6 - c.rarity;
+      if (pick < 0) {
+        chosen = c;
+        break;
+      }
+    }
+    p.collection.add(chosen.id);
+    buf.writeln();
+    buf.writeln('包装纸里滑出一张卡片——${chosen.name}（${chosen.starText}）');
+    buf.writeln(chosen.desc);
+    final owned = all.where((c) => p.collection.contains(c.id)).length;
+    buf.writeln('「$series」收集进度：$owned/${all.length}　（/收藏 查看）');
+    notifications.add('🃏 获得收藏品：${chosen.name}');
+  }
+
+  /// 禁林里偶然撞见的纪念品（独角兽尾毛）。
+  void _addCollectibleSighting(StringBuffer buf) {
+    if (!addCollectible('souvenir_forest')) return;
+    buf.writeln('正要走，林子深处闪过一道银白。你追过去只看見几丛被压弯的草，'
+        '草叶上挂着一根独角兽的尾毛——泛着很淡的光。');
+  }
+
+  /// 直接入册一件收藏品（开局、分院、禁林这类一次性来源）。
+  ///
+  /// 返回 true 表示这是第一次拿到，false 表示已经有了——调用方据此决定要不
+  /// 要播报，免得读档或重复触发时刷屏。
+  ///
+  /// 声明在基类上是给其它 mixin（购买入册在 mixin_relations）用的：私有方法
+  /// 跨文件访问不到，而 collection 的写入点分散在几个 mixin 里。
+  @override
+  bool addCollectible(String id) {
+    final p = player;
+    if (p == null) return false;
+    final def = collectibleById(id);
+    if (def == null) return false;
+    if (p.collection.contains(id)) return false;
+    p.collection.add(id);
+    notifications.add('🗂️ 获得收藏品：${def.name}');
+    worldState.addNarrativeEvent('🗂️ 获得收藏品：${def.name}', turn: turnCount);
+    return true;
   }
 
   String _useActionVerb(String name) {
@@ -1065,6 +1137,9 @@ mixin GamePlayMixin on GameProviderBase {
     } else if (rollValue < 85) {
       buf.writeln('这一趟有惊无险——除了几只不咬人的护树罗锅远远望着你，禁林安静得不像话。'
           '你几乎空手而归，但至少熟悉了这片林子。');
+      // 空手而归的这一档给一次收藏品机会：独角兽尾毛是禁林里唯一拿得到的
+      // 纪念品，不给个明确来源的话它就永远是「看得见拿不到」。
+      if (random.nextInt(100) < 12) _addCollectibleSighting(buf);
     } else {
       p.health = (p.health - 8 - random.nextInt(8)).clamp(1, 100);
       if (!p.injuries.contains('禁林擦伤')) p.injuries.add('禁林擦伤');
