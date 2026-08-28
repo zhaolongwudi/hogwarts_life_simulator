@@ -785,8 +785,18 @@ mixin GameResponseMixin on GameProviderBase {
           action: '动作利落地把课本和笔记收进书包，确认一遍下一节课的教室和时间，迈开步伐朝目的地走去，不在原地浪费时间'));
     } else if (energy < 25) {
       fallback.add(GameChoice(text: '先抓紧休息恢复精神体力', action: '不再逞强，找个安全的地方坐下或躺下休息，先把精力恢复到可行动水平再做下一步'));
+    } else if (atHogwarts && isNight) {
+      fallback.add(GameChoice(text: '起身点亮魔杖，沿着走廊主动探索午夜城堡的秘密', action: '不再犹豫，点亮魔杖起身沿着月光下的走廊前进，主动探索城堡在午夜的秘密——被费尔奇抓到风险大，但往往能发现白天看不到的东西'));
+    } else if (energy < 30) {
+      fallback.add(GameChoice(text: '先抓紧时间恢复体力，再考虑下一步行动', action: '感觉身体已经快到极限了，不再硬撑，找个安全的地方坐下或靠墙闭目养神，先把体力和精力恢复到能正常行动的水平再考虑下一步'));
     } else {
-      fallback.add(GameChoice(text: '主动面对眼前状况并迈出第一步', action: '不再犹豫，鼓起勇气直接面对当前的局面，立刻着手处理最紧急的那件事'));
+      // 默认 A 选项：基于当前场景生成不同风格的主动型选项，避免多回合相同
+      final defaultA = turnCount % 3 == 0
+          ? GameChoice(text: '主动面对眼前状况并迈出第一步', action: '不再犹豫，鼓起勇气直接面对当前的局面，立刻着手处理最紧急的那件事')
+          : turnCount % 3 == 1
+              ? GameChoice(text: '打起精神，大步向前迎接接下来的挑战', action: '深吸一口气振作精神，迈开大步向前走，用积极的态度迎接即将到来的每一件事')
+              : GameChoice(text: '果断行动，不让犹豫耽误当前良机', action: '直觉告诉自己不能再等了，果断采取行动抓住当下的时机，在悔意追上之前把事情推进下去');
+      fallback.add(defaultA);
     }
 
     // ---- B 谨慎/智取/观察型 ----
@@ -815,7 +825,13 @@ mixin GameResponseMixin on GameProviderBase {
           text: '先找个安静角落把课程表和学院地图理清楚，规划好今日行程',
           action: '先避开人流，找一个走廊的安静角落，把课程表、学院公共休息室位置和今天要做的事情逐一列清楚，避免走错教室或遗漏重要事项'));
     } else {
-      fallback.add(GameChoice(text: '先沉默观察几秒钟，理清所有信息再行动', action: '先不要急着做决定，安静观察周围的人和环境，把已知信息理一遍再选最稳妥的行动'));
+      // 默认 B 选项：基于回合数和场景变化
+      final defaultB = turnCount % 3 == 0
+          ? GameChoice(text: '先沉默观察几秒钟，理清所有信息再行动', action: '先不要急着做决定，安静观察周围的人和环境，把已知信息理一遍再选最稳妥的行动')
+          : turnCount % 3 == 1
+              ? GameChoice(text: '停在原地静观其变，等局势明朗再做判断', action: '不急于踏出下一步，先停在原地感受周围氛围的变化，等关键信息浮现或局势明朗之后再做出冷静的判断')
+              : GameChoice(text: '先绕着周围走一圈，摸清地形和人员分布再决定', action: '不急于行动，先不动声色地绕着周围走一圈，把地形、出入口、周围人员分布都摸清楚，掌握全局信息再制定计划');
+      fallback.add(defaultB);
     }
 
     // ---- C 人际/沟通/结盟型 ----
@@ -838,7 +854,13 @@ mixin GameResponseMixin on GameProviderBase {
           text: '找路过的${hogwartsLastNPC ?? '学长'}或同学确认下节课的教室方向和注意事项',
           action: '拦住一位看起来面善的路过的${hogwartsLastNPC ?? '高年级学长'}或同学，礼貌询问下一节课的教室位置、教授的上课风格和注意事项，确保自己不迟到踩雷'));
     } else {
-      fallback.add(GameChoice(text: '找附近熟悉的NPC了解情况再做判断', action: '先和周围看起来面善或认识的NPC聊两句，确认一下当前事态、别人都在做什么，避免自己信息不足做错决定'));
+      // 默认 C 选项：基于回合数和场景变化
+      final defaultC = turnCount % 3 == 0
+          ? GameChoice(text: '找附近熟悉的NPC了解情况再做判断', action: '先和周围看起来面善或认识的NPC聊两句，确认一下当前事态、别人都在做什么，避免自己信息不足做错决定')
+          : turnCount % 3 == 1
+              ? GameChoice(text: '环顾四周寻找可信任的人，主动搭话建立联系', action: '目光扫过周围的人，找一个看起来靠谱或眼熟的面孔主动搭话，先建立初步联系再了解当前处境')
+              : GameChoice(text: '写好一封短信让猫头鹰送给信任的朋友，寻求建议', action: '拿出羊皮纸快速写一封短信，简单说明当前处境和困惑，让猫头鹰送给最信任的朋友，等对方回信获得建议后再行动');
+      fallback.add(defaultC);
     }
 
     // ---- D 取巧/隐忍/代价型 ----
@@ -865,7 +887,13 @@ mixin GameResponseMixin on GameProviderBase {
           text: '拿出提前准备好的笔记，把今天观察到的关键信息快速记下来建立情报优势',
           action: '掏出随身的羊皮纸小本和羽毛笔，把今天观察到的教授特点、同学性格、重要地点位置快速整理记录，建立属于自己的情报笔记方便日后利用'));
     } else {
-      fallback.add(GameChoice(text: '暂时隐忍不表态，等时机更成熟再出手', action: '把情绪压下去，不急于表明立场也不急于行动，先观察局势变化，等对自己最有利的时机出现再出手'));
+      // 默认 D 选项：基于回合数和场景变化
+      final defaultD = turnCount % 3 == 0
+          ? GameChoice(text: '暂时隐忍不表态，等时机更成熟再出手', action: '把情绪压下去，不急于表明立场也不急于行动，先观察局势变化，等对自己最有利的时机出现再出手')
+          : turnCount % 3 == 1
+              ? GameChoice(text: '退到边缘地带观察全局，不抢着出头但随时准备行动', action: '安静退到人群或场景的边缘，让主角光环落在别人身上，自己默默观察整个局面的走向，等需要你的时候再果断出手')
+              : GameChoice(text: '绕到对手侧后方，寻找可利用的机会出其不意', action: '不正面硬拼，悄悄绕到侧后方观察对手暴露的弱点，寻找对方意想不到的机会，出其不意掌握主动权');
+      fallback.add(defaultD);
     }
 
     // 保险：裁剪/补齐到 4 条

@@ -469,6 +469,8 @@ $kNarrativeWritingRules
         debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
         choices = buildFallbackChoices(currentNarrative);
       }
+      // 立即通知 UI 刷新选项，确保用户看到最新选项
+      notifyListeners();
 
       // --- ContinuityBridge Step A：把本回合叙事的末尾锚点存档，下回合强制衔接 ---
       // 注意：先同步 location（_syncLocationFromNarrative）后再 saveAnchor，确保 location 锚点是最新的
@@ -504,7 +506,10 @@ $kNarrativeWritingRules
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
       debugPrint('❌ 剧情生成失败，启用本地兜底叙事: $e');
       currentNarrative = generateFallbackNarrative();
-      choices = generateContextualFallbackChoices();
+      // 2026-08-28：统一使用 buildFallbackChoices（基于剧情末尾800字做承接式兜底）
+      // 旧代码用 generateContextualFallbackChoices → 返回静态位置MAP选项（"去教室上课"等）
+      // → 与当前剧情末尾脱节，玩家点击后下回合叙事完全跳场景
+      choices = buildFallbackChoices(currentNarrative);
       appendRecentTurn(currentNarrative);
       notifications.add('⚠️ AI 服务暂时不可用，已切换为本地过渡剧情，稍后可重试行动');
       loadingStage = '';
