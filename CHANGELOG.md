@@ -5,6 +5,17 @@
 
 ---
 
+### v2.3.1 — 2026-08-28
+
+**📋 变更说明**
+fix: 选项生成多回合不更新——强制notifyListeners+catch兜底改buildFallbackChoices+默认选项轮换
+
+- processChoice中choices赋值后立即notifyListeners()，确保UI及时刷新
+- catch分支统一使用buildFallbackChoices替代generateContextualFallbackChoices，
+  避免静态位置选项与剧情末尾脱节断链
+- buildFallbackChoices默认分支基于turnCount%3轮换3种不同风格选项，
+  解决多回合兜底时选项完全一致的问题
+
 ### v2.3.0 — 2026-08-27
 
 **📋 变更说明**
