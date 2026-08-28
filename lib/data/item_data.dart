@@ -483,12 +483,8 @@ ItemDef? itemDefByName(String name) {
   return null;
 }
 
-ItemDef? itemDefById(String id) {
-  for (final d in kItemCatalog) {
-    if (d.id == id) return d;
-  }
-  return null;
-}
+// 注：itemDefById 已删——背包里存的是物品**名字**（InventoryItem.name），
+// 全项目没有任何地方按 id 反查物品，这个函数只是个常年零调用的陷阱。
 
 List<ItemDef> equippableItems() =>
     kItemCatalog.where((d) => d.isEquippable).toList();

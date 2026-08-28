@@ -236,7 +236,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
           final e = ev.text;
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
           if (looksFake(e)) continue;
-          final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
+          final k = e.replaceAll(_anchorIconPrefix, '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add(e);
           if (worldAnchors.length >= 12) break;
@@ -247,7 +247,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
           final e = ev.text;
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
           if (looksFake(e)) continue;
-          final k = e.replaceAll(RegExp(r'^(📊|👤|💬|📅|🏆|🌟|📰)'), '').trim();
+          final k = e.replaceAll(_anchorIconPrefix, '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add('剧情锚：$e');
           if (worldAnchors.length >= 16) break;
@@ -1174,25 +1174,21 @@ $kNarrativeWritingRules
     // 于是「你走进教室，听说了关于禁林的故事」会被判成抵达禁林，
     // 「你进入了梦乡，梦里你来到国王十字车站」也会把玩家硬切去车站。
     // 现在改为：以动词为锚点，只在其后 16 字且不跨句边界的窗口内找地点名。
-    final arrivalRe = RegExp(
-      r'(?:抵达|到达|走进|走入|来到|出现在|登上|进入|下车|到站|赶到|踏入|推门而入)',
-    );
-    // 梦境/回忆/打算/假设：这类语境里的抵达不是真实移动，不能同步地点
-    const nonActualContextRe = r'(梦里|梦中|梦见|梦境|幻想|想象|回忆|回想|想起|想起那时|仿佛|似乎|好像|如果|假如|要是|打算|计划|准备去|想要去|听说|据说|传闻)';
+    final arrivalRe = _arrivalVerbRe;
     int lastArrivalAt = -1;
     for (final match in arrivalRe.allMatches(tail)) {
       final windowStart = match.end;
       final windowEnd = windowStart + 16 > tail.length ? tail.length : windowStart + 16;
       final rawWindow = tail.substring(windowStart, windowEnd);
       // 窗口内一旦遇到句子边界就截断，避免跨句误连
-      final boundary = RegExp(r'[。！？!?\n；;]').firstMatch(rawWindow);
+      final boundary = _sentenceBoundaryRe.firstMatch(rawWindow);
       final scope =
           boundary != null ? rawWindow.substring(0, boundary.start) : rawWindow;
       if (scope.isEmpty) continue;
       // 动词前后 10 字内出现梦境/假设类词 → 视为非真实抵达
       final ctxStart = match.start - 10 < 0 ? 0 : match.start - 10;
       final ctx = tail.substring(ctxStart, windowEnd);
-      if (RegExp(nonActualContextRe).hasMatch(ctx)) continue;
+      if (_nonActualContextRe.hasMatch(ctx)) continue;
       for (final (mainName, aliases) in _knownLocations) {
         for (final alias in aliases) {
           if (scope.contains(alias) && match.end > lastArrivalAt) {
@@ -1245,6 +1241,22 @@ $kNarrativeWritingRules
 
   /// 去重用的空白折叠正则，预先编译，避免在候选过滤循环里反复构造。
   static final RegExp _collapseWs = RegExp(r'\s+');
+
+  /// 锚点去重时剥掉事件前缀图标。原先在两个 for 循环里各写一份，
+  /// 每个事件都重新编译一次。
+  static final RegExp _anchorIconPrefix = RegExp(r'^([\u{1F4CA}\u{1F464}\u{1F4AC}\u{1F4C5}\u{1F3C6}\u{1F31F}\u{1F4F0}])', unicode: true);
+
+  /// 抵达动词锚点。_syncLocationFromNarrative 每回合都跑，原先在方法体里现编译。
+  static final RegExp _arrivalVerbRe = RegExp(
+      r'(?:抵达|到达|走进|走入|来到|出现在|登上|进入|下车|到站|赶到|踏入|推门而入)');
+
+  /// 句边界：抵达动词后 16 字窗口内一旦撞上就截断，避免跨句误连地点名。
+  /// 这个正则原本写在 allMatches 循环内部，每个抵达动词都重编译一次。
+  static final RegExp _sentenceBoundaryRe = RegExp(r'[。！？!?\n；;]');
+
+  /// 梦境/回忆/打算/假设：这类语境里的抵达不是真实移动，不能同步地点。
+  static final RegExp _nonActualContextRe = RegExp(
+      r'(梦里|梦中|梦见|梦境|幻想|想象|回忆|回想|想起|想起那时|仿佛|似乎|好像|如果|假如|要是|打算|计划|准备去|想要去|听说|据说|传闻)');
 
   List<GameChoice> _generateLocalSuggestions() {
     final location = worldState.currentLocation ?? '霍格沃茨';

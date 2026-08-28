@@ -822,11 +822,8 @@ mixin GameRelationsMixin on GameProviderBase {
       // 特殊意外：R12 使用 classAccidentPool（支持科目筛选 + 通用池，去除「斯内普教授」硬编码特判）
       // 注意：WorldState 没有持久化 currentCourse 字段（玩家可以任何时间点调用 /课堂 互动），
       //       此处从全量课程表里随机抽 1 门课名作为"当前课"做科目筛选，和同函数"实践操作"分支保持一致。
-      final allCourseNames = [
-        ...requiredCourses.map((c) => c.name),
-        ...electiveCourses.map((c) => c.name),
-      ];
-      final currentCourse = allCourseNames[random.nextInt(allCourseNames.length)];
+      final all = allCourses();
+      final currentCourse = all[random.nextInt(all.length)].name;
       final candidates = classAccidentPool.where((e) {
         if (e.subjectFilter.isEmpty) return true;
         return e.subjectFilter.any(

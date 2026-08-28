@@ -20,16 +20,30 @@ class PromptSanitizer {
     'as an ai',
   ];
 
+  /// 控制字符（保留换行、制表符）。
+  static final RegExp _controlCharsRe = RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]');
+
+  /// 行内连续空白 / 连续空行。
+  static final RegExp _inlineWsRe = RegExp(r'[ \t]+');
+  static final RegExp _blankLineRunRe = RegExp(r'\n{3,}');
+
+  /// 预编译的注入标记正则。原 sanizite() 里是「先 contains 再编译」，
+  /// 命中注入时每次都要现编译；这里一次性建好。
+  static final Map<String, RegExp> _markerPatterns = <String, RegExp>{
+    for (final m in _injectionMarkers)
+      m: RegExp(RegExp.escape(m), caseSensitive: false),
+  };
+
   /// 净化用户输入：去控制字符、折叠空白、限长、转义注入标记。
   static String sanitize(String raw) {
     var s = raw;
 
     // 1) 去除控制字符（保留换行、制表符用于格式）
-    s = s.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
+    s = s.replaceAll(_controlCharsRe, '');
 
     // 2) 折叠连续空白
-    s = s.replaceAll(RegExp(r'[ \t]+'), ' ');
-    s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    s = s.replaceAll(_inlineWsRe, ' ');
+    s = s.replaceAll(_blankLineRunRe, '\n\n');
 
     // 3) 限长
     if (s.length > maxInputLength) {
@@ -37,10 +51,11 @@ class PromptSanitizer {
     }
 
     // 4) 注入标记降级：在标记字符间插入零宽空格，打断连续指令语义
-    for (final marker in _injectionMarkers) {
+    for (final entry in _markerPatterns.entries) {
+      final marker = entry.key;
       if (s.toLowerCase().contains(marker.toLowerCase())) {
         final broken = marker.split('').join('\u200B');
-        s = s.replaceAll(RegExp(RegExp.escape(marker), caseSensitive: false), broken);
+        s = s.replaceAll(entry.value, broken);
       }
     }
 

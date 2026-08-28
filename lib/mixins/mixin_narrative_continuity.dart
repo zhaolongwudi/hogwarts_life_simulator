@@ -3,6 +3,53 @@ import '../providers/game_provider_base.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
 
+/// 场景过渡图里的匹配串（currentLocationPattern / requireVisited /
+/// requireNotVisited）是**运行时数据**，没法像字面量那样提到 static final
+/// 一次性编译；但过渡图扫描是「节点 × 模式 × 已访问列表」的三重循环，
+/// 每回合跑一遍就是成百上千次 RegExp 编译。这里按模式串 memo 一下。
+final Map<String, RegExp> _loosePatternCache = <String, RegExp>{};
+
+/// 取得忽略大小写的 [pattern] 对应正则，编译结果按 pattern 缓存。
+RegExp _loosePattern(String pattern) => _loosePatternCache.putIfAbsent(
+      pattern,
+      () => RegExp(pattern, caseSensitive: false),
+    );
+
+// ===== 人设/断言校验用的固定正则 =====
+// 这些原本写在 npcRegistry / lastTurnAssertions 的循环体内部，
+// 每校验一个 NPC 或一条断言就重新编译一次。提到外面只编译一次。
+
+/// 命中禁动时的前置否定词：「邓布利多不会暴怒」这种反向说明不算 OOC。
+final RegExp _negationPrefixRe =
+    RegExp(r'(不|没|并非|从未|从不|不会|不是|何必|何苦)', caseSensitive: false);
+
+/// 严重禁动：命中才把 OOC 从 warn 升级为 critical（打回重写）。
+final RegExp _severeForbiddenRe = RegExp(
+    r'(体罚|抽.*耳光|殴打|虐待|恶意陷害|栽赃|背叛|收受贿赂|徇私)',
+    caseSensitive: false);
+
+/// R4 断言侧：门窗/密室被封死。
+final RegExp _lockAssertionRe = RegExp(r'(锁死|封死|封住|挡死|堵死|施了锁门咒)');
+
+/// R4 叙事侧：玩家直接走出去了（没有解锁过渡就走 = 打脸）。
+final RegExp _walkedOutRe = RegExp(
+    r'(你.*(走出门|推开大门|推开门|推开窗|走出密室|走到大厅|离开房间|下楼))',
+    caseSensitive: false);
+
+/// R4 豁免条件：玩家本回合行动里确实做了解锁/破开动作。
+final RegExp _unlockActionRe = RegExp(
+    r'(解锁|开锁|解开|破开|解除|打开|砸开|敲开|使用开锁咒|阿拉霍洞开|解除封)',
+    caseSensitive: false);
+
+/// R4 断言侧：魔杖不在手中。
+final RegExp _wandLostAssertionRe =
+    RegExp(r'(魔杖.*不在手中|魔杖.*掉在地上|魔杖.*脱手|魔杖.*被缴走)');
+
+/// R4 叙事侧：直接挥杖施法。
+final RegExp _castActionRe = RegExp(
+    r'(你.*(挥杖|举起魔杖|挥动魔杖|念咒|施了.*咒|施展.*咒))',
+    caseSensitive: false);
+
 /// 叙事连续性 Mixin — 从 [GameNarrativeMixin] 中拆分。
 ///
 /// 包含：短期断言系统、连续性桥接（ContinuityBridge）、
@@ -343,9 +390,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       final npc = entry.value;
       // 死人复活：NPC isAlive=false，但叙事里写了他说话/动作
       if (!npc.isAlive) {
-        final actionRe = RegExp(
+        final actionRe = _loosePattern(
           '${RegExp.escape(npc.name)}[^，。！？]{0,20}(说|笑|走|看|站|伸出|握住|拍|打|喊|叫|望|转身|回答|点头|摇头)',
-          caseSensitive: false,
         );
         if (actionRe.hasMatch(narrative)) {
           addV('critical', 'R3_dead_npc_active',
@@ -355,9 +401,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       }
       // 未结识但熟络：introduced=false，不能写"XX笑着拍你肩/跟你熟络聊天/你和XX约定好了"
       if (!npc.introduced) {
-        final closeRe = RegExp(
+        final closeRe = _loosePattern(
           '${RegExp.escape(npc.name)}[^，。！？]{0,20}(笑着|笑了笑|拍.*肩|熟络|亲热|拍.*背|搂着|挽着|跟你.*商量|和你.*约定|早已认识|老朋友)',
-          caseSensitive: false,
         );
         if (closeRe.hasMatch(narrative)) {
           addV('warn', 'R3_npc_introduced_familiar',
@@ -409,9 +454,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
               .map(RegExp.escape)
               .join('|');
           if (joinedFbd.isEmpty) continue;
-          final oocRe = RegExp(
+          final oocRe = _loosePattern(
             '${RegExp.escape(nameVariant)}[^，。！？]{0,15}($joinedFbd)',
-            caseSensitive: false,
           );
           if (oocRe.hasMatch(nLower)) {
             // 【熔断】默认降为 warn（软提醒下一回合修正），只有"禁动包含严重暴烈关键词"才升级为 CRITICAL。
@@ -423,12 +467,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
             final beforeHit = hitStart > 8
                 ? nLower.substring(hitStart - 8, hitStart)
                 : (hitStart > 0 ? nLower.substring(0, hitStart) : '');
-            if (RegExp(r'(不|没|并非|从未|从不|不会|不是|何必|何苦)', caseSensitive: false).hasMatch(beforeHit)) {
+            if (_negationPrefixRe.hasMatch(beforeHit)) {
               debugPrint('[OOC 跳过·否定词前置] ${npc.name}|$nameVariant|$hitVerb 前置="$beforeHit"');
               continue;
             }
-            final severeRe = RegExp(r'(体罚|抽.*耳光|殴打|虐待|恶意陷害|栽赃|背叛|收受贿赂|徇私)', caseSensitive: false);
-            final isSevere = severeRe.hasMatch(hitVerb);
+            final isSevere = _severeForbiddenRe.hasMatch(hitVerb);
             final sev = isSevere ? 'critical' : 'warn';
             final summary = npc.personality.isNotEmpty
                 ? npc.personality.take(3).join('/')
@@ -448,9 +491,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
         if (blood == 'muggleborn' || blood == 'halfblood') {
           for (final nameVariant in npc.allNames) {
             if (nameVariant.length < 2) continue;
-            final oocRe = RegExp(
+            final oocRe = _loosePattern(
               '${RegExp.escape(nameVariant)}[^，。！？]{0,20}(主动凑过来|亲热地|友好地|亲切地|对你有好感地|低声下气|鞠躬|讨好|巴结|谄媚)',
-              caseSensitive: false,
             );
             if (oocRe.hasMatch(nLower)) {
               addV('warn', 'R3b_ooc_blood_supremacist',
@@ -466,16 +508,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     // ---- R4: 断言打脸（本回合写的动作直接违反上回合注入的断言）----
     for (final assertion in ws.lastTurnAssertions) {
       // 简单匹配：如果断言里含"(锁死/封死/封住)"且叙事出现"你走出门/推开大门/推开窗/走出密室" → 判打脸
-      if (RegExp(r'(锁死|封死|封住|挡死|堵死|施了锁门咒)').hasMatch(assertion)) {
-        final walked = RegExp(r'(你.*(走出门|推开大门|推开门|推开窗|走出密室|走到大厅|离开房间|下楼))',
-            caseSensitive: false);
-        if (walked.hasMatch(narrative)) {
+      if (_lockAssertionRe.hasMatch(assertion)) {
+        if (_walkedOutRe.hasMatch(narrative)) {
           // 但如果玩家本回合行动里含"解锁/破开/解除/打开"的话，允许
           final playerAction = lastPlayerAction;
-          final unlockedByPlayer =
-              RegExp(r'(解锁|开锁|解开|破开|解除|打开|砸开|敲开|使用开锁咒|阿拉霍洞开|解除封)',
-                      caseSensitive: false)
-                  .hasMatch(playerAction);
+          final unlockedByPlayer = _unlockActionRe.hasMatch(playerAction);
           if (!unlockedByPlayer) {
             addV('warn', 'R4_assertion_lock_violation',
                 '物理状态打脸：上回合断言提到门窗/密室被封死，但本回合叙事直接写玩家"走出/推开"了（没有任何解锁/破开动作过渡）。',
@@ -484,9 +521,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
         }
       }
       // 断言"魔杖不在手中"，直接写"你挥杖施法"
-      if (RegExp(r'(魔杖.*不在手中|魔杖.*掉在地上|魔杖.*脱手|魔杖.*被缴走)').hasMatch(assertion)) {
-        if (RegExp(r'(你.*(挥杖|举起魔杖|挥动魔杖|念咒|施了.*咒|施展.*咒))', caseSensitive: false)
-            .hasMatch(narrative)) {
+      if (_wandLostAssertionRe.hasMatch(assertion)) {
+        if (_castActionRe.hasMatch(narrative)) {
           addV('warn', 'R4_assertion_wand_violation',
               '状态打脸：上回合断言说魔杖不在手中，本回合直接施法却没有"捡/拾/召唤"动作过渡。',
               evidence: assertion);
@@ -696,7 +732,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
 
     for (final node in _transitionNodes) {
       // 1) 当前地点匹配（开局骨架只对 openingScene=letter 生效）
-      if (!RegExp(node.currentLocationPattern, caseSensitive: false).hasMatch(loc)) continue;
+      if (!_loosePattern(node.currentLocationPattern).hasMatch(loc)) continue;
       if (node.requireOpeningScene != null && openingScene != node.requireOpeningScene) continue;
       // 2) 已触发过的节点跳过（避免每次重复注入同一条锚点）
       if (worldState.firedAnchorIds.contains(node.id)) continue;
@@ -709,11 +745,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       if (node.minDateInt != null && dateInt < node.minDateInt!) continue;
       // 6) requireVisited 进度门（之前没加进度门直接切大礼堂的 bug 根因）
       bool prereqVisitedOk = node.requireVisited.every(
-          (pat) => visited.any((l) => RegExp(pat, caseSensitive: false).hasMatch(l)));
+          (pat) => visited.any((l) => _loosePattern(pat).hasMatch(l)));
       if (!prereqVisitedOk) continue;
       // 7) requireNotVisited：已经过门过就别再推这条链
       bool notVisitedOk = node.requireNotVisited.every(
-          (pat) => !visited.any((l) => RegExp(pat, caseSensitive: false).hasMatch(l)));
+          (pat) => !visited.any((l) => _loosePattern(pat).hasMatch(l)));
       if (!notVisitedOk) continue;
 
       // OK，命中此节点

@@ -6,6 +6,19 @@ import '../utils/npc_lookup.dart';
 import 'mixin_response_choices.dart';
 
 mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
+  /// 好感行必须带 +数字 / -数字。原先写在逐行扫描的循环里，每行都重新编译一次。
+  static final RegExp _hasSignedNumber = RegExp(r'[+-]\d');
+
+  /// 好感行：「名字：+3」。逐行解析，原先每行现编译。
+  static final RegExp _affectionLineRe = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)');
+
+  /// 名字后面跟的括号备注（「赫敏（犹豫了一下）：+2」）要剥掉。
+  static final RegExp _parenRemarkRe = RegExp(r'[（(].*?[）)]');
+
+  /// 声望行：兼容全角冒号、全角加号、「· 战斗：+2」这类带项目符号的写法。
+  static final RegExp _reputationLineRe =
+      RegExp(r'^[\s\-•·*]*([^:：+\-0-9]{1,10}?)\s*[:：]?\s*([+＋-]?\d+)');
+
   void parseAffectionChanges(String text) {
     if (npcRegistry.isEmpty) return;
 
@@ -39,12 +52,12 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       for (final line in sectionText.split('\n')) {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
-        final match = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)').firstMatch(trimmed);
+        final match = _affectionLineRe.firstMatch(trimmed);
         if (match == null) continue;
         var npcName = match.group(1)!.trim();
         var delta = int.tryParse(match.group(2)!) ?? 0;
         if (delta == 0 || npcName.isEmpty) continue;
-        npcName = npcName.replaceFirst(RegExp(r'[（(].*?[）)]'), '').trim();
+        npcName = npcName.replaceFirst(_parenRemarkRe, '').trim();
         if (npcName.isEmpty) continue;
 
         // ---- P1-2 好感校验 + NPC 模糊匹配（先匹配再校验）----
@@ -97,7 +110,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       // 跳过叙事正文（太长的行大概率是叙事，不是好感度行）
       if (trimmed.length > 40) continue;
       // 必须包含 +数字 或 -数字
-      if (!RegExp(r'[+-]\d').hasMatch(trimmed)) continue;
+      if (!_hasSignedNumber.hasMatch(trimmed)) continue;
       // 不能是选项行
       if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) continue;
       found.add(trimmed);
@@ -190,8 +203,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       if (trimmed.isEmpty) continue;
       // 兼容 AI 常见的写法变体：全角冒号、全角加号、"学术声望 +3（原因）"、
       // "· 战斗：+2" 这类带项目符号的行
-      final match = RegExp(r'^[\s\-•·*]*([^:：+\-0-9]{1,10}?)\s*[:：]?\s*([+＋-]?\d+)')
-          .firstMatch(trimmed);
+      final match = _reputationLineRe.firstMatch(trimmed);
       if (match == null) continue;
       final dim = match.group(1)!.trim();
       final raw = match.group(2)!.replaceAll('＋', '+');

@@ -36,6 +36,10 @@ abstract class GameProviderBase extends ChangeNotifier {
     multiLine: true,
   );
 
+  /// 从 T0 核心事实「资质为XX」里回填魔法资质。原先写在 keyFacts 循环内部，
+  /// 每条事实重新编译一次。
+  static final RegExp reAptitudeFact = RegExp(r'资质为([^，,。\s]+)');
+
   /// narrative / summary buffer 清洗公共函数（mixin_narrative / mixin_response 共用）
   /// 
   /// 剥离：📅 状态栏整行 / 【时间戳】【地点】整行 / -----分隔线 /
@@ -143,7 +147,7 @@ abstract class GameProviderBase extends ChangeNotifier {
       if (fact.importance >= 9 &&
           fact.category == 'ability' &&
           fact.id == 'ability:aptitude') {
-        final m = RegExp(r'资质为([^，,。\s]+)').firstMatch(fact.fact);
+        final m = reAptitudeFact.firstMatch(fact.fact);
         if (m != null && m.group(1) != null) {
           final value = m.group(1)!;
           p.magicAptitude = value;

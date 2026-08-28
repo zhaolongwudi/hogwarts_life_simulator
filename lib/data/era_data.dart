@@ -89,10 +89,5 @@ EraDef eraDefByEra(Era era) {
   return _fallback;
 }
 
-EraDef eraDefByKey(String eraKey) {
-  final lower = eraKey.toLowerCase();
-  for (final d in allEraDefs) {
-    if (d.era.name == lower) return d;
-  }
-  return _fallback;
-}
+// 注：eraDefByKey 已删——它按字符串反查，而字符串本来就是从
+// eraDefByEra(era).eraKey 来的，再反查回去是绕圈子，全项目零调用。

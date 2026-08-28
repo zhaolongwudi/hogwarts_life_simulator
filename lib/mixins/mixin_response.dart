@@ -27,6 +27,31 @@ const List<String> kStripSectionNames = [
   '你可以',
 ];
 
+/// 区块名 × (toEnd, bareLabel) 只有 9×4 种组合，但组合出的正则串是运行时
+/// 拼出来的，没法做成 const。每段正文中都要跑满 9 个区块名，原先每次调用
+/// 现编译 9 遍——这里按组合缓存。
+final Map<String, RegExp> _stripPatternCache = <String, RegExp>{};
+
+RegExp _stripPatternFor(String section, bool toEnd, bool bareLabel) {
+  final key = '${toEnd ? 1 : 0}${bareLabel ? 1 : 0}|$section';
+  final hit = _stripPatternCache[key];
+  if (hit != null) return hit;
+
+  final name = RegExp.escape(section);
+  final String pattern;
+  if (toEnd) {
+    pattern = '【$name】[\\s\\S]*\$';
+  } else if (bareLabel) {
+    // 允许「可选行动：」这种没加【】的写法，一直删到下一个行首【 或文末。
+    // 注意：这里必须用 \z（输入末尾）而不是 $——multiLine 模式下 $ 会匹配
+    // 行尾，惰性量词会立刻在标题行结尾处停下，导致只删标题、留下选项正文。
+    pattern = '(?:【$name】|^\\s*$name\\s*[：:])[\\s\\S]*?(?=\\n【|\\z)';
+  } else {
+    pattern = '【$name】[\\s\\S]*?(?=【|\$)';
+  }
+  return _stripPatternCache[key] = RegExp(pattern, multiLine: bareLabel);
+}
+
 /// 从叙事文本中剥离所有结构化区块（好感/声望/各类选项块）。
 /// [toEnd] 为 true 时把命中区块之后的内容一并截断（用于展示文本兜底，
 /// 因为选项块后面通常只剩零散尾巴），否则只删到下一个【 前（用于精确解析）。
@@ -37,21 +62,8 @@ String stripStructuredSections(
 }) {
   var out = text;
   for (final section in kStripSectionNames) {
-    final name = RegExp.escape(section);
-    String pattern;
-    if (toEnd) {
-      pattern = '【$name】[\\s\\S]*\$';
-    } else if (bareLabel) {
-      // 允许「可选行动：」这种没加【】的写法，一直删到下一个行首【 或文末。
-      // 注意：这里必须用 \z（输入末尾）而不是 $——multiLine 模式下 $ 会匹配
-      // 行尾，惰性量词会立刻在标题行结尾处停下，导致只删标题、留下选项正文。
-      pattern =
-          '(?:【$name】|^\\s*$name\\s*[：:])[\\s\\S]*?(?=\\n【|\\z)';
-    } else {
-      pattern = '【$name】[\\s\\S]*?(?=【|\$)';
-    }
     out = out.replaceAllMapped(
-      RegExp(pattern, multiLine: bareLabel),
+      _stripPatternFor(section, toEnd, bareLabel),
       (m) => '',
     );
   }

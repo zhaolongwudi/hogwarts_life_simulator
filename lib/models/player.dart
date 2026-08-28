@@ -229,16 +229,10 @@ class Player {
     'ambition': 50,
   };
 
-  /// 从学院四维计算分院的倾向
-  String get recommendedHouse {
-    final scores = {
-      'Gryffindor': houseDimensions['courage'] ?? 50,
-      'Ravenclaw': houseDimensions['wisdom'] ?? 50,
-      'Hufflepuff': houseDimensions['loyalty'] ?? 50,
-      'Slytherin': houseDimensions['ambition'] ?? 50,
-    };
-    return scores.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
-  }
+  // 注：这里原本有个 recommendedHouse（只看学院四维取最高分），
+  // 但它从来没有被调用过——真正的分院是 mixin_init.computeHouseLocal，
+  // 那里除了四维还计入性格关键词、政治倾向、血统和随机扰动。
+  // 留着两个口径不一致的分院结论只会误导后来的人，已删。
 
   Map<String, dynamic> toJson() => {
         'id': id,

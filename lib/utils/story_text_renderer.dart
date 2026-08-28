@@ -175,26 +175,52 @@ class StoryTextRenderer {
     return spans;
   }
 
+  /// AI 偶尔失控写出的结构化提纲标签（"环境氛围：""NPC的言行举止："
+  /// "玩家的心理活动：""重要物品/事件的细节描写："等）。
+  /// 原先是 _stripOutlineLabels 里的局部非 const 列表（每次调用重建一次）。
+  static const List<String> _outlineLabels = [
+    '环境氛围', '场景氛围',
+    'NPC的言行举止', 'NPC 言行举止', 'NPC言行举止', '人物言行',
+    '玩家的心理活动', '玩家心理活动', '心理活动',
+    '重要物品/事件的细节描写', '重要物品与事件细节',
+    '重要物品', '事件细节', '细节描写',
+    '一、命运回响', '二、命运回响', '三、命运回响',
+    '命运回响', '世界回响', '回响',
+  ];
+
+  /// 提纲标签的剥离正则，按标签预编译。_stripOutlineLabels 每次渲染都跑，
+  /// 原先 20 个标签在循环里现编译 20 遍。
+  static final Map<String, RegExp> _outlineLabelPatterns = <String, RegExp>{
+    for (final label in _outlineLabels)
+      label: RegExp(
+        r'(?<=^|\n)\s*' + RegExp.escape(label) + r'\s*[：:]\s*',
+        multiLine: true,
+      ),
+  };
+
+  /// 整行只有一对括号说明（"……（低声）"的下一行），要跟上一行一起包进引用块。
+  static final RegExp _parenOnlyLineRe =
+      RegExp(r'^\s*[（(][^）)\n]*[）)]\s*$');
+
+  /// 单字叙述动词（说/道/问…）必须左右都不是中文才算独立动词，
+  /// 否则"冷笑"里的"笑"会被当成动词命中。按动词预编译——
+  /// _validSpeakerNameEnd 对每一行都要跑一遍这个循环。
+  static final Map<String, RegExp> _singleCharVerbPatterns = <String, RegExp>{
+    for (final v in _speechVerbs)
+      if (v.length == 1)
+        v: RegExp(r'(?:^|[^\u4e00-\u9fa5])' +
+            RegExp.escape(v) +
+            r'(?:$|[^\u4e00-\u9fa5])'),
+  };
+
   /// 预处理：把 AI 偶尔失控写出的结构化提纲标签（"环境氛围：""NPC的言行举止："
   /// "玩家的心理活动：""重要物品/事件的细节描写："等）剥掉，让它们后面的内容直接融入正文。
   /// 这是 Prompt 之外的兜底渲染保护。
   static String _stripOutlineLabels(String text) {
-    final labels = [
-      '环境氛围', '场景氛围',
-      'NPC的言行举止', 'NPC 言行举止', 'NPC言行举止', '人物言行',
-      '玩家的心理活动', '玩家心理活动', '心理活动',
-      '重要物品/事件的细节描写', '重要物品与事件细节',
-      '重要物品', '事件细节', '细节描写',
-      '一、命运回响', '二、命运回响', '三、命运回响',
-      '命运回响', '世界回响', '回响',
-    ];
     String result = text;
-    for (final label in labels) {
+    for (final entry in _outlineLabelPatterns.entries) {
       // 匹配：行首/空白  label  冒号（全角/半角）  → 删除 label+冒号
-      final pattern = RegExp(
-        r'(?<=^|\n)\s*' + RegExp.escape(label) + r'\s*[：:]\s*',
-        multiLine: true,
-      );
+      final pattern = entry.value;
       result = result.replaceAllMapped(pattern, (m) {
         // 保留原换行，删除 label+冒号+后续空白
         return '';
@@ -361,7 +387,7 @@ class StoryTextRenderer {
           // 检查下一行是否全是（说明）括号 — 如果是就一起包进去
           if (i + 1 < lines.length) {
             final nextLine = lines[i + 1];
-            if (RegExp(r'^\s*[（(][^）)\n]*[）)]\s*$').hasMatch(nextLine)) {
+            if (_parenOnlyLineRe.hasMatch(nextLine)) {
               blockBuffer.writeln();
               blockBuffer.write(nextLine.trim());
               i++;
@@ -744,10 +770,11 @@ class StoryTextRenderer {
         if (v.length == 1) {
           // 单字词（说/道/问/喊/答/叫/笑/叹）：不能直接 contains，因为 contains 会把"冷笑"
           // 里的"笑"当成独立动词"笑"命中；必须左右都不是中文字（是括号/标点/边界）
-          final around = RegExp(
-            r'(?:^|[^\u4e00-\u9fa5])' + RegExp.escape(v) + r'(?:$|[^\u4e00-\u9fa5])',
-          );
-          if (around.hasMatch(afterNameTrim)) { hasTrueSpeechVerb = true; break; }
+          final around = _singleCharVerbPatterns[v];
+          if (around != null && around.hasMatch(afterNameTrim)) {
+            hasTrueSpeechVerb = true;
+            break;
+          }
         } else {
           // 多字词（说道/问道/冷笑一声）→ 直接 contains（足够精确）
           if (afterNameTrim.contains(v)) { hasTrueSpeechVerb = true; break; }

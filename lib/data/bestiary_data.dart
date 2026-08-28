@@ -126,13 +126,12 @@ const List<CreatureDef> kCreatureCatalog = [
   ),
 ];
 
-CreatureDef? creatureById(String id) {
-  for (final c in kCreatureCatalog) {
-    if (c.id == id) return c;
-  }
-  return null;
-}
+// 注：creatureById 已删——图鉴只按 id 记录发现进度
+// （player.bestiary 存 id，展示时直接遍历 kCreatureCatalog），
+// 玩家养的宠物走 pet_data.petById，这条反查零调用。
+// creatureByName 保留：测试用它校验委托目标生物确实存在于图鉴。
 
+/// 按名字查图鉴条目。生产代码不调用，但委托数据一致性测试依赖它。
 CreatureDef? creatureByName(String name) {
   for (final c in kCreatureCatalog) {
     if (c.name == name) return c;
