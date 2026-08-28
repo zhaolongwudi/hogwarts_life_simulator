@@ -14,6 +14,7 @@ import '../utils/confession_reply.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 import '../data/locations.dart';
+import '../data/attribute_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
@@ -983,8 +984,11 @@ $kNarrativeWritingRules
 
     // 学业/考试 → 注入相关属性
     if (a.contains(RegExp(r'(上课|考试|测验|作业|复习|学习|论文|写论文|做功课)'))) {
+      // 原来这里筛的是 const {'智慧','魔力','勤奋'}——属性表里根本没有这三个
+      // 名字，过滤结果恒为空，【学业】上下文从来没注入过。改成按课程会提升的
+      // 属性筛（kStudyAttributeKeys，与 course_data 对齐）。
       final study = p.attributes.entries
-          .where((e) => const {'智慧', '魔力', '勤奋'}.contains(attrLabel(e.key)))
+          .where((e) => kStudyAttributeKeys.contains(e.key))
           .where((e) => e.value != 0)
           .map((e) => '${attrLabel(e.key)}:${e.value}')
           .join(' ');

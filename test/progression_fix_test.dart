@@ -17,6 +17,9 @@ import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
 import 'package:hogwarts_life_simulator/data/house_data.dart';
 import 'package:hogwarts_life_simulator/data/blood_status.dart';
+import 'package:hogwarts_life_simulator/data/attribute_data.dart';
+import 'package:hogwarts_life_simulator/data/quest_data.dart';
+import 'package:hogwarts_life_simulator/data/course_data.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -197,6 +200,8 @@ void main() {
   _eventAnchorGroup();
   _houseNameGroup();
   _bloodStatusGroup();
+  _attributeLabelGroup();
+  _questTypeLabelGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1674,6 +1679,119 @@ void _bloodStatusGroup() {
         expect(kBloodStatusLabels.containsKey(key), isTrue,
             reason: 'NPC 数据用了血统 $key，但标签表里没有它');
       }
+    });
+  });
+}
+
+// ==================== 属性标签只有一份 ====================
+// 属性 key→中文名 原先两份且互相矛盾：
+//   potions        attrLabel「魔药」     vs _attrLabelZh「魔药学」
+//   magic_control  attrLabel「魔法控制」 vs _attrLabelZh「魔力控制」
+//   observation    attrLabel「观察力」   vs _attrLabelZh「洞察力」
+// 玩家在物品加成/宠物训练里看到一套名字，在任务需求/AI 上下文里看到另一套。
+// 另外「上课/考试」的剧情上下文筛的是 {'智慧','魔力','勤奋'}——属性表里
+// 没有这三个名字，过滤恒为空，【学业】上下文从来没注入过。
+
+void _attributeLabelGroup() {
+  group('属性标签只有一份', () {
+    test('lib 下不再有手写的属性标签表', () {
+      // 注意不能只查「某个 key 出现了手写分支」——'social' 在声望表里也有
+      // （'social': '社交声望'），那是另一套词汇。真正的第二份属性表会同时
+      // 覆盖一堆属性 key，所以用「≥3 个属性 key 被手写映射」当判据。
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.endsWith('data/attribute_data.dart')) continue; // 映射表本身
+        final src = File(f).readAsStringSync();
+        final hits = <String>[];
+        for (final key in kAttributeLabels.keys) {
+          if (src.contains("'$key': '") || src.contains("'$key' => '")) {
+            hits.add(key);
+          }
+        }
+        if (hits.length >= 3) offenders.add('$f → $hits');
+      }
+      expect(offenders, isEmpty,
+          reason: '又有人手抄了一份属性标签表，应改用 attributeLabel()：$offenders');
+    });
+
+    test('标签表与 Player 的默认属性表逐键对齐', () {
+      // 属性 key 集合的权威在 Player._defaultAttributes。少一个 key 就是
+      // 某个属性永远显示英文，多一个就是表已经漂了。
+      final src = File('lib/models/player.dart').readAsStringSync();
+      final block = RegExp(
+        r'_defaultAttributes = \{(.*?)\};',
+        dotAll: true,
+      ).firstMatch(src);
+      expect(block, isNotNull, reason: '没找到 _defaultAttributes，正则该更新了');
+      final re = RegExp(r"'([a-z_]+)': *\d+");
+      final keys = <String>{};
+      for (final m in re.allMatches(block!.group(1)!)) {
+        keys.add(m.group(1)!);
+      }
+      expect(keys, hasLength(kAttributeLabels.length),
+          reason: '属性 key 集合不一致');
+      for (final key in keys) {
+        expect(kAttributeLabels.containsKey(key), isTrue,
+            reason: 'Player 有属性 $key，标签表里没有');
+      }
+      for (final key in kAttributeLabels.keys) {
+        expect(keys.contains(key), isTrue, reason: '标签表里的 $key 不是真属性');
+      }
+    });
+
+    test('学业属性集合与课程表一致', () {
+      final used = allCourses().map((c) => c.attribute).toSet();
+      expect(used, kStudyAttributeKeys,
+          reason: '课程会提升的属性变了，kStudyAttributeKeys 要跟着改');
+      // 学业属性必须都是真属性（否则「上课」时注入的会是裸 key）
+      for (final key in kStudyAttributeKeys) {
+        expect(kAttributeLabels.containsKey(key), isTrue,
+            reason: '$key 不是合法属性');
+      }
+    });
+
+    test('矛盾译名已按课程名/MP 口径统一', () {
+      expect(attributeLabel('potions'), '魔药学'); // 课程名就是「魔药学」
+      expect(attributeLabel('magic_control'), '魔力控制'); // UI 上 MP 叫「魔力」
+      expect(attributeLabel('observation'), '观察力'); // 保护神奇生物课的属性
+    });
+
+    test('未知 key 原样返回', () {
+      expect(attributeLabel('intuition'), '直觉');
+      expect(attributeLabel('not_an_attr'), 'not_an_attr');
+    });
+  });
+}
+
+// ==================== 委托类型标签只有一份 ====================
+
+void _questTypeLabelGroup() {
+  group('委托类型标签只有一份', () {
+    test('lib 下不再有手写的委托类型 switch', () {
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.endsWith('data/quest_data.dart')) continue;
+        final src = File(f).readAsStringSync();
+        for (final key in kQuestTypeLabels.keys) {
+          if (src.contains("'$key' => '")) offenders.add('$f → $key');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '又有人手写了委托类型分支，应改用 questTypeLabel()：$offenders');
+    });
+
+    test('模板里用到的类型都有译名', () {
+      for (final t in kQuestTemplates) {
+        expect(kQuestTypeLabels.containsKey(t.type), isTrue,
+            reason: '委托 ${t.id} 的 type=${t.type} 没有中文名');
+      }
+    });
+
+    test('未知类型回落到「委托」而不是裸 key', () {
+      expect(questTypeLabel('gather'), '收集');
+      expect(questTypeLabel('defeat'), '讨伐');
+      expect(questTypeLabel('pet'), '培养');
+      expect(questTypeLabel('escort'), '委托');
     });
   });
 }

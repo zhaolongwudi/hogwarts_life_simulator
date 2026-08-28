@@ -6,6 +6,7 @@ import '../data/bestiary_data.dart';
 import '../data/quest_data.dart';
 import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
+import '../data/attribute_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -238,20 +239,9 @@ mixin GamePlayMixin on GameProviderBase {
     }
   }
 
-  String _attrLabelZh(String key) {
-    const map = {
-      'spell_understanding': '魔咒理解',
-      'transfiguration': '变形术',
-      'potions': '魔药学',
-      'herbology': '草药学',
-      'dda': '黑魔法防御',
-      'flying': '飞行',
-      'magic_control': '魔力控制',
-      'reaction_time': '反应速度',
-      'observation': '洞察力',
-    };
-    return map[key] ?? key;
-  }
+  /// 属性 key → 中文名。表本身在 lib/data/attribute_data.dart
+  /// （attrLabel 那边共用同一份，两边翻译曾经互相矛盾过）。
+  String _attrLabelZh(String key) => attributeLabel(key);
 
   // ==================== 2. 宠物互动 ====================
 
@@ -922,12 +912,8 @@ mixin GamePlayMixin on GameProviderBase {
     _finishLocal(buf.toString());
   }
 
-  String _questTypeLabel(String type) => switch (type) {
-        'gather' => '收集',
-        'defeat' => '讨伐',
-        'pet' => '培养',
-        _ => '委托',
-      };
+  /// 委托类型 → 中文名。表在 lib/data/quest_data.dart（委托板 UI 共用）。
+  String _questTypeLabel(String type) => questTypeLabel(type);
 
   String formatQuests() {
     final p = player;

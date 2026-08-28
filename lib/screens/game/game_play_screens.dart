@@ -34,12 +34,8 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
     return available.take(3).toList();
   }
 
-  String _questTypeLabel(String type) => switch (type) {
-        'gather' => '收集',
-        'defeat' => '讨伐',
-        'pet' => '培养',
-        _ => '委托',
-      };
+  /// 委托类型 → 中文名。表在 quest_data.dart（mixin_play 的 /委托 文案共用）。
+  String _questTypeLabel(String type) => questTypeLabel(type);
 
   @override
   Widget build(BuildContext context) {

@@ -172,3 +172,16 @@ class QuestRecord {
         issuedWeek: json['issued_week'] ?? 1,
       );
 }
+
+/// 委托类型 → 中文名。
+///
+/// 之前 mixin_play 和 game_play_screens 各写了一份一模一样的
+/// `_questTypeLabel` switch，改一个译名要改两个地方。
+const Map<String, String> kQuestTypeLabels = {
+  'gather': '收集',
+  'defeat': '讨伐',
+  'pet': '培养',
+};
+
+/// 委托类型 → 中文名，未知类型回落到「委托」。
+String questTypeLabel(String type) => kQuestTypeLabels[type] ?? '委托';

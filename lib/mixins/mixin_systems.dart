@@ -9,6 +9,7 @@ import '../data/game_config_rules.dart';
 import '../data/time_cost_rules.dart';
 import '../data/monthly_event_data.dart';
 import '../data/blood_status.dart';
+import '../data/attribute_data.dart';
 import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
@@ -1281,29 +1282,9 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 血统 key → 中文名。表本身在 lib/data/blood_status.dart（问卷 UI 共用）。
   String bloodStatusLabel(String status) => bloodStatusLabelOf(status);
 
-  String attrLabel(String key) {
-    return {
-      'spell_understanding': '魔咒理解',
-      'transfiguration': '变形术',
-      'potions': '魔药',
-      'herbology': '草药学',
-      'dda': '黑魔法防御',
-      'flying': '飞行',
-      'theory': '理论知识',
-      'memory': '记忆力',
-      'observation': '观察力',
-      'magic_control': '魔法控制',
-      'reaction_time': '反应速度',
-      'emotional_stability': '情绪稳定',
-      'creativity': '创造力',
-      'social': '社交',
-      'courage': '勇气',
-      'caution': '谨慎',
-      'willpower': '意志',
-      'logic': '逻辑',
-      'intuition': '直觉',
-    }[key] ?? key;
-  }
+  /// 属性 key → 中文名。表本身在 lib/data/attribute_data.dart
+  /// （mixin_play 那边的物品加成/宠物训练文案共用同一份）。
+  String attrLabel(String key) => attributeLabel(key);
 
   String termLabel(String term) {
     return {
