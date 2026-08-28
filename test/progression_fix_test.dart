@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/data/archetype_data.dart';
+import 'package:hogwarts_life_simulator/screens/world_map_screen.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 
 void main() {
@@ -174,6 +175,7 @@ void main() {
   _contentGroup();
   _contentCoverageGroup();
   _codeHygieneGroup();
+  _mapLayoutGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -502,6 +504,138 @@ void _codeHygieneGroup() {
         }
       }
       expect(bare, isEmpty, reason: '未标注的 autoSave()：\n' + bare.join('\n'));
+    });
+  });
+}
+
+/// 地图标记布局：小屏上标记曾经整片叠在一起。
+void _mapLayoutGroup() {
+  /// 复刻 world_map_screen 的布局算法：画布按需撑开 → 垂直松弛防重叠。
+  /// 与生产代码保持一致的两条关键规则：
+  ///   1. canvasHeight = max(usableHeight, count * (boxH + gap))
+  ///   2. 松弛用同一个 boxW/boxH
+  List<MarkerBox> layoutMap(
+    List<List<double>> xy, {
+    required double mapWidth,
+    required double canvasHeight,
+    double boxW = 96,
+    double boxH = 118,
+  }) =>
+      resolveMarkerOverlaps(
+        [for (final p in xy) MarkerBox(mapWidth * p[0] - boxW / 2, 110 + p[1])],
+        boxWidth: boxW,
+        boxHeight: boxH,
+        minTop: 110,
+        maxLeft: mapWidth - boxW,
+        maxTop: 110 + (canvasHeight - boxH).clamp(0.0, canvasHeight),
+      );
+
+  int overlapCount(List<MarkerBox> boxes, double w, double h) {
+    var n = 0;
+    for (var i = 0; i < boxes.length; i++) {
+      for (var j = i + 1; j < boxes.length; j++) {
+        if ((boxes[i].left - boxes[j].left).abs() < w &&
+            (boxes[i].top - boxes[j].top).abs() < h) {
+          n++;
+        }
+      }
+    }
+    return n;
+  }
+
+  group('地图标记防重叠', () {
+    test('完全重合的两个标记会被推开', () {
+      final out = layoutMap(
+        [
+          [0.5, 200],
+          [0.5, 200],
+        ],
+        mapWidth: 360,
+        canvasHeight: 400,
+      );
+      expect((out[0].top - out[1].top).abs(), greaterThan(0));
+      expect(overlapCount(out, 96, 118), 0);
+    });
+
+    test('霍格沃茨 18 个地点在最挤的小屏上也能完全分开', () {
+      // 真实场景复刻：18 个地点，其中若干 y 只差 0.02
+      final xy = <List<double>>[
+        for (var i = 0; i < 18; i++) [0.1 + (i % 5) * 0.2, i * 5.0],
+      ];
+      const boxH = 50.0; // 紧凑模式
+      const boxW = 44.0;
+      final canvas = 18 * (boxH + 6.0); // 画布按需撑开
+      final out = layoutMap(
+        xy,
+        mapWidth: 360,
+        canvasHeight: canvas,
+        boxW: boxW,
+        boxH: boxH,
+      );
+      expect(out.length, 18);
+      expect(overlapCount(out, boxW, boxH), 0,
+          reason: '撑开画布后仍应做到零重叠，否则标记点不中');
+    });
+
+    test('水平方向已错开的标记不会被无谓地垂直推挤', () {
+      final out = layoutMap(
+        [
+          [0.0, 200],
+          [0.95, 200],
+        ],
+        mapWidth: 600,
+        canvasHeight: 800,
+      );
+      expect(out[1].top, 200 + 110); // 含 headerOffset
+    });
+
+    test('结果被约束在给定边界内', () {
+      final out = resolveMarkerOverlaps(
+        const [MarkerBox(-50, 0), MarkerBox(9999, 9999)],
+        boxWidth: 96,
+        boxHeight: 118,
+        minTop: 110,
+        maxLeft: 300,
+        maxTop: 380,
+      );
+      for (final b in out) {
+        expect(b.left, greaterThanOrEqualTo(0));
+        expect(b.left, lessThanOrEqualTo(300));
+        expect(b.top, greaterThanOrEqualTo(110));
+        expect(b.top, lessThanOrEqualTo(380));
+      }
+    });
+
+    test('空输入不炸', () {
+      expect(
+        resolveMarkerOverlaps(
+          const <MarkerBox>[],
+          boxWidth: 96,
+          boxHeight: 118,
+          minTop: 110,
+          maxLeft: 300,
+          maxTop: 380,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('结果确定（同输入同输出，不引入随机）', () {
+      List<MarkerBox> run() => layoutMap(
+            [
+              [0.3, 40],
+              [0.32, 50],
+              [0.31, 45],
+            ],
+            mapWidth: 360,
+            canvasHeight: 300,
+          );
+      final a = run();
+      final b = run();
+      for (var i = 0; i < a.length; i++) {
+        expect(a[i].left, b[i].left);
+        expect(a[i].top, b[i].top);
+      }
     });
   });
 }

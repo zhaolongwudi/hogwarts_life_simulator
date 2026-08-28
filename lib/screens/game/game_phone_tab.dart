@@ -7,6 +7,14 @@ import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';
 
+/// 手机上还没实现的入口：与其让点击毫无反应（用户会以为 app 卡了），
+/// 不如明确告知状态。
+void _notReady(BuildContext context, String name) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('$name 还在开发中'), duration: const Duration(seconds: 2)),
+  );
+}
+
 void _editSignature(BuildContext context) {
   final gp = context.read<GameProvider>();
   final controller = TextEditingController(text: gp.player?.signature ?? '');
@@ -157,7 +165,12 @@ class PhoneTab extends StatelessWidget {
   }
 
   Widget _buildCompactMusicPlayer(BuildContext context) {
-    return Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _notReady(context, '背景音乐'),
+        child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
@@ -181,7 +194,7 @@ class PhoneTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('背景音乐', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text('游戏原声', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                Text('尚未上线', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
               ],
             ),
           ),
@@ -194,7 +207,9 @@ class PhoneTab extends StatelessWidget {
             ),
             child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -223,8 +238,13 @@ class PhoneTab extends StatelessWidget {
             _buildAppItem(context, Icons.store_mall_directory, '魔法商店', Color(0xFFF59E0B), () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
             }),
-            _buildAppItem(context, Icons.apps, '应用商店', Color(0xFF10B981), () {}),
-            _buildAppItem(context, Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), () {}),
+            _buildAppItem(context, Icons.apps, '应用商店', Color(0xFF10B981), () {
+              _notReady(context, '应用商店');
+            }),
+            _buildAppItem(context, Icons.auto_awesome, '平行世界\n小剧场', Color(0xFFEC4899), () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
+            }),
           ],
         ),
       ],
@@ -232,23 +252,34 @@ class PhoneTab extends StatelessWidget {
   }
 
   Widget _buildAppItem(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Semantics(
+          button: true,
+          label: label,
+          child: SizedBox(
+            width: 76,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
+                ),
+                const SizedBox(height: 6),
+                Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+              ],
             ),
-            child: Icon(icon, color: color, size: 26),
           ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
-        ],
+        ),
       ),
     );
   }
@@ -279,23 +310,34 @@ class PhoneTab extends StatelessWidget {
   }
 
   Widget _buildQuickItem(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Semantics(
+          button: true,
+          label: label,
+          child: SizedBox(
+            width: 68,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(height: 4),
+                Text(label, style: const TextStyle(fontSize: 10), textAlign: TextAlign.center),
+              ],
             ),
-            child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 10)),
-        ],
+        ),
       ),
     );
   }
