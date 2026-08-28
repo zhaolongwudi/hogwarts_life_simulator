@@ -434,6 +434,9 @@ mixin GameRelationsMixin on GameProviderBase {
     final title = job?.title ?? jobId;
     p.galleons += pay;
     p.jobHistory.add('$title: +$pay加隆 (${worldState.time.month}月${worldState.time.day}日)');
+    // 记下最近一次岗位：毕业后 /状态 的「职业」用它，否则那一行会去显示
+    // initialTalent（天赋），和「主修天赋」重复。
+    p.currentJobTitle = title;
     // 上限保护：最多保留最近 50 条打工记录，防止存档无限膨胀
     if (p.jobHistory.length > 50) {
       p.jobHistory.removeRange(0, p.jobHistory.length - 50);

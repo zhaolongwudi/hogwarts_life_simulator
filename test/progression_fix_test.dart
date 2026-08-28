@@ -205,6 +205,7 @@ void main() {
   _attributeLabelGroup();
   _questTypeLabelGroup();
   _saveLoadGroup();
+  _statusOccupationGroup();
   _commandReferenceGroup();
   _petReachabilityGroup();
   _equipmentAndProviderGroup();
@@ -1815,6 +1816,67 @@ void _questTypeLabelGroup() {
       expect(questTypeLabel('defeat'), '讨伐');
       expect(questTypeLabel('pet'), '培养');
       expect(questTypeLabel('escort'), '委托');
+    });
+  });
+}
+
+// ==================== /状态 的「职业」不能是天赋 ====================
+// /状态 里「【职业】」打的是 p.initialTalent，和下面「主修天赋」是同一个
+// 字段——玩家看到的「职业」其实是自己的天赋。打工是散工、没有持久化岗位，
+// 所以加了 currentJobTitle：在校显示学生，毕业后用最近一次打工的岗位。
+
+void _statusOccupationGroup() {
+  group('/状态 的职业字段', () {
+    test('「职业」不再直接显示 initialTalent', () {
+      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      final status = RegExp(
+        r'String _formatStatus\(\) \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(src);
+      expect(status, isNotNull, reason: '没找到 _formatStatus，正则该更新了');
+      final body = status!.group(1)!;
+      // 【职业】那一行不能再出现 initialTalent
+      final occLine =
+          RegExp(r"【职业】(.*)").allMatches(body).map((m) => m.group(1)!).join();
+      expect(occLine, isNotEmpty, reason: '【职业】这行没了？');
+      expect(occLine, isNot(contains('initialTalent')),
+          reason: '职业又显示成天赋了');
+      // 天赋只该出现在「主修天赋」那行
+      expect(body, contains('initialTalent'));
+    });
+
+    test('毕业后会显示最近岗位，没打过工显示待业', () {
+      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      expect(src, contains('worldState.graduated'), reason: '职业要按是否毕业分流');
+      expect(src, contains('currentJobTitle'), reason: '毕业后要用最近岗位');
+      expect(src, contains('待业'));
+    });
+
+    test('acceptJob 会记下岗位名', () {
+      final src = _codeOnly('lib/mixins/mixin_relations.dart');
+      final body = RegExp(
+        r'int acceptJob\(String jobId\) \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(src);
+      expect(body, isNotNull, reason: '没找到 acceptJob，正则该更新了');
+      expect(body!.group(1)!, contains('currentJobTitle'),
+          reason: 'acceptJob 没写 currentJobTitle，毕业后职业永远是「待业」');
+    });
+
+    test('currentJobTitle 有 JSON 往返（老存档读不到就是 null，不炸）', () {
+      final p = Player(
+        name: '测试',
+        birthYear: '1980',
+        bloodType: 'muggleborn',
+        birthLocation: '伦敦',
+        currentJobTitle: '魔法部文员',
+      );
+      final json = p.toJson();
+      expect(json['current_job_title'], '魔法部文员');
+      expect(Player.fromJson(json).currentJobTitle, '魔法部文员');
+      // 老存档没有这个字段
+      final old = Map<String, dynamic>.from(json)..remove('current_job_title');
+      expect(Player.fromJson(old).currentJobTitle, isNull);
     });
   });
 }

@@ -39,6 +39,13 @@ class Player {
   final List<String> childhoodExperiences; // 童年经历
   String? beliefs; // 信仰与价值观
   String? initialTalent; // 初始天赋专精
+  /// 最近一次打工的岗位名。
+  ///
+  /// 之前 /状态 的「【职业】」直接把 initialTalent（初始天赋）打出来了，
+  /// 和下面「主修天赋」一行显示的是同一个字段——玩家看到的「职业」其实是
+  /// 自己的天赋。打工是散工（acceptJob 一次性结算），没有持久化岗位，
+  /// 所以这里只记最近一次，毕业后 /状态 用它当职业。
+  String? currentJobTitle;
   String? magicAptitude; // 魔法资质（第75章）
   String? housePreference; // 学院倾向（第75章）
   String? politicalTendency; // 初始政治倾向（第75章）
@@ -129,6 +136,7 @@ class Player {
     List<String>? childhoodExperiences,
     this.beliefs,
     this.initialTalent,
+    this.currentJobTitle,
     this.magicAptitude,
     this.housePreference,
     this.politicalTendency,
@@ -267,6 +275,7 @@ class Player {
         'childhood_experiences': childhoodExperiences,
         'beliefs': beliefs,
         'initial_talent': initialTalent,
+        'current_job_title': currentJobTitle,
         'magic_aptitude': magicAptitude,
         'house_preference': housePreference,
         'simulation_style': simulationStyle,
@@ -348,6 +357,7 @@ class Player {
             List<String>.from(json['childhood_experiences'] ?? []),
         beliefs: json['beliefs'],
         initialTalent: json['initial_talent'],
+        currentJobTitle: json['current_job_title'],
         magicAptitude: json['magic_aptitude'],
         housePreference: json['house_preference'],
         simulationStyle: json['simulation_style'],

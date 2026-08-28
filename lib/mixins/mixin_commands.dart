@@ -965,6 +965,8 @@ mixin GameCommandsMixin on GameProviderBase {
   String _formatStatus() {
     final p = player!;
     final w = worldState;
+    // resolveMagicAptitude 要扫长期记忆里的关键事实，原来在插值里连调两次
+    final aptitude = resolveMagicAptitude(p);
     final buf = StringBuffer()
       ..writeln('╔══════════════════════════════════════╗')
       ..writeln('  《哈利·波特·魔法纪元·人生状态》')
@@ -976,7 +978,9 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('【身份】${p.birthIdentity ?? '未设定'}')
       ..writeln('【所在地】${w.currentLocation ?? '未知'}')
       ..writeln('【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
-      ..writeln('【职业】${p.initialTalent ?? '学生'}')
+      // 以前这里打的是 initialTalent，和下面的「主修天赋」是同一个字段。
+      // 在校就是学生，毕业后用最近一次打工的岗位。
+      ..writeln('【职业】${worldState.graduated ? (p.currentJobTitle ?? '待业') : '霍格沃茨${p.grade ?? 1}年级学生'}')
       ..writeln('【财富】💰 ${p.galleons}金加隆 · 🏦 ${p.bankGalleons}古灵阁')
       ..writeln('【家庭】${p.familyBackground ?? '未设定'}')
       ..writeln('【社会地位】学院声望${p.houseReputation} · 魔法界声望${p.wizardingReputation} · 阵营声望${p.factionReputation}')
@@ -989,7 +993,7 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('⚡ 精力：${p.energy}/100')
       ..writeln()
       ..writeln('【魔法能力】')
-      ..writeln('魔法资质：${resolveMagicAptitude(p).isEmpty ? '普通' : resolveMagicAptitude(p)}')
+      ..writeln('魔法资质：${aptitude.isEmpty ? '普通' : aptitude}')
       ..writeln('主修天赋：${p.initialTalent ?? '未设定'}')
       ..writeln('已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒' : '${p.learnedSpells.length}个咒语'}')
       ..writeln()
