@@ -2,6 +2,7 @@
 /// 依据设定文档第九、十一、十二、十三、十五部分。
 
 import '../data/balance_constants.dart';
+import '../data/political_stance.dart';
 
 // ==================== 时间系统 ====================
 
@@ -407,21 +408,90 @@ String reputationGrade(int value) {
   return '边缘';
 }
 
+/// 判定一段恋爱关系「社会观感」所需的输入。
+///
+/// 之所以要单独一个 context：结算逻辑是纯函数，不依赖 GameProvider，测试
+/// 才能直接构造各种组合验证每条规则都命中得到。
+class LovePairContext {
+  final String? playerHouse;
+  final String npcHouse;
+  final String playerBlood;
+  final String npcBlood;
+
+  /// NPC 是否为教职（grade == 0 表示成人/教职，不在学生年级里）
+  final bool npcIsStaff;
+  final String playerStance;
+  final bool npcBloodSupremacist;
+
+  const LovePairContext({
+    required this.playerHouse,
+    required this.npcHouse,
+    required this.playerBlood,
+    required this.npcBlood,
+    this.npcIsStaff = false,
+    this.playerStance = '',
+    this.npcBloodSupremacist = false,
+  });
+
+  /// 跨阵营：一方持纯血至上，另一方明确主张血统平等。
+  ///
+  /// NPC 没有"阵营"字段，手上只有 bloodSupremacist 这一个标记，所以这里用
+  /// 「NPC 纯血至上」×「玩家立场反对血统至上」来判定。真要细分到凤凰社/食
+  /// 死徒，得先给 NPC 补一个立场字段——在那之前这是最诚实的近似。
+  ///
+  /// 立场语义问 data 层，不在这里列名字（列了就是第二份名单）。
+  bool get crossedFaction =>
+      npcBloodSupremacist && opposesBloodSupremacy(playerStance);
+}
+
 /// 恋爱声望影响（设定 13.3）
+///
+/// 触发条件用枚举而不是闭包：常量表里放不了函数字面量，而 switch 是穷尽的，
+/// 以后加了一条规则却忘了写判定，分析器直接报错。
+enum LoveReputationTrigger {
+  sameHouse,
+  crossHouse,
+  crossBlood,
+  crossFaction,
+  teacherStudent,
+}
+
 class LoveReputationEffect {
   final String type;
   final int min;
   final int max;
-  const LoveReputationEffect(this.type, this.min, this.max);
+  final LoveReputationTrigger trigger;
+  const LoveReputationEffect(this.type, this.min, this.max, this.trigger);
 }
 
 const List<LoveReputationEffect> loveReputationEffects = [
-  LoveReputationEffect('同学院恋爱', 2, 5),
-  LoveReputationEffect('跨学院恋爱', -5, -3),
-  LoveReputationEffect('跨血统恋爱', -10, -5),
-  LoveReputationEffect('跨阵营恋爱', -15, -8),
-  LoveReputationEffect('师生恋', -25, -15),
+  LoveReputationEffect('同学院恋爱', 2, 5, LoveReputationTrigger.sameHouse),
+  LoveReputationEffect('跨学院恋爱', -5, -3, LoveReputationTrigger.crossHouse),
+  LoveReputationEffect('跨血统恋爱', -10, -5, LoveReputationTrigger.crossBlood),
+  LoveReputationEffect('跨阵营恋爱', -15, -8, LoveReputationTrigger.crossFaction),
+  LoveReputationEffect('师生恋', -25, -15, LoveReputationTrigger.teacherStudent),
 ];
+
+/// [e] 这条规则在 [c] 描述的这段关系上是否命中。
+bool loveEffectApplies(LoveReputationEffect e, LovePairContext c) {
+  switch (e.trigger) {
+    case LoveReputationTrigger.sameHouse:
+      return _houseKnown(c.playerHouse) && c.playerHouse == c.npcHouse;
+    case LoveReputationTrigger.crossHouse:
+      return _houseKnown(c.playerHouse) && c.playerHouse != c.npcHouse;
+    case LoveReputationTrigger.crossBlood:
+      return _bloodKnown(c.playerBlood) &&
+          _bloodKnown(c.npcBlood) &&
+          c.playerBlood != c.npcBlood;
+    case LoveReputationTrigger.crossFaction:
+      return c.crossedFaction;
+    case LoveReputationTrigger.teacherStudent:
+      return c.npcIsStaff;
+  }
+}
+
+bool _houseKnown(String? h) => h != null && h.isNotEmpty;
+bool _bloodKnown(String b) => b.isNotEmpty && b != 'unknown';
 
 // ==================== 恋爱状态 ====================
 

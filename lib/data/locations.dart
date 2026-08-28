@@ -51,10 +51,26 @@ String? resolveLocationName(String text) {
   return null;
 }
 
+/// 当前地点 [currentLocation] 是否满足事件锚点的位置约束 [required]。
+///
+/// 先把两边都归一化成地点主名再比，比不出来才退回双向子串。
+/// 只比子串是不够的：当前地点是归一化后的主名（「霍格沃茨·场地」），而锚点
+/// 写的是「黑湖」——「黑湖」是场地这条目的别名，两边互为子串都成立不了，
+/// 于是写明「在黑湖畔触发」的锚点一个都不会触发，而且不报错、不写日志，
+/// 只能靠"这个剧情怎么一直不出"来发现。
+bool locationMatches(String currentLocation, String required) {
+  if (required.isEmpty || currentLocation.isEmpty) return true;
+  final here = resolveLocationName(currentLocation);
+  final want = resolveLocationName(required);
+  if (here != null && want != null) return here == want;
+  return currentLocation.contains(required) || required.contains(currentLocation);
+}
+
 /// [keyword] 是否是某个已知地点的主名或别名的一部分。
 ///
-/// 事件锚点的 requiredLocation 用的是子串语义（见 _checkEventAnchors：
-/// 当前地点包含约束词，或约束词包含当前地点），这里的口径保持一致。
+/// 这是给测试用的数据校验：抓 requiredLocation 写错别字（「特快列车」写成
+/// 「特快车」）这种改一个字就静默失效的笔误。运行时是否匹配看
+/// [locationMatches]，不是这里。
 bool locationKeywordResolvable(String keyword) {
   if (keyword.isEmpty) return true;
   for (final alias in allLocationAliases) {

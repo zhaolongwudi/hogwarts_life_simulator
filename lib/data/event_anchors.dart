@@ -10,6 +10,8 @@
 /// - era 过滤：为空表示所有时代通用
 /// - 已触发的锚点 id 记录在存档中，不会重复触发
 
+import 'locations.dart';
+
 class EventAnchor {
   final String id;
 
@@ -334,11 +336,13 @@ List<EventAnchor> anchorsFor({
     if (a.era != null && a.era != era) continue;
     // 时段门槛：防止特快刚发车(10:45)就被要求描写"抵达霍格莫德"（正常应12-15点抵达）
     if (!_hourWindowHit(a, winFrom, winTo)) continue;
-    // 位置门槛：锚点要求在特定场景才触发
+    // 位置门槛：锚点要求在特定场景才触发。
+    // 走 locationMatches 而不是自己比子串：当前地点是归一化后的主名，约束
+    // 词可能是这条目的别名（主名「霍格沃茨·场地」↔ 别名「黑湖」），裸子串
+    // 两头都匹配不上，锚点会静默地一次都不触发。
     if (a.requiredLocation != null &&
         currentLocation != null &&
-        !currentLocation.contains(a.requiredLocation!) &&
-        !a.requiredLocation!.contains(currentLocation)) continue;
+        !locationMatches(currentLocation, a.requiredLocation!)) continue;
     result.add(a);
   }
   return result;

@@ -1222,6 +1222,49 @@ mixin GameRelationsMixin on GameProviderBase {
 
   /// 处理表白回应
 
+  /// 恋爱关系确立时结算一次社交声望（设定 13.3）。
+  ///
+  /// loveReputationEffects 这张表此前没有任何地方读它——和谁谈恋爱在声望上
+  /// 完全等价，"跟纯血至上的老师谈"与"同学院的青梅竹马"代价一样。而这个
+  /// 世界的偏见恰恰是设定里反复强调的东西。
+  ///
+  /// 只在关系确立（'恋爱'）时结算一次：订婚和结婚是同一段关系的延续，不重复
+  /// 计第二次，否则同一桩恋事会被罚两遍。
+  void _applyLoveReputation(NPC npc) {
+    final p = player;
+    if (p == null) return;
+    final ctx = LovePairContext(
+      playerHouse: p.house,
+      npcHouse: npc.house,
+      playerBlood: p.bloodType,
+      npcBlood: npc.bloodStatus,
+      npcIsStaff: npc.grade == 0,
+      playerStance: p.politicalTendency ?? '',
+      npcBloodSupremacist: npc.bloodSupremacist,
+    );
+
+    var delta = 0;
+    final detail = <String>[];
+    for (final e in loveReputationEffects) {
+      if (!loveEffectApplies(e, ctx)) continue;
+      final v = e.min + random.nextInt(e.max - e.min + 1);
+      delta += v;
+      detail.add('${e.type} ${v > 0 ? '+' : ''}$v');
+    }
+    if (delta == 0) return;
+
+    // 最极端的情况（跨学院的纯血至上老师 + 血统不纯 + 立场对立）能叠到 -55，
+    // 而声望量程是 0~100，一次打到底就没法玩了。封个顶。
+    delta = delta.clamp(-30, 10);
+    p.playerReputation.add('social', delta);
+    final sign = delta > 0 ? '+' : '';
+    notifications.add('💬 你和${npc.name}在一起的消息传开了：社交声望 $sign$delta'
+        '（${detail.join('、')}）');
+    worldState.addNarrativeEvent(
+        '💬 关于你和${npc.name}的传闻改变了旁人的看法（社交声望 $sign$delta）',
+        turn: turnCount);
+  }
+
   void resolveConfession(bool accepted, String npcName) {
     final p = player;
     if (p == null) return;
@@ -1259,6 +1302,7 @@ mixin GameRelationsMixin on GameProviderBase {
       worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！', turn: turnCount);
       _addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
       bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
+      _applyLoveReputation(npc);
       currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'

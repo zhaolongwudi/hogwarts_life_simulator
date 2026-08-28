@@ -1078,6 +1078,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
   【T0 核心事实（选项不能违背）】
   ${memory.keyFacts.where((f) => f.importance >= 4).map((f) => '· ${f.fact}').take(10).join('\n')}
 
+$kChoiceQualityChecklist
 $kChoicePromptSuffix''';
 
     try {
@@ -1186,12 +1187,7 @@ $narrativeTail
 生命：${player?.health ?? 100}｜精力：${player?.energy ?? 100}
 身份模式：${appProvider.identityMode == IdentityMode.transmigration ? "穿越者" : "原住民"}
 
-请直接输出 4 行纯文本选项（不要任何markdown格式）：
-A.xxxxxx
-B.xxxxxx
-C.xxxxxx
-D.xxxxxx
----
+$kChoiceQualityChecklist
 $kChoicePromptSuffix''';
 
         final retryResponse = await callDeepSeek(

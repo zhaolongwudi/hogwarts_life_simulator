@@ -221,6 +221,8 @@ void main() {
   _promptConstantGroup();
   _unboundedLoopGroup();
   _saveVersionGroup();
+  _locationMatchGroup();
+  _loveReputationGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2777,6 +2779,150 @@ void _saveVersionGroup() {
         expect(RegExp(r'if \(version < \d+\)').hasMatch(src), isTrue,
             reason: '版本号是 $kSaveVersion，但没有迁移旧版本的分支');
       }
+    });
+  });
+}
+
+// ==================== 事件锚点的位置门槛 ====================
+// 锚点判断原先在 event_anchors 里裸比子串，而当前地点是归一化后的主名、
+// 约束词可能是这条目的别名（主名「霍格沃茨·场地」↔ 别名「黑湖」），两头都
+// 匹配不上，锚点静默地一次都不触发。locations.dart 里明明有
+// locationKeywordResolvable，但它测的是"有没有写错别字"，不是运行时匹配，
+// 于是又被闲置了一次。
+void _locationMatchGroup() {
+  group('锚点位置门槛', () {
+    test('主名对主名、主名对别名都能对上', () {
+      expect(locationMatches('霍格沃茨·场地', '霍格沃茨·场地'), isTrue);
+      // 「黑湖」是「霍格沃茨·场地」的别名，裸子串两头都不成立
+      expect('霍格沃茨·场地'.contains('黑湖'), isFalse);
+      expect('黑湖'.contains('霍格沃茨·场地'), isFalse);
+      expect(locationMatches('霍格沃茨·场地', '黑湖'), isTrue);
+      expect(locationMatches('霍格沃茨·图书馆', '禁书区'), isTrue);
+      expect(locationMatches('霍格莫德村', '三把扫帚'), isTrue);
+    });
+
+    test('确实不在同一个地方时拒绝', () {
+      expect(locationMatches('霍格沃茨·图书馆', '禁林'), isFalse);
+      expect(locationMatches('古灵阁', '霍格沃茨·场地'), isFalse);
+    });
+
+    test('归一化认不出来时退回子串，老锚点照旧生效', () {
+      // 「特快」不是任何条目的主名/别名，靠子串命中「霍格沃茨特快列车」
+      expect(resolveLocationName('特快'), isNull);
+      expect(locationMatches('霍格沃茨特快列车', '特快'), isTrue);
+    });
+
+    test('生产代码走 locationMatches，不再自己比子串', () {
+      final src = _codeOnly('lib/data/event_anchors.dart');
+      expect(src, contains('locationMatches'));
+      expect(src, contains("import 'locations.dart'"));
+      expect(
+        RegExp(r"currentLocation!\s*\.contains|contains\(currentLocation\)")
+            .hasMatch(src),
+        isFalse,
+        reason: '锚点位置判断不能再手抄裸子串比较',
+      );
+    });
+  });
+}
+
+// ==================== 恋爱声望（设定 13.3）====================
+// loveReputationEffects 这张表此前没有任何地方读它：恋爱在声望上毫无代价，
+// 跟纯血至上的老师谈与同学院的青梅竹马完全等价。
+void _loveReputationGroup() {
+  group('恋爱声望', () {
+    LovePairContext ctx({
+      String? playerHouse,
+      String npcHouse = 'Gryffindor',
+      String playerBlood = 'halfblood',
+      String npcBlood = 'halfblood',
+      bool npcIsStaff = false,
+      String playerStance = '中立投机',
+      bool npcBloodSupremacist = false,
+    }) =>
+        LovePairContext(
+          playerHouse: playerHouse,
+          npcHouse: npcHouse,
+          playerBlood: playerBlood,
+          npcBlood: npcBlood,
+          npcIsStaff: npcIsStaff,
+          playerStance: playerStance,
+          npcBloodSupremacist: npcBloodSupremacist,
+        );
+
+    /// 每条规则各构造一个"只命中它"的组合。
+    final isolating = <LoveReputationTrigger, LovePairContext>{
+      LoveReputationTrigger.sameHouse: ctx(
+        playerHouse: 'Gryffindor',
+        npcHouse: 'Gryffindor',
+      ),
+      LoveReputationTrigger.crossHouse: ctx(
+        playerHouse: 'Gryffindor',
+        npcHouse: 'Slytherin',
+      ),
+      // 学院留空，让两条学院规则都跳过
+      LoveReputationTrigger.crossBlood: ctx(
+        playerBlood: 'muggleborn',
+        npcBlood: 'pureblood',
+      ),
+      LoveReputationTrigger.crossFaction: ctx(
+        npcBloodSupremacist: true,
+        playerStance: '血统平等',
+      ),
+      LoveReputationTrigger.teacherStudent: ctx(npcIsStaff: true),
+    };
+
+    test('每条规则都有能命中它的组合', () {
+      expect(loveReputationEffects, hasLength(isolating.length));
+      for (final e in loveReputationEffects) {
+        final c = isolating[e.trigger];
+        expect(c, isNotNull, reason: '${e.type} 没有对应的测试组合');
+        expect(loveEffectApplies(e, c!), isTrue,
+            reason: '「${e.type}」触发不了');
+      }
+    });
+
+    test('组合只命中它该命中的那一条', () {
+      for (final e in loveReputationEffects) {
+        for (final other in loveReputationEffects) {
+          if (other.trigger == e.trigger) continue;
+          expect(loveEffectApplies(other, isolating[e.trigger]!), isFalse,
+              reason: '${e.type} 的组合误触发了「${other.type}」');
+        }
+      }
+    });
+
+    test('区间方向对：同学院是唯一的正向，师生恋最重', () {
+      final byType = {for (final e in loveReputationEffects) e.type: e};
+      expect(byType['同学院恋爱']!.min, greaterThan(0));
+      for (final t in ['跨学院恋爱', '跨血统恋爱', '跨阵营恋爱', '师生恋']) {
+        expect(byType[t]!.max, lessThan(0), reason: '$t 应该是负面评价');
+      }
+      expect(byType['师生恋']!.min, lessThan(byType['跨阵营恋爱']!.min));
+      for (final e in loveReputationEffects) {
+        expect(e.min, lessThanOrEqualTo(e.max), reason: '${e.type} 区间写反了');
+      }
+    });
+
+    test('信息不全时不乱扣：学院/血统未知就跳过那两条', () {
+      final c = ctx(playerHouse: '', playerBlood: 'unknown', npcBlood: 'unknown');
+      for (final e in loveReputationEffects) {
+        if (e.trigger == LoveReputationTrigger.teacherStudent) continue;
+        expect(loveEffectApplies(e, c), isFalse,
+            reason: '${e.type} 不该在数据缺失时命中');
+      }
+    });
+
+    test('接受表白时会结算恋爱声望', () {
+      final src = _codeOnly('lib/mixins/mixin_relations.dart');
+      expect(src, contains('_applyLoveReputation'));
+      expect(src, contains('loveEffectApplies'));
+      // 只在关系确立那一次结算，订婚/结婚不重复计
+      expect(
+        RegExp(r"_applyLoveReputation\(").allMatches(src).length,
+        lessThanOrEqualTo(2),
+        reason: '恋爱声望只该在确立关系时结算一次（定义 + 一次调用）',
+      );
     });
   });
 }
