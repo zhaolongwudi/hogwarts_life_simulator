@@ -75,6 +75,39 @@ mixin GameSystemsMixin on GameProviderBase {
     _advanceWorldClock(resolveActionCost(action));
   }
 
+  // ==================== 玩家手记 ====================
+
+  /// 新增一条手记。写入 Player 并落盘，返回后不会丢。
+  void addDiaryEntry({
+    required String title,
+    required String content,
+    String mood = '📖',
+  }) {
+    final p = player;
+    if (p == null) return;
+    final t = worldState.time;
+    p.diary.insert(
+      0,
+      DiaryEntry(
+        date: '$t.year年$t.month月$t.day日',
+        time: '${t.hour}:${t.minute.toString().padLeft(2, '0')}',
+        title: title,
+        content: content,
+        mood: mood,
+      ),
+    );
+    notifyListeners();
+    autoSave();
+  }
+
+  void removeDiaryEntry(int index) {
+    final p = player;
+    if (p == null || index < 0 || index >= p.diary.length) return;
+    p.diary.removeAt(index);
+    notifyListeners();
+    autoSave();
+  }
+
   // ==================== 时间快进（/快进） ====================
 
   /// 距本月最后一天还剩几天（返回 0 表示今天就是月末）。

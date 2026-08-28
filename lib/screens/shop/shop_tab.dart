@@ -33,6 +33,25 @@ class ShopTab extends StatefulWidget {
 }
 
 class _ShopTabState extends State<ShopTab> {
+  /// 交易防抖：purchaseItem / sellItem 都会立刻扣钱加物并落盘，
+  /// 连点两下会重复成交（钱扣双份、物品加双份）。
+  bool _trading = false;
+
+  Future<T?> _guarded<T>(Future<T> Function() action) async {
+    if (_trading) return null;
+    if (mounted) setState(() => _trading = true);
+    try {
+      return await action();
+    } finally {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      if (mounted) setState(() => _trading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
   int _subTab = 0; // 0=淘货, 1=卖闲置
 
   IconData _iconFor(ItemDef def) {
@@ -242,16 +261,22 @@ class _ShopTabState extends State<ShopTab> {
                 backgroundColor: isBuy ? Theme.of(context).colorScheme.primary : Colors.red,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
+              onPressed: _trading
+                  ? null
+                  : () async {
                 final gp = context.read<GameProvider>();
                 if (isBuy) {
                   final price = item['price'] as int? ?? 10;
-                  final ok = gp.purchaseItem(
-                    item['name'] as String? ?? '未知物品',
-                    price,
-                    type: item['type'] as String? ?? 'item',
-                    description: item['desc'] as String? ?? '',
-                  );
+                  final ok = await _guarded(
+                        () async => gp.purchaseItem(
+                          item['name'] as String? ?? '未知物品',
+                          price,
+                          type: item['type'] as String? ?? 'item',
+                          description: item['desc'] as String? ?? '',
+                        ),
+                      ) ??
+                      false;
+                  if (!context.mounted) return;
                   final isUsable = item['usable'] == true || item['equippable'] == true;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -274,7 +299,8 @@ class _ShopTabState extends State<ShopTab> {
                   final price = item['price'] as int? ?? 5;
                   final invIndex = gp.player?.inventory.indexWhere((e) => e.name == item['name']) ?? -1;
                   if (invIndex >= 0) {
-                    gp.sellItem(invIndex, price);
+                    await _guarded(() async => gp.sellItem(invIndex, price));
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('已出售 ${item['name']} (获得 $price 加隆)')),
                     );

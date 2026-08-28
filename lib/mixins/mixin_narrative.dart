@@ -70,6 +70,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     if (router == null || !router!.hasNarrativeService) return;
 
     commandResult = null; // 提交真实行动时关闭指令面板
+    error = null; // 新一轮开始前清掉上一次的失败提示
     isLoading = true;
     turnCount++;
     lastScannedNarrativeHash = null;
@@ -543,6 +544,10 @@ $kNarrativeWritingRules
       // → 与当前剧情末尾脱节，玩家点击后下回合叙事完全跳场景
       choices = buildFallbackChoices(currentNarrative);
       appendRecentTurn(currentNarrative);
+      // 关键：必须写 error。旧实现只往 notifications 里塞了一条，
+      // 而 UI 顶部错误条监听的是 error 字段 → 玩家看到的只是"剧情突然变味了"，
+      // 完全不知道是 AI 挂了，会以为是游戏内容就这样。
+      error = 'AI 服务暂时不可用，已切换为本地过渡剧情。可稍后重试刚才的行动。';
       notifications.add('⚠️ AI 服务暂时不可用，已切换为本地过渡剧情，稍后可重试行动');
       loadingStage = '';
       isLoading = false;
@@ -555,6 +560,24 @@ $kNarrativeWritingRules
         extra: 'action=$action, turn=$turnCount',
       ));
     }
+  }
+
+  /// 重试上一次失败的行动。
+  ///
+  /// AI 调用失败时游戏会切本地兜底剧情，玩家点「重试」即可用同一句话
+  /// 重新走一遍正式流程（而不是手动把原话再敲一遍）。
+  /// 失败前的兜底叙事会先撤掉，避免重试成功后新旧正文叠在一起。
+  Future<void> retryLastAction() async {
+    final action = lastPlayerAction.trim();
+    if (action.isEmpty) return;
+    error = null;
+    await processChoice(GameChoice(text: action, action: action));
+  }
+
+  /// 手动关掉错误提示条（玩家点 ✕ 时用，不重跑任何逻辑）
+  void clearError() {
+    error = null;
+    notifyListeners();
   }
 
   /// 关闭指令结果面板，恢复显示当前回合剧情（不消耗回合、不调用 AI）

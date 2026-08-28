@@ -8,6 +8,7 @@ import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/narrative_visuals.dart';
+import '../../widgets/scaled_rich_text.dart';
 
 import '../../mixins/mixin_response_choices.dart';
 import '../story_history_screen.dart';
@@ -388,12 +389,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
       'body': body.isEmpty ? null : body,
     };
   }
-  Widget _buildHeaderCard(String? timestamp, String? location) {
+  Widget _buildHeaderCard(String? timestamp, String? location,
+      {double height = 96}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SceneIllustrationBanner(
         location: location,
         timestamp: timestamp,
+        height: height,
       ),
     );
   }
@@ -416,40 +419,68 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
-  Widget _buildChoiceList(GameProvider gp) {
+  /// 选项区固定在正文下方（不随正文滚动），最多占 [maxHeight] 高度后内部滚动。
+  /// 旧实现把选项放在长滚动列表末尾，600~800 字的叙事下玩家必须滑到底才能行动。
+  Widget _buildChoiceList(GameProvider gp, {double maxHeight = 300}) {
     // 注意：快捷指令/查看类命令执行时 commandResult 非空，
     // 但 choices 已经被 processChoice 里恢复为原剧情选项，必须照常显示
     if (gp.choices.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('可选行动', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        ...gp.choices.asMap().entries.map((entry) {
-          final index = entry.key;
-          final choice = entry.value;
-          final displayText = GameResponseChoiceMixin.sanitizeChoiceText(choice.text);
-          return GestureDetector(
-            onTap: () => widget.onNarrativeTapChoice(index),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 8,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Text(
+                  '可选行动',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                      color: Color(0xFFD3A625)),
+                ),
               ),
-              child: Text(
-                '${String.fromCharCode(65 + index)}. $displayText',
-                style: const TextStyle(fontSize: 14, color: Color(0xFFE6EDF3)),
+              const SizedBox(height: 8),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: gp.choices.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final choice = entry.value;
+                      final displayText =
+                          GameResponseChoiceMixin.sanitizeChoiceText(choice.text);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _ChoiceButton(
+                          label: '${String.fromCharCode(65 + index)}. $displayText',
+                          onTap: () => widget.onNarrativeTapChoice(index),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
-            ),
-          );
-        }),
-      ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -750,6 +781,16 @@ class _NarrativeTabState extends State<NarrativeTab> {
     return Column(
       children: [
         _buildPanelEventTabs(),
+        // AI 失败提示条：以前失败是静默的（只往 notifications 里塞一条），
+        // 玩家看到"剧情突然变味"却不知道发生了什么
+        if (gp.error != null && gp.error!.isNotEmpty)
+          _AiErrorBanner(
+            message: gp.error!,
+            onDismiss: () => gp.clearError(),
+            onRetry: gp.lastPlayerAction.trim().isNotEmpty
+                ? () => gp.retryLastAction()
+                : null,
+          ),
         Expanded(
           child: LayoutBuilder(
             builder: (ctx, constraints) {
@@ -769,42 +810,56 @@ class _NarrativeTabState extends State<NarrativeTab> {
             },
           ),
         ),
-        if (gp.isLoading)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.pink.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  const SizedBox(width: 10),
-                  Text(
-                    gp.loadingStage.isNotEmpty ? gp.loadingStage : '推进中...',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  if (gp.lastRoundTokens > 0) ...[
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4A5568),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+        // 固定高度的加载槽位：旧实现用 if (isLoading) 直接插入/移除 pill，
+        // 出现与消失会让正文区高度跳变约 44px，阅读时很晃眼。
+        // 改成槽位常驻 + AnimatedOpacity 淡入淡出。
+        SizedBox(
+          height: 44,
+          child: AnimatedOpacity(
+            opacity: gp.isLoading ? 1 : 0,
+            duration: const Duration(milliseconds: 160),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.pink.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 10),
+                    Flexible(
                       child: Text(
-                        '${gp.lastRoundTokens} tokens',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFFA0AEC0)),
+                        gp.loadingStage.isNotEmpty ? gp.loadingStage : '推进中...',
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (gp.lastRoundTokens > 0) ...[
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4A5568),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${gp.lastRoundTokens} tokens',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFFA0AEC0)),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
+        ),
       ],
     );
   }
@@ -821,37 +876,53 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final bodyNarrative = header['body'] ?? narrative;
     final hasHeader = timestamp != null || location != null;
 
+    // 悬浮横幅实际高度（SceneIllustrationBanner 固定 96，短屏收窄到 72）
+    final bannerH = constraints.maxHeight < 520 ? 72.0 : 96.0;
+    final headerReserve = hasHeader ? bannerH + 12 : 16.0;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Positioned.fill(
-          child: SingleChildScrollView(
-            controller: widget.subTab == 0 ? widget.scrollController : null,
-            padding: EdgeInsets.only(
-              top: hasHeader ? 120 : 16,
-              bottom: 120,
-              left: 16,
-              right: 16,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (commandPanel != null && commandPanel.isNotEmpty) ...[
-                  _buildCommandResultPanel(gp, commandPanel),
-                  const SizedBox(height: 12),
-                ],
-                _buildLegendPanel(),
-                const SizedBox(height: 8),
-                if (bodyNarrative.isNotEmpty) _buildBodyCard(bodyNarrative),
-                if (affectionSections.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildAffectionCard(affectionSections),
-                ],
-                const SizedBox(height: 16),
-                _buildChoiceList(gp),
-                const SizedBox(height: 8),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 顶部只为「真实悬浮的横幅」留位。
+              // 旧实现直接写死 top: 120 / bottom: 120，共 240px 死留白；
+              // 但本组件位于 Expanded 内、输入栏是下方兄弟节点（不会盖住内容），
+              // 底部那 120px 从头到尾都是纯浪费，小屏上正文只剩一条缝。
+              if (hasHeader) SizedBox(height: headerReserve),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: widget.subTab == 0 ? widget.scrollController : null,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    hasHeader ? 0 : 16,
+                    16,
+                    8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (commandPanel != null && commandPanel.isNotEmpty) ...[
+                        _buildCommandResultPanel(gp, commandPanel),
+                        const SizedBox(height: 12),
+                      ],
+                      _buildLegendPanel(),
+                      const SizedBox(height: 8),
+                      if (bodyNarrative.isNotEmpty) _buildBodyCard(bodyNarrative),
+                      if (affectionSections.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _buildAffectionCard(affectionSections),
+                      ],
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+              // 选项固定在底部：600~800 字正文时不必滑到屏幕最底下才能行动
+              _buildChoiceList(gp, maxHeight: constraints.maxHeight * 0.42),
+            ],
           ),
         ),
         if (hasHeader)
@@ -859,10 +930,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
             top: 0,
             left: 0,
             right: 0,
-            child: _buildHeaderCard(timestamp, location),
+            child: _buildHeaderCard(timestamp, location, height: bannerH),
           ),
         Positioned(
-          top: hasHeader ? 132 : 10,
+          top: headerReserve + 12,
           left: 0,
           right: 0,
           child: const _ResourceFloat(),
@@ -968,7 +1039,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             if (segments[i].isDialogue)
               _buildDialogueSegment(gp, segments[i])
             else
-              RichText(
+              ScaledRichText(
                 text: TextSpan(
                   children: StoryTextRenderer.parse(segments[i].text),
                 ),
@@ -1018,7 +1089,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Theme.of(context).dividerTheme.color!),
       ),
-      child: RichText(
+      child: ScaledRichText(
         text: TextSpan(
           children: StoryTextRenderer.parseWithAffectionStyle(body),
         ),
@@ -1163,6 +1234,115 @@ class _ResourceFloatState extends State<_ResourceFloat>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 剧情选项按钮。
+///
+/// 带 400ms 防抖：选项点击会触发一次 AI 请求，连点两下就会连发两条指令、
+/// 既烧 token 又会把剧情推进两次。防抖期间按钮同时置灰给出视觉反馈。
+class _ChoiceButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _ChoiceButton({required this.label, required this.onTap});
+
+  @override
+  State<_ChoiceButton> createState() => _ChoiceButtonState();
+}
+
+class _ChoiceButtonState extends State<_ChoiceButton> {
+  bool _locked = false;
+
+  Future<void> _handleTap() async {
+    if (_locked) return;
+    setState(() => _locked = true);
+    widget.onTap();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (mounted) setState(() => _locked = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: _handleTap,
+      child: AnimatedOpacity(
+        opacity: _locked ? 0.5 : 1,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Theme.of(context).dividerTheme.color!),
+          ),
+          child: Text(
+            widget.label,
+            style: const TextStyle(fontSize: 14, color: Color(0xFFE6EDF3)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// AI 失败提示条。
+///
+/// 以前 AI 调用失败只会静默切本地兜底剧情，界面毫无提示，
+/// 玩家会以为"这段剧情就是长这样"。这里显式告知 + 提供重试入口。
+class _AiErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onDismiss;
+  final VoidCallback? onRetry;
+
+  const _AiErrorBanner({
+    required this.message,
+    required this.onDismiss,
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5C2222),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFF7B72).withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, size: 18, color: Color(0xFFFF7B72)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 12, color: Color(0xFFFFDCD7)),
+            ),
+          ),
+          if (onRetry != null)
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('重试',
+                  style: TextStyle(fontSize: 12, color: Color(0xFFFFC107))),
+            ),
+          GestureDetector(
+            onTap: onDismiss,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close, size: 16, color: Color(0xFFFFDCD7)),
+            ),
+          ),
+        ],
       ),
     );
   }

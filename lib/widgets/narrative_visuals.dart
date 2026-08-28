@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data/scene_illustration_data.dart';
 import '../utils/story_text_renderer.dart';
 import 'npc_avatar.dart';
+import 'scaled_rich_text.dart';
 
 /// 场景插图横幅：根据剧情地点渲染氛围渐变横幅。
 /// 无外部图片依赖，渐变+图标+地点标题营造沉浸感。
@@ -10,10 +11,14 @@ class SceneIllustrationBanner extends StatelessWidget {
   final String? location;
   final String? timestamp;
 
+  /// 横幅高度。默认 96；短屏可由调用方收窄（留更多空间给正文）。
+  final double height;
+
   const SceneIllustrationBanner({
     super.key,
     required this.location,
     this.timestamp,
+    this.height = 96,
   });
 
   @override
@@ -25,7 +30,7 @@ class SceneIllustrationBanner extends StatelessWidget {
     final Widget banner = ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        height: 96,
+        height: height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -227,7 +232,7 @@ class DialogueBubble extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: RichText(
+                child: ScaledRichText(
                   text: TextSpan(
                     children: StoryTextRenderer.parse(text),
                   ),

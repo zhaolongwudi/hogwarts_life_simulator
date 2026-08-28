@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../data/cg_data.dart';
+import '../../models/player.dart';
 
-// ==================== 日记系统 ====================
+// ==================== 日记 / CG 图鉴 ====================
+//
+// 旧实现的问题：
+//  1. 一进来就往列表里塞两条写死的假日记（"入学第一天""分院帽的抉择"），
+//     跟玩家实际经历毫无关系，还打着「系统」标签看起来像真的；
+//  2. 玩家自己写的日记只存在 Widget 的局部变量里，退出页面就没了。
+//
+// 现在改成两个 Tab：
+//  · CG 图鉴：直接读 player.cgRecords + allCgs()，与挑战令里的 /日记 同一份数据
+//  · 我的手记：写入 player.diary，随存档持久化
 class DiaryScreen extends StatefulWidget {
   const DiaryScreen({super.key});
 
@@ -10,154 +21,56 @@ class DiaryScreen extends StatefulWidget {
   State<DiaryScreen> createState() => _DiaryScreenState();
 }
 
-class _DiaryScreenState extends State<DiaryScreen> {
-  final List<Map<String, dynamic>> _entries = [];
+class _DiaryScreenState extends State<DiaryScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
 
   @override
   void initState() {
     super.initState();
-    _loadEntries();
+    _tab = TabController(length: 2, vsync: this);
   }
 
-  void _loadEntries() {
-    final gp = context.read<GameProvider>();
-    final worldState = gp.worldState;
-    final player = gp.player;
-
-    if (player != null) {
-      _entries.addAll([
-        {
-          'date': '${worldState.time.month}月${worldState.time.day}日',
-          'time': '${worldState.time.hour}:${worldState.time.minute.toString().padLeft(2, '0')}',
-          'title': '入学第一天',
-          'content': '今天终于来到了霍格沃茨！城堡在阳光下闪闪发光。在大礼堂吃了丰盛的早餐，然后开始了第一堂课。认识了几个新朋友，感觉这一年会很有趣。',
-          'mood': '😊',
-          'isGenerated': true,
-        },
-        {
-          'date': '${worldState.time.month}月${worldState.time.day}日',
-          'time': '${worldState.time.hour}:${worldState.time.minute.toString().padLeft(2, '0')}',
-          'title': '分院帽的抉择',
-          'content': '分院帽在我头上犹豫了好久...我真的很紧张。最后它宣布了结果，那一刻我的心跳几乎停止了。',
-          'mood': '😰',
-          'isGenerated': true,
-        },
-      ]);
-    }
-
-    if (_entries.isEmpty) {
-      _entries.addAll([
-        {
-          'date': '1991年9月1日',
-          'time': '09:00',
-          'title': '入学第一天',
-          'content': '今天终于来到了霍格沃茨！城堡在阳光下闪闪发光。',
-          'mood': '😊',
-          'isGenerated': false,
-        },
-      ]);
-    }
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final gp = context.watch<GameProvider>();
+    final unlocked = gp.player?.cgRecords.length ?? 0;
+    final total = allCgs().length;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('我的日记'),
+        title: Text('日记 · CG $unlocked/$total'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
+        bottom: TabBar(
+          controller: _tab,
+          tabs: const [
+            Tab(text: 'CG 图鉴'),
+            Tab(text: '我的手记'),
+          ],
+        ),
       ),
-      body: _entries.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.menu_book, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
-                  const SizedBox(height: 16),
-                  const Text('还没有日记'),
-                  const SizedBox(height: 8),
-                  Text('点击右下角开始写日记吧', style: TextStyle(color: Colors.grey.withValues(alpha: 0.7))),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _entries.length,
-              itemBuilder: (context, index) => _buildEntryCard(_entries[index], index),
-            ),
+      body: TabBarView(
+        controller: _tab,
+        children: [
+          _CgGalleryTab(recs: gp.player?.cgRecords ?? const {}),
+          const _JournalTab(),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddEntryDialog,
+        onPressed: () => _showAddEntryDialog(context),
         child: const Icon(Icons.edit),
       ),
     );
   }
 
-  Widget _buildEntryCard(Map<String, dynamic> entry, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Text(entry['mood'] ?? '📖', style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${entry['date']} · ${entry['time']}',
-                        style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
-                      ),
-                      Text(
-                        entry['title'] ?? '',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                if (entry['isGenerated'] == true)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text('系统', style: TextStyle(fontSize: 10, color: Colors.blue)),
-                  )
-                else
-                  GestureDetector(
-                    onTap: () => _deleteEntry(index),
-                    child: const Icon(Icons.delete_outline, size: 18, color: Color(0xFF8B949E)),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              entry['content'] ?? '',
-              style: const TextStyle(fontSize: 14, height: 1.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddEntryDialog() {
+  void _showAddEntryDialog(BuildContext context) {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
     String selectedMood = '😊';
@@ -166,55 +79,65 @@ class _DiaryScreenState extends State<DiaryScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('写日记'),
+          title: const Text('写手记'),
           content: SizedBox(
             width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: '标题',
-                    border: OutlineInputBorder(),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: '标题',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: contentController,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: '内容',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: contentController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: '内容',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text('选择心情:', style: TextStyle(fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: ['😊', '😄', '😰', '😢', '😡', '😍', '🤔', '😴'].map((mood) {
-                    return GestureDetector(
-                      onTap: () => setDialogState(() => selectedMood = mood),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: selectedMood == mood
-                              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
-                              : Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: selectedMood == mood
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).dividerColor,
+                  const SizedBox(height: 12),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('选择心情:', style: TextStyle(fontSize: 13)),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: ['😊', '😄', '😰', '😢', '😡', '😍', '🤔', '😴']
+                        .map(
+                          (mood) => GestureDetector(
+                            onTap: () => setDialogState(() => selectedMood = mood),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: selectedMood == mood
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.2)
+                                    : Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: selectedMood == mood
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).dividerColor,
+                                ),
+                              ),
+                              child: Text(mood, style: const TextStyle(fontSize: 20)),
+                            ),
                           ),
-                        ),
-                        child: Text(mood, style: const TextStyle(fontSize: 20)),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -228,25 +151,20 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
-                  final gp = context.read<GameProvider>();
-                  setState(() {
-                    _entries.insert(0, {
-                      'date': '${gp.worldState.time.month}月${gp.worldState.time.day}日',
-                      'time': '${gp.worldState.time.hour}:${gp.worldState.time.minute.toString().padLeft(2, '0')}',
-                      'title': titleController.text,
-                      'content': contentController.text,
-                      'mood': selectedMood,
-                      'isGenerated': false,
-                    });
-                  });
-                  titleController.dispose();
-                  contentController.dispose();
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('日记已保存')),
-                  );
-                }
+                final title = titleController.text.trim();
+                final content = contentController.text.trim();
+                if (title.isEmpty || content.isEmpty) return;
+                context.read<GameProvider>().addDiaryEntry(
+                      title: title,
+                      content: content,
+                      mood: selectedMood,
+                    );
+                titleController.dispose();
+                contentController.dispose();
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('手记已保存到存档')),
+                );
               },
               child: const Text('保存'),
             ),
@@ -255,12 +173,246 @@ class _DiaryScreenState extends State<DiaryScreen> {
       ),
     );
   }
+}
 
-  void _deleteEntry(int index) {
-    setState(() {
-      _entries.removeAt(index);
-    });
+// ---------------- CG 图鉴（真实数据） ----------------
+
+class _CgGalleryTab extends StatelessWidget {
+  final Map<String, CgRecord> recs;
+
+  const _CgGalleryTab({required this.recs});
+
+  @override
+  Widget build(BuildContext context) {
+    final chapters = <String, List<CgDef>>{};
+    for (final cg in allCgs()) {
+      chapters.putIfAbsent(cg.chapter, () => []).add(cg);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        for (final entry in chapters.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: Row(
+              children: [
+                Text(
+                  entry.key,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFD3A625)),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${entry.value.where((c) => recs.containsKey(c.id)).length}/${entry.value.length}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                ),
+              ],
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: entry.value
+                .map((cg) => _CgCard(cg: cg, rec: recs[cg.id]))
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
   }
 }
 
-// ==================== 平行世界小剧场 ====================
+class _CgCard extends StatelessWidget {
+  final CgDef cg;
+  final CgRecord? rec;
+
+  const _CgCard({required this.cg, this.rec});
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = rec != null;
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: unlocked ? () => _showDetail(context) : null,
+      child: Container(
+        width: 104,
+        height: 118,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: unlocked ? cs.primary.withValues(alpha: 0.12) : cs.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: unlocked ? cs.primary : cs.surface.withValues(alpha: 0.6),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              unlocked ? Icons.photo : Icons.lock_outline,
+              size: 28,
+              color: unlocked ? cs.primary : const Color(0xFF484F58),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              unlocked ? cg.name : '???',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color:
+                    unlocked ? cs.onSurface : cs.onSurface.withValues(alpha: 0.35),
+              ),
+            ),
+            const Spacer(),
+            Text(
+              unlocked ? cg.starText : '未解锁',
+              style: TextStyle(
+                fontSize: 10,
+                color: unlocked
+                    ? const Color(0xFFD3A625)
+                    : const Color(0xFF484F58),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(cg.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${cg.id} · ${cg.chapter} · ${cg.starText}'),
+            const SizedBox(height: 10),
+            Text('解锁条件：${cg.condition}'),
+            const SizedBox(height: 10),
+            Text('解锁于：${rec!.unlockedDate}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- 我的手记（持久化） ----------------
+
+class _JournalTab extends StatelessWidget {
+  const _JournalTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final gp = context.watch<GameProvider>();
+    final entries = gp.player?.diary ?? const <DiaryEntry>[];
+    if (entries.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.menu_book,
+                size: 60, color: Colors.grey.withValues(alpha: 0.45)),
+            const SizedBox(height: 14),
+            const Text('还没有手记'),
+            const SizedBox(height: 8),
+            Text(
+              '点击右下角，记下今天发生的事',
+              style: TextStyle(color: Colors.grey.withValues(alpha: 0.7)),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: entries.length,
+      itemBuilder: (context, index) => _JournalCard(
+        entry: entries[index],
+        onDelete: () => gp.removeDiaryEntry(index),
+      ),
+    );
+  }
+}
+
+class _JournalCard extends StatelessWidget {
+  final DiaryEntry entry;
+  final VoidCallback onDelete;
+
+  const _JournalCard({required this.entry, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.08),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Text(entry.mood, style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${entry.date} · ${entry.time}',
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF8B949E)),
+                      ),
+                      Text(
+                        entry.title,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 18, color: Color(0xFF8B949E)),
+                  onPressed: onDelete,
+                  tooltip: '删除',
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(entry.content,
+                style: const TextStyle(fontSize: 14, height: 1.6)),
+          ),
+        ],
+      ),
+    );
+  }
+}

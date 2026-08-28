@@ -131,18 +131,58 @@ class _GameScreenState extends State<GameScreen> {
         tabContent = const SizedBox.shrink();
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (!immersive) const GameTopBar(),
-            Expanded(child: tabContent),
-            _currentTab == 0 ? GameBottomInput(inputController: _inputController, onHandleFreeAction: _handleFreeAction) : const SizedBox.shrink(),
-          ],
+    // 沉浸模式会隐藏顶栏、输入栏和底部导航，此时安卓返回键/侧滑返回
+    // 会直接把玩家踢出游戏界面（没有"再按一次退出"的缓冲）。
+    // 这里第一次返回先退出沉浸模式，第二次才真正返回。
+    return PopScope<Object?>(
+      canPop: !immersive,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (!immersive) return;
+        _exitImmersive();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('已退出沉浸模式，再按一次返回'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (!immersive) const GameTopBar(),
+              Expanded(child: tabContent),
+              _currentTab == 0
+                  ? GameBottomInput(
+                      inputController: _inputController,
+                      onHandleFreeAction: _handleFreeAction)
+                  : const SizedBox.shrink(),
+            ],
+          ),
         ),
+        bottomNavigationBar: immersive ? null : _buildBottomNav(),
+        // 沉浸模式下没有顶栏也没有返回键，给一个可点出的悬浮退出按钮
+        floatingActionButton: immersive
+            ? FloatingActionButton.small(
+                heroTag: 'exit_immersive',
+                onPressed: _exitImmersive,
+                child: const Icon(Icons.fullscreen_exit),
+              )
+            : null,
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
+  }
+
+  /// 退出沉浸模式。
+  /// setDisplayMode 在「穿书模式」下会拒绝切回杂志模式，
+  /// 这时再退一步到紧凑模式，否则玩家会被永久锁死在沉浸模式里出不来。
+  void _exitImmersive() {
+    final app = context.read<AppProvider>();
+    app.setDisplayMode(DisplayMode.magazine);
+    if (app.displayMode == DisplayMode.immersive) {
+      app.setDisplayMode(DisplayMode.compact);
+    }
   }
 
   Widget _buildBottomNav() {

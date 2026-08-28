@@ -12,6 +12,14 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   String _filter = '全部';
+  String _query = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   IconData _getItemIcon(String type) {
     switch (type.toLowerCase()) {
@@ -22,7 +30,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case '药水':
         return Icons.science;
       case 'wand':
-      case '武器':
+      case '魔杖':
         return Icons.auto_awesome;
       case 'spell':
       case '魔咒':
@@ -39,8 +47,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case 'clothing':
       case '服装':
         return Icons.checkroom;
+      case 'equipment':
       case '装备':
         return Icons.workspace_premium;
+      case '道具':
+        return Icons.toys;
       default:
         return Icons.inventory_2;
     }
@@ -55,7 +66,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case '药水':
         return Colors.green;
       case 'wand':
-      case '武器':
+      case '魔杖':
         return Colors.amber;
       case 'spell':
       case '魔咒':
@@ -72,10 +83,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case 'clothing':
       case '服装':
         return Colors.pink;
+      case 'equipment':
+      case '装备':
+        return Colors.amber;
+      case '道具':
+        return Colors.deepOrange;
       default:
         return Colors.grey;
     }
   }
+
+  /// 物品真实类型集合（取自 lib/data/*.dart 里 InventoryItem 的 type 字段）。
+  /// 旧分类写的是「武器 / 服装」，但项目里根本没有这两类
+  /// （装备统一是「装备」，另有「道具」「文具」），
+  /// 结果这两个筛选项点进去永远是空的。
+  static const List<String> kItemCategories = [
+    '全部',
+    '装备',
+    '道具',
+    '食品',
+    '药水',
+    '材料',
+    '书籍',
+    '文具',
+  ];
 
   List<Map<String, dynamic>> _getDynamicItems() {
     final gp = context.read<GameProvider>();
@@ -95,9 +126,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['全部', '武器', '食品', '文具', '药水', '材料', '书籍', '服装'];
     final items = _getDynamicItems();
-    final filtered = _filter == '全部' ? items : items.where((i) => i['category'] == _filter).toList();
+    // 只保留背包里真实存在的分类，避免又出现点了没结果的空筛选项
+    final present = items.map((i) => i['category'] as String).toSet();
+    final categories =
+        kItemCategories.where((c) => c == '全部' || present.contains(c)).toList();
+    if (!categories.contains(_filter)) _filter = '全部';
+    final filtered = items.where((i) {
+      if (_filter != '全部' && i['category'] != _filter) return false;
+      if (_query.isEmpty) return true;
+      final q = _query.toLowerCase();
+      return (i['name'] as String).toLowerCase().contains(q) ||
+          (i['desc'] as String).toLowerCase().contains(q);
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('你的背包')),
@@ -109,18 +150,34 @@ class _InventoryScreenState extends State<InventoryScreen> {
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Theme.of(context).dividerTheme.color!),
                     ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.search, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(child: Text('搜索物品...', style: TextStyle(fontSize: 13))),
-                      ],
+                    // 之前这里是一个写着"搜索物品..."的 Text，纯装饰、点了没反应。
+                    // 现在换成真的输入框，按名称/描述/分类过滤。
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _query = v.trim()),
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: '搜索物品...',
+                        hintStyle: const TextStyle(fontSize: 13),
+                        border: InputBorder.none,
+                        icon: const Icon(Icons.search, size: 16),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _query = '');
+                                },
+                              ),
+                      ),
                     ),
                   ),
                 ),

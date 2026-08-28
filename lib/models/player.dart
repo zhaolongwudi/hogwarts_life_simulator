@@ -66,6 +66,7 @@ class Player {
   /// 正值＝在黑暗阵营那边有口碑，负值＝在凤凰社一方有口碑。
   int get factionReputation =>
       (playerReputation.dark - playerReputation.moral).clamp(-100, 100);
+  final List<DiaryEntry> diary; // 玩家手记
   final List<String> collection; // 收藏品
   final Map<String, CgRecord> cgRecords; // 已解锁CG
   final List<String> achievements; // 已解锁成就
@@ -135,6 +136,7 @@ class Player {
     LoveState? loveState,
     Reputation? playerReputation,
     this.houseReputation = 0,
+    List<DiaryEntry>? diary,
     List<String>? collection,
     Map<String, CgRecord>? cgRecords,
     List<String>? achievements,
@@ -169,6 +171,7 @@ class Player {
         houseDimensions = Map<String, int>.from(houseDimensions ?? _defaultHouseDimensions),
         loveState = loveState ?? LoveState(),
         playerReputation = playerReputation ?? Reputation(),
+        diary = List<DiaryEntry>.from(diary ?? const []),
         collection = List<String>.from(collection ?? const []),
         cgRecords = Map<String, CgRecord>.from(cgRecords ?? const {}),
         achievements = List<String>.from(achievements ?? const []),
@@ -270,6 +273,7 @@ class Player {
         'love_state': loveState.toJson(),
         'player_reputation': playerReputation.toJson(),
         'house_reputation': houseReputation,
+        'diary': diary.map((e) => e.toJson()).toList(),
         'collection': collection,
         'cg_records': cgRecords.map((k, v) => MapEntry(k, v.toJson())),
         'achievements': achievements,
@@ -349,6 +353,9 @@ class Player {
         playerReputation: Reputation.fromJson(
             Map<String, dynamic>.from(json['player_reputation'] ?? {})),
         houseReputation: json['house_reputation'] ?? 0,
+        diary: (json['diary'] as List<dynamic>? ?? [])
+            .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
         collection: List<String>.from(json['collection'] ?? []),
         cgRecords: (json['cg_records'] as Map<String, dynamic>?)
                 ?.map((k, v) => MapEntry(k, CgRecord.fromJson(v))) ??
@@ -381,6 +388,43 @@ class Player {
         qMatches: json['q_matches'] ?? 0,
         qWins: json['q_wins'] ?? 0,
         qLastWeek: json['q_last_week'] ?? 0,
+      );
+}
+
+/// 玩家手记条目。
+///
+/// 之前「我的日记」页面把玩家写的内容只存在 Widget 的 `_entries` 局部变量里，
+/// 返回一次就全没了，而且默认还塞了两条写死的假日记（"入学第一天""分院帽的抉择"）。
+/// 现在落到存档里，跨会话保留。
+class DiaryEntry {
+  final String date;
+  final String time;
+  final String title;
+  final String content;
+  final String mood;
+
+  const DiaryEntry({
+    required this.date,
+    required this.time,
+    required this.title,
+    required this.content,
+    this.mood = '📖',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'date': date,
+        'time': time,
+        'title': title,
+        'content': content,
+        'mood': mood,
+      };
+
+  factory DiaryEntry.fromJson(Map<String, dynamic> json) => DiaryEntry(
+        date: json['date'] ?? '',
+        time: json['time'] ?? '',
+        title: json['title'] ?? '',
+        content: json['content'] ?? '',
+        mood: json['mood'] ?? '📖',
       );
 }
 

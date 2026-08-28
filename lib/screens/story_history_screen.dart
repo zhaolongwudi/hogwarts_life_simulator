@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../utils/story_text_renderer.dart';
 import '../widgets/narrative_visuals.dart';
+import '../widgets/scaled_rich_text.dart';
 
 /// 剧情历史回放界面：查看所有已保存的剧情记录，支持翻页和分享
 class StoryHistoryScreen extends StatefulWidget {
@@ -229,7 +230,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
               animate: false, // 历史列表关闭动画，避免滚动卡顿
             )
           else
-            RichText(
+            ScaledRichText(
               text: TextSpan(
                 children: StoryTextRenderer.parse(segments[i].text),
               ),

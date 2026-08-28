@@ -223,6 +223,12 @@ abstract class GameProviderBase extends ChangeNotifier {
   void parseAffectionChanges(String text);
   void parseReputationChanges(String text);
   Future<void> processChoice(GameChoice choice);
+
+  /// 重试上一次失败的行动（AI 不可用时的兜底路径用）
+  Future<void> retryLastAction();
+
+  /// 手动清掉错误提示条
+  void clearError();
   bool purchaseItem(String itemName, int price, {String type, String description});
   Future<void> quickSave();
   Future<void> saveGameNamed(String slotName);
