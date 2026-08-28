@@ -9,6 +9,7 @@ import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/narrative_visuals.dart';
 import '../../mixins/mixin_response.dart';
+import '../../mixins/mixin_response_choices.dart';
 import '../story_history_screen.dart';
 
 class NarrativeTab extends StatefulWidget {

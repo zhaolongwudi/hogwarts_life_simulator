@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../models/npc.dart';
 import '../utils/affection_validator.dart';

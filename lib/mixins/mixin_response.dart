@@ -7,6 +7,8 @@ import '../utils/story_text_renderer.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/choice_prompts.dart';
+import 'mixin_response_choices.dart';
+import 'mixin_response_affection.dart';
 
 mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameResponseAffectionMixin {
   /// ===== BUG-K 最终防线：分院结果文本解析（极度收紧规则）=====
@@ -1151,9 +1153,9 @@ $kChoicePromptSuffix''';
         for (final m in fullRetryNarrativeNameMatches) {
           final candidate = m.group(1)!;
           if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
-1154→        }
-1155→        final retryBefore = retryChoices.length;
-1156→        retryChoices.removeWhere((c) => choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
+        }
+        final retryBefore = retryChoices.length;
+        retryChoices.removeWhere((c) => choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
         final retryFiltered = retryBefore - retryChoices.length;
         if (retryFiltered > 0) {
           // [选项NPC门·重试] 日志已移除

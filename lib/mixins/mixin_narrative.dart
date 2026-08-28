@@ -10,9 +10,11 @@ import '../utils/story_text_renderer.dart';
 import '../models/long_term_memory.dart';
 import '../services/ai_router.dart';
 import '../utils/stagnation_detector.dart';
+import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
+import 'mixin_narrative_continuity.dart';
 
 mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   Future<void> processChoice(GameChoice choice) async {
@@ -1008,7 +1010,7 @@ $kNarrativeWritingRules
   // 保持对外不变：内部委托给 StagnationDetector，不会破坏 GameProviderBase 的 abstract 签名。
   // ============================================================
 
-  static const StagnationDetector _stagnation = StagnationDetector._();
+  static const StagnationDetector _stagnation = StagnationDetector.instance;
 
   bool isLocationExemptFromStagnation(String location) =>
       _stagnation.isExempt(location);
