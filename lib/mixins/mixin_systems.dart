@@ -164,6 +164,35 @@ mixin GameSystemsMixin on GameProviderBase {
     unawaited(autoSave());
   }
 
+  // ==================== 平行世界小剧场 ====================
+
+  /// 新增一条玩家自己写的脑洞。
+  ///
+  /// 「平行世界·小剧场」那一页以前把玩家写的东西存在 Widget 的局部变量里，
+  /// 退出页面就没了；现在进 Player 随存档持久化，跟手记同一套处理。
+  void addParallelScenario({
+    required String title,
+    required String description,
+    String icon = '🎭',
+  }) {
+    final p = player;
+    if (p == null) return;
+    p.parallelScenarios.insert(
+      0,
+      ParallelScenario(title: title, description: description, icon: icon),
+    );
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  void removeParallelScenario(int index) {
+    final p = player;
+    if (p == null || index < 0 || index >= p.parallelScenarios.length) return;
+    p.parallelScenarios.removeAt(index);
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
   // ==================== 时间快进（/快进） ====================
 
   /// 距本月最后一天还剩几天（返回 0 表示今天就是月末）。

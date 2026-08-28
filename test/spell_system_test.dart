@@ -7,6 +7,7 @@ import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/spell_data.dart';
 import 'package:hogwarts_life_simulator/data/time_cost_rules.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
+import 'package:hogwarts_life_simulator/models/player.dart';
 
 void main() {
   group('咒语表自洽', () {
@@ -400,6 +401,94 @@ void main() {
           reason: '没有任何地方走「使用物品掉落收藏品」这条线');
     });
   });
+
+  group('平行世界小剧场不再是写了就丢', () {
+    const screenPath = 'lib/screens/other/parallel_world_screen.dart';
+    final screenCode = _codeOnly(screenPath);
+    final playerCode = _codeOnly('lib/models/player.dart');
+
+    test('页面读 Provider 里的数据，而不是 Widget 的局部状态', () {
+      // 旧实现是 StatefulWidget，玩家写的剧本存在 State 的 _scenarios 里，
+      // 退出页面就没了——「创作」按钮看着能用，其实什么也没留下。
+      expect(RegExp(r'\bextends StatefulWidget\b').hasMatch(screenCode), isFalse,
+          reason: '这个页面没有需要跨帧保存的 UI 状态，数据得来自 Provider');
+      expect(RegExp(r'\bsetState\(').hasMatch(screenCode), isFalse,
+          reason: '还在用 setState 存内容 = 内容还在 Widget 局部');
+      expect(
+          screenCode.contains(
+              'context.watch<GameProvider>().player?.parallelScenarios'),
+          isTrue,
+          reason: '列表应该读 Player.parallelScenarios');
+    });
+
+    test('ParallelScenario 是 Player 的持久化字段，四个环节都齐', () {
+      expect(playerCode.contains('final List<ParallelScenario> parallelScenarios;'),
+          isTrue,
+          reason: 'Player 上没有这个字段，写进去的小剧场无处安放');
+      expect(playerCode.contains("List<ParallelScenario>? parallelScenarios,"),
+          isTrue,
+          reason: '构造参数缺了');
+      expect(playerCode.contains('parallelScenarios ='), isTrue,
+          reason: '构造体里忘了赋值，字段会一直是空列表');
+      expect(playerCode.contains("'parallel_scenarios':"), isTrue,
+          reason: 'toJson 没写这个键，存盘时会被丢掉');
+      expect(playerCode.contains("json['parallel_scenarios']"), isTrue,
+          reason: 'fromJson 不读这个键，读档时会被丢掉');
+    });
+
+    test('来回一趟不丢字段（图标和日期也带得回来）', () {
+      final s = ParallelScenario(
+        title: '如果分院帽把我分错了',
+        description: '那就将错就错。',
+        icon: '🔮',
+        createdAt: '1991-09-01',
+      );
+      final back = ParallelScenario.fromJson(s.toJson());
+      expect(back.title, s.title);
+      expect(back.description, s.description);
+      expect(back.icon, '🔮', reason: '图标丢了的话，重进页面全都变回 🎭');
+      expect(back.createdAt, '1991-09-01',
+          reason: '日期被覆盖成当天的话，「写于」这一行永远是今天');
+    });
+
+    test('增删都落到 Provider 上，并且会存盘', () {
+      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      for (final name in ['addParallelScenario', 'removeParallelScenario']) {
+        final body = _methodBody(src, 'void $name(');
+        expect(body, isNotNull, reason: '缺少 $name');
+        expect(body!.contains('notifyListeners()'), isTrue,
+            reason: '$name 不通知，界面不会刷新');
+        expect(body.contains('autoSave()'), isTrue,
+            reason: '$name 不存盘，退出应用就白写了');
+      }
+    });
+
+    test('预设脑洞只是示例，不会混进存档', () {
+      expect(screenCode.contains('final List<ParallelScenario> kPresetScenarios'),
+          isTrue,
+          reason: 'kPresetScenarios 得是顶层只读的示例表');
+      // 预设不进 Player：存档里出现它们 = 又变成写死内容假装是玩家创作
+      expect(
+          playerCode.contains('kPresetScenarios') ||
+              playerCode.contains('预设脑洞'),
+          isFalse,
+          reason: 'Player 不该持有预设剧本');
+      expect(screenCode.contains('不会进存档'), isTrue,
+          reason: '预设那一段得写明「不会进存档」，否则玩家会以为是自己写的');
+    });
+
+    test('弹窗里没有只弹提示、什么都不做的按钮', () {
+      // 旧实现的「收藏」按钮点了只弹一句「小剧场已收藏」，收藏册里一件也没有。
+      expect(screenCode.contains('收藏'), isFalse,
+          reason: '这里没有可收藏的东西，不该再摆一个收藏按钮');
+      // 留下来的两处提示都得配着真实的写入/删除
+      expect(
+          RegExp(r'addParallelScenario\(').allMatches(screenCode).length +
+              RegExp(r'removeParallelScenario\(').allMatches(screenCode).length,
+          greaterThanOrEqualTo(2),
+          reason: '创建和删除两条路都得接到 Provider 上');
+    });
+  });
 }
 
 
@@ -430,6 +519,34 @@ String _codeOnly(String path) {
     out.add(line);
   }
   return out.join('\n');
+}
+
+/// 取出某个方法（[signature] 开头，如 `void foo(`）的完整函数体。
+///
+/// 签名可能跨好几行（`void foo({\n  required ...\n}) {`），所以既不能拿
+/// `indexOf('\n  }')` 当结束（会把 `}) {` 当成方法结束，取回一个空壳），
+/// 也不能纯靠缩进（签名的收尾行缩进同样是 2）。这里改成数花括号：先抹掉
+/// 单引号字符串，再从签名那行开始配对，depth 归零的那行就是方法结束。
+String? _methodBody(String src, String signature) {
+  final lines = src.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    final raw = lines[i];
+    if (!raw.trimLeft().startsWith(signature)) continue;
+    if (raw.length - raw.trimLeft().length != 2) continue;
+    var depth = 0;
+    final out = <String>[];
+    for (var j = i; j < lines.length; j++) {
+      out.add(lines[j]);
+      final code = lines[j].replaceAll(RegExp(r"'[^']*'"), "''");
+      for (final ch in code.split('')) {
+        if (ch == '{') depth++;
+        if (ch == '}') depth--;
+      }
+      if (depth <= 0) break;
+    }
+    return out.join('\n');
+  }
+  return null;
 }
 
 /// 取出 `unlockAchievement('<id>')` 所在方法的函数体。

@@ -74,6 +74,7 @@ class Player {
   int get factionReputation =>
       (playerReputation.dark - playerReputation.moral).clamp(-100, 100);
   final List<DiaryEntry> diary; // 玩家手记
+  final List<ParallelScenario> parallelScenarios; // 玩家自己写的平行世界小剧场
   final List<ShipRecord> shippings; // 拉郎配（玩家撮合的 NPC 配对）
   final List<ChildRecord> children; // 婚后子女
   final List<String> collection; // 收藏品
@@ -148,6 +149,7 @@ class Player {
     Reputation? playerReputation,
     this.houseReputation = 0,
     List<DiaryEntry>? diary,
+    List<ParallelScenario>? parallelScenarios,
     List<ShipRecord>? shippings,
     List<ChildRecord>? children,
     List<String>? collection,
@@ -186,6 +188,8 @@ class Player {
         loveState = loveState ?? LoveState(),
         playerReputation = playerReputation ?? Reputation(),
         diary = List<DiaryEntry>.from(diary ?? const []),
+        parallelScenarios =
+            List<ParallelScenario>.from(parallelScenarios ?? const []),
         shippings = List<ShipRecord>.from(shippings ?? const []),
         children = List<ChildRecord>.from(children ?? const []),
         collection = List<String>.from(collection ?? const []),
@@ -286,6 +290,7 @@ class Player {
         'player_reputation': playerReputation.toJson(),
         'house_reputation': houseReputation,
         'diary': diary.map((e) => e.toJson()).toList(),
+        'parallel_scenarios': parallelScenarios.map((e) => e.toJson()).toList(),
         'shippings': shippings.map((e) => e.toJson()).toList(),
         'children': children.map((e) => e.toJson()).toList(),
         'collection': collection,
@@ -371,6 +376,9 @@ class Player {
         houseReputation: json['house_reputation'] ?? 0,
         diary: (json['diary'] as List<dynamic>? ?? [])
             .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        parallelScenarios: (json['parallel_scenarios'] as List<dynamic>? ?? [])
+            .map((e) => ParallelScenario.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
         shippings: (json['shippings'] as List<dynamic>? ?? [])
             .map((e) => ShipRecord.fromJson(Map<String, dynamic>.from(e)))
@@ -591,6 +599,40 @@ class SpellLevel {
         spellName: json['spell_name'],
         level: json['level'] ?? 0,
         practiceCount: json['practice_count'] ?? 0,
+      );
+}
+
+/// 玩家在「平行世界·小剧场」里自己写的一条脑洞。
+///
+/// 之前这个界面把玩家写的剧本存在 Widget 的局部变量里，退出页面就没了；
+/// 而列表开头那五条硬编码的「如果斯内普教授是个搞笑担当」又不加说明地混在
+/// 一起，看起来像是游戏内容。现在分开：预设脑洞归预设，玩家写的进存档。
+class ParallelScenario {
+  final String title;
+  final String description;
+  final String icon;
+  final String createdAt;
+
+  ParallelScenario({
+    required this.title,
+    required this.description,
+    this.icon = '🎭',
+    String? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now().toIso8601String().substring(0, 10);
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'icon': icon,
+        'created_at': createdAt,
+      };
+
+  factory ParallelScenario.fromJson(Map<String, dynamic> json) =>
+      ParallelScenario(
+        title: json['title'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        icon: json['icon'] as String? ?? '🎭',
+        createdAt: json['created_at'] as String?,
       );
 }
 
