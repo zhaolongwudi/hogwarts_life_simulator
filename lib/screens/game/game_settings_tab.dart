@@ -319,9 +319,9 @@ class _GameSettingsInlineTabState extends State<GameSettingsInlineTab> {
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                '查看最近 $maxRecentTurns 回合的完整剧情记录，包含场景插图、对话气泡和详细叙事',
-                style: TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+              Text(
+                '查看最近 ${GameProviderBase.maxRecentTurns} 回合的完整剧情记录，包含场景插图、对话气泡和详细叙事',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
               ),
               const SizedBox(height: 12),
               SizedBox(
