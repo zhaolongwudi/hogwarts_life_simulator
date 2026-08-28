@@ -12,6 +12,7 @@ import '../data/job_data.dart';
 import '../models/player.dart';
 import '../data/course_data.dart';
 import '../data/balance_constants.dart';
+import '../utils/npc_lookup.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 
@@ -636,17 +637,11 @@ mixin GameRelationsMixin on GameProviderBase {
 
   String formatNpcRelationship(String npc1, String npc2) {
     if (player == null) return '【关系网络】\n尚未创建角色。';
-    NPC findNpc(String keyword) {
-      return npcRegistry.values.firstWhere(
-        (n) => n.name.contains(keyword) || keyword.contains(n.name),
-        orElse: () => NPC(id: '', name: '「$keyword」', house: ''),
-      );
-    }
-
-    final a = findNpc(npc1);
-    final b = findNpc(npc2);
-    if (a.id.isEmpty || b.id.isEmpty) {
-      return '【${a.name} 与 ${b.name} 的关系】\n其中有 NPC 不在你的社交圈中，信息不足。';
+    final a = findNpcByKeyword(npcRegistry.values, npc1);
+    final b = findNpcByKeyword(npcRegistry.values, npc2);
+    if (a == null || b == null) {
+      final missing = a == null ? npc1 : npc2;
+      return '【关系网络】\n「$missing」不在你认识的人里，信息不足。';
     }
     // 基础关系推理
     final tags = <String>[];
@@ -1589,17 +1584,10 @@ mixin GameRelationsMixin on GameProviderBase {
     return buf.toString();
   }
 
-  NPC? _findNpcByName(String name) {
-    final kw = name.trim();
-    if (kw.isEmpty) return null;
-    for (final n in npcRegistry.values) {
-      if (n.name == kw) return n;
-    }
-    for (final n in npcRegistry.values) {
-      if (n.name.contains(kw)) return n;
-    }
-    return null;
-  }
+  /// 按名字/别名/姓氏查 NPC（统一实现见 lib/utils/npc_lookup.dart）。
+  /// 旧版本只比 name 的精确与包含，忽略 aliases，玩家输别名常常查不到人。
+  NPC? _findNpcByName(String name) =>
+      findNpcByKeyword(npcRegistry.values, name);
 
   // ==================== CG 解锁 ====================
 

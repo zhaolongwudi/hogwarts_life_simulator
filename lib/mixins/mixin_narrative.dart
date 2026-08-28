@@ -1231,27 +1231,23 @@ $kNarrativeWritingRules
     }
   }
 
-  Future<void> generateMoreSuggestions() async {
+  /// 「换一批」：用本地分场景词库重掷选项，不消耗 token。
+  /// 本地生成是纯同步的，外面套 isLoading 没有意义（中间不会渲染任何一帧，
+  /// 玩家看不到转圈，只会白等），所以这里直接同步替换 choices 再通知 UI。
+  void generateMoreSuggestions() {
     if (player == null || isLoading) return;
-
-    isLoading = true;
     error = null;
-    notifyListeners();
-
-    try {
-      final suggestions = _generateLocalSuggestions();
-      if (suggestions.isEmpty) {
-        error = '暂时想不出更多建议，请继续';
-      } else {
-        choices = suggestions;
-      }
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      isLoading = false;
-      notifyListeners();
+    final suggestions = _generateLocalSuggestions();
+    if (suggestions.isEmpty) {
+      error = '暂时想不出更多建议，请继续';
+    } else {
+      choices = suggestions;
     }
+    notifyListeners();
   }
+
+  /// 去重用的空白折叠正则，预先编译，避免在候选过滤循环里反复构造。
+  static final RegExp _collapseWs = RegExp(r'\s+');
 
   List<GameChoice> _generateLocalSuggestions() {
     final location = worldState.currentLocation ?? '霍格沃茨';
@@ -1384,12 +1380,13 @@ $kNarrativeWritingRules
     }
 
     final pool = <String>[...?bucket[key], ...extra];
-    // 去重并打乱
+    // 去重并打乱。正则提到循环外编译——原先写在 where 回调里，
+    // 每个候选短语都会重新编译一次正则。
     final seen = <String>{};
     final deduped = pool.where((s) {
-      final key = s.replaceAll(RegExp(r'\s+'), '');
-      if (seen.contains(key)) return false;
-      seen.add(key);
+      final k = s.replaceAll(_collapseWs, '');
+      if (seen.contains(k)) return false;
+      seen.add(k);
       return true;
     }).toList();
     deduped.shuffle(random);

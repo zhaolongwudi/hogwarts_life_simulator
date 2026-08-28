@@ -6,6 +6,8 @@ import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/data/archetype_data.dart';
 import 'package:hogwarts_life_simulator/screens/world_map_screen.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
+import 'package:hogwarts_life_simulator/models/npc.dart';
+import 'package:hogwarts_life_simulator/utils/npc_lookup.dart';
 
 void main() {
   group('GameTime 整天快进', () {
@@ -176,6 +178,7 @@ void main() {
   _contentCoverageGroup();
   _codeHygieneGroup();
   _mapLayoutGroup();
+  _unwiredFeatureGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -636,6 +639,182 @@ void _mapLayoutGroup() {
         expect(a[i].left, b[i].left);
         expect(a[i].top, b[i].top);
       }
+    });
+  });
+}
+
+// ==================== 建好却没接线的功能 ====================
+// 这一轮扫描出一批"写了实现、零调用点"的成员。其中几个是完整功能
+// （本地建议生成器、NPC 档案查看、学院杯记账），删掉可惜，接上才对。
+// 本组锁住接线结果，防止哪天又被改回死代码。
+
+/// 去掉行注释再扫描，否则注释里引用的旧代码会被当成真实代码。
+String _stripComments(String src) => src
+    .split('\n')
+    .map((l) => l.replaceAll(RegExp(r'//.*$'), ''))
+    .join('\n');
+
+NPC _npc(String name) => NPC(id: name, name: name);
+
+/// src 中第 offset 个字符位于第几行（0 基）。
+int _lineOf(String src, int offset) =>
+    offset < 0 ? -1 : src.substring(0, offset).split('\n').length - 1;
+
+void _unwiredFeatureGroup() {
+  group('「换一批」本地建议已接线', () {
+    test('叙事页选项区存在调用点', () {
+      final src = _stripComments(
+          File('lib/screens/game/game_narrative_tab.dart').readAsStringSync());
+      expect(src.contains('generateMoreSuggestions()'), isTrue,
+          reason: 'generateMoreSuggestions 一度零调用，90 行分场景选项白放着');
+    });
+
+    test('生成器是同步的，不套无意义的 isLoading', () {
+      final src =
+          _stripComments(File('lib/mixins/mixin_narrative.dart').readAsStringSync());
+      final i = src.indexOf('void generateMoreSuggestions()');
+      expect(i, greaterThan(-1),
+          reason: '本地生成为同步操作，包 async+isLoading 不会渲染任何一帧');
+      final body = src.substring(i, i + 300);
+      expect(body.contains('isLoading = true'), isFalse);
+      expect(body.contains('notifyListeners()'), isTrue);
+    });
+
+    test('去重正则已提到循环外编译', () {
+      final src =
+          _stripComments(File('lib/mixins/mixin_narrative.dart').readAsStringSync());
+      expect(src.contains('static final RegExp _collapseWs'), isTrue,
+          reason: '原先 RegExp 写在 where 回调里，每个候选短语都重新编译一次正则');
+      final gen = src.substring(src.indexOf('_generateLocalSuggestions() {'));
+      expect(gen.contains('replaceAll(RegExp('), isFalse);
+    });
+  });
+
+  group('/查看 NPC 档案', () {
+    final cmdSrc = _stripComments(
+        File('lib/mixins/mixin_commands.dart').readAsStringSync());
+    final sysSrc =
+        _stripComments(File('lib/mixins/mixin_systems.dart').readAsStringSync());
+
+    test('命令已注册且带别名', () {
+      expect(cmdSrc.contains("primary: '查看'"), isTrue);
+      expect(cmdSrc.contains("'打听'"), isTrue);
+      expect(cmdSrc.contains('formatCharacterDossier'), isTrue);
+    });
+
+    test('基类有声明，跨 mixin 调用才能解析', () {
+      final base = _stripComments(
+          File('lib/providers/game_provider_base.dart').readAsStringSync());
+      expect(base.contains('formatCharacterDossier('), isTrue);
+    });
+
+    test('可见性判定仍然生效（没见过的 NPC 不给看）', () {
+      final i = sysSrc.indexOf('String formatCharacterDossier(');
+      expect(i, greaterThan(-1));
+      final body = sysSrc.substring(i, i + 1200);
+      expect(body.contains('_isNPCVisible'), isTrue);
+      expect(body.contains('素不相识'), isTrue);
+    });
+
+    test('原著魔杖 canonWandFor 已接上', () {
+      expect(sysSrc.contains('canonWandFor(npc.name)'), isTrue,
+          reason: 'canonWandFor 此前零调用，6 位原著角色的魔杖设定没人用');
+    });
+  });
+
+  group('NPC 查名只有一份实现', () {
+    test('不再有手写的 nameMatchScore 取最高分循环', () {
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final path = entity.path.replaceAll(r'\', '/');
+        // 统一实现本身与模型层的打分函数不算
+        if (path.endsWith('lib/utils/npc_lookup.dart')) continue;
+        if (path.endsWith('lib/models/npc.dart')) continue;
+        final src = _stripComments(entity.readAsStringSync());
+        if (src.contains('nameMatchScore')) offenders.add(path);
+      }
+      expect(offenders, isEmpty,
+          reason: '按名查找应统一走 findNpcByKeyword。散落的实现曾让同一个名字'
+              '在不同入口命中不同的 NPC：\n' + offenders.join('\n'));
+    });
+
+    test('findNpcByKeyword 能靠姓氏命中', () {
+      // 「斯内普」是姓氏，靠 NPC.allNames 的姓氏推导命中
+      final npc = findNpcByKeyword(
+        [_npc('西弗勒斯·斯内普'), _npc('哈利·波特')],
+        '斯内普',
+      );
+      expect(npc, isNotNull);
+      expect(npc!.name, '西弗勒斯·斯内普');
+    });
+
+    test('查不到返回 null，不造假 NPC', () {
+      final npc = findNpcByKeyword([_npc('哈利·波特')], '伏地魔');
+      expect(npc, isNull);
+    });
+  });
+
+  group('学院杯记账', () {
+    test('不得再有裸写 houseCupPoints 的加分点', () {
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final path = entity.path.replaceAll(r'\', '/');
+        final src = _stripComments(entity.readAsStringSync());
+        final lines = src.split('\n');
+        // addHouseCupPoints 本身就是那唯一一处允许的写入，跳过它的方法体
+        final start = src.indexOf('void addHouseCupPoints(');
+        final end =
+            start < 0 ? -1 : src.indexOf('\n  }', start);
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i].trim();
+          if (!RegExp(r'\.houseCupPoints\s*\+=').hasMatch(line)) continue;
+          if (start >= 0 && i >= _lineOf(src, start) && i <= _lineOf(src, end)) {
+            continue;
+          }
+          offenders.add('$path:${i + 1}  $line');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '学院杯加分必须走 addHouseCupPoints(amount, reason)，'
+              '否则来源明细统计不到：\n' + offenders.join('\n'));
+    });
+
+    test('addHouseCupPoints 会记录来源', () {
+      final src =
+          _stripComments(File('lib/mixins/mixin_play.dart').readAsStringSync());
+      final i = src.indexOf('void addHouseCupPoints(');
+      final body = src.substring(i, i + 300);
+      expect(body.contains('houseCupSources[reason]'), isTrue);
+    });
+
+    test('学年结算会清空来源明细', () {
+      final src =
+          _stripComments(File('lib/mixins/mixin_play.dart').readAsStringSync());
+      final i = src.indexOf('void settleHouseCup()');
+      final body = src.substring(i, src.indexOf('_finishLocal', i));
+      expect(body.contains('p.houseCupPoints = 0;'), isTrue);
+      expect(body.contains('houseCupSources.clear()'), isTrue);
+    });
+
+    test('来源明细能存进存档并读回', () {
+      final p = Player(
+        id: 't',
+        name: '测试',
+        birthYear: '1980',
+        bloodType: '混血',
+        birthLocation: '伦敦',
+        house: 'Gryffindor',
+        houseCupPoints: 35,
+        houseCupSources: {'魁地奇取胜': 30, '决斗获胜': 5},
+      );
+      final json = p.toJson();
+      expect(json['house_cup_sources'], isA<Map>());
+      final back = Player.fromJson(json);
+      expect(back.houseCupPoints, 35);
+      expect(back.houseCupSources['魁地奇取胜'], 30);
+      expect(back.houseCupSources['决斗获胜'], 5);
     });
   });
 }

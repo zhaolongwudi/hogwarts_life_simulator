@@ -86,6 +86,7 @@ class Player {
   final List<String> bestiary; // 已发现生物 id
   final List<QuestRecord> quests; // 已接取委托
   int houseCupPoints; // 本学年学院杯积分（玩家贡献）
+  Map<String, int> houseCupSources; // 本学年积分来源明细：来源 -> 分数
   int petLastFedDay; // 上次喂食绝对天数（每日限1次）
   int petInteractDay; // 上次玩耍/训练绝对天数
   bool petTransformDone; // 化人形事件是否已触发
@@ -156,6 +157,7 @@ class Player {
     List<String>? bestiary,
     List<QuestRecord>? quests,
     this.houseCupPoints = 0,
+    Map<String, int>? houseCupSources,
     this.petLastFedDay = -1,
     this.petInteractDay = -1,
     this.petTransformDone = false,
@@ -188,7 +190,8 @@ class Player {
         jobHistory = List<String>.from(jobHistory ?? const []),
         equipped = Map<String, String>.from(equipped ?? const {}),
         bestiary = List<String>.from(bestiary ?? const []),
-        quests = List<QuestRecord>.from(quests ?? const []);
+        quests = List<QuestRecord>.from(quests ?? const []),
+        houseCupSources = Map<String, int>.from(houseCupSources ?? const {});
 
   /// 是否为合法属性键。
   ///
@@ -298,6 +301,7 @@ class Player {
         'bestiary': bestiary,
         'quests': quests.map((e) => e.toJson()).toList(),
         'house_cup_points': houseCupPoints,
+        'house_cup_sources': houseCupSources,
         'pet_last_fed_day': petLastFedDay,
         'pet_interact_day': petInteractDay,
         'pet_transform_done': petTransformDone,
@@ -394,6 +398,7 @@ class Player {
                 .toList() ??
             [],
         houseCupPoints: json['house_cup_points'] ?? 0,
+        houseCupSources: Map<String, int>.from(json['house_cup_sources'] ?? const {}),
         petLastFedDay: json['pet_last_fed_day'] ?? -1,
         petInteractDay: json['pet_interact_day'] ?? -1,
         petTransformDone: json['pet_transform_done'] ?? false,

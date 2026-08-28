@@ -551,13 +551,13 @@ mixin GamePlayMixin on GameProviderBase {
       p.qWins++;
       p.playerReputation.add('combat', 6);
       p.playerReputation.add('social', 4);
-      p.houseCupPoints += 30;
+      addHouseCupPoints(30, '魁地奇取胜');
       p.galleons += 15;
       buf.writeln('\n欢呼声如浪涌来，你为$myHouseCn 赢下了这一场！');
       buf.writeln('战斗声望 +6 · 社交声望 +4 · 学院杯积分 +30 · 队内奖金 15 加隆');
       unlockAchievement('first_quidditch_win');
     } else {
-      p.houseCupPoints += 5;
+      addHouseCupPoints(5, '魁地奇惜败');
       p.galleons += 5;
       p.playerReputation.add('social', 2);
       buf.writeln('\n对方守住了最后的攻势，$myHouseCn 惜败。队友拍了拍你的肩：下周赢回来。');
@@ -674,7 +674,7 @@ mixin GamePlayMixin on GameProviderBase {
       final reward = ((10 + random.nextInt(16)) * decay).round().clamp(1, 25);
       p.playerReputation.add('combat', repGain);
       p.playerReputation.add('moral', 2);
-      p.houseCupPoints += (10 * decay).round().clamp(1, 10);
+      addHouseCupPoints((10 * decay).round().clamp(1, 10), '决斗获胜');
       p.galleons += reward;
       // 打赢对方会让人更服气，但只加一次：反复刷同一个人不该刷出满好感
       if (!_duelBeatenNpcIds.contains(opponent.id)) {
@@ -784,7 +784,7 @@ mixin GamePlayMixin on GameProviderBase {
           if (win) {
             p.health = (p.health - 5 * creature.danger).clamp(1, 100);
             p.playerReputation.add('combat', 4 + creature.danger * 2);
-            p.houseCupPoints += 5;
+            addHouseCupPoints(5, '禁林战胜危险生物');
             buf.writeln('\n你抽出魔杖迎战。经过几个来回，${creature.name} 终于哀鸣着退入黑暗。'
                 '战斗声望 +${4 + creature.danger * 2} · 学院杯 +5');
             if (creature.loot.isNotEmpty) {
@@ -1020,7 +1020,7 @@ mixin GamePlayMixin on GameProviderBase {
     }
     q.status = 'claimed';
     p.galleons += q.rewardGalleons;
-    p.houseCupPoints += q.rewardHousePoints;
+    addHouseCupPoints(q.rewardHousePoints, '完成委托');
     p.playerReputation.add('academic', 2);
     p.playerReputation.add('moral', 3);
     // ====== 长线记忆写入：关闭 T1 委托事项 + T3 世界事件 ======
@@ -1051,8 +1051,16 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 9. 学院杯 ====================
 
+  /// 学院杯加分的唯一入口。
+  ///
+  /// 此前 5 个加分点全都直接写 `p.houseCupPoints += n`，这个方法反而一个调用者
+  /// 都没有。统一到这里之后 `reason` 会累计进来源明细，`/学院杯` 就能告诉玩家
+  /// 这一年分数是从哪儿挣来的，而不是只列一份"有哪些加分途径"的静态说明。
   void addHouseCupPoints(int amount, String reason) {
-    player?.houseCupPoints = (player?.houseCupPoints ?? 0) + amount;
+    final p = player;
+    if (p == null || amount == 0) return;
+    p.houseCupPoints += amount;
+    p.houseCupSources[reason] = (p.houseCupSources[reason] ?? 0) + amount;
   }
 
   String formatHouseCup() {
@@ -1071,11 +1079,21 @@ mixin GamePlayMixin on GameProviderBase {
       return buf.toString();
     }
     buf.writeln('$myCn 学院杯积分（你的贡献）：${p.houseCupPoints} 分\n');
-    buf.writeln('本学年积累积分途径：');
-    buf.writeln('· 魁地奇取胜 +30，惜败 +5');
-    buf.writeln('· 巫师决斗获胜 +10');
-    buf.writeln('· 禁林战胜危险生物 +5');
-    buf.writeln('· 完成支线委托 +3~10');
+
+    if (p.houseCupSources.isEmpty) {
+      buf.writeln('你还没有为学院挣下任何一分。可加分的途径：');
+      buf.writeln('· 魁地奇取胜 +30，惜败 +5');
+      buf.writeln('· 巫师决斗获胜 +1~10');
+      buf.writeln('· 禁林战胜危险生物 +5');
+      buf.writeln('· 完成支线委托 +3~10');
+    } else {
+      final sources = p.houseCupSources.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      buf.writeln('本学年得分构成：');
+      for (final e in sources) {
+        buf.writeln('· ${e.key} +${e.value}');
+      }
+    }
     buf.writeln('\n学年结束时将结算排名，榜首学院获得学院杯。');
     buf.writeln('其他学院也在暗自较劲——格兰芬多的勇气、斯莱特林的算计、'
         '拉文克劳的智慧、赫奇帕奇的踏实，各有各的赢法。');
@@ -1131,6 +1149,7 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('奖励：社交声望 +2');
     }
     p.houseCupPoints = 0;
+    p.houseCupSources.clear();
     notifications.add('🏆 学院杯学年结算：$myCn 排名第$rank 名');
     _finishLocal(buf.toString());
   }

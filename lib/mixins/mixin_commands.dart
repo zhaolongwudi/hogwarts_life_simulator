@@ -129,6 +129,18 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
       CommandDef(
+        primary: '查看',
+        aliases: ['看', '打量', '观察', '打听'],
+        group: '关系&情感',
+        helpText: '查看某位NPC的档案：/查看 [名字]（不带名字则列出可查看的人）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m.currentNarrative = m.formatCharacterDossier(ctx.tailFrom(0));
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
         primary: '恋爱',
         group: '关系&情感',
         helpText: '查看恋爱状态',

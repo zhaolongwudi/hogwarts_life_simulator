@@ -12,8 +12,10 @@ import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
 import '../data/goal_data.dart';
+import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
+import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
@@ -842,30 +844,121 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   // ==================== 查看人物 ====================
-  Map<String, dynamic>? getViewableCharacter(String npcId) {
-    final npc = npcRegistry[npcId];
-    if (npc == null || !_isNPCVisible(npc)) return null;
 
-    final rel = player?.relationships[npcId];
-    return {
-      'id': npc.id,
-      'name': npc.name,
-      'house': npc.house,
-      'grade': npc.grade,
-      'location': npc.currentLocation,
-      'mood': npc.mood,
-      'alive': npc.isAlive,
-      'affection': npc.affection,
-      'affectionStage': npc.affectionStage,
-      'appearance': npc.appearance,
-      'relationship': rel != null
-          ? {'type': rel.relationType, 'level': rel.level}
-          : null,
-      'personality': npc.personality,
-      'knowsAbout': npc.knowsAbout.take(3).toList(),
-      'reputation': npc.reputation,
-    };
+  /// `/查看 [名字]` 的输出。
+  ///
+  /// 原先这里只有一个 `getViewableCharacter`，返回 Map 给 UI 用——但没有任何
+  /// UI 消费它，于是整套「可见性判定 + 档案组装」实际上死了。改成直接产出
+  /// 玩家能读的文本，并新增 `/查看` 命令作为入口。
+  String formatCharacterDossier(String idOrName) {
+    final kw = idOrName.trim();
+    final npc = npcRegistry[kw] ?? findNpcByKeyword(npcRegistry.values, kw);
+
+    if (kw.isEmpty) {
+      return '【查看】\n用法：/查看 [名字]，例如 /查看 斯内普\n\n$_visibleRoster';
+    }
+    if (npc == null) {
+      return '【查看】\n你没听说过「$kw」这个人。\n\n$_visibleRoster';
+    }
+    if (!_isNPCVisible(npc)) {
+      return '【查看 · ${npc.name}】\n你与${npc.name}素不相识，无从打量。'
+          '\n先在同一间教室、同一张餐桌上碰过面，才会有东西可看。\n\n$_visibleRoster';
+    }
+
+    final buf = StringBuffer('【查看 · ${npc.name}】\n');
+    final house = npc.house.isEmpty ? '未知学院' : npc.house;
+    final gender = npc.gender.isEmpty ? '' : '｜${npc.gender}';
+    buf.writeln('$house｜${npc.grade}年级$gender｜${_bloodLabel(npc.bloodStatus)}');
+    buf.writeln('所在：${npc.currentLocation}｜${_moodLabel(npc.mood)}'
+        '${npc.isAlive ? '' : '｜已故'}');
+
+    final rel = player?.relationships[npc.id];
+    if (rel != null) {
+      buf.writeln('关系：${rel.relationType}（Lv.${rel.level}）｜'
+          '好感 ${npc.affection}（${npc.affectionStage}）');
+    } else {
+      buf.writeln('好感 ${npc.affection}（${npc.affectionStage}）｜尚未建立正式关系');
+    }
+
+    // 原著角色的魔杖（canonWandFor 此前零调用，这里接上）
+    if (npc.isCanon) {
+      final wand = canonWandFor(npc.name);
+      if (wand != null) buf.writeln('魔杖：$wand');
+    }
+
+    if (npc.personality.isNotEmpty) {
+      buf.writeln('性格：${npc.personality.join('、')}');
+    }
+    if (npc.appearance.isNotEmpty) {
+      buf.writeln('外貌：${npc.appearance}');
+    }
+    if (npc.personalGoal != null && npc.personalGoal!.isNotEmpty) {
+      buf.writeln('心上事：${npc.personalGoal}');
+    }
+    if (npc.knowsAbout.isNotEmpty) {
+      buf.writeln('知道：${npc.knowsAbout.take(3).join('、')}');
+    }
+    if (npc.schedule.isNotEmpty) {
+      final slots = npc.schedule.entries.take(3)
+          .map((e) => '${e.key} ${e.value}')
+          .join('；');
+      buf.writeln('日程：$slots');
+    }
+
+    final rep = npc.reputation;
+    final repFilled = <String>[
+      if (rep.academic != 0) '学术 ${rep.academic}',
+      if (rep.social != 0) '社交 ${rep.social}',
+      if (rep.combat != 0) '战斗 ${rep.combat}',
+      if (rep.moral != 0) '道德 ${rep.moral}',
+      if (rep.leadership != 0) '领导 ${rep.leadership}',
+      if (rep.dark != 0) '黑魔法 ${rep.dark}',
+    ];
+    if (repFilled.isNotEmpty) buf.writeln('声望：${repFilled.join('｜')}');
+
+    if (npc.hasGrudge) {
+      buf.writeln('⚠️ 记恨着你：${npc.grudges.last['reason'] ?? '原因不明'}'
+          '（好感上限 ${npc.effectiveAffectionCap}）');
+    }
+    if (npc.isConsideringConfession) {
+      buf.writeln('💭 似乎在酝酿着什么话……');
+    }
+    return buf.toString();
   }
+
+  /// 当前能查看的人（`/查看` 不带参数时的名册）。
+  String get _visibleRoster {
+    final visible = npcRegistry.values
+        .where(_isNPCVisible)
+        .toList()
+      ..sort((a, b) => b.affection.compareTo(a.affection));
+    if (visible.isEmpty) {
+      return '你现在还叫得出名字的人一个也没有——先去上课或者到公共休息室坐坐。';
+    }
+    final buf = StringBuffer('可查看的人（按好感排序）：\n');
+    for (final n in visible.take(12)) {
+      buf.writeln('· ${n.name}（${n.affectionStage} ${n.affection}）'
+          '${n.isAlive ? '' : ' · 已故'}');
+    }
+    if (visible.length > 12) buf.writeln('…另有 ${visible.length - 12} 人');
+    return buf.toString();
+  }
+
+  String _bloodLabel(String s) => switch (s) {
+        'pure' || 'pureblood' => '纯血',
+        'half' || 'halfblood' => '混血',
+        'muggle' || 'muggleborn' => '麻瓜出身',
+        'unknown' => '血统不明',
+        _ => s,
+      };
+
+  String _moodLabel(int mood) => switch (mood) {
+        >= 80 => '心情极好',
+        >= 60 => '心情不错',
+        >= 40 => '心情平静',
+        >= 20 => '心情低落',
+        _ => '心情糟糕',
+      };
 
   bool _isNPCVisible(NPC npc) {
     if (player == null) return false;

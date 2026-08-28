@@ -7,6 +7,7 @@ import '../../models/npc.dart';
 import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
+import '../../utils/npc_lookup.dart';
 import '../../widgets/narrative_visuals.dart';
 import '../../widgets/scaled_rich_text.dart';
 
@@ -447,12 +448,61 @@ class _NarrativeTabState extends State<NarrativeTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Text(
-                  '可选行动',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
-                      color: Color(0xFFD3A625)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Row(
+                  children: [
+                    const Text(
+                      '可选行动',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                          color: Color(0xFFD3A625)),
+                    ),
+                    const Spacer(),
+                    // 「换一批」走本地词库，不消耗 token。
+                    // 之前这套生成器写好了却没有任何入口，玩家被 AI 给的
+                    // 三个选项卡住时只能硬选一个。
+                    Semantics(
+                      button: true,
+                      label: '换一批行动建议',
+                      child: InkWell(
+                        onTap: gp.isLoading
+                            ? null
+                            : () {
+                                gp.generateMoreSuggestions();
+                                if (gp.error != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(gp.error!)),
+                                  );
+                                }
+                              },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.shuffle,
+                                  size: 15,
+                                  color: gp.isLoading
+                                      ? Colors.grey
+                                      : const Color(0xFFD3A625)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '换一批',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: gp.isLoading
+                                      ? Colors.grey
+                                      : const Color(0xFFD3A625),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -1065,19 +1115,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
-  /// 按说话人名字在 NPC 注册表中找最佳匹配（复用 NPC.nameMatchScore）。
+  /// 按说话人名字在 NPC 注册表中找最佳匹配（统一实现见 lib/utils/npc_lookup.dart）。
   NPC? _resolveNpcBySpeaker(GameProvider gp, String speaker) {
     if (speaker.isEmpty || gp.npcRegistry.isEmpty) return null;
-    NPC? best;
-    int bestScore = 0;
-    for (final npc in gp.npcRegistry.values) {
-      final score = npc.nameMatchScore(speaker);
-      if (score > bestScore) {
-        bestScore = score;
-        best = npc;
-      }
-    }
-    return best;
+    return findNpcByKeyword(gp.npcRegistry.values, speaker);
   }
 
   /// 原有整段渲染（无对话分段时的回退）

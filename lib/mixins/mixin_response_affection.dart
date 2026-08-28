@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../models/npc.dart';
 import '../utils/affection_validator.dart';
+import '../utils/npc_lookup.dart';
 import 'mixin_response_choices.dart';
 
 mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
@@ -50,16 +51,9 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // BUG-M 修复：AI 会写出"塞德里克·邓布利多"这种混淆名（塞德里克·迪戈里 + 阿不思·邓布利多）
         // 旧顺序：先 validator.validate(npcRegistry, npcName, ...) → "塞德里克·邓布利多"不在注册表 → 拒绝
         // 新顺序：先模糊匹配找到最相似的注册NPC → 用真名做校验 → 通过则更新好感
-        NPC? npc;
-        int bestScore = 0;
-        for (final n in npcRegistry.values) {
-          final score = n.nameMatchScore(npcName);
-          if (score > bestScore) {
-            bestScore = score;
-            npc = n;
-          }
-        }
-        if (npc == null || bestScore == 0) {
+        // 统一走 findNpcByKeyword（含别名+姓氏推导），不再自己手写取最高分的循环
+        final npc = findNpcByKeyword(npcRegistry.values, npcName);
+        if (npc == null) {
           debugPrint('[好感解析] 未找到匹配NPC: $npcName');
           continue;
         }
@@ -69,8 +63,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
         if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
         try {
-          // npc 和 bestScore 已在上面模糊匹配阶段赋值，这里直接使用
-          debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta (匹配分=$bestScore)');
+          debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta');
           final before = npc.affection;
           updateNpcAffection(npc.id, delta, reason: '剧情互动');
           final after = npc.affection;

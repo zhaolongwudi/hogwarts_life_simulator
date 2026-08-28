@@ -201,6 +201,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   String formatLoveWaiting();
   String formatNpcRelationship(String npc1, String npc2);
   String formatRelationships();
+  String formatCharacterDossier(String idOrName);
   String formatReputation();
   String formatRumors();
   String formatWorldEvolution();
