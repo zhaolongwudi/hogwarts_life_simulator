@@ -205,6 +205,7 @@ void main() {
   _attributeLabelGroup();
   _questTypeLabelGroup();
   _saveLoadGroup();
+  _commandReferenceGroup();
   _petReachabilityGroup();
   _equipmentAndProviderGroup();
 }
@@ -1814,6 +1815,80 @@ void _questTypeLabelGroup() {
       expect(questTypeLabel('defeat'), '讨伐');
       expect(questTypeLabel('pet'), '培养');
       expect(questTypeLabel('escort'), '委托');
+    });
+  });
+}
+
+// ==================== 提示里提到的命令都得真的存在 ====================
+// 「/宠物 让你去对角巷挑一只」那类问题的一般形式：文案里写了个命令，
+// 但那个命令根本没注册。玩家照着敲，什么也不会发生。
+
+void _commandReferenceGroup() {
+  group('提示里提到的命令都已注册', () {
+    /// 已注册的命令（primary + aliases）
+    Set<String> registeredCommands() {
+      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final out = <String>{};
+      out.addAll(RegExp(r"primary: *'([^']+)'").allMatches(src).map((m) => m.group(1)!));
+      for (final m in RegExp(r'aliases: *\[(.*?)\]', dotAll: true).allMatches(src)) {
+        out.addAll(RegExp(r"'([^']+)'").allMatches(m.group(1)!).map((x) => x.group(1)!));
+      }
+      return out;
+    }
+
+    test('文案里出现的每个 /命令 都有注册', () {
+      final known = registeredCommands();
+      expect(known.length, greaterThan(40), reason: '命令表空了？正则该更新');
+
+      // /命令 要独立成词，否则 '../data/x.dart' 里的路径会被当成命令。
+      // 也不能只扫字符串字面量——import 行里的 'package:...' 同样带斜杠，
+      // 所以先把 import/export/part 整行剔掉，再按词边界找。
+      // 前后都不能贴着中文：「奇洛/洛哈特」这种用斜杠分隔的名单不是命令。
+      // Dart 的 \w 只认 ASCII，中文得单独写进字符类。
+      final tokRe = RegExp(
+          r'(?<![\w一-鿿/])/([一-鿿]{2,6}|[a-z]{2,10})(?![\w一-鿿/.])');
+      final declRe = RegExp(r'^(import|export|part)\b');
+
+      final dangling = <String, List<String>>{};
+      for (final f in _allLibFiles()) {
+        for (final line in _codeOnly(f).split('\n')) {
+          final t = line.trim();
+          if (t.startsWith('//') || declRe.hasMatch(t)) continue;
+          if (t.contains('://')) continue; // URL
+          for (final c in tokRe.allMatches(line)) {
+            final cmd = c.group(1)!;
+            if (known.contains(cmd)) continue;
+            dangling.putIfAbsent(cmd, () => []).add(f);
+          }
+        }
+      }
+      // 这几个不是玩家指令：/game /intro /settings 是 Flutter 路由名，
+      // 「输入行动或 /命令」里的「命令」是占位说法。
+      dangling.removeWhere(
+          (k, _) => const {'game', 'intro', 'settings', '命令'}.contains(k));
+      expect(dangling, isEmpty,
+          reason: '文案提到了没注册的命令，玩家照着敲没反应：$dangling');
+    });
+
+    test('每个已注册命令都写了帮助文案', () {
+      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      final blocks = RegExp(
+        r"CommandDef\((.*?)\n      \),",
+        dotAll: true,
+      ).allMatches(src);
+      var checked = 0;
+      for (final b in blocks) {
+        final text = b.group(1)!;
+        final primary = RegExp(r"primary: *'([^']+)'").firstMatch(text);
+        if (primary == null) continue;
+        checked++;
+        expect(text, contains('helpText'),
+            reason: '/${primary.group(1)} 没有 helpText，/帮助 里会是空白');
+        final help = RegExp(r"helpText: *'([^']*)'").firstMatch(text);
+        expect(help?.group(1)?.trim(), isNotEmpty,
+            reason: '/${primary.group(1)} 的 helpText 是空的');
+      }
+      expect(checked, greaterThan(40), reason: '解析到的命令数不对，正则该更新');
     });
   });
 }
