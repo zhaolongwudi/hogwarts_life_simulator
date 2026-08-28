@@ -477,6 +477,8 @@ $kNarrativeWritingRules
         debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
         choices = buildFallbackChoices(currentNarrative);
       }
+      // BUG-N 追踪：记录最终设置到Provider的选项
+      debugPrint('▶️ processChoice最终选项(${choices.length}条): ${choices.map((c) => c.text.substring(0, c.text.length > 30 ? 30 : c.text.length)).join(" | ")}');
       // 立即通知 UI 刷新选项，确保用户看到最新选项
       notifyListeners();
 
