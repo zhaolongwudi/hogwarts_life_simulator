@@ -367,6 +367,11 @@ mixin GameSystemsMixin on GameProviderBase {
     notifications.add('🎓 你从霍格沃茨毕业了！七年的魔法生涯画上句点。');
     worldState.addNarrativeEvent('🎓 ${worldState.time.year}年，你从霍格沃茨毕业', turn: turnCount);
     worldState.addMarker('🎓毕业');
+    // 毕业是世界线上最明确的不可逆节点：从此不再跟着学年走。
+    // timelineBranches 此前一次都没被写过（只有测试在调用 addTimelineBranch），
+    // 而 /联动 又把它显示给玩家，于是那一栏永远只有「暂无。」。
+    worldState.addTimelineBranch(
+        '${worldState.time.year} 年从霍格沃茨毕业，人生轨迹自此不再跟着既定的学年走');
     debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
     _graduationSettlement();

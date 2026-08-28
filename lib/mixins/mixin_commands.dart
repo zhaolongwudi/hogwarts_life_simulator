@@ -621,9 +621,15 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '查看时代联动痕迹',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          m.currentNarrative = '【联动系统】\n当前时代：${m.eraLabel(m.appProvider.era)}\n'
-              '联动系统允许你在特定节点与其他时代剧情产生关联（例如在子世代时遇到亲世代留下的物品或信件）。\n'
-              '当前已触发的联动痕迹：\n${m.worldState.timelineBranches.isEmpty ? '暂无。' : m.worldState.timelineBranches.map((b) => '· $b').join('\n')}';
+          // 文案以前许诺的是"与其他时代剧情产生关联（遇到亲世代留下的物品或
+          // 信件）"，但那套内容并不存在，而列表又从来没被写入过——玩家看到的
+          // 永远是一句「暂无。」加一段兑现不了的说明。改成如实描述：这里记的
+          // 是你亲手造成的不可逆分叉。
+          final branches = m.worldState.timelineBranches;
+          m.currentNarrative = '【世界线】\n当前时代：${m.eraLabel(m.appProvider.era)}\n'
+              '每跨过一个回不了头的节点，世界线就分出一条只有这一周目存在的支流。\n'
+              '世界线变动次数：${m.worldState.timelineChanges}\n'
+              '已记录的分叉：\n${branches.isEmpty ? '暂无——毕业、成婚这类不可逆的节点会出现在这里。' : branches.reversed.map((b) => '· $b').join('\n')}';
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },

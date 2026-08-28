@@ -7,6 +7,7 @@ import 'package:hogwarts_life_simulator/data/archetype_data.dart';
 import 'package:hogwarts_life_simulator/screens/world_map_screen.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
+import 'package:hogwarts_life_simulator/models/world_state.dart';
 import 'package:hogwarts_life_simulator/utils/npc_lookup.dart';
 import 'package:hogwarts_life_simulator/data/provider_defaults.dart';
 import 'package:hogwarts_life_simulator/data/pet_data.dart';
@@ -223,6 +224,7 @@ void main() {
   _saveVersionGroup();
   _locationMatchGroup();
   _loveReputationGroup();
+  _worldlineGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2923,6 +2925,63 @@ void _loveReputationGroup() {
         lessThanOrEqualTo(2),
         reason: '恋爱声望只该在确立关系时结算一次（定义 + 一次调用）',
       );
+    });
+  });
+}
+
+// ==================== 世界线痕迹 ====================
+// /联动 把 worldState.timelineBranches 摊给玩家看，但全项目只有测试在调
+// addTimelineBranch——那一栏永远只有「暂无。」，旁边还配了一段"与其他时代
+// 剧情产生关联"的许诺，而那套内容根本不存在。
+void _worldlineGroup() {
+  group('世界线痕迹', () {
+    test('addTimelineBranch 会同时记账和留存描述', () {
+      final ws = WorldState();
+      expect(ws.timelineChanges, 0);
+      ws.addTimelineBranch('测试分叉');
+      expect(ws.timelineChanges, 1);
+      expect(ws.timelineBranches, contains('测试分叉'));
+    });
+
+    test('生产代码里真有人在写这条列表（不能只剩测试在调）', () {
+      final callers = <String>[];
+      for (final f in _allLibFiles()) {
+        if (f.endsWith('world_state.dart')) continue; // 定义处不算
+        if (_codeOnly(f).contains('addTimelineBranch(')) callers.add(f);
+      }
+      expect(callers, isNotEmpty,
+          reason: 'timelineBranches 会显示给玩家，但没有任何生产代码往里加内容');
+    });
+
+    test('毕业和成婚各记一笔', () {
+      expect(_codeOnly('lib/mixins/mixin_systems.dart'),
+          contains('addTimelineBranch'),
+          reason: '毕业是不可逆节点，该记一笔');
+      expect(_codeOnly('lib/mixins/mixin_relations.dart'),
+          contains('addTimelineBranch'),
+          reason: '成婚是不可逆节点，该记一笔');
+    });
+
+    test('/联动 不再许诺不存在的内容', () {
+      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      expect(src, isNot(contains('与其他时代剧情产生关联')),
+          reason: '那套跨时代联动内容并不存在，别再写在给玩家看的文案里');
+      expect(src, contains('timelineChanges'),
+          reason: '既然记了变动次数，就该显示出来');
+    });
+
+    test('被取代的旧课堂数据表没有复活', () {
+      final src = _codeOnly('lib/data/course_data.dart');
+      for (final dead in ['classEvents', 'classInteractionSteps', 'ClassEvent']) {
+        expect(src, isNot(contains(dead)),
+            reason: '$dead 已经没人读了，课堂互动走 classroomInteraction + '
+                'classAccidentPool，别把它加回来');
+      }
+      // 真正生效的那张表还在
+      expect(_codeOnly('lib/data/game_config_rules.dart'),
+          contains('classAccidentPool'));
+      expect(_codeOnly('lib/mixins/mixin_relations.dart'),
+          contains('classAccidentPool'));
     });
   });
 }

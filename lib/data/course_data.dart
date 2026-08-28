@@ -112,33 +112,15 @@ const List<CourseData> electiveCourses = [
 
 List<CourseData> allCourses() => [...requiredCourses, ...electiveCourses];
 
-/// 课堂互动环节（设定 10.3）
-const List<String> classInteractionSteps = [
-  '课堂签到（影响期末成绩与教授好感）',
-  '理论知识提问（影响学术声望）',
-  '实践操作（影响技能熟练度）',
-  '与同桌/邻座互动（影响NPC好感度）',
-];
-
-/// 课堂事件（设定 10.3）
-class ClassEvent {
-  final String type;
-  final String trigger;
-  final String effect;
-  const ClassEvent({
-    required this.type,
-    required this.trigger,
-    required this.effect,
-  });
-}
-
-const List<ClassEvent> classEvents = [
-  ClassEvent(type: '教授提问', trigger: '随机触发', effect: '正确回答：声望+2，熟练度+1'),
-  ClassEvent(type: '魔药事故', trigger: '魔药课操作失误', effect: '可能受伤，需去校医院'),
-  ClassEvent(type: '决斗练习', trigger: '黑魔法防御课', effect: '提升战斗声望'),
-  ClassEvent(type: '温室意外', trigger: '草药课', effect: '被曼德拉草叫喊击中'),
-  ClassEvent(type: '深夜天文观测', trigger: '天文课（夜晚）', effect: '可触发浪漫事件'),
-];
+// 课堂互动的早期版本（classInteractionSteps / ClassEvent / classEvents）原本
+// 放在这里，已经没人读了。真正生效的实现在
+// GameRelationsMixin.classroomInteraction，意外事件走
+// lib/data/game_config_rules.dart 的 classAccidentPool——那张表支持按科目筛
+// 选，也没有把「斯内普教授」写死在特判里。
+//
+// 旧表删掉而不是留着当注释，是因为它长得像配置，改了却一点效果都没有。有
+// 人看到「魔药事故 → 可能受伤」想去调数值，改完发现课堂里的意外一个字都没
+// 变，得翻遍调用链才知道这张表是空的。
 
 /// 各时代教授阵容名称（用于叙事上下文）
 const Map<String, String> eraHeadmaster = {
