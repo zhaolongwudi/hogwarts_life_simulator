@@ -189,6 +189,7 @@ void main() {
   _giftGivingGroup();
   _materialLootGroup();
   _deadCodeGroup();
+  _achievementReachabilityGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -1378,6 +1379,68 @@ void _deadCodeGroup() {
       for (final m in ['canRequest(', 'currentRPM(', 'recordRequest(',
                        'canMakeCall(', 'remainingQuota(', 'recordCall(']) {
         expect(src.contains(m), isFalse, reason: '$m 又回来了');
+      }
+    });
+  });
+}
+
+// ==================== 成就可达性 ====================
+// 「魔杖的选择」此前没有任何解锁路径：唯一的 unlockAchievement('first_wand')
+// 写在一个零调用的 selectWand() 里，而玩家实际在开局问卷里选魔杖。
+// 成就表里有这一项，玩家永远拿不到。这类问题靠肉眼很难发现，用测试钉住。
+
+void _achievementReachabilityGroup() {
+  group('每个成就都必须有解锁路径', () {
+    test('成就表里每个 id 都有对应的 unlockAchievement 调用', () {
+      final libSrc = <String, String>{};
+      for (final f in _allLibFiles()) {
+        libSrc[f] = File(f).readAsStringSync();
+      }
+
+      final unreachable = <String>[];
+      for (final a in achievementCatalog) {
+        final hit = libSrc.entries.any((e) {
+          // 只统计真正的调用，跳过成就表自身的定义行与注释
+          return e.value.contains("unlockAchievement('${a.id}'") &&
+              !e.key.endsWith('game_systems.dart');
+        });
+        if (!hit) unreachable.add('${a.id}（${a.name}）');
+      }
+      expect(unreachable, isEmpty,
+          reason: '这些成就永远解锁不了：$unreachable');
+    });
+
+    test('成就 id 不重复', () {
+      final ids = achievementCatalog.map((a) => a.id).toList();
+      expect(ids.toSet().length, ids.length,
+          reason: '成就 id 有重复，解锁时会对不上号');
+    });
+
+    test('成就都有名称与描述', () {
+      for (final a in achievementCatalog) {
+        expect(a.name.isNotEmpty, isTrue, reason: '${a.id} 缺名称');
+        expect(a.description.isNotEmpty, isTrue, reason: '${a.id} 缺描述');
+      }
+    });
+
+    test('开局问卷选了魔杖就解锁「魔杖的选择」', () {
+      // 这是上面那条扫描断言抓出来的具体案例，单独钉住回归
+      final src = File('lib/mixins/mixin_init.dart').readAsStringSync();
+      expect(src.contains("unlockAchievement('first_wand')"), isTrue,
+          reason: 'createPlayer 里没有为传入的 wandId 解锁成就');
+    });
+
+    test('删掉的三个冗余包装没有复活', () {
+      // fastForward 被能返回期间事件的 fastForwardDays 取代；
+      // sortPlayer 的逻辑在 mixin_init 本地分院与 mixin_response AI 解析
+      // 分院两条路径里都有；selectWand 的成就解锁已并入 createPlayer
+      for (final pair in {
+        'lib/mixins/mixin_systems.dart': 'Future<void> fastForward(',
+        'lib/mixins/mixin_narrative.dart': 'Future<Map<String, String>> sortPlayer(',
+        'lib/mixins/mixin_init.dart': 'Future<Map<String, dynamic>> selectWand(',
+      }.entries) {
+        expect(File(pair.key).readAsStringSync().contains(pair.value), isFalse,
+            reason: '${pair.value} 又回来了');
       }
     });
   });

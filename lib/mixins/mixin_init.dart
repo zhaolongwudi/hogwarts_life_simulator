@@ -319,6 +319,14 @@ mixin GameInitMixin on GameProviderBase {
       player!.traits.addAll(rolledTraits.map((t) => t.id));
       _applyTraitBonuses(rolledTraits);
 
+      // 「魔杖的选择」成就此前没有任何解锁路径：唯一的 unlockAchievement
+      // 写在一个零调用的 selectWand() 里，而玩家实际是在开局问卷里选魔杖
+      // （wandId 直接由 intro_screen 传入）。结果成就表里有这一项，玩家
+      // 永远拿不到。
+      if (wandId != null && wandId.isNotEmpty) {
+        unlockAchievement('first_wand');
+      }
+
       worldState = WorldState(
         era: appProvider.era.name,
         academicYear: _academicYearForEra(appProvider.era),
@@ -1154,112 +1162,5 @@ mixin GameInitMixin on GameProviderBase {
   }
 
   // ==================== 魔杖选择（本地逻辑，不消耗 token） ====================
-  Future<Map<String, dynamic>> selectWand(List<Map<String, dynamic>> options) async {
-    if (player == null) {
-      return {'selected': options.first, 'narrative': ''};
-    }
-
-    isLoading = true;
-    notifyListeners();
-
-    try {
-      final selected = _computeWandLocal(options);
-      player!.wandId = selected['id'] as String?;
-      unlockAchievement('first_wand');
-      bumpImpactScore(0.03, debugReason: '首次魔杖选择');
-      final narrative = _generateWandNarrative(selected);
-
-      isLoading = false;
-      notifyListeners();
-      return {'selected': selected, 'narrative': narrative};
-    } catch (e) {
-      isLoading = false;
-      notifyListeners();
-      return {'selected': options.first, 'narrative': ''};
-    }
-  }
-
-  Map<String, dynamic> _computeWandLocal(List<Map<String, dynamic>> options) {
-    if (options.isEmpty) return {};
-
-    final personality = player!.personalityTraits.join(' ');
-    final dims = player!.houseDimensions;
-
-    // 根据玩家特质为每根魔杖打分
-    final scored = <String, double>{};
-    for (final wand in options) {
-      double score = 0.0;
-      final suit = (wand['suitType'] ?? '') as String;
-      final desc = (wand['description'] ?? '') as String;
-      final wood = (wand['wood'] ?? '') as String;
-      final core = (wand['core'] ?? '') as String;
-
-      final combined = '$suit $desc $wood $core';
-
-      // 性格匹配
-      final traitKeywords = <String, int>{
-        '勇敢': 2, '勇气': 2, '无畏': 2,
-        '野心': 2, '精明': 2, '领导': 2,
-        '智慧': 2, '聪明': 2, '好奇': 2,
-        '忠诚': 2, '正直': 2, '勤勉': 2,
-        '温柔': 1, '善良': 1, '慷慨': 1,
-        '狡猾': 1, '意志': 1, '坚强': 1,
-        '创造': 1, '学习': 1, '知识': 1,
-        '坚韧': 1, '耐心': 1, '公平': 1,
-      };
-      for (final entry in traitKeywords.entries) {
-        if (personality.contains(entry.key) && combined.contains(entry.key)) {
-          score += entry.value;
-        }
-      }
-
-      // 杖芯属性
-      if (core == '独角兽毛') score += 1;
-      if (core == '龙心脏腱索') score += 1;
-      if (core == '凤凰羽毛') score += 1;
-
-      // 学院四维加成
-      final courage = dims['courage'] ?? 50;
-      final ambition = dims['ambition'] ?? 50;
-      final wisdom = dims['wisdom'] ?? 50;
-      final loyalty = dims['loyalty'] ?? 50;
-
-      if (wood == '冬青木' || wood == '橡木') score += courage * 0.05;
-      if (wood == '紫杉木' || wood == '榆木') score += ambition * 0.05;
-      if (wood == '葡萄藤木' || wood == '枫木') score += wisdom * 0.05;
-      if (wood == '樱桃木' || wood == '雪松木' || wood == '柳木') score += loyalty * 0.05;
-
-      final wid = wand['id'] ?? wand['name'] ?? '';
-      scored[wid] = score;
-    }
-
-    // 选最高分，同分随机
-    final maxScore = scored.values.isEmpty ? 0.0 : scored.values.reduce((a, b) => a > b ? a : b);
-    final candidates = scored.keys.where((w) => scored[w] == maxScore).toList();
-    candidates.shuffle(random);
-    final bestId = candidates.first;
-    for (final wand in options) {
-      if ((wand['id'] ?? wand['name']) == bestId) return wand;
-    }
-    return options.first;
-  }
-
-  String _generateWandNarrative(Map<String, dynamic> wand) {
-    final name = wand['name'] ?? '未知魔杖';
-    final wood = wand['wood'] ?? '';
-    final core = wand['core'] ?? '';
-    final len = wand['length'] ?? '';
-    final suit = wand['suitType'] ?? '';
-
-    final lines = [
-      '奥利凡德先生用他那双近乎透明的眼睛凝视着你，片刻后低语：「有意思……很是有意思。」',
-      '他在一排排积满灰尘的魔杖盒前缓缓踱步，抽出一根又一根——',
-      '最终，当一根触碰到你指尖的瞬间，它迸发出一簇暖金色的火花，空气中响起一声清脆的共鸣。',
-      '「$name，$wood，$core，$len。」他轻声介绍，「这根魔杖适合$suit的人。」',
-      '你握着它，感到一股熟悉的力量在掌心流淌。',
-    ];
-    return lines.join('\n\n');
-  }
-
   // ==================== 存档系统 ====================
 }

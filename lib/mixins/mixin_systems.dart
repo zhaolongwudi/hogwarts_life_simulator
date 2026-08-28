@@ -834,15 +834,6 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   // ==================== 快速推进 ====================
-
-  Future<void> fastForward(int days) async {
-    isLoading = true;
-    notifyListeners();
-    fastForwardTime(days);
-    isLoading = false;
-    notifyListeners();
-  }
-
   // ==================== 查看人物 ====================
 
   /// `/查看 [名字]` 的输出。

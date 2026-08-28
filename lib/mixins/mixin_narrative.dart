@@ -1402,28 +1402,4 @@ $kNarrativeWritingRules
   }
 
   // ==================== 分院仪式（本地逻辑，不消耗 token） ====================
-  Future<Map<String, String>> sortPlayer() async {
-    if (player == null) {
-      return {'house': 'Gryffindor', 'narrative': ''};
-    }
-
-    isLoading = true;
-    notifyListeners();
-
-    try {
-      final house = computeHouseLocal();
-      final narrative = generateSortingNarrative(house);
-      player!.house = house;
-      unlockAchievement('sorted');
-      unlockCG(this.cgById('CG-002')); // 分院帽下的对视
-
-      isLoading = false;
-      notifyListeners();
-      return {'house': house, 'narrative': narrative};
-    } catch (e) {
-      isLoading = false;
-      notifyListeners();
-      return {'house': 'Gryffindor', 'narrative': ''};
-    }
-  }
 }
