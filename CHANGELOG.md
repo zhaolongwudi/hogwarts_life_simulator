@@ -5,6 +5,14 @@
 
 ---
 
+### v2.4.3 — 2026-08-28
+
+**📋 变更说明**
+fix: 添加 win32 依赖覆盖解决 Dart SDK 兼容性问题
+
+win32 5.2.0 使用已移除的 UnmodifiableUint8ListView 类型，
+添加 dependency_overrides 强制使用 >=5.3.0 版本。
+
 ### v2.4.2 — 2026-08-28
 
 **📋 变更说明**
