@@ -5,6 +5,11 @@
 
 ---
 
+### v2.3.4 — 2026-08-28
+
+**📋 变更说明**
+fix: CI分析错误 - game_settings_tab中maxRecentTurns改用GameProviderBase.maxRecentTurns完整限定名，Text移除const
+
 ### v2.3.3 — 2026-08-28
 
 **📋 变更说明**
