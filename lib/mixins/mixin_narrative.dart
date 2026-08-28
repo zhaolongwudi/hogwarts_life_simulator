@@ -1113,9 +1113,8 @@ $kNarrativeWritingRules
     }
   }
 
-  // 地点表已挪到 lib/data/locations.dart（纯数据，测试和事件锚点校验都要用）。
-  // 这里保留一个别名，让 _syncLocationFromNarrative 的循环不用改。
-  static const List<(String, List<String>)> _knownLocations = kKnownLocations;
+  // 地点表在 lib/data/locations.dart（纯数据，测试和事件锚点校验都要用），
+  // 归一化统一走 resolveLocationName，这里不再自己遍历别名。
 
   /// 从叙事文本中提取玩家当前所在地点，并同步到 worldState.currentLocation。
   /// 检查两处：1) 开头【地点】标签；2) 叙事末尾 200 字（确保玩家真的抵达）。
@@ -1133,16 +1132,12 @@ $kNarrativeWritingRules
     ).firstMatch(narrative);
     if (locationTagMatch != null && locationTagMatch.group(1) != null) {
       final tag = locationTagMatch.group(1)!.trim();
-      // 把标签与已知地点别名做匹配
-      for (final (mainName, aliases) in _knownLocations) {
-        for (final alias in aliases) {
-          if (tag.contains(alias)) {
-            detected = mainName;
-            break;
-          }
-        }
-        if (detected != null) break;
-      }
+      // 统一走 resolveLocationName（lib/data/locations.dart）。
+      // 以前这里只比别名、不比主名，而「霍格沃茨·场地」这条目的别名是
+      // 「草坪/魁地奇球场/黑湖」，没有一个匹配得上主名本身——AI 只要在
+      // 【地点】里规规矩矩写出规范名，解析就直接落空，于是这条最可靠的
+      // 来源整个失效，只能指望末尾 200 字的抵达动词兜底。
+      detected = resolveLocationName(tag);
       // 如果标签没匹配到已知别名，但标签里提到了具体位置，
       // 检查是否属于"家中"大类（卧室/花园/书房/密室/起居室 都算家中）
       if (detected == null) {
@@ -1178,13 +1173,11 @@ $kNarrativeWritingRules
       final ctxStart = match.start - 10 < 0 ? 0 : match.start - 10;
       final ctx = tail.substring(ctxStart, windowEnd);
       if (_nonActualContextRe.hasMatch(ctx)) continue;
-      for (final (mainName, aliases) in _knownLocations) {
-        for (final alias in aliases) {
-          if (scope.contains(alias) && match.end > lastArrivalAt) {
-            detected = mainName; // 后发生的抵达事件覆盖先发生的
-            lastArrivalAt = match.end;
-          }
-        }
+      // 同样走 resolveLocationName：抵达动词后窗口里也可能直接写规范名
+      final hit = resolveLocationName(scope);
+      if (hit != null && match.end > lastArrivalAt) {
+        detected = hit; // 后发生的抵达事件覆盖先发生的
+        lastArrivalAt = match.end;
       }
     }
 

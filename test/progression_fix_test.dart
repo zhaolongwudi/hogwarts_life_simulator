@@ -214,6 +214,7 @@ void main() {
   _cgConditionGroup();
   _shopUiGroup();
   _screenReachabilityGroup();
+  _locationResolveGroup();
 }
 
 // ==================== 拉郎配 / 婚姻 / CG 可达性 ====================
@@ -2554,6 +2555,49 @@ void _screenReachabilityGroup() {
       expect(Directory('lib/screens').listSync().any((f) => f.path.endsWith('phone_home_screen.dart')),
           isFalse,
           reason: 'phone_home_screen.dart 又回来了，它是 1025 行没有任何入口的死代码');
+    });
+  });
+}
+
+// ==================== 地点归一化 ====================
+// 「霍格沃茨·场地」的别名是「草坪/魁地奇球场/黑湖」——没有一个匹配得上主名
+// 本身。而 _syncLocationFromNarrative 里那段手抄的循环只比别名不比主名，
+// 于是 AI 只要老老实实在【地点】里写规范名，解析就直接落空，这条最可靠的
+// 来源整个失效。resolveLocationName 正是为这个写的，却一直没被调用——测试
+// 验的是它，线上跑的是另外一份。
+
+void _locationResolveGroup() {
+  group('地点归一化', () {
+    test('每个地点的主名都能被认出来', () {
+      for (final (name, _) in kKnownLocations) {
+        expect(resolveLocationName(name), name,
+            reason: 'AI 写规范名「$name」时解析不出来');
+        expect(resolveLocationName('【地点】$name'), name,
+            reason: '【地点】标签里写规范名「$name」时解析不出来');
+      }
+    });
+
+    test('别名照旧能命中', () {
+      for (final (name, aliases) in kKnownLocations) {
+        for (final alias in aliases) {
+          expect(resolveLocationName(alias), isNotNull,
+              reason: '别名「$alias」解析不出任何地点');
+          expect(resolveLocationName('你来到了$alias。'), name,
+              reason: '「$alias」应该归到「$name」');
+        }
+      }
+    });
+
+    test('生产代码不再自己遍历地点别名', () {
+      final src = _codeOnly('lib/mixins/mixin_narrative.dart');
+      expect(src.contains('resolveLocationName'), isTrue,
+          reason: '地点归一化又有人手写了一遍，resolveLocationName 白测了');
+      expect(
+        RegExp(r'for \(final \(mainName, aliases\) in _knownLocations\)').hasMatch(src),
+        isFalse,
+        reason: '_syncLocationFromNarrative 里还留着手抄的别名循环');
+      expect(src.contains('_knownLocations = kKnownLocations'), isFalse,
+          reason: '_knownLocations 这个只为手抄循环存在的别名该删了');
     });
   });
 }
