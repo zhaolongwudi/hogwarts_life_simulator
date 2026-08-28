@@ -134,7 +134,7 @@ mixin GameResponseMixin on GameProviderBase {
 
     player!.house = en;
     unlockAchievement('sorted');
-    debugPrint('⚡ [分院解析·强信号通过] 自动提取：${player!.house}（匹配 "$matched" 在 L? 锚点后）');
+    // 分院解析日志已移除
   }
 
   /// 只解析叙事文本（不含选项），用于独立选项生成模式
@@ -215,8 +215,8 @@ mixin GameResponseMixin on GameProviderBase {
     // R13 修复·好感度同步问题：先标记 NPC 登场，再解析好感度
     if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
     // 解析好感和声望变化（从原始文本）
-    _parseAffectionChanges(text);
-    _parseReputationChanges(text);
+    parseAffectionChanges(text);
+    parseReputationChanges(text);
 
     // 分院结果自动提取（使用带强信号约束的新版函数）
     _tryExtractHouseFromNarrative(text);
@@ -389,10 +389,10 @@ mixin GameResponseMixin on GameProviderBase {
     if (markScanIfNew(currentNarrative)) markIntroducedFromNarrative(currentNarrative);
 
     // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
-    _parseAffectionChanges(text);
+    parseAffectionChanges(text);
 
     // Parse reputation changes
-    _parseReputationChanges(text);
+    parseReputationChanges(text);
 
     if (choices.isEmpty) {
       // 先尝试从原始文本中智能提取选项（防止解析逻辑遗漏）
@@ -426,18 +426,18 @@ mixin GameResponseMixin on GameProviderBase {
         final lower = c.text.toLowerCase();
         for (final w in forbiddenChoiceForFirstYear) {
           if (lower.contains(w.toLowerCase()) && !(player?.learnedSpells.containsKey(w) ?? false)) {
-            debugPrint('[选项禁咒] 移除一年级禁咒选项「${c.text}」: 命中「$w」');
+            // [选项禁咒] 移除日志已移除
             return true;
           }
         }
         return false;
       });
       if (choices.length < beforeSpell) {
-        debugPrint('[选项禁咒] 一年级禁咒过滤: $beforeSpell→${choices.length}');
+        // [选项禁咒] 过滤计数日志已移除
       }
     }
     if (choices.length < beforeClean) {
-      debugPrint('选项质量清理: ${beforeClean}→${choices.length} (移除含markdown/图片的不合格选项)');
+      // 选项质量清理日志已移除
     }
     // 如果清理后选项不足，补充兜底选项
     if (choices.isEmpty) {
@@ -583,119 +583,12 @@ mixin GameResponseMixin on GameProviderBase {
   /// 清理选项文本中的 markdown 图片/链接/HTML 标签/Emoji/乱码
   /// 防止 AI 返回形如 `A. ![图](url) 仔细查看` 导致选项显示异常
   /// 采用两遍扫描确保彻底清除嵌套格式
-  static String sanitizeChoiceText(String raw) {
-    var s = raw.trim();
-
-    // === 第一遍：清除结构化 Markdown ===
-    // 删markdown图片 ![alt](url) 或 ![alt][ref]
-    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
-    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\[[^\]]*\]', caseSensitive: false), '');
-    // 删markdown链接 [text](url) → text (保留文字)
-    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false), (m) => m.group(1) ?? '');
-    // 删裸URL
-    s = s.replaceAll(RegExp(r'https?://\S+', caseSensitive: false), '');
-    // 删base64图片
-    s = s.replaceAll(RegExp(r'data:image/[^;]+;base64,[^\s)]+', caseSensitive: false), '');
-    // 删HTML <img> 标签
-    s = s.replaceAll(RegExp(r'<img\s[^>]*>', caseSensitive: false), '');
-    // 删HTML <a> 标签（保留文字）
-    s = s.replaceAllMapped(RegExp(r'<a[^>]*>([\s\S]*?)</a>', caseSensitive: false), (m) {
-      final inner = m.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').trim() ?? '';
-      return inner;
-    });
-    // 删所有HTML标签
-    s = s.replaceAll(RegExp(r'</?[^>]+>', caseSensitive: false), '');
-    // 删inline markdown粗体/斜体/删除线
-    s = s.replaceAllMapped(RegExp(r'\*\*([^*]+)\*\*'), (m) => m.group(1) ?? '');
-    s = s.replaceAllMapped(RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)'), (m) => m.group(1) ?? '');
-    s = s.replaceAllMapped(RegExp(r'~~([^~]+)~~'), (m) => m.group(1) ?? '');
-    // 删inline代码
-    s = s.replaceAllMapped(RegExp(r'`([^`]+)`'), (m) => m.group(1) ?? '');
-    // 删HTML实体
-    s = s.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&#39;', "'");
-    // 删反斜杠转义
-    s = s.replaceAllMapped(RegExp(r'\\([\\`*_{}\[\]()#+\-.!])'), (m) => m.group(1) ?? '');
-
-    // === 第二遍：清除第一遍可能残留的破坏结构 ===
-    // 再次扫描残留的markdown图片/链接（处理嵌套情况）
-    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
-    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false), (m) => m.group(1) ?? '');
-    // 清除孤立的方括号（如图片删除后残留的 [alt]）
-    s = s.replaceAll(RegExp(r'\[[^\]]*\]', caseSensitive: false), '');
-    // 清除孤立的星号（如粗体删除后残留的 *）
-    s = s.replaceAll(RegExp(r'\*+', caseSensitive: false), '');
-    // 清除反引号
-    s = s.replaceAll(RegExp(r'`+'), '');
-    // 清除孤立的下划线
-    s = s.replaceAll(RegExp(r'_{2,}'), '');
-    // 清除Emoji和零宽字符（保留中文标点和常用符号）
-    // 注意：Dart 正则不支持高位 Unicode 范围如 [\u{1F300}-\u{1F9FF}]，
-    // 必须使用 runes 手动过滤，否则会抛 FormatException 导致整页崩溃
-    final runes = s.runes.toList();
-    final filtered = StringBuffer();
-    for (final rune in runes) {
-      // 跳过 Emoji 范围 (U+1F300 ~ U+1FAFF)
-      if (rune >= 0x1F300 && rune <= 0x1FAFF) continue;
-      // 跳过零宽字符 (U+200B ~ U+200D, U+FEFF)
-      if ((rune >= 0x200B && rune <= 0x200D) || rune == 0xFEFF) continue;
-      filtered.writeCharCode(rune);
-    }
-    s = filtered.toString();
-
-    // === 最终清理 ===
-    s = s.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
-    // 单行限制
-    if (s.length > 100) s = '${s.substring(0, 97).trim()}...';
-    return s;
-  }
 
   /// 验证选项文本质量：sanitize后不应包含残余markdown/图片/异常格式
   /// 返回 true 表示质量合格，false 表示需要重试
   /// BUG-L 修复：方括号检查过于严苛 → "前往[图书馆]"或"[低声]询问"被判废 →
   ///   4条里1条废就触发重试 → 极简prompt覆盖好结果。现在只拒绝markdown链接/图片语法。
-  static bool isChoiceQualityAcceptable(String text) {
-    if (text.isEmpty || text.length < 2) return false;
-    // 检查残余markdown图片语法 ![](
-    if (RegExp(r'!\[.*\]\(', caseSensitive: false).hasMatch(text)) return false;
-    // 检查残余markdown链接 [text](url)
-    if (RegExp(r'\[.*\]\(.*\)', caseSensitive: false).hasMatch(text)) return false;
-    // 检查base64图像数据
-    if (RegExp(r'data:image/', caseSensitive: false).hasMatch(text)) return false;
-    // 检查HTML标签
-    if (RegExp(r'<\s*(img|a|div|span|p|br|hr)\b', caseSensitive: false).hasMatch(text)) return false;
-    // 检查内联markdown标记（粗体、斜体、删除线、代码）
-    if (RegExp(r'\*\*.*\*\*').hasMatch(text)) return false;
-    if (RegExp(r'`[^`]+`').hasMatch(text)) return false;
-    if (RegExp(r'~~.+~~').hasMatch(text)) return false;
-    // 检查裸URL
-    if (RegExp(r'https?://', caseSensitive: false).hasMatch(text)) return false;
-    // 检查过长
-    if (text.length > 150) return false;
-    return true;
-  }
 
-  List<GameChoice> _extractChoicesFromRawText(String text) {
-    final choices = <GameChoice>[];
-    final lines = text.split('\n');
-
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-
-      final match = GameProviderBase.reChoiceOption.firstMatch(trimmed);
-      if (match != null) {
-        final rawAction = trimmed.replaceFirst(GameProviderBase.reChoiceOption, '').trim();
-        final action = sanitizeChoiceText(rawAction);
-        if (action.isNotEmpty && action.length >= 2) {
-          choices.add(GameChoice(text: action, action: action));
-        }
-      }
-
-      if (choices.length >= 4) break;
-    }
-
-    return choices;
-  }
 
   /// 最终兜底选项：当AI连续失败时，基于当前剧情生成4个合理选项
   /// 兜底选项（严格基于「剧情末尾800字」生成，不能输出"仔细观察/面对情况"这种会断链的空选项）
@@ -955,19 +848,6 @@ mixin GameResponseMixin on GameProviderBase {
     if (candidates.isEmpty) candidates = List<GameChoice>.from(choices);
 
     // Step 2: 推进型关键词加分（优先排序）
-    const advanceKeywords = <String>[
-      '出发', '动身', '前往', '告别', '收拾', '起程', '离开', '走下楼梯',
-      '走出房间', '去车站', '去对角巷', '出发前往', '立刻去', '大步走',
-      '拥抱告别', '转身走向', '动身前往', '准备明天',
-    ];
-    int score(GameChoice c) {
-      var s = 0;
-      final text = c.text + c.action;
-      for (final kw in advanceKeywords) {
-        if (text.contains(kw)) s += 10;
-      }
-      return s;
-    }
     candidates.sort((a, b) => score(b).compareTo(score(a)));
 
     // Step 3: 同分/都为0分时，优先原列表更靠前的（A > B > C > D）
@@ -988,7 +868,7 @@ mixin GameResponseMixin on GameProviderBase {
   /// 「推进」按钮入口：调用 pickAutoAdvanceChoice() 后再 processChoice
   Future<void> processAutoAdvanceChoice() async {
     final choice = pickAutoAdvanceChoice();
-    debugPrint('▶️ 推进按钮选中: choice=${choice.text.substring(0, choice.text.length > 30 ? 30 : choice.text.length)} (候选池=${choices.length})');
+    // 推进按钮选中日志已移除
     return processChoice(choice);
   }
 
@@ -1153,7 +1033,7 @@ $kChoicePromptSuffix''';
 
         if (choices.length >= 4) break;
       }
-      debugPrint('[选项AI原始] 解析到${choices.length}条选项: ${choices.map((c) => c.text.substring(0, c.text.length > 30 ? 30 : c.text.length)).join(" | ")}');
+      // 选项AI原始解析日志已移除
 
       // ===== BUG-3 陌生NPC过滤（AI捏造"霍尔"等未出场角色的选项必须丢弃）=====
       // 选项生成器经常在需要"冲突对手"时随意捏造 NPC 名字（如日志 L1459 的"霍尔"），
@@ -1201,7 +1081,7 @@ $kChoicePromptSuffix''';
       choices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
       final filtered = beforeFilter - choices.length;
       if (filtered > 0) {
-        debugPrint('[选项NPC门] 丢弃$filtered条选项：提到未登场/捏造的NPC（如"霍尔"）。剩余合格选项:${choices.length}');
+        // [选项NPC门] 过滤日志已移除
       }
 
       // 质量检查：只要有 ≥2 条合格选项就保留合格子集，不再要求 4 条全部合格
@@ -1276,7 +1156,7 @@ $kChoicePromptSuffix''';
         retryChoices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
         final retryFiltered = retryBefore - retryChoices.length;
         if (retryFiltered > 0) {
-          debugPrint('[选项NPC门·重试] 丢弃$retryFiltered条选项（陌生捏造NPC），重试剩余:${retryChoices.length}');
+          // [选项NPC门·重试] 日志已移除
         }
         // BUG-L 关键修复：不要无脑 clear() 好选项！
         // 旧代码：retryChoices.length >= 2 → choices..clear()..addAll(retryChoices)
@@ -1302,7 +1182,7 @@ $kChoicePromptSuffix''';
       } else {
         // qualityPassed=true → 只保留合格选项，丢弃不合格的（不重试）
         if (goodChoices.length < choices.length) {
-          debugPrint('[选项质量] 保留${goodChoices.length}条合格选项，丢弃${choices.length - goodChoices.length}条不合格');
+          // [选项质量] 日志已移除
           choices
             ..clear()
             ..addAll(goodChoices);
@@ -1317,7 +1197,7 @@ $kChoicePromptSuffix''';
       }
 
       // BUG-N 追踪日志：输出最终返回给UI的选项，方便定位不一致问题
-      debugPrint('▶️ 最终选项(${choices.length}条): ${choices.map((c) => c.text.substring(0, c.text.length > 30 ? 30 : c.text.length)).join(" | ")}');
+      // 最终选项日志已移除
       return choices;
     } catch (e) {
       // 关键修复：以前这里 return [] → 外层走 generateContextualFallbackChoices → 生成不承接剧情末尾的"仔细查看"
@@ -1336,366 +1216,12 @@ $kChoicePromptSuffix''';
 
   // ===== BUG-3 辅助：选项是否提到了"未登场/捏造的NPC名"（如"霍尔"）=====
   // 返回 true = 该选项要丢弃
-  bool _choiceMentionsUnintroducedNpc(
-    String text,
-    Set<String> whitelist,
-    Map<String, bool> npcNameAll,
-  ) {
-    if (text.isEmpty) return false;
-    // 找出所有2~4字的"像人名的候选"：纯汉字、非代词虚词
-    final candidates = RegExp(
-      r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
-      unicode: true,
-    ).allMatches(text).map((m) => m.group(1)!).toSet().toList();
-
-    for (final cand in candidates) {
-      // (1) 白名单（introduced的NPC+别名 / 玩家名 / 正文末尾出现过的路人）命中就放行
-      if (whitelist.contains(cand)) continue;
-      // (2) 明显是叙述词/虚词（教授/夫人/小姐/先生/同学/新生/大家/他们...）→ 放行
-      if (_looksLikeNarrationWord(cand)) continue;
-
-      // (3) 候选命中 npcRegistry 的全名或别名，但是 introduced=false → 说明这是"还没出场的已知角色"
-      //     比如开局前几回合就写"去找斯内普"，玩家根本没见过 → 要丢弃
-      if (npcNameAll.containsKey(cand)) {
-        debugPrint('[选项NPC门] 命中登记但未introduced的NPC：「$cand」，移除选项「${text.substring(0, text.length > 24 ? 24 : text.length)}…」');
-        return true;
-      }
-      // (4) 4字词几乎不可能是捏造NPC名（中文人名通常2~3字），直接放行
-      if (cand.length >= 4) continue;
-      // (5) 既不在白名单，也不像叙述词，还不是登记过的NPC，且是2-3字 →
-      //     额外检查是否真的是人名模样：不含常见非人名用字 → 才判定为AI捏造的"霍尔"等假人
-      //     BUG-N 修复：之前无条件丢弃所有未知2-4字词，导致"仔细观察""周围环境"等
-      //     常见选项用词被误判为捏造NPC，绝大多数选项都被过滤掉。
-      if (_candidateLooksLikeFabricatedNpcName(cand)) {
-        debugPrint('[选项NPC门] 疑似捏造陌生NPC：「$cand」，移除选项「${text.substring(0, text.length > 24 ? 24 : text.length)}…」');
-        return true;
-      }
-      // 否则不像捏造NPC名 → 放行（可能是普通动词/名词）
-    }
-    return false;
-  }
 
   /// 检查候选词是否像是AI捏造的NPC名（如"霍尔"）
   /// 规则：2-3字中文，不含任何明确非人名用字，且符合中文人名常见模式
-  bool _candidateLooksLikeFabricatedNpcName(String cand) {
-    if (cand.length < 2 || cand.length > 3) return false;
-    // 如果包含常见的非人名汉字 → 不是捏造NPC名
-    // 这些字在中文普通词汇中高频出现，但极少出现在NPC名字中
-    if (RegExp(r'[仔细观察周围环境线索寻找练习检查尝试继续准备考虑决定选择告诉讨论商量确认提醒建议邀请帮助跟随收集整理收拾出发前往拜访搭话转身点头摇头沉默叹气微笑皱眉盯着望着低头抬头伸手举手放下拿起掏出插入抽出推开拉开站起坐下躺下靠在躲在藏在次遍趟件事情]').hasMatch(cand)) {
-      return false;
-    }
-    return true;
-  }
 
   /// 快速过滤：2~4字中文更像"叙述/地点/身份词"还是"人名"
-  static bool _looksLikeNarrationWord(String s) {
-    if (s.length < 2) return true;
-    // 含叙述高频字 → 判定非人名
-    if (RegExp(r'[的地得是去来到处在把让给和与或从向对被和就都也又便很还没不知说道看听闻想走跑站坐笑哭吃打学教练写读感思起起上下出入回开关过好]').hasMatch(s)) return true;
-    // 身份/头衔/场所后缀（这类一般是"列车长/管理员/教授/新生"等，不是具体人名）
-    const suffixes = ['教授', '院长', '夫人', '小姐', '先生', '同学', '新生', '学长', '学姐', '级长',
-      '列车长', '管理员', '老板', '店员', '经理', '裁判', '队长', '队员', '首领', '仆人', '管家',
-      '车站', '礼堂', '大道', '教室', '宿舍', '学院', '走廊', '塔', '图书馆', '书店', '酒吧',
-      '火车', '列车', '公共', '休息', '大厅', '入口', '出口', '今天', '明天', '昨天', '现在',
-      '上午', '下午', '中午', '晚上', '深夜', '大家', '他们', '你们', '我们', '自己', '什么',
-      '怎么', '这样', '那样', '这个', '那个', '这里', '那里', '一点', '一些', '东西', '事情'];
-    for (final sfx in suffixes) {
-      if (s.endsWith(sfx) || s == sfx) return true;
-    }
-    return false;
-  }
 
-  void _parseAffectionChanges(String text) {
-    if (npcRegistry.isEmpty) return;
-
-    // 修复：使用捕获组提取内容，避免 replaceFirst 把整段匹配（header+body）都删掉
-    // 旧代码：sectionMatch.group(0)!.replaceFirst(sectionPattern, '') 会用同一个
-    //         sectionPattern 再次匹配整段文本然后替换为空 → section 永远是 "" →
-    //         所有好感度变化都不会被解析 → NPC 好感度永远不变
-    final sectionPattern = RegExp(r'【好感(?:度)?变化?】\s*([\s\S]*?)(?=【|$)');
-    final sectionMatch = sectionPattern.firstMatch(text);
-
-    String? sectionText;
-    if (sectionMatch != null) {
-      sectionText = sectionMatch.group(1)!.trim();
-    }
-
-    // Fallback 1：AI 未输出【好感度变化】标签头时，扫描全文寻找散落的好感行
-    if (sectionText == null || sectionText.isEmpty) {
-      sectionText = _fallbackAffectionScan(text);
-    }
-
-    // ============================================================
-    // P1-2 好感变化逻辑校验（宏观通用·统一出口，避免假好感"羞辱了你 → +8 好感"）
-    // 注意：校验逻辑已封装为独立顶层类 AffectionValidator，与 StagnationDetector 同一层级，
-    //       任何 mixin 解析好感度时都统一调用它，不会出现"这里校验了那里没校验"的不一致。
-    // ============================================================
-    const validator = AffectionValidator.instance;
-
-    final explicitChanged = <String>{};
-
-    if (sectionText != null && sectionText.isNotEmpty) {
-      for (final line in sectionText.split('\n')) {
-        final trimmed = line.trim();
-        if (trimmed.isEmpty) continue;
-        final match = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)').firstMatch(trimmed);
-        if (match == null) continue;
-        var npcName = match.group(1)!.trim();
-        var delta = int.tryParse(match.group(2)!) ?? 0;
-        if (delta == 0 || npcName.isEmpty) continue;
-        npcName = npcName.replaceFirst(RegExp(r'[（(].*?[）)]'), '').trim();
-        if (npcName.isEmpty) continue;
-
-        // ---- P1-2 好感校验 + NPC 模糊匹配（先匹配再校验）----
-        // BUG-M 修复：AI 会写出"塞德里克·邓布利多"这种混淆名（塞德里克·迪戈里 + 阿不思·邓布利多）
-        // 旧顺序：先 validator.validate(npcRegistry, npcName, ...) → "塞德里克·邓布利多"不在注册表 → 拒绝
-        // 新顺序：先模糊匹配找到最相似的注册NPC → 用真名做校验 → 通过则更新好感
-        NPC? npc;
-        int bestScore = 0;
-        for (final n in npcRegistry.values) {
-          final score = n.nameMatchScore(npcName);
-          if (score > bestScore) {
-            bestScore = score;
-            npc = n;
-          }
-        }
-        if (npc == null || bestScore == 0) {
-          debugPrint('[好感解析] 未找到匹配NPC: $npcName');
-          continue;
-        }
-        // 用匹配到的真名做校验（而不是 AI 写的混淆名）
-        if (!validator.validate(npcRegistry, npc.name, text, delta)) continue;
-
-        if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
-        if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
-        try {
-          // npc 和 bestScore 已在上面模糊匹配阶段赋值，这里直接使用
-          debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta (匹配分=$bestScore)');
-          final before = npc.affection;
-          updateNpcAffection(npc.id, delta, reason: '剧情互动');
-          final after = npc.affection;
-          if (before != after) {
-            debugPrint('[好感更新] ${npc.name}: $before → $after');
-            explicitChanged.add(npc.id);
-          } else {
-            debugPrint('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
-          }
-          checkLocks(npc);
-          syncRelationshipLevel(npc);
-          checkAffectionAchievements(npc);
-        } catch (e) {
-          debugPrint('[好感解析错误] $npcName: $e');
-        }
-      }
-    }
-
-    // Fallback 2：对剧情中出现但没有显式好感变化的 NPC，推断被动好感
-    _inferPassiveAffection(text, excludeIds: explicitChanged);
-  }
-
-  /// Fallback：AI 没有输出【好感度变化】标签头时，尝试从全文提取散落的好感行
-  /// 匹配格式：NPC名:+X / NPC名：-X / NPC名 +X 等
-  String? _fallbackAffectionScan(String text) {
-    final lines = text.split('\n');
-    final found = <String>[];
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-      // 跳过叙事正文（太长的行大概率是叙事，不是好感度行）
-      if (trimmed.length > 40) continue;
-      // 必须包含 +数字 或 -数字
-      if (!RegExp(r'[+-]\d').hasMatch(trimmed)) continue;
-      // 不能是选项行
-      if (GameProviderBase.reChoiceOption.hasMatch(trimmed)) continue;
-      found.add(trimmed);
-    }
-    return found.isEmpty ? null : found.join('\n');
-  }
-
-  /// 被动好感推断：当 AI 未输出好感变化、或剧情中出现的 NPC 没有被覆盖时，
-  /// 根据玩家行动的关键词推断小幅好感变化。
-  /// - 只对剧情文本中出现且未被显式好感变化覆盖的 NPC 生效
-  /// - 每回合最多 3 个 NPC 获得被动好感
-  /// - 变化幅度小：正面互动 +1~+2，负面互动 -1
-
-  void _inferPassiveAffection(String narrativeText, {Set<String>? excludeIds}) {
-    if (npcRegistry.isEmpty || player == null) return;
-
-    final action = lastPlayerAction.toLowerCase();
-    // 判断玩家行动的情感倾向
-    final positiveKeywords = [
-      '聊天', '对话', '帮助', '帮', '救', '约', '邀', '送礼', '送',
-      '陪伴', '陪', '鼓励', '安慰', '保护', '支持', '信任', '赞同',
-      '微笑', '友好', '亲切', '称赞', '夸', '感谢', '谢',
-      '一起', '散步', '聊天', '聊天', '和', '与', '跟',
-    ];
-    final negativeKeywords = [
-      '攻击', '打', '骂', '辱骂', '欺骗', '骗', '背叛', '出卖',
-      '嘲笑', '讽刺', '忽视', '无视', '拒绝', '反对', '争吵', '吵架',
-      '冲突', '打架', '偷', '抢', '伤害', '恶意',
-    ];
-
-    final isPositive = positiveKeywords.any((k) => action.contains(k));
-    final isNegative = negativeKeywords.any((k) => action.contains(k));
-    if (!isPositive && !isNegative) return;
-
-    // 从剧情文本中找出出现的 NPC（未被显式好感覆盖的）
-    final candidates = <NPC>[];
-    final npcs = npcRegistry.values.toList()
-      ..sort((a, b) => b.name.length.compareTo(a.name.length));
-    for (final npc in npcs) {
-      if (excludeIds != null && excludeIds.contains(npc.id)) continue;
-      if (!npc.isAlive) continue;
-      // 被动好感只作用于已登场的 NPC，避免未出场的角色被“隔空”加好感
-      if (!npc.introduced) continue;
-      // 检查 NPC 是否在剧情文本中出现
-      bool mentioned = false;
-      for (final alias in npc.allNames) {
-        if (alias.runes.length < 2) continue;
-        if (_standaloneNameMentioned(narrativeText, alias)) {
-          mentioned = true;
-          break;
-        }
-      }
-      if (mentioned) {
-        candidates.add(npc);
-      }
-    }
-
-    // 最多 3 个 NPC 获得被动好感
-    final maxPassive = 3;
-    for (int i = 0; i < candidates.length && i < maxPassive; i++) {
-      final npc = candidates[i];
-      final delta = isPositive
-          ? 1 + random.nextInt(2)  // +1 or +2
-          : -1;                     // -1
-      final before = npc.affection;
-      updateNpcAffection(npc.id, delta, reason: '剧情互动(推断)');
-      final after = npc.affection;
-      if (before != after) {
-        debugPrint('[被动好感] ${npc.name}: $before → $after (推断${delta > 0 ? "+" : ""}$delta)');
-        checkLocks(npc);
-        syncRelationshipLevel(npc);
-      }
-    }
-  }
-
-  void _parseReputationChanges(String text) {
-    if (player == null) return;
-    // 修复：与 _parseAffectionChanges 同样的 bug——replaceFirst 把整段内容删掉
-    final sectionPattern = RegExp(r'【声望变化?】\s*([\s\S]*?)(?=【|$)');
-    final sectionMatch = sectionPattern.firstMatch(text);
-    if (sectionMatch == null) return;
-    final section = sectionMatch.group(1)!.trim();
-    if (section.isEmpty) return;
-    for (final line in section.split('\n')) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-      final match = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)').firstMatch(trimmed);
-      if (match == null) continue;
-      final dim = match.group(1)!.trim();
-      final delta = int.tryParse(match.group(2)!) ?? 0;
-      if (delta == 0 || dim.isEmpty) continue;
-      try {
-        player!.playerReputation.add(dim, delta);
-      } catch (e) {
-      }
-    }
-  }
-
-  /// 判断叙事文本中是否独立提到了某个别名
-  /// - 中文名：前后不得紧跟汉字（中文无空格，按汉字边界判断，避免“赫敏”被“赫敏格”吞并）
-  /// - 拉丁名：前后不得为字母/数字/下划线
-  bool _standaloneNameMentioned(String text, String name) {
-    if (name.isEmpty) return false;
-    final escaped = RegExp.escape(name);
-    final hasHan = RegExp(r'\p{Script=Han}', unicode: true).hasMatch(name);
-    if (hasHan) {
-      final pattern = RegExp(r'(?<![\p{Script=Han}])' + escaped + r'(?![\p{Script=Han}])', unicode: true);
-      return pattern.hasMatch(text);
-    }
-    final pattern = RegExp(r'(?<!\p{L})(?<!\p{N})(?<!_)' + escaped + r'(?!\p{L})(?!\p{N})(?!_)', unicode: true);
-    return pattern.hasMatch(text);
-  }
 
   // ==================== 更多建议（本地生成，不消耗 token） ====================
-}
-
-// ============================================================
-// 【宏观通用 M5 · AffectionValidator 好感校验器】
-//
-// 把之前写在 _parseAffectionChanges 内部的私有 validateAffectionLogic 函数，
-// 抽成独立的顶层工具类（同 StagnationDetector 的层级）。
-//
-// 宏观好处：
-// - 任何 mixin / 任何解析点（主动叙事、后台推断、玩家手动事件）只要调用同一个
-//   AffectionValidator.instance.validate()，就能保证校验口径 100% 一致。
-// - 纯函数：所有数据都通过参数传入（npcRegistry / npcName / narrative / delta），
-//   不持有 GameProvider 引用，易于后期写单测。
-// ============================================================
-class AffectionValidator {
-  const AffectionValidator._();
-  static const AffectionValidator instance = AffectionValidator._();
-
-  static final RegExp _negRe = RegExp(
-    r'(侮辱|羞辱|嘲笑|讥讽|嘲讽|骂|叱责|指责|当众.*丢脸|陷害|背叛|出卖|偷窃|恶意|骗了|欺骗|勒索|霸凌|针对|敌对|决斗|攻击|施咒伤害|下咒|诅咒)',
-  );
-
-  static final RegExp _hugePositiveRe = RegExp(
-    r'(救了.*命|舍身|挡在.*前面|替.*挡|救命|以身犯险|告白|求婚|说出了真心话|坦白|赠予.*贵重|赠送.*传家|为.*背叛.*|不惜.*帮助)',
-  );
-
-  /// 统一好感校验入口。
-  /// [npcRegistry] 传当前的 NPC 注册表（用于按 name 反查 NPC 状态）
-  /// [npcName] 要校验的 NPC 名称（含别名/昵称均可）
-  /// [narrative] 完整叙事，用于匹配正向/负向关键词判断互动属性
-  /// [delta] 玩家（AI）声称的好感变化值
-  ///
-  /// return true = 校验通过，允许写入；false = 逻辑不合理，直接丢弃此条变化（不打回整段剧情）
-  bool validate(
-    Map<String, NPC> npcRegistry,
-    String npcName,
-    String narrative,
-    int delta,
-  ) {
-    if (delta == 0) return false;
-    if (npcName.isEmpty || npcRegistry.isEmpty) return false;
-
-    // 规则1：负面互动关键词 → 不允许正向 delta
-    if (_negRe.hasMatch(narrative)) {
-      if (delta > 0) {
-        debugPrint('[P1-2 好感校验] 丢弃「$npcName+$delta」：叙事里含负面互动关键词，好感却正向变化。');
-        return false;
-      }
-    }
-
-    // 规则2：|delta| ≥ 8 必须有救命/告白/挡刀 等重大事件支撑
-    if (delta.abs() >= 8 && !_hugePositiveRe.hasMatch(narrative)) {
-      debugPrint('[P1-2 好感校验] 丢弃「$npcName ${delta > 0 ? '+' : ''}$delta」：变化幅度≥8但叙事里没有"救命/告白/挡刀"等重大事件。');
-      return false;
-    }
-
-    // 规则3：大幅正向（≥+4）需匹配 NPC 当前阶段（是否登场、是否敌对）
-    if (delta >= 4) {
-      NPC? target;
-      for (final n in npcRegistry.values) {
-        if (n.nameMatches(npcName)) {
-          target = n;
-          break;
-        }
-      }
-      if (target != null) {
-        if (!target.introduced) {
-          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：该NPC尚未在剧情中登场(introduced=false)。');
-          return false;
-        }
-        if (target.affection <= -20) {
-          debugPrint('[P1-2 好感校验] 丢弃「$npcName +$delta」：当前好感=${target.affection}（敌对阶段），不能一下正向大跳涨。');
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
 }

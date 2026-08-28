@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: android-build-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -26,6 +26,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -71,14 +81,14 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git commit -m "docs: sync changelog for v${{ steps.bump.outputs.VERSION_NAME }} [skip ci]"
-            git pull --rebase origin main || true
+            git fetch origin main && git rebase origin/main
             git push origin main
             echo "✅ Changelog synced and pushed"
             echo "SYNCED=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install Dependencies
-        run: flutter pub upgrade && flutter pub get
+        run: flutter pub get
 
       - name: Analyze
         run: flutter analyze --no-fatal-warnings
@@ -103,8 +113,7 @@ jobs:
       - name: Build APK
         id: build
         run: |
-          flutter build apk --release 2>&1 | tee build_output.log || true
-          # If flutter can't find APK, try building with Gradle directly
+          flutter build apk --release 2>&1 | tee build_output.log
           APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
           if [ -z "$APK_PATH" ]; then
             echo "Flutter build didn't produce APK, trying Gradle directly..."
@@ -156,7 +165,7 @@ jobs:
           path: ${{ env.RENAMED_APK }}
           retention-days: 30
 
-      - name: Upload APK to nightly.link
+      - name: Upload APK (nightly)
         uses: actions/upload-artifact@v4
         with:
           name: HogwartLige-nightly
@@ -173,12 +182,4 @@ jobs:
           echo "**GitHub Releases（历史版本）**" >> $GITHUB_STEP_SUMMARY
           echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases" >> $GITHUB_STEP_SUMMARY
 
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION_NAME="${{ steps.bump.outputs.VERSION_NAME }}"
-          gh release create "v${VERSION_NAME}" \
-            "${{ env.RENAMED_APK }}" \
-            --title "HogwartLige v${VERSION_NAME}" \
-            --generate-notes
+      # 手动创建 Release：gh release create "v{VERSION}" ./path/to/apk --title "HogwartLige v{VERSION}" --generate-notes

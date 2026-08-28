@@ -24,7 +24,10 @@ class GameProvider extends GameProviderBase
     with
         GameInitMixin,
         GameNarrativeMixin,
+        GameNarrativeContinuityMixin,
         GameCommandsMixin,
+        GameResponseChoiceMixin,
+        GameResponseAffectionMixin,
         GameResponseMixin,
         GameRelationsMixin,
         GameSystemsMixin,

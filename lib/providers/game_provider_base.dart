@@ -207,6 +207,8 @@ abstract class GameProviderBase extends ChangeNotifier {
   void onApiKeyChange();
   bool parseNarrativeOnly(String text);
   void parseResponse(String text);
+  void parseAffectionChanges(String text);
+  void parseReputationChanges(String text);
   Future<void> processChoice(GameChoice choice);
   bool purchaseItem(String itemName, int price, {String type, String description});
   Future<void> quickSave();
