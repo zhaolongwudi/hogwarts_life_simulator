@@ -37,18 +37,22 @@ class AiRouterConfig {
 }
 
 class AiRouter {
-  final Map<AiProvider, DeepSeekService> _services = {};
-  final Map<AiProvider, AiConfig> _configs = {};
+  /// 每个提供商可能有多个服务（每个 API Key 一个服务）
+  final Map<AiProvider, List<DeepSeekService>> _services = {};
+  final Map<AiProvider, List<AiConfig>> _configs = {};
   final AiRouterConfig _config;
   final _responseCache = ResponseCache.instance;
+  int _roundRobinIndex = 0; // 轮询索引，用于随机选择多 key
 
   AiRouter(this._config);
 
+  /// 注册一个 API Key 对应的配置
   void register(AiConfig cfg) {
-    _configs[cfg.provider] = cfg;
-    _services[cfg.provider] = DeepSeekService(config: cfg);
+    (_configs[cfg.provider] ??= []).add(cfg);
+    (_services[cfg.provider] ??= []).add(DeepSeekService(config: cfg));
   }
 
+  /// 取消注册一个提供商的所有服务
   void unregister(AiProvider provider) {
     _configs.remove(provider);
     _services.remove(provider);
@@ -56,11 +60,19 @@ class AiRouter {
 
   /// 是否存在任何可用 AI 服务。任一提供商已注册（配置了 key）即可通过 fallback 生成叙事，
   /// 不再只检查主 narrativeProvider，避免「有备用 key 却被挡死」。
-  bool get hasNarrativeService => _configs.isNotEmpty;
+  bool get hasNarrativeService => _configs.values.any((list) => list.isNotEmpty);
 
-  List<AiProvider> get registeredProviders => _configs.keys.toList();
+  /// 获取所有已配置了至少一个 key 的提供商
+  List<AiProvider> get registeredProviders => _configs.keys
+      .where((p) => _configs[p]!.isNotEmpty)
+      .toList();
 
-  DeepSeekService? getService(AiProvider provider) => _services[provider];
+  /// 获取指定提供商的所有服务（每个 API Key 一个）
+  List<DeepSeekService>? getServices(AiProvider provider) => _services[provider];
+
+  /// 获取指定提供商的服务数量
+  int serviceCount(AiProvider provider) =>
+      _services[provider]?.length ?? 0;
 
   Future<ChatResult> chatComplete({
     required AiScene scene,
@@ -145,7 +157,7 @@ class AiRouter {
     String? callId,
     CancelToken? cancelToken,
   }) async {
-    // 检查缓存（narrative 场景关闭缓存：其 prompt 每回合都变，命中率极低且有冻结随机性的风险）
+    // 检查缓存
     if (useCache) {
       final cached = _responseCache.get(
         prompt,
@@ -154,7 +166,6 @@ class AiRouter {
         maxTokens: maxTokens,
       );
       if (cached != null) {
-        // 命中缓存也落一条 COMPLETE，避免 logStart 留下的 _pendingCalls 条目泄漏，同时便于调试追踪
         final cacheSceneLabel = scene?.toString().split('.').last ?? 'unknown';
         await AiDebugLogger.instance.logComplete(
           callId: callId,
@@ -171,84 +182,93 @@ class AiRouter {
       }
     }
 
-    // 候选列表：primary 优先，随后按 fallbackOrder 去重。
-    // 默认 fallbackOrder 只含免费模型（sensenova/agnes），不会自动切到付费 DeepSeek；
-    // 仅当 primary 本身就是 DeepSeek 时它才会被尝试，失败后回退到免费模型。
+    // 候选提供商列表：primary 优先，随后按 fallbackOrder 去重。
     final candidates = <AiProvider>[primary];
     for (final p in _config.fallbackOrder) {
       if (!candidates.contains(p)) candidates.add(p);
     }
 
+    const maxRetriesPerService = 2; // 每个 key 最多重试 2 次（共 3 次尝试）
+
     Object? lastError;
     for (final provider in candidates) {
-      final service = _services[provider];
-      if (service == null) continue; // 未注册（无 key），跳过
+      final services = _services[provider];
+      if (services == null || services.isEmpty) continue;
 
-      // 指数退避重试：对可重试错误（429/5xx/网络抖动）先重试同一提供商，
-      // 避免立即切换备用提供商浪费其配额。最多重试 2 次（共 3 次尝试）。
-      const maxRetries = 2;
-      for (var attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          final result = await _executeWithRateLimit(
-            provider: provider,
-            service: service,
-            prompt: prompt,
-            systemPrompt: systemPrompt,
-            temperature: temperature,
-            maxTokens: maxTokens,
-            cancelToken: cancelToken,
-          );
-          // 缓存成功响应
-          if (useCache) {
-            _responseCache.set(
-              prompt,
-              result.content,
+      // 轮询选择起始 key，避免每次从头开始（让多个 key 均匀分配流量）
+      _roundRobinIndex = (_roundRobinIndex + 1) % services.length;
+      // 从轮询起始点开始，遍历所有 key
+      for (int ki = 0; ki < services.length; ki++) {
+        final serviceIdx = (_roundRobinIndex + ki) % services.length;
+        final service = services[serviceIdx];
+        final keyHash = service.config.apiKey.length > 8
+            ? service.config.apiKey.substring(0, 8)
+            : service.config.apiKey;
+
+        for (var attempt = 0; attempt <= maxRetriesPerService; attempt++) {
+          try {
+            final result = await _executeWithRateLimit(
+              provider: provider,
+              service: service,
+              keyHash: keyHash,
+              prompt: prompt,
               systemPrompt: systemPrompt,
               temperature: temperature,
               maxTokens: maxTokens,
+              cancelToken: cancelToken,
             );
-          }
-          // 记录成功响应（完整保存返回内容，不再截断以便调试）
-          final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-          await AiDebugLogger.instance.logComplete(
-            callId: callId,
-            timestamp: DateTime.now().toIso8601String(),
-            scene: sceneLabel,
-            provider: getProviderLabel(provider),
-            action: 'RESPONSE',
-            responsePreview: result.content,
-            promptTokens: result.usage.promptTokens,
-            completionTokens: result.usage.completionTokens,
-            totalTokens: result.usage.totalTokens,
-          );
-          return result;
-        } catch (e) {
-          if (cancelToken?.isCancelled == true) {
-            rethrow;
-          }
-          lastError = e;
+            // 缓存成功响应
+            if (useCache) {
+              _responseCache.set(
+                prompt,
+                result.content,
+                systemPrompt: systemPrompt,
+                temperature: temperature,
+                maxTokens: maxTokens,
+              );
+            }
+            final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+            await AiDebugLogger.instance.logComplete(
+              callId: callId,
+              timestamp: DateTime.now().toIso8601String(),
+              scene: sceneLabel,
+              provider: getProviderLabel(provider),
+              action: 'RESPONSE',
+              responsePreview: result.content,
+              promptTokens: result.usage.promptTokens,
+              completionTokens: result.usage.completionTokens,
+              totalTokens: result.usage.totalTokens,
+            );
+            return result;
+          } catch (e) {
+            if (cancelToken?.isCancelled == true) {
+              rethrow;
+            }
+            lastError = e;
 
-          // 可重试错误且还有重试机会：指数退避后重试同一提供商
-          if (e is AiRetryableException && attempt < maxRetries) {
-            final backoffMs = (attempt + 1) * 2000; // 2s, 4s
-            debugPrint('⚠️ ${provider.name} 第${attempt + 1}次失败，${backoffMs}ms后重试: $e');
-            await Future.delayed(Duration(milliseconds: backoffMs));
-            continue;
-          }
+            // 可重试错误且还有重试机会：指数退避后重试同一 key
+            if (e is AiRetryableException && attempt < maxRetriesPerService) {
+              final backoffMs = (attempt + 1) * 2000;
+              debugPrint('⚠️ ${provider.name}[$keyHash] 第${attempt + 1}次失败，${backoffMs}ms后重试: $e');
+              await Future.delayed(Duration(milliseconds: backoffMs));
+              continue;
+            }
 
-          debugPrint('⚠️ ${provider.name} 调用失败: $e');
-          final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-          final isLastCandidate = provider == candidates.last;
-          await AiDebugLogger.instance.logComplete(
-            callId: callId,
-            timestamp: DateTime.now().toIso8601String(),
-            scene: sceneLabel,
-            provider: getProviderLabel(provider),
-            action: isLastCandidate ? 'ERROR' : 'FALLBACK',
-            error: e.toString(),
-            keepPending: !isLastCandidate,
-          );
-          break; // 重试耗尽或不可重试，切换下一个提供商
+            // 当前 key 所有重试耗尽，记录日志并尝试下一个 key
+            debugPrint('⚠️ ${provider.name}[$keyHash] 已耗尽，尝试下一个 Key: $e');
+            final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
+            final isLastKey = (ki == services.length - 1) && (provider == candidates.last);
+            await AiDebugLogger.instance.logComplete(
+              callId: callId,
+              timestamp: DateTime.now().toIso8601String(),
+              scene: sceneLabel,
+              provider: '${getProviderLabel(provider)}[$keyHash]',
+              action: isLastKey ? 'ERROR' : 'FALLBACK',
+              error: e.toString(),
+              keepPending: !isLastKey,
+            );
+            break; // 切到下一个 key
+          }
         }
       }
     }
@@ -260,6 +280,7 @@ class AiRouter {
   Future<ChatResult> _executeWithRateLimit({
     required AiProvider provider,
     required DeepSeekService service,
+    required String keyHash,
     required String prompt,
     String? systemPrompt,
     required double temperature,
@@ -268,8 +289,8 @@ class AiRouter {
   }) async {
     switch (provider) {
       case AiProvider.agnes:
-        // Agnes：使用速率限制器（限20 RPM）
-        await AgnesRateLimiter.instance.waitForSlot();
+        // Agnes：每个 API Key 独立限流（20 RPM）
+        await AgnesRateLimiter.instance.waitForSlot(keyHash);
         return service.chatComplete(
           prompt: prompt,
           systemPrompt: systemPrompt ?? '',
@@ -302,10 +323,11 @@ class AiRouter {
   }
 
   Future<double?> checkBalance(AiProvider provider) async {
-    final service = _services[provider];
-    if (service == null) return null;
+    final services = _services[provider];
+    if (services == null || services.isEmpty) return null;
+    // 尝试第一个 key 的余额查询
     try {
-      return await service.getBalance();
+      return await services.first.getBalance();
     } catch (e) {
       return null;
     }

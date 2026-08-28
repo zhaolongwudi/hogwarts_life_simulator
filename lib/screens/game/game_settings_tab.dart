@@ -9,6 +9,8 @@ import '../settings/settings_preset_pickers.dart';
 import '../settings/settings_token_usage.dart';
 import '../settings/settings_crash_section.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/game_provider_base.dart';
+import '../story_history_screen.dart';
 
 /// 游戏过程中的设置 Tab 直接展示完整设置内容，和独立 SettingsScreen 保持一致
 /// 但不包含 AppBar 返回箭头、标题返回按钮（作为 Tab 内嵌使用）
@@ -62,7 +64,9 @@ class _GameSettingsInlineTabState extends State<GameSettingsInlineTab> {
     super.initState();
     final appProvider = context.read<AppProvider>();
     for (final p in AiProvider.values) {
-      _keyControllers[p] = TextEditingController(text: appProvider.apiKeys[p.name] ?? '');
+      final keys = appProvider.keysForProvider(p);
+      final firstKey = keys.isNotEmpty ? keys.first : '';
+      _keyControllers[p] = TextEditingController(text: firstKey);
       _modelControllers[p] = TextEditingController(text: appProvider.providerModel(p));
     }
   }
@@ -79,13 +83,11 @@ class _GameSettingsInlineTabState extends State<GameSettingsInlineTab> {
   }
 
   Future<void> _saveKeyAndModel(AiProvider p) async {
-    final key = _keyControllers[p]!.text.trim();
+    // 注意：key 的保存由 SettingsProviderCard 内部的 _saveAllKeys 负责
+    // 这里只保存模型设置
     final model = _modelControllers[p]!.text.trim();
     final appProvider = context.read<AppProvider>();
 
-    if (key.isNotEmpty) {
-      await appProvider.saveApiKeyFor(p, key);
-    }
     if (model.isNotEmpty) {
       await appProvider.setModelForProvider(p, model);
     }
@@ -296,6 +298,53 @@ class _GameSettingsInlineTabState extends State<GameSettingsInlineTab> {
             style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
         const SizedBox(height: 12),
         SettingsPresetPickers.buildEraPicker(context, appProvider.era.name),
+        const SizedBox(height: 24),
+        // 剧情回放入口
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252C36),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.history, color: Color(0xFFD3A625)),
+                  SizedBox(width: 8),
+                  Text('📜 剧情回放',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '查看最近 $maxRecentTurns 回合的完整剧情记录，包含场景插图、对话气泡和详细叙事',
+                style: TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StoryHistoryScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.menu_book_outlined, size: 18),
+                  label: const Text('打开剧情回放'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD3A625),
+                    foregroundColor: const Color(0xFF1C232D),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 24),
         // AI 调试日志设置
         Container(

@@ -5,6 +5,7 @@ import 'npc_avatar.dart';
 
 /// 场景插图横幅：根据剧情地点渲染氛围渐变横幅。
 /// 无外部图片依赖，渐变+图标+地点标题营造沉浸感。
+/// 带有淡入入场动画，切换场景时视觉效果更平滑。
 class SceneIllustrationBanner extends StatelessWidget {
   final String? location;
   final String? timestamp;
@@ -21,7 +22,7 @@ class SceneIllustrationBanner extends StatelessWidget {
     final loc = location?.trim() ?? '';
     final displayTitle = loc.isNotEmpty ? loc : scene.title;
 
-    return ClipRRect(
+    final Widget banner = ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Container(
         height: 96,
@@ -96,21 +97,59 @@ class SceneIllustrationBanner extends StatelessWidget {
                 ],
               ),
             ),
+            // 装饰性底部渐变边框
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.0),
+                      Colors.white.withValues(alpha: 0.12),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 8 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: banner,
     );
   }
 }
 
 /// 对话气泡：渲染单个「说话人 + 台词」气泡。
 /// 头像在左，气泡带说话人名字与神态标签。
+/// 带有淡入+上移的入场动画，提升阅读体验。
 class DialogueBubble extends StatelessWidget {
   final String speaker;
   final String mood;
   final String text;
   final String? npcId;
   final Color houseColor;
+
+  /// 是否启用入场动画（历史回放建议启用，高密度列表建议关闭）
+  final bool animate;
 
   const DialogueBubble({
     super.key,
@@ -119,11 +158,12 @@ class DialogueBubble extends StatelessWidget {
     this.mood = '',
     this.npcId,
     this.houseColor = const Color(0xFFD3A625),
+    this.animate = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final Widget bubble = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 头像
@@ -179,6 +219,13 @@ class DialogueBubble extends StatelessWidget {
                   border: Border.all(
                     color: houseColor.withValues(alpha: 0.25),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: houseColor.withValues(alpha: 0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: RichText(
                   text: TextSpan(
@@ -190,6 +237,24 @@ class DialogueBubble extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (!animate) return bubble;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 12 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: bubble,
     );
   }
 }

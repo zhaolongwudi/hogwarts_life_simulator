@@ -1012,9 +1012,9 @@ mixin GameSystemsMixin on GameProviderBase {
   Future<Map<String, dynamic>?> get quotaInfo async {
     if (router == null) return null;
     final provider = appProvider.aiProvider;
-    final service = router!.getService(provider);
-    if (service == null) return null;
-    return await service.getQuotaInfo();
+    final services = router!.getServices(provider);
+    if (services == null || services.isEmpty) return null;
+    return await services.first.getQuotaInfo();
   }
 
   void resetTokenUsage() {

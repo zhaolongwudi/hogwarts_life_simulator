@@ -9,6 +9,7 @@ import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/narrative_visuals.dart';
 import '../../mixins/mixin_response.dart';
+import '../story_history_screen.dart';
 
 class NarrativeTab extends StatefulWidget {
   final Function(int) onNarrativeTapChoice;
@@ -98,48 +99,89 @@ class _NarrativeTabState extends State<NarrativeTab> {
   Widget _buildPanelEventTabs() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
-      ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => widget.onSubTabChanged(0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: widget.subTab == 0 ? Theme.of(context).colorScheme.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => widget.onSubTabChanged(0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: widget.subTab == 0 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: widget.subTab == 0
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).dividerTheme.color!,
+                      ),
+                    ),
+                    child: Text('事件',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: widget.subTab == 0 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
+                          fontWeight: FontWeight.w600,
+                        )),
+                  ),
                 ),
-                child: Text('事件',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: widget.subTab == 0 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
-                      fontWeight: FontWeight.w600,
-                    )),
               ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => widget.onSubTabChanged(1),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: widget.subTab == 1 ? Theme.of(context).colorScheme.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => widget.onSubTabChanged(1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: widget.subTab == 1 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: widget.subTab == 1
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).dividerTheme.color!,
+                      ),
+                    ),
+                    child: Text('面板',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: widget.subTab == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
+                          fontWeight: FontWeight.w600,
+                        )),
+                  ),
                 ),
-                child: Text('面板',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: widget.subTab == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
-                      fontWeight: FontWeight.w600,
-                    )),
               ),
-            ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const StoryHistoryScreen()),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.subTab == 2 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFD3A625).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.history, size: 14, color: const Color(0xFFD3A625)),
+                      const SizedBox(width: 4),
+                      const Text('回放',
+                          style: TextStyle(
+                            color: Color(0xFFD3A625),
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -310,21 +352,33 @@ class _NarrativeTabState extends State<NarrativeTab> {
     int bodyStartIdx = 0;
 
     final lines = narrative.split('\n');
+    // 搜索所有行，不要在找到第一个非匹配行就 break
+    // 因为 enforceContinuityBridge 可能在开头插入衔接句，将【时间戳】【地点】推到后面
+    // ❗修复：必须搜索完所有行，直到找到两个头部都提取到，或者搜索到末尾
+    // 之前的逻辑：找到一个头部后遇到非空行就 break，会导致第二个头部没被提取
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.isEmpty) continue;
       if (line.startsWith('【时间戳】')) {
         timestamp = line.replaceFirst('【时间戳】', '').trim();
         bodyStartIdx = i + 1;
+        continue;
       } else if (line.startsWith('【地点】')) {
         location = line.replaceFirst('【地点】', '').trim();
         bodyStartIdx = i + 1;
-      } else {
+        continue;
+      }
+      // 不 break —— 继续搜索，直到找到两个头部或者遍历完
+      // 只有当两个头部都找到了，我们才能确定正文开始位置
+      if (timestamp != null && location != null) {
+        // 两个都找到了，可以停止搜索了
         break;
       }
+      // 否则继续搜索（衔接句、其他非头部行都跳过）
+      continue;
     }
 
-    final bodyLines = lines.sublist(bodyStartIdx);
+    final bodyLines = lines.sublist(bodyStartIdx.clamp(0, lines.length));
     final body = bodyLines.join('\n').trim();
 
     return {

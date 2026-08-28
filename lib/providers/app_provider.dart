@@ -132,7 +132,7 @@ class AppProvider extends ChangeNotifier {
   Era _era = Era.harry_same;
   AiProvider _aiProvider = AiProvider.deepseek;
   String _aiModel = 'deepseek-chat';
-  Map<String, String> _apiKeys = {};
+  Map<String, List<String>> _apiKeys = {};
   Map<String, String> _baseUrls = {};
   Map<String, String> _models = {};
   Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
@@ -146,7 +146,7 @@ class AppProvider extends ChangeNotifier {
   AiProvider get aiProvider => _aiProvider;
   String get aiModel => _aiModel;
   bool get aiDebugLogEnabled => _aiDebugLogEnabled;
-  Map<String, String> get apiKeys => Map.unmodifiable(_apiKeys);
+  Map<String, List<String>> get apiKeys => Map.unmodifiable(_apiKeys);
   Map<String, String> get baseUrls => Map.unmodifiable(_baseUrls);
   Map<String, String> get models => Map.unmodifiable(_models);
   Map<String, String> get providerModels => Map.unmodifiable(_models);
@@ -162,22 +162,50 @@ class AppProvider extends ChangeNotifier {
     );
   }
 
+  /// 返回指定提供商的所有配置文件（每个 API Key 一个 config）
+  List<AiConfig> configsForProvider(AiProvider provider) {
+    final keys = keysForProvider(provider);
+    if (keys.isEmpty) return [];
+    final model = _models[provider.name] ?? _defaultModel(provider);
+    final customBaseUrl = _baseUrls[provider.name];
+    return keys.map((key) {
+      switch (provider) {
+        case AiProvider.deepseek:
+          return AiConfig.deepseek(key).copyWith(model: model, baseUrl: customBaseUrl);
+        case AiProvider.agnes:
+          return AiConfig.agnes(key).copyWith(model: model, baseUrl: customBaseUrl);
+        case AiProvider.sensenova:
+          return AiConfig.sensenova(key).copyWith(model: model, baseUrl: customBaseUrl);
+      }
+    }).toList();
+  }
+
+  /// 返回指定提供商的第一个 API Key 的配置（兼容旧版单 key 调用）
   AiConfig configForProvider(AiProvider provider) {
-    final key = _apiKeys[provider.name] ?? '';
+    final configs = configsForProvider(provider);
+    if (configs.isNotEmpty) return configs.first;
+    // 没有 key 时返回空 key 配置，由调用方处理
     final model = _models[provider.name] ?? _defaultModel(provider);
     final customBaseUrl = _baseUrls[provider.name];
     switch (provider) {
       case AiProvider.deepseek:
-        return AiConfig.deepseek(key).copyWith(model: model, baseUrl: customBaseUrl);
+        return AiConfig.deepseek('').copyWith(model: model, baseUrl: customBaseUrl);
       case AiProvider.agnes:
-        return AiConfig.agnes(key).copyWith(model: model, baseUrl: customBaseUrl);
+        return AiConfig.agnes('').copyWith(model: model, baseUrl: customBaseUrl);
       case AiProvider.sensenova:
-        return AiConfig.sensenova(key).copyWith(model: model, baseUrl: customBaseUrl);
+        return AiConfig.sensenova('').copyWith(model: model, baseUrl: customBaseUrl);
     }
   }
 
-  bool hasKey(AiProvider provider) =>
-      _apiKeys.containsKey(provider.name) && _apiKeys[provider.name]!.isNotEmpty;
+  /// 指定提供商是否有至少一个 API Key
+  bool hasKey(AiProvider provider) => keysForProvider(provider).isNotEmpty;
+
+  /// 指定提供商的 API Key 数量
+  int keyCount(AiProvider provider) => keysForProvider(provider).length;
+
+  /// 获取指定提供商的所有 API Key
+  List<String> keysForProvider(AiProvider provider) =>
+      _apiKeys[provider.name] ?? [];
 
   String _defaultModel(AiProvider provider) {
     switch (provider) {
@@ -191,7 +219,8 @@ class AppProvider extends ChangeNotifier {
   }
 
   AiConfig get aiConfig {
-    final key = _apiKeys[_aiProvider.name] ?? _apiKey ?? '';
+    final keys = keysForProvider(_aiProvider);
+    final key = keys.isNotEmpty ? keys.first : (_apiKey ?? '');
     final customBaseUrl = _baseUrls[_aiProvider.name];
     switch (_aiProvider) {
       case AiProvider.deepseek:
@@ -272,17 +301,23 @@ class AppProvider extends ChangeNotifier {
 
     final providers = ['deepseek', 'agnes', 'sensenova'];
     for (final p in providers) {
-      // API Key 优先从安全存储读取；旧版明文自动迁移并清除
-      var key = await KeyStore.instance.readKey(p);
-      if (key == null) {
-        final legacyKey = prefs.getString('api_key_$p');
-        if (legacyKey != null && legacyKey.isNotEmpty) {
-          key = legacyKey;
-          await KeyStore.instance.writeKey(p, legacyKey);
-          await prefs.remove('api_key_$p');
+      // 先尝试加载多 key（带索引的 key）
+      final multiKeys = await KeyStore.instance.readKeys(p);
+      if (multiKeys.isNotEmpty) {
+        _apiKeys[p] = multiKeys;
+      } else {
+        // 单 key 模式：优先从安全存储读取；旧版明文自动迁移并清除
+        var key = await KeyStore.instance.readKey(p);
+        if (key == null) {
+          final legacyKey = prefs.getString('api_key_$p');
+          if (legacyKey != null && legacyKey.isNotEmpty) {
+            key = legacyKey;
+            await KeyStore.instance.writeKey(p, legacyKey);
+            await prefs.remove('api_key_$p');
+          }
         }
+        if (key != null && key.isNotEmpty) _apiKeys[p] = [key];
       }
-      if (key != null && key.isNotEmpty) _apiKeys[p] = key;
 
       final url = prefs.getString('base_url_$p');
       if (url != null && url.isNotEmpty) _baseUrls[p] = url;
@@ -290,8 +325,8 @@ class AppProvider extends ChangeNotifier {
       if (model != null && model.isNotEmpty) _models[p] = model;
     }
 
-    final currentKey = _apiKeys[_aiProvider.name];
-    if (currentKey != null) _apiKey = currentKey;
+    final currentKeys = _apiKeys[_aiProvider.name];
+    if (currentKeys != null && currentKeys.isNotEmpty) _apiKey = currentKeys.first;
 
     // Load scene routes
     for (final scene in AiScene.values) {
@@ -309,19 +344,58 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> saveApiKey(String key) async {
     _apiKey = key;
-    _apiKeys[_aiProvider.name] = key;
-    await KeyStore.instance.writeKey(_aiProvider.name, key);
+    if (key.isEmpty) {
+      _apiKeys.remove(_aiProvider.name);
+      await KeyStore.instance.deleteKey(_aiProvider.name);
+    } else {
+      _apiKeys[_aiProvider.name] = [key];
+      await KeyStore.instance.writeKeys(_aiProvider.name, [key]);
+    }
+    notifyListeners();
+  }
+
+  // ========== 多 Key 支持 ==========
+
+  /// 添加一个 API Key 到指定提供商
+  Future<void> addApiKeyFor(AiProvider provider, String key) async {
+    if (key.trim().isEmpty) return;
+    final existing = keysForProvider(provider);
+    final newList = [...existing, key.trim()];
+    _apiKeys[provider.name] = newList;
+    await KeyStore.instance.writeKeys(provider.name, newList);
+    if (provider == _aiProvider && newList.length == 1) {
+      _apiKey = newList.first;
+    }
+    notifyListeners();
+  }
+
+  /// 删除指定提供商的第 index 个 API Key
+  Future<void> removeApiKeyAt(AiProvider provider, int index) async {
+    final existing = keysForProvider(provider);
+    if (index < 0 || index >= existing.length) return;
+    existing.removeAt(index);
+    if (existing.isEmpty) {
+      _apiKeys.remove(provider.name);
+      await KeyStore.instance.writeKeys(provider.name, []);
+    } else {
+      _apiKeys[provider.name] = existing;
+      await KeyStore.instance.writeKeys(provider.name, existing);
+    }
+    if (provider == _aiProvider) {
+      _apiKey = existing.isEmpty ? null : existing.first;
+    }
     notifyListeners();
   }
 
   /// 保存指定提供商的 API Key（安全存储）
+  /// 注意：此方法覆盖所有 key，仅用于兼容旧版 UI。新 UI 应使用 addApiKeyFor/removeApiKeyAt
   Future<void> saveApiKeyFor(AiProvider provider, String key) async {
     if (key.isEmpty) {
       _apiKeys.remove(provider.name);
       await KeyStore.instance.deleteKey(provider.name);
     } else {
-      _apiKeys[provider.name] = key;
-      await KeyStore.instance.writeKey(provider.name, key);
+      _apiKeys[provider.name] = [key];
+      await KeyStore.instance.writeKeys(provider.name, [key]);
     }
     if (provider == _aiProvider) {
       _apiKey = key.isEmpty ? null : key;
@@ -331,8 +405,8 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setAiProvider(AiProvider provider) async {
     _aiProvider = provider;
-    final key = _apiKeys[provider.name];
-    if (key != null) _apiKey = key;
+    final keys = _apiKeys[provider.name];
+    if (keys != null && keys.isNotEmpty) _apiKey = keys.first;
     final defaults = {
       AiProvider.deepseek: 'deepseek-v4-flash',
       AiProvider.agnes: 'agnes-2.5-turbo',
@@ -462,6 +536,7 @@ class AppProvider extends ChangeNotifier {
     _apiKeys.remove(_aiProvider.name);
     _baseUrls.remove(_aiProvider.name);
     KeyStore.instance.deleteKey(_aiProvider.name);
+    KeyStore.instance.writeKeys(_aiProvider.name, []);
     SharedPreferences.getInstance().then((prefs) {
       prefs.remove('api_key');
       prefs.remove('api_key_${_aiProvider.name}');
@@ -474,6 +549,7 @@ class AppProvider extends ChangeNotifier {
     _apiKeys.remove(p.name);
     _baseUrls.remove(p.name);
     KeyStore.instance.deleteKey(p.name);
+    KeyStore.instance.writeKeys(p.name, []);
     SharedPreferences.getInstance().then((prefs) {
       prefs.remove('api_key_${p.name}');
       prefs.remove('base_url_${p.name}');
@@ -482,6 +558,20 @@ class AppProvider extends ChangeNotifier {
   }
 
   /// 切换 AI 调试日志开关，同步写入 SharedPreferences 持久化
+  /// 批量设置指定提供商的所有 API Key（一次性写入，避免多次 notifyListeners）
+  Future<void> setAllKeysForProvider(AiProvider provider, List<String> keys) async {
+    if (keys.isEmpty) {
+      clearApiKeyFor(provider);
+      return;
+    }
+    _apiKeys[provider.name] = List<String>.from(keys);
+    await KeyStore.instance.writeKeys(provider.name, keys);
+    if (provider == _aiProvider) {
+      _apiKey = keys.first;
+    }
+    notifyListeners();
+  }
+
   Future<void> setAiDebugLogEnabled(bool value) async {
     _aiDebugLogEnabled = value;
     final prefs = await SharedPreferences.getInstance();

@@ -205,9 +205,13 @@ class GameProvider extends GameProviderBase
       choiceProvider: appProvider.providerForScene(AiScene.choice),
     );
     final newRouter = AiRouter(config);
+    // 注册每个提供商的所有 API Key（每个 Key 注册一个独立的服务，实现独立限流 + 自动轮询）
     for (final p in AiProvider.values) {
       if (appProvider.hasKey(p)) {
-        newRouter.register(appProvider.configForProvider(p));
+        final configs = appProvider.configsForProvider(p);
+        for (final cfg in configs) {
+          newRouter.register(cfg);
+        }
       }
     }
     router = newRouter;

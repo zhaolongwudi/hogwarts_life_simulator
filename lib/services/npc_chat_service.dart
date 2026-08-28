@@ -60,7 +60,10 @@ class NpcChatService {
     final router = AiRouter(config);
     for (final p in AiProvider.values) {
       if (appProvider.hasKey(p)) {
-        router.register(appProvider.configForProvider(p));
+        final configs = appProvider.configsForProvider(p);
+        for (final cfg in configs) {
+          router.register(cfg);
+        }
       }
     }
     _router = router;

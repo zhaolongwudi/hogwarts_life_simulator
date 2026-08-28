@@ -60,7 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final appProvider = context.read<AppProvider>();
     for (final p in AiProvider.values) {
-      _keyControllers[p] = TextEditingController(text: appProvider.apiKeys[p.name] ?? '');
+      final keys = appProvider.keysForProvider(p);
+      final firstKey = keys.isNotEmpty ? keys.first : '';
+      _keyControllers[p] = TextEditingController(text: firstKey);
       _modelControllers[p] = TextEditingController(text: appProvider.providerModel(p));
     }
   }
@@ -77,13 +79,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveKeyAndModel(AiProvider p) async {
-    final key = _keyControllers[p]!.text.trim();
+    // 注意：key 的保存由 SettingsProviderCard 内部的 _saveAllKeys 负责
+    // 这里只保存模型设置
     final model = _modelControllers[p]!.text.trim();
     final appProvider = context.read<AppProvider>();
-
-    if (key.isNotEmpty) {
-      await appProvider.saveApiKeyFor(p, key);
-    }
 
     if (model.isNotEmpty) {
       await appProvider.setModelForProvider(p, model);

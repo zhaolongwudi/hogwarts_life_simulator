@@ -158,6 +158,8 @@ mixin GameResponseMixin on GameProviderBase {
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reAffectionSection, (m) => '');
     cleaned = cleaned.replaceAllMapped(GameProviderBase.reReputationSection, (m) => '');
 
+    // ❗重要：时间戳和地点是头部元数据，由独立卡片展示，不应该混在正文，但也不应该被完全移除（否则_extractHeader找不到）
+    // 我们只移除选项相关的区块，保留时间戳/地点给_extractHeader提取。
     const stripSections = [
       '可选行动', '自由行动', '行动建议', '备选行动',
       '剧情选项', '下回合选择', '选择建议',
@@ -1182,6 +1184,18 @@ $kChoicePromptSuffix''';
       }
       // "一年级/二年级/新生/学长/学姐" 这种称呼（不是具体人名）允许，
       // 但我们只在命中"像具体人名的霍尔"这种时才过滤，所以不需要额外加。
+      //
+      // BUG修复：白名单需要包含整个剧情中出现的人名，不仅是末尾800字。
+      // 否则如果NPC名字出现在前半段剧情，不在末尾800字，即使已经出场也会被误过滤。
+      final fullNarrativeNameMatches = RegExp(
+        r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
+        unicode: true,
+      ).allMatches(cleanNarrativeForChoice.length > 800 ? narrative : cleanNarrativeForChoice);
+      for (final m in fullNarrativeNameMatches) {
+        final candidate = m.group(1)!;
+        if (!_looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
+      }
+
       final beforeFilter = choices.length;
       choices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
       final filtered = beforeFilter - choices.length;
@@ -1248,6 +1262,15 @@ $kChoicePromptSuffix''';
           if (retryChoices.length >= 4) break;
         }
         // 重试选项也要过陌生NPC门（防止重试再生成一堆"霍尔"选项）
+        // 重试也需要用完整的白名单（整个剧情），不能只用末尾
+        final fullRetryNarrativeNameMatches = RegExp(
+          r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
+          unicode: true,
+        ).allMatches(narrativeTail);
+        for (final m in fullRetryNarrativeNameMatches) {
+          final candidate = m.group(1)!;
+          if (!_looksLikeNarrationWord(candidate)) npcWhitelistNames.add(candidate);
+        }
         final retryBefore = retryChoices.length;
         retryChoices.removeWhere((c) => _choiceMentionsUnintroducedNpc(c.text, npcWhitelistNames, npcNameAll));
         final retryFiltered = retryBefore - retryChoices.length;

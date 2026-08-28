@@ -1,54 +1,69 @@
 import 'dart:async';
 
 /// Agnes速率限制器（免费版限20 RPM）
+/// 支持多 API Key：每个 Key 独立统计 RPM，互不影响。
 class AgnesRateLimiter {
   static const int _maxRPM = 18; // 留2个余量
-  final List<DateTime> _requestTimes = [];
+
+  /// keyHash → 请求时间记录列表
+  final Map<String, List<DateTime>> _requestTimesByKey = {};
 
   AgnesRateLimiter._privateConstructor();
   static final AgnesRateLimiter instance = AgnesRateLimiter._privateConstructor();
 
-  bool get canRequest {
-    final now = DateTime.now();
-    _requestTimes.removeWhere((t) => now.difference(t) > Duration(minutes: 1));
-    return _requestTimes.length < _maxRPM;
+  /// 获取指定 Key 的 RPM 记录列表
+  List<DateTime> _timesForKey(String keyHash) {
+    return _requestTimesByKey.putIfAbsent(keyHash, () => []);
   }
 
-  int get currentRPM {
+  /// 检查指定 Key 是否可发送请求
+  bool canRequest(String keyHash) {
     final now = DateTime.now();
-    _requestTimes.removeWhere((t) => now.difference(t) > Duration(minutes: 1));
-    return _requestTimes.length;
+    final times = _timesForKey(keyHash);
+    times.removeWhere((t) => now.difference(t) > Duration(minutes: 1));
+    return times.length < _maxRPM;
   }
 
-  void recordRequest() {
-    _requestTimes.add(DateTime.now());
+  /// 获取指定 Key 的当前 RPM
+  int currentRPM(String keyHash) {
+    final now = DateTime.now();
+    final times = _timesForKey(keyHash);
+    times.removeWhere((t) => now.difference(t) > Duration(minutes: 1));
+    return times.length;
+  }
+
+  /// 记录一次请求（指定 Key）
+  void recordRequest(String keyHash) {
+    _timesForKey(keyHash).add(DateTime.now());
   }
 
   /// 精确等待可用名额（替代固定 3 秒轮询）：
   /// 直接计算最早一条请求滑出 60 秒窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
-  Future<void> waitForSlot({Duration timeout = const Duration(seconds: 40)}) async {
+  /// 每个 API Key 独立统计，互不影响。
+  Future<void> waitForSlot(String keyHash, {Duration timeout = const Duration(seconds: 40)}) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
       final now = DateTime.now();
-      _requestTimes.removeWhere((t) => now.difference(t) > const Duration(minutes: 1));
-      if (_requestTimes.length < _maxRPM) {
-        _requestTimes.add(DateTime.now());
+      final times = _timesForKey(keyHash);
+      times.removeWhere((t) => now.difference(t) > const Duration(minutes: 1));
+      if (times.length < _maxRPM) {
+        times.add(DateTime.now());
         return;
       }
       if (now.isAfter(deadline)) {
-        throw Exception('Agnes 限流等待超时（${timeout.inSeconds}秒），已切换备用提供商');
+        throw Exception('Agnes($keyHash) 限流等待超时（${timeout.inSeconds}秒），已切换备用提供商');
       }
       // 最早一条请求在 oldest+60s 滑出窗口，精确睡到该时刻（+50ms 缓冲）
       final waitMs = const Duration(minutes: 1).inMilliseconds -
-          now.difference(_requestTimes.first).inMilliseconds +
+          now.difference(times.first).inMilliseconds +
           50;
       await Future.delayed(Duration(milliseconds: waitMs.clamp(50, 61000).toInt()));
     }
   }
 
   void reset() {
-    _requestTimes.clear();
+    _requestTimesByKey.clear();
   }
 }
 

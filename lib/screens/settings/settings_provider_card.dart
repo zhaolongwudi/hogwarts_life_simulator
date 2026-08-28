@@ -38,6 +38,10 @@ class SettingsProviderCard extends StatefulWidget {
 class _SettingsProviderCardState extends State<SettingsProviderCard> {
   late bool _expanded;
   bool _obscureKey = true;
+  bool _obscureAdditionalKeys = true;
+
+  /// 额外 API Key 的控制器（第一个 key 使用 widget.keyController）
+  final List<TextEditingController> _additionalKeyControllers = [];
 
   @override
   void initState() {
@@ -46,16 +50,65 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     _expanded = !widget.appProvider.hasKey(widget.provider);
     // 模型输入变化时同步刷新收起态头部显示的"当前模型"
     widget.modelController.addListener(_onModelTextChanged);
+    // 同步已有额外 key
+    _syncAdditionalKeyControllers();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsProviderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当 AppProvider 的数据变化时，同步额外 key 控制器
+    if (oldWidget.appProvider != widget.appProvider) {
+      _syncAdditionalKeyControllers();
+    }
   }
 
   @override
   void dispose() {
     widget.modelController.removeListener(_onModelTextChanged);
+    for (final c in _additionalKeyControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   void _onModelTextChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// 将 AppProvider 中的额外 key 同步到本地控制器
+  void _syncAdditionalKeyControllers() {
+    final allKeys = widget.appProvider.keysForProvider(widget.provider);
+    // 第一个 key 已经由 widget.keyController 管理，从第二个开始
+    final expectedExtraCount = allKeys.length > 1 ? allKeys.length - 1 : 0;
+
+    // 如果当前控制器比需要的多，移除多余的
+    while (_additionalKeyControllers.length > expectedExtraCount) {
+      _additionalKeyControllers.last.dispose();
+      _additionalKeyControllers.removeLast();
+    }
+
+    // 如果当前控制器比需要的少，添加缺少的
+    if (allKeys.length > 1) {
+      for (int i = 1; i < allKeys.length; i++) {
+        final existingIdx = i - 1;
+        if (existingIdx < _additionalKeyControllers.length) {
+          // 如果控制器已存在，同步文本（避免覆盖用户正在编辑的文字）
+          if (_additionalKeyControllers[existingIdx].text.isEmpty) {
+            _additionalKeyControllers[existingIdx].text = allKeys[i];
+          }
+        } else {
+          // 新建控制器
+          final ctrl = TextEditingController(text: allKeys[i]);
+          _additionalKeyControllers.add(ctrl);
+        }
+      }
+    }
+
+    // 如果状态变化了，重绘
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   String defaultBaseUrl(AiProvider p) {
@@ -157,12 +210,17 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
           runSpacing: 6,
           children: models.map((model) {
             final selected = current == model;
-            return GestureDetector(
+            return InkWell(
               onTap: () {
                 widget.modelController.text = model;
+                // 选完预设后，光标移到末尾方便编辑
+                widget.modelController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: widget.modelController.text.length),
+                );
                 widget.onModelPresetSelected?.call(model);
                 setState(() {});
               },
+              borderRadius: BorderRadius.circular(8),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -192,7 +250,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
   }
 
   /// 收起/展开共用的头部行
-  Widget _buildHeader(bool hasKey) {
+  Widget _buildHeader(bool hasKey, {int keyCount = 0}) {
     final p = widget.provider;
     final accent = _providerColor(p);
     final customModel = widget.modelController.text.trim();
@@ -277,7 +335,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 ),
               ),
               child: Text(
-                hasKey ? '已配置' : '未配置',
+                hasKey ? (keyCount > 1 ? '$keyCount Keys' : '已配置') : '未配置',
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
@@ -303,6 +361,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     final desc = kProviderDescriptions[p] ?? '';
     final testResult = widget.testResult;
     final testSuccess = widget.testSuccess;
+    final keyCount = widget.appProvider.keyCount(p);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -321,51 +380,65 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11.5, height: 1.45)),
           ),
           const SizedBox(height: 10),
-          const Text('API Key',
-              style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-          const SizedBox(height: 4),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: widget.keyController,
-                  obscureText: _obscureKey,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'sk-...',
-                    helperText: '获取地址: ${defaultBaseUrl(p)}',
-                    helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureKey ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                        size: 18,
-                        color: const Color(0xFF8B949E),
-                      ),
-                      onPressed: () => setState(() => _obscureKey = !_obscureKey),
-                    ),
-                    suffixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 0),
+              const Text('API Key', style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              if (keyCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$keyCount 个 Key',
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: widget.onSave,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD3A625),
-                    foregroundColor: const Color(0xFF1C232D),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    minimumSize: const Size(0, 40),
-                  ),
-                  child: const Text('保存', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                ),
-              ),
+              ],
             ],
           ),
+          const SizedBox(height: 4),
+
+          // 第一个 Key
+          _buildKeyInputRow(
+            controller: widget.keyController,
+            obscureText: _obscureKey,
+            helperText: 'Key 1',
+            showDelete: false,
+            onToggleVisibility: () => setState(() => _obscureKey = !_obscureKey),
+          ),
+
+          // 额外 Key
+          for (int i = 0; i < _additionalKeyControllers.length; i++) ...[
+            const SizedBox(height: 6),
+            _buildKeyInputRow(
+              controller: _additionalKeyControllers[i],
+              obscureText: _obscureAdditionalKeys,
+              helperText: 'Key ${i + 2}',
+              showDelete: true,
+              onDelete: () => _confirmDeleteKey(i + 1),
+              onToggleVisibility: () => setState(() => _obscureAdditionalKeys = !_obscureAdditionalKeys),
+            ),
+          ],
+
+          // 添加新 Key 按钮
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _addNewKey,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('添加 API Key', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                foregroundColor: const Color(0xFF10B981),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+
           const SizedBox(height: 10),
           const Text('模型（可选覆盖默认）',
               style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
@@ -447,7 +520,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    '填入 API Key 并点击「保存」后，该提供商才会出现在场景路由的可选列表中',
+                    '填入 API Key 并点击「保存」后，该提供商才会出现在场景路由的可选列表中。多个 Key 可提升并发上限（每个 Key 独立 20 RPM）',
                     style: TextStyle(fontSize: 10.5, color: Color(0xFFD3A625)),
                   ),
                 ),
@@ -459,9 +532,109 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     );
   }
 
+  Widget _buildKeyInputRow({
+    required TextEditingController controller,
+    required bool obscureText,
+    required String helperText,
+    required bool showDelete,
+    required VoidCallback onToggleVisibility,
+    VoidCallback? onDelete,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'sk-...',
+              helperText: helperText,
+              helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  size: 18,
+                  color: const Color(0xFF8B949E),
+                ),
+                onPressed: onToggleVisibility,
+              ),
+              suffixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 0),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        if (showDelete && onDelete != null)
+          SizedBox(
+            height: 40,
+            child: IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+              tooltip: '删除此 Key',
+            ),
+          ),
+        const SizedBox(width: 6),
+        SizedBox(
+          height: 40,
+          child: ElevatedButton(
+            onPressed: () async {
+              await _saveAllKeys();
+              widget.onSave?.call();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD3A625),
+              foregroundColor: const Color(0xFF1C232D),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              minimumSize: const Size(0, 40),
+            ),
+            child: const Text('保存', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveAllKeys() async {
+    final p = widget.provider;
+    final allKeys = <String>[];
+    // 第一个 key
+    final firstKey = widget.keyController.text.trim();
+    if (firstKey.isNotEmpty) allKeys.add(firstKey);
+    // 额外 key
+    for (final ctrl in _additionalKeyControllers) {
+      final key = ctrl.text.trim();
+      if (key.isNotEmpty) allKeys.add(key);
+    }
+    // 一次性写入 provider（避免多次 notifyListeners）
+    await widget.appProvider.setAllKeysForProvider(p, allKeys);
+  }
+
+  void _addNewKey() {
+    setState(() {
+      _additionalKeyControllers.add(TextEditingController());
+    });
+  }
+
+  void _confirmDeleteKey(int index) {
+    final p = widget.provider;
+    // 先保存控制器文本，再删除
+    final ctrl = _additionalKeyControllers[index - 1];
+    if (ctrl.text.trim().isNotEmpty) {
+      widget.appProvider.removeApiKeyAt(p, index);
+    }
+    setState(() {
+      ctrl.dispose();
+      _additionalKeyControllers.removeAt(index - 1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasKey = widget.appProvider.hasKey(widget.provider);
+    final keyCount = widget.appProvider.keyCount(widget.provider);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -478,7 +651,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(hasKey),
+          _buildHeader(hasKey, keyCount: keyCount),
           if (_expanded) ...[
             const Divider(height: 1, color: Color(0xFF30363D)),
             _buildExpandedBody(hasKey),

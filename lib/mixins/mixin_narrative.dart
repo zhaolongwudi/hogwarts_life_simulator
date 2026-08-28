@@ -365,10 +365,18 @@ $kNarrativeWritingRules
         if (!narrativeParseInvalid) {
           final bridged = enforceContinuityBridge(currentNarrative, safeAction);
           if (bridged != currentNarrative) {
+            // 先保存当前已经提取好的好感度，避免被覆盖清空
+            // ❗为什么：bridged 已经移除了好感区块（来自第一次 parseNarrativeOnly）
+            // 重新解析时没有原始好感区块，会导致 lastAffectionSections 被清空
+            final savedAffectionSections = List<String>.from(lastAffectionSections);
             currentNarrative = bridged;
-            // 重新跑 parseNarrativeOnly（因为 currentNarrative 变了，好感/时间等解析要一致）
-            // 注：bridged 是我们自己代码生成的 + 原叙事合并的，已经保证不是选项格式
+            // 重新跑 parseNarrativeOnly，但只重新解析头部位置/时间戳提取，不覆盖好感度
+            // 因为好感变化区块在原始完整响应中已经提取过了
             parseNarrativeOnly(currentNarrative);
+            // 如果重新解析没有提取到新的好感度（本来就没有），恢复保存的好感度
+            if (lastAffectionSections.isEmpty && savedAffectionSections.isNotEmpty) {
+              lastAffectionSections = savedAffectionSections;
+            }
           }
         }
 
