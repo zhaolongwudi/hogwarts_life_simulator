@@ -5,6 +5,16 @@
 
 ---
 
+### v2.3.9 — 2026-08-28
+
+**📋 变更说明**
+refactor: 拆分大文件 + 清理调试日志 + CI 优化
+
+大文件拆分：
+- mixin_response.dart: 146KB→66.6KB，提取选项处理/好感度解析到独立 mixin
+- mixin_narrative.dart: 112KB→59.8KB，提取连续性/断言到独立 mixin
+- 提取 AffectionValidator/StagnationDetector 到 utils/
+
 ### v2.3.8 — 2026-08-28
 
 **📋 变更说明**
