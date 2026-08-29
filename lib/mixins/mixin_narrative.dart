@@ -131,6 +131,19 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         ].join('｜');
         contextBuffer.writeln('【本局硬设定】$settingLine');
 
+        // 政治立场原先只在开局的 system prompt 里注入过一次。
+        // LLM 记不住二十回合前的设定，中期立场会漂：开局定的「纯血至上」，
+        // 二十回合后开始跟麻瓜出身的同学称兄道弟，玩家会觉得这人设是假的。
+        // 每回合重述一次，成本一行。
+        final stance = p.politicalTendency?.trim() ?? '';
+        if (stance.isNotEmpty) {
+          contextBuffer.writeln(
+            '【政治立场】$stance（主角对纯血论、麻瓜出身、混血的态度；'
+            'NPC 的台词与玩家可选的做法都需贴合此立场，'
+            '不要因为剧情一时温情就软化或反转）',
+          );
+        }
+
         final isWeekend =
             worldState.time.weekday == 0 || worldState.time.weekday == 6;
         final lockedNow =

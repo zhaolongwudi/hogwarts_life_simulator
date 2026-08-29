@@ -171,12 +171,21 @@ class AiRouter {
       if (!candidates.contains(p)) candidates.add(p);
     }
 
+    // 真正会被尝试的候选：没配 key 的会被下面 continue 跳过。
+    // 之前 isLastKey 直接比 `provider == candidates.last`，
+    // 一旦名单最后一位没配 key，就永远轮不到 isLastKey=true——
+    // 所有失败都记成 FALLBACK、keepPending 恒为真，
+    // 那条标记整个调用链彻底失败的 ERROR 日志一次都写不出来，
+    // 排查时只能看到一串"降级"却看不到终局。
+    final attempted = candidates
+        .where((p) => (_services[p]?.length ?? 0) > 0)
+        .toList(growable: false);
+
     const maxRetriesPerService = 2; // 每个 key 最多重试 2 次（共 3 次尝试）
 
     Object? lastError;
-    for (final provider in candidates) {
-      final services = _services[provider];
-      if (services == null || services.isEmpty) continue;
+    for (final provider in attempted) {
+      final services = _services[provider]!;
 
       // 轮询选择起始 key，避免每次从头开始（让多个 key 均匀分配流量）
       _roundRobinIndex = (_roundRobinIndex + 1) % services.length;
@@ -239,7 +248,10 @@ class AiRouter {
             // 当前 key 所有重试耗尽，记录日志并尝试下一个 key
             debugPrint('⚠️ ${provider.name}[$keyHash] 已耗尽，尝试下一个 Key: $e');
             final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-            final isLastKey = (ki == services.length - 1) && (provider == candidates.last);
+            // ki 是相对轮询起点的偏移量，不是"第几个 key"；但循环覆盖了
+            // 全部 serviceIdx，所以 ki 走到最后一轮时确实就是这条链的最后一次尝试。
+            final isLastKey =
+                (ki == services.length - 1) && provider == attempted.last;
             await AiDebugLogger.instance.logComplete(
               callId: callId,
               timestamp: DateTime.now().toIso8601String(),
