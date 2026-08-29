@@ -17,6 +17,7 @@ import '../data/trait_data.dart';
 import '../data/npc_data.dart';
 import '../data/archetype_data.dart';
 import '../data/wand_data.dart';
+import '../data/legacy_data.dart';
 import '../models/world_state.dart';
 import '../models/long_term_memory.dart';
 import '../utils/crash_logger.dart';
@@ -238,6 +239,10 @@ mixin GameInitMixin on GameProviderBase {
     String? simulationStyle,
     String? birthIdentity,
     String openingScene = 'station',
+
+    /// 家族传承：非 null 时表示这一局是上一周目的孩子在开局。
+    /// 见 lib/data/legacy_data.dart。
+    LegacyCarryover? legacy,
   }) async {
     // 先彻底清空所有旧状态（防止新开局把旧摘要/近期剧情注入到 Prompt）
     resetAllState();
@@ -254,7 +259,8 @@ mixin GameInitMixin on GameProviderBase {
 
     try {
       final birthYear = _calculateBirthYear();
-      final startYear = _startYearForEra(appProvider.era);
+      // 传承局：孩子在他自己那一年的九月入学，不是上一代那一年的九月
+      final startYear = legacy?.startYear ?? _startYearForEra(appProvider.era);
       // letter 起点（收到录取通知书）按原著为 7 月 31 日前后；其它 3 个起点才是 9 月 1 日特快出发日
       // 防止 letter 开局刚收到信，下一回合场景直接跳到 9 月 1 日已在站台导致整个暑假剧情丢失。
       // R2：开场场景配置数据化（1 处查表替代 3 处 switch）
@@ -297,9 +303,9 @@ mixin GameInitMixin on GameProviderBase {
         bloodType: bloodStatus,
         birthLocation: birthLocation,
         personalityTraits: personalityTraits,
-        gender: gender ?? '',
+        gender: legacy?.heirGender ?? gender ?? '',
         appearance: appearance,
-        familyBackground: familyBackground,
+        familyBackground: legacy?.familyBackground ?? familyBackground,
         childhoodExperiences: childhoodExperiences ?? const [],
         beliefs: beliefs,
         wandId: wandId,
@@ -331,6 +337,17 @@ mixin GameInitMixin on GameProviderBase {
         unlockAchievement('first_wand');
       }
 
+      // 家族传承：把继承来的东西落进新角色。
+      // 只在这里做一次，且必须在 worldState 建好之前——
+      // 声望和遗产是"你出生时就有的"，不是开局之后赚到的。
+      if (legacy != null) {
+        final rep = player!.playerReputation;
+        for (final e in legacy.reputation.entries) {
+          rep.add(e.key, e.value);
+        }
+        player!.galleons += legacy.inheritance;
+      }
+
       worldState = WorldState(
         era: appProvider.era.name,
         academicYear: _academicYearForEra(appProvider.era),
@@ -354,6 +371,10 @@ mixin GameInitMixin on GameProviderBase {
 
       _initializeNPCsByEra();
       _assignInitialRelationships();
+      // 世交与世仇要等 NPC 都建好之后才能落——名字对不上就什么都不生效
+      if (legacy != null) {
+        applyLegacyRelations(legacy);
+      }
 
       // ====== 注入开局 T0 核心事实（永不遗忘层 LongTermMemory.keyFacts） ======
       // 这些是「身份级」事实，即使 AI 摘要压缩也不会丢；importance 9 永远保留。
@@ -376,6 +397,23 @@ mixin GameInitMixin on GameProviderBase {
         '主角姓名为${p0.name}，出生于${p0.birthYear}年，血统为${bloodStatusLabel(p0.bloodType)}，出生地：${p0.birthLocation}。',
         category: 'identity',
       );
+      // 1b. 家族传承：这是唯一一条会跟着玩家整整七年的"上辈子"的事实。
+      // 不写进 T0，AI 第一回合就会把孩子当成一个凭空冒出来的新生。
+      if (legacy != null) {
+        final buf = StringBuffer()
+          ..write('你是${legacy.parentName}的孩子，姓${legacy.surname}。')
+          ..write(legacy.parentSummary);
+        if (legacy.hasRivals) {
+          buf.write('父辈的仇人（${legacy.rivals.take(3).join('、')}'
+              '${legacy.rivals.length > 3 ? '等' : ''}）'
+              '在你入学之前就已经记恨你了——这笔账是记在这个姓上的。');
+        }
+        if (legacy.hasAllies) {
+          buf.write('${legacy.allies.keys.take(3).join('、')}'
+              '是你家的旧识，你从小就认识他们。');
+        }
+        addT0('identity:legacy', buf.toString(), category: 'identity');
+      }
       // 2. 魔杖：木材/杖芯/长度（如果AI在开局就写错，后续极难纠正，必须提前锁死）
       if (p0.wandId != null && p0.wandId!.isNotEmpty) {
         final wd = wandById(p0.wandId!);

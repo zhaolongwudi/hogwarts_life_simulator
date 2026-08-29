@@ -9,6 +9,8 @@ import '../data/cg_data.dart';
 import '../data/goal_data.dart';
 import '../data/wand_data.dart';
 import '../data/worldline_data.dart';
+import '../data/legacy_data.dart';
+import '../models/player.dart';
 import '../providers/game_provider_base.dart';
 import 'mixin_systems.dart';
 
@@ -738,6 +740,37 @@ mixin GameCommandsMixin on GameProviderBase {
                   '${anchor.options.map((o) => '· ${o.text}').join('\n')}\n\n'
                   '在下面的选项里挑一个就行。';
           m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      // /传承 名字 会开一局新的，所以在 handler 里异步地跑，
+      // 先把"正在交棒"这句话回给玩家，别让界面卡在空白上。
+      CommandDef(
+        primary: '传承',
+        group: '世界&结局',
+        helpText: '把这一生交棒给下一代；/传承 名字 正式开始新的一局',
+        handler: (ctx) {
+          final m = ctx.provider;
+          final name = ctx.tailFrom(0).trim();
+          if (name.isEmpty) {
+            m.currentNarrative = m.formatLegacy();
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
+          final heir = m.heirsOfAge().cast<ChildRecord?>().firstWhere(
+                (c) => c!.name == name,
+                orElse: () => null,
+              );
+          if (heir == null) {
+            m.currentNarrative = '没有找到叫「$name」的孩子，'
+                '或者他还没到 $kHeirEntranceAge 岁。\n'
+                '输入 /传承 看看谁能接棒。';
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
+          m.currentNarrative = '【传承】\n正在把这一生交给$name……';
+          m.choices = const [];
+          unawaited(m.startLegacy(name));
           return true;
         },
       ),

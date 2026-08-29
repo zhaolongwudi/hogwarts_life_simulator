@@ -7,6 +7,7 @@ import '../models/world_state.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../data/faculty_data.dart';
+import '../data/legacy_data.dart';
 import '../services/save_service.dart';
 import '../services/deepseek_service.dart';
 import '../services/npc_chat_service.dart';
@@ -261,7 +262,19 @@ abstract class GameProviderBase extends ChangeNotifier {
   /// 留校资格评估（/教职 与毕业结算共用）。实现在 GameSystemsMixin。
   FacultyEligibility evaluateFacultyOffer();
 
-  Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',  });
+  /// /传承 的输出。实现在 GameSystemsMixin。
+  String formatLegacy();
+
+  /// 把这一生交棒给 [childName]，开一局新的。实现在 GameSystemsMixin。
+  Future<bool> startLegacy(String childName);
+
+  /// 已到入学年龄、可以接棒的孩子。实现在 GameSystemsMixin。
+  List<ChildRecord> heirsOfAge();
+
+  /// 把传承来的世交与世仇落到 NPC 身上。实现在 GameSystemsMixin。
+  void applyLegacyRelations(LegacyCarryover legacy);
+
+  Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',    LegacyCarryover? legacy,  });
   bool isNearby(String npcId);
   Future<String?> importSave(String jsonString);
   Future<List<Map<String, dynamic>>> listSaves();
