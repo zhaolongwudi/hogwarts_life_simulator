@@ -5,6 +5,17 @@
 
 ---
 
+### v2.9.9 — 2026-08-29
+
+**📋 变更说明**
+refactor: 剧情选项系统宏观重构(Phase1+2)
+
+Phase1 地点收口:
+- _syncLocationFromNarrative 改为只读取【地点】结构化标签,删除从正文
+  「抵达动词」反推地点的整段逻辑(含_arrivalVerbRe/_sentenceBoundaryRe/
+  _nonActualContextRe),正文描写不再改写硬状态;地点权威来源收口为
+  【地点】标签 + 场景图 runSceneTransitionGraph
+
 ### v2.9.8 — 2026-08-29
 
 **📋 变更说明**
