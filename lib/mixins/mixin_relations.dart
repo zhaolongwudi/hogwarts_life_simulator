@@ -1232,7 +1232,6 @@ mixin GameRelationsMixin on GameProviderBase {
     candidates.sort((a, b) => b.affection.compareTo(a.affection));
     final npc = candidates.first;
     npc.isConsideringConfession = true;
-    npc.isAlive = true;
 
     final originalNarrative = currentNarrative;
     currentNarrative =

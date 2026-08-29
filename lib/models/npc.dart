@@ -11,6 +11,16 @@ class NPC {
   final bool isCanon;
   final List<String> aliases;  // 简称/别名列表
   bool isAlive;
+
+  /// 死因。活着的时候是 null。
+  ///
+  /// 只记叙事里写得出来的死因（决斗、坠落、中毒……），
+  /// 认不出就留 null——编一个比不记更糟。
+  String? deathCause;
+
+  /// 死亡时的游戏内时间文本。活着的时候是 null。
+  String? diedOn;
+
   final List<String> personality;
   String currentLocation;
   int mood;
@@ -76,6 +86,15 @@ class NPC {
     this.bloodStatus = 'unknown',
     this.isCanon = false,
     this.isAlive = true,
+
+    /// 死因。活着的时候是 null。
+    ///
+    /// 只记叙事里写得出来的死因（决斗、坠落、中毒……），
+    /// 认不出就留 null——编一个比不记更糟。
+    this.deathCause,
+
+    /// 死亡时的游戏内时间文本。活着的时候是 null。
+    this.diedOn,
     this.aliases = const [],
     this.personality = const [],
     List<String>? forbiddenActions,
@@ -383,6 +402,8 @@ class NPC {
         'blood_status': bloodStatus,
         'is_canon': isCanon,
         'is_alive': isAlive,
+        'death_cause': deathCause,
+        'died_on': diedOn,
         'personality': personality,
         'forbidden_actions': forbiddenActions,
         'blood_supremacist': bloodSupremacist,
@@ -430,6 +451,8 @@ class NPC {
         bloodStatus: json['blood_status'] ?? 'unknown',
         isCanon: json['is_canon'] ?? false,
         isAlive: json['is_alive'] ?? true,
+        deathCause: json['death_cause'] as String?,
+        diedOn: json['died_on'] as String?,
         personality: List<String>.from(json['personality'] ?? []),
         forbiddenActions: List<String>.from(json['forbidden_actions'] ?? const []),
         bloodSupremacist: json['blood_supremacist'] ?? false,

@@ -9,6 +9,8 @@ import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 import '../data/scar_data.dart';
+import '../data/death_data.dart';
+import '../data/rivalry_data.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/worldline_data.dart';
 import '../prompts/choice_prompts.dart';
@@ -308,6 +310,109 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     // 重伤留疤。受伤如果只是扣几点血躺两天，
     // 七年里没有任何事真正留下痕迹，玩家的选择也就没有重量。
     tryScarFromNarrative(text);
+
+    // 有人死了。这件事回不去，所以得记下来。
+    tryDeathFromNarrative(text);
+  }
+
+  /// 从叙事里认出死亡，把它变成一件回不去的事。
+  ///
+  /// 判定在 `death_data.deathInNarrative`：必须指名道姓，
+  /// 而且不能是"差点死了""以为他要死了"这类说法。
+  void tryDeathFromNarrative(String text) {
+    if (player == null) return;
+
+    // 只认还活着的——已经死了的人不会再死一次
+    final living = npcRegistry.values
+        .where((n) => n.isAlive && n.introduced)
+        .toList(growable: false);
+    if (living.isEmpty) return;
+
+    final hitName = deathInNarrative(text, living.map((n) => n.name));
+    if (hitName == null) return;
+
+    NPC? dead;
+    for (final n in living) {
+      if (n.name == hitName) dead = n;
+    }
+    if (dead == null) return;
+
+    final ts = worldState.time.format();
+    final cause = deathCauseIn(text);
+    dead.isAlive = false;
+    dead.deathCause = cause;
+    dead.diedOn = ts;
+
+    notifications.add(deathNoticeFor(dead.name, cause));
+    memory = memory.addKeyFact(KeyFactRecord(
+      id: 'death_${dead.id}',
+      fact: deathFactFor(dead.name, cause),
+      // 10 分：身份级。一个人的死不能被淘汰掉——
+      // 100 条容量溢出时按分数淘汰，而这件事必须留到最后。
+      importance: 10,
+      timestamp: ts,
+      category: 'death',
+      npcIds: {dead.id},
+    ));
+    worldState.addNarrativeEvent('💀 ${dead.name} 死了', turn: turnCount);
+    _rippleDeathTo(dead, ts);
+    debugPrint('💀 ${dead.name} 死了（${cause ?? '死因不明'}）@ turn=$turnCount');
+  }
+
+  /// 一个人死后，活着的人会怎么样。
+  ///
+  /// 三件事：你恨过他的话那笔账就此了结、跟他关系好的人被波及、
+  /// 他没做完的事永远做不到了。
+  void _rippleDeathTo(NPC dead, String ts) {
+    final today = worldState.time.absoluteDayIndex;
+
+    // 死者是玩家的宿敌：你恨了七年的人没了，那七年突然没有地方放。
+    //
+    // 宿敌分不用清零——他已经死了，会被「在场」「宿敌名册」那些
+    // isAlive 过滤挡在叙事之外。要留下的是**这一笔记忆**。
+    if (dead.rivalryTier(today).index >= RivalryTier.hostile.index) {
+      memory = memory.addKeyFact(KeyFactRecord(
+        id: 'rival_ended_${dead.id}',
+        fact: rivalEndedFactFor(dead.name),
+        importance: 7,
+        timestamp: ts,
+        category: 'rivalry',
+        npcIds: {dead.id},
+      ));
+    }
+
+    for (final n in npcRegistry.values) {
+      if (n.id == dead.id || !n.isAlive || !n.introduced) continue;
+
+      final ripple = rippleFor(n.affection);
+      if (ripple.affectionDelta == 0) continue;
+      updateNpcAffection(n.id, ripple.affectionDelta,
+          reason: '共同失去了${dead.name}');
+    }
+
+    // 最重的一笔：他参与的、还没了结的事，永远做不到了。
+    final broken = loopsBrokenByDeath(memory.openLoops, dead.id);
+    for (final l in broken) {
+      memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
+        id: l.id,
+        description: l.description,
+        status: 'dropped',
+        importance: l.importance,
+        openedAt: l.openedAt,
+        closedAt: ts,
+        npcIds: l.npcIds,
+        loopType: l.loopType,
+        openedTurn: l.openedTurn,
+      ));
+      memory = memory.addKeyFact(KeyFactRecord(
+        id: 'promise_broken_${l.id}',
+        fact: brokenPromiseFactFor(l.description),
+        importance: 8,
+        timestamp: ts,
+        category: 'promise_broken',
+        npcIds: l.npcIds,
+      ));
+    }
   }
 
   /// 从叙事里认出重伤，在身上留一道永久的疤。
