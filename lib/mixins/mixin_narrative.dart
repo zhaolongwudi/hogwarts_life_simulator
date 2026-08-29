@@ -1634,6 +1634,27 @@ $kNarrativeWritingRules
       return; // 季节未到：保留上一地点
     }
 
+    // 年级门：霍格莫德三年级起才可去（原著设定）。一/二年级玩家被错切到
+    // 霍格莫德（如模型写了「三把扫帚」「蜂蜜公爵」）时，保留上一地点。
+    if (detected!.contains('霍格莫德') && (player?.grade ?? 1) < 3) {
+      worldState.addNarrativeEvent(
+        '⏱ 地点同步被年级门拦截：$detected（霍格莫德需三年级，当前${player?.grade ?? 1}年级）',
+        turn: turnCount,
+      );
+      return;
+    }
+
+    // B 类漂移防护（软一致性）：detected 与当前不同，但叙事正文并未佐证该地点
+    // （既无移动动词、也未复现地点名/别名，且已排除【地点】标签自身）→ 疑似标签笔误，
+    // 保留上一地点，避免"叙述说在家、标签写大礼堂"这类漂移型硬切。
+    if (detected != cur && !_narrativeCorroboratesLocation(detected!, cur, narrative)) {
+      worldState.addNarrativeEvent(
+        '⚠ 地点漂移被拦截：$detected（正文未提及该地点，疑似标签笔误）',
+        turn: turnCount,
+      );
+      return;
+    }
+
     // 若检测到的地点与当前不同，则更新并清零停滞计数
     if (detected != cur) {
       worldState.currentLocation = detected;
@@ -1683,6 +1704,55 @@ $kNarrativeWritingRules
     '国王十字': 901,
     '九又四分之三': 901,
   };
+
+  /// 去掉叙事里的【地点】标签行，避免标签自身"自我佐证"漂移防护。
+  static final RegExp _locationTagLineRe = RegExp(r'【地点】[^\n]*');
+
+  /// 移动/过渡动词。正文出现其一即视为地点切换有迹可循（佐证 detected 地点）。
+  static final RegExp _moveVerbRe = RegExp(
+    r'前往|走向|来到|到达|返回|走进|踏入|出发|穿过|登上|进入|步入|迈入|'
+    r'离开|抵达|动身|赶往|前去|去往|移步|走回|现身于|置身于',
+  );
+
+  /// B 类漂移防护：叙事正文是否佐证 [detected] 这个地点。
+  ///
+  /// 佐证策略（避免重蹈"选项误杀"覆辙——合法跳转几乎都放行，只拦强冲突）：
+  ///   ① 正文复现 detected 的主名或别名 → 放行；
+  ///   ② 正文含移动/过渡动词（前往/来到/到达/返回/走进…）→ 在途中，标签即目的地，放行；
+  ///   ③ 解析正文提到的地点主名集合，若正文【明确提到 cur 且没提到 detected 且无移动动词】
+  ///      → 强冲突（"叙述说在家、标签写大礼堂"），拦截；
+  ///   ④ 其余（正文无地点名词 / 提到别的地点但无冲突）→ 放行，避免误伤状态描述型、省略型跳转。
+  ///
+  /// 设计取舍：这是【弱信号、只拦强冲突】。它把漂移型硬切【降频】而非根除，
+  /// 符合 LLM 开放叙事的固有性质；重点是绝不高误伤（误伤比漏拦更破坏体验）。
+  bool _narrativeCorroboratesLocation(String detected, String cur, String narrative) {
+    final body = narrative.replaceAll(_locationTagLineRe, '');
+    // ① 正文复现 detected 地点名/别名 → 放行
+    if (body.contains(detected)) return true;
+    for (final (name, aliases) in kKnownLocations) {
+      if (name != detected) continue;
+      for (final alias in aliases) {
+        if (alias.isNotEmpty && body.contains(alias)) return true;
+      }
+    }
+    // ② 正文有移动/过渡动词 → 在途中，标签即目的地，放行
+    if (_moveVerbRe.hasMatch(body)) return true;
+    // ③ 解析正文提到的地点主名集合
+    final mentioned = <String>{};
+    for (final (name, aliases) in kKnownLocations) {
+      if (body.contains(name)) {
+        mentioned.add(name);
+      } else {
+        for (final alias in aliases) {
+          if (alias.isNotEmpty && body.contains(alias)) mentioned.add(name);
+        }
+      }
+    }
+    // ④ 正文明确提到 cur 地点（且不是 detected）且无移动动词 → 强冲突，拦截
+    if (mentioned.contains(cur) && !mentioned.contains(detected)) return false;
+    // ⑤ 其他 → 放行，避免误伤
+    return true;
+  }
 
   List<GameChoice> _generateLocalSuggestions() {
     final location = worldState.currentLocation ?? '霍格沃茨';
