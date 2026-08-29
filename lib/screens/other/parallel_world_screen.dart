@@ -68,7 +68,7 @@ class ParallelWorldScreen extends StatelessWidget {
             for (var i = 0; i < mine.length; i++)
               _ScenarioCard(
                 scenario: mine[i],
-                onTap: () => _showDetail(context, mine[i]),
+                onTap: () => _showDetail(context, mine[i], index: i),
                 onDelete: () {
                   context.read<GameProvider>().removeParallelScenario(i);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +133,9 @@ class ParallelWorldScreen extends StatelessWidget {
     );
   }
 
-  void _showDetail(BuildContext context, ParallelScenario s) {
+  /// [index] 为该条在 Player.parallelScenarios 里的下标；预设脑洞不传，
+  /// 于是它们没有「采纳」按钮——预设是只读的引子，不进存档。
+  void _showDetail(BuildContext context, ParallelScenario s, {int? index}) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -144,9 +146,43 @@ class ParallelWorldScreen extends StatelessWidget {
             Expanded(child: Text(s.title)),
           ],
         ),
-        content: Text(s.description,
-            style: const TextStyle(fontSize: 14, height: 1.6)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(s.description,
+                style: const TextStyle(fontSize: 14, height: 1.6)),
+            if (index != null && !s.adopted) ...[
+              const SizedBox(height: 14),
+              const Text(
+                '采纳之后，它不会真的发生——'
+                '它会变成你认真想过的另一种可能，'
+                '在往后某些时刻自己想起来。收不回来。',
+                style: TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+              ),
+            ],
+            if (s.adopted) ...[
+              const SizedBox(height: 14),
+              const Text('已经留在心里了。',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+            ],
+          ],
+        ),
         actions: [
+          if (index != null && !s.adopted)
+            TextButton(
+              onPressed: () {
+                final ok =
+                    context.read<GameProvider>().adoptParallelScenario(index);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(ok ? '已留在心里' : '它已经在那儿了'),
+                      duration: const Duration(seconds: 2)),
+                );
+              },
+              child: const Text('留在心里'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('关闭'),
@@ -336,6 +372,27 @@ class _ScenarioCard extends StatelessWidget {
                         Text('写于 ${scenario.createdAt}',
                             style: const TextStyle(
                                 fontSize: 11, color: Color(0xFF8B949E))),
+                      ],
+                      // 采纳过的留个记号：它不是"完成了"，
+                      // 是"你决定把它留在心里"，而且收不回来。
+                      if (scenario.adopted) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(Icons.dark_mode_outlined,
+                                size: 12, color: Color(0xFF8B949E)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '已留在心里',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.8)),
+                            ),
+                          ],
+                        ),
                       ],
                     ],
                   ),

@@ -659,18 +659,44 @@ class ParallelScenario {
   final String icon;
   final String createdAt;
 
+  /// 是否已「采纳」进主线。
+  ///
+  /// 采纳不是说它真的发生了——它把这条脑洞变成这个人心里的
+  /// 一件事，写进长期记忆并注入 prompt。详见
+  /// lib/data/parallel_data.dart 顶上的说明。
+  ///
+  /// 不可撤销：采纳过的念头收不回来，这本来就是它的意思。
+  final bool adopted;
+
   ParallelScenario({
     required this.title,
     required this.description,
     this.icon = '🎭',
     String? createdAt,
+    this.adopted = false,
   }) : createdAt = createdAt ?? DateTime.now().toIso8601String().substring(0, 10);
+
+  ParallelScenario copyWith({
+    String? title,
+    String? description,
+    String? icon,
+    String? createdAt,
+    bool? adopted,
+  }) =>
+      ParallelScenario(
+        title: title ?? this.title,
+        description: description ?? this.description,
+        icon: icon ?? this.icon,
+        createdAt: createdAt ?? this.createdAt,
+        adopted: adopted ?? this.adopted,
+      );
 
   Map<String, dynamic> toJson() => {
         'title': title,
         'description': description,
         'icon': icon,
         'created_at': createdAt,
+        'adopted': adopted,
       };
 
   factory ParallelScenario.fromJson(Map<String, dynamic> json) =>
@@ -679,6 +705,7 @@ class ParallelScenario {
         description: json['description'] as String? ?? '',
         icon: json['icon'] as String? ?? '🎭',
         createdAt: json['created_at'] as String?,
+        adopted: json['adopted'] as bool? ?? false,
       );
 }
 

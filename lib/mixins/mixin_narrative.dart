@@ -29,6 +29,7 @@ import '../data/wand_data.dart';
 import '../data/worldline_data.dart';
 import '../data/monthly_event_data.dart';
 import '../data/npc_schedule_rules.dart';
+import '../data/parallel_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
@@ -1432,6 +1433,15 @@ $kNarrativeWritingRules
       // 让你健步如飞、举杖如常，那道疤就白留了。
       final scarBlock = scarPromptBlock(p.scars);
       if (scarBlock.isNotEmpty) parts.add(scarBlock);
+
+      // 采纳过的平行世界脑洞。不写这一段，玩家在小剧场里认真写下的
+      // 那个"如果"就只是一行列表项——退出页面之后，它跟主线再无关系。
+      // 只收已采纳的、最多三条：这是调料，不是主线。
+      // 段落里明确写了"没有发生过"，否则 AI 会当成既成事实来写戏。
+      final whatIf = adoptedPromptBlock(
+        p.parallelScenarios.where((s) => s.adopted),
+      );
+      if (whatIf.isNotEmpty) parts.add(whatIf);
 
       // 任教中。不写这一段，AI 会一直把玩家当学生：
       // 让他去上课、被级长管、在礼堂里等分院。

@@ -18,6 +18,7 @@ import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
 import '../data/goal_data.dart';
+import '../data/parallel_data.dart';
 import '../data/npc_schedule_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
@@ -222,6 +223,41 @@ mixin GameSystemsMixin on GameProviderBase {
     p.parallelScenarios.removeAt(index);
     notifyListeners();
     unawaited(autoSave());
+  }
+
+  /// 把一条脑洞「采纳」进主线。
+  ///
+  /// 采纳不是说它真的发生了——那会让玩家写一句就改一次世界，
+  /// 世界线变动率那套"改写得付代价"的逻辑就成了空话。
+  /// 采纳的落点是：它变成这个人心里的**一件事**。
+  /// 详见 lib/data/parallel_data.dart 顶上的说明。
+  ///
+  /// 采纳过的不能撤销，也不能重复采纳：一个念头你只能决定留不留下一次，
+  /// 反复采纳会把"想起它"这件事变成可以刷的东西。
+  bool adoptParallelScenario(int index) {
+    final p = player;
+    if (p == null || index < 0 || index >= p.parallelScenarios.length) {
+      return false;
+    }
+    final s = p.parallelScenarios[index];
+    if (s.adopted) return false;
+
+    p.parallelScenarios[index] = s.copyWith(adopted: true);
+
+    // 一条长期记忆。6 分而不是更高：它重要，但没重要到挤掉
+    // 真正发生过的事——它毕竟是"想过的"，不是"做过的"。
+    memory = memory.addKeyFact(KeyFactRecord(
+      id: 'whatif_${s.createdAt}_${s.title.hashCode}',
+      fact: adoptedFactFor(s),
+      importance: 6,
+      timestamp: worldState.time.format(),
+      category: 'what_if',
+    ));
+
+    notifications.add(adoptedNoticeFor(s));
+    notifyListeners();
+    unawaited(autoSave());
+    return true;
   }
 
   // ==================== 人生目标的剧情牵引 ====================
