@@ -49,12 +49,230 @@ bool isClassHour(int hour) => hour >= 9 && hour < 17;
 /// 深夜时段：学生回宿舍，教职工回自己的地盘。
 bool isLateHour(int hour) => hour >= 22 || hour < 6;
 
+// ==================== 作息例外 ====================
+//
+// 上面那套推导是**按身份归模板**：饭点大礼堂、深夜回宿舍、教授守自己的教室。
+// 推得没错，但也因此每个人都是可预测的——你知道斯内普永远在地窖，
+// 于是"去地窖找斯内普"变成一条固定路线，而不是一次遭遇。
+//
+// 真正的学校不是这样。你半夜路过教室撞见有人在熬药，
+// 周日清晨看见有人在小屋外劈柴，凌晨三点的走廊上有人光脚在走。
+// **这些"不在常规位置"的人，才是世界活着的证据。**
+//
+// 所以这里给一小撮人开例外。三条规矩：
+//
+//  1. **窗口要窄。** 覆盖大半个星期的例外就不叫例外了，
+//     它会退化成"这个人的新常态"，而推导表里那套逻辑就白写了。
+//  2. **每条都给个理由。** 理由不是给玩家看的，是喂给 AI 的——
+//     否则 AI 只看见"斯内普在教室"，写不出"他在熬一种
+//     不能在地窖里熬的东西"。
+//  3. **只挑那些"他会在那儿"说得通的人。** 卢平每月消失几天
+//     这种需要月相的例外暂时不做：那不是作息，那是另一个系统。
+
+/// 某个人在某个特定时刻出现在不该在的地方。
+class ScheduleException {
+  final String npcId;
+
+  /// 0=星期日 … 6=星期六；null = 每天都成立
+  final int? weekday;
+
+  /// 起止小时（闭区间）。都留空 = 该日全天。
+  /// `fromHour > toHour` 表示跨午夜（如 23 点到次日 1 点）。
+  final int? fromHour;
+  final int? toHour;
+
+  /// 他这会儿在哪儿
+  final String location;
+
+  /// 他在这儿干什么。这句会喂给 AI，写得越具体越好。
+  final String reason;
+
+  const ScheduleException({
+    required this.npcId,
+    this.weekday,
+    this.fromHour,
+    this.toHour,
+    required this.location,
+    required this.reason,
+  });
+}
+
+const List<ScheduleException> kScheduleExceptions = [
+  // ---- 深夜的教职工 ----
+  ScheduleException(
+    npcId: 'snape',
+    weekday: 2, // 周二
+    fromHour: 23,
+    toHour: 1,
+    location: '霍格沃茨·教室',
+    reason: '他在熬一种不能在地窖里熬的东西——地窖总有人进进出出，'
+        '而这间教室的门他能从里面锁上。他不会解释自己在熬什么，'
+        '被撞见时他先做的动作是用身体挡住坩埚。',
+  ),
+  ScheduleException(
+    npcId: 'mcgonagall',
+    weekday: 3, // 周三
+    fromHour: 23,
+    toHour: 1,
+    location: '霍格沃茨·走廊',
+    reason: '她每周三值夜巡楼。这是她自己定的规矩，'
+        '没人要求一个副院长每周三半夜在城堡里走一圈。'
+        '她提着灯，走得很慢，在每一幅画像前都会停一下。',
+  ),
+  ScheduleException(
+    npcId: 'dumbledore',
+    fromHour: 0,
+    toHour: 4,
+    location: '霍格沃茨·天文塔',
+    reason: '他睡得很少。塔上那台仪器转得很慢，'
+        '而他坐在旁边，看起来不像在等什么结果，'
+        '更像是在等天亮。'
+        '被撞见时他不会赶人走，会先问一句"你也睡不着？"。',
+  ),
+  ScheduleException(
+    npcId: 'trelawney',
+    weekday: 4, // 周四
+    fromHour: 23,
+    toHour: 2,
+    location: '霍格沃茨·教室',
+    reason: '她说她在等一个预兆，说不上来是什么，'
+        '也说不上来会是什么时候——"只是今晚必须有人在这儿"。'
+        '桌上摆着三杯凉透的茶。',
+  ),
+  ScheduleException(
+    npcId: 'filch',
+    fromHour: 2,
+    toHour: 5,
+    location: '霍格沃茨·地窖',
+    reason: '他很少下地窖——洛丽丝夫人受不了那里的味道。'
+        '所以他挑在这个钟点下来，一个人慢慢地走一遍，'
+        '手里的灯举得很低。没人知道他在找什么。',
+  ),
+
+  // ---- 海格：他的一周从周日清晨开始，周五夜里结束 ----
+  ScheduleException(
+    npcId: 'hagrid',
+    weekday: 0, // 周日
+    fromHour: 6,
+    toHour: 9,
+    location: '霍格沃茨·场地',
+    reason: '他一整周的柴都在周日早上劈完，'
+        '所以周日早饭他是不去吃的。'
+        '斧头落下的声音很有节奏，隔着半个场地都听得见。',
+  ),
+  ScheduleException(
+    npcId: 'hagrid',
+    weekday: 5, // 周五
+    fromHour: 23,
+    toHour: 2,
+    location: '禁林',
+    reason: '周五夜里他去喂夜骐。他不带灯——'
+        '他说它们不喜欢光，其实是怕吓着它们。'
+        '他会跟它们说话，用的是跟人说话时完全不一样的语气。',
+  ),
+
+  // ---- 学生：他们从来不睡在该睡的地方 ----
+  ScheduleException(
+    npcId: 'wood',
+    fromHour: 6,
+    toHour: 7,
+    location: '霍格沃茨·场地',
+    reason: '晨跑。雷打不动，下雪也跑，'
+        '而他也从不邀请任何人一起。'
+        '跑完他会绕着球场走一圈，看看草皮。',
+  ),
+  ScheduleException(
+    npcId: 'neville',
+    fromHour: 21,
+    toHour: 23,
+    location: '霍格沃茨·温室',
+    reason: '他忘了时间。这不是第一次了——'
+        '温室里的灯还亮着，他蹲在一盆植物前面，'
+        '手上全是泥，脸上有一道。',
+  ),
+  ScheduleException(
+    npcId: 'hermione',
+    weekday: 0, // 周日
+    fromHour: 6,
+    toHour: 8,
+    location: '霍格沃茨·图书馆',
+    reason: '她发现周日早上没有人跟她抢图书馆，'
+        '于是这变成了她一周里最喜欢的两小时。'
+        '桌上摊着六本书，还有一支咬得很难看的羽毛笔。',
+  ),
+  ScheduleException(
+    npcId: 'luna',
+    fromHour: 3,
+    toHour: 5,
+    location: '霍格沃茨·走廊',
+    reason: '她在找她的鞋。它们总是不见，'
+        '而她说这不是有人藏的，是城堡自己拿走的，'
+        '"它只是想让我多走走"。她光着脚走得很平静。',
+  ),
+  ScheduleException(
+    npcId: 'fred',
+    weekday: 5, // 周五
+    fromHour: 23,
+    toHour: 2,
+    location: '霍格沃茨·厨房',
+    reason: '周五夜里的厨房归他们。他们在偷夜宵，'
+        '但更像是把这当成了自己的据点——'
+        '桌上摊着各种东西，其中不少跟吃的一点关系都没有。',
+  ),
+  ScheduleException(
+    npcId: 'george',
+    weekday: 5,
+    fromHour: 23,
+    toHour: 2,
+    location: '霍格沃茨·厨房',
+    reason: '同上：周五夜里的厨房。他负责望风，'
+        '而望风这件事他做得极其不认真——'
+        '被撞见时他会先笑，然后再决定要不要跑。',
+  ),
+];
+
+/// [hour] 是否落在 [from] → [to] 这段闭区间里。
+///
+/// `from > to` 按跨午夜处理（23 点到次日 1 点）。
+/// 两端都为空表示不限制钟点。
+bool _hourInExceptionWindow(int hour, int? from, int? to) {
+  if (from == null && to == null) return true;
+  if (from == null) return hour <= to!;
+  if (to == null) return hour >= from;
+  if (from <= to) return hour >= from && hour <= to;
+  return hour >= from || hour <= to; // 跨午夜
+}
+
+/// 查 [npcId] 在 [hour] 点有没有正在生效的作息例外。
+///
+/// [weekday] 沿用 GameTime 的约定：**0=星期日 … 6=星期六**。
+/// 多条命中时取表里第一条——所以窄窗口的要排在前面。
+ScheduleException? scheduleExceptionFor(
+  String npcId,
+  int hour, {
+  int weekday = 1,
+}) {
+  for (final e in kScheduleExceptions) {
+    if (e.npcId != npcId) continue;
+    if (e.weekday != null && e.weekday != weekday) continue;
+    if (!_hourInExceptionWindow(hour, e.fromHour, e.toHour)) continue;
+    return e;
+  }
+  return null;
+}
+
 /// 推导 [npc] 在 [hour] 点应该在的位置。
 ///
 /// [weekday] 沿用 GameTime 的约定：**0=星期日 … 6=星期六**。
 /// 周末学生不上课，在场地和休息室之间晃——这也是「霍格莫德村周末开放」
 /// 这条规则能生效的前提。
+///
+/// 例外优先：命中 [kScheduleExceptions] 时直接返回例外地点，
+/// 不再走下面那套按身份推导。
 String npcExpectedLocation(NPC npc, int hour, {int weekday = 1}) {
+  final ex = scheduleExceptionFor(npc.id, hour, weekday: weekday);
+  if (ex != null) return ex.location;
+
   final isStaff = npc.grade == 0;
   final home = isStaff
       ? (kStaffHomeLocations[npc.id] ?? kDefaultStaffLocation)

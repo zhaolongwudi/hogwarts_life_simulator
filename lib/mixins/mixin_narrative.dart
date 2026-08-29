@@ -27,6 +27,8 @@ import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
 import '../data/wand_data.dart';
 import '../data/worldline_data.dart';
+import '../data/monthly_event_data.dart';
+import '../data/npc_schedule_rules.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
@@ -1365,6 +1367,28 @@ $kNarrativeWritingRules
       parts.add('【旧怨已了·${r.name}】${formerRivalLine(r.name)}');
     }
 
+    // 【意外】他不该在这儿。
+    // 作息例外让某些人出现在反常的地方，可如果 AI 只看见
+    // "斯内普：55"这一行，写出来的就只是"斯内普在教室里"。
+    // 有意思的不是他在哪儿，是他在这儿干什么——那句 reason 才是
+    // 这段戏的引子（他在熬一种不能在地窖里熬的东西，
+    // 被撞见时先做的动作是用身体挡住坩埚）。
+    //
+    // 跟【宿敌】同理：只有真有人撞上了才花这份 token，
+    // 大多数回合这一段一个字都不会出现。
+    for (final n in npcsHere) {
+      if (!n.introduced) continue;
+      final ex = scheduleExceptionFor(
+        n.id,
+        ws.time.hour,
+        weekday: ws.time.weekday,
+      );
+      if (ex == null) continue;
+      parts.add('【意外·${n.name}】他此刻不该在这儿：${ex.reason}'
+          '（这是本回合免费送上门的一个场面，可以正经写一段，'
+          '也可以只是路过时看见一眼）');
+    }
+
     // 宿敌不一定正站在你面前。只让 AI 看见"眼前这个人恨你"，
     // 那"他在走廊尽头堵你""你摔倒时旁边有人笑"这类戏永远写不出来——
     // 因为 AI 压根不知道城堡另一头有这么一号人。
@@ -1420,6 +1444,15 @@ $kNarrativeWritingRules
             '称呼也要跟着变。');
       }
     }
+
+    // 【时令】这个月城堡里是什么味儿。
+    // 月度事件池是"新闻"——会冷却、会互斥，大部分月份其实是空的，
+    // 只有那一条随机事件撑着。这一句是"底色"：不抽取、不冷却，
+    // 每个月都有一句，每回合都在。
+    // 没有底色的月份，AI 写出来的就只是一段没有季节的场景——
+    // 五月和十一月在他的笔下没有任何区别。
+    final atmosphere = atmosphereForMonth(ws.time.month);
+    if (atmosphere.isNotEmpty) parts.add('【时令】$atmosphere');
 
     final hour = ws.time.hour;
     final timeDesc = hour >= 22 || hour < 6 ? '深夜' :
