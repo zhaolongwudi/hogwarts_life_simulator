@@ -246,6 +246,20 @@ mixin GameInitMixin on GameProviderBase {
   }) async {
     // 先彻底清空所有旧状态（防止新开局把旧摘要/近期剧情注入到 Prompt）
     resetAllState();
+
+    // 「随机时代」在这里落定。此前它从来没有被解析过，选了它的玩家
+    // 拿到的是一个 era='random' 的存档——不是随机，是"没有时代"：
+    // 时代专属锚点一条都筛不出来，时代专属 NPC 一个都不会生成。
+    // 详见 lib/data/era_data.dart 里 resolveEra 的注释。
+    //
+    // 走 lockEra 而不是 setEra：只改内存不写盘，
+    // 玩家"随机时代"这个偏好得留着，下一局还要能再掷一次。
+    final resolvedEra = resolveEra(appProvider.era, random.nextDouble());
+    if (resolvedEra != appProvider.era) {
+      appProvider.lockEra(resolvedEra);
+      debugPrint('🎲 随机时代落定为 ${resolvedEra.name}');
+    }
+
     // 重新创建路由器（resetAllState 已将 router 置空）
     updateClient();
     // 清空旧自动存档文件（防止新游戏误加载到旧存档）

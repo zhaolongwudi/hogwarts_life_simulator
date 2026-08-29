@@ -318,6 +318,20 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 把「随机时代」落定成具体时代，但**不写进偏好**。
+  ///
+  /// 与 [setEra] 唯一的区别是不落盘：玩家在设置里选的是"随机时代"，
+  /// 这个偏好应当保留——下一局还要能再随机一次。
+  /// 走 setEra 的话，第一局掷到的时代会被存进 SharedPreferences，
+  /// 从此"随机时代"就退化成"上一次随机到的时代"。
+  ///
+  /// 落定之后这一整局的所有 `appProvider.era` 引用都会拿到具体时代，
+  /// 事件锚点、NPC 种子、违禁词、校长表才对得上。
+  void lockEra(Era era) {
+    _era = era;
+    notifyListeners();
+  }
+
   Future<void> setSceneRoute(AiScene scene, AiProvider provider) async {
     _sceneRoute[scene] = provider.name;
     final prefs = await SharedPreferences.getInstance();

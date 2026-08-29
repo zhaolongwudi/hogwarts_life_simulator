@@ -89,5 +89,41 @@ EraDef eraDefByEra(Era era) {
   return _fallback;
 }
 
+/// 「随机时代」能掷到哪些时代——不含 [Era.random] 自己。
+///
+/// 顺序无意义，骰子掷到哪个就是哪个。
+const List<Era> kRandomEraChoices = <Era>[
+  Era.dumbledore,
+  Era.marauders,
+  Era.first_war,
+  Era.harry_same,
+  Era.post_war,
+];
+
+/// 把「随机时代」落定成一个具体时代。
+///
+/// 这个函数看着多余，但它是必需的：**`Era.random` 从来没有被解析过。**
+/// 选了它的玩家拿到的是一个 `era` 字符串为 `'random'` 的存档，
+/// 而 `'random'` 不是任何一个时代的 eraKey，于是——
+///
+/// | 受影响的地方 | 后果 |
+/// |---|---|
+/// | 事件锚点 | `anchorsFor(era: 'random')` 一条时代专属锚点都筛不出来 |
+/// | NPC 种子 | `eraNpcSeeds['random']` 为空，开局一个时代专属 NPC 都没有 |
+/// | 违禁词 / 校长 / 学年 | 全走 `eraDefByEra(Era.random)` 那条占位定义 |
+///
+/// 也就是说："随机时代"不是随机，是**没有时代**。
+/// 玩家在设置里选了它，得到的是一个空了一半的世界，
+/// 而不报任何错、不给任何提示。
+///
+/// [roll] 取 [0, 1)。抽成纯函数是为了能测分布——开局只掷一次骰子，
+/// 落定之后这一整局都固定在这个时代，不该每回合重掷。
+Era resolveEra(Era chosen, double roll) {
+  if (chosen != Era.random) return chosen;
+  final n = kRandomEraChoices.length;
+  final idx = (roll * n).floor().clamp(0, n - 1);
+  return kRandomEraChoices[idx];
+}
+
 // 注：eraDefByKey 已删——它按字符串反查，而字符串本来就是从
 // eraDefByEra(era).eraKey 来的，再反查回去是绕圈子，全项目零调用。
