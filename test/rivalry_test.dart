@@ -536,6 +536,24 @@ void main() {
       expect(m.group(3), '你当众反驳了她');
     });
 
+    test('prompt 约定的半角写法（NPC名:±X(原因)）也认', () {
+      final re = RegExp(r'^\s*(.*?)\s*(?:[:：]\s*)?([+＋-]?\d+)\s*(?:[（(](.*?)[）)])?\s*$');
+      final m = re.firstMatch('德拉科·马尔福:-12(你抢了他的风头)');
+      expect(m, isNotNull);
+      expect(m!.group(1), '德拉科·马尔福');
+      expect(m.group(2), '-12');
+      expect(m.group(3), '你抢了他的风头');
+    });
+
+    test('两处都有括号时取行尾那个当原因', () {
+      // 名字后面的多半只是神态描写（「赫敏（犹豫了一下）：-8」，
+      // 行尾才是 prompt 约定的"原因"
+      final src =
+          File('lib/mixins/mixin_response_affection.dart').readAsStringSync();
+      expect(src.contains('if (trailing != null && trailing.isNotEmpty) remark = trailing;'),
+          isTrue);
+    });
+
     test('生产代码里的正则就是这个', () {
       final src =
           File('lib/mixins/mixin_response_affection.dart').readAsStringSync();

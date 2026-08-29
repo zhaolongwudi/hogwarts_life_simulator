@@ -85,11 +85,15 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // 括号里的话是 AI 给的理由，以前剥掉就扔了。
         // 现在留下来：它既是记仇理由，也是成因识别的唯一输入——
         // 否则宿敌表里那 7 种成因在 AI 路径上永远只会认出默认的「背叛」。
-        String? remark = match?.group(3)?.trim();
+        final trailing = match?.group(3)?.trim();
+        String? remark;
         final inName = _parenRemarkRe.firstMatch(npcName)?.group(0);
         if (inName != null) {
           remark = inName.substring(1, inName.length - 1).trim();
         }
+        // 两个位置都有括号时以行尾的为准：prompt 约定的格式是
+        // 「NPC名:±X(原因)」，行尾那个是原因，名字后面的多半只是神态描写。
+        if (trailing != null && trailing.isNotEmpty) remark = trailing;
         npcName = npcName.replaceFirst(_parenRemarkRe, '').trim();
         if (npcName.isEmpty) continue;
 
