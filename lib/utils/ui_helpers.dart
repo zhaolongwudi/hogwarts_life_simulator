@@ -141,3 +141,15 @@ class UiHelpers {
     return tags.take(3).toList();
   }
 }
+
+/// 分隔线/描边颜色。
+///
+/// `Theme.of(context).dividerTheme.color` 是**可空**的，而默认构造的
+/// ThemeData 并没有配 dividerColor。全项目十几处直接 `!` 强解包——
+/// 只要主题一换（或某个测试环境没配），整页直接报错。
+/// 描边一律从这里取，主题没配时按明暗给一个兜底色。
+Color dividerColorOf(BuildContext context) =>
+    Theme.of(context).dividerTheme.color ??
+    (Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF30363D)
+        : const Color(0xFFD0D7DE));

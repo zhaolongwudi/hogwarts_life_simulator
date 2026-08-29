@@ -11,8 +11,8 @@ import '../../utils/npc_lookup.dart';
 import '../../widgets/narrative_visuals.dart';
 import '../../widgets/scaled_rich_text.dart';
 
-import '../../mixins/mixin_response_choices.dart';
 import '../story_history_screen.dart';
+import 'choice_panel.dart';
 
 class NarrativeTab extends StatefulWidget {
   final Function(int) onNarrativeTapChoice;
@@ -35,6 +35,16 @@ class NarrativeTab extends StatefulWidget {
 class _NarrativeTabState extends State<NarrativeTab> {
   bool _expandedStats = false;
 
+  /// 选项区是否收起。
+  ///
+  /// 正文才是这个页面的主角，选项是附在上面的东西。但默认收起的话，
+  /// 每回合结束都得先点一下才能行动，反而更烦——所以默认展开，
+  /// 想一屏多看几行正文的人自己收起来。
+  ///
+  /// 用静态字段而不是实例字段：切到别的 tab 再回来 NarrativeTab 会重建，
+  /// 实例字段一丢，玩家就得再收一次。这是个偏好，不是这一帧的状态。
+  static bool choicesCollapsed = false;
+
   Widget _buildPanelContent(Player player) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -43,14 +53,15 @@ class _NarrativeTabState extends State<NarrativeTab> {
         const SizedBox(height: 12),
         GestureDetector(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const WorldMapScreen()));
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const WorldMapScreen()));
           },
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              border: Border.all(color: dividerColorOf(context)),
             ),
             child: Column(
               children: [
@@ -60,23 +71,36 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.map, color: Theme.of(context).colorScheme.primary),
+                      child: Icon(Icons.map,
+                          color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('霍格沃茨魔法世界', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('霍格沃茨魔法世界',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 2),
-                          Text('点击打开完整世界地图', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                          Text('点击打开完整世界地图',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium!
+                                      .color)),
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.primary),
+                    Icon(Icons.chevron_right,
+                        color: Theme.of(context).colorScheme.primary),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -112,18 +136,22 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: widget.subTab == 0 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                      color: widget.subTab == 0
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: widget.subTab == 0
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).dividerTheme.color!,
+                            : dividerColorOf(context),
                       ),
                     ),
                     child: Text('事件',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: widget.subTab == 0 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
+                          color: widget.subTab == 0
+                              ? Colors.white
+                              : Theme.of(context).textTheme.bodyMedium!.color,
                           fontWeight: FontWeight.w600,
                         )),
                   ),
@@ -136,18 +164,22 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: widget.subTab == 1 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                      color: widget.subTab == 1
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: widget.subTab == 1
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).dividerTheme.color!,
+                            : dividerColorOf(context),
                       ),
                     ),
                     child: Text('面板',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: widget.subTab == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
+                          color: widget.subTab == 1
+                              ? Colors.white
+                              : Theme.of(context).textTheme.bodyMedium!.color,
                           fontWeight: FontWeight.w600,
                         )),
                   ),
@@ -158,13 +190,17 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const StoryHistoryScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const StoryHistoryScreen()),
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: widget.subTab == 2 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                    color: widget.subTab == 2
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: const Color(0xFFD3A625).withValues(alpha: 0.5),
@@ -173,7 +209,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.history, size: 14, color: const Color(0xFFD3A625)),
+                      Icon(Icons.history,
+                          size: 14, color: const Color(0xFFD3A625)),
                       const SizedBox(width: 4),
                       const Text('回放',
                           style: TextStyle(
@@ -215,17 +252,23 @@ class _NarrativeTabState extends State<NarrativeTab> {
       children: [
         Row(
           children: [
-            const Text('📋 事件记录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+            const Text('📋 事件记录',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFE6EDF3))),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                border: Border.all(color: dividerColorOf(context)),
               ),
               child: Text('共 ${events.length + narrativeEvents.length} 条',
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodyMedium!.color)),
             ),
           ],
         ),
@@ -236,34 +279,47 @@ class _NarrativeTabState extends State<NarrativeTab> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerTheme.color!),
+              border: Border.all(color: dividerColorOf(context)),
             ),
             child: const Center(
-              child: Text('暂无事件记录\n行动起来创建你的故事吧！', style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+              child: Text('暂无事件记录\n行动起来创建你的故事吧！',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
             ),
           )
         else ...[
           if (narrativeEvents.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text('📖 剧情事件', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color, fontWeight: FontWeight.w600)),
+              child: Text('📖 剧情事件',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodyMedium!.color,
+                      fontWeight: FontWeight.w600)),
             ),
             ...narrativeEvents.asMap().entries.map((entry) {
               final idx = entry.key;
               final event = entry.value;
-              return _buildEventCard(event.text, _buildTimeLabel(event, idx == 0, gp.turnCount), isRecent: idx == 0);
+              return _buildEventCard(
+                  event.text, _buildTimeLabel(event, idx == 0, gp.turnCount),
+                  isRecent: idx == 0);
             }),
             const SizedBox(height: 8),
           ],
           if (events.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text('🌍 世界动态', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color, fontWeight: FontWeight.w600)),
+              child: Text('🌍 世界动态',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodyMedium!.color,
+                      fontWeight: FontWeight.w600)),
             ),
             ...events.asMap().entries.map((entry) {
               final idx = entry.key;
               final event = entry.value;
-              return _buildEventCard(event.text, _buildTimeLabel(event, idx == 0, gp.turnCount), isRecent: idx == 0);
+              return _buildEventCard(
+                  event.text, _buildTimeLabel(event, idx == 0, gp.turnCount),
+                  isRecent: idx == 0);
             }),
           ],
         ],
@@ -280,7 +336,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
           builder: (ctx) => AlertDialog(
             title: Row(
               children: [
-                Icon(isWorldEvent ? Icons.public : Icons.auto_awesome, size: 20, color: isRecent ? const Color(0xFFD3A625) : Theme.of(context).colorScheme.primary),
+                Icon(isWorldEvent ? Icons.public : Icons.auto_awesome,
+                    size: 20,
+                    color: isRecent
+                        ? const Color(0xFFD3A625)
+                        : Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(child: Text(isWorldEvent ? '世界动态详情' : '剧情事件详情')),
               ],
@@ -290,7 +350,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
               style: const TextStyle(height: 1.5),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
             ],
           ),
         );
@@ -306,7 +367,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 ? const Color(0xFFD3A625).withValues(alpha: 0.6)
                 : isWorldEvent
                     ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
-                    : Theme.of(context).dividerTheme.color!,
+                    : dividerColorOf(context),
           ),
         ),
         child: Row(
@@ -315,13 +376,22 @@ class _NarrativeTabState extends State<NarrativeTab> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: (isRecent ? const Color(0xFFD3A625) : isWorldEvent ? const Color(0xFF3B82F6) : Theme.of(context).colorScheme.primary).withValues(alpha: 0.15),
+                color: (isRecent
+                        ? const Color(0xFFD3A625)
+                        : isWorldEvent
+                            ? const Color(0xFF3B82F6)
+                            : Theme.of(context).colorScheme.primary)
+                    .withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 isWorldEvent ? Icons.public : Icons.auto_awesome,
                 size: 16,
-                color: isRecent ? const Color(0xFFD3A625) : isWorldEvent ? const Color(0xFF3B82F6) : Theme.of(context).colorScheme.primary,
+                color: isRecent
+                    ? const Color(0xFFD3A625)
+                    : isWorldEvent
+                        ? const Color(0xFF3B82F6)
+                        : Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(width: 10),
@@ -334,15 +404,22 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isRecent ? FontWeight.w700 : FontWeight.w500,
-                      color: isRecent ? const Color(0xFFD3A625) : const Color(0xFFE6EDF3),
+                      color: isRecent
+                          ? const Color(0xFFD3A625)
+                          : const Color(0xFFE6EDF3),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(time, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                  Text(time,
+                      style: TextStyle(
+                          fontSize: 11,
+                          color:
+                              Theme.of(context).textTheme.bodyMedium!.color)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 18, color: Theme.of(context).textTheme.bodyMedium!.color),
+            Icon(Icons.chevron_right,
+                size: 18, color: Theme.of(context).textTheme.bodyMedium!.color),
           ],
         ),
       ),
@@ -390,6 +467,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
       'body': body.isEmpty ? null : body,
     };
   }
+
   Widget _buildHeaderCard(String? timestamp, String? location,
       {double height = 96}) {
     return Padding(
@@ -415,13 +493,16 @@ class _NarrativeTabState extends State<NarrativeTab> {
           ),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
       ],
     );
   }
 
   /// 选项区固定在正文下方（不随正文滚动），最多占 [maxHeight] 高度后内部滚动。
   /// 旧实现把选项放在长滚动列表末尾，600~800 字的叙事下玩家必须滑到底才能行动。
+  ///
+  /// 面板本身在 [ChoicePanel]——高度那两条规则写在那里。
   Widget _buildChoiceList(GameProvider gp, {double maxHeight = 300}) {
     // 注意：快捷指令/查看类命令执行时 commandResult 非空，
     // 但 choices 已经被 processChoice 里恢复为原剧情选项，必须照常显示
@@ -429,108 +510,21 @@ class _NarrativeTabState extends State<NarrativeTab> {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 8,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Row(
-                  children: [
-                    const Text(
-                      '可选行动',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
-                          color: Color(0xFFD3A625)),
-                    ),
-                    const Spacer(),
-                    // 「换一批」走本地词库，不消耗 token。
-                    // 之前这套生成器写好了却没有任何入口，玩家被 AI 给的
-                    // 三个选项卡住时只能硬选一个。
-                    Semantics(
-                      button: true,
-                      label: '换一批行动建议',
-                      child: InkWell(
-                        onTap: gp.isLoading
-                            ? null
-                            : () {
-                                gp.generateMoreSuggestions();
-                                if (gp.error != null && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(gp.error!)),
-                                  );
-                                }
-                              },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.shuffle,
-                                  size: 15,
-                                  color: gp.isLoading
-                                      ? Colors.grey
-                                      : const Color(0xFFD3A625)),
-                              const SizedBox(width: 4),
-                              Text(
-                                '换一批',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: gp.isLoading
-                                      ? Colors.grey
-                                      : const Color(0xFFD3A625),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: gp.choices.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final choice = entry.value;
-                      final displayText =
-                          GameResponseChoiceMixin.sanitizeChoiceText(choice.text);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _ChoiceButton(
-                          label: '${String.fromCharCode(65 + index)}. $displayText',
-                          onTap: () => widget.onNarrativeTapChoice(index),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return ChoicePanel(
+      choices: gp.choices,
+      maxHeight: maxHeight,
+      collapsed: choicesCollapsed,
+      busy: gp.isLoading,
+      onToggleCollapse: () =>
+          setState(() => choicesCollapsed = !choicesCollapsed),
+      onShuffle: () {
+        gp.generateMoreSuggestions();
+        if (gp.error != null && context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(gp.error!)));
+        }
+      },
+      onPick: widget.onNarrativeTapChoice,
     );
   }
 
@@ -545,7 +539,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+        border: Border.all(color: dividerColorOf(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -561,13 +555,19 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary
+                        ],
                       ),
                     ),
                     child: Center(
                       child: Text(
                         player.name.isNotEmpty ? player.name[0] : '旅',
-                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -580,20 +580,25 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   children: [
                     Row(
                       children: [
-                        Text(player.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                        Text(player.name,
+                            style: const TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '📍 $loc',
-                      style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium!.color),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).textTheme.bodyMedium!.color),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '💰 ${gp.player?.galleons ?? 0} 加隆 · 🏦 ${gp.player?.bankGalleons ?? 0} 存 · 🎯 第${_turnCount(gp)}回合',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF8B949E)),
                     ),
                   ],
                 ),
@@ -602,9 +607,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
               GestureDetector(
                 onTap: () => setState(() => _expandedStats = !_expandedStats),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -612,10 +621,15 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     children: [
                       Text(
                         _expandedStats ? '收起' : '属性',
-                        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600),
                       ),
                       Icon(
-                        _expandedStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        _expandedStats
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
                         size: 16,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -636,28 +650,118 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildAttributesSection(Player player) {
     final basic = [
-      {'label': '容貌', 'value': player.attributes['looks'] ?? 80, 'icon': Icons.face, 'color': const Color(0xFFD97706)},
-      {'label': '体质', 'value': player.attributes['constitution'] ?? 50, 'icon': Icons.favorite, 'color': const Color(0xFFDC2626)},
-      {'label': '智力', 'value': player.attributes['intelligence'] ?? 50, 'icon': Icons.psychology, 'color': const Color(0xFF2563EB)},
-      {'label': '魅力', 'value': player.attributes['charisma'] ?? 50, 'icon': Icons.favorite_border, 'color': const Color(0xFFDB2777)},
-      {'label': '体能', 'value': player.attributes['strength'] ?? 50, 'icon': Icons.fitness_center, 'color': const Color(0xFF059669)},
-      {'label': '道德', 'value': player.attributes['morality'] ?? 50, 'icon': Icons.verified, 'color': const Color(0xFF7C3AED)},
+      {
+        'label': '容貌',
+        'value': player.attributes['looks'] ?? 80,
+        'icon': Icons.face,
+        'color': const Color(0xFFD97706)
+      },
+      {
+        'label': '体质',
+        'value': player.attributes['constitution'] ?? 50,
+        'icon': Icons.favorite,
+        'color': const Color(0xFFDC2626)
+      },
+      {
+        'label': '智力',
+        'value': player.attributes['intelligence'] ?? 50,
+        'icon': Icons.psychology,
+        'color': const Color(0xFF2563EB)
+      },
+      {
+        'label': '魅力',
+        'value': player.attributes['charisma'] ?? 50,
+        'icon': Icons.favorite_border,
+        'color': const Color(0xFFDB2777)
+      },
+      {
+        'label': '体能',
+        'value': player.attributes['strength'] ?? 50,
+        'icon': Icons.fitness_center,
+        'color': const Color(0xFF059669)
+      },
+      {
+        'label': '道德',
+        'value': player.attributes['morality'] ?? 50,
+        'icon': Icons.verified,
+        'color': const Color(0xFF7C3AED)
+      },
     ];
 
     if (_expandedStats) {
       final advanced = [
-        {'label': '魔咒', 'value': player.attributes['spell_understanding'] ?? 50, 'icon': Icons.auto_awesome, 'color': const Color(0xFF3B82F6)},
-        {'label': '变形', 'value': player.attributes['transfiguration'] ?? 50, 'icon': Icons.transform, 'color': const Color(0xFF8B5CF6)},
-        {'label': '魔药', 'value': player.attributes['potions'] ?? 50, 'icon': Icons.science, 'color': const Color(0xFF10B981)},
-        {'label': '草药', 'value': player.attributes['herbology'] ?? 50, 'icon': Icons.local_florist, 'color': const Color(0xFF84CC16)},
-        {'label': '黑防', 'value': player.attributes['dda'] ?? 50, 'icon': Icons.shield, 'color': const Color(0xFFEF4444)},
-        {'label': '飞行', 'value': player.attributes['flying'] ?? 50, 'icon': Icons.flight, 'color': const Color(0xFF0EA5E9)},
-        {'label': '勇气', 'value': player.attributes['courage'] ?? 50, 'icon': Icons.bolt, 'color': const Color(0xFFF59E0B)},
-        {'label': '意志', 'value': player.attributes['willpower'] ?? 50, 'icon': Icons.self_improvement, 'color': const Color(0xFF6366F1)},
-        {'label': '创造', 'value': player.attributes['creativity'] ?? 50, 'icon': Icons.psychology_alt, 'color': const Color(0xFFEC4899)},
-        {'label': '社交', 'value': player.attributes['social'] ?? 50, 'icon': Icons.people_alt, 'color': const Color(0xFF14B8A6)},
-        {'label': '观察', 'value': player.attributes['observation'] ?? 50, 'icon': Icons.visibility, 'color': const Color(0xFF06B6D4)},
-        {'label': '逻辑', 'value': player.attributes['logic'] ?? 50, 'icon': Icons.analytics, 'color': const Color(0xFFA855F7)},
+        {
+          'label': '魔咒',
+          'value': player.attributes['spell_understanding'] ?? 50,
+          'icon': Icons.auto_awesome,
+          'color': const Color(0xFF3B82F6)
+        },
+        {
+          'label': '变形',
+          'value': player.attributes['transfiguration'] ?? 50,
+          'icon': Icons.transform,
+          'color': const Color(0xFF8B5CF6)
+        },
+        {
+          'label': '魔药',
+          'value': player.attributes['potions'] ?? 50,
+          'icon': Icons.science,
+          'color': const Color(0xFF10B981)
+        },
+        {
+          'label': '草药',
+          'value': player.attributes['herbology'] ?? 50,
+          'icon': Icons.local_florist,
+          'color': const Color(0xFF84CC16)
+        },
+        {
+          'label': '黑防',
+          'value': player.attributes['dda'] ?? 50,
+          'icon': Icons.shield,
+          'color': const Color(0xFFEF4444)
+        },
+        {
+          'label': '飞行',
+          'value': player.attributes['flying'] ?? 50,
+          'icon': Icons.flight,
+          'color': const Color(0xFF0EA5E9)
+        },
+        {
+          'label': '勇气',
+          'value': player.attributes['courage'] ?? 50,
+          'icon': Icons.bolt,
+          'color': const Color(0xFFF59E0B)
+        },
+        {
+          'label': '意志',
+          'value': player.attributes['willpower'] ?? 50,
+          'icon': Icons.self_improvement,
+          'color': const Color(0xFF6366F1)
+        },
+        {
+          'label': '创造',
+          'value': player.attributes['creativity'] ?? 50,
+          'icon': Icons.psychology_alt,
+          'color': const Color(0xFFEC4899)
+        },
+        {
+          'label': '社交',
+          'value': player.attributes['social'] ?? 50,
+          'icon': Icons.people_alt,
+          'color': const Color(0xFF14B8A6)
+        },
+        {
+          'label': '观察',
+          'value': player.attributes['observation'] ?? 50,
+          'icon': Icons.visibility,
+          'color': const Color(0xFF06B6D4)
+        },
+        {
+          'label': '逻辑',
+          'value': player.attributes['logic'] ?? 50,
+          'icon': Icons.analytics,
+          'color': const Color(0xFFA855F7)
+        },
       ];
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,7 +792,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
               color: const Color(0xFFD3A625).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('📚 课程属性', style: TextStyle(fontSize: 11, color: Color(0xFFD3A625), fontWeight: FontWeight.w600)),
+            child: const Text('📚 课程属性',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFFD3A625),
+                    fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -743,9 +851,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Icon(attr['icon'] as IconData, size: 13, color: color),
               const SizedBox(width: 3),
               Expanded(
-                child: Text(attr['label'] as String, style: const TextStyle(fontSize: 11, color: Color(0xFFC9D1D9))),
+                child: Text(attr['label'] as String,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFFC9D1D9))),
               ),
-              Text('$value', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+              Text('$value',
+                  style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
           const SizedBox(height: 4),
@@ -781,9 +893,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Icon(attr['icon'] as IconData, size: 14, color: color),
               const SizedBox(width: 4),
               Expanded(
-                child: Text(attr['label'] as String, style: const TextStyle(fontSize: 12, color: Color(0xFFC9D1D9))),
+                child: Text(attr['label'] as String,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFFC9D1D9))),
               ),
-              Text('$value', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+              Text('$value',
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
           const SizedBox(height: 4),
@@ -813,7 +929,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
         children: [
           Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, color: Theme.of(context).colorScheme.primary)),
         ],
       ),
     );
@@ -860,51 +978,63 @@ class _NarrativeTabState extends State<NarrativeTab> {
             },
           ),
         ),
-        // 固定高度的加载槽位：旧实现用 if (isLoading) 直接插入/移除 pill，
+        // 加载槽位。旧实现用 if (isLoading) 直接插入/移除 pill，
         // 出现与消失会让正文区高度跳变约 44px，阅读时很晃眼。
-        // 改成槽位常驻 + AnimatedOpacity 淡入淡出。
-        SizedBox(
-          height: 44,
-          child: AnimatedOpacity(
-            opacity: gp.isLoading ? 1 : 0,
-            duration: const Duration(milliseconds: 160),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.pink.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        gp.loadingStage.isNotEmpty ? gp.loadingStage : '推进中...',
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (gp.lastRoundTokens > 0) ...[
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4A5568),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+        // 但常驻一个 44px 的空槽位，等于每回合白扔两行正文——
+        // 而这个页面最缺的就是高度。
+        // 改成 AnimatedSize：平时收到 0，加载时平滑长到 44。
+        // 有动画就不是"跳变"，正文区也不会一伸一缩地抖。
+        AnimatedSize(
+          duration: const Duration(milliseconds: 160),
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            height: gp.isLoading ? 44 : 0,
+            child: AnimatedOpacity(
+              opacity: gp.isLoading ? 1 : 0,
+              duration: const Duration(milliseconds: 160),
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.pink.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: 10),
+                      Flexible(
                         child: Text(
-                          '${gp.lastRoundTokens} tokens',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFFA0AEC0)),
+                          gp.loadingStage.isNotEmpty
+                              ? gp.loadingStage
+                              : '推进中...',
+                          style: const TextStyle(fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (gp.lastRoundTokens > 0) ...[
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4A5568),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${gp.lastRoundTokens} tokens',
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFFA0AEC0)),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -944,7 +1074,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
               if (hasHeader) SizedBox(height: headerReserve),
               Expanded(
                 child: SingleChildScrollView(
-                  controller: widget.subTab == 0 ? widget.scrollController : null,
+                  controller:
+                      widget.subTab == 0 ? widget.scrollController : null,
                   padding: EdgeInsets.fromLTRB(
                     16,
                     hasHeader ? 0 : 16,
@@ -960,7 +1091,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       ],
                       _buildLegendPanel(),
                       const SizedBox(height: 8),
-                      if (bodyNarrative.isNotEmpty) _buildBodyCard(bodyNarrative),
+                      if (bodyNarrative.isNotEmpty)
+                        _buildBodyCard(bodyNarrative),
                       if (affectionSections.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         _buildAffectionCard(affectionSections),
@@ -998,7 +1130,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
       decoration: BoxDecoration(
         color: const Color(0xFF232A36),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.5), width: 1.1),
+        border: Border.all(
+            color: const Color(0xFFD3A625).withValues(alpha: 0.5), width: 1.1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
@@ -1012,12 +1145,16 @@ class _NarrativeTabState extends State<NarrativeTab> {
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: Color(0xFFD3A625), size: 18),
+              const Icon(Icons.info_outline,
+                  color: Color(0xFFD3A625), size: 18),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
                   '指令结果',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFD3A625)),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFD3A625)),
                 ),
               ),
               GestureDetector(
@@ -1028,7 +1165,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     color: const Color(0xFF374151),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.close, size: 16, color: Color(0xFFC9D1D9)),
+                  child: const Icon(Icons.close,
+                      size: 16, color: Color(0xFFC9D1D9)),
                 ),
               ),
             ],
@@ -1036,7 +1174,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
           const SizedBox(height: 6),
           Text(
             content,
-            style: const TextStyle(fontSize: 13, color: Color(0xFFD0D7DE), height: 1.55),
+            style: const TextStyle(
+                fontSize: 13, color: Color(0xFFD0D7DE), height: 1.55),
           ),
         ],
       ),
@@ -1049,7 +1188,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+        border: Border.all(color: dividerColorOf(context)),
       ),
       child: Wrap(
         spacing: 12,
@@ -1079,7 +1218,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+        border: Border.all(color: dividerColorOf(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1128,7 +1267,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+        border: Border.all(color: dividerColorOf(context)),
       ),
       child: ScaledRichText(
         text: TextSpan(
@@ -1160,15 +1299,15 @@ class _NarrativeTabState extends State<NarrativeTab> {
           ),
           const SizedBox(height: 6),
           ...sections.map((section) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              section,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFFC9D1D9),
-              ),
-            ),
-          )),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  section,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFC9D1D9),
+                  ),
+                ),
+              )),
         ],
       ),
     );
@@ -1186,8 +1325,8 @@ class _ResourceFloat extends StatefulWidget {
 
 class _ResourceFloatState extends State<_ResourceFloat>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+  late final AnimationController _ctrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 600));
   Map<String, int> _prev = const {};
   String _text = '';
 
@@ -1246,8 +1385,9 @@ class _ResourceFloatState extends State<_ResourceFloat>
         child: FadeTransition(
           opacity: anim,
           child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
-                .animate(anim),
+            position:
+                Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
+                    .animate(anim),
             child: Container(
               margin: const EdgeInsets.only(top: 6),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -1280,56 +1420,6 @@ class _ResourceFloatState extends State<_ResourceFloat>
   }
 }
 
-/// 剧情选项按钮。
-///
-/// 带 400ms 防抖：选项点击会触发一次 AI 请求，连点两下就会连发两条指令、
-/// 既烧 token 又会把剧情推进两次。防抖期间按钮同时置灰给出视觉反馈。
-class _ChoiceButton extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _ChoiceButton({required this.label, required this.onTap});
-
-  @override
-  State<_ChoiceButton> createState() => _ChoiceButtonState();
-}
-
-class _ChoiceButtonState extends State<_ChoiceButton> {
-  bool _locked = false;
-
-  Future<void> _handleTap() async {
-    if (_locked) return;
-    setState(() => _locked = true);
-    widget.onTap();
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    if (mounted) setState(() => _locked = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: _handleTap,
-      child: AnimatedOpacity(
-        opacity: _locked ? 0.5 : 1,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerTheme.color!),
-          ),
-          child: Text(
-            widget.label,
-            style: const TextStyle(fontSize: 14, color: Color(0xFFE6EDF3)),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// AI 失败提示条。
 ///
 /// 以前 AI 调用失败只会静默切本地兜底剧情，界面毫无提示，
@@ -1353,7 +1443,8 @@ class _AiErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF5C2222),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFF7B72).withValues(alpha: 0.5)),
+        border:
+            Border.all(color: const Color(0xFFFF7B72).withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
