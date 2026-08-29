@@ -237,6 +237,34 @@ const List<SceneIllustration> kSceneIllustrations = [
     emoji: '🏠',
     gradient: [Color(0xFF8A7B5E), Color(0xFF665A44), Color(0xFF403828)],
   ),
+  SceneIllustration(
+    keywords: ['格里莫广场12号', '格里莫广场', '格里莫', '凤凰社总部'],
+    title: '格里莫广场12号',
+    icon: Icons.apartment,
+    emoji: '🏛️',
+    gradient: [Color(0xFF3D3A4A), Color(0xFF2A2738), Color(0xFF17151F)],
+  ),
+  SceneIllustration(
+    keywords: ['尖叫棚屋', '尖叫屋'],
+    title: '尖叫棚屋',
+    icon: Icons.cottage,
+    emoji: '🏚️',
+    gradient: [Color(0xFF2E3B2E), Color(0xFF1E2A1E), Color(0xFF0F150F)],
+  ),
+  SceneIllustration(
+    keywords: ['骑士巴士', '紫色巴士'],
+    title: '骑士巴士',
+    icon: Icons.directions_bus,
+    emoji: '🚌',
+    gradient: [Color(0xFF5B3A8A), Color(0xFF43296A), Color(0xFF2A1842)],
+  ),
+  SceneIllustration(
+    keywords: ['夜骐马车', '马车'],
+    title: '夜骐马车',
+    icon: Icons.nightlight_round,
+    emoji: '🐎',
+    gradient: [Color(0xFF1B2A4A), Color(0xFF12203A), Color(0xFF0A1424)],
+  ),
 ];
 
 /// 默认场景（未命中任何关键词时）：霍格沃茨城堡
