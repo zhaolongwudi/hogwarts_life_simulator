@@ -8,6 +8,7 @@ import '../utils/story_text_renderer.dart';
 import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
+import '../data/narrative_time_rules.dart';
 import '../prompts/choice_prompts.dart';
 import 'mixin_response_choices.dart';
 import 'mixin_response_affection.dart';
@@ -572,6 +573,11 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
         .replaceAllMapped(RegExp(r'^【[^】\n]*】\s*$', multiLine: true), (m) => '')
         .replaceAll(RegExp(r'\n{3,}'), '\n\n')
         .trim();
+
+    // R4：时间戳回填。日历由系统独占推进，AI 自报的日期一律以系统为准。
+    // 连续性检查负责把「三天后」打回重写，这里负责兜住重写之外的小偏差，
+    // 保证玩家在横幅上看到的时间永远和最新存档里的日历一致。
+    cleaned = backfillTimestamp(cleaned, worldState.timestamp);
 
     if (cleaned.isNotEmpty && cleaned.length > 10) {
       currentNarrative = cleaned;

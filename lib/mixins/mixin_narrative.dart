@@ -18,6 +18,8 @@ import '../data/attribute_data.dart';
 import '../data/course_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
+import '../data/narrative_time_rules.dart';
+import '../data/time_cost_rules.dart';
 import '../data/wand_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
@@ -370,6 +372,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
   ${statusTag.isNotEmpty ? '【状态】$statusTag\n' : ''}
   【当前场景】${worldState.timestamp}｜${worldState.currentLocation ?? '未知'}
+  ${timeBudgetPromptLine(resolveActionCost(safeAction))}
   $sceneInfo
   ${buildContinuityBridgePromptLine()}
   $stagnationLine$anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】

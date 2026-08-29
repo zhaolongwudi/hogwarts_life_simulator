@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../data/era_data.dart';
 import '../data/forbidden_words.dart' as dataForbidden;
+import '../data/narrative_time_rules.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
 
@@ -335,29 +336,40 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       });
     }
 
-    // ---- R1: 时间不倒流。从 narrative 提取📅时间戳与 worldState.time 对比 ----
-    final tsMatch = RegExp(r'📅\s*([^\n]+)').firstMatch(narrative);
-    if (tsMatch != null && p != null) {
-      // 只做粗校验：若旧时间是 7月31日，新叙事不能写 7月30 日或更早的日期
-      final oldMonth = ws.time.month;
-      final oldDay = ws.time.day;
-      final newTxt = tsMatch.group(1) ?? '';
-      final nM = RegExp(r'(\d{1,2})\s*月').firstMatch(newTxt);
-      final nD = RegExp(r'(\d{1,2})\s*日').firstMatch(newTxt);
-      if (nM != null && nD != null) {
-        final newMonth = int.tryParse(nM.group(1)!) ?? 0;
-        final newDay = int.tryParse(nD.group(1)!) ?? 0;
-        if (newMonth > 0 && newDay > 0) {
-          bool earlier = false;
-          if (newMonth < oldMonth) earlier = true;
-          if (newMonth == oldMonth && newDay < oldDay) earlier = true;
-          // 同月同日允许（不同时段）；只有更早的日期判倒流
-          if (earlier) {
-            addV('critical', 'R1_time_regression',
-                '时间倒流：当前世界时间 ${ws.timestamp}，叙事却写了 $newTxt，严禁时间倒退。',
-                evidence: newTxt);
-          }
-        }
+    // ---- R1/R4: 时间必须跟系统日历对齐 ----
+    // R4 之前这里只判「更早」，AI 写「三天后」完全没人管：
+    // 玩家看到日历跳了三天，可世界钟只走了 30 分钟，下回合 prompt 又把时间送回来。
+    // 现在倒流、跨天、正文时间跳跃词三种都拦。
+    if (p != null) {
+      final timeReport = checkNarrativeTime(
+        narrative,
+        year: ws.time.year,
+        month: ws.time.month,
+        day: ws.time.day,
+      );
+      switch (timeReport.issue) {
+        case NarrativeTimeIssue.regression:
+          addV('critical', 'R1_time_regression',
+              '时间倒流：当前世界时间 ${ws.timestamp}，叙事却写了 ${timeReport.evidence}，严禁时间倒退。',
+              evidence: timeReport.evidence);
+        case NarrativeTimeIssue.jump:
+          addV('critical', 'R4_time_jump',
+              '时间跳跃：当前世界时间 ${ws.timestamp}，叙事却跳到了 ${timeReport.evidence}'
+                  '（快进 ${timeReport.deltaDays} 天）。'
+                  '日历由系统推进，你不能自行跨天——请把剧情压缩在本回合内，'
+                  '写到该收尾处为止，剩下的留给下一个回合。',
+              evidence: timeReport.evidence);
+        case NarrativeTimeIssue.jumpPhrase:
+          addV('critical', 'R4_time_jump_phrase',
+              '正文里出现了时间跳跃（${timeReport.evidence}）。'
+                  '本回合只能覆盖【时间预算】给出的时长，'
+                  '不要写「三天后」「一周过去」这类快进——日历不会跟着你走，'
+                  '只会造成剧情与日历对不上。请把这段时间发生的事浓缩着写，'
+                  '或者只写其中最有戏的一小段。',
+              evidence: timeReport.evidence);
+        case NarrativeTimeIssue.overnight:
+        case NarrativeTimeIssue.none:
+          break;
       }
     }
 
