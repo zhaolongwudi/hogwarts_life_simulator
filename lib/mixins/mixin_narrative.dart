@@ -1581,15 +1581,22 @@ $kNarrativeWritingRules
         deviationDriftFor(player?.worldLineDeviation ?? 0.0));
   }
 
-  /// 从叙事文本中提取玩家当前所在地点，并同步到 worldState.currentLocation。
-  /// 检查两处：1) 开头【地点】标签；2) 叙事末尾 200 字（确保玩家真的抵达）。
-  /// 别名匹配优化：同一主地点的不同细分房间（卧室/花园/书房）统一归到主地点，不造成假阳性转换。
-  /// 同步成功后重置停滞计数，让强制推进指令不再触发。
+  /// 从叙事开头的【地点】**结构化标签**同步玩家所在地点到 worldState.currentLocation。
+  ///
+  /// 重要：本函数**只读取结构化【地点】标签**，绝不从叙事正文里用「抵达动词」正则
+  /// 反推地点。正文里的「踏入/来到/走进」一律只当描写，不再改写硬状态——
+  /// 否则「从明天踏入九又四分之三站台」这类未来式描写会把人当晚硬切去车站，
+  /// 剧情时间与日历对不上（详见 commit 时间线错乱修复）。
+  ///
+  /// 地点变更的两条权威来源：
+  ///   ① 本函数的【地点】标签（AI 标准输出格式，最准确）；
+  ///   ② 场景图 runSceneTransitionGraph（强制/大节点过渡）。
+  /// 二者之外的任何正文文本都不再是地点状态的输入。
   void _syncLocationFromNarrative(String narrative) {
     if (narrative.isEmpty) return;
     final cur = worldState.currentLocation ?? '';
 
-    // ---- 第1步：解析开头的【地点】标签（AI 标准输出格式，最准确）----
+    // ---- 只解析开头的【地点】标签（AI 标准输出格式，最准确）----
     String? detected;
     final locationTagMatch = RegExp(
       r'【地点】\s*([^\n]+)',
@@ -1598,10 +1605,6 @@ $kNarrativeWritingRules
     if (locationTagMatch != null && locationTagMatch.group(1) != null) {
       final tag = locationTagMatch.group(1)!.trim();
       // 统一走 resolveLocationName（lib/data/locations.dart）。
-      // 以前这里只比别名、不比主名，而「霍格沃茨·场地」这条目的别名是
-      // 「草坪/魁地奇球场/黑湖」，没有一个匹配得上主名本身——AI 只要在
-      // 【地点】里规规矩矩写出规范名，解析就直接落空，于是这条最可靠的
-      // 来源整个失效，只能指望末尾 200 字的抵达动词兜底。
       detected = resolveLocationName(tag);
       // 如果标签没匹配到已知别名，但标签里提到了具体位置，
       // 检查是否属于"家中"大类（卧室/花园/书房/密室/起居室 都算家中）
@@ -1612,59 +1615,11 @@ $kNarrativeWritingRules
       }
     }
 
-    // ---- 第2步：再检查叙事末尾 200 字的「抵达性」关键词（以防开头标签写错）----
-    // 只认 "抵达/到达/走进/来到/出现在/登上/进入 + 地点" 这类明确到达的语境，
-    // 不认 "想到明天去对角巷" 这种未来的提及
-    final tail = narrative.length > 200
-        ? narrative.substring(narrative.length - 200)
-        : narrative;
-    // 抵达动词必须「紧贴」地点名：
-    // 旧实现是「末尾 200 字里只要有任意一个抵达动词，就取全文中最后出现的地点别名」，
-    // 于是「你走进教室，听说了关于禁林的故事」会被判成抵达禁林，
-    // 「你进入了梦乡，梦里你来到国王十字车站」也会把玩家硬切去车站。
-    // 现在改为：以动词为锚点，只在其后 16 字且不跨句边界的窗口内找地点名。
-    final arrivalRe = _arrivalVerbRe;
-    int lastArrivalAt = -1;
-    for (final match in arrivalRe.allMatches(tail)) {
-      final windowStart = match.end;
-      final windowEnd = windowStart + 16 > tail.length ? tail.length : windowStart + 16;
-      final rawWindow = tail.substring(windowStart, windowEnd);
-      // 窗口内一旦遇到句子边界就截断，避免跨句误连
-      final boundary = _sentenceBoundaryRe.firstMatch(rawWindow);
-      final scope =
-          boundary != null ? rawWindow.substring(0, boundary.start) : rawWindow;
-      if (scope.isEmpty) continue;
-      // 动词前后 10 字内出现梦境/假设类词 → 视为非真实抵达
-      final ctxStart = match.start - 10 < 0 ? 0 : match.start - 10;
-      final ctx = tail.substring(ctxStart, windowEnd);
-      if (_nonActualContextRe.hasMatch(ctx)) continue;
-      // 同样走 resolveLocationName：抵达动词后窗口里也可能直接写规范名
-      final hit = resolveLocationName(scope);
-      if (hit != null && match.end > lastArrivalAt) {
-        detected = hit; // 后发生的抵达事件覆盖先发生的
-        lastArrivalAt = match.end;
-      }
-    }
-
-    // ---- 第3步：家中细分场景（卧室/书房/花园/密室）都统一归为「家中·卧室」----
-    // 避免玩家从卧室走到书房就被判定为"换了地点"，停滞计数清零
-    // 导致强制推进不触发
-    const atHomeAliases = ['家中', '家里', '住宅', '庄园', '别墅', '卧室', '书房', '花园', '密室', '客厅', '门厅', '走廊'];
-    if (detected == null) {
-      // 如果【地点】标签和末尾都没识别到，但开头标签里是家中的某个房间，归到家中
-      if (locationTagMatch != null) {
-        final tag = locationTagMatch.group(1)!.trim();
-        if (atHomeAliases.any((a) => tag.contains(a))) {
-          detected = '家中·卧室';
-        }
-      }
-    }
-
-    if (detected == null) return; // 末尾没提到任何已知地点，不改
+    if (detected == null) return; // 【地点】标签未识别到任何已知地点，不改
 
     // 时间门：季节锁定的地点（车站/站台/特快/大礼堂）只在 9 月 1 日及之后才允许"抵达"，
-    // 与 runSceneTransitionGraph 的 minDateInt 对齐。日期未到就硬切地点会让剧情时间与日历对不上
-    // （例如 7 月 31 日收到信当晚就被叙事里的"明天踏入九又四分之三站台"切去车站）。
+    // 与 runSceneTransitionGraph 的 minDateInt 对齐。日期未到就保留上一地点，
+    // 等场景图在日期到了之后再走正常过渡。
     final dateInt = worldState.time.month * 100 + worldState.time.day;
     final required = _seasonLockedMinDate.entries
         .where((e) => detected!.contains(e.key))
@@ -1676,7 +1631,7 @@ $kNarrativeWritingRules
         '当前 ${worldState.time.month}月${worldState.time.day}日）',
         turn: turnCount,
       );
-      return; // 季节未到：保留上一地点，等 SceneTransitionGraph 在日期到了之后再走正常过渡
+      return; // 季节未到：保留上一地点
     }
 
     // 若检测到的地点与当前不同，则更新并清零停滞计数
@@ -1684,7 +1639,6 @@ $kNarrativeWritingRules
       worldState.currentLocation = detected;
       lastTrackedLocation = detected;
       turnsAtSameLocation = 0;
-      // 地点同步日志已移除
     }
   }
 
@@ -1709,20 +1663,6 @@ $kNarrativeWritingRules
   /// 锚点去重时剥掉事件前缀图标。原先在两个 for 循环里各写一份，
   /// 每个事件都重新编译一次。
   static final RegExp _anchorIconPrefix = RegExp(r'^([\u{1F4CA}\u{1F464}\u{1F4AC}\u{1F4C5}\u{1F3C6}\u{1F31F}\u{1F4F0}])', unicode: true);
-
-  /// 抵达动词锚点。_syncLocationFromNarrative 每回合都跑，原先在方法体里现编译。
-  static final RegExp _arrivalVerbRe = RegExp(
-      r'(?:抵达|到达|走进|走入|来到|出现在|登上|进入|下车|到站|赶到|踏入|推门而入)');
-
-  /// 句边界：抵达动词后 16 字窗口内一旦撞上就截断，避免跨句误连地点名。
-  /// 这个正则原本写在 allMatches 循环内部，每个抵达动词都重编译一次。
-  static final RegExp _sentenceBoundaryRe = RegExp(r'[。！？!?\n；;]');
-
-  /// 梦境/回忆/打算/假设/未来：这类语境里的抵达不是"此刻真实移动"，不能同步地点。
-  /// 扩展未来时态（明天/下周/下次/即将…）以修复 BUG：叙事写"从明天踏入九又四分之三站台"
-  /// 会被当成已到达，导致 7 月 31 日当晚就把玩家硬切到国王十字车站，剧情时间与日历对不上。
-  static final RegExp _nonActualContextRe = RegExp(
-      r'(梦里|梦中|梦见|梦境|幻想|想象|回忆|回想|想起|想起那时|仿佛|似乎|好像|如果|假如|要是|打算|计划|准备去|想要去|听说|据说|传闻|明天|后天|大后天|下周|下个星期|下次|将来|未来|即将|改天|过几天|几天后|几周后)');
 
   /// 季节锁定地点 → 允许"抵达"的最早日期（MMDD）。
   /// 与 runSceneTransitionGraph 的 minDateInt 保持一致：国王十字车站 / 九又四分之三站台 /

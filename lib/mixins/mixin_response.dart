@@ -1277,9 +1277,9 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       turnCount: turnCount,
     )) {
       StagnationLevel.forced =>
-        '⚠️ 【同一地点停留】玩家已在「$currentLoc」连续停留 $turnsAtSameLocation 回合（该场景允许阈值=$threshold回合），剧情停滞！按规则必须生成至少2个前往下一场景的选项（例：收拾行李去车站、出门、告别家人、动身前往国王十字车站等）。严禁生成4个原地不动的选项。',
+        '⚠️ 【同一地点停留】玩家已在「$currentLoc」连续停留 $turnsAtSameLocation 回合（该场景允许阈值=$threshold回合），剧情停滞！按规则必须生成至少2个前往下一场景的选项（例：收拾行李出门、告别家人、动身前往对角巷采购等）。严禁生成4个原地不动的选项。',
       StagnationLevel.earlyGame =>
-        '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往九又四分之三站台"的推进型选项，避免玩家一直在家里反复施法徘徊。',
+        '📌 【开局前3回合】：属于「收到信→准备出发」阶段，选项中必须至少包含1个"准备出发/前往对角巷采购入学用品"的推进型选项，避免玩家一直在家里反复施法徘徊。',
       StagnationLevel.inProgress =>
         '💡 【剧情进行中】当前叙事结尾有未解决的冲突/悬念，选项优先承接「把当前这个悬念/冲突收尾」的动作；但至少要保证有1个选项带"场景转换趋势"（如"把这件事做完后前往下个地点"），不要所有选项都彻底原地打转。',
       StagnationLevel.none => '',

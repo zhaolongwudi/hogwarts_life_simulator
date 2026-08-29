@@ -123,62 +123,40 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     }
     return s;
   }
+  /// 判断某个选项是否引用了「已登记但玩家尚未登场」的 NPC，需要被丢弃。
+  ///
+  /// 采用**注册表成员判定**（而非模糊人名识别）：
+  ///   - 选项文本里的 2~4 字候选词，若命中 `npcNameAll`（npcRegistry 全名/别名）且
+  ///     不在白名单（已登场 / 玩家 / 本回合刚遇见的路人）→ 说明是「没见过的已知角色」，
+  ///     丢弃（这正是最初 BUG-3 要拦的「去找斯内普」类）。
+  ///   - 其余一律放行：**日常名词**（晚餐/外套/真实/街道…）和**模型虚构的陌生名字**
+  ///     （如「霍尔」）都不再被误杀。
+  ///
+  /// 为什么不再做「像不像人名」的模糊识别：误杀正常选项（假阳性）在长期游玩下危害
+  /// 远大于偶发虚构名（假阴性）——前者会让玩家「选项变少 / 卡住」，且随回合累积必现；
+  /// 后者只是偶发 OOC，可由选项 Prompt 的「只点名在场/已登场角色」规则（见
+  /// choice_prompts.dart 规则8）在前端约束。
   bool choiceMentionsUnintroducedNpc(
     String text,
     Set<String> whitelist,
     Map<String, bool> npcNameAll,
   ) {
     if (text.isEmpty) return false;
-    // 找出所有2~4字的"像人名的候选"：纯汉字、非代词虚词
     final candidates = RegExp(
       r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
       unicode: true,
     ).allMatches(text).map((m) => m.group(1)!).toSet().toList();
 
     for (final cand in candidates) {
-      // (1) 白名单（introduced的NPC+别名 / 玩家名 / 正文末尾出现过的路人）命中就放行
+      // (1) 白名单（已登场NPC+别名 / 玩家名 / 正文末尾出现过的路人）命中 → 放行
       if (whitelist.contains(cand)) continue;
-      // (2) 明显是叙述词/虚词（教授/夫人/小姐/先生/同学/新生/大家/他们...）→ 放行
+      // (2) 叙述词/身份后缀/时间词 → 不是人名，放行
       if (looksLikeNarrationWord(cand)) continue;
-      // (2.5) 显式常见名词/动词豁免：命中即直接放行，绝不当作"捏造NPC"。
-      //   这是针对 BUG（模型返回4个选项、UI只显示2个）的直接修复——选项里的
-      //   日常用词（晚餐/外套/真实/街道…）此前被误判为捏造NPC名，导致整个选项被丢弃。
-      if (_commonNounExemptions.contains(cand)) continue;
-
-      // (3) 候选命中 npcRegistry 的全名或别名，但是 introduced=false → 说明这是"还没出场的已知角色"
-      //     比如开局前几回合就写"去找斯内普"，玩家根本没见过 → 要丢弃
-      if (npcNameAll.containsKey(cand)) {
-        // [选项NPC门] 命中登记但未introduced的NPC日志已移除
-        return true;
-      }
-      // (4) 4字词几乎不可能是捏造NPC名（中文人名通常2~3字），直接放行
-      if (cand.length >= 4) continue;
-      // (5) 既不在白名单，也不像叙述词，还不是登记过的NPC，且是2-3字 →
-      //     额外检查是否真的是人名模样：不含常见非人名用字 → 才判定为AI捏造的"霍尔"等假人
-      //     BUG-N 修复：之前无条件丢弃所有未知2-4字词，导致"仔细观察""周围环境"等
-      //     常见选项用词被误判为捏造NPC，绝大多数选项都被过滤掉。
-      if (_candidateLooksLikeFabricatedNpcName(cand)) {
-        // [选项NPC门] 疑似捏造陌生NPC日志已移除
-        return true;
-      }
-      // 否则不像捏造NPC名 → 放行（可能是普通动词/名词）
+      // (3) 命中 npcRegistry 全名/别名，但不白名单 → 未登场已知角色，丢弃
+      if (npcNameAll.containsKey(cand)) return true;
+      // 其余（日常名词 / 模型虚构的陌生名字）一律放行，不再做模糊人名识别
     }
     return false;
-  }
-  bool _candidateLooksLikeFabricatedNpcName(String cand) {
-    if (cand.length < 2 || cand.length > 3) return false;
-    // 如果包含常见的非人名汉字 → 不是捏造NPC名
-    // 这些字在中文普通词汇中高频出现，但极少出现在NPC名字中
-    if (RegExp(r'[仔细观察周围环境线索寻找练习检查尝试继续准备考虑决定选择告诉讨论商量确认提醒建议邀请帮助跟随收集整理收拾出发前往拜访搭话转身点头摇头沉默叹气微笑皱眉盯着望着低头抬头伸手举手放下拿起掏出插入抽出推开拉开站起坐下躺下靠在躲在藏在次遍趟件事情]').hasMatch(cand)) {
-      return false;
-    }
-    // 补充：一批日常名词/状态/方位/自然现象的高频字。
-    // 集合越全越保守——只会影响"放行"，不会放过真正的陌生NPC
-    // （陌生NPC的拦截由 choiceMentionsUnintroducedNpc 的 npcNameAll 判定负责）。
-    if (RegExp(r'[的了一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政十同如气日手行心学无发军只道意无力写局色平明认交林就晚饭早餐衣服鞋子街道小巷真实虚假隐瞒假装事情任务状态气息房间桌子椅子窗户灯光影子声音香味味道书本笔纸门墙屋顶楼楼梯台阶花园草地树林河流湖泊山川风雨雪冰火光黑暗明亮温暖寒冷饥饿口渴疲惫轻松紧张害怕担心期待惊喜失望愤怒悲伤快乐笑容眼泪目光手中怀里肩上脚下路边角落清晨黄昏傍晚深夜钟声脚步]').hasMatch(cand)) {
-      return false;
-    }
-    return true;
   }
   static bool looksLikeNarrationWord(String s) {
     if (s.length < 2) return true;
@@ -196,24 +174,6 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     }
     return false;
   }
-
-  /// 常见名词/动词豁免表：这些 2~3 字词在选项文本里高频出现，
-  /// 命中即直接放行，不进入"捏造NPC名"判定。集合越全越保守，只会减少误杀。
-  static const Set<String> _commonNounExemptions = {
-    // 餐饮/衣物/物件
-    '晚餐', '早饭', '午饭', '夜宵', '早餐', '宵夜', '外套', '衣服', '裤子',
-    '鞋子', '围巾', '手套', '帽子', '书包', '书本', '铅笔', '钢笔', '纸张',
-    '桌子', '椅子', '窗户', '灯光', '影子', '声音', '香味', '味道', '房间',
-    '大门', '墙壁', '屋顶', '楼梯', '台阶', '花园', '草地', '树林', '河流',
-    // 方位/处所
-    '街道', '小巷', '小路', '路口', '角落', '路边', '脚下', '怀里', '肩上',
-    '门前', '窗前', '桌前', '床边',
-    // 状态/抽象
-    '真实', '虚假', '隐瞒', '假装', '事情', '任务', '状态', '气息', '目光',
-    '笑容', '眼泪', '脚步', '钟声', '清晨', '黄昏', '傍晚', '深夜', '黑暗',
-    '温暖', '寒冷', '饥饿', '疲惫', '紧张', '害怕', '担心', '期待', '惊喜',
-    '失望', '愤怒', '悲伤', '快乐', '轻松', '明亮', '风雨', '冰雪', '火光',
-  };
 
   bool standaloneNameMentioned(String text, String name) {
     if (name.isEmpty) return false;
