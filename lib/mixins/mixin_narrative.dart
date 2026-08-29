@@ -16,6 +16,7 @@ import '../providers/game_provider_base.dart';
 import '../data/locations.dart';
 import '../data/attribute_data.dart';
 import '../data/course_data.dart';
+import '../data/director_beat_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/narrative_time_rules.dart';
@@ -381,6 +382,12 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         StagnationLevel.none => '',
       };
 
+      // 导演指令：prompt 里塞的全是"状态 + 规则 + 上下文"，
+      // 唯独没说这一回合要干嘛，于是 AI 每回合平均用力，一整局读下来是平的。
+      // 三回合一个节奏单元（推进 → 日常 → 转折），转折至少每三回合来一次。
+      final directorLine =
+          directorLineFor(directorBeatFor(turn: turnCount, hasUnresolvedHook: hasHook));
+
       return '''【世界上下文】
   $context
 
@@ -389,7 +396,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   ${timeBudgetPromptLine(resolveActionCost(safeAction))}
   $sceneInfo
   ${buildContinuityBridgePromptLine()}
-  $stagnationLine$anchorLine${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
+  $stagnationLine$anchorLine$directorLine
+  ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
 $kNarrativeWritingRules
