@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../data/era_data.dart';
+import '../data/forbidden_words.dart' as dataForbidden;
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
 
@@ -793,7 +794,9 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     if (chosenAnchor != null && pendingAnchorDirective == null) {
       pendingAnchorDirective = chosenAnchor;
       if (chosenId != null) worldState.firedAnchorIds.add(chosenId);
-      notifications.add('🧭 剧情推进：下一阶段衔接已为你安排（节点=$chosenId）');
+      // 通知是玩家能看到的，别把内部节点 id 印上去
+      // （原文案是「（节点=$chosenId）」，一眼看出是程序变量）
+      notifications.add('🧭 剧情推进：下一阶段衔接已为你安排');
       worldState.addNarrativeEvent('🧭 SceneGraph: 触发节点 $chosenId（turn=$t loc=$loc）', turn: t);
       debugPrint('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
     }
@@ -831,36 +834,18 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
 
   /// 检查叙事/选项里的违和词：现代物品、跨IP、网络梗。
   /// 返回命中列表；命中 1+ 条 critical 级则判需重试。
-  List<Map<String, dynamic>> detectForbiddenWords(String text) {
-    const modernItems = <String>[
-      '手机', '智能手机', '电话', '互联网', '因特网', '微信', 'QQ', '电子邮件', 'email', 'E-mail', '推特', 'Twitter',
-      '高铁', '动车', '飞机', '民航', '地铁', '打车', '网约车', '计算机', '电脑', '笔记本电脑', '平板', 'iPad',
-      'APP', 'app', '应用程序', '游戏主机', 'PS5', 'Switch', '电视', '冰箱', '空调',
-      '加隆兑换人民币', '汇率', '电子支付', '扫码', '二维码',
-    ];
-    const crossIp = <String>[
-      '柯南', '工藤新一', '海贼王', '路飞', '火影忍者', '鸣人', '佐助', '原神', '旅行者', '刻晴', '钟离',
-      '斗罗大陆', '唐三', '斗破苍穹', '萧炎', '三体', '三体人', '智子', '罗辑', '叶文洁',
-      // ⚠️ 这里原本写的是「逻辑」，应为三体角色「罗辑」。
-      // 「逻辑」是中文常用词，放在 critical 级会让几乎每回合的叙事都被判违和、
-      // 触发最多 3 次重生成（烧 token 且拖慢出文）。
-    ];
-    const internetSlang = <String>[
-      'yyds', 'YYDS', '绝绝子', '社死', '打call', '破防了', '内卷', '躺平', 'emo', 'EMO',
-      '栓Q', '666', '233', 'awsl', 'AWSL', 'xswl', 'XSWL', '笑死我了哈哈哈哈',
-      '大冤种', 'emo了', '我不李姐', '咱就是说', '一整个爱住',
-    ];
-    final hits = <Map<String, dynamic>>[];
-    final lower = text;
-    for (final w in modernItems) {
-      if (lower.contains(w)) hits.add({'severity': 'critical', 'category': 'modern', 'word': w});
-    }
-    for (final w in crossIp) {
-      if (lower.contains(w)) hits.add({'severity': 'critical', 'category': 'cross_ip', 'word': w});
-    }
-    for (final w in internetSlang) {
-      if (lower.contains(w)) hits.add({'severity': 'warn', 'category': 'slang', 'word': w});
-    }
-    return hits;
+  ///
+  /// [eraKey] 省略时从 [appProvider] 的当前时代推导。
+  /// 词表本身在 data/forbidden_words.dart：它是纯数据且要按时代分流，
+  /// 留在 mixin 里既没法单测、也拿不到时代信息。
+  List<Map<String, dynamic>> detectForbiddenWords(
+    String text, {
+    String? eraKey,
+  }) {
+    final era = eraKey ?? eraDefByEra(appProvider.era).eraKey;
+    return dataForbidden
+        .detectForbiddenWords(text, eraKey: era)
+        .map((h) => h.toMap())
+        .toList();
   }
 }

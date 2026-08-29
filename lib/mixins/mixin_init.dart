@@ -1060,6 +1060,16 @@ mixin GameInitMixin on GameProviderBase {
     try {
       final response = await callDeepSeek(prompt);
       parseResponse(response.content);
+      // 开场的选项也走独立生成：system prompt 与开场 prompt 现在都明令
+      // 「本轮不输出选项」，两边口径一致才不会让模型随机决定写不写
+      // （以前是 system 要选项、user 说别写，于是 BUG-H 时有时无）。
+      // 独立生成失败时保留 parseResponse 兜底出来的那几个。
+      try {
+        final openingChoices = await generateChoicesSeparately(currentNarrative);
+        if (openingChoices.isNotEmpty) choices = openingChoices;
+      } catch (e) {
+        debugPrint('⚠️ 开场选项独立生成失败，沿用解析/兜底选项: $e');
+      }
       accumulateForSummary(currentNarrative);
       appendRecentTurn(currentNarrative);
       notifyListeners();

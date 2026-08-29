@@ -181,13 +181,16 @@ void main() {
   });
 
   group('禁词表不得误伤常用中文词', () {
-    final contSrc =
-        File('lib/mixins/mixin_narrative_continuity.dart').readAsStringSync();
+    // 禁词表已经从 mixin 挪到 lib/data/forbidden_words.dart：
+    // 它是纯数据，且要按时代分流（2020 时代放行现代物品），
+    // 留在 mixin 方法里既没法单测、也拿不到时代信息。
+    final wordsSrc = File('lib/data/forbidden_words.dart').readAsStringSync();
 
     test('「逻辑」不得出现在 crossIp 禁词表（三体角色是「罗辑」）', () {
-      final start = contSrc.indexOf('const crossIp = <String>[');
-      final end = contSrc.indexOf('];', start);
-      final block = contSrc.substring(start, end);
+      final start = wordsSrc.indexOf('const List<String> kCrossIpItems = [');
+      expect(start, greaterThanOrEqualTo(0),
+          reason: '没找到 kCrossIpItems，禁词表又挪地方了？测试该更新');
+      final block = wordsSrc.substring(start, wordsSrc.indexOf('];', start));
       expect(block.contains("'逻辑'"), isFalse,
           reason: '「逻辑」是中文常用词，放在 critical 级会让几乎每回合叙事都被判违和');
       expect(block.contains("'罗辑'"), isTrue);

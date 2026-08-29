@@ -674,7 +674,7 @@ mixin GameSystemsMixin on GameProviderBase {
     final anchor = due.first;
     worldState.firedAnchorIds.add(anchor.id);
     pendingAnchorDirective = anchor.directive;
-    notifications.add('📜 剧情节点：${anchor.title}');
+    notifications.add('📜 ${anchor.title}');
     worldState.addNarrativeEvent('📜 ${anchor.title}', turn: turnCount);
     debugPrint('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
   }

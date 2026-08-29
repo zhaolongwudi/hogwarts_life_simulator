@@ -52,8 +52,13 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
     }
 
     final totalPages = (allTurns.length / _turnsPerPage).ceil();
-    final start = _currentPage * _turnsPerPage;
-    final end = (start + _turnsPerPage).clamp(0, allTurns.length);
+    // ❗原先只 clamp 了 end，没 clamp start。翻到最后一页后如果回合数变少
+    //（删档、回档、或别处改了历史），start 会大于 end，sublist 直接抛
+    // RangeError。这里先按总页数把页码拉回合法范围，再算 start/end。
+    final lastPage = totalPages > 0 ? totalPages - 1 : 0;
+    final page = _currentPage.clamp(0, lastPage);
+    final start = (page * _turnsPerPage).clamp(0, allTurns.length);
+    final end = (start + _turnsPerPage).clamp(start, allTurns.length);
     final displayedTurns = allTurns.sublist(start, end);
 
     return Scaffold(
@@ -72,7 +77,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                   style: const TextStyle(color: Color(0xFF8B949E), fontSize: 12),
                 ),
                 Text(
-                  '第 ${_currentPage + 1} / $totalPages 页',
+                  '第 ${page + 1} / $totalPages 页',
                   style: const TextStyle(color: Color(0xFF8B949E), fontSize: 12),
                 ),
               ],
@@ -95,7 +100,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
             ),
           ),
           if (totalPages > 1)
-            _buildPageNavigation(totalPages),
+            _buildPageNavigation(totalPages, page),
         ],
       ),
     );
@@ -270,7 +275,9 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
     };
   }
 
-  Widget _buildPageNavigation(int totalPages) {
+  /// [currentPage] 是已经钳到 [0, totalPages-1] 的页码——回合数变少时
+  /// [_currentPage] 可能已经越界，直接用会显示成「第 8 / 3 页」。
+  Widget _buildPageNavigation(int totalPages, int currentPage) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -283,7 +290,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           ElevatedButton(
-            onPressed: _currentPage > 0
+            onPressed: currentPage > 0
                 ? () {
                     setState(() {
                       _currentPage--;
@@ -301,14 +308,14 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
             child: const Text('上一页'),
           ),
           Text(
-            '${_currentPage + 1} / $totalPages',
+            '${currentPage + 1} / $totalPages',
             style: const TextStyle(
               color: Color(0xFFC9D1D9),
               fontWeight: FontWeight.w600,
             ),
           ),
           ElevatedButton(
-            onPressed: _currentPage < totalPages - 1
+            onPressed: currentPage < totalPages - 1
                 ? () {
                     setState(() {
                       _currentPage++;

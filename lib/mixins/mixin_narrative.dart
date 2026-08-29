@@ -468,9 +468,11 @@ $kNarrativeWritingRules
           prompt = correction.toString() + prompt;
           needsRetry = true;
           retriesLeft -= 1;
+          // ❗loadingStage 是玩家能看到的文案，不能出现"违规/节点/重试"这类
+          // 内部术语——一句"剧情N处违规，重试中"能瞬间把人拽出剧情。
           loadingStage = narrativeParseInvalid
-              ? '模型返回选项而非剧情，重跑中...'
-              : '剧情${criticalViolations.length + criticalForbidden.length}处违规，重试中...';
+              ? '正在重新组织剧情...'
+              : '剧情细节需要再打磨，正在重写...';
           notifyListeners();
           continue;
         }
