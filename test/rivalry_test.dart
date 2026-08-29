@@ -285,6 +285,73 @@ void main() {
     });
   });
 
+  // ---------------------------------------------------- 一场决斗的分寸
+  group('决斗结仇要有分寸', () {
+    test('赢一场最多结下芥蒂，不能直接顶到敌意', () {
+      // 抢风头权重只有 20，单条不至于跨过 hostile 档（45）。
+      // 否则赢一场决斗就多个死敌，打一圈下来全校没朋友了。
+      final score = rivalryScoreFor([_grudge('outshone', 100)],
+          currentDay: 100, affection: 0);
+      expect(score, grudgeWeightFor('outshone'));
+      expect(tierForScore(score), RivalryTier.grudge);
+      expect(score, lessThan(45));
+    });
+
+    test('决斗胜利后确实会走宿敌判定', () {
+      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      expect(src.contains('_maybeRivalFromDuel'), isTrue);
+    });
+
+    test('已经有仇的对手不再叠加', () {
+      // 不打这层保护，反复赢同一个人就能把他一路顶到死敌。
+      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final fn = src.substring(src.indexOf('_maybeRivalFromDuel'));
+      expect(fn.contains('rivalryTier(day) != RivalryTier.none'), isTrue);
+    });
+
+    test('决斗结仇是概率事件，不是必然', () {
+      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final fn = src.substring(src.indexOf('_maybeRivalFromDuel'));
+      expect(fn.contains('random.nextDouble()'), isTrue);
+    });
+  });
+
+  // ------------------------------------------------------------ 接线检查
+  group('宿敌接进了叙事与界面', () {
+    test('叙事 prompt 会为在场的宿敌注入行为指令', () {
+      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      expect(src.contains('【宿敌·'), isTrue);
+      expect(src.contains('rivalryDirectiveFor'), isTrue);
+      // 没有仇人的时候不该花这份 token
+      expect(src.contains('if (tier == RivalryTier.none) continue;'), isTrue);
+    });
+
+    test('和解过的人会有一句交代', () {
+      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      expect(src.contains('【旧怨已了·'), isTrue);
+    });
+
+    test('人物详情里能看到宿敌等级与第几笔旧账', () {
+      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+      expect(src.contains('rivalryBadgeFor(tier)'), isTrue);
+      expect(src.contains('这已经是第'), isTrue);
+    });
+
+    test('好感回升能减免宿敌分，且门槛挡住了日常寒暄', () {
+      final src = File('lib/providers/game_provider.dart').readAsStringSync();
+      expect(src.contains('applyAmends'), isTrue);
+      expect(src.contains('actualChange >= 8'), isTrue,
+          reason: '没有这个门槛，日常 +1 的寒暄也会算赎罪，宿敌会被悄悄刷白');
+    });
+
+    test('化敌为友会留一笔，且不暴露内部数值', () {
+      final src = File('lib/providers/game_provider.dart').readAsStringSync();
+      expect(src.contains('formerRivalLine'), isTrue);
+      // 玩家可见文案里不许出现"宿敌分"这种系统术语
+      expect(src.contains('宿敌分 -'), isFalse);
+    });
+  });
+
   // ------------------------------------------------ 好感路径接上了成因识别
   group('好感路径会按成因分门别类', () {
     final src = File('lib/providers/game_provider.dart').readAsStringSync();

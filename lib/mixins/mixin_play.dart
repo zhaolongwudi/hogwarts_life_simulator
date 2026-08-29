@@ -9,6 +9,7 @@ import '../data/pet_narrative_config.dart';
 import '../data/attribute_data.dart';
 import '../data/spell_data.dart';
 import '../data/collectible_data.dart';
+import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
@@ -1009,6 +1010,7 @@ mixin GamePlayMixin on GameProviderBase {
       if (!_duelBeatenNpcIds.contains(opponent.id)) {
         _duelBeatenNpcIds.add(opponent.id);
         this.updateNpcAffection(opponent.id, 2, reason: '决斗获胜');
+        _maybeRivalFromDuel(opponent, margin: myScore - oppScore);
       }
       buf.writeln('\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
       buf.writeln('胜利：战斗声望 +$repGain · 道德声望 +2 · 学院杯 +${(10 * decay).round().clamp(1, 10)} · 赌注 $reward 加隆');
@@ -1023,6 +1025,29 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('落败：战斗声望 +2~4 · 你受了些轻伤（生命 ${p.health}/100）');
     }
     _finishLocal(buf.toString());
+  }
+
+  /// 输的人未必服气——抢别人风头是宿敌最自然的来源之一。
+  ///
+  /// 但要控制频率：打一圈下来全校都成宿敌，就没人可交朋友了。
+  /// 所以只在这几件事同时成立时才记一笔：此前没结过仇、
+  /// 掷骰通过，且赢得越悬殊越容易结仇。
+  void _maybeRivalFromDuel(NPC opponent, {required num margin}) {
+    final day = worldState.time.absoluteDayIndex;
+    // 已经有仇的不再叠加：一场胜利不该直接把人顶到死敌
+    if (opponent.rivalryTier(day) != RivalryTier.none) return;
+
+    // 本来就不待见你的人更容易记仇；输得太难看也更难咽下
+    var chance = opponent.affection < 20 ? 0.55 : 0.3;
+    if (margin > 25) chance += 0.15;
+    if (random.nextDouble() > chance) return;
+
+    opponent.addGrudge(
+        causeKeyFor(RivalryCause.outshone), '你在决斗里当众赢了他', day);
+    opponent.tickRivalry(day);
+    final line = '🙄 ${opponent.name}输得不太好看，这事儿他记住了';
+    notifications.add(line);
+    worldState.addNarrativeEvent(line, turn: turnCount);
   }
 
   // ==================== 6. 禁林探险 ====================

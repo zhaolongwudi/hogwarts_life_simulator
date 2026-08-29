@@ -19,6 +19,7 @@ import '../data/course_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/narrative_time_rules.dart';
+import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
 import '../data/wand_data.dart';
 import '../prompts/narrative_prompts.dart';
@@ -1167,6 +1168,22 @@ $kNarrativeWritingRules
       if (npcNames.isNotEmpty) {
         parts.add('【在场】$npcNames');
       }
+    }
+
+    // 宿敌单独成段。行为指令比较长，塞进【在场】里会把那一行撑爆；
+    // 而且只有真有宿敌站在面前时才值得花这份 token，
+    // 没有仇人的时候这几行一个字都不会出现。
+    final today = ws.time.absoluteDayIndex;
+    for (final r in npcsHere) {
+      if (!r.introduced || !r.hasGrudge) continue;
+      final tier = r.rivalryTier(today);
+      if (tier == RivalryTier.none) continue;
+      parts.add('【宿敌·${rivalryBadgeFor(tier)} ${r.name}】'
+          '${rivalryDirectiveFor(tier, r.name, r.rivalryReason())}');
+    }
+    for (final r in npcsHere) {
+      if (!r.introduced || !r.formerRival) continue;
+      parts.add('【旧怨已了·${r.name}】${formerRivalLine(r.name)}');
     }
 
     final hour = ws.time.hour;

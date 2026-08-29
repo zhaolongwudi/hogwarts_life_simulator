@@ -16,6 +16,7 @@ import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
 import '../data/goal_data.dart';
 import '../data/npc_schedule_rules.dart';
+import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
@@ -1111,8 +1112,20 @@ mixin GameSystemsMixin on GameProviderBase {
     if (repFilled.isNotEmpty) buf.writeln('声望：${repFilled.join('｜')}');
 
     if (npc.hasGrudge) {
-      buf.writeln('⚠️ 记恨着你：${npc.grudges.last['reason'] ?? '原因不明'}'
-          '（好感上限 ${npc.effectiveAffectionCap}）');
+      final day = worldState.time.absoluteDayIndex;
+      final tier = npc.rivalryTier(day);
+      final reason = npc.rivalryReason();
+      buf.writeln('${rivalryBadgeFor(tier)} 记恨着你：$reason'
+          '（${tierDefFor(tier).label}｜宿敌分 ${npc.rivalryScore(day)}'
+          '｜好感上限 ${npc.effectiveAffectionCap}）');
+      // 第几次结仇要写出来：结过三次梁子的人和只结过一次的，
+      // 在 AI 手里不该是同一种态度。
+      if (npc.grudges.length > 1) {
+        buf.writeln('   这已经是第 ${npc.grudges.length} 笔旧账了。');
+      }
+    }
+    if (npc.formerRival) {
+      buf.writeln('🤝 曾经是你最难缠的对头，如今已经和解。');
     }
     if (npc.isConsideringConfession) {
       buf.writeln('💭 似乎在酝酿着什么话……');

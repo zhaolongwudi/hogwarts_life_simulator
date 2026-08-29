@@ -236,6 +236,18 @@ class GameProvider extends GameProviderBase
         notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
         worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限', turn: turnCount);
       }
+      // 和解的门留在这儿：结了仇不是死局，一次真心实意的示好能削掉一点旧账。
+      // 门槛设在 8，是因为日常 +1/+2 的寒暄不该算赎罪——
+      // 那会让宿敌在不知不觉中被时间刷白，玩家的补救也就没了意义。
+      if (actualChange >= 8 && npc.applyAmends(currentDay) > 0) {
+        notifications.add('🕊️ ${npc.name}对你的态度松动了一些');
+        worldState.addNarrativeEvent('🕊️ ${npc.name}对你的态度松动了一些', turn: turnCount);
+      }
+      if (npc.tickRivalry(currentDay)) {
+        // 从死对头到能坐下来喝一杯，这条线索值得单独留一笔
+        notifications.add('🤝 你和${npc.name}之间那笔旧账，就这么过去了');
+        worldState.addNarrativeEvent(formerRivalLine(npc.name), turn: turnCount);
+      }
     }
     if (change < -15) {
       // 宿敌成因从 reason 里认。原先一律记成 'betrayal'，
