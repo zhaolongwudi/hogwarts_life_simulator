@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/rivalry_data.dart';
 import '../../models/npc.dart';
 import '../../providers/game_provider.dart';
 import '../../utils/ui_helpers.dart';
@@ -42,7 +43,7 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
               children: [
                 _buildTopChart(npcs),
                 const Divider(height: 1),
-                Expanded(child: _buildNpcList(npcs)),
+                Expanded(child: _buildNpcList(npcs, gp.worldState.time.absoluteDayIndex)),
               ],
             ),
     );
@@ -138,21 +139,23 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
     );
   }
 
-  Widget _buildNpcList(List<NPC> npcs) {
+  Widget _buildNpcList(List<NPC> npcs, int today) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: npcs.length,
-      itemBuilder: (context, index) => _buildNpcTile(npcs[index]),
+      itemBuilder: (context, index) => _buildNpcTile(npcs[index], today),
     );
   }
 
-  Widget _buildNpcTile(NPC npc) {
+  Widget _buildNpcTile(NPC npc, int today) {
     final houseColor = UiHelpers.getHouseColor(npc.house);
     final houseLabel = UiHelpers.getHouseLabel(npc.house);
     final affColor = UiHelpers.getAffectionColor(npc.affection);
     final affLabel = UiHelpers.getAffectionLabel(npc.affection);
     final isExpanded = _expandedNpc?.id == npc.id;
     final lastReason = _getLastAffectionReason(npc);
+    final tier = npc.rivalryTier(today);
+    final tierColor = _rivalryColor(tier);
 
     return Column(
       children: [
@@ -204,6 +207,23 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
                               style: TextStyle(fontSize: 10, color: houseColor, fontWeight: FontWeight.w500),
                             ),
                           ),
+                          // 宿敌等级直接挂在名字后面：不展开也要看得见谁在恨你。
+                          // 好感是"-30"这种抽象数字，宿敌徽标才是"他会主动来找茬"。
+                          if (tier != RivalryTier.none || npc.formerRival) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: tierColor.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: tierColor.withValues(alpha: 0.45)),
+                              ),
+                              child: Text(
+                                npc.formerRival ? '🤝 旧怨已了' : '${rivalryBadgeFor(tier)} ${tierDefFor(tier).label}',
+                                style: TextStyle(fontSize: 10, color: tierColor, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -253,17 +273,20 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
             ),
           ),
         ),
-        if (isExpanded) _buildAffectionDetail(npc),
+        if (isExpanded)
+          _buildAffectionDetail(npc, today),
         const SizedBox(height: 8),
       ],
     );
   }
 
-  Widget _buildAffectionDetail(NPC npc) {
+  Widget _buildAffectionDetail(NPC npc, int today) {
     final houseColor = UiHelpers.getHouseColor(npc.house);
     final entries = <Widget>[];
 
     if (npc.grudges.isNotEmpty) {
+      final tier = npc.rivalryTier(today);
+      final tierColor = _rivalryColor(tier);
       entries.add(
         Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 4),
@@ -275,10 +298,55 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
                 '记仇记录 (${npc.grudges.length})',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange),
               ),
+              const Spacer(),
+              // 记仇是流水账，看不出"他现在有多恨你"。
+              // 等级和分数才是当下的温度，也告诉玩家还差多远能和解。
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: tierColor.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tierColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  '${rivalryBadgeFor(tier)} ${npc.rivalryScore(today)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: tierColor,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       );
+      if (tier != RivalryTier.none) {
+        entries.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              tierDefFor(tier).desc,
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: tierColor.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        );
+      }
+      if (npc.formerRival) {
+        entries.add(
+          const Padding(
+            padding: EdgeInsets.only(bottom: 4),
+            child: Text(
+              '🤝 曾经是你最难缠的对头，如今已经和解。',
+              style: TextStyle(fontSize: 11, color: Colors.lightGreenAccent),
+            ),
+          ),
+        );
+      }
       for (final g in npc.grudges) {
         entries.add(
           Container(
@@ -433,3 +501,12 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
     return '累计变动';
   }
 }
+
+/// 宿敌等级的配色：从灰到深红，一眼能看出这段关系有多糟。
+Color _rivalryColor(RivalryTier tier) => switch (tier) {
+      RivalryTier.none => Colors.grey,
+      RivalryTier.grudge => Colors.amber,
+      RivalryTier.hostile => Colors.deepOrange,
+      RivalryTier.nemesis => Colors.redAccent,
+      RivalryTier.archenemy => const Color(0xFFB71C1C),
+    };

@@ -18,6 +18,7 @@ import '../data/gift_rules.dart';
 import '../data/item_data.dart';
 import '../data/attribute_data.dart';
 import '../data/collectible_data.dart';
+import '../data/rivalry_data.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 
@@ -555,9 +556,16 @@ mixin GameRelationsMixin on GameProviderBase {
     if (met.isEmpty) {
       return '暂无认识的人。在剧情中与其他角色互动后会自动登记。';
     }
+    final today = worldState.time.absoluteDayIndex;
     final buf = StringBuffer('【关系列表】（已认识 ${met.length} 人）\n');
     for (final n in met.take(15)) {
-      buf.writeln('· ${n.name}：好感 ${n.affection}（${n.affectionStage}）');
+      // 光看"好感 -22"看不出他是冷淡还是恨你。宿敌徽标补上这一层：
+      // 同样 -22，芥蒂和死对头是两回事。
+      final tag = n.formerRival
+          ? '🤝旧怨已了'
+          : (n.hasGrudge ? '${rivalryBadgeFor(n.rivalryTier(today))}${tierDefFor(n.rivalryTier(today)).label}' : '');
+      buf.writeln('· ${n.name}：好感 ${n.affection}（${n.affectionStage}）'
+          '${tag.isEmpty ? '' : ' $tag'}');
     }
     return buf.toString();
   }

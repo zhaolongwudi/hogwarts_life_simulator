@@ -1186,6 +1186,27 @@ $kNarrativeWritingRules
       parts.add('【旧怨已了·${r.name}】${formerRivalLine(r.name)}');
     }
 
+    // 宿敌不一定正站在你面前。只让 AI 看见"眼前这个人恨你"，
+    // 那"他在走廊尽头堵你""你摔倒时旁边有人笑"这类戏永远写不出来——
+    // 因为 AI 压根不知道城堡另一头有这么一号人。
+    // 只收 hostile 及以上、最多 5 人：grudge 那档只是芥蒂，不值得常驻占 token。
+    final hereIds = npcsHere.map((n) => n.id).toSet();
+    final wanted = npcRegistry.values
+        .where((n) => n.isAlive && n.introduced && n.hasGrudge && !hereIds.contains(n.id))
+        .map((n) => (npc: n, tier: n.rivalryTier(today)))
+        .where((e) => e.tier.index >= RivalryTier.hostile.index)
+        .toList()
+      ..sort((a, b) => b.tier.index.compareTo(a.tier.index));
+    if (wanted.isNotEmpty) {
+      final lines = wanted.take(5).map((e) {
+        final where = e.npc.currentLocation;
+        return '· ${e.npc.name}（${rivalryBadgeFor(e.tier)} ${tierDefFor(e.tier).label}'
+            '${e.npc.rivalryScore(today)}）${where.isEmpty ? '' : '此刻在$where'}';
+      });
+      parts.add('【宿敌名册】他们不必等你先开口，可以自己找上门或在旁落井下石\n'
+          '${lines.join('\n')}');
+    }
+
     final hour = ws.time.hour;
     final timeDesc = hour >= 22 || hour < 6 ? '深夜' :
                      hour >= 18 ? '夜晚' :

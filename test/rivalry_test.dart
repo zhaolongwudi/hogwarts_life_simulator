@@ -369,4 +369,62 @@ void main() {
       expect(src.contains('已经把你当成宿敌'), isTrue);
     });
   });
+
+  // ------------------------------------------------------- 玩家侧看得见
+  group('宿敌在界面上可见', () {
+    test('好感总览页折叠态就带等级徽标，不必展开', () {
+      final src =
+          File('lib/screens/other/affection_aggregate_screen.dart').readAsStringSync();
+      expect(src.contains('rivalryBadgeFor(tier)'), isTrue);
+      // 徽标必须挂在 _buildNpcTile（折叠态）里，只在展开详情里出现等于看不见
+      final tileStart = src.indexOf('Widget _buildNpcTile(');
+      final detailStart = src.indexOf('Widget _buildAffectionDetail(');
+      expect(tileStart, greaterThan(0));
+      expect(detailStart, greaterThan(tileStart));
+      final tileBody = src.substring(tileStart, detailStart);
+      expect(tileBody.contains('rivalryBadgeFor'), isTrue,
+          reason: '宿敌等级只在展开详情里显示，列表扫一眼根本不知道谁在恨你');
+      expect(tileBody.contains('旧怨已了'), isTrue);
+    });
+
+    test('展开与折叠用的是同一个 today，不会自己算一套天数', () {
+      final src =
+          File('lib/screens/other/affection_aggregate_screen.dart').readAsStringSync();
+      // 天数必须从 build 里取一次再往下传，
+      // 否则某个分支拿 dayOfYear、另一个拿 absoluteDayIndex，两边的分数就对不上
+      expect(src.contains('_buildNpcList(npcs, gp.worldState.time.absoluteDayIndex)'), isTrue);
+      expect(src.contains('_buildNpcTile(npcs[index], today)'), isTrue);
+      expect(src.contains('_buildAffectionDetail(npc, today)'), isTrue);
+      // 除了 build 那一处取天数，别处不许再摸 worldState
+      final gpUses = 'gp.worldState'.allMatches(src).length;
+      expect(gpUses, 1, reason: '天数应当在 build 里取一次往下传，不该每个组件各取各的');
+    });
+
+    test('关系列表命令也带宿敌标记', () {
+      final src = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+      expect(src.contains('rivalryBadgeFor'), isTrue);
+      // 和好的人显示"旧怨已了"而不是继续挂仇恨徽标
+      expect(src.contains('旧怨已了'), isTrue);
+    });
+  });
+
+  group('宿敌不在场时 AI 也知道有这号人', () {
+    final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+
+    test('有全局宿敌名册段', () {
+      // 只让 AI 看见"眼前这个人恨你"，那"他在走廊尽头堵你"这类戏永远写不出来
+      expect(src.contains('【宿敌名册】'), isTrue);
+      expect(src.contains('可以自己找上门'), isTrue);
+    });
+
+    test('名册只收 hostile 及以上，芥蒂不常驻占 token', () {
+      expect(src.contains('e.tier.index >= RivalryTier.hostile.index'), isTrue);
+    });
+
+    test('已经站在面前的宿敌不重复进名册', () {
+      // 在场的有单独的【宿敌·姓名】段带完整行为指令，名册里再写一遍是浪费
+      expect(src.contains('hereIds'), isTrue);
+      expect(src.contains('!hereIds.contains(n.id)'), isTrue);
+    });
+  });
 }
