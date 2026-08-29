@@ -5,6 +5,7 @@ import '../models/game_systems.dart';
 import '../data/cg_data.dart';
 import '../data/cg_unlock_conditions.dart';
 import '../data/archetype_data.dart';
+import '../data/ending_review_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/world_rules.dart';
@@ -493,9 +494,18 @@ mixin GameRelationsMixin on GameProviderBase {
         '【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}\n'
         '【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}\n';
 
+    // 回望：把七年编成一篇能读的文章。
+    //
+    // 上面那个 header 是一堆数字，AI 写的是一段评语，
+    // 中间缺的正是**发生过的事**。没配 AI 的玩家只有本地回退，
+    // 那恰恰是最需要这篇骨架的时候——否则终章就只剩一张成绩单。
+    final retrospective =
+        formatEndingReview(buildEndingReview(endingFactsOf(p)));
+
     // 本地回退（无 AI 或调用失败时使用）
     final localFallback = header +
-        '\n这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
+        (retrospective.isEmpty ? '' : '\n$retrospective\n\n') +
+        '这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
         '也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，'
         '在无数平行世界里继续生长。\n\n'
         '—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';
@@ -530,7 +540,11 @@ mixin GameRelationsMixin on GameProviderBase {
         );
         final content = result.content.trim();
         if (content.isNotEmpty) {
-          ending = header + '\n' + content;
+          // 顺序是：统计 → 回望（发生过什么）→ 评语（那意味着什么）。
+          // 回望提供骨架，AI 的评语提供血肉，两件事不重复。
+          ending = header +
+              (retrospective.isEmpty ? '' : '\n$retrospective\n\n') +
+              content;
         }
       }
     } catch (e) {

@@ -9,6 +9,8 @@ import '../data/game_config_rules.dart';
 import '../data/time_cost_rules.dart';
 import '../data/monthly_event_data.dart';
 import '../data/blood_status.dart';
+import '../data/ending_review_data.dart';
+import '../data/house_data.dart';
 import '../data/attribute_data.dart';
 import '../services/save_service.dart';
 import '../models/player.dart';
@@ -597,6 +599,16 @@ mixin GameSystemsMixin on GameProviderBase {
       ..writeln()
       ..writeln('输入 /结局 可生成完整终章评语，或继续你的毕业后人生。');
 
+    // 回望：把七年编成一篇能读的文章。
+    //
+    // 上面那一屏全是数字——声望、资产、成就——全对，
+    // 但读完之后你不知道这七年发生了什么。玩家花几十个小时走完的七年，
+    // 最后一屏不该是一张成绩单。
+    final review = formatEndingReview(buildEndingReview(endingFactsOf(p)));
+    if (review.isNotEmpty) {
+      buf..writeln()..writeln(review);
+    }
+
     // 够格的话，把留校邀请挂到结算报告末尾。
     // 放在这儿而不是通知里：毕业那一刻玩家正在读七年总账，
     // 顺手就能看到「你被留下了」，比弹一条转瞬即逝的通知有分量。
@@ -607,6 +619,52 @@ mixin GameSystemsMixin on GameProviderBase {
         ? buf.toString().trim()
         : '$currentNarrative\n\n${buf.toString().trim()}';
     worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}', turn: turnCount);
+  }
+
+  /// 把散在各处的状态收拢成一份"这七年"的事实。
+  ///
+  /// 这个方法只做收集，不做判断——所有取舍都在
+  /// `ending_review_data` 的纯函数里，这样每条规则才能单独测。
+  @override
+  EndingFacts endingFactsOf(Player p) {
+    final today = worldState.time.absoluteDayIndex;
+    final rep = p.playerReputation;
+
+    // 只有活着且真正打过照面的人才算"这七年里的人"——
+    // npcRegistry 里有大批从未登场的名字，算进来会让「那些人」变成通讯录。
+    final affections = <String, int>{};
+    final rivals = <(String, String)>[];
+    for (final n in npcRegistry.values) {
+      if (!n.isAlive || !n.introduced) continue;
+      affections[n.name] = n.affection;
+      final tier = n.rivalryTier(today);
+      if (tier.index >= RivalryTier.hostile.index) {
+        rivals.add((n.name, tierDefFor(tier).label));
+      }
+    }
+    // 仇深的那几个排在前面
+    rivals.sort((a, b) => b.$2.compareTo(a.$2));
+
+    return EndingFacts(
+      playerName: p.name,
+      house: houseDisplayName(p.house, fallback: '未分院'),
+      bloodLabel: bloodStatusLabel(p.bloodType),
+      keyFacts: memory.keyFacts,
+      openLoops: memory.openLoops,
+      worldEvents: memory.worldEvents,
+      affections: affections,
+      rivals: rivals,
+      worldLineDeviation: p.worldLineDeviation,
+      rewrittenEchoes: rewrittenEchoesOf(worldState.causalChoices),
+      witnessedUnchanged: witnessedEchoesOf(worldState.causalChoices),
+      deepBonds: affections.values.where((v) => v >= 50).length,
+      wasFaculty: p.facultyRankId != null,
+      moral: rep.moral,
+      combat: rep.combat,
+      academic: rep.academic,
+      dark: rep.dark,
+      leadership: rep.leadership,
+    );
   }
 
   /// 目标进度查询（/目标 进度）

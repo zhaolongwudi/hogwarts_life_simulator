@@ -307,6 +307,41 @@ void main() {
     });
   });
 
+  group('旁观痕迹', () {
+    test('只收旁观，不收干预', () {
+      final witnessed = witnessedEchoesOf({
+        'g6_jun_headmaster_fall': 'standAside',
+        'g2_feb_duelling': 'intervene',
+      });
+      expect(witnessed.length, 1);
+      expect(witnessed.first, contains('塔楼'));
+    });
+
+    test('没碰过的分歧点不写进来——否则「你什么都没做」会变成流水账', () {
+      expect(witnessedEchoesOf(const {}), isEmpty);
+    });
+
+    test('改写过的和旁观过的是互斥的两栏', () {
+      final choices = {
+        'g2_feb_duelling': 'intervene',
+        'g6_jun_headmaster_fall': 'standAside',
+      };
+      expect(rewrittenEchoesOf(choices).length, 1);
+      expect(witnessedEchoesOf(choices).length, 1);
+    });
+
+    test('同样按原著时间顺序返回', () {
+      final witnessed = witnessedEchoesOf({
+        'g7_oct_on_the_run': 'standAside',
+        'g2_feb_duelling': 'standAside',
+        'g5_oct_ministry_decree': 'standAside',
+      });
+      final idxDuel = witnessed.indexWhere((e) => e.contains('决斗'));
+      final idxDecree = witnessed.indexWhere((e) => e.contains('名单'));
+      expect(idxDuel, lessThan(idxDecree));
+    });
+  });
+
   // ==================== 闭环可行性（这条最关键）====================
   //
   // 前面所有测试都只能证明"数据是对的"。这一组要证明的是

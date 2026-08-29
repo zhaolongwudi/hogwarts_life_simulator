@@ -7,6 +7,7 @@ import '../models/world_state.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../data/faculty_data.dart';
+import '../data/ending_review_data.dart';
 import '../data/legacy_data.dart';
 import '../services/save_service.dart';
 import '../services/deepseek_service.dart';
@@ -273,6 +274,9 @@ abstract class GameProviderBase extends ChangeNotifier {
 
   /// 把传承来的世交与世仇落到 NPC 身上。实现在 GameSystemsMixin。
   void applyLegacyRelations(LegacyCarryover legacy);
+
+  /// 把散在各处的状态收拢成一份「这七年」的事实。实现在 GameSystemsMixin。
+  EndingFacts endingFactsOf(Player p);
 
   Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',    LegacyCarryover? legacy,  });
   bool isNearby(String npcId);

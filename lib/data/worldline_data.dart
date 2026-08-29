@@ -632,6 +632,24 @@ List<String> rewrittenEchoesOf(Map<String, String> causalChoices) {
   return out;
 }
 
+/// 你在场、但选择了袖手旁观的关键节点。
+///
+/// 回望的时候这是单独一栏：被你改写过的事会跟着你，
+/// 而你**看着它发生**的那些，同样是你用选择留下的形状。
+/// 只记**你在场**的节点——没碰过的分歧点不写进来，
+/// 否则「你什么都没做」会变成一长串流水账。
+List<String> witnessedEchoesOf(Map<String, String> causalChoices) {
+  final out = <String>[];
+  for (final a in kCausalAnchors) {
+    final picked = causalChoices[a.anchorId];
+    if (picked == null) continue;
+    for (final o in a.options) {
+      if (o.id == picked && o.echo.isEmpty) out.add(a.title);
+    }
+  }
+  return out;
+}
+
 /// 解析 `/抉择 <anchorId> <optionId>`，返回锚点与选项；非法则返回 null。
 ///
 /// 抉择按钮的 action 就是这条指令——不能直接拿选项文本当玩家行动，

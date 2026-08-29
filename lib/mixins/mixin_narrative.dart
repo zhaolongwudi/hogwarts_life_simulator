@@ -17,6 +17,7 @@ import '../data/locations.dart';
 import '../data/attribute_data.dart';
 import '../data/course_data.dart';
 import '../data/director_beat_data.dart';
+import '../data/foreshadow_data.dart';
 import '../data/era_data.dart';
 import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
@@ -1079,6 +1080,26 @@ $kNarrativeWritingRules
       }
     }
 
+    // 2.5 提取【了结】→ 关掉对应的伏笔，并给一句回响
+    //
+    // 伏笔在这套系统里原本是**只增不减**的：AI 每回合往 openLoops 里写，
+    // 但除了委托交付之外没有任何一处会把伏笔置为 done。
+    // 于是玩家从头到尾看不到任何一件悬着的事被了结，
+    // 而「别忘了这些重要伏笔」那条提醒会一直念着
+    // 早就因为容量溢出被悄悄丢掉的事。
+    final closedBlock = _extractBlock(rawSummary, '了结');
+    if (closedBlock.isNotEmpty) {
+      final closedLines = closedBlock
+          .split(RegExp(r'[;；\n]'))
+          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .where((l) => l.isNotEmpty && l != '无' && l.length > 4)
+          .take(4) // 一段剧情里能了结的事不会太多，别让误伤扩散
+          .toList();
+      for (final line in closedLines) {
+        _closeLoopIfMatched(line, ts);
+      }
+    }
+
     // 3. 提取【世界事件】→ T3 worldEvents
     final eventsBlock = _extractBlock(rawSummary, '世界事件');
     if (eventsBlock.isNotEmpty) {
@@ -1108,6 +1129,10 @@ $kNarrativeWritingRules
         // 记忆提取日志已移除（世界事件）
       }
     }
+
+    // 4. 顺手把悬太久的伏笔放下。
+    //    放在最后是因为它读的是刚更新过的 openLoops。
+    _dropStaleLoops(ts);
   }
 
   /// 提取摘要响应中指定块的内容
@@ -1120,12 +1145,95 @@ $kNarrativeWritingRules
   /// 从摘要中剥离结构化块（已写入 LongTermMemory，不需要在 T4 中重复）
   String _stripStructuredBlocks(String text) {
     var cleaned = text;
-    // 剥离【关系】【伏笔】【核心事实】【世界事件】块
+    // 剥离【关系】【伏笔】【了结】【核心事实】【世界事件】块
     cleaned = cleaned.replaceAll(RegExp(r'【关系】[\s\S]*?(?=【|$)'), '');
     cleaned = cleaned.replaceAll(RegExp(r'【伏笔】[\s\S]*?(?=【|$)'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'【了结】[\s\S]*?(?=【|$)'), '');
     cleaned = cleaned.replaceAll(RegExp(r'【核心事实】[\s\S]*?(?=【|$)'), '');
     cleaned = cleaned.replaceAll(RegExp(r'【世界事件】[\s\S]*?(?=【|$)'), '');
     return cleaned.trim();
+  }
+
+  /// 认出并关掉一条伏笔。
+  ///
+  /// 匹配不上就**安静地什么都不做**——AI 有时候会写一些我们从没记过的事，
+  /// 那不是错误，只是这一条没法挂到某条伏笔上。硬凑一个上去，
+  /// 玩家会看到一件还没办的事被宣布了结。
+  void _closeLoopIfMatched(String closedText, String ts) {
+    final match =
+        pickLoopToClose(closedText, memory.openLoops, currentTurn: turnCount);
+    if (match == null) return;
+
+    final l = match.loop;
+    final held = l.openedTurn > 0 ? turnCount - l.openedTurn : 0;
+
+    memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
+      id: l.id,
+      description: l.description,
+      status: 'done',
+      importance: l.importance,
+      openedAt: l.openedAt,
+      closedAt: ts,
+      npcIds: l.npcIds,
+      loopType: l.loopType,
+      openedTurn: l.openedTurn,
+    ));
+
+    // 回响一：一条长期记忆。
+    // 给 7 分而不是沿用伏笔自己的 6 分，是为了让它挤得过日常琐事——
+    // 100 条容量溢出时按分数淘汰，伏笔了结该留下来。
+    memory = memory.addKeyFact(KeyFactRecord(
+      id: 'loop_closed_${l.id}',
+      fact: loopClosedFact(l.description, l.loopType),
+      importance: l.importance >= 8 ? 9 : 7,
+      timestamp: ts,
+      category: 'loop_closed',
+      npcIds: l.npcIds,
+    ));
+
+    // 回响二：一句通知，带上这件事悬了多久
+    notifications.add(loopClosedNotice(l.description, l.loopType, held));
+    worldState.addNarrativeEvent(
+        '🔗 了结${loopTypeLabel(l.loopType)}：${l.description}', turn: turnCount);
+
+    // 回响三：一点声望与好感，按这件事的性质给
+    final reward = rewardForLoop(l.loopType);
+    final p = player;
+    if (p != null) {
+      for (final e in reward.reputation.entries) {
+        p.playerReputation.add(e.key, e.value);
+      }
+    }
+    if (reward.npcAffection > 0) {
+      for (final id in l.npcIds) {
+        updateNpcAffection(id, reward.npcAffection,
+            reason: '了结了${loopTypeLabel(l.loopType)}');
+      }
+    }
+    debugPrint(
+        '🔗 伏笔了结 id=${l.id} score=${match.score.toStringAsFixed(2)} 悬了$held回合');
+  }
+
+  /// 把悬太久又没分量的伏笔放下。
+  ///
+  /// 玩家显然已经放弃了这些事，AI 也再没提起过；继续挂在 T1 里
+  /// 只会挤掉真正重要的待办。这里是静默处理——
+  /// 弹一句「你放弃了 XXX」纯属给人添堵，那是玩家用脚投的票。
+  void _dropStaleLoops(String ts) {
+    final drops = staleLoopsToDrop(memory.openLoops, turnCount);
+    for (final l in drops) {
+      memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
+        id: l.id,
+        description: l.description,
+        status: 'dropped',
+        importance: l.importance,
+        openedAt: l.openedAt,
+        closedAt: ts,
+        npcIds: l.npcIds,
+        loopType: l.loopType,
+        openedTurn: l.openedTurn,
+      ));
+    }
   }
 
   /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
