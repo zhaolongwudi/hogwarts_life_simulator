@@ -18,6 +18,7 @@ import '../data/attribute_data.dart';
 import '../data/course_data.dart';
 import '../data/director_beat_data.dart';
 import '../data/era_data.dart';
+import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
@@ -50,10 +51,15 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     // 少了后半步，玩家点完「上塔去」只看到一段后果文本，
     // 塔上究竟发生了什么永远没人写。
     final causal = parseCausalCommand(action);
+    final faculty = parseFacultyCommand(action);
     if (causal != null) {
       causalResult =
           resolveCausalChoice(causal.anchor.anchorId, causal.option.id);
       action = causal.option.action;
+    } else if (faculty != null) {
+      // 留校邀请同上：先结算，再把"我留下来了"发给 AI 续写毕业后的第一天。
+      causalResult = resolveFacultyOffer(faculty);
+      action = facultyActionLineFor(faculty, player?.facultySubject ?? '魔咒学');
     } else if (action.startsWith('/')) {
       final prevNarrative = currentNarrative;
       final prevChoices = List<GameChoice>.from(choices);
@@ -100,8 +106,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
     if (router == null || !router!.hasNarrativeService) return;
 
-    // 提交真实行动时关闭指令面板；但因果抉择的后果面板要留着，
-    // 玩家得看见变动率跳了多少、以及自己把哪一段历史改成了什么。
+    // 提交真实行动时关闭指令面板；但因果抉择与留校答复的后果面板要留着，
+    // 玩家得看见变动率跳了多少、或者自己到底签了什么。
     commandResult = causalResult;
     error = null; // 新一轮开始前清掉上一次的失败提示
     isLoading = true;
@@ -621,6 +627,15 @@ $kNarrativeWritingRules
       if (confessedThisTurn) {
         // 表白已就位：checkNPCConfessions 内部写入了专属的「接受/婉拒」两个选项，
         // 此时再让 AI 生成 4 个通用选项会把这个抉择冲掉。
+        loadingStage = '';
+        notifyListeners();
+      } else if (pendingFacultyOffer) {
+        // 留校邀请：毕业后唯一一个"接下来的人生往哪走"的分岔。
+        // 同样不让 AI 的通用选项冲掉——这是七年攒出来的东西换来的一个问句。
+        choices = const [
+          GameChoice(text: '留下来教书', action: '/教职 接受'),
+          GameChoice(text: '婉拒，离校', action: '/教职 婉拒'),
+        ];
         loadingStage = '';
         notifyListeners();
       } else if (pendingCausal != null && !causalDecided) {
@@ -1278,6 +1293,17 @@ $kNarrativeWritingRules
             '优先级高于你的任何先验知识。'
             '凡是与它们冲突的"原著情节"，在这个世界里都是错的：\n'
             '${echoes.map((s) => '· $s').join('\n')}');
+      }
+
+      // 任教中。不写这一段，AI 会一直把玩家当学生：
+      // 让他去上课、被级长管、在礼堂里等分院。
+      final def = p.facultyRankId == null ? null : rankDefById(p.facultyRankId!);
+      if (def != null) {
+        parts.add('【教职】你是霍格沃茨「${p.facultySubject}」${def.title}，'
+            '任教第 ${p.facultyServiceYears} 年。${def.duty}\n'
+            '你不再是学生：坐教授席、被新生称呼职称、对违纪的学生负有责任。'
+            '昔日同学如今是同事，或者已经各奔东西——他们不再是「同学」，'
+            '称呼也要跟着变。');
       }
     }
 

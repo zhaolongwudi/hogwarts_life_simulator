@@ -18,6 +18,7 @@ import '../data/goal_data.dart';
 import '../data/npc_schedule_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
+import '../data/faculty_data.dart';
 import '../data/worldline_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
@@ -421,8 +422,10 @@ mixin GameSystemsMixin on GameProviderBase {
     final yearsPassed = newStart - lastSchoolYearStart;
     lastSchoolYearStart = newStart;
 
-    // 玩家已毕业则不再推进
+    // 玩家已毕业则不再推进年级，但教职要照常走年结：
+    // 任教年限、年薪、晋升考核都挂在九月这个节点上。
     if (worldState.graduated) {
+      _settleFacultyYear(yearsPassed);
       updateAcademicYearLabel();
       return;
     }
@@ -592,6 +595,11 @@ mixin GameSystemsMixin on GameProviderBase {
       ..writeln('· 成就：${p.achievements.length} / ${achievementCatalog.length}')
       ..writeln()
       ..writeln('输入 /结局 可生成完整终章评语，或继续你的毕业后人生。');
+
+    // 够格的话，把留校邀请挂到结算报告末尾。
+    // 放在这儿而不是通知里：毕业那一刻玩家正在读七年总账，
+    // 顺手就能看到「你被留下了」，比弹一条转瞬即逝的通知有分量。
+    _maybeOfferFacultyPosition(buf);
 
     // 追加到当前剧情之后，保留本回合叙事
     currentNarrative = currentNarrative.isEmpty
@@ -843,6 +851,241 @@ mixin GameSystemsMixin on GameProviderBase {
           '而每一次「干预」都会让它跳一大截，每一次「旁观」都会把它压回去。');
     }
 
+    return buf.toString();
+  }
+
+  // ==================== 毕业后留校任教 ====================
+
+  /// 当前是否有一份留校邀请等着答复。
+  ///
+  /// 只在「刚毕业 + 够格 + 还没答复过」时为真。挂上之后不会自己消失——
+  /// 那封信在你做出答复之前一直压在箱子底下。
+  bool _facultyOfferPending = false;
+
+  @override
+  bool get pendingFacultyOffer => _facultyOfferPending;
+
+  /// 在职教授的名字 → 好感。教授的 grade 是 0（学生是 1-7）。
+  Map<String, int> _teacherAffections() {
+    final out = <String, int>{};
+    for (final n in npcRegistry.values) {
+      if (!n.isAlive) continue;
+      if (n.grade != 0) continue; // 学生
+      if (n.affection <= 0) continue; // 关系不好就不算"愿意推荐你"
+      out[n.name] = n.affection;
+    }
+    return out;
+  }
+
+  @override
+  FacultyEligibility evaluateFacultyOffer() {
+    final p = player;
+    final rep = p?.playerReputation;
+    if (p == null || rep == null) {
+      return const FacultyEligibility(
+        eligible: false,
+        checks: [],
+        startingRank: FacultyRank.none,
+        subject: '魔咒学',
+        allies: [],
+      );
+    }
+    return evaluateFacultyEligibility(
+      academic: rep.academic,
+      moral: rep.moral,
+      dark: rep.dark,
+      attributes: p.attributes,
+      teacherAffections: _teacherAffections(),
+    );
+  }
+
+  /// 当代在任校长的名字；认不出来就返回 null（由文案退回「校方」）。
+  ///
+  /// 不能写死"邓布利多"——1892 年他自己还是一年级新生，
+  /// 2020 年他已经逝世二十多年。
+  String? _headmasterName() {
+    for (final n in npcRegistry.values) {
+      if (!n.isAlive || n.grade != 0) continue;
+      final aliases = <String>{n.name};
+      if (n.name.contains('邓布利多') ||
+          aliases.any((a) => a.contains('校长'))) {
+        return n.name;
+      }
+    }
+    return null;
+  }
+
+  /// 毕业时挂上留校邀请。够格才挂；不够格的一个字都不提——
+  /// 事后再告诉玩家「你当年差 3 点学术声望」纯属给人添堵。
+  void _maybeOfferFacultyPosition(StringBuffer report) {
+    final p = player;
+    if (p == null) return;
+    if (p.facultyOfferDeclined || p.facultyRankId != null) return;
+
+    final e = evaluateFacultyOffer();
+    if (!e.eligible) return;
+
+    _facultyOfferPending = true;
+    final line = facultyOfferLineFor(
+      e: e,
+      headmasterName: _headmasterName(),
+      playerName: p.name,
+    );
+    report
+      ..writeln()
+      ..writeln('──────────────────────────────')
+      ..writeln(line)
+      ..writeln()
+      ..writeln('输入 /教职 接受 或 /教职 婉拒。');
+  }
+
+  @override
+  String resolveFacultyOffer(bool accept) {
+    final p = player;
+    if (p == null) return '尚未创建角色。';
+    if (p.facultyRankId != null) {
+      return '你已经在霍格沃茨任教了。';
+    }
+    if (p.facultyOfferDeclined) {
+      return '那封信你当年已经回绝了。有些门一旦关上就不会再开第二次。';
+    }
+
+    final e = evaluateFacultyOffer();
+
+    if (!accept) {
+      p.facultyOfferDeclined = true;
+      _facultyOfferPending = false;
+      final buf = StringBuffer()
+        ..writeln('【婉拒留校】')
+        ..writeln()
+        ..writeln(kFacultyDeclineLine);
+      worldState.addNarrativeEvent('婉拒了霍格沃茨的留校邀请', turn: turnCount);
+      notifyListeners();
+      return buf.toString();
+    }
+
+    if (!e.eligible) {
+      _facultyOfferPending = false;
+      return '邀请已经失效了——这一年的教席安排已经定了。';
+    }
+
+    final rank = rankDefFor(e.startingRank);
+    p.facultyRankId = rank.id;
+    p.facultySubject = e.subject;
+    p.facultyServiceYears = 0;
+    p.currentJobTitle = '霍格沃茨${rank.title}';
+    _facultyOfferPending = false;
+
+    // 预付半年薪水：刚毕业的人总得先安顿下来
+    final advance = rank.annualPay ~/ 2;
+    p.galleons += advance;
+
+    worldState.addNarrativeEvent(
+        '🎓 留校任教：${e.subject}${rank.title}', turn: turnCount);
+    // 和毕业、成婚一样，这是回不了头的节点
+    worldState.addTimelineBranch(
+        '${worldState.time.year} 年留校任教，任「${e.subject}」${rank.title}');
+    notifications.add('🏫 你留下了，教${e.subject}');
+
+    final buf = StringBuffer()
+      ..writeln('【留校任教】${e.subject}·${rank.title}')
+      ..writeln()
+      ..writeln(rank.duty)
+      ..writeln()
+      ..writeln('预付半年薪水：$advance 加隆。')
+      ..writeln()
+      ..writeln('推荐你的教授：${e.allies.join('、')}。')
+      ..writeln('往后每年九月会结算年薪并考核晋升（/教职 查看进度）。')
+      ..writeln()
+      ..writeln('明天你就要从行李里翻出当年自己那本课本了——'
+          '只是这一次，站在讲台上的是你。');
+
+    notifyListeners();
+    return buf.toString();
+  }
+
+  /// 每年九月：发年薪、加一年服务期、考核晋升。
+  ///
+  /// [yearsPassed] 是这次学年切换跨过的年数（/快进 可能一次跨好几年）。
+  void _settleFacultyYear(int yearsPassed) {
+    final p = player;
+    final rankId = p?.facultyRankId;
+    if (p == null || rankId == null) return;
+    final cur = rankDefById(rankId);
+    if (cur == null) return;
+
+    p.facultyServiceYears += yearsPassed;
+    p.galleons += cur.annualPay * yearsPassed;
+
+    final rep = p.playerReputation;
+    final next = promotionFor(
+      current: cur.rank,
+      serviceYears: p.facultyServiceYears,
+      academic: rep.academic,
+      leadership: rep.leadership,
+    );
+    if (next == null) return;
+
+    p.facultyRankId = next.id;
+    p.currentJobTitle = '霍格沃茨${next.title}';
+    notifications.add('🏫 晋升为${next.title}');
+    worldState.addNarrativeEvent(
+        '🏫 晋升：${p.facultySubject ?? ''}${next.title}', turn: turnCount);
+    worldState.addTimelineBranch(
+        '${worldState.time.year} 年晋升为「${p.facultySubject ?? ''}」${next.title}');
+  }
+
+  @override
+  String formatFaculty() {
+    final p = player;
+    if (p == null) return '尚未创建角色。';
+    final rankId = p.facultyRankId;
+
+    if (rankId == null) {
+      final e = evaluateFacultyOffer();
+      final buf = StringBuffer()..writeln('【教职】尚未任教');
+      if (p.facultyOfferDeclined) {
+        buf
+          ..writeln()
+          ..writeln('你婉拒过霍格沃茨的留校邀请。那扇门不会再开第二次。');
+        return buf.toString();
+      }
+      if (!worldState.graduated) {
+        buf
+          ..writeln()
+          ..writeln('毕业时若够格，会收到留校邀请。目前差在：');
+      } else {
+        buf
+          ..writeln()
+          ..writeln('你没能拿到那封邀请信。差在：');
+      }
+      for (final (label, ok) in e.checks) {
+        buf.writeln('${ok ? '✅' : '⬜'} $label');
+      }
+      buf
+        ..writeln()
+        ..writeln('你最拿得出手的一门课是「${e.subject}」。'
+            '它就是你将来会被问到的那门课。');
+      if (e.allies.isNotEmpty) {
+        buf.writeln('愿意替你说话的教授：${e.allies.join('、')}。');
+      }
+      return buf.toString();
+    }
+
+    final def = rankDefById(rankId)!;
+    final buf = StringBuffer()
+      ..writeln('【教职】${p.facultySubject ?? ''}·${def.title}')
+      ..writeln('任教年限：${p.facultyServiceYears} 年　年薪：${def.annualPay} 加隆')
+      ..writeln()
+      ..writeln(def.duty)
+      ..writeln()
+      ..writeln('【晋升】')
+      ..writeln(promotionHintFor(
+        current: def.rank,
+        serviceYears: p.facultyServiceYears,
+        academic: p.playerReputation.academic,
+        leadership: p.playerReputation.leadership,
+      ));
     return buf.toString();
   }
 

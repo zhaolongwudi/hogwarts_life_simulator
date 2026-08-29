@@ -741,6 +741,19 @@ mixin GameCommandsMixin on GameProviderBase {
           return true;
         },
       ),
+      // 带「接受/婉拒」的形式走不到这儿——processChoice 会先拦下来结算，
+      // 再把「我留下来了」当成玩家行动发给 AI 续写毕业后的第一天。
+      CommandDef(
+        primary: '教职',
+        group: '世界&结局',
+        helpText: '查看留校任教的资格与晋升进度；/教职 接受 或 /教职 婉拒 答复邀请',
+        handler: (ctx) {
+          final m = ctx.provider;
+          m.currentNarrative = m.formatFaculty();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
       CommandDef(
         primary: '世界演化',
         group: '世界&结局',

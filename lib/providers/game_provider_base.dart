@@ -6,6 +6,7 @@ import '../models/npc.dart';
 import '../models/world_state.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
+import '../data/faculty_data.dart';
 import '../services/save_service.dart';
 import '../services/deepseek_service.dart';
 import '../services/npc_chat_service.dart';
@@ -247,6 +248,19 @@ abstract class GameProviderBase extends ChangeNotifier {
 
   /// /世界线 的输出。实现在 GameSystemsMixin。
   String formatWorldLine();
+
+  /// 毕业时是否有一份留校邀请正等着答复。
+  bool get pendingFacultyOffer;
+
+  /// 答复留校邀请，返回展示给玩家的文本。实现在 GameSystemsMixin。
+  String resolveFacultyOffer(bool accept);
+
+  /// /教职 的输出。实现在 GameSystemsMixin。
+  String formatFaculty();
+
+  /// 留校资格评估（/教职 与毕业结算共用）。实现在 GameSystemsMixin。
+  FacultyEligibility evaluateFacultyOffer();
+
   Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',  });
   bool isNearby(String npcId);
   Future<String?> importSave(String jsonString);

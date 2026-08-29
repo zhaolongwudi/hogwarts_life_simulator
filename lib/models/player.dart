@@ -17,6 +17,18 @@ class Player {
   final Map<String, Relationship> relationships;
   String? currentGoal;
   double worldLineDeviation;
+
+  // ====== 毕业后留校任教（lib/data/faculty_data.dart）======
+  /// 当前教职等级 id（'assistant' / 'lecturer' / 'professor' / 'head'）；
+  /// null = 从未任教。存 id 而不是枚举下标，以后加档不会串档。
+  String? facultyRankId;
+  String? facultySubject; // 任教的学科
+  int facultyServiceYears; // 任教年限（每年 9 月 +1）
+
+  /// 是否婉拒过留校邀请。
+  /// 婉拒是不可逆的——那封信不会再送第二次，这也是它值得犹豫的原因。
+  bool facultyOfferDeclined;
+
   int health;
   final List<String> injuries;
   String? wandId;
@@ -118,6 +130,10 @@ class Player {
     Map<String, Relationship>? relationships,
     this.currentGoal,
     this.worldLineDeviation = 0.0,
+    this.facultyRankId,
+    this.facultySubject,
+    this.facultyServiceYears = 0,
+    this.facultyOfferDeclined = false,
     this.health = 100,
     List<String>? injuries,
     this.wandId,
@@ -262,6 +278,10 @@ class Player {
         'relationships': relationships.map((k, v) => MapEntry(k, v.toJson())),
         'current_goal': currentGoal,
         'world_line_deviation': worldLineDeviation,
+        'faculty_rank_id': facultyRankId,
+        'faculty_subject': facultySubject,
+        'faculty_service_years': facultyServiceYears,
+        'faculty_offer_declined': facultyOfferDeclined,
         'health': health,
         'injuries': injuries,
         'wand_id': wandId,
@@ -344,6 +364,10 @@ class Player {
             {},
         currentGoal: json['current_goal'],
         worldLineDeviation: (json['world_line_deviation'] ?? 0.0).toDouble(),
+        facultyRankId: json['faculty_rank_id'] as String?,
+        facultySubject: json['faculty_subject'] as String?,
+        facultyServiceYears: (json['faculty_service_years'] ?? 0) as int,
+        facultyOfferDeclined: (json['faculty_offer_declined'] ?? false) as bool,
         health: json['health'] ?? 100,
         injuries: List<String>.from(json['injuries'] ?? []),
         wandId: json['wand_id'],
