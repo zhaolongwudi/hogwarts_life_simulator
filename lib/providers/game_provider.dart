@@ -5,6 +5,7 @@ import 'app_provider.dart';
 import 'game_provider_base.dart';
 import '../mixins/game_provider_mixins.dart';
 import '../data/balance_constants.dart';
+import '../data/rivalry_data.dart';
 import '../services/save_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
@@ -237,9 +238,36 @@ class GameProvider extends GameProviderBase
       }
     }
     if (change < -15) {
-      npc.addGrudge('betrayal', reason ?? '背叛/欺骗', currentDay);
-      notifications.add('💔 ${npc.name}因你的行为而记恨在心');
-      worldState.addNarrativeEvent('💔 ${npc.name}因你的行为而记恨在心', turn: turnCount);
+      // 宿敌成因从 reason 里认。原先一律记成 'betrayal'，
+      // 于是"当众让他下不来台"和"骗了他"在宿敌分里完全等价，
+      // 玩家自然也感觉不出区别。
+      final cause = causeFromReason(reason);
+      final causeKey = causeKeyFor(cause);
+      final tierBefore = npc.rivalryTier(currentDay);
+      npc.addGrudge(causeKey, reason ?? '背叛/欺骗', currentDay);
+      npc.tickRivalry(currentDay);
+      final tierAfter = npc.rivalryTier(currentDay);
+
+      final base = '💔 ${npc.name}记恨着你（${causeLabelFor(causeKey)}）';
+      notifications.add(base);
+      worldState.addNarrativeEvent(base, turn: turnCount);
+
+      // 升档单独提示一次。宿敌这件事必须让玩家感知得到，
+      // 否则他只注意到"好感涨不上去了"，却不知道对面多了个仇人。
+      // 一局里每个人最多提示四次，不会刷屏。
+      if (tierAfter.index > tierBefore.index) {
+        final escalated = switch (tierAfter) {
+          RivalryTier.grudge => '🙄 你和${npc.name}之间有了芥蒂',
+          RivalryTier.hostile => '😠 ${npc.name}开始公开跟你过不去',
+          RivalryTier.nemesis => '⚔️ ${npc.name}已经把你当成宿敌',
+          RivalryTier.archenemy => '💀 ${npc.name}恨你入骨，且不在乎代价了',
+          RivalryTier.none => '',
+        };
+        if (escalated.isNotEmpty) {
+          notifications.add(escalated);
+          worldState.addNarrativeEvent(escalated, turn: turnCount);
+        }
+      }
     }
     npc.affection = (npc.affection + actualChange).clamp(-100, 100);
     if (npc.affection > npc.maxAffectionReached) {

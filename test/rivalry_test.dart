@@ -1,0 +1,305 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hogwarts_life_simulator/data/rivalry_data.dart';
+import 'package:hogwarts_life_simulator/models/npc.dart';
+
+/// 造一条记仇记录，与 NPC.addGrudge 写入的结构一致。
+Map<String, dynamic> _grudge(String type, int day, {String reason = '某事'}) =>
+    {'type': type, 'reason': reason, 'day': day, 'affection_at_time': -20};
+
+void main() {
+  // ------------------------------------------------------------ 成因识别
+  group('宿敌成因', () {
+    test('按理由文字分门别类', () {
+      expect(causeFromReason('你当众顶撞了他'), RivalryCause.publicHumiliation);
+      expect(causeFromReason('你抢了他的风头'), RivalryCause.outshone);
+      expect(causeFromReason('你们喜欢同一个人'), RivalryCause.romance);
+      expect(causeFromReason('你打伤了他的朋友'), RivalryCause.harmed);
+      expect(causeFromReason('你们在血统问题上谈不拢'), RivalryCause.principle);
+      expect(causeFromReason('学院杯之争'), RivalryCause.house);
+    });
+
+    test('认不出来时退回背叛，与既有存档口径一致', () {
+      expect(causeFromReason('随便什么事'), RivalryCause.betrayal);
+      expect(causeFromReason(null), RivalryCause.betrayal);
+      expect(causeFromReason(''), RivalryCause.betrayal);
+    });
+
+    test('成因 key 与老存档里的 betrayal 对得上', () {
+      expect(causeKeyFor(RivalryCause.betrayal), 'betrayal');
+    });
+
+    test('每种成因都有权重和文案，没有漏填', () {
+      for (final c in kRivalryCauses) {
+        expect(c.weight, greaterThan(0), reason: '${c.label} 权重没填');
+        expect(c.label.trim(), isNotEmpty);
+        expect(c.note.trim(), isNotEmpty);
+      }
+    });
+
+    test('背叛比抢风头严重，学院对立最轻', () {
+      expect(grudgeWeightFor('betrayal'), greaterThan(grudgeWeightFor('outshone')));
+      expect(grudgeWeightFor('outshone'), greaterThan(grudgeWeightFor('house')));
+    });
+  });
+
+  // -------------------------------------------------------------- 时间衰减
+  group('旧账会凉，但不会彻底凉透', () {
+    test('当天不衰减', () {
+      expect(decayFactorFor(0), 1.0);
+      expect(decayFactorFor(-5), 1.0);
+    });
+
+    test('一个周期后按 0.85 计', () {
+      expect(decayFactorFor(30), closeTo(0.85, 0.001));
+      expect(decayFactorFor(60), closeTo(0.85 * 0.85, 0.001));
+    });
+
+    test('衰减有下限：挂机几个月洗不白', () {
+      // 没有下限的话，玩家什么都不做、快进一年就能自动和解所有宿敌。
+      expect(decayFactorFor(3650), kDecayFloor);
+      expect(kDecayFloor, greaterThan(0.0));
+    });
+  });
+
+  // ---------------------------------------------------------------- 宿敌分
+  group('宿敌分与等级', () {
+    test('没有记仇就是 0', () {
+      expect(rivalryScoreFor([], currentDay: 100), 0);
+      expect(tierForScore(0), RivalryTier.none);
+    });
+
+    test('一条背叛够不上敌意，两条就到宿敌', () {
+      final one = rivalryScoreFor([_grudge('betrayal', 100)],
+          currentDay: 100, affection: 0);
+      expect(one, 40);
+      expect(tierForScore(one), RivalryTier.grudge);
+
+      final two = rivalryScoreFor(
+        [_grudge('betrayal', 100), _grudge('betrayal', 100)],
+        currentDay: 100,
+        affection: 0,
+      );
+      expect(two, 80);
+      expect(tierForScore(two), RivalryTier.nemesis);
+    });
+
+    test('三条背叛到死敌', () {
+      final score = rivalryScoreFor(
+        [_grudge('betrayal', 100), _grudge('betrayal', 100), _grudge('betrayal', 100)],
+        currentDay: 100,
+        affection: 0,
+      );
+      expect(tierForScore(score), RivalryTier.archenemy);
+    });
+
+    test('一年前的旧账只剩四分之一分量', () {
+      final fresh = rivalryScoreFor([_grudge('betrayal', 100)],
+          currentDay: 100, affection: 0);
+      final old = rivalryScoreFor([_grudge('betrayal', 100 - 365)],
+          currentDay: 100, affection: 0);
+      expect(old, lessThan(fresh));
+      expect(old, closeTo(40 * kDecayFloor, 1));
+    });
+
+    test('关系回暖后旧账打折', () {
+      final cold = rivalryScoreFor([_grudge('betrayal', 100)],
+          currentDay: 100, affection: 0);
+      final warm = rivalryScoreFor([_grudge('betrayal', 100)],
+          currentDay: 100, affection: 60);
+      expect(warm, lessThan(cold));
+      expect(warm, closeTo(cold * 0.4, 1));
+    });
+
+    test('减免能把宿敌分抹平，但不会变成负数', () {
+      final score = rivalryScoreFor([_grudge('betrayal', 100)],
+          currentDay: 100, affection: 0, relief: 999);
+      expect(score, 0);
+    });
+
+    test('等级阈值单调递增且从 0 起', () {
+      var last = -1;
+      for (final t in kRivalryTiers) {
+        expect(t.threshold, greaterThan(last));
+        last = t.threshold;
+      }
+      expect(kRivalryTiers.first.threshold, 0);
+    });
+  });
+
+  // ---------------------------------------------------------------- 行为
+  group('每档行为指令', () {
+    test('没有宿敌时不注入任何指令', () {
+      expect(rivalryDirectiveFor(RivalryTier.none, '张三', '某事'), isEmpty);
+    });
+
+    test('等级越高写得越重，且都点名了具体做法', () {
+      // 光说"态度不好"AI 演不出来，指令必须写清做什么。
+      final g = rivalryDirectiveFor(RivalryTier.grudge, '张三', '某事');
+      final n = rivalryDirectiveFor(RivalryTier.nemesis, '张三', '某事');
+      expect(g, contains('张三'));
+      expect(n, contains('张三'));
+      expect(g, isNot(equals(n)));
+      // 宿敌档要真的动手
+      expect(n, contains('动手'));
+    });
+
+    test('指令里带上结仇原因，AI 才知道他为什么恨', () {
+      final d = rivalryDirectiveFor(RivalryTier.nemesis, '张三', '你当众顶撞了他');
+      expect(d, contains('你当众顶撞了他'));
+    });
+
+    test('每档都有徽标，供在场列表使用', () {
+      for (final t in RivalryTier.values) {
+        if (t == RivalryTier.none) {
+          expect(rivalryBadgeFor(t), isEmpty);
+        } else {
+          expect(rivalryBadgeFor(t).trim(), isNotEmpty);
+        }
+      }
+    });
+  });
+
+  // ------------------------------------------------------- NPC 上的宿敌状态
+  group('NPC 宿敌状态', () {
+    NPC npcWith(List<Map<String, dynamic>> grudges, {int affection = 0}) =>
+        NPC(id: 'x', name: '某人', grudges: grudges, affection: affection);
+
+    test('宿敌分与等级跟着 grudges 走', () {
+      final npc = npcWith([_grudge('betrayal', 100)], affection: -30);
+      expect(npc.hasGrudge, isTrue);
+      expect(npc.rivalryScore(100), 40);
+      expect(npc.rivalryTier(100), RivalryTier.grudge);
+    });
+
+    test('补救有每日上限，刷不白', () {
+      final npc = npcWith([_grudge('betrayal', 100), _grudge('betrayal', 100)]);
+      final before = npc.rivalryScore(100);
+
+      // 同一天连补四次
+      final gains = <int>[
+        npc.applyAmends(100),
+        npc.applyAmends(100),
+        npc.applyAmends(100),
+        npc.applyAmends(100),
+      ];
+      final total = gains.reduce((a, b) => a + b);
+      expect(total, kMaxReliefPerDay, reason: '当天减免不该超过上限');
+      expect(npc.rivalryScore(100), before - total);
+
+      // 换一天又能补
+      expect(npc.applyAmends(101), greaterThan(0));
+    });
+
+    test('没结仇时不给减免，免得把 relief 刷成负资产', () {
+      final npc = npcWith([]);
+      expect(npc.applyAmends(100), 0);
+      expect(npc.rivalryRelief, 0);
+    });
+
+    test('峰值单独记，被时间冲淡后仍查得出"曾经真恨过"', () {
+      final npc = npcWith([
+        _grudge('betrayal', 0),
+        _grudge('betrayal', 0),
+      ]);
+      npc.tickRivalry(0);
+      expect(npc.maxRivalryScoreReached, greaterThanOrEqualTo(70));
+
+      // 快进五年：分数被时间冲得很低，但峰值还在
+      npc.tickRivalry(1825);
+      expect(npc.rivalryScore(1825), lessThan(70));
+      expect(npc.maxRivalryScoreReached, greaterThanOrEqualTo(70));
+    });
+
+    test('只结过小芥蒂的不算"化敌为友"', () {
+      // 峰值没到敌意档就和解，不值得专门记一笔。
+      final npc = npcWith([_grudge('house', 100)], affection: 50);
+      npc.tickRivalry(100);
+      expect(npc.maxRivalryScoreReached, lessThan(kFormerRivalMinPeak));
+      expect(npc.formerRival, isFalse);
+    });
+
+    test('真恨过、又修好了，才算化敌为友', () {
+      final npc = npcWith([
+        _grudge('betrayal', 100),
+        _grudge('betrayal', 100),
+      ]);
+      npc.tickRivalry(100);
+      expect(npc.formerRival, isFalse);
+
+      // 把分减到 0，好感拉回正值
+      npc.rivalryRelief = 999;
+      npc.affection = 50;
+      final justHealed = npc.tickRivalry(100);
+      expect(justHealed, isTrue);
+      expect(npc.formerRival, isTrue);
+
+      // 再调一次不该重复触发
+      expect(npc.tickRivalry(100), isFalse);
+    });
+
+    test('化敌为友的文案能拿到', () {
+      expect(formerRivalLine('张三'), contains('张三'));
+    });
+  });
+
+  // ------------------------------------------------------------ 存档兼容
+  group('存档兼容', () {
+    test('老存档（没有宿敌字段）能读出 NPC 且能算宿敌分', () {
+      final old = <String, dynamic>{
+        'id': 'old',
+        'name': '老存档的人',
+        'grudges': [
+          {'type': 'betrayal', 'reason': '背叛', 'day': 100},
+        ],
+        'affection': -30,
+        // 故意不含 rivalry_relief / former_rival / max_rivalry_score_reached
+      };
+      final npc = NPC.fromJson(old);
+      expect(npc.rivalryRelief, 0);
+      expect(npc.formerRival, isFalse);
+      expect(npc.maxRivalryScoreReached, 0);
+      // 宿敌分仍能从 grudges 算出来，不需要迁移脚本
+      expect(npc.rivalryScore(100), 40);
+      expect(npc.rivalryTier(100), RivalryTier.grudge);
+    });
+
+    test('新字段能完整往返', () {
+      final npc = NPC(
+        id: 'n',
+        name: '某人',
+        grudges: [_grudge('outshone', 50)],
+        affection: 40,
+      );
+      npc.tickRivalry(50);
+      npc.applyAmends(50);
+      final peak = npc.maxRivalryScoreReached;
+      final relief = npc.rivalryRelief;
+
+      final revived = NPC.fromJson(npc.toJson());
+      expect(revived.rivalryRelief, relief);
+      expect(revived.maxRivalryScoreReached, peak);
+      expect(revived.reliefGivenToday, npc.reliefGivenToday);
+      expect(revived.rivalryScore(50), npc.rivalryScore(50));
+    });
+  });
+
+  // ------------------------------------------------ 好感路径接上了成因识别
+  group('好感路径会按成因分门别类', () {
+    final src = File('lib/providers/game_provider.dart').readAsStringSync();
+
+    test('不再一律记成 betrayal', () {
+      expect(src.contains('causeFromReason'), isTrue);
+      // 旧的写死调用应当已被替换
+      expect(src.contains("addGrudge('betrayal'"), isFalse);
+    });
+
+    test('升档会给玩家提示', () {
+      // 宿敌这件事必须让玩家感知得到，
+      // 否则他只注意到好感涨不上去，不知道对面多了个仇人。
+      expect(src.contains('tierAfter.index > tierBefore.index'), isTrue);
+      expect(src.contains('已经把你当成宿敌'), isTrue);
+    });
+  });
+}
