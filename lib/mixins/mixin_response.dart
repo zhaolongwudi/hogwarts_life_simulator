@@ -9,6 +9,7 @@ import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 import '../data/narrative_time_rules.dart';
+import '../data/worldline_data.dart';
 import '../prompts/choice_prompts.dart';
 import 'mixin_response_choices.dart';
 import 'mixin_response_affection.dart';
@@ -532,9 +533,14 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     checkWorldChangerAchievement();
     checkWarHeroAchievement();
 
-    // 每10回合增加少量世界线变动率
-    if (turnCount % 10 == 0) {
-      incrementWorldLineDeviation(0.005);
+    // 世界线漂移。按游戏内天数结算，见 kDeviationTickIntervalDays 的注释——
+    // 它决定「什么都不做只靠时间」能漂多远，必须与分歧点门槛一起调。
+    final bucket =
+        worldState.time.absoluteDayIndex ~/ kDeviationTickIntervalDays;
+    if (bucket != lastDeviationTickBucket) {
+      lastDeviationTickBucket = bucket;
+      incrementWorldLineDeviation(
+          deviationDriftFor(player?.worldLineDeviation ?? 0.0));
     }
 
     // 分院结果自动提取（开局叙事通过 parseResponse，必须也走这里）

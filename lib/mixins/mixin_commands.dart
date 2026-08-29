@@ -8,6 +8,7 @@ import '../models/game_systems.dart';
 import '../data/cg_data.dart';
 import '../data/goal_data.dart';
 import '../data/wand_data.dart';
+import '../data/worldline_data.dart';
 import '../providers/game_provider_base.dart';
 import 'mixin_systems.dart';
 
@@ -701,6 +702,41 @@ mixin GameCommandsMixin on GameProviderBase {
               '每跨过一个回不了头的节点，世界线就分出一条只有这一周目存在的支流。\n'
               '世界线变动次数：${m.worldState.timelineChanges}\n'
               '已记录的分叉：\n${branches.isEmpty ? '暂无——毕业、成婚这类不可逆的节点会出现在这里。' : branches.reversed.map((b) => '· $b').join('\n')}';
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '世界线',
+        aliases: ['变动率', '分歧点'],
+        group: '世界&结局',
+        helpText: '查看世界线变动率、已被你改写的事、还差多少能动下一段原著',
+        handler: (ctx) {
+          final m = ctx.provider;
+          m.currentNarrative = m.formatWorldLine();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      // 带参数的形式（/抉择 <anchorId> <optionId>）根本走不到这儿——
+      // processChoice 在 handleLocalCommand 之前就把它拦下来结算了。
+      // 注册它只是为了两件事：让玩家能回头看一眼当前悬着的分歧点，
+      // 以及不让「文案里出现 /抉择 却没这个命令」这类检查报警。
+      CommandDef(
+        primary: '抉择',
+        group: '世界&结局',
+        helpText: '查看当前是否有一个悬而未决的分歧点',
+        handler: (ctx) {
+          final m = ctx.provider;
+          final id = m.pendingCausalAnchorId;
+          final anchor = id == null ? null : causalAnchorFor(id);
+          m.currentNarrative = anchor == null
+              ? '【抉择】\n眼下没有悬而未决的分歧点。\n'
+                  '它们只在原著里那些写死的节点上出现，而且得等你的世界线'
+                  '偏得够远——输入 /世界线 看看还差多少。'
+              : '【${anchor.title}】\n${anchor.setup}\n\n'
+                  '${anchor.options.map((o) => '· ${o.text}').join('\n')}\n\n'
+                  '在下面的选项里挑一个就行。';
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },

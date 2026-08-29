@@ -51,6 +51,12 @@ class WorldState {
   // ====== 学年系统扩展字段 ======
   final List<String> firedAnchorIds; // 已触发的事件锚点（防重复）
 
+  /// 因果锚点抉择记录：事件锚点 id → 所选选项 id。
+  ///
+  /// 见 lib/data/worldline_data.dart。这是玩家"改写过什么"的唯一存档依据，
+  /// 存的是 id 而不是文本——文案以后要改，存档里的旧 id 依然查得到。
+  final Map<String, String> causalChoices;
+
   /// 月度事件 id → 上次发生的月份序号（`year * 12 + month`）。
   ///
   /// 月度事件此前每跨一个月就重抽一次，抽到什么都照播：
@@ -105,6 +111,7 @@ class WorldState {
     this.timelineChanges = 0,
     List<String>? timelineBranches,
     List<String>? firedAnchorIds,
+    Map<String, String>? causalChoices,
     Map<String, int>? monthlyEventFiredAt,
     this.graduated = false,
     Set<String>? visitedLocations,
@@ -125,6 +132,7 @@ class WorldState {
         specialMarkers = List<String>.from(specialMarkers ?? const []),
         timelineBranches = List<String>.from(timelineBranches ?? const []),
         firedAnchorIds = List<String>.from(firedAnchorIds ?? const []),
+        causalChoices = Map<String, String>.from(causalChoices ?? const {}),
         monthlyEventFiredAt =
             Map<String, int>.from(monthlyEventFiredAt ?? const {}),
         visitedLocations = Set<String>.from(visitedLocations ?? const {}),
@@ -214,6 +222,7 @@ class WorldState {
         'timeline_changes': timelineChanges,
         'timeline_branches': timelineBranches,
         'fired_anchor_ids': firedAnchorIds,
+        'causal_choices': causalChoices,
         'monthly_event_fired_at': monthlyEventFiredAt,
         'graduated': graduated,
         'visited_locations': visitedLocations.toList(),
@@ -252,6 +261,9 @@ class WorldState {
       timelineChanges: json['timeline_changes'] ?? 0,
       timelineBranches: List<String>.from(json['timeline_branches'] ?? []),
       firedAnchorIds: List<String>.from(json['fired_anchor_ids'] ?? []),
+      causalChoices: Map<String, String>.from(
+          (json['causal_choices'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k, v.toString()))),
       monthlyEventFiredAt: Map<String, int>.from(
           (json['monthly_event_fired_at'] as Map<String, dynamic>? ?? const {})
               .map((k, v) => MapEntry(k, v is int ? v : int.tryParse('$v') ?? 0))),

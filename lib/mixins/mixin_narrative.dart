@@ -23,6 +23,7 @@ import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
 import '../data/wand_data.dart';
+import '../data/worldline_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
@@ -40,8 +41,20 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     if (isLoading) return;
 
     // 本地指令解析
-    final action = choice.action.trim();
-    if (action.startsWith('/')) {
+    var action = choice.action.trim();
+    String? causalResult;
+
+    // 因果锚点抉择（见 lib/data/worldline_data.dart）：
+    // 唯一一个「先本地结算、再继续走叙事」的入口。先记账（数值 + 痕迹），
+    // 然后把选项自带的那段具体行动当成玩家输入发给 AI。
+    // 少了后半步，玩家点完「上塔去」只看到一段后果文本，
+    // 塔上究竟发生了什么永远没人写。
+    final causal = parseCausalCommand(action);
+    if (causal != null) {
+      causalResult =
+          resolveCausalChoice(causal.anchor.anchorId, causal.option.id);
+      action = causal.option.action;
+    } else if (action.startsWith('/')) {
       final prevNarrative = currentNarrative;
       final prevChoices = List<GameChoice>.from(choices);
       final handled = handleLocalCommand(action);
@@ -87,7 +100,9 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
     if (router == null || !router!.hasNarrativeService) return;
 
-    commandResult = null; // 提交真实行动时关闭指令面板
+    // 提交真实行动时关闭指令面板；但因果抉择的后果面板要留着，
+    // 玩家得看见变动率跳了多少、以及自己把哪一段历史改成了什么。
+    commandResult = causalResult;
     error = null; // 新一轮开始前清掉上一次的失败提示
     isLoading = true;
     turnCount++;
@@ -388,6 +403,21 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       final directorLine =
           directorLineFor(directorBeatFor(turn: turnCount, hasUnresolvedHook: hasHook));
 
+      // 命运时刻：这一回合要把抉择摆到玩家面前，但不能替他做决定。
+      // AI 一旦自己写"你冲了上去"或者"你转过身"，玩家点什么都没意义了。
+      final pendingCausal = pendingCausalAnchorId == null
+          ? null
+          : causalAnchorFor(pendingCausalAnchorId!);
+      final causalLine = pendingCausal != null &&
+              !worldState.causalChoices.containsKey(pendingCausal.anchorId)
+          ? '【命运时刻·${pendingCausal.title}】\n'
+              '${pendingCausal.setup}\n'
+              '本回合的叙事必须停在这个抉择的当口：把上面这个情境写出来，'
+              '一直写到"要不要动手"的那一瞬间为止。'
+              '严禁替玩家做出选择——不要写他冲上去了，也不要写他转身走了；'
+              '不要给出倾向，不要预写后果，把决定权原样留在那一秒。\n\n'
+          : '';
+
       return '''【世界上下文】
   $context
 
@@ -396,7 +426,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   ${timeBudgetPromptLine(resolveActionCost(safeAction))}
   $sceneInfo
   ${buildContinuityBridgePromptLine()}
-  $stagnationLine$anchorLine$directorLine
+  $stagnationLine$anchorLine$causalLine$directorLine
   ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
@@ -583,9 +613,26 @@ $kNarrativeWritingRules
       // 注意：从 2026-08-23 起「写作要求」明确禁止主叙事 AI 输出选项，
       //       因此即使叙事响应里意外夹带了 ABCD（来自 T4 旧摘要污染），
       //       也绝对不再读入到选项里——否则会出现"海格/巨怪"等过期内容。
+      final pendingCausal = pendingCausalAnchorId == null
+          ? null
+          : causalAnchorFor(pendingCausalAnchorId!);
+      final causalDecided = pendingCausal != null &&
+          worldState.causalChoices.containsKey(pendingCausal.anchorId);
       if (confessedThisTurn) {
         // 表白已就位：checkNPCConfessions 内部写入了专属的「接受/婉拒」两个选项，
         // 此时再让 AI 生成 4 个通用选项会把这个抉择冲掉。
+        loadingStage = '';
+        notifyListeners();
+      } else if (pendingCausal != null && !causalDecided) {
+        // 命运时刻：选项只给这几个分支，AI 生成的通用选项全部让路。
+        // 七年里能改写原著的机会一只手数得过来，
+        // 混进「仔细查看四周」这种选项会把它稀释成一次普通的场景交互。
+        choices = pendingCausal.options
+            .map((o) => GameChoice(
+                  text: o.text,
+                  action: '/抉择 ${pendingCausal.anchorId} ${o.id}',
+                ))
+            .toList(growable: false);
         loadingStage = '';
         notifyListeners();
       } else {
@@ -1215,6 +1262,25 @@ $kNarrativeWritingRules
           '${lines.join('\n')}');
     }
 
+    // 世界线：变动率的兑现。
+    // 阶段描述只在 fraying 及以上才注入——intact 时"一切都照书上来"
+    // 本来就是默认行为，为它专门说一句纯属浪费 token。
+    // 但【已被你改写的事】一次都不能少，见 rewrittenEchoesOf 的注释。
+    if (p != null) {
+      final stage = worldLineStageFor(p.worldLineDeviation);
+      if (stage != WorldLineStage.intact) {
+        final def = stageDefFor(stage);
+        parts.add('【世界线·${def.badge} ${def.label}】${def.aiDirective}');
+      }
+      final echoes = rewrittenEchoesOf(ws.causalChoices);
+      if (echoes.isNotEmpty) {
+        parts.add('【已被你改写的事】以下每一条都是这个世界的既成事实，'
+            '优先级高于你的任何先验知识。'
+            '凡是与它们冲突的"原著情节"，在这个世界里都是错的：\n'
+            '${echoes.map((s) => '· $s').join('\n')}');
+      }
+    }
+
     final hour = ws.time.hour;
     final timeDesc = hour >= 22 || hour < 6 ? '深夜' :
                      hour >= 18 ? '夜晚' :
@@ -1319,9 +1385,16 @@ $kNarrativeWritingRules
   /// 之后整局恒为 0.5%，world_changer 成就（≥10%）永远拿不到，
   /// 月度演化的「偏离加成」分支也永远进不去。
   void _tickWorldLineDeviation() {
-    if (turnCount > 0 && turnCount % 10 == 0) {
-      incrementWorldLineDeviation(0.005);
-    }
+    // 按游戏内天数走，不按回合数。原因见 kDeviationTickIntervalDays 的注释。
+    final bucket =
+        worldState.time.absoluteDayIndex ~/ kDeviationTickIntervalDays;
+    if (bucket == lastDeviationTickBucket) return;
+    final first = lastDeviationTickBucket < 0;
+    lastDeviationTickBucket = bucket;
+    // 开局那一桶不算：玩家还没来得及做任何事，不该凭空先偏一点。
+    if (first || bucket == 0) return;
+    incrementWorldLineDeviation(
+        deviationDriftFor(player?.worldLineDeviation ?? 0.0));
   }
 
   /// 从叙事文本中提取玩家当前所在地点，并同步到 worldState.currentLocation。

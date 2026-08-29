@@ -18,6 +18,7 @@ import '../data/goal_data.dart';
 import '../data/npc_schedule_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
+import '../data/worldline_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/npc_lookup.dart';
@@ -678,6 +679,171 @@ mixin GameSystemsMixin on GameProviderBase {
     notifications.add('📜 ${anchor.title}');
     worldState.addNarrativeEvent('📜 ${anchor.title}', turn: turnCount);
     debugPrint('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
+
+    // 因果锚点：如果这个节点是原著里写死的大事，而玩家的世界线已经偏得够远，
+    // 就把「干预 / 旁观」的抉择挂上去。
+    //
+    // 没解锁时不给任何提示——这一栏本来就是「你改变了多少世界」的兑现，
+    // 提前告诉玩家"有个东西你够不着"只会变成倒计时 UI。
+    final causal = causalAnchorFor(anchor.id);
+    if (causal != null) {
+      final dev = p.worldLineDeviation;
+      final unlocked = isCausalAnchorUnlocked(
+        causal,
+        era: worldState.era,
+        deviation: dev,
+        decidedAnchorIds: worldState.causalChoices.keys.toSet(),
+      );
+      if (unlocked) {
+        pendingCausalAnchorId = causal.anchorId;
+        notifications.add('⏳ ${causal.title}');
+      } else {
+        final gap = deviationGapToUnlock(causal, dev);
+        debugPrint('⏳ 因果锚点 ${causal.anchorId} 未解锁：'
+            '还差 ${(gap * 100).toStringAsFixed(1)}% 变动率'
+            '（当前 ${(dev * 100).toStringAsFixed(1)}%）');
+      }
+    }
+  }
+
+  // ==================== 世界线变动率的兑现：因果锚点 ====================
+
+  /// 结算一次因果锚点抉择，返回展示给玩家的后果文本。
+  ///
+  /// 这是 `player.worldLineDeviation` 唯一的兑现点：
+  /// 之前那个数字只在成就、目标门槛、影响力增速三处被读，玩家看不见它到底干嘛用。
+  @override
+  String resolveCausalChoice(String anchorId, String optionId) {
+    final p = player;
+    final anchor = causalAnchorFor(anchorId);
+    if (p == null || anchor == null) return '这个抉择已经不在了。';
+    // 幂等：同一夜只能选一次。UI 上的按钮在快速连点时可能进来两趟。
+    if (worldState.causalChoices.containsKey(anchorId)) {
+      return '你已经在这一夜做过选择了。';
+    }
+    CausalOption? opt;
+    for (final o in anchor.options) {
+      if (o.id == optionId) opt = o;
+    }
+    if (opt == null) return '没有这个选项。';
+
+    // 先记档再结算：下面 deviation 会被 clamp 到 [0,1]，
+    // 而"这一夜做过了没有"只看记档，不能依赖 clamp 之后的数值。
+    worldState.causalChoices[anchorId] = opt.id;
+    if (pendingCausalAnchorId == anchorId) pendingCausalAnchorId = null;
+
+    final before = p.worldLineDeviation;
+    incrementWorldLineDeviation(opt.deviationDelta);
+    final after = p.worldLineDeviation;
+
+    for (final e in opt.reputation.entries) {
+      p.playerReputation.add(e.key, e.value);
+    }
+    for (final e in opt.attributes.entries) {
+      p.attributes[e.key] =
+          ((p.attributes[e.key] ?? 50) + e.value).clamp(0, 100);
+    }
+    if (opt.healthDelta != 0) {
+      p.health = (p.health + opt.healthDelta).clamp(0, 100);
+    }
+    if (opt.impactDelta != 0.0) {
+      worldState.playerImpactScore =
+          (worldState.playerImpactScore + opt.impactDelta).clamp(0.0, 1.0);
+    }
+
+    final buf = StringBuffer()
+      ..writeln('【${anchor.title}】')
+      ..writeln()
+      ..writeln(opt.consequence);
+
+    // 改写留下的痕迹要落到两个地方：
+    // 1) /联动 的「已记录的分叉」——玩家随时能翻自己改过什么
+    // 2) 之后每一回合的 AI 上下文——不然 AI 下一回合就照着原著写回去了
+    if (opt.echo.isNotEmpty) {
+      worldState.addTimelineBranch(opt.echo);
+      worldState.addNarrativeEvent('⏳ ${anchor.title}·你选择了「${opt.text}」',
+          turn: turnCount);
+      notifications.add('⏳ 你改写了一段已经写好的历史');
+      if (p.health <= 0) {
+        buf.writeln();
+        buf.writeln('（你的健康状况已经跌到极限——先去医疗翼。）');
+      }
+    }
+
+    buf.writeln();
+    final pctBefore = (before * 100).toStringAsFixed(1);
+    final pctAfter = (after * 100).toStringAsFixed(1);
+    final arrow = opt.deviationDelta > 0 ? '↑' : '↓';
+    buf.writeln('世界线变动率：$pctBefore% $arrow $pctAfter%'
+        '（${stageDefFor(worldLineStageFor(after)).badge} '
+        '${stageDefFor(worldLineStageFor(after)).label}）');
+
+    notifyListeners();
+    return buf.toString();
+  }
+
+  /// /世界线 的输出。
+  ///
+  /// 关键是**把"还差多少"摆出来**。变动率是个只有小数点后三位的数字，
+  /// 不给出通往下一个分歧点的距离，玩家永远不知道自己该做什么、
+  /// 也不知道这套系统到底在不在跑。
+  @override
+  String formatWorldLine() {
+    final p = player;
+    if (p == null) return '尚未创建角色。';
+    final dev = p.worldLineDeviation;
+    final stage = worldLineStageFor(dev);
+    final def = stageDefFor(stage);
+
+    final buf = StringBuffer()
+      ..writeln('【世界线】${def.badge} ${def.label}')
+      ..writeln('变动率 ${(dev * 100).toStringAsFixed(1)}%　'
+          '（世界影响力 ${(worldState.playerImpactScore * 100).toStringAsFixed(0)}%）')
+      ..writeln()
+      ..writeln(def.aiDirective)
+      ..writeln();
+
+    // 已被你改写的事
+    final echoes = rewrittenEchoesOf(worldState.causalChoices);
+    buf.writeln('【已被你改写的事】');
+    if (echoes.isEmpty) {
+      buf.writeln('暂无——史书上写的，至今都还是真的。');
+    } else {
+      for (final e in echoes) {
+        buf.writeln('· $e');
+      }
+      buf.writeln();
+      buf.writeln('以上每一条都会一直生效。这个世界是照着它们往下走的，'
+          '不是照着原著。');
+    }
+    buf.writeln();
+
+    // 还没走到的分歧点：给出门槛与差距
+    final pending = <CausalAnchor>[];
+    for (final a in kCausalAnchors) {
+      if (a.era != null && a.era != worldState.era) continue;
+      if (worldState.causalChoices.containsKey(a.anchorId)) continue;
+      pending.add(a);
+    }
+    buf.writeln('【尚未解锁的分歧点】');
+    if (pending.isEmpty) {
+      buf.writeln('这个时代能改的，你都改完了。');
+    } else {
+      for (final a in pending) {
+        final need = stageDefFor(a.minStage);
+        final gap = deviationGapToUnlock(a, dev);
+        final ok = gap <= 0;
+        buf.writeln(ok
+            ? '✅ ${a.title}　（需 ${need.label} —— 已达成，等它发生时会出现抉择）'
+            : '🔒 ${a.title}　（需 ${need.label} ${(need.minDeviation * 100).toStringAsFixed(0)}%'
+                ' —— 还差 ${(gap * 100).toStringAsFixed(1)}%）');
+      }
+      buf.writeln();
+      buf.writeln('变动率随你在这个世界里留下的痕迹缓慢上升，'
+          '而每一次「干预」都会让它跳一大截，每一次「旁观」都会把它压回去。');
+    }
+
+    return buf.toString();
   }
 
   void _resetWeeklyAffectionCaps() {

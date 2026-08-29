@@ -135,6 +135,17 @@ abstract class GameProviderBase extends ChangeNotifier {
   /// 记录 npcGeneratedThisSchoolYear 所属学年的起始年份
   int npcGenerationSchoolYear = 0;
   String? pendingAnchorDirective;
+
+  /// 上一次漂移结算落在第几个「10 天」桶里。
+  /// 用来保证漂移是按游戏内天数走、而不是每回合走（一回合推进多久取决于
+  /// 玩家在做什么，按回合计费会让平衡数字完全失控）。
+  int lastDeviationTickBucket = -1;
+
+  /// 当前正等着玩家做抉择的因果锚点 id（见 lib/data/worldline_data.dart）。
+  ///
+  /// 非空时：叙事 AI 会收到"这一回合必须把抉择摆到玩家面前"的指令，
+  /// 而 UI 上的选项直接就是那几个分支。玩家选完即清空。
+  String? pendingCausalAnchorId;
   String openingScene = 'station';
   int? lastScannedNarrativeHash;
 
@@ -229,6 +240,13 @@ abstract class GameProviderBase extends ChangeNotifier {
   void handleLetterCommand(List<String> parts);
   bool handleLocalCommand(String command);
   void incrementWorldLineDeviation(double delta);
+
+  /// 结算一次因果锚点抉择，返回展示给玩家的后果文本。
+  /// 实现在 GameSystemsMixin。
+  String resolveCausalChoice(String anchorId, String optionId);
+
+  /// /世界线 的输出。实现在 GameSystemsMixin。
+  String formatWorldLine();
   Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',  });
   bool isNearby(String npcId);
   Future<String?> importSave(String jsonString);

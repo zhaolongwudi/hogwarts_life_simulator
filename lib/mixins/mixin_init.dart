@@ -175,6 +175,8 @@ mixin GameInitMixin on GameProviderBase {
     lastSchoolYearStart = 0;
     lastWeekBucket = 0;
     pendingAnchorDirective = null;
+    pendingCausalAnchorId = null;
+    lastDeviationTickBucket = -1;
     totalTokens = 0;
     totalPromptTokens = 0;
     totalCompletionTokens = 0;
