@@ -6,6 +6,7 @@ import '../models/game_systems.dart';
 import '../services/deepseek_service.dart';
 import '../data/event_anchors.dart';
 import '../data/game_config_rules.dart';
+import '../data/locations.dart';
 import '../data/time_cost_rules.dart';
 import '../data/monthly_event_data.dart';
 import '../data/blood_status.dart';
@@ -1950,8 +1951,42 @@ mixin GameSystemsMixin on GameProviderBase {
     if (npc == null || player == null) return false;
     return npc.currentLocation == (worldState.currentLocation ?? '');
   }
+  /// 地图「前往此地」：统一走规范名归一化 + 时间门/年级门（与叙事同步同款校验）。
+  ///
+  /// 以前直接写 currentLocation，两个问题：
+  ///   ① 地图传的是显示名（'大礼堂'、'天文塔'、'图书馆（含禁书区）'），不是
+  ///      kKnownLocations 的规范主名（'霍格沃茨大礼堂'、'霍格沃茨·天文塔'），
+  ///      下游凡是 loc.contains('霍格沃茨') 的判定（如学院杯日常加分）全部失效；
+  ///   ② 7/31 打开地图照样能点进霍格沃茨 / 国王十字，绕过了开学前时间门。
   void travelTo(String location) {
-    worldState.currentLocation = location;
+    final cur = worldState.currentLocation ?? '';
+    // 显示名 → 规范主名（认不出就保留原样，不把现有行为改坏）。
+    final normalized = resolveLocationName(location) ?? location;
+    final dateInt = worldState.time.month * 100 + worldState.time.day;
+
+    if (blockedBySeasonGate(detected: normalized, current: cur, dateInt: dateInt)) {
+      worldState.addNarrativeEvent(
+        '⏱ 地图旅行被时间门拦截：$location（需 9月1日，'
+        '当前 ${worldState.time.month}月${worldState.time.day}日）',
+        turn: turnCount,
+      );
+      notifyListeners();
+      return;
+    }
+    if (blockedByGradeGate(detected: normalized, grade: player?.grade ?? 1)) {
+      worldState.addNarrativeEvent(
+        '⏱ 地图旅行被年级门拦截：$location（霍格莫德需三年级，当前${player?.grade ?? 1}年级）',
+        turn: turnCount,
+      );
+      notifyListeners();
+      return;
+    }
+
+    if (normalized != cur) {
+      worldState.currentLocation = normalized;
+      lastTrackedLocation = normalized;
+      turnsAtSameLocation = 0;
+    }
     notifyListeners();
   }
 

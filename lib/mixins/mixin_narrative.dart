@@ -1617,17 +1617,13 @@ $kNarrativeWritingRules
 
     if (detected == null) return; // 【地点】标签未识别到任何已知地点，不改
 
-    // 时间门：季节锁定的地点（车站/站台/特快/大礼堂）只在 9 月 1 日及之后才允许"抵达"，
-    // 与 runSceneTransitionGraph 的 minDateInt 对齐。日期未到就保留上一地点，
-    // 等场景图在日期到了之后再走正常过渡。
+    // 时间门：只拦"开学前从校外首次入校 / 错切车站"（见 kSeasonLockedMinDate）。
+    // 已在校内换房间永远不被这道门拦——学年 1–6 月玩家每天在城堡里走动，
+    // 无年份 MMDD 无脑拦会把整个学年的校内同步全堵死（第三次审查 N2）。
     final dateInt = worldState.time.month * 100 + worldState.time.day;
-    final required = _seasonLockedMinDate.entries
-        .where((e) => detected!.contains(e.key))
-        .map((e) => e.value)
-        .fold<int?>(null, (p, v) => p == null ? v : (v > p ? v : p));
-    if (required != null && dateInt < required) {
+    if (blockedBySeasonGate(detected: detected, current: cur, dateInt: dateInt)) {
       worldState.addNarrativeEvent(
-        '⏱ 地点同步被时间门拦截：$detected（需 ${required ~/ 100}月${required % 100}日，'
+        '⏱ 地点同步被时间门拦截：$detected（需 9月1日，'
         '当前 ${worldState.time.month}月${worldState.time.day}日）',
         turn: turnCount,
       );
@@ -1636,7 +1632,7 @@ $kNarrativeWritingRules
 
     // 年级门：霍格莫德三年级起才可去（原著设定）。一/二年级玩家被错切到
     // 霍格莫德（如模型写了「三把扫帚」「蜂蜜公爵」）时，保留上一地点。
-    if (detected!.contains('霍格莫德') && (player?.grade ?? 1) < 3) {
+    if (blockedByGradeGate(detected: detected, grade: player?.grade ?? 1)) {
       worldState.addNarrativeEvent(
         '⏱ 地点同步被年级门拦截：$detected（霍格莫德需三年级，当前${player?.grade ?? 1}年级）',
         turn: turnCount,
@@ -1647,7 +1643,7 @@ $kNarrativeWritingRules
     // B 类漂移防护（软一致性）：detected 与当前不同，但叙事正文并未佐证该地点
     // （既无移动动词、也未复现地点名/别名，且已排除【地点】标签自身）→ 疑似标签笔误，
     // 保留上一地点，避免"叙述说在家、标签写大礼堂"这类漂移型硬切。
-    if (detected != cur && !_narrativeCorroboratesLocation(detected!, cur, narrative)) {
+    if (detected != cur && !narrativeCorroboratesLocation(detected, cur, narrative)) {
       worldState.addNarrativeEvent(
         '⚠ 地点漂移被拦截：$detected（正文未提及该地点，疑似标签笔误）',
         turn: turnCount,
@@ -1684,75 +1680,6 @@ $kNarrativeWritingRules
   /// 锚点去重时剥掉事件前缀图标。原先在两个 for 循环里各写一份，
   /// 每个事件都重新编译一次。
   static final RegExp _anchorIconPrefix = RegExp(r'^([\u{1F4CA}\u{1F464}\u{1F4AC}\u{1F4C5}\u{1F3C6}\u{1F31F}\u{1F4F0}])', unicode: true);
-
-  /// 季节锁定地点根 → 允许"抵达"的最早日期（MMDD）。
-  /// 与 runSceneTransitionGraph 的 minDateInt 保持一致：国王十字车站 / 九又四分之三站台 /
-  /// 霍格沃茨（整座城堡，含所有子地点）/ 霍格沃茨特快 均须 9 月 1 日（901）及之后才允许"抵达"
-  /// ——原作霍格沃茨特快 9 月 1 日才发车，开学日之前玩家只能在家中 / 伦敦 / 对角巷。
-  ///
-  /// ⚠️ 宏观修复（相对旧版"逐房间枚举关键词"）：这里只列【地点根】，不再逐个枚举
-  /// 霍格沃茨的每个房间。判定用 `detected.contains(根)`，于是任何以「霍格沃茨」开头的地点
-  /// （厨房 / 宿舍 / 走廊 / 教室 / 大礼堂 / 公共休息室 / 温室 / 地窖 / 天文塔 …… 见
-  /// lib/data/locations.dart 里十几个 `霍格沃茨·*` 主名）都自动归入此门。
-  /// 这样新增任何城堡内的房间都会自动被开学前时间门覆盖，从根上消灭"漏写一个关键词就放行"
-  /// 的那类回归（本次日志正是模型写「霍格沃茨·厨房」、而旧地图只拦了「霍格沃茨·大礼堂」，
-  /// 导致 7/31 玩家被错切进城堡）。
-  /// 注：门只拦截"变更到非法地点"，不会把已在校内的玩家在暑期(7/8月)强制驱逐——
-  /// 暑期模型若再写霍格沃茨，location 保持上一合法值即可。
-  static const Map<String, int> _seasonLockedMinDate = {
-    '霍格沃茨': 901,
-    '国王十字': 901,
-    '九又四分之三': 901,
-  };
-
-  /// 去掉叙事里的【地点】标签行，避免标签自身"自我佐证"漂移防护。
-  static final RegExp _locationTagLineRe = RegExp(r'【地点】[^\n]*');
-
-  /// 移动/过渡动词。正文出现其一即视为地点切换有迹可循（佐证 detected 地点）。
-  static final RegExp _moveVerbRe = RegExp(
-    r'前往|走向|来到|到达|返回|走进|踏入|出发|穿过|登上|进入|步入|迈入|'
-    r'离开|抵达|动身|赶往|前去|去往|移步|走回|现身于|置身于',
-  );
-
-  /// B 类漂移防护：叙事正文是否佐证 [detected] 这个地点。
-  ///
-  /// 佐证策略（避免重蹈"选项误杀"覆辙——合法跳转几乎都放行，只拦强冲突）：
-  ///   ① 正文复现 detected 的主名或别名 → 放行；
-  ///   ② 正文含移动/过渡动词（前往/来到/到达/返回/走进…）→ 在途中，标签即目的地，放行；
-  ///   ③ 解析正文提到的地点主名集合，若正文【明确提到 cur 且没提到 detected 且无移动动词】
-  ///      → 强冲突（"叙述说在家、标签写大礼堂"），拦截；
-  ///   ④ 其余（正文无地点名词 / 提到别的地点但无冲突）→ 放行，避免误伤状态描述型、省略型跳转。
-  ///
-  /// 设计取舍：这是【弱信号、只拦强冲突】。它把漂移型硬切【降频】而非根除，
-  /// 符合 LLM 开放叙事的固有性质；重点是绝不高误伤（误伤比漏拦更破坏体验）。
-  bool _narrativeCorroboratesLocation(String detected, String cur, String narrative) {
-    final body = narrative.replaceAll(_locationTagLineRe, '');
-    // ① 正文复现 detected 地点名/别名 → 放行
-    if (body.contains(detected)) return true;
-    for (final (name, aliases) in kKnownLocations) {
-      if (name != detected) continue;
-      for (final alias in aliases) {
-        if (alias.isNotEmpty && body.contains(alias)) return true;
-      }
-    }
-    // ② 正文有移动/过渡动词 → 在途中，标签即目的地，放行
-    if (_moveVerbRe.hasMatch(body)) return true;
-    // ③ 解析正文提到的地点主名集合
-    final mentioned = <String>{};
-    for (final (name, aliases) in kKnownLocations) {
-      if (body.contains(name)) {
-        mentioned.add(name);
-      } else {
-        for (final alias in aliases) {
-          if (alias.isNotEmpty && body.contains(alias)) mentioned.add(name);
-        }
-      }
-    }
-    // ④ 正文明确提到 cur 地点（且不是 detected）且无移动动词 → 强冲突，拦截
-    if (mentioned.contains(cur) && !mentioned.contains(detected)) return false;
-    // ⑤ 其他 → 放行，避免误伤
-    return true;
-  }
 
   List<GameChoice> _generateLocalSuggestions() {
     final location = worldState.currentLocation ?? '霍格沃茨';
