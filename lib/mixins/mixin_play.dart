@@ -1441,12 +1441,16 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('· 巫师决斗获胜 +1~10');
       buf.writeln('· 禁林战胜危险生物 +5');
       buf.writeln('· 完成支线委托 +3~10');
+      buf.writeln('· 日常：课堂上答对的问题、替同学解的围、'
+          '还有你夜游被抓时扣掉的那些分');
     } else {
       final sources = p.houseCupSources.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       buf.writeln('本学年得分构成：');
       for (final e in sources) {
-        buf.writeln('· ${e.key} +${e.value}');
+        // 扣分的时候"日常扣分 +-5"读不通
+        final sign = e.value >= 0 ? '+' : '';
+        buf.writeln('· ${e.key} $sign${e.value}');
       }
     }
     buf.writeln('\n学年结束时将结算排名，榜首学院获得学院杯。');
@@ -1458,7 +1462,11 @@ mixin GamePlayMixin on GameProviderBase {
   /// 学年结算（由 mixin_systems 学年切换时调用）
   void settleHouseCup() {
     final p = player;
-    if (p == null || p.house == null || p.houseCupPoints <= 0) return;
+    // 注意是 `== 0` 而不是 `<= 0`：
+    // 只扣过分（净分为负）的玩家原本会被这条挡在外面，
+    // 于是他既看不到结算，那些负分也**永远不清零**——
+    // 会一直滚到下一个学年，越欠越多。
+    if (p == null || p.house == null || p.houseCupPoints == 0) return;
     final myCn = houseDisplayName(p.house, fallback: p.house!);
     // 其它三院基准分（随机），本学院 = 基准 + 玩家贡献
     final others = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇']
@@ -1476,7 +1484,14 @@ mixin GamePlayMixin on GameProviderBase {
     ranked.forEach((e) {
       buf.writeln('${e.key == myCn ? '★ ' : '  '}${e.key}：${e.value} 分');
     });
-    buf.writeln('\n你在本学年为$myCn 赢得了 ${p.houseCupPoints} 分。');
+    // 净分为负的时候"赢得了 -20 分"读不通，而且那本来也不是一回事：
+    // 一年下来净扣分，值得单独说一句，不该混在同一句话里。
+    if (p.houseCupPoints > 0) {
+      buf.writeln('\n你在本学年为$myCn 赢得了 ${p.houseCupPoints} 分。');
+    } else {
+      buf.writeln('\n你在本学年给$myCn 净扣掉了 ${-p.houseCupPoints} 分。'
+          '没有人当众说起这件事，但账是记着的。');
+    }
 
     if (rank == 1) {
       p.galleons += 50;

@@ -193,6 +193,12 @@ abstract class GameProviderBase extends ChangeNotifier {
   /// 那道疤就白留了。实现在 GameSystemsMixin。
   int effectiveAttr(String key);
 
+  /// 学院杯加减分的唯一入口。实现在 GamePlayMixin。
+  ///
+  /// 所有加减分都得走它：它会把 reason 累计进来源明细，
+  /// `/学院杯` 才能告诉玩家这一年分数是从哪儿挣来的。
+  void addHouseCupPoints(int amount, String reason);
+
   Future<void> autoSave();
   String bloodStatusLabel(String status);
   String buildRelationshipSnapshot();

@@ -33,7 +33,15 @@ class WorldState {
   int dayOfMonth;
   String dayOfWeek; // 兼容旧存档
   String era;
-  Map<String, int> housePoints;
+
+  // 注：这里曾经有个 `Map<String, int> housePoints`，四个学院各 350 分起步，
+  // 每月在月度事件播报之后 `+ random.nextInt(5) - 2` 随机游走一次。
+  // 它跟学院杯**是两套互不相干的东西**：学院杯用的是
+  // Player.houseCupPoints（玩家贡献分）+ 学年结算时临时算的对手基准分，
+  // 从不读这个字段；而这个字段的 key 还是英文的（'Gryffindor'），
+  // 跟学院杯系统的中文名也对不上。
+  // 结果是：有一组数字在动、在存盘，玩家看不见、影响不了、也永远不会揭晓。
+  // 已删除。旧存档里多一个 house_points 键不影响读取。
   List<NarrativeEvent> recentEvents;
   List<NarrativeEvent> recentNarrativeEvents;
   double playerImpactScore; // 玩家对世界的真实影响力(0.0~1.0): 关键行动/原著NPC互动/CG解锁/成就达成累计加分, 达到0.5+时原著NPC对玩家主动可见
@@ -98,7 +106,6 @@ class WorldState {
     this.dayOfMonth = 1,
     this.dayOfWeek = 'Tuesday',
     this.era = 'harry_same',
-    Map<String, int>? housePoints,
     List<NarrativeEvent>? recentEvents,
     List<NarrativeEvent>? recentNarrativeEvents,
     this.playerImpactScore = 0.0,
@@ -121,12 +128,6 @@ class WorldState {
     Map<String, String>? lastNarrativeAnchor,
     this.continuityBridgeMisses = 0,
   })  : time = time ?? GameTime(),
-        housePoints = Map<String, int>.from(housePoints ?? const {
-          'Gryffindor': 350,
-          'Slytherin': 350,
-          'Ravenclaw': 350,
-          'Hufflepuff': 350,
-        }),
         recentEvents = List<NarrativeEvent>.from(recentEvents ?? <NarrativeEvent>[]),
         recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
         specialMarkers = List<String>.from(specialMarkers ?? const []),
@@ -209,7 +210,6 @@ class WorldState {
         'day_of_month': dayOfMonth,
         'day_of_week': dayOfWeek,
         'era': era,
-        'house_points': housePoints,
         'recent_events': recentEvents.map((e) => e.toJson()).toList(),
         'recent_narrative_events': recentNarrativeEvents.map((e) => e.toJson()).toList(),
         'player_impact_score': playerImpactScore,
@@ -247,7 +247,6 @@ class WorldState {
       dayOfMonth: json['day_of_month'] ?? 1,
       dayOfWeek: json['day_of_week'] ?? 'Tuesday',
       era: json['era'] ?? 'harry_same',
-      housePoints: Map<String, int>.from(json['house_points'] ?? {}),
       recentEvents: (json['recent_events'] as List<dynamic>? ?? []).map((s) => NarrativeEvent.fromJson(s)).toList(),
       recentNarrativeEvents: (json['recent_narrative_events'] as List<dynamic>? ?? []).map((s) => NarrativeEvent.fromJson(s)).toList(),
       playerImpactScore: (json['player_impact_score'] ?? 0.0).toDouble(),

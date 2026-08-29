@@ -10,6 +10,7 @@ import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
 import '../data/scar_data.dart';
 import '../data/death_data.dart';
+import '../data/house_cup_data.dart';
 import '../data/rivalry_data.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/worldline_data.dart';
@@ -313,6 +314,40 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     // 有人死了。这件事回不去，所以得记下来。
     tryDeathFromNarrative(text);
+
+    // 学院分。你做过的每一件小事都该算数——
+    // 原来是四个学院每月各自随机游走，跟你做过什么毫无关系。
+    tryHousePointsFromNarrative(text);
+  }
+
+  /// 从叙事里认出一次学院分变动。
+  ///
+  /// 学院杯本来只认大事件（魁地奇、决斗、禁林、委托）。于是不打魁地奇、
+  /// 不决斗的玩家七年里 `houseCupPoints` 恒为 0，而 `settleHouseCup()`
+  /// 开头就 `<= 0 直接 return`——他一次学年结算都看不到。
+  /// 这里补上日常：课堂上答对的问题、替人解的围、夜游被抓扣的分。
+  ///
+  /// 判定在 `house_cup_data.housePointFromNarrative`。三条约束：
+  ///   - 只认在校期间（暑假在家答对问题不加学院分）；
+  ///   - 每回合最多一次，扣分优先于加分——
+  ///     一段叙事里先闯祸后补救的时候，记的是闯祸那次；
+  ///   - "差点被抓到""幸好没炸"这类把事件否掉的说法不作数。
+  void tryHousePointsFromNarrative(String text) {
+    final p = player;
+    if (p == null) return;
+    if (p.house == null || p.house!.isEmpty) return;
+
+    // 只在校内。暑假在家也好、在霍格莫德也好，
+    // 那些地方没有人给学院记分。
+    final loc = worldState.currentLocation;
+    if (loc == null || !loc.contains('霍格沃茨')) return;
+
+    final delta = housePointFromNarrative(text);
+    if (delta == null) return;
+
+    // 走 existing 的统一入口：它会把 reason 累计进来源明细，
+    // /学院杯 就能告诉玩家这一年分数是从哪儿挣来的。
+    addHouseCupPoints(delta.value, houseCupSourceLabelFor(delta));
   }
 
   /// 从叙事里认出死亡，把它变成一件回不去的事。

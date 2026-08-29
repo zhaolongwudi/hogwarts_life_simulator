@@ -1565,14 +1565,6 @@ mixin GameSystemsMixin on GameProviderBase {
       worldState.recentEvents.removeLast();
     }
 
-    worldState.housePoints = Map<String, int>.fromEntries(
-      worldState.housePoints.entries.map((e) {
-        final raw = e.value + random.nextInt(5) - 2;
-        final newValue = raw.clamp(0, 9999).toInt();
-        return MapEntry(e.key, newValue);
-      }),
-    );
-
     notifications.add('🌍 $event');
     worldState.addNarrativeEvent('🌍 $event', turn: turnCount);
   }
