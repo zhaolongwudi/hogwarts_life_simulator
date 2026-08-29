@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 import 'game_systems.dart';
 import '../data/quest_data.dart';
+import '../data/scar_data.dart';
 
 const _uuid = Uuid();
 
@@ -31,6 +32,12 @@ class Player {
 
   int health;
   final List<String> injuries;
+
+  /// 永远好不了的伤。
+  ///
+  /// 只存"哪个部位"，不存"惩罚多少"——数值在 scar_data 里查表算，
+  /// 这样调平衡不用迁移存档。
+  final List<Scar> scars;
   String? wandId;
   String? petId;
   String? house;
@@ -136,6 +143,7 @@ class Player {
     this.facultyOfferDeclined = false,
     this.health = 100,
     List<String>? injuries,
+    List<Scar>? scars,
     this.wandId,
     this.petId,
     this.house,
@@ -201,6 +209,7 @@ class Player {
         inventory = List<InventoryItem>.from(inventory ?? const []),
         relationships = Map<String, Relationship>.from(relationships ?? const {}),
         injuries = List<String>.from(injuries ?? const []),
+        scars = List<Scar>.from(scars ?? const []),
         childhoodExperiences = List<String>.from(childhoodExperiences ?? const []),
         houseDimensions = Map<String, int>.from(houseDimensions ?? _defaultHouseDimensions),
         loveState = loveState ?? LoveState(),
@@ -284,6 +293,7 @@ class Player {
         'faculty_offer_declined': facultyOfferDeclined,
         'health': health,
         'injuries': injuries,
+        'scars': scars.map((s) => s.toJson()).toList(),
         'wand_id': wandId,
         'pet_id': petId,
         'house': house,
@@ -370,6 +380,10 @@ class Player {
         facultyOfferDeclined: (json['faculty_offer_declined'] ?? false) as bool,
         health: json['health'] ?? 100,
         injuries: List<String>.from(json['injuries'] ?? []),
+        scars: (json['scars'] as List<dynamic>? ?? const [])
+            .map((e) => Scar.fromJson(Map<String, dynamic>.from(e as Map)))
+            .whereType<Scar>()
+            .toList(),
         wandId: json['wand_id'],
         petId: json['pet_id'],
         house: json['house'],

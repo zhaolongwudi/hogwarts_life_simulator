@@ -59,7 +59,9 @@ mixin GamePlayMixin on GameProviderBase {
     _progressQuest('gather', name, 1);
   }
 
-  int _attr(String key) => (player?.attributes[key]) ?? 50;
+  // 走 effectiveAttr 而不是直接读 attributes：
+  // 身上有疤的话，这两个数是不一样的，而判定该用带疤的那个。
+  int _attr(String key) => effectiveAttr(key);
 
   /// 装备加成走 lib/data/item_data.dart 的纯函数——装备页显示的数字和
   /// 打决斗实际用的必须是同一个算法。

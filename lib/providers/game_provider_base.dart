@@ -183,6 +183,16 @@ abstract class GameProviderBase extends ChangeNotifier {
   void advanceTimeForAction(String action);
   void appendRecentTurn(String narrative);
   String attrLabel(String key);
+
+  /// /伤痕 的输出。实现在 GameSystemsMixin。
+  String formatScars();
+
+  /// 读属性时**必须**走这里：它是基础值加上永久修正（疤痕）之后的结果。
+  ///
+  /// 直接读 `player.attributes[key]` 会让身上的疤在计算里完全消失——
+  /// 那道疤就白留了。实现在 GameSystemsMixin。
+  int effectiveAttr(String key);
+
   Future<void> autoSave();
   String bloodStatusLabel(String status);
   String buildRelationshipSnapshot();

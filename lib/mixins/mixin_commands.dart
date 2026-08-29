@@ -743,6 +743,17 @@ mixin GameCommandsMixin on GameProviderBase {
           return true;
         },
       ),
+      CommandDef(
+        primary: '伤痕',
+        group: '个人',
+        helpText: '查看身上永远不会好的那些伤，以及它们留下了什么',
+        handler: (ctx) {
+          final m = ctx.provider;
+          m.currentNarrative = m.formatScars();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
       // /传承 名字 会开一局新的，所以在 handler 里异步地跑，
       // 先把"正在交棒"这句话回给玩家，别让界面卡在空白上。
       CommandDef(

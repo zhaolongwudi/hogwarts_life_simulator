@@ -18,6 +18,7 @@ import '../data/attribute_data.dart';
 import '../data/course_data.dart';
 import '../data/director_beat_data.dart';
 import '../data/foreshadow_data.dart';
+import '../data/scar_data.dart';
 import '../data/era_data.dart';
 import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
@@ -1402,6 +1403,11 @@ $kNarrativeWritingRules
             '凡是与它们冲突的"原著情节"，在这个世界里都是错的：\n'
             '${echoes.map((s) => '· $s').join('\n')}');
       }
+
+      // 身上的伤。不写这一段，AI 会把你当成一个完好的人——
+      // 让你健步如飞、举杖如常，那道疤就白留了。
+      final scarBlock = scarPromptBlock(p.scars);
+      if (scarBlock.isNotEmpty) parts.add(scarBlock);
 
       // 任教中。不写这一段，AI 会一直把玩家当学生：
       // 让他去上课、被级长管、在礼堂里等分院。

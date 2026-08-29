@@ -8,6 +8,7 @@ import '../utils/story_text_renderer.dart';
 import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
+import '../data/scar_data.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/worldline_data.dart';
 import '../prompts/choice_prompts.dart';
@@ -303,6 +304,41 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     // 分院结果自动提取（使用带强信号约束的新版函数）
     _tryExtractHouseFromNarrative(text);
+
+    // 重伤留疤。受伤如果只是扣几点血躺两天，
+    // 七年里没有任何事真正留下痕迹，玩家的选择也就没有重量。
+    tryScarFromNarrative(text);
+  }
+
+  /// 从叙事里认出重伤，在身上留一道永久的疤。
+  ///
+  /// 判定在 `scar_data.scarFromNarrative`：必须同时伤得够重、
+  /// 又说得出伤在哪个部位，两者缺一都不留——
+  /// 只说"受了重伤"不知道伤在哪，只说"手臂疼"不知道够不够重。
+  void tryScarFromNarrative(String text) {
+    final p = player;
+    if (p == null) return;
+
+    final def = scarFromNarrative(text);
+    if (def == null) return;
+    // 同一个部位不重复记——它已经在那儿了
+    if (p.scars.any((s) => s.site == def.site)) return;
+
+    final ts = worldState.time.format();
+    p.scars.add(Scar(site: def.site, since: ts));
+
+    notifications.add(scarNoticeFor(def));
+    memory = memory.addKeyFact(KeyFactRecord(
+      id: 'scar_${def.key}',
+      fact: '你的${def.label}永远不会好：${def.aftermath}',
+      // 8 分：它是"这件事定义了我这七年"级别的东西，
+      // 100 条容量溢出时按分数淘汰，疤该留下来。
+      importance: 8,
+      timestamp: ts,
+      category: 'scar',
+    ));
+    worldState.addNarrativeEvent('🩹 ${def.label}', turn: turnCount);
+    debugPrint('🩹 落疤 ${def.key} @ turn=$turnCount');
   }
 
   void parseResponse(String text) {

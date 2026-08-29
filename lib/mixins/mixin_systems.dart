@@ -10,6 +10,7 @@ import '../data/time_cost_rules.dart';
 import '../data/monthly_event_data.dart';
 import '../data/blood_status.dart';
 import '../data/ending_review_data.dart';
+import '../data/scar_data.dart';
 import '../data/house_data.dart';
 import '../data/attribute_data.dart';
 import '../services/save_service.dart';
@@ -63,6 +64,18 @@ mixin GameSystemsMixin on GameProviderBase {
       gameWeek += newBucket - lastWeekBucket;
       lastWeekBucket = newBucket;
       _resetWeeklyAffectionCaps();
+    }
+
+    // 轻伤会好。
+    //
+    // 这里是清空而不是"逐条好"：`injuries` 存的是纯文本、没有受伤时间，
+    // 而擦伤、瘀青这类东西本来几天就该好。不清的话玩家身上会永远
+    // 挂着一条三年前的「禁林擦伤」——它没有任何判定会读到，
+    // 纯粹是 prompt 里的一行噪音。
+    //
+    // 重伤走另一条路（scars，见 tryScarFromNarrative），那个不会好。
+    if (dayDelta > 0 && (player?.injuries.isNotEmpty ?? false)) {
+      player!.injuries.clear();
     }
 
     // 深夜触发满月标记
@@ -619,6 +632,70 @@ mixin GameSystemsMixin on GameProviderBase {
         ? buf.toString().trim()
         : '$currentNarrative\n\n${buf.toString().trim()}';
     worldState.addNarrativeEvent('🎓 毕业结算完成${goalMet ? '·人生目标达成' : ''}', turn: turnCount);
+  }
+
+  /// /伤痕 的输出。
+  ///
+  /// 疤只在落下的那一瞬间弹过通知。没有这一屏的话，
+  /// 玩家过两年就忘了自己身上有什么——而那些东西是永久的。
+  String formatScars() {
+    final p = player;
+    if (p == null) return '尚未创建角色。';
+    if (p.scars.isEmpty) {
+      return '【伤痕】\n你身上还没有留下什么。\n'
+          '不是每个人都做得到，好好珍惜。';
+    }
+
+    final penalties = scarPenaltiesOf(p.scars);
+    final buf = StringBuffer()..writeln('【伤痕】永远不会好的那些');
+    for (final s in p.scars) {
+      final d = s.def;
+      buf
+        ..writeln()
+        ..writeln('· ${d.label}　${s.since.isEmpty ? '' : '（${s.since}）'}')
+        ..writeln('  ${d.aftermath}');
+    }
+    buf
+      ..writeln()
+      ..writeln('这些是永久的。它们也确实留下了点别的东西：');
+    for (final e in penalties.entries) {
+      final sign = e.value > 0 ? '+' : '';
+      buf.writeln('  ${attrLabel(e.key)} $sign${e.value}');
+    }
+    return buf.toString().trimRight();
+  }
+
+  /// 读属性的唯一入口：基础值 + 永久修正（目前只有疤痕）。
+  ///
+  /// 数值夹在 0~100——属性本身永远在这个区间，
+  /// 加了修正也不能跑出去，否则 UI 上会出现 103 这种数。
+  @override
+  int effectiveAttr(String key) {
+    final p = player;
+    if (p == null) return 50;
+    final base = p.attributes[key] ?? 50;
+    final delta = _currentScarPenalties[key] ?? 0;
+    return (base + delta).clamp(0, 100);
+  }
+
+  /// 疤痕惩罚的缓存。按"身上有哪些疤"做键，内容变了才重算——
+  /// 这个函数在决斗、学习、练习里被反复调用，每次都重算没必要。
+  String _scarPenaltyKey = '';
+  Map<String, int> _scarPenalties = const {};
+
+  Map<String, int> get _currentScarPenalties {
+    final p = player;
+    if (p == null || p.scars.isEmpty) {
+      _scarPenaltyKey = '';
+      _scarPenalties = const {};
+      return _scarPenalties;
+    }
+    final key = p.scars.map((s) => s.key).join('|');
+    if (key != _scarPenaltyKey) {
+      _scarPenaltyKey = key;
+      _scarPenalties = scarPenaltiesOf(p.scars);
+    }
+    return _scarPenalties;
   }
 
   /// 把散在各处的状态收拢成一份"这七年"的事实。
