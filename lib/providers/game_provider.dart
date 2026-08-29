@@ -193,7 +193,13 @@ class GameProvider extends GameProviderBase
   }
 
   @override
-  void updateNpcAffection(String npcId, int change, {String? reason}) {
+  /// [severity] 是 AI 写下的原始幅度（未压缩）。
+  ///
+  /// 好感解析器会把一次 -30 压成 -5 以抑制数值膨胀——那是数值层的事；
+  /// 但"这件事有多大"是另一回事，结仇判定得看原始意图，
+  /// 否则 AI 永远写不出一次真正的翻脸。不传就退回落地值 [change]。
+  void updateNpcAffection(String npcId, int change,
+      {String? reason, int? severity}) {
     final npc = npcRegistry[npcId];
     if (npc == null) return;
     // 注意：不再在此处自动 markNpcIntroduced。
@@ -249,20 +255,41 @@ class GameProvider extends GameProviderBase
         worldState.addNarrativeEvent(formerRivalLine(npc.name), turn: turnCount);
       }
     }
-    if (change < -15) {
+    // ====== 怨气累计与结仇判定 ======
+    // 原先这里的门槛是 change < -15。但好感解析器会把 AI 写的一次 -30
+    // 压成 -5（抑制数值膨胀），于是这条分支在实战里永远进不去——
+    // 宿敌系统除了决斗那条路，七年也触发不了一次。
+    //
+    // 改成两路并行：
+    //  · burst：AI 的原始幅度够狠（severity <= -8），当场翻脸；
+    //  · accumulated：单次不够狠的先攒进 pendingSpite，攒够了再爆。
+    npc.pendingSpite = change < 0
+        ? accumulateSpite(npc.pendingSpite, change)
+        : relieveSpite(npc.pendingSpite, change);
+    final burst = (severity ?? change) <= kBurstSeverityThreshold;
+
+    if (shouldRecordGrudge(
+        change: change, severity: severity, pendingSpite: npc.pendingSpite)) {
       // 宿敌成因从 reason 里认。原先一律记成 'betrayal'，
       // 于是"当众让他下不来台"和"骗了他"在宿敌分里完全等价，
       // 玩家自然也感觉不出区别。
-      final cause = causeFromReason(reason);
+      final cause = burst ? causeFromReason(reason) : RivalryCause.accumulated;
       final causeKey = causeKeyFor(cause);
+      final why = burst ? (reason ?? '背叛/欺骗') : '一次次的摩擦，攒够了';
+      // 得在 addGrudge 之前抓：那个方法会把 lastGrudgeDay 改写成今天。
+      final alreadyNotifiedToday = npc.lastGrudgeDay == currentDay;
       final tierBefore = npc.rivalryTier(currentDay);
-      npc.addGrudge(causeKey, reason ?? '背叛/欺骗', currentDay);
+      npc.pendingSpite = 0;
+      npc.addGrudge(causeKey, why, currentDay);
       npc.tickRivalry(currentDay);
       final tierAfter = npc.rivalryTier(currentDay);
 
-      final base = '💔 ${npc.name}记恨着你（${causeLabelFor(causeKey)}）';
-      notifications.add(base);
-      worldState.addNarrativeEvent(base, turn: turnCount);
+      // 同一天同一个人不重复播报"记恨着你"——升档那句还是会照常说。
+      if (!alreadyNotifiedToday) {
+        final base = '💔 ${npc.name}记恨着你（${causeLabelFor(causeKey)}）';
+        notifications.add(base);
+        worldState.addNarrativeEvent(base, turn: turnCount);
+      }
 
       // 升档单独提示一次。宿敌这件事必须让玩家感知得到，
       // 否则他只注意到"好感涨不上去了"，却不知道对面多了个仇人。

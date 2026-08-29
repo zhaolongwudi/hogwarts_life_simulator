@@ -307,7 +307,8 @@ abstract class GameProviderBase extends ChangeNotifier {
   Future<void> updateApiKey(String key);
   void updateClient();
   void updateNPCsFromAction(String action);
-  void updateNpcAffection(String npcId, int change, {String? reason});
+  void updateNpcAffection(String npcId, int change,
+      {String? reason, int? severity});
   void updatePlayerImpactScore(String action);
   bool withdrawFromBank(int amount);
 

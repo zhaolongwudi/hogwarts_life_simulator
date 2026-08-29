@@ -59,6 +59,11 @@ class NPC {
   int reliefGivenToday; // 当天已减免量
   bool formerRival; // 曾为宿敌并已和解（叙事彩蛋用）
   int maxRivalryScoreReached; // 历史最高宿敌分：只结过小芥蒂的不算"曾是宿敌"
+  /// 累计但尚未结清的怨气。
+  ///
+  /// 单次好感变化被解析器压在 -5，靠"一次暴跌"永远结不了仇；
+  /// 于是改成积少成多——攒够 [kSpiteAccumulateThreshold] 就翻脸。
+  int pendingSpite;
 
   bool introduced; // 是否已经在剧情中登场/被玩家认识
   bool graduated; // 在校生是否已毕业离校
@@ -105,6 +110,7 @@ class NPC {
     this.reliefGivenToday = 0,
     this.formerRival = false,
     this.maxRivalryScoreReached = 0,
+    this.pendingSpite = 0,
     this.introduced = false,
     this.graduated = false,
   })  : forbiddenActions =
@@ -410,6 +416,7 @@ class NPC {
         'relief_given_today': reliefGivenToday,
         'former_rival': formerRival,
         'max_rivalry_score_reached': maxRivalryScoreReached,
+        'pending_spite': pendingSpite,
         'introduced': introduced,
         'graduated': graduated,
       };
@@ -463,6 +470,7 @@ class NPC {
         reliefGivenToday: json['relief_given_today'] ?? 0,
         formerRival: json['former_rival'] ?? false,
         maxRivalryScoreReached: json['max_rivalry_score_reached'] ?? 0,
+        pendingSpite: json['pending_spite'] ?? 0,
         introduced: json['introduced'] ?? false,
         graduated: json['graduated'] ?? false,
       );

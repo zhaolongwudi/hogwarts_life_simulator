@@ -70,11 +70,13 @@ void main() {
       expect(tierForScore(0), RivalryTier.none);
     });
 
-    test('一条背叛够不上敌意，两条就到宿敌', () {
+    test('一条背叛就顶到敌意，两条到宿敌', () {
+      // 早先的门槛是「一条只够芥蒂」，可玩家干了一件很过分的事，
+      // 对面却只是"心里有根刺"，说不过去——门槛已下调。
       final one = rivalryScoreFor([_grudge('betrayal', 100)],
           currentDay: 100, affection: 0);
       expect(one, 40);
-      expect(tierForScore(one), RivalryTier.grudge);
+      expect(tierForScore(one), RivalryTier.hostile);
 
       final two = rivalryScoreFor(
         [_grudge('betrayal', 100), _grudge('betrayal', 100)],
@@ -170,7 +172,7 @@ void main() {
       final npc = npcWith([_grudge('betrayal', 100)], affection: -30);
       expect(npc.hasGrudge, isTrue);
       expect(npc.rivalryScore(100), 40);
-      expect(npc.rivalryTier(100), RivalryTier.grudge);
+      expect(npc.rivalryTier(100), RivalryTier.hostile);
     });
 
     test('补救有每日上限，刷不白', () {
@@ -262,7 +264,7 @@ void main() {
       expect(npc.maxRivalryScoreReached, 0);
       // 宿敌分仍能从 grudges 算出来，不需要迁移脚本
       expect(npc.rivalryScore(100), 40);
-      expect(npc.rivalryTier(100), RivalryTier.grudge);
+      expect(npc.rivalryTier(100), RivalryTier.hostile);
     });
 
     test('新字段能完整往返', () {
@@ -425,6 +427,170 @@ void main() {
       // 在场的有单独的【宿敌·姓名】段带完整行为指令，名册里再写一遍是浪费
       expect(src.contains('hereIds'), isTrue);
       expect(src.contains('!hereIds.contains(n.id)'), isTrue);
+    });
+  });
+
+  // -------------------------------------------- 结仇触发：这套系统真跑得起来
+  group('结仇触发不会被好感压缩挡在门外', () {
+    test('AI 写 -30 被压成 -5，仍要判成一件大事', () {
+      // 这是整套系统的命门：好感解析器会把 -30 压成 -5（抑制数值膨胀），
+      // 而结仇门槛原本是 change < -15 —— 那条分支在实战里永远进不去，
+      // 宿敌系统除了决斗，七年都触发不了一次。
+      expect(shouldRecordGrudge(change: -5, severity: -30, pendingSpite: 0), isTrue);
+      // 只看落地值的话不该误判：日常 -5 本身还不够翻脸
+      expect(shouldRecordGrudge(change: -5, pendingSpite: 0), isFalse);
+    });
+
+    test('单次不够狠的会攒起来，攒够就爆', () {
+      var pending = 0;
+      for (var i = 0; i < 3; i++) {
+        pending = accumulateSpite(pending, -3);
+      }
+      expect(pending, 9);
+      expect(shouldRecordGrudge(change: -3, pendingSpite: pending), isFalse);
+      pending = accumulateSpite(pending, -3);
+      expect(pending, 12);
+      expect(shouldRecordGrudge(change: -3, pendingSpite: pending), isTrue);
+    });
+
+    test('正向互动能消解积怨，但 +1/+2 的寒暄不算数', () {
+      expect(relieveSpite(10, 2), 10, reason: '日常寒暄不该抹掉真切的怨气');
+      expect(relieveSpite(10, 4), 2);
+      expect(relieveSpite(3, 5), 0, reason: '减到负数要归零');
+    });
+
+    test('正向变化不往积怨里加', () {
+      expect(accumulateSpite(5, 3), 5);
+      expect(accumulateSpite(0, -4), 4);
+    });
+  });
+
+  group('单笔旧账的分量对得起它的严重性', () {
+    test('一次背叛或当众羞辱就该顶到敌意，不只是芥蒂', () {
+      // 玩家干了一件很过分的事，对面却只是"心里有根刺"，说不过去
+      final n = NPC(id: 'r', name: 'R', house: 'slytherin');
+      n.addGrudge(causeKeyFor(RivalryCause.betrayal), '你骗了他', 100);
+      n.tickRivalry(100);
+      expect(n.rivalryTier(100), RivalryTier.hostile);
+
+      final n2 = NPC(id: 'r2', name: 'R2', house: 'slytherin');
+      n2.addGrudge(causeKeyFor(RivalryCause.publicHumiliation), '当众下不来台', 100);
+      n2.tickRivalry(100);
+      expect(n2.rivalryTier(100), RivalryTier.hostile);
+    });
+
+    test('光是学院不同还不至于结仇', () {
+      final n = NPC(id: 'h', name: 'H', house: 'slytherin');
+      n.addGrudge(causeKeyFor(RivalryCause.house), '学院杯之争', 100);
+      n.tickRivalry(100);
+      expect(n.rivalryTier(100), RivalryTier.none);
+    });
+
+    test('一次冲突锁不到死敌，两笔重的才到宿敌', () {
+      final n = NPC(id: 'a', name: 'A', house: 'slytherin');
+      n.addGrudge(causeKeyFor(RivalryCause.betrayal), 'a', 100);
+      n.tickRivalry(100);
+      expect(n.rivalryTier(100).index, lessThan(RivalryTier.archenemy.index));
+      n.addGrudge(causeKeyFor(RivalryCause.betrayal), 'b', 130);
+      n.tickRivalry(130);
+      expect(n.rivalryTier(130), RivalryTier.nemesis);
+    });
+
+    test('不搭理他，一年后火气自己会下去', () {
+      final n = NPC(id: 'c', name: 'C', house: 'slytherin');
+      n.addGrudge(causeKeyFor(RivalryCause.betrayal), 'a', 100);
+      n.tickRivalry(100);
+      expect(n.rivalryTier(100), RivalryTier.hostile);
+      expect(n.rivalryScore(465), lessThan(kRivalryTiers
+          .firstWhere((t) => t.tier == RivalryTier.grudge)
+          .threshold));
+    });
+  });
+
+  group('积怨是第八种成因', () {
+    test('攒出来的仇有自己的标签和权重', () {
+      final def = kRivalryCauses.firstWhere((c) => c.cause == RivalryCause.accumulated);
+      expect(def.key, 'accumulated');
+      expect(def.label, '积怨');
+      expect(def.weight, greaterThan(0));
+      expect(def.weight, lessThan(grudgeWeightFor('betrayal')),
+          reason: '攒出来的仇不该比一次背叛还重');
+    });
+
+    test('小摩擦攒出来的仇走 accumulated 而不是一律 betrayal', () {
+      final src = File('lib/providers/game_provider.dart').readAsStringSync();
+      expect(src.contains('RivalryCause.accumulated'), isTrue);
+      expect(src.contains('一次次的摩擦'), isTrue);
+    });
+  });
+
+  group('好感解析不能把 AI 的理由扔掉', () {
+    test('行尾带括号备注的好感行不再整行漏解析', () {
+      // 「赫敏 -8（你当众反驳了她）」是 AI 最自然的写法；
+      // 老正则要求行尾必须是数字，这类整行静默丢弃——好感不动、宿敌也不记。
+      final re = RegExp(r'^\s*(.*?)\s*(?:[:：]\s*)?([+＋-]?\d+)\s*(?:[（(](.*?)[）)])?\s*$');
+      final m = re.firstMatch('赫敏 -8（你当众反驳了她）');
+      expect(m, isNotNull);
+      expect(m!.group(1), '赫敏');
+      expect(m.group(2), '-8');
+      expect(m.group(3), '你当众反驳了她');
+    });
+
+    test('生产代码里的正则就是这个', () {
+      final src =
+          File('lib/mixins/mixin_response_affection.dart').readAsStringSync();
+      expect(src.contains(r'(?:[（(](.*?)[）)])?\s*$'), isTrue);
+    });
+
+    test('括号里的话被当成记仇理由传下去', () {
+      // 否则宿敌表里那 7 种成因在 AI 路径上永远只会认出默认的「背叛」，
+      // 界面上也永远显示同一句"剧情互动"
+      final src =
+          File('lib/mixins/mixin_response_affection.dart').readAsStringSync();
+      expect(src.contains('remark == null || remark.isEmpty'), isTrue);
+      expect(src.contains(': remark'), isTrue);
+    });
+
+    test('原始幅度会传给结仇判定', () {
+      final src =
+          File('lib/mixins/mixin_response_affection.dart').readAsStringSync();
+      expect(src.contains('severity: rawDelta'), isTrue);
+    });
+  });
+
+  group('旧的死门槛已经拆掉', () {
+    final src = File('lib/providers/game_provider.dart').readAsStringSync();
+
+    test('不再拿压缩后的 change 判 -15', () {
+      // 注释里保留这句是为了交代来龙去脉，只查真正的代码行
+      final codeLines = src
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .join('\n');
+      expect(codeLines.contains('change < -15'), isFalse);
+      expect(codeLines.contains('shouldRecordGrudge'), isTrue);
+    });
+
+    test('同一天同一个人不重复播报记恨', () {
+      expect(src.contains('alreadyNotifiedToday'), isTrue);
+    });
+  });
+
+  group('积怨字段的存档兼容', () {
+    test('老存档读出来是 0', () {
+      final npc = NPC.fromJson(<String, dynamic>{
+        'id': 'x',
+        'name': 'X',
+        'house': 'gryffindor',
+      });
+      expect(npc.pendingSpite, 0);
+    });
+
+    test('能完整往返', () {
+      final npc = NPC(id: 'x', name: 'X', house: 'gryffindor');
+      npc.pendingSpite = 7;
+      final back = NPC.fromJson(npc.toJson());
+      expect(back.pendingSpite, 7);
     });
   });
 }

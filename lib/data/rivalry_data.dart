@@ -22,6 +22,7 @@ enum RivalryCause {
   harmed,
   principle,
   house,
+  accumulated,
 }
 
 /// 成因定义：权重决定它在宿敌分里占多大分量。
@@ -95,6 +96,13 @@ const List<RivalryCauseDef> kRivalryCauses = [
     weight: 8,
     note: '没什么私仇，纯粹是学院之间那点老规矩',
   ),
+  RivalryCauseDef(
+    cause: RivalryCause.accumulated,
+    key: 'accumulated',
+    label: '积怨',
+    weight: 18,
+    note: '没有哪一件算大事，可一次次下来，他记住的都是你',
+  ),
 ];
 
 final Map<String, RivalryCauseDef> _causeByKey = {
@@ -137,6 +145,9 @@ class RivalryTierDef {
   });
 }
 
+/// 门槛是这样定的：最重的一笔旧账（背叛 40 / 当众羞辱 35）单独就该顶到
+/// 「敌意」——玩家干了一件很过分的事，对面却只是"心里有根刺"说不过去。
+/// 再往上要两笔才够，避免一次冲突就锁死到死敌。
 const List<RivalryTierDef> kRivalryTiers = [
   RivalryTierDef(
     tier: RivalryTier.none,
@@ -146,25 +157,25 @@ const List<RivalryTierDef> kRivalryTiers = [
   ),
   RivalryTierDef(
     tier: RivalryTier.grudge,
-    threshold: 20,
+    threshold: 15,
     label: '芥蒂',
     desc: '心里有根刺，说话带点刺，但还不至于撕破脸。',
   ),
   RivalryTierDef(
     tier: RivalryTier.hostile,
-    threshold: 45,
+    threshold: 32,
     label: '敌意',
     desc: '不打算装了。当面顶撞、公开较劲，也在拉人站队。',
   ),
   RivalryTierDef(
     tier: RivalryTier.nemesis,
-    threshold: 70,
+    threshold: 58,
     label: '宿敌',
     desc: '主动找机会让你难堪。他不是为了赢，是为了让你输。',
   ),
   RivalryTierDef(
     tier: RivalryTier.archenemy,
-    threshold: 100,
+    threshold: 85,
     label: '死敌',
     desc: '恨你，且不在乎代价。造谣、下绊子，不惜自己吃亏也要拉你下水。',
   ),
@@ -180,6 +191,56 @@ RivalryTier tierForScore(int score) {
 
 RivalryTierDef tierDefFor(RivalryTier tier) =>
     kRivalryTiers.firstWhere((t) => t.tier == tier);
+
+// ============================================================ 结仇触发
+
+/// 单次事件的严重性门槛：AI 的原始意图幅度到这里，当场记一笔。
+///
+/// 为什么拿"AI 原始幅度"而不是"落地后的好感变化"来判：AI 写「-30」
+/// 是在说"这是件大事"，而好感解析器为了压制数值膨胀会把它压到 -5。
+/// 拿压缩后的值判严重性，等于永远判不出大事——宿敌系统在实战里
+/// 一次都触发不了，玩家七年也见不到一个仇人。
+const int kBurstSeverityThreshold = -8;
+
+/// 积少成多的门槛：累计被扣到这么多，也记一笔。
+///
+/// 没有这个，只有"一次把人彻底得罪"才会结仇；而日常里更常见的
+/// 是一次次小摩擦——攒够了也该翻脸。
+const int kSpiteAccumulateThreshold = 12;
+
+/// 正向互动消解积怨的最小幅度。日常 +1/+2 的寒暄不算赎罪，
+/// 否则怨气会在玩家不知不觉中被磨平。
+const int kSpiteReliefMinChange = 3;
+
+/// 每一点正向变化消解多少积怨。
+const int kSpiteReliefPerChange = 2;
+
+/// 这一笔好感变化该不该记账。
+///
+/// [severity] 为 AI 的原始意图幅度（未压缩）；没抓到就退回落地值 [change]。
+/// [pendingSpite] 为此前累计、尚未清算的怨气。
+bool shouldRecordGrudge({
+  required int change,
+  int? severity,
+  required int pendingSpite,
+}) {
+  if ((severity ?? change) <= kBurstSeverityThreshold) return true;
+  return pendingSpite >= kSpiteAccumulateThreshold;
+}
+
+/// 累计怨气：只有负向变化才往里加，结仇之后由调用方清零。
+int accumulateSpite(int pending, int change) {
+  if (change >= 0) return pending < 0 ? 0 : pending;
+  final next = pending - change;
+  return next < 0 ? 0 : next;
+}
+
+/// 正向互动消解怨气。幅度太小的不算数（见 [kSpiteReliefMinChange]）。
+int relieveSpite(int pending, int change) {
+  if (change < kSpiteReliefMinChange) return pending < 0 ? 0 : pending;
+  final next = pending - change * kSpiteReliefPerChange;
+  return next < 0 ? 0 : next;
+}
 
 // ============================================================ 时间衰减
 

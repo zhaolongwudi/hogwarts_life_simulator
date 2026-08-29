@@ -15,8 +15,12 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
   /// 这种写法，但老正则强制要求半角/全角冒号，于是 AI 一旦漏掉冒号
   /// （「赫敏 +3」「赫敏·格兰杰　+2」这种全角空格分隔），整行就静默漏解析，
   /// 只能靠 _inferPassiveAffection 补一个 +1/+2，玩家感觉"好感涨得莫名其妙地慢"。
+  /// 行尾的括号备注要能带上：「赫敏 -8（你当众反驳了她）」是 AI 最常见的
+  /// 写法之一，老正则要求行尾必须是数字，于是这类整行静默漏解析——
+  /// 好感不动、宿敌不记，玩家只觉得"我明明得罪了他却什么都没发生"。
+  /// 备注同时被 [group 3] 捕获，用作记仇的理由文本。
   static final RegExp _affectionLineRe =
-      RegExp(r'^\s*(.*?)\s*(?:[:：]\s*)?([+＋-]?\d+)\s*$');
+      RegExp(r'^\s*(.*?)\s*(?:[:：]\s*)?([+＋-]?\d+)\s*(?:[（(](.*?)[）)])?\s*$');
 
   /// 倒装写法：「+3 赫敏」。AI 偶尔把数字写在名字前面。
   static final RegExp _affectionLineReversedRe =
@@ -78,6 +82,14 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         deltaStr = deltaStr.replaceAll('＋', '+').replaceAll('－', '-');
         var delta = int.tryParse(deltaStr) ?? 0;
         if (delta == 0 || npcName.isEmpty) continue;
+        // 括号里的话是 AI 给的理由，以前剥掉就扔了。
+        // 现在留下来：它既是记仇理由，也是成因识别的唯一输入——
+        // 否则宿敌表里那 7 种成因在 AI 路径上永远只会认出默认的「背叛」。
+        String? remark = match?.group(3)?.trim();
+        final inName = _parenRemarkRe.firstMatch(npcName)?.group(0);
+        if (inName != null) {
+          remark = inName.substring(1, inName.length - 1).trim();
+        }
         npcName = npcName.replaceFirst(_parenRemarkRe, '').trim();
         if (npcName.isEmpty) continue;
 
@@ -94,12 +106,19 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // 用匹配到的真名做校验（而不是 AI 写的混淆名）
         if (!validator.validate(npcRegistry, npc.name, text, delta)) continue;
 
+        // 压缩数值是为了不让好感一回合暴涨暴跌——那是数值层的事。
+        // 但 AI 写下 -30 是在说"这件事很严重"，这个意图不能一起被压掉：
+        // 结仇判定看的是下面这个 raw，不是压缩后的 delta。
+        final rawDelta = delta;
         if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
         if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
         try {
-          debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta');
+          debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta'
+              '${rawDelta == delta ? '' : '（原文 $rawDelta）'}');
           final before = npc.affection;
-          updateNpcAffection(npc.id, delta, reason: '剧情互动');
+          updateNpcAffection(npc.id, delta,
+              reason: (remark == null || remark.isEmpty) ? '剧情互动' : remark,
+              severity: rawDelta);
           final after = npc.affection;
           if (before != after) {
             debugPrint('[好感更新] ${npc.name}: $before → $after');
