@@ -15,6 +15,10 @@ import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 import '../data/locations.dart';
 import '../data/attribute_data.dart';
+import '../data/course_data.dart';
+import '../data/era_data.dart';
+import '../data/game_config_rules.dart';
+import '../data/wand_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
@@ -109,6 +113,32 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         final profileLine = '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋$aptitudeForPrompt·精神${p.spirit}·精力${p.energy}';
         final impactLine = '影响力：${_formatImpact(worldState.playerImpactScore)}';
         contextBuffer.writeln('$profileLine｜$impactLine');
+        contextBuffer.writeln('');
+
+        // ========== 硬设定：在任校长 / 杖芯 / 当前可达区域 ==========
+        // 这三样以前都写在数据表里却没人读：
+        //  - eraHeadmaster 零引用 → 开学宴的致辞者在 1892 年还是邓布利多
+        //    （那年他本人是 11 岁的新生）；
+        //  - wandCoreTraits 零引用 → 选什么杖芯对数值和叙事都没影响；
+        //  - MapRegionDef.unlockCondition 只当文案打印 →
+        //    写着「高年级开放」的禁林，一年级新生照样一个人走进去。
+        final settingLine = <String>[
+          '校长：${headmasterLineForEra(eraDefByEra(appProvider.era).eraKey)}',
+          if (wandCoreTraitLine(wandById(p.wandId ?? '')?.core).isNotEmpty)
+            wandCoreTraitLine(wandById(p.wandId ?? '')?.core),
+        ].join('｜');
+        contextBuffer.writeln('【本局硬设定】$settingLine');
+
+        final isWeekend =
+            worldState.time.weekday == 0 || worldState.time.weekday == 6;
+        final lockedNow =
+            lockedRegionsFor(grade: p.grade, isWeekend: isWeekend);
+        if (lockedNow.isNotEmpty) {
+          contextBuffer.writeln(
+              '【当前无法进入的区域】${lockedNow.map((r) => '${r.name}（${r.unlockCondition ?? '未开放'}）').join('、')}'
+              ' —— 玩家现在到不了这些地方，不要安排他独自前往；'
+              '确有需要时必须有教授带队或给出明确的违规代价。');
+        }
         contextBuffer.writeln('');
 
         // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========

@@ -9,6 +9,7 @@ import '../data/pet_narrative_config.dart';
 import '../data/attribute_data.dart';
 import '../data/spell_data.dart';
 import '../data/collectible_data.dart';
+import '../data/wand_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -67,12 +68,15 @@ mixin GamePlayMixin on GameProviderBase {
   int _equipmentCastBonus() =>
       player == null ? 0 : equippedCastBonus(player!.equipped);
 
-  /// 决斗战力：技能熟练度均值 + 装备加成 + 宠物助战（羁绊≥40）
+  /// 决斗战力：技能熟练度均值 + 装备加成 + 宠物助战（羁绊≥40）+ 杖芯倾向
   double _playerPower() {
     final p = player!;
     final base = (_attr('dda') + _attr('spell_understanding') + _attr('magic_control')) / 3;
     var power = base + _equipmentCombatBonus();
     if (p.petBond >= 40) power += 3;
+    // 龙心脏腱索打中更疼，凤凰羽毛略微加成，独角兽毛不加威力
+    final core = wandById(p.wandId ?? '')?.core;
+    power *= 1 + wandCorePowerBonusFor(core);
     return power;
   }
 
@@ -955,7 +959,19 @@ mixin GamePlayMixin on GameProviderBase {
     final env = 0.85 + random.nextDouble() * 0.3;
     final mental = (p.spirit / 100) * 0.5 + 0.5;
     final equipFactor = 1 + _equipmentCastBonus() / 1000.0;
-    final castChance = (mastery * env * mental * equipFactor).clamp(0.05, 0.95);
+    // 杖芯在这里第一次真正生效：以前选什么杖芯对数值毫无影响，
+    // 「冬青木·凤凰羽毛」和「山楂木·独角兽毛」只是两段不同的描述文字。
+    final core = wandById(p.wandId ?? '')?.core;
+    var castChance =
+        (mastery * env * mental * equipFactor + wandCoreCastBonusFor(core))
+            .clamp(0.05, 0.95);
+
+    // 凤凰羽毛「有自主意识」：眼看要失手时，魔杖自己替你补了一下
+    final phoenixSave =
+        wandCoreHasWill(core) && castChance < phoenixClutchThreshold;
+    if (phoenixSave) {
+      castChance = (castChance + phoenixClutchBonus).clamp(0.05, 0.95);
+    }
 
     final myPower = _playerPower();
     final myScore = myPower * castChance + random.nextInt(16);
@@ -965,6 +981,10 @@ mixin GamePlayMixin on GameProviderBase {
     final buf = StringBuffer('【巫师决斗 · ${opponent.name}】\n');
     buf.writeln('你们在场地中央互相致礼，${opponent.name}的眼神带着一丝跃跃欲试。'
         '你握紧魔杖，心跳与咒语几乎同时升起。');
+    if (phoenixSave) {
+      buf.writeln('就在你手心发滑的那一瞬，杖尖自己窜出一串你不曾念过的火花——'
+          '凤凰羽毛的杖芯替你把这一咒补完了。');
+    }
     if (castChance < 0.4) {
       buf.writeln('你的前两记咒语都偏得离谱——紧张让魔杖尖的光晕抖得像风里的烛火。');
     } else if (castChance >= 0.75) {

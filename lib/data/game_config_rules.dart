@@ -75,12 +75,36 @@ const String kDefaultWandSourceId = 'olivander_shop';
 class MapRegionDef {
   final String icon;
   final String name;
+
+  /// 解锁条件的**展示文案**。
+  ///
+  /// 以前它是唯一的解锁信息——一段给人看的中文，代码里没有任何一处读它
+  /// 做判定，于是写着「高年级或特定课程开放」的禁林，一年级新生照样能
+  /// 一个人走进去。现在判定看 [minGrade] / [weekendOnly]，
+  /// 这个字段只负责把条件说给人（和 AI）听。
   final String? unlockCondition; // null 表示默认解锁
+
+  /// 低于这个年级不开放（0 表示无年级限制）。
+  final int minGrade;
+
+  /// 只在周末开放（霍格莫德村）。
+  final bool weekendOnly;
+
   const MapRegionDef({
     required this.icon,
     required this.name,
     this.unlockCondition,
+    this.minGrade = 0,
+    this.weekendOnly = false,
   });
+
+  /// [grade] 为 null（还没入学 / 未设定年级）时按一年级算。
+  bool isUnlocked({required int? grade, required bool isWeekend}) {
+    final g = grade ?? 1;
+    if (g < minGrade) return false;
+    if (weekendOnly && !isWeekend) return false;
+    return true;
+  }
 }
 
 const List<MapRegionDef> mapRegions = [
@@ -89,18 +113,40 @@ const List<MapRegionDef> mapRegions = [
   MapRegionDef(
     icon: '🌳',
     name: '禁林',
-    unlockCondition: '高年级或特定课程开放',
+    unlockCondition: '二年级以上，或由教授带队',
+    minGrade: 2,
   ),
   MapRegionDef(icon: '🧪', name: '地下教室（魔药学、斯莱特林公共休息室）'),
   MapRegionDef(icon: '🏟️', name: '魁地奇球场'),
   MapRegionDef(
     icon: '🏘️',
     name: '霍格莫德村',
-    unlockCondition: '周末开放',
+    unlockCondition: '三年级以上，且仅周末开放',
+    minGrade: 3,
+    weekendOnly: true,
   ),
   MapRegionDef(icon: '🧹', name: '天文塔'),
   MapRegionDef(icon: '📚', name: '图书馆（含禁书区）'),
 ];
+
+/// 当前条件下已开放的区域（/地点 命令与 prompt 共用一份判定）。
+List<MapRegionDef> unlockedRegionsFor({
+  required int? grade,
+  required bool isWeekend,
+}) =>
+    mapRegions
+        .where((r) => r.isUnlocked(grade: grade, isWeekend: isWeekend))
+        .toList();
+
+/// 当前条件下尚未开放的区域。AI 需要知道玩家**去不了**哪些地方，
+/// 否则会一本正经地写"一年级新生独自深入禁林"。
+List<MapRegionDef> lockedRegionsFor({
+  required int? grade,
+  required bool isWeekend,
+}) =>
+    mapRegions
+        .where((r) => !r.isUnlocked(grade: grade, isWeekend: isWeekend))
+        .toList();
 
 // ====== R12：课堂意外事件池 ======
 // 每一条包含：科目筛选（subjectFilter 为空表示全科目通用）、意外文本模板

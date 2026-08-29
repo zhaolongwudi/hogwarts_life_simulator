@@ -694,11 +694,40 @@ mixin GameSystemsMixin on GameProviderBase {
     }
   }
 
+  /// [e] 的互斥伙伴里，有没有谁是在 [kMutuallyExclusiveMonths] 个月内刚播过的。
+  bool _monthlyEventBlockedByExclusive(MonthlyEventDef e, int monthIndex) {
+    for (final otherId in e.mutuallyExclusiveIds) {
+      final lastAt = worldState.monthlyEventFiredAt[otherId];
+      if (lastAt == null) continue;
+      if (monthIndex - lastAt < kMutuallyExclusiveMonths) return true;
+    }
+    return false;
+  }
+
+  /// [e] 本次是否不该参与抽取（自身重复冷却 + 互斥窗口）。
+  bool _monthlyEventOnCooldown(MonthlyEventDef e, int monthIndex) {
+    final lastAt = worldState.monthlyEventFiredAt[e.id];
+    if (lastAt != null &&
+        monthIndex - lastAt < MonthlyEventDef.repeatCooldownMonths) {
+      return true;
+    }
+    return _monthlyEventBlockedByExclusive(e, monthIndex);
+  }
+
   void _generateMonthlyEvent(int month, int year) {
     // R6：月度事件池数据化（带权重、季节筛选、基础概率）
     final seasonTags = seasonTagsForMonth(month);
+    // 月份序号，用来算"这条多久之前播过"
+    final monthIndex = year * 12 + month;
 
-    // 1) 季节匹配 + 基础概率过滤
+    // 1) 季节匹配 + 基础概率过滤 + 去重/互斥过滤
+    //
+    // 以前这里每次跨月都从整池重抽：上个月刚播过「魔法部宣布新一轮教育
+    // 改革」，这个月原样再来一遍，玩家一眼就能看出世界是假的。
+    // 现在按两项规则剔除：
+    //   a) 同一条事件 [MonthlyEventDef.repeatCooldownMonths] 个月内不重复；
+    //   b) mutuallyExclusiveIds 里写的事件，在 [kMutuallyExclusiveMonths]
+    //      个月内被抽中过的话，本条本次不参与。
     final candidates = <MonthlyEventDef>[];
     final rand = random;
     for (final e in monthlyEventPool) {
@@ -706,7 +735,19 @@ mixin GameSystemsMixin on GameProviderBase {
           e.seasonTags.any((s) => seasonTags.contains(s));
       if (!seasonMatch) continue;
       if (e.baseChance < 1.0 && rand.nextDouble() > e.baseChance) continue;
+      if (_monthlyEventOnCooldown(e, monthIndex)) continue;
       candidates.add(e);
+    }
+    // 全被冷却挡掉了（长局后期常见）：放宽到只保留互斥，忽略重复冷却，
+    // 保证每个月总有一条世界新闻，而不是静悄悄地什么都不发生。
+    if (candidates.isEmpty) {
+      for (final e in monthlyEventPool) {
+        final seasonMatch = e.seasonTags.isEmpty ||
+            e.seasonTags.any((s) => seasonTags.contains(s));
+        if (!seasonMatch) continue;
+        if (_monthlyEventBlockedByExclusive(e, monthIndex)) continue;
+        candidates.add(e);
+      }
     }
     if (candidates.isEmpty) return;
 
@@ -727,9 +768,8 @@ mixin GameSystemsMixin on GameProviderBase {
     }
     selected ??= candidates.last;
 
-    // 3) 互斥事件剔除（同一回合已抽到 selected，其他互斥的不参与后续月份事件）
-    //    这里简化：月度事件每回合只出 1 条，所以只需要把互斥组内其他候选跳过即可
-    //    （实际逻辑 = 本回合就选 1 条，其它互斥检查只在权重池 >1 条时有意义）
+    // 3) 记账：下次抽取时靠这条记录做去重与互斥判定
+    worldState.monthlyEventFiredAt[selected.id] = monthIndex;
 
     final event = '【${year}年${month}月·月度世界演化】${selected.text}';
 

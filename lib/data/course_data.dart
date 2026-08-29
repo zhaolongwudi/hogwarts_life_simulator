@@ -122,13 +122,27 @@ List<CourseData> allCourses() => [...requiredCourses, ...electiveCourses];
 // 人看到「魔药事故 → 可能受伤」想去调数值，改完发现课堂里的意外一个字都没
 // 变，得翻遍调用链才知道这张表是空的。
 
-/// 各时代教授阵容名称（用于叙事上下文）
+/// 各时代的在任校长。
+///
+/// 这张表以前全项目零引用——开学宴的致辞者因此写死成「邓布利多式校长致辞」，
+/// 可 1892 年邓布利多本人还是 11 岁的新生。现在由 [headmasterLineForEra]
+/// 直接喂给 prompt。
 const Map<String, String> eraHeadmaster = {
   'dumbledore': '阿芒多·迪佩特',
-  'marauders': '阿芒多·迪佩特（早期）→ 阿不思·邓布利多',
+  // 邓布利多 1956 年接任校长：1971 年入学的玩家，整个求学期间都是他
+  'marauders': '阿不思·邓布利多',
+  'first_war': '阿不思·邓布利多',
   'harry_same': '阿不思·邓布利多',
+  // 1997 年邓布利多去世后由麦格接任
   'post_war': '米勒娃·麦格',
 };
+
+/// [eraKey] 这个时代的在任校长名。
+///
+/// 拿不到时代时给一个不含人名的兜底说法，免得 AI 在 1892 年的开学宴上
+/// 让邓布利多致辞。
+String headmasterLineForEra(String eraKey) =>
+    eraHeadmaster[eraKey] ?? '时任校长';
 
 /// 同一门课在不同时代由谁授课。
 /// 用于 formatCourses 展示，避免把 1991 子世代的教授名单套到其他时代

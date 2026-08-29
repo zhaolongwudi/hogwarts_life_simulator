@@ -252,20 +252,10 @@ const List<AffectionChange> affectionChangeRules = [
   AffectionChange('背叛/欺骗', -30, -15),
 ];
 
-/// 好感锁机制（设定 11.3）
-class AffectionLock {
-  final String name;
-  final int threshold;
-  final String unlockCondition;
-  final bool unlocked;
-
-  const AffectionLock({
-    required this.name,
-    required this.threshold,
-    required this.unlockCondition,
-    this.unlocked = false,
-  });
-}
+// 好感锁的实际实现是 NPC.affectionLocks（List<String>，存 '信任锁'/'情感锁'），
+// 见 mixin_systems.dart 里按 Balance.trustLockThreshold / romanceLockThreshold
+// 解锁的那段。这里原先还有一个 AffectionLock 类，字段齐全、全项目零引用——
+// 留着只会让人以为改它能调好感锁，改完发现一个字都没变。已删。
 
 // ==================== 声望系统 ====================
 
@@ -619,22 +609,9 @@ class LoveState {
 }
 
 // ==================== 收藏与成就 ====================
-
-class CollectionItem {
-  final String id;
-  final String name;
-  final String description;
-  final String category;
-  final String acquiredDate;
-
-  const CollectionItem({
-    required this.id,
-    required this.name,
-    this.description = '',
-    this.category = '一般',
-    this.acquiredDate = '',
-  });
-}
+// 收藏的实际实现是 data/collectible_data.dart 的 CollectibleDef 与其系列查询
+// 函数（collectiblesInSeries / collectibleSeries）。这里原先还有一个
+// CollectionItem 类，字段齐全、零引用，已删。
 
 class Achievement {
   final String id;

@@ -19,12 +19,59 @@ class WandData {
   });
 }
 
-/// 三大标准杖芯
+/// 三大标准杖芯。
+///
+/// 这张表以前全项目零引用：开局选了什么杖芯，对数值和叙事都毫无影响，
+/// 「冬青木·凤凰羽毛」和「山楂木·独角兽毛」只是两段不同的描述文字。
+/// 现在 [wandCoreCastBonus] / [wandCorePowerBonus] 进决斗公式，
+/// [wandCoreTraitLine] 进 prompt，让 AI 真的按这个倾向写戏。
 const Map<String, String> wandCoreTraits = {
   '独角兽毛': '最稳定、最忠诚，最难倒向黑魔法',
   '龙心脏腱索': '最强大，容易转向黑魔法',
   '凤凰羽毛': '最稀有，有自主意识',
 };
+
+/// 杖芯对施法成功率的影响（加在 castChance 上的绝对值，0.05 = +5 个百分点）。
+///
+/// 独角兽毛胜在稳：下限高、不容易在最关键的那一咒上掉链子。
+/// 龙心脏腱索威力大但桀骜：成功率略低，打中就更疼。
+/// 凤凰羽毛居中，但会在危急时自己出手（见 [wandCoreClutchBonus]）。
+const Map<String, double> wandCoreCastBonus = {
+  '独角兽毛': 0.05,
+  '龙心脏腱索': -0.03,
+  '凤凰羽毛': 0.0,
+};
+
+/// 杖芯对咒语威力（决斗战力）的影响（乘数增量，0.08 = +8%）。
+const Map<String, double> wandCorePowerBonus = {
+  '独角兽毛': 0.0,
+  '龙心脏腱索': 0.08,
+  '凤凰羽毛': 0.03,
+};
+
+/// 凤凰羽毛杖芯的"自主意识"：施法成功率跌破 0.35（快失手）时，
+/// 有这个概率触发一次自发救场，让本回合的施法判定不至于崩掉。
+const double phoenixClutchThreshold = 0.35;
+const double phoenixClutchBonus = 0.15;
+
+/// [core] 的施法成功率修正；未知杖芯（自制/传家宝）按 0 处理。
+double wandCoreCastBonusFor(String? core) =>
+    core == null ? 0.0 : (wandCoreCastBonus[core] ?? 0.0);
+
+/// [core] 的咒语威力修正。
+double wandCorePowerBonusFor(String? core) =>
+    core == null ? 0.0 : (wandCorePowerBonus[core] ?? 0.0);
+
+/// [core] 是不是凤凰羽毛（会自发救场的那种）。
+bool wandCoreHasWill(String? core) => core == '凤凰羽毛';
+
+/// 给 prompt 用的一句话：杖芯叫什么、什么脾气、剧情里该怎么体现。
+String wandCoreTraitLine(String? core) {
+  if (core == null || core.isEmpty) return '';
+  final trait = wandCoreTraits[core];
+  if (trait == null) return '杖芯：$core';
+  return '杖芯「$core」：$trait';
+}
 
 const List<WandData> wands = [
   WandData(

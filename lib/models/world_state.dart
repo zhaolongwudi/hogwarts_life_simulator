@@ -50,6 +50,14 @@ class WorldState {
 
   // ====== 学年系统扩展字段 ======
   final List<String> firedAnchorIds; // 已触发的事件锚点（防重复）
+
+  /// 月度事件 id → 上次发生的月份序号（`year * 12 + month`）。
+  ///
+  /// 月度事件此前每跨一个月就重抽一次，抽到什么都照播：
+  /// 「魔法部宣布新一轮教育改革」上个月刚演过，这个月原样再来一遍，
+  /// 玩家立刻就能感觉到世界是假的。现在用它做去重与互斥判定。
+  final Map<String, int> monthlyEventFiredAt;
+
   bool graduated; // 玩家是否已毕业（七年级后）
   final Set<String> visitedLocations; // 玩家曾经到过的地点（自动去重，用于「探索者」成就校验）
 
@@ -97,6 +105,7 @@ class WorldState {
     this.timelineChanges = 0,
     List<String>? timelineBranches,
     List<String>? firedAnchorIds,
+    Map<String, int>? monthlyEventFiredAt,
     this.graduated = false,
     Set<String>? visitedLocations,
     List<String>? lastTurnAssertions,
@@ -116,6 +125,8 @@ class WorldState {
         specialMarkers = List<String>.from(specialMarkers ?? const []),
         timelineBranches = List<String>.from(timelineBranches ?? const []),
         firedAnchorIds = List<String>.from(firedAnchorIds ?? const []),
+        monthlyEventFiredAt =
+            Map<String, int>.from(monthlyEventFiredAt ?? const {}),
         visitedLocations = Set<String>.from(visitedLocations ?? const {}),
         lastTurnAssertions = List<String>.from(lastTurnAssertions ?? const []),
         previousTurnAssertions = List<String>.from(previousTurnAssertions ?? const []),
@@ -203,6 +214,7 @@ class WorldState {
         'timeline_changes': timelineChanges,
         'timeline_branches': timelineBranches,
         'fired_anchor_ids': firedAnchorIds,
+        'monthly_event_fired_at': monthlyEventFiredAt,
         'graduated': graduated,
         'visited_locations': visitedLocations.toList(),
         'last_turn_assertions': lastTurnAssertions,
@@ -240,6 +252,9 @@ class WorldState {
       timelineChanges: json['timeline_changes'] ?? 0,
       timelineBranches: List<String>.from(json['timeline_branches'] ?? []),
       firedAnchorIds: List<String>.from(json['fired_anchor_ids'] ?? []),
+      monthlyEventFiredAt: Map<String, int>.from(
+          (json['monthly_event_fired_at'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k, v is int ? v : int.tryParse('$v') ?? 0))),
       graduated: json['graduated'] ?? false,
       visitedLocations: Set<String>.from(json['visited_locations'] ?? const {}),
       lastTurnAssertions: List<String>.from(json['last_turn_assertions'] ?? const []),

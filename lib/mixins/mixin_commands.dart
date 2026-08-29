@@ -1104,9 +1104,14 @@ mixin GameCommandsMixin on GameProviderBase {
 
   String _formatMap() {
     // R11：使用 mapRegions 数据（替代 8 行硬编码）
+    // unlockCondition 以前只是打印出来的文案——有没有人真的去不了，
+    // 全看 AI 那天心情好不好。现在按年级/周末实判，未开放的标 🔒。
+    final p = player;
+    final isWeekend = worldState.time.weekday == 0 || worldState.time.weekday == 6;
     final knownRegions = mapRegions.map((r) {
+      final unlocked = r.isUnlocked(grade: p?.grade, isWeekend: isWeekend);
       final cond = r.unlockCondition != null ? '（${r.unlockCondition}）' : '';
-      return '  ${r.icon} ${r.name}$cond';
+      return '  ${unlocked ? r.icon : '🔒'} ${r.name}$cond';
     }).join('\n');
     return '''【霍格沃茨地图】
   当前地点：${worldState.currentLocation ?? '九又四分之三站台 / 霍格沃茨特快'}
