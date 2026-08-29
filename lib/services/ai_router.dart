@@ -4,6 +4,8 @@ import '../providers/app_provider.dart';
 import '../utils/ai_debug_logger.dart';
 import '../data/provider_defaults.dart';
 import 'deepseek_service.dart';
+// rate_limiter 里除了两个限流闸门，还放了 ResponseCache（响应缓存）——
+// 本文件只用到后者。闸门统一由 DeepSeekService._acquireSlot() 负责，这里不要再调。
 import 'rate_limiter.dart';
 
 enum AiScene { narrative, summary, npcChat, choice }
@@ -188,12 +190,11 @@ class AiRouter {
 
         for (var attempt = 0; attempt <= maxRetriesPerService; attempt++) {
           try {
-            final result = await _executeWithRateLimit(
-              provider: provider,
-              service: service,
-              keyHash: keyHash,
+            // 限流闸门在 DeepSeekService.chatComplete 内部（_acquireSlot），
+            // 这里不要再加一层，否则同一个 Key 会被两道互不知情的闸门串着等。
+            final result = await service.chatComplete(
               prompt: prompt,
-              systemPrompt: systemPrompt,
+              systemPrompt: systemPrompt ?? '',
               temperature: temperature,
               maxTokens: maxTokens,
               cancelToken: cancelToken,
@@ -258,50 +259,6 @@ class AiRouter {
     throw AiNonRetryableException('所有AI服务均不可用');
   }
 
-  Future<ChatResult> _executeWithRateLimit({
-    required AiProvider provider,
-    required DeepSeekService service,
-    required String keyHash,
-    required String prompt,
-    String? systemPrompt,
-    required double temperature,
-    required int maxTokens,
-    CancelToken? cancelToken,
-  }) async {
-    switch (provider) {
-      case AiProvider.agnes:
-        // Agnes：每个 API Key 独立限流（20 RPM）
-        await AgnesRateLimiter.instance.waitForSlot(keyHash);
-        return service.chatComplete(
-          prompt: prompt,
-          systemPrompt: systemPrompt ?? '',
-          temperature: temperature,
-          maxTokens: maxTokens,
-          cancelToken: cancelToken,
-        );
-
-      case AiProvider.sensenova:
-        // SenseNova：使用配额管理器（按模型区分：6.8/6.7=1500次/5h，deepseek/glm=500次/5h）
-        await SenseNovaQuotaManager.instance.waitForQuota(service.config.model);
-        return service.chatComplete(
-          prompt: prompt,
-          systemPrompt: systemPrompt ?? '',
-          temperature: temperature,
-          maxTokens: maxTokens,
-          cancelToken: cancelToken,
-        );
-
-      case AiProvider.deepseek:
-        // DeepSeek：付费模型无限制
-        return service.chatComplete(
-          prompt: prompt,
-          systemPrompt: systemPrompt ?? '',
-          temperature: temperature,
-          maxTokens: maxTokens,
-          cancelToken: cancelToken,
-        );
-    }
-  }
   /// 提供商展示名。表在 lib/data/provider_defaults.dart 的 displayName 字段
   /// （设置页卡片用的是同一个值，以前这里是手抄的第二份）。
   String getProviderLabel(AiProvider provider) =>

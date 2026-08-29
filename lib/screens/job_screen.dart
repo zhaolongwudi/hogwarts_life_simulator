@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/game_systems.dart';
+import '../services/ai_router.dart';
 import '../data/job_data.dart';
 
 class JobScreen extends StatefulWidget {
@@ -13,6 +14,8 @@ class JobScreen extends StatefulWidget {
 
 class _JobScreenState extends State<JobScreen> {
   List<JobDef> _jobs = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _keyword = '';
 
   @override
   void initState() {
@@ -20,8 +23,112 @@ class _JobScreenState extends State<JobScreen> {
     _generateJobs();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// 排序规则对应副标题那句「根据你的位置和属性推荐」：
+  /// 同城优先 → 体力吃得消的优先 → 时薪高的优先。
+  /// 以前这里是 `List.from(jobCatalog)`，刷新按钮点了十次列表一帧不变。
   void _generateJobs() {
-    _jobs = List<JobDef>.from(jobCatalog);
+    final location = context.read<GameProvider>().worldState.currentLocation ?? '';
+    final energy = context.read<GameProvider>().player?.energy ?? 0;
+
+    int score(JobDef j) {
+      var s = 0;
+      if (location.isNotEmpty && j.location.contains(location)) s += 100;
+      if (location.isNotEmpty && location.contains(j.location)) s += 60;
+      if (j.energyCost <= energy) s += 30;
+      // 时薪（加隆/小时）放大 10 倍取整，避免浮点
+      s += (j.pay * 600 / (j.minutes <= 0 ? 60 : j.minutes)).round();
+      return s;
+    }
+
+    final list = List<JobDef>.from(jobCatalog)
+      ..sort((a, b) => score(b).compareTo(score(a)));
+    _jobs = list;
+  }
+
+  bool _aiLoading = false;
+
+  /// 让 AI 按玩家当下的处境（位置/体力/钱/剧情近况）想一个活儿。
+  ///
+  /// 这个箭头以前是 `onPressed: () {}`，全项目唯一一处空回调——
+  /// 卡片上明明白白写着「让 AI 根据剧情生成专属工作机会」，点了毫无反应。
+  Future<void> _askAiForWork() async {
+    final gp = context.read<GameProvider>();
+    final p = gp.player;
+    if (p == null) return;
+    if (gp.router == null || !(gp.router?.hasNarrativeService ?? false)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('先在设置里配置一个 AI 提供商')),
+      );
+      return;
+    }
+
+    setState(() => _aiLoading = true);
+    try {
+      final location = gp.worldState.currentLocation ?? '霍格沃茨';
+      final prompt = '【魔法世界 · 打工推荐】\n'
+          '玩家：${p.name}（${(p.house?.isEmpty ?? true) ? '未分院' : p.house}，第${p.grade}年）\n'
+          '当前时间地点：${gp.worldState.timestamp}｜$location\n'
+          '体力 ${p.energy}／100，钱包 ${p.galleons} 加隆\n'
+          '最近经历：${gp.recentTurns.isEmpty ? '（暂无）' : gp.recentTurns.last.substring(0, gp.recentTurns.last.length > 120 ? 120 : gp.recentTurns.last.length)}\n\n'
+          '请为这个角色想 1 个此刻确实做得成、且贴合处境的临时活计：'
+          '写出活计名称、在哪儿干、大概耗时、报酬（加隆）和一句风险或趣事。'
+          '120 字以内，直接给内容，不要客套话，不要列点。';
+      final result = await gp.callDeepSeek(prompt, scene: AiScene.npcChat);
+      if (!mounted) return;
+      _showAiWorkDialog(result.content.trim());
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI 暂时没想出来：$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _aiLoading = false);
+    }
+  }
+
+  void _showAiWorkDialog(String content) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('AI 给你想的活儿'),
+        content: SingleChildScrollView(child: Text(content)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('我再想想'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('想接这个活？在剧情框里直接写下你的行动')),
+              );
+            },
+            child: const Text('知道啦'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 搜索命中标题 / 地点 / 描述 / 要求。
+  List<JobDef> get _visibleJobs {
+    if (_keyword.isEmpty) return _jobs;
+    final kw = _keyword.toLowerCase();
+    return _jobs
+        .where((j) =>
+            j.title.toLowerCase().contains(kw) ||
+            j.location.toLowerCase().contains(kw) ||
+            j.description.toLowerCase().contains(kw) ||
+            j.requirements.toLowerCase().contains(kw))
+        .toList();
   }
 
   @override
@@ -35,10 +142,11 @@ class _JobScreenState extends State<JobScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: '按当前位置和体力重新排序',
             onPressed: () {
               setState(() => _generateJobs());
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('岗位已刷新')),
+                const SnackBar(content: Text('已按你的位置和体力重新排序')),
               );
             },
           ),
@@ -71,11 +179,30 @@ class _JobScreenState extends State<JobScreen> {
             Icon(Icons.search, color: Theme.of(context).textTheme.bodyMedium!.color),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                '搜岗位 / 公司 / 附近机会',
-                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium!.color),
+              // 以前这里是个 Text，看着像搜索框其实点不动、也绑了没有任何过滤逻辑。
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _keyword = v.trim()),
+                decoration: const InputDecoration(
+                  hintText: '搜岗位 / 地点 / 要求',
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyMedium!.color,
+                  fontSize: 14,
+                ),
               ),
             ),
+            if (_keyword.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  _searchController.clear();
+                  setState(() => _keyword = '');
+                },
+                child: const Icon(Icons.close, size: 18, color: Color(0xFF8B949E)),
+              ),
           ],
         ),
       ),
@@ -192,17 +319,23 @@ class _JobScreenState extends State<JobScreen> {
   }
 
   Widget _buildJobList() {
-    if (_jobs.isEmpty) {
+    final visible = _visibleJobs;
+    if (visible.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.work_off, size: 64, color: Theme.of(context).textTheme.bodyMedium!.color),
+            Icon(_keyword.isEmpty ? Icons.work_off : Icons.search_off,
+                size: 64, color: Theme.of(context).textTheme.bodyMedium!.color),
             const SizedBox(height: 12),
-            Text('暂无岗位', style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium!.color)),
+            Text(_keyword.isEmpty ? '暂无岗位' : '没有匹配「$_keyword」的岗位',
+                style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium!.color)),
             const SizedBox(height: 8),
-            Text('让 AI 根据你现在的位置、属性和剧情生成工作机会',
-                style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color), textAlign: TextAlign.center),
+            Text(_keyword.isEmpty
+                ? '让 AI 根据你现在的位置、属性和剧情生成工作机会'
+                : '换个关键词，或点右上角的 ✕ 清空',
+                style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+                textAlign: TextAlign.center),
           ],
         ),
       );
@@ -210,8 +343,8 @@ class _JobScreenState extends State<JobScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _jobs.length,
-      itemBuilder: (context, index) => _buildJobCard(_jobs[index]),
+      itemCount: visible.length,
+      itemBuilder: (context, index) => _buildJobCard(visible[index]),
     );
   }
 
@@ -345,10 +478,20 @@ class _JobScreenState extends State<JobScreen> {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward),
-              onPressed: () {},
-            ),
+            _aiLoading
+                ? const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: Padding(
+                      padding: EdgeInsets.all(6),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.arrow_forward),
+                    tooltip: '让 AI 按你目前的处境想想能干点什么',
+                    onPressed: _askAiForWork,
+                  ),
           ],
         ),
       ),

@@ -53,9 +53,29 @@ mixin GameCommandsMixin on GameProviderBase {
         handler: (ctx) {
           final m = ctx.provider as GameSystemsMixin;
           final days = m.resolveFastForwardDays(ctx.tailFrom(0));
+          // days == 0 表示「你要的时间点已经到了」——7 月里输入
+          // 「/快进 暑假」就是这种。老实现会借 _daysUntilMonth 的循环
+          // 绕满一整年，直接跳掉 351 天。
+          if (days <= 0) {
+            m.currentNarrative = '【时间快进】\n'
+                '${m.worldState.time.formatDate()} —— 你要的时间点已经到了，无需快进。';
+            m.choices = [const GameChoice(text: '继续', action: '继续')];
+            m.notifyListeners();
+            return true;
+          }
           final before = m.worldState.time.formatDate();
+          // 快进若跨过毕业，_graduationSettlement 会把「七年统计 + 人生目标
+          // 达成判定」整段报告追加到 currentNarrative 尾部，而下面这行
+          // 又会无条件覆盖它——玩家最后只看到一条「🎓 你从霍格沃茨毕业了！」
+          // 通知，七年的账本和 goal_achieved 的判定结果全都没了。
+          // 这里先把快进期间追加进来的那一段截出来，最后再接回去。
+          final narrativeBefore = m.currentNarrative;
           final produced = m.fastForwardDays(days);
           final after = m.worldState.time.formatDate();
+          final appended = m.currentNarrative.startsWith(narrativeBefore)
+              ? m.currentNarrative.substring(narrativeBefore.length).trim()
+              : '';
+
           final buf = StringBuffer()
             ..writeln('【时间快进】')
             ..writeln('$before → $after（共 $days 天）');
@@ -69,6 +89,9 @@ mixin GameCommandsMixin on GameProviderBase {
             }
           } else {
             buf.writeln('\n这段日子里没有发生什么值得一提的事。');
+          }
+          if (appended.isNotEmpty) {
+            buf.writeln('\n$appended');
           }
           buf.writeln('\n接下来你想做些什么？');
           m.currentNarrative = buf.toString();

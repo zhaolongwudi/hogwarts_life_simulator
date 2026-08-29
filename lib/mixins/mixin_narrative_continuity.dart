@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
+import '../data/era_data.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
 
@@ -629,6 +630,14 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       requireOpeningScene: 'letter',
       // 锚点 = 中间过程：海格登门 + 和养父母告别 + 动身去伦敦 → 这一段必须 AI 完整写，不能跳
       transitionAnchor: '鲁伯·海格亲自登门送你（他受邓布利多委托亲自接新生去对角巷采购），他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦小子/姑娘，再晚就赶不上对角巷奥利凡德的预约了。" 本回合剧情必须自然融入：海格来访 → 和养父母告别 → 动身前往伦敦这三个中间阶段，不能跳帧直接进入采购画面。',
+      // 海格 1928 年才出生：1892（邓布利多时代）他不存在，
+      // 1971/1976（亲世代、一战末期）他也还没当上猎场看守。
+      // 这两个时代改由一位「霍格沃茨派来的使者」承担同样的引路功能。
+      eraAnchorOverrides: {
+        'dumbledore': '一位霍格沃茨派来的使者登门接你——那是一位穿着考究旅行斗篷的中年巫师，自称受校长之托，专程来接新生去对角巷采购。他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦，再晚就赶不上奥利凡德的预约了。" 本回合剧情必须自然融入：使者来访 → 和养父母告别 → 动身前往伦敦这三个中间阶段，不能跳帧直接进入采购画面。',
+        'marauders': '一位霍格沃茨派来的使者登门接你——那是一位穿着考究旅行斗篷的中年巫师，自称受校长之托，专程来接新生去对角巷采购。他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦，再晚就赶不上奥利凡德的预约了。" 本回合剧情必须自然融入：使者来访 → 和养父母告别 → 动身前往伦敦这三个中间阶段，不能跳帧直接进入采购画面。',
+        'first_war': '一位霍格沃茨派来的使者登门接你——那是一位穿着考究旅行斗篷的中年巫师，自称受校长之托，专程来接新生去对角巷采购。他敲开大门、手里提着霍格沃茨的采购清单和火车票，笑着对你说："该走啦，再晚就赶不上奥利凡德的预约了。" 本回合剧情必须自然融入：使者来访 → 和养父母告别 → 动身前往伦敦这三个中间阶段，不能跳帧直接进入采购画面。',
+      },
       nextLocation: null,
     ),
     TransitionNode(
@@ -640,6 +649,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       maxTurn: 5,
       requireOpeningScene: 'letter',
       transitionAnchor: '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。本回合请写出完整的衔接过程：你与海格一同抵达伦敦 → 经过破釜酒吧 → 穿过吧台后的砖墙入口 → 正式进入对角巷开始采购。必须把"从家到对角巷的过程"完整写出来，不能第一句就写"此刻你正在魔杖店门口"。',
+      eraAnchorOverrides: {
+        'dumbledore': '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。本回合请写出完整的衔接过程：你与那位霍格沃茨使者一同抵达伦敦 → 经过破釜酒吧 → 穿过吧台后的砖墙入口 → 正式进入对角巷开始采购。必须把"从家到对角巷的过程"完整写出来，不能第一句就写"此刻你正在魔杖店门口"。',
+        'marauders': '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。本回合请写出完整的衔接过程：你与那位霍格沃茨使者一同抵达伦敦 → 经过破釜酒吧 → 穿过吧台后的砖墙入口 → 正式进入对角巷开始采购。必须把"从家到对角巷的过程"完整写出来，不能第一句就写"此刻你正在魔杖店门口"。',
+        'first_war': '养父母已经把你的行李收拾好，火车票和加隆都塞到了你手里。本回合请写出完整的衔接过程：你与那位霍格沃茨使者一同抵达伦敦 → 经过破釜酒吧 → 穿过吧台后的砖墙入口 → 正式进入对角巷开始采购。必须把"从家到对角巷的过程"完整写出来，不能第一句就写"此刻你正在魔杖店门口"。',
+      },
       nextLocation: '对角巷',
       // 允许在 minT/maxT 到期且已过渡叙事写完后，更新 currentLocation（之前这里直接无依赖切 = 跳场景 bug）
       forceNextOnlyIfAnchorPresented: true,
@@ -653,6 +667,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       maxTurn: 7,
       requireOpeningScene: 'letter',
       transitionAnchor: '采购收尾阶段：魔杖、课本、袍子都已买齐。海格看了看表："哎呀，十一点的特快！再不走就晚了！" 他拉着你通过骑士公共汽车/幻影移形赶往伦敦国王十字车站。本回合剧情必须包含完整过程：结算采购 → 赶车前往国王十字 → 来到 9 又 3/4 站台口 → 拿到霍格沃茨特快车票 → 最后一句必须已经进入站台或已登上特快。',
+      eraAnchorOverrides: {
+        'dumbledore': '采购收尾阶段：魔杖、课本、袍子都已买齐。那位霍格沃茨使者看了看怀表："哎呀，十一点的特快！再不走就晚了！" 他拉着你通过骑士公共汽车赶往伦敦国王十字车站。本回合剧情必须包含完整过程：结算采购 → 赶车前往国王十字 → 来到 9 又 3/4 站台口 → 拿到霍格沃茨特快车票 → 最后一句必须已经进入站台或已登上特快。',
+        'marauders': '采购收尾阶段：魔杖、课本、袍子都已买齐。那位霍格沃茨使者看了看怀表："哎呀，十一点的特快！再不走就晚了！" 他拉着你通过骑士公共汽车赶往伦敦国王十字车站。本回合剧情必须包含完整过程：结算采购 → 赶车前往国王十字 → 来到 9 又 3/4 站台口 → 拿到霍格沃茨特快车票 → 最后一句必须已经进入站台或已登上特快。',
+        'first_war': '采购收尾阶段：魔杖、课本、袍子都已买齐。那位霍格沃茨使者看了看怀表："哎呀，十一点的特快！再不走就晚了！" 他拉着你通过骑士公共汽车赶往伦敦国王十字车站。本回合剧情必须包含完整过程：结算采购 → 赶车前往国王十字 → 来到 9 又 3/4 站台口 → 拿到霍格沃茨特快车票 → 最后一句必须已经进入站台或已登上特快。',
+      },
       nextLocation: '国王十字车站',
       forceNextOnlyIfAnchorPresented: true,
       // 进度门：时间 < 9月1日不允许跳（否则 7月31日就直接到了特快，与原著时间线冲突）
@@ -724,6 +743,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     final month = worldState.time.month;
     final day = worldState.time.day;
     final dateInt = month * 100 + day;
+    final eraKey = eraDefByEra(appProvider.era).eraKey;
 
     String? chosenAnchor;
     String? chosenNextLocation;
@@ -731,6 +751,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     bool allowNextUpdate = false;
 
     for (final node in _transitionNodes) {
+      // 0) 时代门：锚点里写死了只在特定年代存在的人物时，跳过这些时代
+      if (node.excludedEras.contains(eraKey)) continue;
       // 1) 当前地点匹配（开局骨架只对 openingScene=letter 生效）
       if (!_loosePattern(node.currentLocationPattern).hasMatch(loc)) continue;
       if (node.requireOpeningScene != null && openingScene != node.requireOpeningScene) continue;
@@ -753,7 +775,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       if (!notVisitedOk) continue;
 
       // OK，命中此节点
-      chosenAnchor = node.transitionAnchor;
+      // 用这个时代该用的文案：1892 年不能让 1928 年才出生的海格来敲门。
+      chosenAnchor = node.anchorFor(eraKey);
       chosenId = node.id;
       // 【关键保护】只有 node.forceNextOnlyIfAnchorPresented=false（表示这是"玩家已经在锚点叙事里完成过渡"的节点）
       // 才允许我们直接改 currentLocation。其他情况一律**只注入锚点，不切 location**，

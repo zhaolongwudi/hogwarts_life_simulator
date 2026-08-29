@@ -22,6 +22,7 @@ import '../models/long_term_memory.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/narrative_prompts.dart';
+import '../data/npc_schedule_rules.dart';
 
 mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
@@ -99,7 +100,7 @@ mixin GameInitMixin on GameProviderBase {
 
     // 人生目标：若已设定，注入为剧情牵引方向（非强制任务）
     final goalLine = (p != null && p.currentGoal != null && p.currentGoal!.isNotEmpty)
-        ? '【人生目标】${p.currentGoal}（仅作剧情牵引方向，玩家仍可自由行动，切勿变成每回合的任务推送）'
+        ? '【人生目标】${goalSteeringLine(p.currentGoal)}（仅作剧情牵引方向，玩家仍可自由行动，切勿变成每回合的任务推送）'
         : '';
 
     final worldRules = kUseFusedCompact ? kWorldRulesFusedCompact : kWorldRulesFused;
@@ -528,6 +529,11 @@ mixin GameInitMixin on GameProviderBase {
         ),
       );
     }
+
+    // 开局就给每个人安排位置，否则要等第一次时间推进才有人「在」某处，
+    // 而开场第一回合的 prompt 里【在场】就已经是空的了。
+    refreshNpcLocations(npcRegistry.values, worldState.time.hour,
+        worldState.time.weekday);
   }
 
   String _eraKey(Era era) => eraDefByEra(era).eraKey;
@@ -559,6 +565,23 @@ mixin GameInitMixin on GameProviderBase {
   }
 
   /// 显式标记某 NPC 已登场/被玩家认识（并记录认识事件）
+  /// 随机结识一位尚未登场的人物。
+  ///
+  /// 「世界」页上那颗「从收藏引入」的按钮以前只弹一句 SnackBar，把按钮上的字
+  /// 再念一遍。收藏栏里存的是物品不是人，这个按钮的语义本来就不成立，
+  /// 现在改成做一件这个页面真正需要的事：从还没打过照面的人里挑一位结识。
+  /// 返回被结识的人名，没得挑时返回 null。
+  String? meetRandomNpc() {
+    final candidates =
+        npcRegistry.values.where((n) => n.isAlive && !n.introduced).toList();
+    if (candidates.isEmpty) return null;
+    final npc = candidates[random.nextInt(candidates.length)];
+    markNpcIntroduced(npc);
+    notifyListeners();
+    unawaited(autoSave());
+    return npc.name;
+  }
+
   void markNpcIntroduced(NPC npc) {
     if (npc.introduced) return;
     npc.introduced = true;

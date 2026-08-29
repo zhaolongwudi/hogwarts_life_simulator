@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
+import '../models/long_term_memory.dart';
 import '../utils/story_text_renderer.dart';
 import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
@@ -996,12 +997,51 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
         .map((l) => '· ${l.description}')
         .join('\n');
 
+    // 选项端的 T0 事实。原先是 `.where(importance >= 4).take(10)`，
+    // 既没排序也没考虑时间，取到的永远是插入顺序最早的 10 条——
+    // 也就是开局那批 identity/wand/pet。而摘要层写进来的「已订婚」「已结仇」
+    // 「已立誓」都是 importance 7，排在十万八千里之外，一个都进不来。
+    // 于是叙事端知道的事选项端不知道：会出现"向刚被你杀了他兄弟的 NPC 求助"
+    // 「向已订婚对象再表白一次」这类自相矛盾的选项。
+    String topFactsForChoices() {
+      final facts = memory.keyFacts.where((f) => f.importance >= 4).toList();
+      // 身份级（importance 9-10）恒定优先：它们决定"你是谁"，任何选项都不能违背
+      final identity = facts.where((f) => f.importance >= 8).toList()
+        ..sort((a, b) => b.importance.compareTo(a.importance));
+      // 其余按「写入顺序倒序」= 最近发生的优先。
+      // 这里刻意不看 importance：自动摘要写进来的事件事实 importance 一律是 7，
+      // 按分数排等于没排，而真正要防的正是"刚发生的事被选项忽略"。
+      final recent = facts.where((f) => f.importance < 8).toList().reversed.toList();
+
+      final picked = <KeyFactRecord>[
+        ...identity.take(5),
+        ...recent.take(9),
+      ];
+      if (picked.isEmpty) return '（暂无）';
+      return picked.map((f) => '· ${f.fact}').join('\n');
+    }
+
+    final topFactsText = topFactsForChoices();
+
     // 近期 NPC：
     //  - 必须 introduced=true（剧情中正式认识/互动过）才会出现。
     //  - 不再用「好感绝对值≥10」作为筛选——开局NPC全被塞了0~15随机好感，会导致"还没见过面就+14"伪造。
     //  - 最多 8 个（12→8），避免 token 被NPC池污染。
     //  - P1-1 新增：同时注入「人设3关键词 / 说话风格」，防止选项AI写出"斯内普热情邀你一起吃零食"这种 OOC 选项。
-    final nearbyNpcList = npcRegistry.values.where((n) => n.introduced).take(8).toList();
+    // 以前这里直接 `.where(introduced).take(8)`——拿的是注册表插入顺序的前 8 个，
+    // 1991 时代恒为「邓布利多、麦格、斯内普、海格、弗立维、斯普劳特、霍琦、特里劳妮」。
+    // 结果无论你在禁林、在宿舍还是在厕所，四个选项里总有一个是"去找邓布利多"。
+    // 现在按「先同场景、再关系深浅」排序：此刻跟你站在一起的人优先，
+    // 其次是交情最深的（好感绝对值大的，含记恨的仇人——他们同样值得出现在选项里）。
+    final currentLocLower = (worldState.currentLocation ?? '').toLowerCase();
+    final nearbyNpcList = npcRegistry.values.where((n) => n.introduced).toList()
+      ..sort((a, b) {
+        final aHere = a.currentLocation.toLowerCase() == currentLocLower ? 0 : 1;
+        final bHere = b.currentLocation.toLowerCase() == currentLocLower ? 0 : 1;
+        if (aHere != bHere) return aHere.compareTo(bHere);
+        return b.affection.abs().compareTo(a.affection.abs());
+      });
+    final nearbyNpcList8 = nearbyNpcList.take(8).toList();
     String nearbyNpcsFormat(NPC n) {
       final stage = n.affection >= 60
           ? '挚友'
@@ -1018,7 +1058,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       final traits = (n.personality.isNotEmpty ? n.personality.take(3).join('/') : '沉稳/含蓄/有礼貌');
       return '${n.name}(好感${n.affection >= 0 ? '+' : ''}${n.affection}·$stage｜人设:$traits)';
     }
-    final nearbyNpcs = nearbyNpcList.map(nearbyNpcsFormat).join('、');
+    final nearbyNpcs = nearbyNpcList8.map(nearbyNpcsFormat).join('、');
 
     // P1-1 轻度 OOC 软提醒：上回合有 warn 级违规时，给选项 AI 一段温和提醒（不打回，只提示修正风格）
     final prevViolations = worldState.consistencyViolations
@@ -1077,7 +1117,7 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
   ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
   【T0 核心事实（选项不能违背）】
-  ${memory.keyFacts.where((f) => f.importance >= 4).map((f) => '· ${f.fact}').take(10).join('\n')}
+  $topFactsText
 
 $kChoiceQualityChecklist
 $kChoicePromptSuffix''';

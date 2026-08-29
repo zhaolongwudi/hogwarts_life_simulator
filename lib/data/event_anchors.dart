@@ -24,6 +24,11 @@ class EventAnchor {
   /// 适用时代；null = 所有时代通用
   final String? era;
 
+  /// 排除的时代。用于「几乎所有时代都该发生，但某几个不该」的情况——
+  /// 比如开学宴会上「邓布利多式校长致辞」：1892 年他还只是一年级新生，
+  /// 2020 年他已逝世多年，这两个时代不能有。
+  final List<String> excludedEras;
+
   /// 触发当日允许的时段（小时，闭区间）；均为null则不限制
   final int? minHour;
   final int? maxHour;
@@ -42,6 +47,7 @@ class EventAnchor {
     required this.month,
     this.grade,
     this.era,
+    this.excludedEras = const [],
     this.minHour,
     this.maxHour,
     this.requiredLocation,
@@ -145,14 +151,22 @@ const List<EventAnchor> eventAnchors = [
     id: 'g4_oct_tournament_rumor',
     month: 10,
     grade: 4,
+    // 三强争霸赛 1792 年因死亡事故停办，直到 1994-95 学年才恢复。
+    // harry_same 时代开局 1991 年，四年级正好是 1994 年——只有这个时代
+    // 的玩家赶得上。其余时代（1892 / 1971 / 1976 / 2020）听到三强争霸赛
+    // 传闻都是穿帮。
+    era: 'harry_same',
     title: '校际赛事传闻',
     directive:
-        '近期校园流传校际魔法赛事/三强争霸赛类大型活动的传闻（可视时代调整形式）。描写学生们的猜测、跃跃欲试与畏惧。玩家可作为候选被讨论，但不应自动入选。',
+        '近期校园流传三强争霸赛即将恢复举办的传闻。描写学生们的猜测、跃跃欲试与畏惧。玩家可作为候选被讨论，但不应自动入选。',
   ),
   EventAnchor(
     id: 'g4_dec_yule',
     month: 12,
     grade: 4,
+    // 圣诞舞会是三强争霸赛的配套活动，原著里只有 1994-95 那一届。
+    // 和三强争霸赛传闻绑在同一个时代。
+    era: 'harry_same',
     title: '圣诞舞会',
     directive:
         '圣诞舞会临近：邀请舞伴成为校园头等大事。描写玩家的舞伴抉择（可与其恋爱/暧昧状态联动）、礼服准备与舞会当晚的氛围。',
@@ -233,8 +247,11 @@ const List<EventAnchor> eventAnchors = [
     id: 'common_sep_feast',
     month: 9,
     title: '开学宴会',
+    // 1892（dumbledore）时代邓布利多自己还是一年级新生，
+    // 2020（post_war）时代他已逝世二十多年。这两个时代不能让「校长」致辞。
+    excludedEras: const ['dumbledore', 'post_war'],
     directive:
-        '开学宴会氛围：分院帽之歌、校长致辞、级长巡视。可安排邓布利多式校长致辞中的微妙暗示。',
+        '开学宴会氛围：分院帽之歌、校长致辞、级长巡视。可安排校长致辞中的微妙暗示（致辞者须是当代在任校长）。',
   ),
   EventAnchor(
     id: 'common_oct_halloween',
@@ -334,6 +351,7 @@ List<EventAnchor> anchorsFor({
     if (firedIds.contains(a.id)) continue;
     if (a.grade != null && a.grade != grade) continue;
     if (a.era != null && a.era != era) continue;
+    if (a.excludedEras.contains(era)) continue;
     // 时段门槛：防止特快刚发车(10:45)就被要求描写"抵达霍格莫德"（正常应12-15点抵达）
     if (!_hourWindowHit(a, winFrom, winTo)) continue;
     // 位置门槛：锚点要求在特定场景才触发。

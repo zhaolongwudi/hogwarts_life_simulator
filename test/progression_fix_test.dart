@@ -2186,7 +2186,10 @@ void _saveLoadGroup() {
 
       final written = RegExp(r"'([a-z_]+)':").allMatches(write!.group(1)!)
           .map((m) => m.group(1)!).toSet();
-      expect(written, hasLength(11), reason: '存档字段数变了，读取侧要同步检查');
+      // 11 = 叙事/统计字段 + long_term_memory；
+      // +7 = 每日限额与一次性状态（决斗/禁林/委托板/NPC 配额）。
+      //      这几项不入档时「打满 3 场 → 存档 → 读档」又能打 3 场。
+      expect(written, hasLength(18), reason: '存档字段数变了，读取侧要同步检查');
       for (final key in written) {
         expect(load!.group(1)!, contains("extraData['$key']"),
             reason: '存档写了 $key，读档没读它——存了等于没存');

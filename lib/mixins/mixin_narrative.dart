@@ -23,6 +23,14 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
 
+    // 并发守卫。UI 侧三处入口是在 build 时把 isLoading 固化进 onTap 的，
+    // 而 onTap 要从「可点」变成「不可点」得等下一帧重建——同一帧内连点两下
+    // 就会进来两次。后果不是丢一次请求那么简单：turnCount +2、
+    // 两个 AI 请求同时在飞、advanceTimeForAction 和 updateNPCsFromAction
+    // 各结算两遍（时间/精力/被动好感都翻一番），最后返回慢的那个覆盖
+    // currentNarrative，玩家看到剧情倒退。
+    if (isLoading) return;
+
     // 本地指令解析
     final action = choice.action.trim();
     if (action.startsWith('/')) {
@@ -189,16 +197,24 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       //      → 跳过阈值从 12 条放宽到 30 条，给模型更多参考
       if (narrativeSummary.isNotEmpty) {
         final structuredCount = t0.length + t1.length;
-        if (structuredCount < 30) {
-          // 2026-08-23：200→600 字，给长线剧情更多参考
-          final trimmedSummary = narrativeSummary.length > 600
-              ? '${narrativeSummary.substring(0, 600)}…'
-              : narrativeSummary;
-          // 强约束：只当"关系和转折"参考，严格禁止基于此生成当前回合选项/场景
-          contextBuffer.write('【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n');
-        } else {
-          // T4 跳过注入日志已移除
-        }
+        // 以前这里是「结构化事实少于 30 条才注入，否则整段不注入」。
+        // 而 t0 数的是**未截断**的 importance≥4 事实：开局 10 条，
+        // 每 15 回合一次摘要、每次最多 10 条，三次摘要后就稳稳超过 30，
+        // 于是从中期开始 narrativeSummary 永久不再进入 prompt——
+        // 摘要任务照样每 15 回合跑一次，结果却从来没人读。
+        // 整段剧情脉络（谁跟谁好上了、结了什么怨、许过什么诺）只剩碎片。
+        //
+        // 改成按量给：事实越多，摘要给得越短，但永远不归零。
+        final budget = structuredCount < 30
+            ? 600
+            : structuredCount < 60
+                ? 400
+                : 250;
+        final trimmedSummary = narrativeSummary.length > budget
+            ? '${narrativeSummary.substring(0, budget)}…'
+            : narrativeSummary;
+        // 强约束：只当"关系和转折"参考，严格禁止基于此生成当前回合选项/场景
+        contextBuffer.write('【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n');
       }
 
       // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
@@ -487,6 +503,16 @@ $kNarrativeWritingRules
         applyNarrativeSideEffects(finalResponseText);
       }
 
+      // ====== 每回合周期性结算（原先只挂在 parseResponse 里 = 只在开局跑一次）======
+      // parseResponse 的唯一调用点是 generateOpeningScene()，正常回合走的是
+      // parseNarrativeOnly + applyNarrativeSideEffects，那边从来不调这些检查，
+      // 于是「NPC 主动表白」「世界线变动率增长」两套系统在整局游戏里都是死的。
+      // 这里改在每回合叙事定稿后执行，且必须早于选项生成：
+      // checkNPCConfessions 会改写 currentNarrative 并给出「接受/婉拒」专属选项，
+      // 被 AI 的 4 个通用选项覆盖掉的话，玩家就看不到对方面红耳赤地站在面前了。
+      final bool confessedThisTurn = _maybeTriggerConfession();
+      _tickWorldLineDeviation();
+
       // 从叙事文本中提取新地点并同步 currentLocation
       // 这是「场景推进」的闭环：AI 写了换场景 → 状态同步 → 停滞计数清零
       // 否则 currentLocation 永远停在初始值，AI 会以为玩家还在原地
@@ -500,19 +526,26 @@ $kNarrativeWritingRules
       // 注意：从 2026-08-23 起「写作要求」明确禁止主叙事 AI 输出选项，
       //       因此即使叙事响应里意外夹带了 ABCD（来自 T4 旧摘要污染），
       //       也绝对不再读入到选项里——否则会出现"海格/巨怪"等过期内容。
-      loadingStage = '正在生成选项...';
-      notifyListeners();
-
-      // ---- 选项端也跑一次禁止词 & OOC软提示（轻微的OOC不会打回，改 prompt 软提醒）----
-      final separateChoices = await generateChoicesSeparately(currentNarrative);
-      if (separateChoices.isNotEmpty) {
-        choices = separateChoices;
+      if (confessedThisTurn) {
+        // 表白已就位：checkNPCConfessions 内部写入了专属的「接受/婉拒」两个选项，
+        // 此时再让 AI 生成 4 个通用选项会把这个抉择冲掉。
+        loadingStage = '';
+        notifyListeners();
       } else {
-        // 独立选项生成失败时：直接走与超时同一套「末尾800字承接型」兜底，
-        // 彻底弃用 generateContextualFallbackChoices（它会按关键词匹配出"仔细查看"这种简易选项，
-        // 玩家点击后AI拿到与剧情结尾无关的动作，造成"刚生成的剧情没操作就被另一个剧情替换"的断链）。
-        debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
-        choices = buildFallbackChoices(currentNarrative);
+        loadingStage = '正在生成选项...';
+        notifyListeners();
+
+        // ---- 选项端也跑一次禁止词 & OOC软提示（轻微的OOC不会打回，改 prompt 软提醒）----
+        final separateChoices = await generateChoicesSeparately(currentNarrative);
+        if (separateChoices.isNotEmpty) {
+          choices = separateChoices;
+        } else {
+          // 独立选项生成失败时：直接走与超时同一套「末尾800字承接型」兜底，
+          // 彻底弃用 generateContextualFallbackChoices（它会按关键词匹配出"仔细查看"这种简易选项，
+          // 玩家点击后AI拿到与剧情结尾无关的动作，造成"刚生成的剧情没操作就被另一个剧情替换"的断链）。
+          debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
+          choices = buildFallbackChoices(currentNarrative);
+        }
       }
       // BUG-N 追踪：记录最终设置到Provider的选项
       // processChoice最终选项日志已移除
@@ -825,6 +858,46 @@ $kNarrativeWritingRules
     }
   }
 
+  /// 给自动提取的事实打重要性分。
+  ///
+  /// 这个分数决定它在 [LongTermMemory.maxKeyFacts]（100 条）容量溢出时的存亡。
+  /// 一律给 7 分的话，「你杀了一个人」和「今天魔药课拿了优秀」权重相同，
+  /// 而前者到毕业那天都还在影响剧情，后者一周后就没人提了。
+  ///
+  /// 9 分及以上在淘汰时被永久豁免（见 addKeyFact），所以这里只对真正
+  /// 不可逆、改写人生走向的事实给 9 分。
+  int importanceForFact(String fact) {
+    // 不可逆的重大变故 / 关系质变：永不淘汰
+    const critical = [
+      '死了', '死亡', '死去', '杀害', '杀死', '谋杀', '遇害', '殉职', '阵亡',
+      '复仇', '血债', '命债',
+      '订婚', '结婚', '婚礼', '婚约', '离婚', '分手', '决裂',
+      '背叛', '出卖', '告密', '倒戈',
+      '食死徒', '凤凰社', '加入', '宣誓', '誓言', '立誓', '效忠',
+      '通缉', '逃亡', '除名', '开除', '驱逐', '流放', '阿兹卡班',
+      '怀孕', '分娩', '出生', '孩子', '子女',
+      '不可饶恕', '魂器', '黑魔标记', '继承人', '遗书', '遗嘱',
+    ];
+    // 有分量但仍在剧情中层：可以被更早的同类挤掉
+    const notable = [
+      '表白', '交往', '恋人', '暧昧', '亲吻', '初吻',
+      '决斗', '重伤', '住院', '中毒', '诅咒',
+      '魁地奇', '队长', '冠军', '学院杯',
+      '学会', '掌握', '精通', '毕业', '留级', '跳级',
+      '抄写', '禁闭', '扣分', '嘉奖', '表彰',
+      '开店', '买下', '继承', '破产',
+      '搬家', '转学', '退学', '复学',
+      '发现了', '得知', '秘密', '真相',
+    ];
+    for (final w in critical) {
+      if (fact.contains(w)) return 9;
+    }
+    for (final w in notable) {
+      if (fact.contains(w)) return 7;
+    }
+    return 5; // 日常流水，容量吃紧时最先被淘汰
+  }
+
   /// 从摘要响应中提取结构化记忆块，写入 LongTermMemory
   void _extractMemoryFromSummary(String rawSummary) {
     final ts = worldState.time.format();
@@ -844,7 +917,10 @@ $kNarrativeWritingRules
         memory = memory.addKeyFact(KeyFactRecord(
           id: factId,
           fact: fact.length > 80 ? fact.substring(0, 80) : fact,
-          importance: 7, // 摘要提取的事实默认重要度7（低于身份级9，高于日常5）
+          // 以前一律给 7 分，导致 importance 这个字段在淘汰时完全失去区分度：
+          // 100 条容量溢出时按分数排等于按插入顺序排，最早发生的事先被冲掉。
+          // 于是第 200 回合 AI 会忘了你早已订婚、早已结仇、早已立下过誓言。
+          importance: importanceForFact(fact),
           timestamp: ts,
           category: 'auto_extracted',
         ));
@@ -1115,6 +1191,44 @@ $kNarrativeWritingRules
 
   // 地点表在 lib/data/locations.dart（纯数据，测试和事件锚点校验都要用），
   // 归一化统一走 resolveLocationName，这里不再自己遍历别名。
+
+  /// 每回合尝试触发一次 NPC 主动表白，返回本回合是否真的表白了。
+  ///
+  /// 为什么单独抽成方法：checkNPCConfessions 原本只被 parseResponse 调用，
+  /// 而 parseResponse 只在开局 generateOpeningScene 里跑一次（那时 turnCount==0，
+  /// 连 `turnCount > 0` 的门槛都过不去）。正常回合走 parseNarrativeOnly +
+  /// applyNarrativeSideEffects，那条链上根本没有它——也就是说，好感 85+、暧昧、
+  /// 浪漫事件 2 次以上、暧昧满两周，四个条件全满足也永远不会有人来表白。
+  /// 恋爱系统的高潮（以及 CG-CF-001/002/003、first_confession、in_love 成就、
+  /// 整张 loveReputationEffects 声望表）全是死的。
+  bool _maybeTriggerConfession() {
+    final p = player;
+    if (p == null) return false;
+    // 已经有心事未了 / 正在等答复 / 名草有主，都不该再插一脚
+    if (p.loveState.awaitingConfession) return false;
+    if (p.loveState.status != '单身') return false;
+
+    // 沿用原先的节奏：每 5 回合查一次，或玩家这回合明显在跟人互动。
+    // 不每回合都查，一是省算力，二是表白来得太密会掉价。
+    final interactive = lastPlayerAction.contains(RegExp(
+        r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'));
+    if (turnCount > 0 && (turnCount % 5 != 0) && !interactive) return false;
+
+    final before = p.loveState.awaitingConfession;
+    checkNPCConfessions();
+    return !before && p.loveState.awaitingConfession;
+  }
+
+  /// 每 10 回合递增世界线变动率。
+  ///
+  /// 同样是从 parseResponse 里救出来的：原先只在开局那一回合 +0.005，
+  /// 之后整局恒为 0.5%，world_changer 成就（≥10%）永远拿不到，
+  /// 月度演化的「偏离加成」分支也永远进不去。
+  void _tickWorldLineDeviation() {
+    if (turnCount > 0 && turnCount % 10 == 0) {
+      incrementWorldLineDeviation(0.005);
+    }
+  }
 
   /// 从叙事文本中提取玩家当前所在地点，并同步到 worldState.currentLocation。
   /// 检查两处：1) 开头【地点】标签；2) 叙事末尾 200 字（确保玩家真的抵达）。

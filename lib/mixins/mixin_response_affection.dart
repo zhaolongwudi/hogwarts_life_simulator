@@ -9,8 +9,18 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
   /// 好感行必须带 +数字 / -数字。原先写在逐行扫描的循环里，每行都重新编译一次。
   static final RegExp _hasSignedNumber = RegExp(r'[+-]\d');
 
-  /// 好感行：「名字：+3」。逐行解析，原先每行现编译。
-  static final RegExp _affectionLineRe = RegExp(r'^(.*?)[:：]\s*([+-]?\d+)');
+  /// 好感行。逐行解析，原先每行现编译。
+  ///
+  /// 冒号是可选的——_fallbackAffectionScan 的注释一直声称支持「NPC名 +X」
+  /// 这种写法，但老正则强制要求半角/全角冒号，于是 AI 一旦漏掉冒号
+  /// （「赫敏 +3」「赫敏·格兰杰　+2」这种全角空格分隔），整行就静默漏解析，
+  /// 只能靠 _inferPassiveAffection 补一个 +1/+2，玩家感觉"好感涨得莫名其妙地慢"。
+  static final RegExp _affectionLineRe =
+      RegExp(r'^\s*(.*?)\s*(?:[:：]\s*)?([+＋-]?\d+)\s*$');
+
+  /// 倒装写法：「+3 赫敏」。AI 偶尔把数字写在名字前面。
+  static final RegExp _affectionLineReversedRe =
+      RegExp(r'^\s*([+＋-]?\d+)\s+(.{1,12}?)\s*$');
 
   /// 名字后面跟的括号备注（「赫敏（犹豫了一下）：+2」）要剥掉。
   static final RegExp _parenRemarkRe = RegExp(r'[（(].*?[）)]');
@@ -52,10 +62,21 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       for (final line in sectionText.split('\n')) {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
-        final match = _affectionLineRe.firstMatch(trimmed);
-        if (match == null) continue;
-        var npcName = match.group(1)!.trim();
-        var delta = int.tryParse(match.group(2)!) ?? 0;
+        var match = _affectionLineRe.firstMatch(trimmed);
+        var npcName = match?.group(1)?.trim() ?? '';
+        var deltaStr = match?.group(2) ?? '';
+        // 倒装（「+3 赫敏」）：名字与数字对调
+        if (match == null) {
+          final rev = _affectionLineReversedRe.firstMatch(trimmed);
+          if (rev != null) {
+            npcName = rev.group(2)!.trim();
+            deltaStr = rev.group(1)!;
+          }
+        }
+        if (npcName.isEmpty) continue;
+        // 全角加号/减号：AI 在中文语境里常写成「＋3」
+        deltaStr = deltaStr.replaceAll('＋', '+').replaceAll('－', '-');
+        var delta = int.tryParse(deltaStr) ?? 0;
         if (delta == 0 || npcName.isEmpty) continue;
         npcName = npcName.replaceFirst(_parenRemarkRe, '').trim();
         if (npcName.isEmpty) continue;

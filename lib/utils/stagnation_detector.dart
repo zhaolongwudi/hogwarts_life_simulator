@@ -13,6 +13,17 @@ class TransitionNode {
   final String? nextLocation;
   final bool? forceNextOnlyIfAnchorPresented; // true=等 AI 把过渡叙事写完后自然同步 location，不在这硬切
 
+  /// 在这些时代不触发（eraKey：dumbledore / marauders / first_war /
+  /// harry_same / post_war）。用于锚点里写死了某个只在特定年代存在的人物时。
+  final List<String> excludedEras;
+
+  /// 按 eraKey 替换 [transitionAnchor] 的文案。
+  ///
+  /// 开局链上「海格登门接你去对角巷」是 1991 年的经典桥段，但海格 1928 年
+  /// 才出生——1892 和 1971 时代他会凭空出现。这里给那些时代换一个
+  /// 当时确实在世的引导者。没列出的时代仍用默认文案。
+  final Map<String, String> eraAnchorOverrides;
+
   const TransitionNode({
     required this.id,
     required this.currentLocationPattern,
@@ -27,7 +38,13 @@ class TransitionNode {
     required this.transitionAnchor,
     this.nextLocation,
     this.forceNextOnlyIfAnchorPresented,
+    this.excludedEras = const [],
+    this.eraAnchorOverrides = const {},
   });
+
+  /// 取这个时代该用的锚点文案。
+  String anchorFor(String eraKey) =>
+      eraAnchorOverrides[eraKey] ?? transitionAnchor;
 }
 
 /// 封装后的"剧情停滞检测器"。
@@ -118,7 +135,19 @@ class StagnationDetector {
     final threshold = thresholdFor(currentLocation);
     final stuck = turnsAtSameLocation >= threshold;
 
-    if (stuck && !hasUnresolvedHook) return StagnationLevel.forced;
+    // 「有未决钩子就不强制推进」这条规则有个致命副作用：上面的钩子正则
+    // 在中文叙事里的命中率极高（「刚想」「就在这时」「注视着你」几乎每段都有），
+    // 于是 hasUnresolvedHook 恒为 true，forced 这一档永远走不到——
+    // 玩家在图书馆连着五六回合翻书、思考、又翻书，强制推进指令一次也没发过。
+    //
+    // 给未决钩子一个"宽限额度"：停留达到阈值 2 倍时，不管还有没有悬念
+    // 都强制推进。钩子本来就是一回合的事，卡两倍时长还收不了尾，
+    // 说明 AI 一直在原地打转。
+    final severelyStuck = turnsAtSameLocation >= threshold * 2;
+
+    if (severelyStuck || (stuck && !hasUnresolvedHook)) {
+      return StagnationLevel.forced;
+    }
 
     if (turnCount >= 1 &&
         turnCount <= 3 &&

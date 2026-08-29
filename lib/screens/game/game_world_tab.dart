@@ -79,8 +79,13 @@ class WorldTab extends StatelessWidget {
         Expanded(
           child: GestureDetector(
             onTap: () {
+              final name = gp.meetRandomNpc();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✨ 从收藏引入 NPC')),
+                SnackBar(
+                  content: Text(name == null
+                      ? '已经没有还没打过照面的人了'
+                      : '你在人群中注意到了 $name，你们算是认识了'),
+                ),
               );
             },
             child: Container(
@@ -95,7 +100,7 @@ class WorldTab extends StatelessWidget {
                 children: [
                   Icon(Icons.star_border, color: Theme.of(context).colorScheme.secondary, size: 18),
                   const SizedBox(width: 6),
-                  Text('从收藏引入', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('随机结识', style: TextStyle(fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -105,8 +110,16 @@ class WorldTab extends StatelessWidget {
         Expanded(
           child: GestureDetector(
             onTap: () {
+              final before = gp.npcRegistry.length;
+              gp.generateNewNPC();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✨ 新建 NPC')),
+                SnackBar(
+                  content: Text(gp.npcRegistry.length > before
+                      ? '新人物已加入这个世界，可在下方名单里找到'
+                      : gp.currentNarrative.isNotEmpty
+                          ? gp.currentNarrative
+                          : '本学年新人物已达上限（每学年最多 4 位）'),
+                ),
               );
             },
             child: Container(
@@ -136,6 +149,7 @@ class WorldTab extends StatelessWidget {
     return StatefulBuilder(
       builder: (context, setInnerState) {
         final collapsed = ValueNotifier<bool>(initiallyCollapsed);
+        final visibleCount = ValueNotifier<int>(15);
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
@@ -195,38 +209,43 @@ class WorldTab extends StatelessWidget {
                   valueListenable: collapsed,
                   builder: (context, isCollapsed, _) {
                     if (isCollapsed) return const SizedBox.shrink();
-                    final displayList = initiallyCollapsed
-                        ? npcs
-                        : (npcs.length > 15 ? npcs.take(15).toList() : npcs);
-                    return Column(
-                      children: [
-                        ...displayList.map((npc) => _buildNpcDetailCard(context, npc)),
-                        if (!initiallyCollapsed && npcs.length > 15)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-                            child: GestureDetector(
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('还有 ${npcs.length - 15} 位，可在剧情中结识后查看')),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '… 还有 ${npcs.length - 15} 人未显示',
-                                    style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
+                    // 名单默认只展示前 15 位。以前底部那句「还有 N 人未显示」
+                    // 点了只是把同一句话再弹一遍，没有任何展开入口——
+                    // 已登场人物超过 15 个之后，后一半人在这个页面永远看不到。
+                    return ValueListenableBuilder<int>(
+                      valueListenable: visibleCount,
+                      builder: (context, limit, _) {
+                        final displayList = initiallyCollapsed
+                            ? npcs
+                            : (npcs.length > limit ? npcs.take(limit).toList() : npcs);
+                        final remaining = npcs.length - displayList.length;
+                        return Column(
+                          children: [
+                            ...displayList.map((npc) => _buildNpcDetailCard(context, npc)),
+                            if (!initiallyCollapsed && remaining > 0)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                                child: GestureDetector(
+                                  onTap: () => visibleCount.value = limit + 20,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '… 还有 $remaining 人，点击展开',
+                                        style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        const SizedBox(height: 6),
-                      ],
+                            const SizedBox(height: 6),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),

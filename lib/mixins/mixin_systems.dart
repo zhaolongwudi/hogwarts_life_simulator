@@ -15,6 +15,7 @@ import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../data/balance_constants.dart';
 import '../data/goal_data.dart';
+import '../data/npc_schedule_rules.dart';
 import '../data/wand_data.dart';
 import '../services/ai_router.dart';
 import '../models/world_state.dart';
@@ -69,6 +70,13 @@ mixin GameSystemsMixin on GameProviderBase {
     worldState.dayOfMonth = worldState.time.day;
     worldState.dayOfWeek = GameTime.weekdays[worldState.time.weekday];
     worldState.month = GameTime.months[worldState.time.month - 1];
+
+    // NPC 位置刷新：时钟动了，人就该动。
+    // 不刷的话 npc.currentLocation 永远是构造时的 '霍格沃茨'，
+    // npcsInCurrentLocation() 的 contains 判定永远为假，prompt 里的【在场】
+    // 一行一次都出现不了。
+    refreshNpcLocations(npcRegistry.values, worldState.time.hour,
+        worldState.time.weekday);
 
     // 学年推进检测（9月1日触发）
     _checkSchoolYearTransition(oldMonth, oldYear);
@@ -128,6 +136,10 @@ mixin GameSystemsMixin on GameProviderBase {
     if (today != activityDate) {
       activityDate = today;
       dailyActivityCount.clear();
+      // 决斗对手的「同一天不能连着挑战同一个人」限制也得跟着跨天解除。
+      // 以前它只在 resetAllState 里清，于是打过马尔福之后，
+      // 之后任何一天再挑战他都会被拒，而提示语还写着「今天已经比过一场了」。
+      lastDuelOpponentId = null;
     }
   }
 
@@ -189,6 +201,89 @@ mixin GameSystemsMixin on GameProviderBase {
     final p = player;
     if (p == null || index < 0 || index >= p.parallelScenarios.length) return;
     p.parallelScenarios.removeAt(index);
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  // ==================== 人生目标的剧情牵引 ====================
+
+  /// 把玩家设定的人生目标拼成注入给 AI 的一行。
+  ///
+  /// LifeGoal.steeringHint 那段文案（「偏向傲罗方向成长：黑魔法防御、战斗声望」）
+  /// 写了整整 10 条，却从来没有任何一处读取它——/目标 只把目标**名字**存进
+  /// player.currentGoal，注入 prompt 时也只拼名字。AI 看到的是「傲罗」两个字，
+  /// 看不到那条牵引。目标因此是「存了但没牵引」。
+  String goalSteeringLine(String? goalName) {
+    if (goalName == null || goalName.isEmpty) return '';
+    final goal = goalByName(goalName);
+    if (goal == null) return goalName;
+    return '$goalName —— ${goal.steeringHint}';
+  }
+
+  // ==================== 魔法论坛 ====================
+  //
+  // 论坛页以前整页都是硬编码常量：五条署名赫敏/纳威的样板帖跟这局剧情毫无关系，
+  // 玩家自己发的帖只是往 Widget 的局部 List 里 insert，退出页面即丢，
+  // 点赞和回复数同理。现在玩家发的帖进 Player.forumPosts 随存档走。
+
+  /// 发一帖。返回新帖 id，失败返回 null。
+  String? addForumPost({
+    required String category,
+    required String content,
+  }) {
+    final p = player;
+    if (p == null) return null;
+    final text = content.trim();
+    if (text.isEmpty) return null;
+
+    final id = 'fp_${DateTime.now().microsecondsSinceEpoch}';
+    p.forumPosts.insert(
+      0,
+      ForumPost(
+        id: id,
+        category: category,
+        content: text,
+        author: p.name,
+        timeLabel: worldState.timestamp,
+      ),
+    );
+    // 只留最近 50 帖，避免存档无限膨胀
+    if (p.forumPosts.length > 50) {
+      p.forumPosts.removeRange(50, p.forumPosts.length);
+    }
+    notifyListeners();
+    unawaited(autoSave());
+    return id;
+  }
+
+  void removeForumPost(String id) {
+    final p = player;
+    if (p == null) return;
+    final before = p.forumPosts.length;
+    p.forumPosts.removeWhere((e) => e.id == id);
+    if (p.forumPosts.length == before) return;
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  void toggleForumPostLike(String id) {
+    final p = player;
+    if (p == null) return;
+    final post = p.forumPosts.where((e) => e.id == id).firstOrNull;
+    if (post == null) return;
+    post.liked = !post.liked;
+    post.likes += post.liked ? 1 : -1;
+    if (post.likes < 0) post.likes = 0;
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  void addForumPostComment(String id) {
+    final p = player;
+    if (p == null) return;
+    final post = p.forumPosts.where((e) => e.id == id).firstOrNull;
+    if (post == null) return;
+    post.comments += 1;
     notifyListeners();
     unawaited(autoSave());
   }
@@ -269,9 +364,17 @@ mixin GameSystemsMixin on GameProviderBase {
     return 7;
   }
 
-  /// 从当前日期跳到下一个第 [targetMonth] 月 1 日，需要多少天
+  /// 从当前日期跳到下一个第 [targetMonth] 月 1 日，需要多少天。
+  ///
+  /// 已经身处目标月份时返回 0——玩家要的就是「快进到暑假」，
+  /// 而 7 月里本来就在放暑假。
+  /// 老实现从 `t.month + 1` 起算，`targetMonth == t.month` 时 while 循环
+  /// 要绕满 12 个月才退出，于是 7 月里输「/快进 暑假」会一下跳掉约 351 天，
+  /// 整整一年就这么没了。
   int _daysUntilMonth(int targetMonth) {
     final t = worldState.time;
+    if (t.month == targetMonth) return 0;
+
     var days = _daysLeftInMonth(t.year, t.month, t.day) + 1; // 到次月1日
     var m = t.month + 1;
     var y = t.year;
@@ -651,6 +754,13 @@ mixin GameSystemsMixin on GameProviderBase {
     final p = player;
     if (p == null) return;
     final issues = <String>[];
+
+    // 通知栏以前只增不清：全项目 40 多处 notifications.add，唯一的清理点是
+    // resetAllState（只有「开新游戏」走得到）。长局内存无限增长，
+    // /通知 又只展示最近 10 条，多出来的永远看不见。这里裁到 50 条。
+    if (notifications.length > 50) {
+      notifications.removeRange(0, notifications.length - 50);
+    }
 
     // ====== 资源值钳制 ======
     p.health = p.health.clamp(0, 100);
@@ -1148,6 +1258,17 @@ mixin GameSystemsMixin on GameProviderBase {
         'total_tokens': totalTokens,
         // 千回合级结构化长期记忆（永不压缩的纯事实层）
         'long_term_memory': memory.toJson(),
+
+        // ↓↓↓ 每日限额与一次性状态。
+        // 这几项以前都不入档，于是「打满 3 场决斗 → 存档 → 读档」又能打 3 场，
+        // 禁林、练咒、学咒同理，打赢过的 NPC 读档后可以再打赢一次再拿 +2 好感。
+        'daily_activity_count': dailyActivityCount,
+        'activity_date': activityDate,
+        'last_duel_opponent_id': lastDuelOpponentId,
+        'quest_board_ids': questBoardIds,
+        'quest_board_week': questBoardWeek,
+        'npc_generated_this_school_year': npcGeneratedThisSchoolYear,
+        'npc_generation_school_year': npcGenerationSchoolYear,
       };
 
   /// 统一的存档写入：快速存档 / 命名存档 / 自动存档都走这里。
@@ -1203,6 +1324,31 @@ mixin GameSystemsMixin on GameProviderBase {
     // 在 player/worldState/npc 赋值之后再构建系统提示词（_buildSystemPrompt 会用到）
     systemPrompt = buildSystemPrompt();
 
+    // ====== 会话态字段复位 ======
+    // 这些字段以前只被 resetAllState 清（那条路只有「开新游戏」和设置页走），
+    // 读档时一个都不动。于是从 A 档切到 B 档，B 档会带着 A 档的：
+    // 今日决斗/禁林次数、刚打过的决斗对手、委托板板面、新 NPC 配额……
+    // 更隐蔽的是跨天清零用的 activityDate 也是 A 档的，跨天判定直接错乱。
+    // 这里统一先清成默认值，再让 extraData 覆盖——存档里有的用存档的，
+    // 没有的（老档）就保持「干净开局」，不会串味。
+    dailyActivityCount.clear();
+    activityDate = '';
+    lastDuelOpponentId = null;
+    questBoardIds = [];
+    questBoardWeek = 0;
+    npcGeneratedThisSchoolYear = 0;
+    npcGenerationSchoolYear = 0;
+    lastTrackedLocation = null;
+    turnsAtSameLocation = 0;
+    commandResult = null;
+    notifications.clear();
+    lastAffectionSections.clear();
+
+    // 读档后按当前时钟重新安排每个人的位置。存档里 NPC 带着
+    // currentLocation 字段，但老档里它恒为 '霍格沃茨'，刷新一次最稳。
+    refreshNpcLocations(npcRegistry.values, worldState.time.hour,
+        worldState.time.weekday);
+
     currentNarrative = data['narrative'] as String? ?? '';
     choices = (data['choices'] as List<dynamic>?)
         ?.map((c) => GameChoice(text: c['text'] as String, action: c['action'] as String))
@@ -1222,6 +1368,26 @@ mixin GameSystemsMixin on GameProviderBase {
     // 加载千回合级结构化长期记忆
     memory = LongTermMemory.fromJson(
         extraData['long_term_memory'] as Map<String, dynamic>?);
+
+    // 每日限额与一次性状态：老档没有这些键，读到 null 就保持上面清好的默认值
+    final savedDaily = extraData['daily_activity_count'] as Map<String, dynamic>?;
+    if (savedDaily != null) {
+      savedDaily.forEach((k, v) {
+        if (v is int) dailyActivityCount[k] = v;
+      });
+    }
+    activityDate = extraData['activity_date'] as String? ?? activityDate;
+    lastDuelOpponentId = extraData['last_duel_opponent_id'] as String?;
+    questBoardIds = (extraData['quest_board_ids'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        questBoardIds;
+    questBoardWeek = extraData['quest_board_week'] as int? ?? questBoardWeek;
+    npcGeneratedThisSchoolYear =
+        extraData['npc_generated_this_school_year'] as int? ??
+            npcGeneratedThisSchoolYear;
+    npcGenerationSchoolYear = extraData['npc_generation_school_year'] as int? ??
+        npcGenerationSchoolYear;
 
     recentTurns
       ..clear()

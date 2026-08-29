@@ -22,7 +22,12 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
   @override
   Widget build(BuildContext context) {
     final gp = context.watch<GameProvider>();
-    final npcs = gp.npcRegistry.values.where((n) => n.isAlive).toList()
+    // 只看认识的人。以前这里只过滤 isAlive，一进页面就是全部 70+ 个存活 NPC
+    // （含十几个 grade:0 的教职工），绝大多数好感恒为 0、从未登场；
+    // 而「魔法通讯」页是过滤 introduced 的，同一份数据在两处口径不一致。
+    final npcs = gp.npcRegistry.values
+        .where((n) => n.isAlive && n.introduced)
+        .toList()
       ..sort((a, b) => b.affection.compareTo(a.affection));
 
     return Scaffold(

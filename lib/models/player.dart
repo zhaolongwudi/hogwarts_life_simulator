@@ -87,6 +87,7 @@ class Player {
   final List<String> bloodRelatives; // 血缘亲属NPC名
   final List<Letter> letters; // 信件
   final List<String> rumors; // 舆论传闻
+  final List<ForumPost> forumPosts; // 玩家在魔法论坛发的帖（含点赞/回复计数）
   final List<String> traits; // 开局特质 id 列表
 
   // ====== 新玩法扩展字段（v1.10） ======
@@ -162,6 +163,7 @@ class Player {
     List<String>? bloodRelatives,
     List<Letter>? letters,
     List<String>? rumors,
+    List<ForumPost>? forumPosts,
     List<String>? traits,
     Map<String, String>? equipped,
     List<String>? bestiary,
@@ -198,6 +200,7 @@ class Player {
         bloodRelatives = List<String>.from(bloodRelatives ?? const []),
         letters = List<Letter>.from(letters ?? const []),
         rumors = List<String>.from(rumors ?? const []),
+        forumPosts = List<ForumPost>.from(forumPosts ?? const []),
         traits = List<String>.from(traits ?? const []),
         jobHistory = List<String>.from(jobHistory ?? const []),
         equipped = Map<String, String>.from(equipped ?? const {}),
@@ -303,6 +306,7 @@ class Player {
         'blood_relatives': bloodRelatives,
         'letters': letters.map((e) => e.toJson()).toList(),
         'rumors': rumors,
+        'forum_posts': forumPosts.map((e) => e.toJson()).toList(),
         'traits': traits,
         'political_tendency': politicalTendency,
         'equipped': equipped,
@@ -401,6 +405,10 @@ class Player {
                 .toList() ??
             [],
         rumors: List<String>.from(json['rumors'] ?? []),
+        forumPosts: (json['forum_posts'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(ForumPost.fromJson)
+            .toList(),
         traits: List<String>.from(json['traits'] ?? []),
         politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
         equipped: Map<String, String>.from(json['equipped'] ?? {}),
@@ -633,6 +641,57 @@ class ParallelScenario {
         description: json['description'] as String? ?? '',
         icon: json['icon'] as String? ?? '🎭',
         createdAt: json['created_at'] as String?,
+      );
+}
+
+/// 玩家在「魔法论坛」里发的一帖。
+///
+/// 旧实现把整个论坛做成了 Widget 里的硬编码常量：五条署名赫敏/纳威的样板帖，
+/// 跟这局剧情毫无关系却长得像真实内容；玩家自己发的帖只是 `_posts.insert(0, …)`，
+/// 退出页面即丢，点赞和回复数同理。现在玩家发的帖进 Player 随存档走，
+/// 而「世界传闻」那一栏改读 player.rumors —— 那是 AI 剧情里真实发生过的事。
+class ForumPost {
+  final String id;
+  final String category;
+  final String content;
+  final String author;
+  /// 发帖时刻的游戏内时间戳文案（如"1991年9月3日 傍晚"）。
+  final String timeLabel;
+  int likes;
+  int comments;
+  bool liked;
+
+  ForumPost({
+    required this.id,
+    required this.category,
+    required this.content,
+    required this.author,
+    required this.timeLabel,
+    this.likes = 0,
+    this.comments = 0,
+    this.liked = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'category': category,
+        'content': content,
+        'author': author,
+        'time_label': timeLabel,
+        'likes': likes,
+        'comments': comments,
+        'liked': liked,
+      };
+
+  factory ForumPost.fromJson(Map<String, dynamic> json) => ForumPost(
+        id: json['id'] as String? ?? '',
+        category: json['category'] as String? ?? '校园八卦',
+        content: json['content'] as String? ?? '',
+        author: json['author'] as String? ?? '匿名巫师',
+        timeLabel: json['time_label'] as String? ?? '',
+        likes: json['likes'] as int? ?? 0,
+        comments: json['comments'] as int? ?? 0,
+        liked: json['liked'] as bool? ?? false,
       );
 }
 

@@ -487,7 +487,7 @@ mixin GameRelationsMixin on GameProviderBase {
         '【爱情】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}\n'
         '【财富】${p.galleons}金加隆 · 银行${p.bankGalleons}\n'
         '【世界线变动率】${(p.worldLineDeviation * 100).toStringAsFixed(1)}%\n'
-        '【人生目标】${p.currentGoal ?? '未设定'}\n'
+        '【人生目标】${goalSteeringLine(p.currentGoal).isEmpty ? '未设定' : goalSteeringLine(p.currentGoal)}\n'
         '【声望】$repSummary\n'
         '【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}\n'
         '【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}\n';
@@ -1893,7 +1893,9 @@ mixin GameRelationsMixin on GameProviderBase {
     if (p == null) return;
     final rel = p.relationships[npc.id];
     if (rel != null) {
-      rel.level = npc.affection.clamp(0, 100);
+      // 好感度的量程是 −100~+100（记恨会打成负数），这里若截到 0~100，
+      // 「/查看」里就会出现「Lv.0 ｜ 好感 −40（反感）」这样自相矛盾的显示。
+      rel.level = npc.affection.clamp(-100, 100);
     }
   }
 

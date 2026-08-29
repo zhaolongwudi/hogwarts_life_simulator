@@ -322,9 +322,23 @@ class LongTermMemory {
     } else {
       list.add(record);
     }
-    // 超过上限则删 importance 最低的，但永远保留 importance >= 8 的
+    // 超过上限则删 importance 最低的，但永远保留 importance >= 8 的。
+    //
+    // 排序必须自己补上稳定的次级键：Dart 的 List.sort 不保证稳定性，
+    // 而同一批自动提取的事实 importance 常常全部相同（历史上清一色 7 分），
+    // 于是「这 60 条里到底进了哪 60 条」每次运行都可能不一样——
+    // 同一回合刷新一次记忆、或读一次档，AI 看到的"你经历过什么"就变了。
+    // 同分时按插入顺序倒序排（后写入的靠前），淘汰从尾部砍，
+    // 也就是优先保留近期发生的事。
     if (list.length > maxKeyFacts) {
-      list.sort((a, b) => b.importance.compareTo(a.importance));
+      final order = <KeyFactRecord, int>{
+        for (var i = 0; i < list.length; i++) list[i]: i,
+      };
+      list.sort((a, b) {
+        final c = b.importance.compareTo(a.importance);
+        if (c != 0) return c;
+        return (order[b] ?? 0).compareTo(order[a] ?? 0);
+      });
       while (list.length > maxKeyFacts) {
         final last = list.length - 1;
         if (list[last].importance >= 8) break; // 不能删核心事实
