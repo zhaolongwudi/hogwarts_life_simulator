@@ -400,7 +400,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
               '本回合结尾必须让玩家处于「正在前往/即将到达下一场景」的状态。\n\n',
         StagnationLevel.earlyGame =>
           '📌 【开局阶段】现在是「收到信 → 准备出发」这一段，本回合叙事请把玩家推向离家：'
-              '收拾行李、与家人道别、动身前往九又四分之三站台。不要让剧情继续停在$curLoc 原地打转。\n\n',
+              '收拾行李、与家人道别、动身前往对角巷采购入学用品（车站/九又四分之三站台要等 9 月 1 日开学当天才去）。'
+              '不要让剧情继续停在$curLoc 原地打转。\n\n',
         StagnationLevel.inProgress =>
           '💡 【剧情进行中】上一回合收尾留有未解决的冲突或悬念，本回合优先把它收掉；'
               '收尾之后请带出场景转换的趋势（例如"做完这件事便动身前往下一处"），'
@@ -1661,6 +1662,23 @@ $kNarrativeWritingRules
 
     if (detected == null) return; // 末尾没提到任何已知地点，不改
 
+    // 时间门：季节锁定的地点（车站/站台/特快/大礼堂）只在 9 月 1 日及之后才允许"抵达"，
+    // 与 runSceneTransitionGraph 的 minDateInt 对齐。日期未到就硬切地点会让剧情时间与日历对不上
+    // （例如 7 月 31 日收到信当晚就被叙事里的"明天踏入九又四分之三站台"切去车站）。
+    final dateInt = worldState.time.month * 100 + worldState.time.day;
+    final required = _seasonLockedMinDate.entries
+        .where((e) => detected!.contains(e.key))
+        .map((e) => e.value)
+        .fold<int?>(null, (p, v) => p == null ? v : (v > p ? v : p));
+    if (required != null && dateInt < required) {
+      worldState.addNarrativeEvent(
+        '⏱ 地点同步被时间门拦截：$detected（需 ${required ~/ 100}月${required % 100}日，'
+        '当前 ${worldState.time.month}月${worldState.time.day}日）',
+        turn: turnCount,
+      );
+      return; // 季节未到：保留上一地点，等 SceneTransitionGraph 在日期到了之后再走正常过渡
+    }
+
     // 若检测到的地点与当前不同，则更新并清零停滞计数
     if (detected != cur) {
       worldState.currentLocation = detected;
@@ -1700,9 +1718,25 @@ $kNarrativeWritingRules
   /// 这个正则原本写在 allMatches 循环内部，每个抵达动词都重编译一次。
   static final RegExp _sentenceBoundaryRe = RegExp(r'[。！？!?\n；;]');
 
-  /// 梦境/回忆/打算/假设：这类语境里的抵达不是真实移动，不能同步地点。
+  /// 梦境/回忆/打算/假设/未来：这类语境里的抵达不是"此刻真实移动"，不能同步地点。
+  /// 扩展未来时态（明天/下周/下次/即将…）以修复 BUG：叙事写"从明天踏入九又四分之三站台"
+  /// 会被当成已到达，导致 7 月 31 日当晚就把玩家硬切到国王十字车站，剧情时间与日历对不上。
   static final RegExp _nonActualContextRe = RegExp(
-      r'(梦里|梦中|梦见|梦境|幻想|想象|回忆|回想|想起|想起那时|仿佛|似乎|好像|如果|假如|要是|打算|计划|准备去|想要去|听说|据说|传闻)');
+      r'(梦里|梦中|梦见|梦境|幻想|想象|回忆|回想|想起|想起那时|仿佛|似乎|好像|如果|假如|要是|打算|计划|准备去|想要去|听说|据说|传闻|明天|后天|大后天|下周|下个星期|下次|将来|未来|即将|改天|过几天|几天后|几周后)');
+
+  /// 季节锁定地点 → 允许"抵达"的最早日期（MMDD）。
+  /// 与 runSceneTransitionGraph 的 minDateInt 保持一致：国王十字车站 / 九又四分之三站台 /
+  /// 霍格沃茨特快 / 大礼堂 均须 9 月 1 日（901）及之后——原作霍格沃茨特快 9 月 1 日才发车。
+  /// _syncLocationFromNarrative 此前绕过了这个时间门，是"7 月底人就到了车站"的根因。
+  static const Map<String, int> _seasonLockedMinDate = {
+    '国王十字': 901,
+    '九又四分之三': 901,
+    '站台': 901,
+    '特快': 901,
+    '列车': 901,
+    '大礼堂': 901,
+    '霍格沃茨·大礼堂': 901,
+  };
 
   List<GameChoice> _generateLocalSuggestions() {
     final location = worldState.currentLocation ?? '霍格沃茨';

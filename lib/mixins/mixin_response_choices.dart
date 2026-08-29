@@ -140,6 +140,10 @@ mixin GameResponseChoiceMixin on GameProviderBase {
       if (whitelist.contains(cand)) continue;
       // (2) 明显是叙述词/虚词（教授/夫人/小姐/先生/同学/新生/大家/他们...）→ 放行
       if (looksLikeNarrationWord(cand)) continue;
+      // (2.5) 显式常见名词/动词豁免：命中即直接放行，绝不当作"捏造NPC"。
+      //   这是针对 BUG（模型返回4个选项、UI只显示2个）的直接修复——选项里的
+      //   日常用词（晚餐/外套/真实/街道…）此前被误判为捏造NPC名，导致整个选项被丢弃。
+      if (_commonNounExemptions.contains(cand)) continue;
 
       // (3) 候选命中 npcRegistry 的全名或别名，但是 introduced=false → 说明这是"还没出场的已知角色"
       //     比如开局前几回合就写"去找斯内普"，玩家根本没见过 → 要丢弃
@@ -168,6 +172,12 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     if (RegExp(r'[仔细观察周围环境线索寻找练习检查尝试继续准备考虑决定选择告诉讨论商量确认提醒建议邀请帮助跟随收集整理收拾出发前往拜访搭话转身点头摇头沉默叹气微笑皱眉盯着望着低头抬头伸手举手放下拿起掏出插入抽出推开拉开站起坐下躺下靠在躲在藏在次遍趟件事情]').hasMatch(cand)) {
       return false;
     }
+    // 补充：一批日常名词/状态/方位/自然现象的高频字。
+    // 集合越全越保守——只会影响"放行"，不会放过真正的陌生NPC
+    // （陌生NPC的拦截由 choiceMentionsUnintroducedNpc 的 npcNameAll 判定负责）。
+    if (RegExp(r'[的了一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政十同如气日手行心学无发军只道意无力写局色平明认交林就晚饭早餐衣服鞋子街道小巷真实虚假隐瞒假装事情任务状态气息房间桌子椅子窗户灯光影子声音香味味道书本笔纸门墙屋顶楼楼梯台阶花园草地树林河流湖泊山川风雨雪冰火光黑暗明亮温暖寒冷饥饿口渴疲惫轻松紧张害怕担心期待惊喜失望愤怒悲伤快乐笑容眼泪目光手中怀里肩上脚下路边角落清晨黄昏傍晚深夜钟声脚步]').hasMatch(cand)) {
+      return false;
+    }
     return true;
   }
   static bool looksLikeNarrationWord(String s) {
@@ -186,6 +196,25 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     }
     return false;
   }
+
+  /// 常见名词/动词豁免表：这些 2~3 字词在选项文本里高频出现，
+  /// 命中即直接放行，不进入"捏造NPC名"判定。集合越全越保守，只会减少误杀。
+  static const Set<String> _commonNounExemptions = {
+    // 餐饮/衣物/物件
+    '晚餐', '早饭', '午饭', '夜宵', '早餐', '宵夜', '外套', '衣服', '裤子',
+    '鞋子', '围巾', '手套', '帽子', '书包', '书本', '铅笔', '钢笔', '纸张',
+    '桌子', '椅子', '窗户', '灯光', '影子', '声音', '香味', '味道', '房间',
+    '大门', '墙壁', '屋顶', '楼梯', '台阶', '花园', '草地', '树林', '河流',
+    // 方位/处所
+    '街道', '小巷', '小路', '路口', '角落', '路边', '脚下', '怀里', '肩上',
+    '门前', '窗前', '桌前', '床边',
+    // 状态/抽象
+    '真实', '虚假', '隐瞒', '假装', '事情', '任务', '状态', '气息', '目光',
+    '笑容', '眼泪', '脚步', '钟声', '清晨', '黄昏', '傍晚', '深夜', '黑暗',
+    '温暖', '寒冷', '饥饿', '疲惫', '紧张', '害怕', '担心', '期待', '惊喜',
+    '失望', '愤怒', '悲伤', '快乐', '轻松', '明亮', '风雨', '冰雪', '火光',
+  };
+
   bool standaloneNameMentioned(String text, String name) {
     if (name.isEmpty) return false;
     final escaped = RegExp.escape(name);
