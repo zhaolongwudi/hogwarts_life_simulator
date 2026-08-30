@@ -906,14 +906,18 @@ mixin GameCommandsMixin on GameProviderBase {
       return def.handler(ctx);
     }
 
-    // 未注册指令：给出可点选的近似指令，而不是把 "/状态统计" 当成自由行动发给 AI。
+    // 未注册指令：给出候选提示，但**不覆盖当前剧情**。
+    //
+    // choices 只留一条「返回」是为了命中 processChoice 的 isPanelOutput 判定：
+    // 命中后错误提示会进 commandResult 面板，而 currentNarrative / choices 被还原成
+    // 输入前的样子，玩家关掉面板即可接着玩。
+    // 早先这里把候选指令直接塞进 choices（3 条候选 + 1 条「查看全部指令」），
+    // 于是 isPanelOutput 判定失败，错误提示被当成事件类指令永久覆写剧情，
+    // 而玩家点任何一条候选都会继续触发新指令 —— 输错指令就等于丢掉当前一整段剧情。
+    // 候选指令仍写在提示正文里（_formatUnknownCommand 已逐条列出），信息没丢。
     if (cmd.startsWith('/')) {
       currentNarrative = _formatUnknownCommand(slashless);
-      choices = [
-        ..._suggestCommands(slashless).take(3).map(
-            (c) => GameChoice(text: '/${c.primary}', action: '/${c.primary}')),
-        GameChoice(text: '查看全部指令', action: '/帮助'),
-      ];
+      choices = [GameChoice(text: '返回', action: '继续')];
       return true;
     }
     return false;

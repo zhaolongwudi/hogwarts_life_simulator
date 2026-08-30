@@ -115,6 +115,31 @@ void main() {
       );
     });
 
+    test('未知指令不得覆盖当前剧情（choices 只留「返回」）', () {
+      // 回归：早先未知指令把 3 条候选 + 「查看全部指令」直接塞进 choices，
+      // processChoice 的 isPanelOutput 判定（choices.length == 1）因此失败，
+      // 错误提示被当成事件类指令永久覆写 currentNarrative，玩家输错一个指令
+      // 就丢掉当前一整段剧情，且没有任何回退入口。
+      final idx = commandsSrc.indexOf('_formatUnknownCommand(slashless)');
+      expect(idx, greaterThan(-1),
+          reason: '找不到未知指令分支，handleLocalCommand 结构可能已变');
+      final end = idx + 400 < commandsSrc.length ? idx + 400 : commandsSrc.length;
+      final tail = commandsSrc.substring(idx, end);
+
+      expect(
+        tail.contains("GameChoice(text: '返回', action: '继续')"),
+        isTrue,
+        reason: '未知指令的 choices 必须只保留「返回」，'
+            '这样 processChoice 才会把它识别为面板输出并还原原剧情',
+      );
+      expect(
+        tail.contains('_suggestCommands(slashless)'),
+        isFalse,
+        reason: '候选指令不得再塞进 choices —— 它会让 choices.length != 1，'
+            'isPanelOutput 判定失败，剧情再次被覆盖',
+      );
+    });
+
   // ==================== 别名可达性 ====================
   // handleLocalCommand 只拿第一个空格前的 token 去 registry.find，所以带空格
   // 的别名永远按不到；而别名撞上别的命令的 primary 时，find 先命中前者，后
