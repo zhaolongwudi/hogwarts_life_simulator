@@ -225,7 +225,7 @@ void main() {
   });
 
   group('AI 故障转移与熔断（P0-3）', () {
-    test('坏 Key 耗尽后切好 Key；第二次调用坏 Key 因熔断被直接跳过', () async {
+    test('坏 Key 失败后切好 Key；连续失败累计到阈值后因熔断被直接跳过', () async {
       final bad = await _FakeAiServer.start(
         status: 500,
         body: jsonEncode({'error': {'message': 'server error'}}),
@@ -253,23 +253,35 @@ void main() {
         },
       );
 
-      final first = await router.chatComplete(
-        scene: AiScene.narrative,
-        prompt: '第一次',
-      );
-      expect(first.content, '好');
-      expect(good.hits, 1);
-      // 坏 Key 走完自己的重试（3 次尝试）后让位
-      expect(bad.hits, 3);
+      // 有多个 Key 时不再重试同一把（把预算留给别的 Key，见 AiRouter
+      // .perKeyBudgetFor 的注释），坏 Key 每次被点到就只失败一次。
+      //
+      // 这里守的是**性质**，不是「第 i 次调用后坏 Key 正好被点 i 次」——
+      // 后者在锁死 _roundRobinIndex 的实现细节：轮询起点会轮换，好 Key
+      // 有时先上场，坏 Key 并不是每次调用都会被撞到。
+      var calls = 0;
+      while (bad.hits < AiRouter.circuitThreshold && calls < 20) {
+        calls++;
+        final r = await router.chatComplete(
+          scene: AiScene.narrative,
+          prompt: '第$calls 次',
+        );
+        expect(r.content, '好', reason: '坏 Key 失败后，好 Key 必须有机会上场');
+      }
+      expect(bad.hits, AiRouter.circuitThreshold,
+          reason: '每次失败都要真的记进熔断——记不进去，阈值永远达不到');
 
-      // 连续失败累计到阈值 → 熔断打开 → 第二次调用一次都不碰它
-      final second = await router.chatComplete(
-        scene: AiScene.narrative,
-        prompt: '第二次',
-      );
-      expect(second.content, '好');
-      expect(bad.hits, 3, reason: '熔断中的 Key 不该再被点卯');
-      expect(good.hits, 2);
+      // 熔断打开 → 之后无论轮询起点落在哪，一次都不再碰它。
+      // 连打 4 轮是为了覆盖两个轮询起点，避免「恰好没轮到它」造成的假绿。
+      final hitsBeforeCircuit = bad.hits;
+      for (var i = 0; i < 4; i++) {
+        final r = await router.chatComplete(
+          scene: AiScene.narrative,
+          prompt: '熔断后$i',
+        );
+        expect(r.content, '好');
+      }
+      expect(bad.hits, hitsBeforeCircuit, reason: '熔断中的 Key 不该再被点卯');
     });
   });
 

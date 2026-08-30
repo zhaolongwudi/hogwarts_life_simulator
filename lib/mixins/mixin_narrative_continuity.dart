@@ -292,7 +292,12 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       notifications.add('🔗 衔接桥：最近连续${worldState.continuityBridgeMisses}回合叙事衔接偏弱，已自动在开头补承接过渡句。若剧情仍有断裂感，请把 ai_log 贴给作者调参。');
       worldState.continuityBridgeMisses = 0; // 清 0，避免每次都刷屏
     }
-    debugPrint('🔗 ContinuityBridge 自动补承接: anchor=$a 插句长度=${bridgeSentence.length}');
+    // 热路径：每回合只要补了承接就会打一行。release 版照样往 stdout 写，
+    // 长局下来是纯 I/O 浪费，因此收进 kDebugMode（第八次审查 P2-4）。
+    if (kDebugMode) {
+      debugPrint(
+          '🔗 ContinuityBridge 自动补承接: anchor=$a 插句长度=${bridgeSentence.length}');
+    }
     return repaired;
   }
   /// 组装要注入给叙事/选项 AI 的断言 Prompt 块（统一格式，避免两端不一致）
@@ -854,7 +859,10 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       // （原文案是「（节点=$chosenId）」，一眼看出是程序变量）
       notifications.add('🧭 剧情推进：下一阶段衔接已为你安排');
       worldState.addNarrativeEvent('🧭 SceneGraph: 触发节点 $chosenId（turn=$t loc=$loc）', turn: t);
-      debugPrint('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
+      // 同样是每回合一次的热路径日志（同上，收进 kDebugMode）。
+      if (kDebugMode) {
+        debugPrint('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
+      }
     }
     if (chosenNextLocation != null && allowNextUpdate) {
       // 写入硬状态前先归一化：场景图节点里写的是「学院公共休息室」

@@ -61,11 +61,20 @@ class DeepSeekService {
 
   /// Dio 的接收超时（按提供商区分：SenseNova 慢一些）。
   ///
-  /// 必须小于路由层的单次调用预算（AiRouter._perCallTimeout），否则 Dio 永远
-  /// 等不到自己超时就被上层掐断，坏 Key 的判定全落在上层、日志上却看不出
-  /// 究竟是网关慢还是请求挂死。
+  /// 必须**大于**路由层的单次调用预算 [AiRouter.perCallTimeoutFor]，让路由层
+  /// 先掐断、Dio 这条只做兜底。以前两边各写各的数字（路由 35 秒、
+  /// SenseNova 60 秒），关系反了也没人发现：SenseNova 一挂住，永远是路由层
+  /// 先超时，Dio 那条 receiveTimeout 日志一次都不会出现，「网关慢」和
+  /// 「请求挂死」在日志上长得一模一样（第八次审查 P1-B）。
   static const Duration receiveTimeoutDefault = Duration(seconds: 45);
   static const Duration receiveTimeoutSensenova = Duration(seconds: 60);
+
+  /// [provider] 对应的 Dio 接收超时。路由层的全局预算也按 provider 取值，
+  /// 两边必须成对改，所以收口成一个函数而不是在构造函数里散着写三元。
+  static Duration receiveTimeoutFor(AiProvider provider) =>
+      provider == AiProvider.sensenova
+          ? receiveTimeoutSensenova
+          : receiveTimeoutDefault;
 
   /// 测试注入点。
   ///
@@ -82,9 +91,7 @@ class DeepSeekService {
               },
               connectTimeout: const Duration(seconds: 15),
               // SenseNova 6.8 Flash Lite 响应较慢（评测反馈），需要更长超时
-              receiveTimeout: config.provider == AiProvider.sensenova
-                  ? receiveTimeoutSensenova
-                  : receiveTimeoutDefault,
+              receiveTimeout: receiveTimeoutFor(config.provider),
             ));
 
   /// 规范化 baseUrl：去除末尾 /v1 前缀（因为 chatPath/balancePath 通常已经以 /v1/ 开头）
@@ -105,6 +112,24 @@ class DeepSeekService {
   static String normalizePath(String path) {
     if (path.startsWith('/')) return path;
     return '/$path';
+  }
+
+  /// 把 Dio 的响应体归一化成 Map；不是 JSON 对象就抛可重试异常。
+  ///
+  /// 服务商在免费/不稳定额度下可能返回 HTTP 200 但响应体是 HTML 错误页、
+  /// WAF 拦截页或网关占位页 —— 此时 response.data 不是 Map 而是 String。
+  /// 这类响应不是 DioException，一旦对它做下标访问就抛 NoSuchMethodError，
+  /// 绕过 on DioException 的归类，在 ai_router 里被当成不可重试的普通异常，
+  /// 直接把整个 Key 弃用。
+  ///
+  /// **chatComplete 与 checkConnection 必须共用这一个函数**：同一个文件、
+  /// 同一套 _dio、同一个端点，两条路径对畸形响应的处理不该有分歧。第七轮
+  /// 只给 chatComplete 加了防护，checkConnection 照旧崩——而玩家点「测试连接」
+  /// 的恰恰就是 AI 连不上、服务商返回错误页的那一刻（第八次审查 P1-A）。
+  static Map<String, dynamic> _decodePayload(Object? raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return raw.cast<String, dynamic>();
+    throw AiRetryableException('AI 返回了非 JSON 响应体（可能被网关拦截），请重试');
   }
 
   /// 本地区分不同 API Key 的限流桶标识。
@@ -157,22 +182,9 @@ class DeepSeekService {
         cancelToken: cancelToken,
       );
 
-      // 解析响应体。AI 服务商在免费/不稳定额度下可能返回 HTTP 200 但响应体是
-      // HTML 错误页、WAF 拦截页或网关占位页——response.data 不是 Map 而是 String。
-      // 这类响应不是 DioException，一旦在这里抛裸异常（NoSuchMethodError / RangeError）
-      // 就会绕过下方 on DioException 的归类，在 ai_router 里被当成不可重试的普通异常，
-      // 直接把整个 Key 弃用。所以这里统一做结构断言，任何畸形响应都归一为
-      // AiRetryableException，让路由层能正常重试/切 Key。
-      final Object? raw = response.data;
-      Map<String, dynamic>? payload;
-      if (raw is Map<String, dynamic>) {
-        payload = raw;
-      } else if (raw is Map) {
-        payload = raw.cast<String, dynamic>();
-      }
-      if (payload == null) {
-        throw AiRetryableException('AI 返回了非 JSON 响应体（可能被网关拦截），请重试');
-      }
+      // 任何畸形响应都归一为 AiRetryableException，让路由层能正常重试/切 Key
+      // （详见 _decodePayload 的注释）。
+      final payload = _decodePayload(response.data);
       final choices = payload['choices'];
       final first = (choices is List && choices.isNotEmpty) ? choices[0] : null;
       final message = (first is Map) ? first['message'] : null;
@@ -248,7 +260,13 @@ class DeepSeekService {
           'stream': false,
         }),
       );
-      return response.data['choices']?.isNotEmpty == true;
+      final payload = _decodePayload(response.data);
+      final choices = payload['choices'];
+      return choices is List && choices.isNotEmpty;
+    } on AiRetryableException catch (e) {
+      // 非 JSON 响应体：这是「连上了，但对端返回的不是 AI 响应」，
+      // 与网络不通是两回事，文案要能把人指向正确的方向。
+      throw Exception('${config.baseUrl} 返回的不是 JSON 响应（可能被网关拦截）：${e.message}');
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
       final body = e.response?.data;
@@ -295,7 +313,9 @@ class DeepSeekService {
     if (path == null) return null;
     try {
       final response = await _dio.get(normalizePath(path));
-      final data = response.data;
+      // 与 chatComplete / checkConnection 共用同一套结构断言：余额接口同样
+      // 可能返回 HTML 错误页。失败会被下面的 catch 降级成 null。
+      final data = _decodePayload(response.data);
 
       if (config.provider == AiProvider.deepseek) {
         final infos = data['balance_infos'] as List?;

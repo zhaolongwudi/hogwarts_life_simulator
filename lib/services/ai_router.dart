@@ -53,13 +53,62 @@ class AiRouter {
   // 请求作为半开试探，成功即清零恢复。
   static const int _circuitThreshold = 3;
   static const Duration _circuitCooldown = Duration(seconds: 60);
-  /// 单次 Key 调用的超时上限。必须比 Dio 的 receiveTimeout（45/60s）短——
-  /// 否则 Dio 永远等不到自己超时，坏 Key 的判定全落在这一层，"网关慢"和
-  /// "请求挂死"在日志上长得一样。专治"连不上也不报错、一直挂着"的坏 Key。
-  static const Duration _perCallTimeout = Duration(seconds: 35);
+
+  /// 熔断阈值与冷却窗口，公开给测试：用例不该自己抄一份 3 / 60s，
+  /// 否则调参时测试假红、不调参时又形同虚设。
+  static int get circuitThreshold => _circuitThreshold;
+  static Duration get circuitCooldown => _circuitCooldown;
+  /// 单次 Key 调用的超时上限，**按提供商区分**。
+  ///
+  /// 必须比该提供商的 Dio receiveTimeout 短——否则 Dio 永远等不到自己超时，
+  /// 坏 Key 的判定全落在这一层，"网关慢"和"请求挂死"在日志上长得一样。
+  ///
+  /// 以前这里是全局一刀切的 35 秒，而 Dio 层给 SenseNova 特化了 60 秒：
+  /// 35 < 60，那 60 秒**永远等不到**，「SenseNova 响应慢、需要更长超时」
+  /// 这个设计意图彻底落空（第八次审查 P1-B）。现在上下两层一起按 provider 取值。
+  static const Duration _perCallTimeoutDefault = Duration(seconds: 35);
+  static const Duration _perCallTimeoutSensenova = Duration(seconds: 50);
+
+  /// 测试注入点：覆盖单次调用超时。生产路径恒为 null。
+  ///
+  /// 注入时**必须保持与生产一致的相对关系**：服务端 delay > perCallTimeout、
+  /// 且 Dio 的 receiveTimeout > perCallTimeout。只想让测试跑得快而把超时调小，
+  /// 会把被测路径从「Dart timeout」悄悄换成「Dio timeout」——这两条路径在生产
+  /// 配置下行为完全相反，第七轮那 24 条行为测试正是这样集体放过了 P0。
+  static Duration? perCallTimeoutOverride;
+
+  static Duration perCallTimeoutFor(AiProvider provider) {
+    final override = perCallTimeoutOverride;
+    if (override != null) return override;
+    return provider == AiProvider.sensenova
+        ? _perCallTimeoutSensenova
+        : _perCallTimeoutDefault;
+  }
+
+  /// 所有 provider 里最长的单次调用超时。全局超时按它取上界，
+  /// 保证算出来的预算对任何 provider 都成立。
+  static Duration get _maxPerCallTimeout {
+    final override = perCallTimeoutOverride;
+    if (override != null) return override;
+    return _perCallTimeoutDefault > _perCallTimeoutSensenova
+        ? _perCallTimeoutDefault
+        : _perCallTimeoutSensenova;
+  }
+
   /// 每个 Key 最多重试几次（0 = 只尝试 1 次）。
-  static const int _maxRetriesPerService = 2;
-  /// 重试的指数退避基数：第 n 次重试等 n * 2s（2s / 4s）。
+  ///
+  /// 设为 **0** 是刻意的，不是偷懒。一旦允许重试，单个 Key 的最坏耗时就变成
+  /// perCallTimeout×(重试数+1)+退避：2 次重试是 50×3+6 = 156s，1 次也有 102s，
+  /// 而按这个预算倒推的全局超时在 summary 场景上限只有 60s、narrative 120s——
+  /// 容不下。于是第一个坏 Key 就能把时间吃光，后面的 Key 一次都轮不到，
+  /// 熔断也记不满（第七轮 P0-3 的老问题换个形式复发，第八次审查 P1-D）。
+  ///
+  /// 不重试之后，单 Key 预算恒等于一次 perCallTimeout，全局超时**在任何场景
+  /// 都真正容得下每个 Key**。容错交给另外两件事：切下一个 Key，以及熔断。
+  static const int _maxRetriesPerService = 0;
+  /// 重试的指数退避基数：第 n 次重试等 n * 2s。当前重试次数为 0，故恒为 0；
+  /// 保留它是为了让 [perKeyBudgetFor] 在调大重试次数时自动跟随，而不是去改
+  /// 一个写死的预算常数。
   static const int _retryBackoffMsStep = 2000;
 
   final Map<DeepSeekService, _KeyCircuit> _circuits = {};
@@ -88,15 +137,23 @@ class AiRouter {
     }
   }
 
-  /// 一个坏 Key 从第一次尝试到耗尽全部重试，最多要吃掉多少时间预算。
+  /// 一个坏 Key 从第一次尝试到放弃，最多要吃掉多少时间预算。
   ///
-  /// 只算「非超时」错误的退避重试：超时错误不再重试同一 Key（见
-  /// _callWithFallback），所以最坏情况就是 1 次 _perCallTimeout + 退避。
-  static Duration get _perKeyBudget =>
-      _perCallTimeout +
-      Duration(
-          milliseconds:
-              _retryBackoffMsStep * (_maxRetriesPerService * (_maxRetriesPerService + 1) ~/ 2));
+  /// 公式保持通用（重试次数与退避都是参数），当前 [_maxRetriesPerService] 为 0，
+  /// 所以它就等于一次 [_maxPerCallTimeout]。
+  ///
+  /// 以前这里按「只算 1 次超时 + 退避」得出 41s，而非超时错误其实还会重试
+  /// 2 次，真实最坏序列是 35+2+35+4+35 = 111s —— 预算公式与自己要估的东西
+  /// 差了 2.7 倍，据此倒推的全局超时（60s）根本容不下（第八次审查 P1-D）。
+  /// 现在公式与 [globalTimeoutFor] 用同一个参数算，两者不会再各说各话。
+  static Duration perKeyBudgetFor(int keyCount) {
+    final perCall = _maxPerCallTimeout;
+    final calls = _maxRetriesPerService + 1;
+    final backoff = Duration(
+        milliseconds: _retryBackoffMsStep *
+            (_maxRetriesPerService * (_maxRetriesPerService + 1) ~/ 2));
+    return perCall * calls + backoff;
+  }
 
   /// 全局超时必须按「实际配置的 Key 数」算，而不是写死一个 75 秒。
   ///
@@ -108,8 +165,9 @@ class AiRouter {
   /// 现在按 keyCount 给预算（每个 Key 一份 _perKeyBudget + 尾部余量），
   /// 再按场景 clamp 到上下限：玩家最多等 ceil 秒，但健康 Key 一定能轮到。
   static Duration globalTimeoutFor(AiScene scene, int keyCount) {
-    final raw = const Duration(seconds: 5) +
-        _perKeyBudget * (keyCount < 1 ? 1 : keyCount);
+    final keys = keyCount < 1 ? 1 : keyCount;
+    final raw =
+        const Duration(seconds: 5) + perKeyBudgetFor(keys) * keys;
     final floor = switch (scene) {
       AiScene.narrative => const Duration(seconds: 60),
       AiScene.choice => const Duration(seconds: 50),
@@ -191,7 +249,10 @@ class AiRouter {
       systemPrompt: systemPrompt,
     );
 
+    // cancelToken 是**整条调用链**的取消令牌，只有全局超时才会取消它。
+    // 单次尝试另有自己的令牌（见 _callWithFallback），两者通过 bridge 单向连通。
     final cancelToken = CancelToken();
+    final bridge = _CancelBridge();
     final future = _callWithFallback(
       primary: primary,
       prompt: prompt,
@@ -202,6 +263,7 @@ class AiRouter {
       scene: scene,
       callId: callId,
       cancelToken: cancelToken,
+      cancelBridge: bridge,
     );
 
     // 全局超时按「实际会尝试的 Key 数」动态算，而不是写死一个值——
@@ -216,6 +278,9 @@ class AiRouter {
         globalTimeout,
         onTimeout: () async {
           cancelToken.cancel('$label timeout');
+          // 内层每次尝试用的是自己的令牌，共享令牌取消不到它——必须显式
+          // 转发一次，否则全局超时之后那次请求还在后台继续跑、占着连接。
+          bridge.cancelCurrent();
           await AiDebugLogger.instance.logComplete(
             callId: callId,
             timestamp: DateTime.now().toIso8601String(),
@@ -252,30 +317,22 @@ class AiRouter {
     AiScene? scene,
     String? callId,
     CancelToken? cancelToken,
+    _CancelBridge? cancelBridge,
   }) async {
-    // 检查缓存
-    if (useCache) {
-      final cached = _responseCache.get(
+    // 缓存键必须带上「生成者身份」（provider + model）：否则玩家在设置页把模型
+    // 从 A 换成 B 之后，5 分钟 TTL 内同一 prompt 会命中 A 的输出——
+    // 「换了模型，内容一个字没变」（第八次审查 P1-F）。
+    // 因此缓存读写下沉到每个 Key：不同 Key 可能配着不同 model，各用各的缓存。
+    String? cacheLookup(AiProvider provider, String model) {
+      if (!useCache) return null;
+      return _responseCache.get(
         prompt,
         systemPrompt: systemPrompt,
         temperature: temperature,
         maxTokens: maxTokens,
+        provider: provider.name,
+        model: model,
       );
-      if (cached != null) {
-        final cacheSceneLabel = scene?.toString().split('.').last ?? 'unknown';
-        await AiDebugLogger.instance.logComplete(
-          callId: callId,
-          timestamp: DateTime.now().toIso8601String(),
-          scene: cacheSceneLabel,
-          provider: getProviderLabel(primary),
-          action: 'CACHE',
-          responsePreview: cached,
-        );
-        return ChatResult(
-          content: cached,
-          usage: TokenUsage(promptTokens: 0, completionTokens: 0, totalTokens: 0),
-        );
-      }
     }
 
     // 候选提供商列表：primary 优先，随后按 fallbackOrder 去重。
@@ -294,9 +351,14 @@ class AiRouter {
         .where((p) => (_services[p]?.length ?? 0) > 0)
         .toList(growable: false);
 
-    // 每个 key 最多重试 2 次（共 3 次尝试）。只对「快速失败」的错误重试，
-    // 超时直接换 Key —— 见下面 catch 里的说明。
+    // 同一把 Key 的重试次数。当前为 0 —— 一把 Key 一次调用只点一次，失败就让位
+    // 给下一个 Key。原因：重试会把单 Key 最坏耗时翻倍，让 perKeyBudget 失去
+    // 意义（第八次审查 P1-D）。改这个值前请先看 [perKeyBudgetFor] 的注释。
     const maxRetriesPerService = _maxRetriesPerService;
+
+    // 整条链上一共几个 Key。只有「没别人可切」时才值得退避重试同一把。
+    final totalKeyCount =
+        attempted.fold<int>(0, (n, p) => n + (_services[p]?.length ?? 0));
 
     Object? lastError;
     for (final provider in attempted) {
@@ -312,37 +374,72 @@ class AiRouter {
             ? service.config.apiKey.substring(0, 8)
             : service.config.apiKey;
 
+        // 命中缓存就直接返回，不再发请求
+        final cached = cacheLookup(provider, service.config.model);
+        if (cached != null) {
+          final cacheSceneLabel = scene?.toString().split('.').last ?? 'unknown';
+          await AiDebugLogger.instance.logComplete(
+            callId: callId,
+            timestamp: DateTime.now().toIso8601String(),
+            scene: cacheSceneLabel,
+            provider: '${getProviderLabel(provider)}[$keyHash]',
+            action: 'CACHE',
+            responsePreview: cached,
+          );
+          return ChatResult(
+            content: cached,
+            usage: const TokenUsage(
+                promptTokens: 0, completionTokens: 0, totalTokens: 0),
+          );
+        }
+
         for (var attempt = 0; attempt <= maxRetriesPerService; attempt++) {
           if (_circuitOpen(service)) {
             // 熔断中的 Key 直接跳过，不再点卯
             debugPrint('⚠️ ${provider.name}[$keyHash] 熔断中，跳过');
             break;
           }
+          // 每次尝试用**自己的** CancelToken。以前整条 Key 链共用一个 token，
+          // 单 Key 超时取消的是那个共享 token，于是下面 catch 里的
+          // `isCancelled → rethrow` 会直接跳出三层循环：不切下一个 Key、
+          // 不记熔断，还抛出「已切换 Key」的假消息——而 perCallTimeout
+          // 恒小于 receiveTimeout 决定了生产环境**任何**真实超时都必然走这条
+          // 路径（第八次审查 P0）。
+          final callToken = CancelToken();
+          cancelBridge?.attach(callToken);
           try {
             // 限流闸门在 DeepSeekService.chatComplete 内部（_acquireSlot），
             // 这里不要再加一层，否则同一个 Key 会被两道互不知情的闸门串着等。
-            // 单 Key 级超时：坏 Key 挂死时不拖到全局超时，在这里掐断并切下一个。
+            final perCallTimeout = perCallTimeoutFor(provider);
             final result = await service
                 .chatComplete(
                   prompt: prompt,
                   systemPrompt: systemPrompt ?? '',
                   temperature: temperature,
                   maxTokens: maxTokens,
-                  cancelToken: cancelToken,
+                  cancelToken: callToken,
                 )
                 .timeout(
-                  _perCallTimeout,
+                  perCallTimeout,
                   onTimeout: () {
                     // 掐断的同时也要撤掉底层请求：以前只 throw 不 cancel，
                     // 那次请求还在后台占着连接继续跑，等它自己收到响应才停。
-                    cancelToken?.cancel('per-call timeout');
+                    // 现在只取消**这一次**的 token，共享 token 不受影响，
+                    // 下面的 catch 才会走正常的「记失败 + 切下一个 Key」。
+                    callToken.cancel('per-call timeout');
+                    // 秒取整会把测试注入的亚秒超时显示成「0秒」，
+                    // 日志里看着像配置没生效，所以短于 1 秒就报毫秒。
+                    final budget = perCallTimeout.inSeconds >= 1
+                        ? '${perCallTimeout.inSeconds}秒'
+                        : '${perCallTimeout.inMilliseconds}毫秒';
                     throw AiRetryableException(
-                        '单次 AI 请求超时（${_perCallTimeout.inSeconds}秒），已切换 Key',
+                        '单次 AI 请求超时（$budget）',
                         isTimeout: true);
                   },
                 );
+            cancelBridge?.detach(callToken);
             _recordSuccess(service);
-            // 缓存成功响应
+            // 缓存成功响应（带上这把 Key 的 provider/model，见上面 cacheLookup）
             if (useCache) {
               _responseCache.set(
                 prompt,
@@ -350,6 +447,8 @@ class AiRouter {
                 systemPrompt: systemPrompt,
                 temperature: temperature,
                 maxTokens: maxTokens,
+                provider: provider.name,
+                model: service.config.model,
               );
             }
             final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
@@ -366,6 +465,13 @@ class AiRouter {
             );
             return result;
           } catch (e) {
+            cancelBridge?.detach(callToken);
+            // 只有**全局超时**（共享 token 被取消）才放弃整条链往上抛。
+            //
+            // 单次超时 / 请求失败一律按「这把 Key 不行」处理：记账 + 切下一个。
+            // 以前这里看的是共享 token，而 per-call 超时取消的恰恰就是共享
+            // token，于是每一次超时都 rethrow —— 后面健康的 Key 一次都不试、
+            // _recordFailure 也永远执行不到，熔断计数涨不上去（P0 的三条后果）。
             if (cancelToken?.isCancelled == true) {
               rethrow;
             }
@@ -375,12 +481,11 @@ class AiRouter {
             // 可重试错误且还有重试机会：指数退避后重试同一 key。
             //
             // 但**超时不重试**：对端这会儿就是慢，再试一次只会再吃满一个
-            // 35 秒窗口。以前 3 次尝试 = 35+2+35+4+35 = 111 秒，比全局 75 秒
-            // 还长——第一个坏 Key 就能把整条链的时间耗光，后面的 Key 一次都
-            // 轮不到，_recordFailure 也记不满 3 次，熔断阈值永远达不到。
-            // 现在超时一次就换人，健康 Key 才有机会上场。
+            // perCallTimeout 窗口。有多个 Key 时连非超时错误也不重试——直接
+            // 换人，把预算留给别的 Key（理由见 perKeyBudgetFor 的注释）。
             final timedOut = e is AiRetryableException && e.isTimeout;
             if (!timedOut &&
+                totalKeyCount <= 1 &&
                 e is AiRetryableException &&
                 attempt < maxRetriesPerService) {
               final backoffMs = (attempt + 1) * _retryBackoffMsStep;
@@ -412,7 +517,15 @@ class AiRouter {
     }
 
     if (lastError != null) throw lastError;
-    throw AiNonRetryableException('所有AI服务均不可用');
+    // 能走到这里，说明所有候选 Key 都被跳过了（全部处在熔断冷却窗口）——这和
+    // 「一个 Key 都没配」是两回事：前者等 60 秒冷却就好，后者得去设置页填 Key。
+    // 以前一律抛「所有AI服务均不可用」，玩家会去查 API Key，方向完全相反
+    // （第八次审查 P2-8）。
+    if (totalKeyCount == 0) {
+      throw AiNonRetryableException('尚未配置任何 AI 服务，请在设置页填写 API Key');
+    }
+    throw AiNonRetryableException(
+        '全部 $totalKeyCount 个 Key 都在熔断冷却中（${_circuitCooldown.inSeconds}秒后自动恢复），请稍后再试');
   }
 
   /// 提供商展示名。表在 lib/data/provider_defaults.dart 的 displayName 字段
@@ -421,6 +534,30 @@ class AiRouter {
       providerDisplayName(provider.name);
 
   }
+
+/// 把「整条调用链的取消」单向转发给「当前正在跑的那一次尝试」。
+///
+/// 内层每次尝试持有自己的 CancelToken（否则单 Key 超时会炸掉整条链，见
+/// _callWithFallback 的注释），全局超时取消的却是外层那个共享 token，两者
+/// 互不知情。这个桥就是中间那根线：外层取消时，把取消传给此刻挂着的那个
+/// 单次令牌，避免超时之后请求还在后台继续跑。
+class _CancelBridge {
+  CancelToken? _current;
+
+  void attach(CancelToken token) => _current = token;
+
+  /// 只在自己仍是「当前」时才摘除，避免把后挂上来的那次尝试误摘掉。
+  void detach(CancelToken token) {
+    if (_current == token) _current = null;
+  }
+
+  void cancelCurrent([String reason = 'cancelled']) {
+    final token = _current;
+    if (token != null && !token.isCancelled) {
+      token.cancel(reason);
+    }
+  }
+}
 
 /// 单个 Key 的熔断状态：连续失败次数 + 熔断窗口截止时间。
 class _KeyCircuit {

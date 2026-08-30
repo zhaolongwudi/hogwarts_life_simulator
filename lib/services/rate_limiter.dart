@@ -1,5 +1,14 @@
 import 'dart:async';
 
+/// 限流 / 配额闸门的等待超时上限。
+///
+/// 必须**小于** AiRouter 的单次调用超时（最短 35 秒）：这段等待发生在
+/// DeepSeekService.chatComplete 内部，而外层用 perCallTimeout 把整个调用包住了。
+/// 以前默认 40 秒 > 35 秒，于是排队还没排到就被外层掐断，抛出的却是
+/// 「单次 AI 请求超时」——实际卡在本地限流排队，排查方向被彻底带偏
+/// （第八次审查 P2-1）。
+const Duration kGateWaitTimeout = Duration(seconds: 30);
+
 // 本文件的两个闸门此前完全没接进请求路径，等于裸奔：Agnes 免费版 20 RPM、
 // SenseNova 每 5 小时有配额上限，超了服务方直接返 429。现在由
 // DeepSeekService.chatComplete 在发请求前调用 waitForSlot / waitForQuota。
@@ -29,7 +38,7 @@ class AgnesRateLimiter {
   /// 直接计算最早一条请求滑出 60 秒窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
   /// 每个 API Key 独立统计，互不影响。
-  Future<void> waitForSlot(String keyHash, {Duration timeout = const Duration(seconds: 40)}) async {
+  Future<void> waitForSlot(String keyHash, {Duration timeout = kGateWaitTimeout}) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
       final now = DateTime.now();
@@ -40,7 +49,10 @@ class AgnesRateLimiter {
         return;
       }
       if (now.isAfter(deadline)) {
-        throw Exception('Agnes($keyHash) 限流等待超时（${timeout.inSeconds}秒），已切换备用提供商');
+        // 文案里写明是「本地限流」而不是「AI 请求超时」：抛出时还没切到任何
+        // 备用 Key，写「已切换备用提供商」会让排查的人往网络方向找。
+        throw Exception(
+            'Agnes($keyHash) 本地限流等待超时（${timeout.inSeconds}秒），跳过该 Key');
       }
       // 最早一条请求在 oldest+60s 滑出窗口，精确睡到该时刻（+50ms 缓冲）
       // 但不能睡过 deadline——否则 timeout 形同虚设：窗口是 60 秒，
@@ -83,7 +95,7 @@ class SenseNovaQuotaManager {
 
   /// 精确等待配额窗口：计算最早一条调用滑出 5 小时窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
-  Future<void> waitForQuota(String model, {Duration timeout = const Duration(seconds: 40)}) async {
+  Future<void> waitForQuota(String model, {Duration timeout = kGateWaitTimeout}) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
       final now = DateTime.now();
@@ -94,7 +106,8 @@ class SenseNovaQuotaManager {
         return;
       }
       if (now.isAfter(deadline)) {
-        throw Exception('SenseNova($model) 配额等待超时（${timeout.inSeconds}秒），已切换备用提供商');
+        throw Exception(
+            'SenseNova($model) 本地配额等待超时（${timeout.inSeconds}秒），跳过该 Key');
       }
       final waitMs = _windowDuration.inMilliseconds -
           now.difference(times.first).inMilliseconds +
@@ -120,7 +133,19 @@ class ResponseCache {
   ResponseCache._privateConstructor();
   static final ResponseCache instance = ResponseCache._privateConstructor();
 
-  String _makeKey(String prompt, {String? systemPrompt, double? temperature, int? maxTokens}) {
+  /// 缓存键必须覆盖「生成者身份」，光有生成参数不够。
+  ///
+  /// 玩家在设置页把模型从 A 换成 B 之后，若键里没有 provider/model，
+  /// 5 分钟 TTL 内同一 prompt 会直接命中 A 的输出——「换了模型，内容一个字
+  /// 都没变」（第八次审查 P1-F）。
+  String _makeKey(
+    String prompt, {
+    String? systemPrompt,
+    double? temperature,
+    int? maxTokens,
+    String? provider,
+    String? model,
+  }) {
     // 用原文作为缓存键，避免 hashCode 碰撞导致不同请求错误命中
     final keyBuffer = StringBuffer();
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
@@ -131,11 +156,28 @@ class ResponseCache {
     // 将温度与最大 token 纳入缓存键，避免不同生成参数之间互相污染
     keyBuffer.write('|||t$temperature');
     keyBuffer.write('|||m$maxTokens');
+    // 生成者身份：同一个 prompt 换 provider / model 不该命中旧输出
+    keyBuffer.write('|||p$provider');
+    keyBuffer.write('|||d$model');
     return keyBuffer.toString();
   }
 
-  String? get(String prompt, {String? systemPrompt, double? temperature, int? maxTokens}) {
-    final key = _makeKey(prompt, systemPrompt: systemPrompt, temperature: temperature, maxTokens: maxTokens);
+  String? get(
+    String prompt, {
+    String? systemPrompt,
+    double? temperature,
+    int? maxTokens,
+    String? provider,
+    String? model,
+  }) {
+    final key = _makeKey(
+      prompt,
+      systemPrompt: systemPrompt,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      provider: provider,
+      model: model,
+    );
     final cached = _cache[key];
     if (cached != null &&
         DateTime.now().difference(cached.timestamp) < _maxAge) {
@@ -150,8 +192,23 @@ class ResponseCache {
     return null;
   }
 
-  void set(String prompt, String content, {String? systemPrompt, double? temperature, int? maxTokens}) {
-    final key = _makeKey(prompt, systemPrompt: systemPrompt, temperature: temperature, maxTokens: maxTokens);
+  void set(
+    String prompt,
+    String content, {
+    String? systemPrompt,
+    double? temperature,
+    int? maxTokens,
+    String? provider,
+    String? model,
+  }) {
+    final key = _makeKey(
+      prompt,
+      systemPrompt: systemPrompt,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      provider: provider,
+      model: model,
+    );
     // 更新已有条目时先移除，保证新条目位于末尾（LRU 语义）
     _cache.remove(key);
     if (_cache.length >= _maxEntries) {

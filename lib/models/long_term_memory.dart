@@ -202,11 +202,18 @@ class OpenLoopRecord {
         'opened_turn': openedTurn,
       };
 
-  factory OpenLoopRecord.fromJson(Map<String, dynamic> json) => OpenLoopRecord(
+  factory OpenLoopRecord.fromJson(Map<String, dynamic> json) {
+    // 缺 importance 时按原文重新判档，与 KeyFactRecord 同一套标准。
+    // 第七轮只修了兄弟三个里的 KeyFact，OpenLoop 仍一律回填 5：
+    // 「斯内普答应为虚无属性保密」这类承诺一旦丢了字段就被降成日常流水
+    // （第八次审查 P2-3）。
+    final description = json['description'] as String? ?? '';
+    final raw = (json['importance'] as num?)?.toInt();
+    return OpenLoopRecord(
         id: json['id'] as String,
-        description: json['description'] as String,
+        description: description,
         status: (json['status'] as String?) ?? 'open',
-        importance: (json['importance'] as num?)?.toInt() ?? 5,
+        importance: raw ?? importanceForFact(description),
         openedAt: json['opened_at'] as String? ?? '',
         closedAt: json['closed_at'] as String?,
         npcIds: (json['npc_ids'] as List<dynamic>?)
@@ -215,7 +222,8 @@ class OpenLoopRecord {
             const {},
         loopType: json['loop_type'] as String?,
         openedTurn: (json['opened_turn'] as num?)?.toInt() ?? 0,
-      );
+    );
+  }
 }
 
 /// NPC 关系核心档案 (每个 NPC 1 条，永不摘要压缩)
@@ -224,7 +232,10 @@ class NpcRelationshipAnchor {
   final String npcId;
   final String firstMeeting;      // 第一次见面时的关键事实 (永不删除)
   final List<String> keyMoments;  // 关键转折点 (最多8条，旧的不删，只取最新8条注入)
-  final List<String> secretsShared; // 互相交换过的秘密 (永不删除，除非反水)
+  // 互相交换过的秘密。与 keyMoments / promisesExchanged 共用
+  // kMaxRelationshipAnchorItems 上限，超出时丢最旧的——**不是**「永不删除」：
+  // 旧注释这么写，而代码早已改成截断到 12 条，注释追不上代码（第八次审查 P2-6）。
+  final List<String> secretsShared;
   final List<String> promisesExchanged; // 互相承诺的事 (可与OpenLoop重复，这里仅作为NPC维度索引)
   final String currentStage;       // 自由文本: 陌生/认识/普通朋友/好友/暧昧/情侣/敌对/师生/恩人 等
   final int lastUpdatedTurn;       // 最后一次更新的回合号，用于注入时新鲜度加权
@@ -328,13 +339,18 @@ class WorldEventRecord {
         'consequences': consequences,
       };
 
-  factory WorldEventRecord.fromJson(Map<String, dynamic> json) =>
-      WorldEventRecord(
+  factory WorldEventRecord.fromJson(Map<String, dynamic> json) {
+    // 同 KeyFact / OpenLoop：缺 importance 时按原文重新判档，而不是一律回填 3。
+    // 三兄弟共用 importanceForFact，缺字段的降级口径才算真正统一（P2-3）。
+    final title = json['title'] as String? ?? '';
+    final description = json['description'] as String? ?? '';
+    final raw = (json['importance'] as num?)?.toInt();
+    return WorldEventRecord(
         id: json['id'] as String,
         timestamp: json['timestamp'] as String? ?? '',
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        importance: (json['importance'] as num?)?.toInt() ?? 3,
+        title: title,
+        description: description,
+        importance: raw ?? importanceForFact('$title $description'),
         category: (json['category'] as String?) ?? 'wizarding',
         npcIds: (json['npc_ids'] as List<dynamic>?)
                 ?.map((e) => e.toString())
@@ -345,7 +361,8 @@ class WorldEventRecord {
                 ?.map((e) => e.toString())
                 .toList() ??
             const [],
-      );
+    );
+  }
 
   /// 写入时间戳对应的绝对天数，用法同 [KeyFactRecord.absoluteDay]：
   /// 供同分事件的稳定排序用（自动提取的事件 importance 恒为 6）。
@@ -437,7 +454,14 @@ class LongTermMemory {
     // [kMaxPersistentKeyFacts] 容量护栏约束。排序仍要补稳定的次级键：Dart 的
     // List.sort 不保证稳定性，同分时按插入顺序倒序排（后写入靠前），
     // 淘汰从尾部砍，也就是优先保留近期发生的事。
-    if (list.length > maxKeyFacts) {
+    // 两个上限必须一起管：总数 [maxKeyFacts]，以及永不遗忘层自己的
+    // [kMaxPersistentKeyFacts]。
+    //
+    // 只管前者的话，9 分层会一路涨到 maxKeyFacts 才停——生产口径
+    // maxKeyFacts=100 > 60，淘汰循环压根不会启动，kMaxPersistentKeyFacts
+    // 这条护栏永远轮不到生效，退化成一行写给人看的注释（第八次审查 P1-C）。
+    if (list.length > maxKeyFacts ||
+        _persistentCount(list) > kMaxPersistentKeyFacts) {
       final now = _estimateAbsoluteDay(record.timestamp);
       double keepScore(KeyFactRecord r) {
         if (r.importance >= kIdentityFactImportance) return double.infinity;
@@ -456,7 +480,8 @@ class LongTermMemory {
         if (c != 0) return c;
         return (order[b] ?? 0).compareTo(order[a] ?? 0);
       });
-      while (list.length > maxKeyFacts) {
+      while (list.length > maxKeyFacts ||
+          _persistentCount(list) > kMaxPersistentKeyFacts) {
         final victim = _pickKeyFactVictim(list);
         if (victim < 0) break; // 剩下的全是身份级核心事实，一条都不能删
         list.removeAt(victim);
@@ -494,7 +519,53 @@ class LongTermMemory {
     }
     // 全是 9 分及以上：说明永不遗忘层自己超限了。有护栏就砍最旧的一条，
     // 没超护栏就认了（keyFacts 暂时超过 maxKeyFacts，比删掉结婚/誓言好）。
-    if (sorted.length <= kMaxPersistentKeyFacts) return -1;
+    //
+    // 计数的必须是**永不遗忘层自己的条目数**，而不是整个列表长度：护栏说的是
+    // 「永不遗忘层最多 kMaxPersistentKeyFacts 条」，拿 sorted.length 去比，
+    // 等于让日常流水的数量来决定这条护栏何时生效（第八次审查 P1-C）。
+    if (_persistentCount(sorted) <= kMaxPersistentKeyFacts) return -1;
+    for (int i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].importance < kIdentityFactImportance) return i;
+    }
+    return -1;
+  }
+
+  /// [facts] 里属于永不遗忘层（importance ≥ [kPersistentFactImportance]）的条目数。
+  ///
+  /// 护栏说的是「永不遗忘层最多 [kMaxPersistentKeyFacts] 条」，所以计数的
+  /// 对象只能是这一层自己的条目，而不是整张表的长度。
+  static int _persistentCount(List<KeyFactRecord> facts) {
+    var n = 0;
+    for (final f in facts) {
+      if (f.importance >= kPersistentFactImportance) n++;
+    }
+    return n;
+  }
+
+  /// T3 版本，语义同 [_persistentCount]。
+  static int _persistentEventCount(List<WorldEventRecord> events) {
+    var n = 0;
+    for (final e in events) {
+      if (e.importance >= kPersistentFactImportance) n++;
+    }
+    return n;
+  }
+
+  /// 在已按 score 降序排好的 [sorted] 里挑一条要淘汰的世界事件，返回下标；
+  /// 没有可淘汰的返回 -1。
+  ///
+  /// 与 T0 的 [_pickKeyFactVictim] 严格对称：先砍 9 分以下的，全是永不遗忘层
+  /// 时再按 [kMaxPersistentKeyFacts] 护栏砍其中最旧的一条（10 分身份级豁免）。
+  ///
+  /// 以前这里只有第一层，`victim < 0` 就直接 break 还**不留日志**，于是
+  /// 500 条全是 9 分事件时 T3 会无界增长。当前三处 addWorldEvent 的 importance
+  /// 是 6 / 5 / 4，都够不到这条路径，属结构性隐患（第八次审查 P2-2）。
+  static int _pickWorldEventVictim(List<WorldEventRecord> sorted) {
+    for (int i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].importance < kPersistentFactImportance) return i;
+    }
+    // 同 _pickKeyFactVictim：数的是永不遗忘层自己的条目数，不是整个列表长度
+    if (_persistentEventCount(sorted) <= kMaxPersistentKeyFacts) return -1;
     for (int i = sorted.length - 1; i >= 0; i--) {
       if (sorted[i].importance < kIdentityFactImportance) return i;
     }
@@ -532,19 +603,13 @@ class LongTermMemory {
     if (existing == null) {
       map[anchor.npcId] = anchor;
     } else {
-      // 合并：保留旧 keyMoments 里不在新列表中的部分，新的追加到后面
-      final mergedMoments = <String>[
-        ...existing.keyMoments,
-        ...anchor.keyMoments.where((m) => !existing.keyMoments.contains(m)),
-      ];
-      // 最多保留 12 条 keyMoments (太长也没用)，只留最新的
-      final trimmed = mergedMoments.length > 12
-          ? mergedMoments.sublist(mergedMoments.length - 12)
-          : mergedMoments;
       map[anchor.npcId] = existing.copyWith(
         firstMeeting:
             anchor.firstMeeting.isNotEmpty ? anchor.firstMeeting : existing.firstMeeting,
-        keyMoments: trimmed,
+        // 三条名单走同一个 _mergeCapped（去重 + 截断 + 只留最新）。以前
+        // keyMoments 自己裸写着一个 12 —— 就在改用 _mergeCapped 的那两行旁边，
+        // 于是「记忆相关位置已无裸数字」的自检结论是假的（第八次审查 P2-5）。
+        keyMoments: _mergeCapped(existing.keyMoments, anchor.keyMoments),
         // 这两个字段以前只过滤重复、不做容量截断（keyMoments 有 12 条上限，
         // 它们俩没有）——万回合下来能堆到数十 MB 存档。现在与 keyMoments
         // 共用同一个上限，同样只留最新的（注入时本来也只取前 6 条）。
@@ -600,17 +665,15 @@ class LongTermMemory {
         if (d != 0) return d;
         return (order[b] ?? 0).compareTo(order[a] ?? 0);
       });
-      while (list.length > maxEvents) {
+      // 与 T0 同一套双上限：总数 [maxEvents]，外加永不遗忘层自己的
+      // [kMaxPersistentKeyFacts]。只管总数的话，万一哪天生产者开始写 9 分
+      // 事件，T3 里那 60 条护栏同样会变成死常量。
+      while (list.length > maxEvents ||
+          _persistentEventCount(list) > kMaxPersistentKeyFacts) {
         // 尾部压着一条豁免事件时不能 break 了事——那样 T3 会永远超上限增长。
         // 与 T0 同样从尾部往回找第一个可删的；豁免线也统一用
         // [kPersistentFactImportance]，不再自己留一套 8。
-        var victim = -1;
-        for (int i = list.length - 1; i >= 0; i--) {
-          if (list[i].importance < kPersistentFactImportance) {
-            victim = i;
-            break;
-          }
-        }
+        final victim = _pickWorldEventVictim(list);
         if (victim < 0) break;
         list.removeAt(victim);
       }

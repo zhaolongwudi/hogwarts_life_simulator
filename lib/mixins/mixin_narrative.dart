@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
+// 只取 kDebugMode：给 _closeLoopIfMatched 的热路径日志加 `if (kDebugMode)`
+// 保护时漏了这个 import，整包 analyze 直接红——典型的「改了 A 没改它的
+// 对称面 B」（第八次审查 §4）。
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../services/deepseek_service.dart';
@@ -1308,8 +1312,12 @@ $kNarrativeWritingRules
         unawaited(autoSave());
       }
     }
-    debugPrint(
-        '🔗 伏笔了结 id=${l.id} score=${match.score.toStringAsFixed(2)} 悬了$held回合');
+    // 热路径：每次了结一条伏笔就打一行，长局下来是纯 I/O 浪费，
+    // 收进 kDebugMode（第八次审查 P2-4）。
+    if (kDebugMode) {
+      debugPrint(
+          '🔗 伏笔了结 id=${l.id} score=${match.score.toStringAsFixed(2)} 悬了$held回合');
+    }
   }
 
   /// 把悬太久又没分量的伏笔放下。
