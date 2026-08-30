@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../data/era_data.dart';
+import '../data/locations.dart';
 import '../data/forbidden_words.dart' as dataForbidden;
 import '../data/narrative_forward_rules.dart';
 import '../data/narrative_time_rules.dart';
@@ -519,7 +520,13 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
                 ? nLower.substring(hitStart - 8, hitStart)
                 : (hitStart > 0 ? nLower.substring(0, hitStart) : '');
             if (_negationPrefixRe.hasMatch(beforeHit)) {
-              debugPrint('[OOC 跳过·否定词前置] ${npc.name}|$nameVariant|$hitVerb 前置="$beforeHit"');
+              // 热路径：这段是「NPC × 人设变体 × 禁用词」三重循环，每回合跑
+              // 一遍，命中否定词就打一行。release 版照样往 stdout 写日志，
+              // 长局下来是纯 I/O 浪费，因此收进 kDebugMode。
+              if (kDebugMode) {
+                debugPrint('[OOC 跳过·否定词前置] '
+                    '${npc.name}|$nameVariant|$hitVerb 前置="$beforeHit"');
+              }
               continue;
             }
             final isSevere = _severeForbiddenRe.hasMatch(hitVerb);
@@ -850,10 +857,17 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       debugPrint('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
     }
     if (chosenNextLocation != null && allowNextUpdate) {
-      worldState.currentLocation = chosenNextLocation;
-      lastTrackedLocation = chosenNextLocation;
+      // 写入硬状态前先归一化：场景图节点里写的是「学院公共休息室」
+      // 「霍格沃茨·课堂」这类显示名/别名，直接写进 currentLocation 之后，
+      // 所有 `loc.contains('霍格沃茨')` 的判定（在场角标、学院杯日常加分
+      // 豁免）全部失效，visitedLocations 里也会多出一堆近义重复，
+      // 把「探索者」成就刷满。认不出主名时保留原样，不把现有行为改坏。
+      final nextLocation =
+          resolveLocationName(chosenNextLocation) ?? chosenNextLocation;
+      worldState.currentLocation = nextLocation;
+      lastTrackedLocation = nextLocation;
       turnsAtSameLocation = 0;
-      worldState.visitedLocations.add(chosenNextLocation);
+      worldState.visitedLocations.add(nextLocation);
     }
   }
   // ==================== P1-3 T1 未完结事项超期提醒 ====================

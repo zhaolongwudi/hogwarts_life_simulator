@@ -21,6 +21,28 @@ const List<String> kHouseKeys = [
   'Hufflepuff',
 ];
 
+/// 把一个可疑的学院 key 归一化成权威 key；认不出来返回 null。
+///
+/// player.house 里的值有四种脏来源：null（还没分院）、空串、大小写不一致的
+/// 老存档（'gryffindor'）、以及 AI 在分院叙事里编出来的四院之外的词。
+/// 以前各处判空口径不一（`!= null` / `!= null && isNotEmpty` / `== null`），
+/// 空串会被 [houseDisplayName] 兜成「未分院」写进年度榜，凭空多出第 5 行——
+/// 而奖牌表定长 4，按下标取就是 RangeError（第五轮只堵了崩溃，没堵脏 key）。
+///
+/// 现在所有「玩家到底在哪个学院」的判定都走这里：只返回能查到
+/// [kHouseDisplayNames] 的 key，查不到一律当未分院。
+String? normalizeHouseKey(String? key) {
+  if (key == null) return null;
+  final t = key.trim();
+  if (t.isEmpty) return null;
+  if (kHouseDisplayNames.containsKey(t)) return t;
+  final lower = t.toLowerCase();
+  for (final entry in kHouseDisplayNames.entries) {
+    if (entry.key.toLowerCase() == lower) return entry.key;
+  }
+  return null;
+}
+
 /// 四个学院中文名（顺序同 [kHouseKeys]）。
 List<String> get kHouseNames =>
     kHouseKeys.map((k) => kHouseDisplayNames[k]!).toList(growable: false);

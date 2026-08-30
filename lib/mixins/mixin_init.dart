@@ -391,14 +391,16 @@ mixin GameInitMixin on GameProviderBase {
       }
 
       // ====== 注入开局 T0 核心事实（永不遗忘层 LongTermMemory.keyFacts） ======
-      // 这些是「身份级」事实，即使 AI 摘要压缩也不会丢；importance 9 永远保留。
+      // 这些是「身份级」事实，即使 AI 摘要压缩也不会丢；永不遗忘层永远保留。
+      // 阈值引用常量：以前这里写死 9、淘汰侧写 10，两边对不上，
+      // 开局身份事实在长线存档里一样会被日常琐事挤掉。
       // 写入顺序要在 _generateOpeningScene 之前，确保第一回合 prompt 已经含有这些纯事实。
       final ts0 = worldState.time.format();
       void addT0(String id, String fact, {String? category, Set<String> npcIds = const {}}) {
         memory = memory.addKeyFact(KeyFactRecord(
           id: id,
           fact: fact,
-          importance: 9,
+          importance: kPersistentFactImportance,
           timestamp: ts0,
           category: category,
           npcIds: npcIds,

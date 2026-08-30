@@ -369,8 +369,14 @@ void main() {
   // ==================== 禁林遭遇委托加权 ====================
   group('禁林遭遇委托加权', () {
     test('委托目标生物获得额外权重', () {
-      // 模拟权重计算逻辑
-      final wantedLoot = {'蛇的毒牙'};
+      // 第五轮把八眼巨蛛的掉落从「蛇的毒牙」改成「八眼巨蛛毒液」
+      // （蛇的毒牙是蛇怪专属，八眼巨蛛的剧毒才是它自己的掉落），
+      // 但这条测试仍然写死旧的掉落物名 —— isWanted 恒为 false、权重停在 2，
+      // 断言 5 失败，CI 直接红。断言改为从生物表反查，掉落物再改名也不会
+      // 让测试跟着碎一次。
+      final acromantula =
+          kCreatureCatalog.firstWhere((c) => c.name == '八眼巨蛛');
+      final wantedLoot = acromantula.loot.toSet();
       final wantedCreatures = <String>{};
 
       for (final c in kCreatureCatalog) {
@@ -380,9 +386,20 @@ void main() {
         if (isWanted) w += 3;
 
         if (c.name == '八眼巨蛛') {
-          // 八眼巨蛛危险度4，基础权重 (6-4)=2，加权后 2+3=5
+          // 八眼巨蛛危险度4，基础权重 (6-4)=2，命中目标掉落 +3 = 5
           expect(w, 5);
         }
+      }
+    });
+
+    test('采集委托的目标材料真的有生物掉落（防止改数据忘改相邻表）', () {
+      // 上面那条用例的镜像保护：改掉落物名而不同步委托表，玩家接了采集委托
+      // 就永远遇不到目标生物，委托挂着还占一个名额（第五轮 L-3「龙血的诱惑」
+      // 就是这么死锁的）。这里直接拿两张表对账，比任何源码文本断言都实在。
+      for (final q in kQuestTemplates.where((q) => q.type == 'gather')) {
+        final hit = kCreatureCatalog.any((c) => c.loot.contains(q.target));
+        expect(hit, isTrue,
+            reason: '采集委托「${q.title}」的目标「${q.target}」没有任何生物掉落');
       }
     });
   });
@@ -428,39 +445,83 @@ void main() {
       expect(trimmed.keyFacts.length, lessThanOrEqualTo(4));
     });
 
-    test('importance=9 的旧事实会被时间衰减淘汰，让位给更新的 9 分事实', () {
-      // 第五次审查 P0-2：以前 importance>=8 永久豁免，死亡/结婚等 9 分事实
-      // 永不淘汰，记忆越跑越臃肿。现在只有 10 分豁免，9 分按「重要性×新鲜度」
-      // 打分：同样 9 分，旧的应该先被淘汰、新的保留。
+    test('永不遗忘层（≥9 分）不会被日常琐事挤掉', () {
+      // 第六次审查 §3-A：淘汰侧曾把豁免线抬到 10 分，而生产者写的全是 9 分
+      // （开局身份 / importanceForFact 的 critical 档 / 神话宠物 / 落疤 /
+      // 破碎的承诺）。于是「你已和赫敏立下牢不可破咒」会随时间衰减到 1.8 分，
+      // 被一条刚发生的「今天魔药课拿了优秀」（7 分）挤掉——「永不遗忘层」
+      // 除 10 分那几条外全部失效。现在豁免线与生产者对齐。
       var mem = LongTermMemory();
       mem = mem.addKeyFact(KeyFactRecord(
-        id: 'old9', fact: '旧的核心事件', importance: 9,
+        id: 'vow', fact: '你已和赫敏立下牢不可破咒',
+        importance: kPersistentFactImportance,
         timestamp: '📅 1991年9月1日 星期一 09:00',
       ));
       mem = mem.addKeyFact(KeyFactRecord(
-        id: 'new9', fact: '新的核心事件', importance: 9,
-        timestamp: '📅 1992年9月1日 星期二 09:00',
+        id: 'class', fact: '今天魔药课拿了优秀', importance: 7,
+        timestamp: '📅 1992年12月1日 星期二 09:00',
+      ));
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'daily1', fact: '今天在走廊撞到了人', importance: 5,
+        timestamp: '📅 1993年1月1日 星期五 09:00',
+      ));
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'daily2', fact: '今天吃了个面包', importance: 5,
+        timestamp: '📅 1993年2月1日 星期一 09:00',
       ));
       // 触发写入使用当前游戏时间，淘汰路径以它作为「当前天」做衰减
       final trimmed = mem.addKeyFact(KeyFactRecord(
         id: 'trigger', fact: '触发淘汰', importance: 2,
-        timestamp: '📅 1992年12月1日 星期二 09:00',
+        timestamp: '📅 1993年6月1日 星期二 09:00',
       ), maxKeyFacts: 2);
-      expect(trimmed.keyFacts.any((f) => f.id == 'old9'), false,
-          reason: '旧的 9 分事实应因时间衰减被淘汰');
-      expect(trimmed.keyFacts.any((f) => f.id == 'new9'), true,
-          reason: '新的 9 分事实保留');
+      expect(trimmed.keyFacts.any((f) => f.id == 'vow'), true,
+          reason: '9 分的誓言不该被一堆日常流水挤掉');
+      expect(trimmed.keyFacts.any((f) => f.id == 'trigger'), false,
+          reason: '分数最低的日常流水先被淘汰');
+      expect(trimmed.keyFacts.any((f) => f.id == 'daily1'), false,
+          reason: '旧的日常流水让位给更近的');
+    });
+
+    test('身份级（10 分）绝对豁免，连永不遗忘层的护栏也管不到它', () {
+      // 10 分是「身份级核心事实」：死亡、玩家是谁。这一层即使永不遗忘层
+      // 自己超限被砍，也一条都不能动。
+      var mem = LongTermMemory();
+      for (int i = 0; i < kMaxPersistentKeyFacts + 5; i++) {
+        mem = mem.addKeyFact(KeyFactRecord(
+          id: 'vow$i', fact: '第$i 条誓言', importance: kPersistentFactImportance,
+          timestamp: '📅 1991年9月${10 + i}日 星期一 09:00',
+        ));
+      }
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'death', fact: '塞德里克死了', importance: kIdentityFactImportance,
+        timestamp: '📅 1991年9月1日 星期一 09:00',
+      ));
+      final trimmed = mem.addKeyFact(KeyFactRecord(
+        id: 'trigger', fact: '触发淘汰', importance: 2,
+        timestamp: '📅 1992年9月1日 星期二 09:00',
+      ), maxKeyFacts: 10);
+      expect(trimmed.keyFacts.any((f) => f.id == 'death'), true,
+          reason: '身份级事实任何情况下都不能被淘汰');
+      // 永不遗忘层自己有护栏：不会被无界堆到 maxKeyFacts 之外
+      final persistentCount = trimmed.keyFacts
+          .where((f) => f.importance >= kPersistentFactImportance)
+          .length;
+      expect(persistentCount, lessThanOrEqualTo(kMaxPersistentKeyFacts),
+          reason: '永不遗忘层也要有天花板，否则万回合下来只增不减');
     });
 
     test('淘汰结果排序稳定：同分事实按写入时间新的靠前', () {
-      // 第五次审查 P0-2：Dart sort 不稳定，大量同分（如 9 分并列）时若不加
-      // 次级键，前 N 条每回合可能换一批，AI 记住的旧事随机漂移。
+      // 第五次审查 P0-2：Dart sort 不稳定，大量同分（自动提取的事实清一色
+      // 7 分）时若不加次级键，前 N 条每回合可能换一批，AI 记住的旧事随机漂移。
+      //
+      // 这里用 7 分而不是 9 分：9 分属于永不遗忘层，不参与打分淘汰
+      // （见上一条用例），拿它测排序测不到东西。
       var mem = LongTermMemory();
       final now = '📅 1992年12月1日 星期二 09:00';
       for (int i = 0; i < 8; i++) {
         final day = 10 + i; // 9月10..17，越晚写入 day 越大
         mem = mem.addKeyFact(KeyFactRecord(
-          id: 'f$i', fact: '并列事实$i', importance: 9,
+          id: 'f$i', fact: '并列事实$i', importance: 7,
           timestamp: '📅 1991年9月$day日 星期一 09:00',
         ));
       }

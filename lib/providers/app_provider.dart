@@ -269,7 +269,10 @@ class AppProvider extends ChangeNotifier {
     _apiKey = key;
     if (key.isEmpty) {
       _apiKeys.remove(_aiProvider.name);
-      await KeyStore.instance.deleteKey(_aiProvider.name);
+      // 必须走 writeKeys([]) 而不是 deleteKey()：后者只删不带索引的旧单 key，
+      // 带索引的 `api_key_<p>_0` 会整整齐齐留在安全存储里，下次启动
+      // readKeys 一读又全回来了——「清空密钥」变成一次无效操作。
+      await KeyStore.instance.writeKeys(_aiProvider.name, []);
     } else {
       _apiKeys[_aiProvider.name] = [key];
       await KeyStore.instance.writeKeys(_aiProvider.name, [key]);

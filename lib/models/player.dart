@@ -418,6 +418,8 @@ class Player {
         houseReputation: json['house_reputation'] ?? 0,
         diary: (json['diary'] as List<dynamic>? ?? [])
             .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
+            // 读档也截一刀：老存档里已经堆了几百条的，读进来就地收敛。
+            .take(kMaxDiaryEntries)
             .toList(),
         parallelScenarios: (json['parallel_scenarios'] as List<dynamic>? ?? [])
             .map((e) => ParallelScenario.fromJson(Map<String, dynamic>.from(e)))
@@ -567,6 +569,12 @@ class ShipRecord {
 /// 之前「我的日记」页面把玩家写的内容只存在 Widget 的 `_entries` 局部变量里，
 /// 返回一次就全没了，而且默认还塞了两条写死的假日记（"入学第一天""分院帽的抉择"）。
 /// 现在落到存档里，跨会话保留。
+///
+/// 容量上限：forumPosts / jobHistory / letters 都有 50 条封顶，唯独 diary
+/// 只往里 insert(0) 从不 trim——玩家每记一笔就多一条，万回合下来存档里
+/// 堆的全是日记。读写两侧都按 [kMaxDiaryEntries] 截断。
+const int kMaxDiaryEntries = 50;
+
 class DiaryEntry {
   final String date;
   final String time;

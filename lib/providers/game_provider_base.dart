@@ -7,6 +7,7 @@ import '../models/world_state.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../data/faculty_data.dart';
+import '../data/house_data.dart';
 import '../data/ending_review_data.dart';
 import '../data/legacy_data.dart';
 import '../services/save_service.dart';
@@ -73,6 +74,15 @@ abstract class GameProviderBase extends ChangeNotifier {
     cleaned = cleaned.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
     return cleaned;
   }
+
+  /// 玩家所属学院的「有效 key」：未分院 / 空串 / AI 编的四院之外的词 → null。
+  ///
+  /// 学院杯那三处守卫以前是三套口径（`!= null && isNotEmpty` / `!= null` /
+  /// `== null`），第五轮只改了其中一处：空串仍会被 houseDisplayName 兜成
+  /// 「未分院」写进年度榜，凭空多出第 5 行——奖牌位虽然退化成空白挡住了
+  /// 崩溃，但「未分院：1000 分」照样稳稳显示在榜单上。判定收口到这里，
+  /// 所有 mixin 与 UI 共用同一个答案。
+  String? get houseKeyOrNull => normalizeHouseKey(player?.house);
 
   // ====== 核心状态字段（已从私有 _xxx public 化，Mixin 需要直接访问） ======
   Player? player;
@@ -158,7 +168,7 @@ abstract class GameProviderBase extends ChangeNotifier {
     final direct = p.magicAptitude ?? '';
     if (direct.isNotEmpty) return direct;
     for (final fact in memory.keyFacts) {
-      if (fact.importance >= 9 &&
+      if (fact.importance >= kPersistentFactImportance &&
           fact.category == 'ability' &&
           fact.id == 'ability:aptitude') {
         final m = reAptitudeFact.firstMatch(fact.fact);
@@ -372,8 +382,12 @@ abstract class GameProviderBase extends ChangeNotifier {
   Future<void> updateApiKey(String key);
   void updateClient();
   void updateNPCsFromAction(String action);
+  /// [quiet] = true 时本次调用不触发 notifyListeners/autoSave。
+  ///
+  /// 批量更新（日常好感微调、一次解析出多行好感变化）必须传 true 并在循环
+  /// 结束后统一通知一次：否则 N 个人就是 N 次全量 rebuild + N 次全量写档。
   void updateNpcAffection(String npcId, int change,
-      {String? reason, int? severity});
+      {String? reason, int? severity, bool quiet = false});
   void updatePlayerImpactScore(String action);
   bool withdrawFromBank(int amount);
 

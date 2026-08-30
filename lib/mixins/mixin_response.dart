@@ -414,9 +414,9 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     memory = memory.addKeyFact(KeyFactRecord(
       id: 'death_${dead.id}',
       fact: deathFactFor(dead.name, cause),
-      // 10 分：身份级。一个人的死不能被淘汰掉——
+      // 身份级（kIdentityFactImportance）：一个人的死不能被淘汰掉——
       // 100 条容量溢出时按分数淘汰，而这件事必须留到最后。
-      importance: 10,
+      importance: kIdentityFactImportance,
       timestamp: ts,
       category: 'death',
       npcIds: {dead.id},
@@ -448,13 +448,22 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       ));
     }
 
+    // 死亡涟漪会扫过所有已登场且还活着的 NPC。以前每人一次 notifyListeners
+    // + 一次全量写档，一场葬礼就是上百次全量 rebuild 与上百次整档序列化——
+    // 偏偏这一刻 UI 最卡。改成静默批量，循环外只通知一次。
+    var deathRippleTouched = false;
     for (final n in npcRegistry.values) {
       if (n.id == dead.id || !n.isAlive || !n.introduced) continue;
 
       final ripple = rippleFor(n.affection);
       if (ripple.affectionDelta == 0) continue;
       updateNpcAffection(n.id, ripple.affectionDelta,
-          reason: '共同失去了${dead.name}');
+          reason: '共同失去了${dead.name}', quiet: true);
+      deathRippleTouched = true;
+    }
+    if (deathRippleTouched) {
+      notifyListeners();
+      unawaited(autoSave());
     }
 
     // 最重的一笔：他参与的、还没了结的事，永远做不到了。
@@ -474,7 +483,9 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       memory = memory.addKeyFact(KeyFactRecord(
         id: 'promise_broken_${l.id}',
         fact: brokenPromiseFactFor(l.description),
-        importance: 8,
+        // 永不遗忘层（kPersistentFactImportance）：他答应过的事永远做不到了，
+        // 这条事实不该被「今天魔药课拿了优秀」挤掉。
+        importance: kPersistentFactImportance,
         timestamp: ts,
         category: 'promise_broken',
         npcIds: l.npcIds,
@@ -503,9 +514,9 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     memory = memory.addKeyFact(KeyFactRecord(
       id: 'scar_${def.key}',
       fact: '你的${def.label}永远不会好：${def.aftermath}',
-      // 8 分：它是"这件事定义了我这七年"级别的东西，
-      // 100 条容量溢出时按分数淘汰，疤该留下来。
-      importance: 8,
+      // 永不遗忘层（kPersistentFactImportance）：它是"这件事定义了我这七年"
+      // 级别的东西，100 条容量溢出时按分数淘汰，疤该留下来。
+      importance: kPersistentFactImportance,
       timestamp: ts,
       category: 'scar',
     ));
@@ -1225,13 +1236,23 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     // 「向已订婚对象再表白一次」这类自相矛盾的选项。
     String topFactsForChoices() {
       final facts = memory.keyFacts.where((f) => f.importance >= 4).toList();
-      // 身份级（importance 9-10）恒定优先：它们决定"你是谁"，任何选项都不能违背
-      final identity = facts.where((f) => f.importance >= 8).toList()
+      // 永不遗忘层（importance ≥ kPersistentFactImportance）恒定优先：它们
+      // 决定"你是谁"，任何选项都不能违背。
+      //
+      // 以前这里写死 8，而淘汰侧写 10、生产者写 9，同一个「身份级」概念
+      // 三套标准。选项端改成常量后，任何一端再调阈值都会跟着动。
+      final identity = facts
+          .where((f) => f.importance >= kPersistentFactImportance)
+          .toList()
         ..sort((a, b) => b.importance.compareTo(a.importance));
       // 其余按「写入顺序倒序」= 最近发生的优先。
       // 这里刻意不看 importance：自动摘要写进来的事件事实 importance 一律是 7，
       // 按分数排等于没排，而真正要防的正是"刚发生的事被选项忽略"。
-      final recent = facts.where((f) => f.importance < 8).toList().reversed.toList();
+      final recent = facts
+          .where((f) => f.importance < kPersistentFactImportance)
+          .toList()
+          .reversed
+          .toList();
 
       final picked = <KeyFactRecord>[
         ...identity.take(5),

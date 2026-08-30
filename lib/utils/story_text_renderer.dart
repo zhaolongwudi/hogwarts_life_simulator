@@ -521,9 +521,9 @@ class StoryTextRenderer {
   }
 
   static String? _findCharacterAtStart(String line) {
-    final sortedNames = List<String>.from(_characterNames)
-      ..sort((a, b) => b.length.compareTo(a.length));
-    for (final name in sortedNames) {
+    // 直接用预排序好的那份：以前这里每调用一次就复制 + 重排一遍全量角色名
+    // （~480 条），而 parse 是逐行调它的，一段 30 行的叙事就是 30 次全量排序。
+    for (final name in _characterNamesByLengthDesc) {
       if (line.startsWith(name)) return name;
     }
     return null;
@@ -944,9 +944,9 @@ class StoryTextRenderer {
     if (raw.contains('【') || raw.contains('】')) return -1;
     if (_startsWithEmoji(raw)) return -1;
 
-    // 预排序已知角色（长词在前，先找完整全名）
-    final sortedNames = List<String>.from(_characterNames)
-      ..sort((a, b) => b.length.compareTo(a.length));
+    // 预排序已知角色（长词在前，先找完整全名）——直接复用类级预排序的那份，
+    // 这个函数按行调用，原地重排等于每行一次全量排序。
+    final sortedNames = _characterNamesByLengthDesc;
 
     // 在 raw 的"后半段"（最后 20 个字符或 1/3 长度，取较大者）找最后一个角色命中
     final lookBack = raw.length > 20 ? 20 : (raw.length ~/ 3).clamp(8, 20);
@@ -1321,6 +1321,21 @@ class _Range {
   final int end;
   final String text;
   _Range(this.start, this.end, this.text);
+
+  // 重叠检查会把候选区间两两比较（O(R²)），靠 Set 去重压缩规模。
+  // 没有 == / hashCode 时 Set 退化成引用比较，去重形同虚设：
+  // 重叠区间照样重复进表，后面的剔除逻辑拿到的还是全量——
+  // 而"剔除重叠"正是这里建 Set 的唯一目的。
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _Range && other.start == start && other.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+
+  @override
+  String toString() => '_Range($start, $end, $text)';
 }
 
 class _ColonSegment {

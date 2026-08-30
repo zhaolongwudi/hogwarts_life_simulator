@@ -34,9 +34,15 @@ class ChatResult {
 }
 
 /// 可重试的 AI 调用异常（超时、限流、服务端错误等）
+///
+/// [isTimeout] 区分「这一路慢/挂住了」与「这一次被拒了」：
+/// 限流、5xx 这类错误退避两秒再试同一把 Key 是有意义的，而超时说明对端
+/// 这会儿就是慢，再试一次只会再吃满一个超时窗口——那点时间该留给别的 Key。
+/// 路由层据此决定是重试同 Key 还是直接切下一个。
 class AiRetryableException implements Exception {
   final String message;
-  AiRetryableException(this.message);
+  final bool isTimeout;
+  AiRetryableException(this.message, {this.isTimeout = false});
   @override
   String toString() => message;
 }
@@ -52,6 +58,34 @@ class AiNonRetryableException implements Exception {
 class DeepSeekService {
   final AiConfig config;
   final Dio _dio;
+
+  /// Dio 的接收超时（按提供商区分：SenseNova 慢一些）。
+  ///
+  /// 必须小于路由层的单次调用预算（AiRouter._perCallTimeout），否则 Dio 永远
+  /// 等不到自己超时就被上层掐断，坏 Key 的判定全落在上层、日志上却看不出
+  /// 究竟是网关慢还是请求挂死。
+  static const Duration receiveTimeoutDefault = Duration(seconds: 45);
+  static const Duration receiveTimeoutSensenova = Duration(seconds: 60);
+
+  /// 测试注入点。
+  ///
+  /// 以前 `_dio` 是构造函数里硬编码的私有 final，测试根本没法替换，
+  /// 于是「AI 返回 HTML 错误页」「连接超时」这两条最要命的异常路径
+  /// 全仓零覆盖——回归永远全绿。生产路径不传，走默认的真实 Dio。
+  DeepSeekService({required this.config, Dio? dio})
+      : _dio = dio ??
+            Dio(BaseOptions(
+              baseUrl: normalizeBaseUrl(config.baseUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ${config.apiKey}',
+              },
+              connectTimeout: const Duration(seconds: 15),
+              // SenseNova 6.8 Flash Lite 响应较慢（评测反馈），需要更长超时
+              receiveTimeout: config.provider == AiProvider.sensenova
+                  ? receiveTimeoutSensenova
+                  : receiveTimeoutDefault,
+            ));
 
   /// 规范化 baseUrl：去除末尾 /v1 前缀（因为 chatPath/balancePath 通常已经以 /v1/ 开头）
   /// 避免 Agnes 等官方文档风格 "https://api.agnes-ai.cn/v1" + chatPath="/v1/..."
@@ -72,20 +106,6 @@ class DeepSeekService {
     if (path.startsWith('/')) return path;
     return '/$path';
   }
-
-  DeepSeekService({required this.config})
-      : _dio = Dio(BaseOptions(
-          baseUrl: normalizeBaseUrl(config.baseUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${config.apiKey}',
-          },
-          connectTimeout: const Duration(seconds: 15),
-          // SenseNova 6.8 Flash Lite 响应较慢（评测反馈），需要更长超时
-          receiveTimeout: config.provider == AiProvider.sensenova
-              ? const Duration(seconds: 90)
-              : const Duration(seconds: 45),
-        ));
 
   /// 本地区分不同 API Key 的限流桶标识。
   ///
@@ -200,6 +220,13 @@ class DeepSeekService {
       throw AiNonRetryableException('API 端点不存在，请检查 Base URL 设置');
     } else if (statusCode == 429) {
       throw AiRetryableException('请求过于频繁，请稍后重试');
+    } else if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      // 标记为超时：路由层看到 isTimeout 会直接换 Key，而不是再花 35 秒
+      // 重试同一把——那点预算该留给下一个 Key。
+      throw AiRetryableException('请求超时（${e.type.name}），请重试',
+          isTimeout: true);
     } else if (statusCode != null && statusCode >= 400 && statusCode < 500) {
       throw AiNonRetryableException('API 错误 ($statusCode): $msg');
     } else {

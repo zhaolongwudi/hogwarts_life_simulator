@@ -1431,8 +1431,8 @@ mixin GamePlayMixin on GameProviderBase {
     // house 就会是个认不出来的值，houseDisplayName 回落到 '未分院'——
     // 那会在 houseCupYearly 里多出第 5 个 key，而 formatHouseCup 的奖牌表
     // 定长 4，按下标取就会 RangeError 崩溃。
-    final house = p.house;
-    if (house != null && house.isNotEmpty) {
+    final house = houseKeyOrNull;
+    if (house != null) {
       worldState.houseCupYearly[houseDisplayName(house)] =
           kHouseCupBaseScore + p.houseCupPoints;
     }
@@ -1454,8 +1454,9 @@ mixin GamePlayMixin on GameProviderBase {
       }
     }
     final p = player;
-    if (p?.house != null) {
-      yearly[houseDisplayName(p!.house)] = kHouseCupBaseScore + p.houseCupPoints;
+    final house = houseKeyOrNull;
+    if (p != null && house != null) {
+      yearly[houseDisplayName(house)] = kHouseCupBaseScore + p.houseCupPoints;
     }
     return yearly;
   }
@@ -1463,9 +1464,10 @@ mixin GamePlayMixin on GameProviderBase {
   String formatHouseCup() {
     final p = player;
     if (p == null) return '';
-    final myCn = houseDisplayName(p.house, fallback: '（未分院）');
+    final houseKey = houseKeyOrNull;
+    final myCn = houseDisplayName(houseKey, fallback: '（未分院）');
     final buf = StringBuffer('【学院杯】\n');
-    if (p.house == null) {
+    if (houseKey == null) {
       buf.writeln('你还没有被分院，暂未参与学院杯竞争。');
       return buf.toString();
     }
@@ -1526,8 +1528,13 @@ mixin GamePlayMixin on GameProviderBase {
     // 未分院就不参与学院杯。注意这里不再有 `houseCupPoints == 0` 的拦截：
     // 年度榜是四院全程累计的真实排名，玩家就算一分没挣，自己的学院也
     // 有基准分和对手在竞争，学年末该揭晓的榜单必须揭晓。
-    if (p == null || p.house == null) return;
-    final myCn = houseDisplayName(p.house, fallback: p.house!);
+    if (p == null) return;
+    // 未分院（含空串 / AI 写出的非四院名称）不参与结算。
+    // 用 houseKeyOrNull 而不是 `p.house == null`：空串会被 houseDisplayName
+    // 兜成「未分院」当成一支队伍写进榜单。
+    final houseKey = houseKeyOrNull;
+    if (houseKey == null) return;
+    final myCn = houseDisplayName(houseKey);
     final yearly = _ensureHouseCupYearly();
     final ranked = yearly.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));

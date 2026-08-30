@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../models/npc.dart';
 import '../utils/affection_validator.dart';
+import '../utils/narrative_section_parser.dart';
 import '../utils/npc_lookup.dart';
 import 'mixin_response_choices.dart';
 
@@ -29,10 +32,6 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
   /// 名字后面跟的括号备注（「赫敏（犹豫了一下）：+2」）要剥掉。
   static final RegExp _parenRemarkRe = RegExp(r'[（(].*?[）)]');
 
-  /// 声望行：兼容全角冒号、全角加号、「· 战斗：+2」这类带项目符号的写法。
-  static final RegExp _reputationLineRe =
-      RegExp(r'^[\s\-•·*]*([^:：+\-0-9]{1,10}?)\s*[:：]?\s*([+＋-]?\d+)');
-
   void parseAffectionChanges(String text) {
     if (npcRegistry.isEmpty) return;
 
@@ -44,20 +43,10 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
 
     // 修复（第五次审查 P2-4.3）：AI 偶尔会把好感变化拆成两个【好感度变化】区块
     // （如先列主线、再列支线）。以前只取 firstMatch → 第二个区块静默丢弃，
-    // 玩家明明惹恼了支线 NPC 却毫无反应。现在拼接所有区块一起解析。
-    String? sectionText;
-    final sectionMatches = sectionPattern.allMatches(text).toList();
-    if (sectionMatches.isNotEmpty) {
-      sectionText = sectionMatches
-          .map((m) => m.group(1)!.trim())
-          .where((s) => s.isNotEmpty)
-          .join('\n');
-    }
-
-    // Fallback 1：AI 未输出【好感度变化】标签头时，扫描全文寻找散落的好感行
-    if (sectionText == null || sectionText.isEmpty) {
-      sectionText = _fallbackAffectionScan(text);
-    }
+    // 玩家明明惹恼了支线 NPC 却毫无反应。现在拼接所有区块一起解析，
+    // 与声望侧共用 _allSectionText，避免这类「只修 A 面」再次发生。
+    final sectionText =
+        allSectionText(text, sectionPattern) ?? _fallbackAffectionScan(text);
 
     // ============================================================
     // P1-2 好感变化逻辑校验（宏观通用·统一出口，避免假好感"羞辱了你 → +8 好感"）
@@ -110,7 +99,9 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // 统一走 findNpcByKeyword（含别名+姓氏推导），不再自己手写取最高分的循环
         final npc = findNpcByKeyword(npcRegistry.values, npcName);
         if (npc == null) {
-          debugPrint('[好感解析] 未找到匹配NPC: $npcName');
+          // 热路径：每回合对每个好感行都跑一遍，release 版也往 stdout 写，
+          // 长局下来是纯 I/O 浪费。调试日志一律收进 kDebugMode。
+          if (kDebugMode) debugPrint('[好感解析] 未找到匹配NPC: $npcName');
           continue;
         }
         // 用匹配到的真名做校验（而不是 AI 写的混淆名）
@@ -123,26 +114,41 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
         if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
         try {
-          debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta'
-              '${rawDelta == delta ? '' : '（原文 $rawDelta）'}');
+          // 热路径：这几条日志每回合、每个好感行都要写一次，release 版照样
+          // 往 stdout 打，长局下来是纯粹的 I/O 浪费。调试日志统一收进
+          // kDebugMode（同文件其它 debug 日志同理）。
+          if (kDebugMode) {
+            debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta'
+                '${rawDelta == delta ? '' : '（原文 $rawDelta）'}');
+          }
           final before = npc.affection;
+          // 一次解析出多行好感变化时静默批量更新，循环结束后统一通知一次
+          // （见 parseAffectionChanges 末尾的 explicitChanged 判断）。
           updateNpcAffection(npc.id, delta,
               reason: (remark == null || remark.isEmpty) ? '剧情互动' : remark,
-              severity: rawDelta);
+              severity: rawDelta,
+              quiet: true);
           final after = npc.affection;
           if (before != after) {
-            debugPrint('[好感更新] ${npc.name}: $before → $after');
+            if (kDebugMode) debugPrint('[好感更新] ${npc.name}: $before → $after');
             explicitChanged.add(npc.id);
           } else {
-            debugPrint('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
+            if (kDebugMode) {
+              debugPrint('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
+            }
           }
           checkLocks(npc);
           syncRelationshipLevel(npc);
           checkAffectionAchievements(npc);
         } catch (e) {
-          debugPrint('[好感解析错误] $npcName: $e');
+          if (kDebugMode) debugPrint('[好感解析错误] $npcName: $e');
         }
       }
+    }
+    // 上面整批是 quiet 的，这里补上唯一一次通知与写档。
+    if (explicitChanged.isNotEmpty) {
+      notifyListeners();
+      unawaited(autoSave());
     }
 
     // Fallback 2：对剧情中出现但没有显式好感变化的 NPC，推断被动好感
@@ -224,44 +230,38 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     // 且负面只惩罚最相关的一位——在场旁观者不该被连坐。
     final negative = isNegative;
     final maxPassive = negative ? 1 : 3;
+    var touched = false;
     for (int i = 0; i < candidates.length && i < maxPassive; i++) {
       final npc = candidates[i];
       final delta = negative
           ? -1
           : 1 + random.nextInt(2); // +1 or +2
       final before = npc.affection;
-      updateNpcAffection(npc.id, delta, reason: '剧情互动(推断)');
+      updateNpcAffection(npc.id, delta,
+          reason: '剧情互动(推断)', quiet: true);
       final after = npc.affection;
       if (before != after) {
         // [被动好感] 日志已移除
         checkLocks(npc);
         syncRelationshipLevel(npc);
+        touched = true;
       }
+    }
+    if (touched) {
+      notifyListeners();
+      unawaited(autoSave());
     }
   }
 
   void parseReputationChanges(String text) {
     if (player == null) return;
-    // 修复：与 _parseAffectionChanges 同样的 bug——replaceFirst 把整段内容删掉
-    final sectionPattern = RegExp(r'【声望变化?】\s*([\s\S]*?)(?=【|$)');
-    final sectionMatch = sectionPattern.firstMatch(text);
-    if (sectionMatch == null) return;
-    final section = sectionMatch.group(1)!.trim();
-    if (section.isEmpty) return;
-    for (final line in section.split('\n')) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-      // 兼容 AI 常见的写法变体：全角冒号、全角加号、"学术声望 +3（原因）"、
-      // "· 战斗：+2" 这类带项目符号的行
-      final match = _reputationLineRe.firstMatch(trimmed);
-      if (match == null) continue;
-      final dim = match.group(1)!.trim();
-      final raw = match.group(2)!.replaceAll('＋', '+');
-      final delta = int.tryParse(raw) ?? 0;
-      if (delta == 0 || dim.isEmpty) continue;
+    // 区块拼接与逐行解析都抽到了 utils/narrative_section_parser.dart：
+    // 一是与好感侧共用同一份拼接逻辑（AI 拆段时第二块不再被丢掉），
+    // 二是这段逻辑终于可以直接写行为测试，不必先造一个完整 Provider。
+    for (final d in extractReputationDeltas(text)) {
       try {
         // AI 偶尔会写出 +50 这种离谱值，这里限幅到 ±5（与 prompt 约定一致）
-        player!.playerReputation.add(dim, delta.clamp(-5, 5));
+        player!.playerReputation.add(d.dimension, d.delta.clamp(-5, 5));
       } catch (e) {
         // 维度名不在白名单里（AI 自造词）→ 静默忽略，不影响其它维度
       }

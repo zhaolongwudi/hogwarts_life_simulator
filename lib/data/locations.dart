@@ -287,6 +287,48 @@ bool locationMatches(String currentLocation, String required) {
   return currentLocation.contains(required) || required.contains(currentLocation);
 }
 
+/// [a] 与 [b] 是不是同一个地方：两边先归一化成主名再比，比不出再退回双向子串。
+///
+/// 与 [locationMatches] 的分工：那个是「事件锚点的位置约束」，空串按"不限"
+/// 处理；这里是实打实的两点比较，任何一边为空都算不在一起。
+///
+/// 收口到这里是因为全项目一度有三套互不兼容的地点判定：
+///   · npcsInCurrentLocation 用裸 `npc.currentLocation.contains(loc)`
+///     ——玩家在「霍格沃茨·教室」、教授在「霍格沃茨·变形术教室」时，
+///       两边都不归一，六位守细分教室的教授会从【在场】集体消失；
+///   · isNearby 用裸 `==`，近义地点恒不匹配；
+///   · 场景图写入 currentLocation 前不归一，把「学院公共休息室」这类显示名
+///     原样写进硬状态，接着污染在场角标、学院杯日常加分豁免和「探索者」成就。
+/// 现在三处都走这一个函数。
+bool isSameLocation(String? a, String? b) {
+  final x = a?.trim() ?? '';
+  final y = b?.trim() ?? '';
+  if (x.isEmpty || y.isEmpty) return false;
+  final nx = resolveLocationName(x);
+  final ny = resolveLocationName(y);
+  if (nx != null && ny != null) {
+    if (nx == ny) return true;
+    // 父子地点（细分教室 ↔ 通用教室）算同一处，见 [kLocationParents]。
+    // 只认**直接**父子边：变形术教室与占卜教室同父，但它们显然不是同一间屋子。
+    return kLocationParents[nx] == ny || kLocationParents[ny] == nx;
+  }
+  return x.contains(y) || y.contains(x);
+}
+
+/// 「某地点是另一地点的更具体版本」时，这条边必须显式声明。
+///
+/// 地点表按设计把「霍格沃茨·变形术教室」和「霍格沃茨·教室」拆成两条独立主名——
+/// 否则 AI 写「变形术教室」会被归到泛化的教室，麦格按课表守教室的硬耦合永远
+/// 对不上。但拆开之后，玩家地点是通用「霍格沃茨·教室」时，守细分教室的教授
+/// 又会在【在场】里集体消失。两头都要，就只能把父子关系写成数据，
+/// 而不是在比较函数里偷偷用子串兜底（那会把「图书馆」和「盥洗室」也凑成一对）。
+const Map<String, String> kLocationParents = {
+  '霍格沃茨·变形术教室': '霍格沃茨·教室',
+  '霍格沃茨·魔咒教室': '霍格沃茨·教室',
+  '霍格沃茨·魔法史教室': '霍格沃茨·教室',
+  '霍格沃茨·占卜教室': '霍格沃茨·教室',
+};
+
 /// [keyword] 是否是某个已知地点的主名或别名的一部分。
 ///
 /// 这是给测试用的数据校验：抓 requiredLocation 写错别字（「特快列车」写成

@@ -53,12 +53,77 @@ class AiRouter {
   // 请求作为半开试探，成功即清零恢复。
   static const int _circuitThreshold = 3;
   static const Duration _circuitCooldown = Duration(seconds: 60);
-  /// 单次 Key 调用的超时上限。比 Dio 的 receiveTimeout（45/90s）短，专治
-  /// "连不上也不报错、一直挂着"的坏 Key——挂死到全局超时不如在这先掐掉。
+  /// 单次 Key 调用的超时上限。必须比 Dio 的 receiveTimeout（45/60s）短——
+  /// 否则 Dio 永远等不到自己超时，坏 Key 的判定全落在这一层，"网关慢"和
+  /// "请求挂死"在日志上长得一样。专治"连不上也不报错、一直挂着"的坏 Key。
   static const Duration _perCallTimeout = Duration(seconds: 35);
+  /// 每个 Key 最多重试几次（0 = 只尝试 1 次）。
+  static const int _maxRetriesPerService = 2;
+  /// 重试的指数退避基数：第 n 次重试等 n * 2s（2s / 4s）。
+  static const int _retryBackoffMsStep = 2000;
+
   final Map<DeepSeekService, _KeyCircuit> _circuits = {};
 
-  AiRouter(this._config);
+  /// 测试注入点：直接给定每个提供商的 Key 列表，绕开真实网络。
+  ///
+  /// 以前 `_services` 只能在 register() 里用真实 AiConfig 构造，
+  /// 熔断 / 故障转移这两条主动脉没有任何测试能覆盖——
+  /// 第六次审查实测「AI 异常路径」行为测试为 0 就是这个原因。
+  AiRouter(this._config, {Map<AiProvider, List<DeepSeekService>>? services}) {
+    if (services != null) {
+      for (final entry in services.entries) {
+        if (entry.value.isEmpty) continue;
+        _services[entry.key] = List<DeepSeekService>.of(entry.value);
+        _configs[entry.key] = entry.value
+            .map((s) => AiConfig(
+                  provider: entry.key,
+                  apiKey: s.config.apiKey,
+                  baseUrl: s.config.baseUrl,
+                  model: s.config.model,
+                  chatPath: s.config.chatPath,
+                  balancePath: s.config.balancePath,
+                ))
+            .toList();
+      }
+    }
+  }
+
+  /// 一个坏 Key 从第一次尝试到耗尽全部重试，最多要吃掉多少时间预算。
+  ///
+  /// 只算「非超时」错误的退避重试：超时错误不再重试同一 Key（见
+  /// _callWithFallback），所以最坏情况就是 1 次 _perCallTimeout + 退避。
+  static Duration get _perKeyBudget =>
+      _perCallTimeout +
+      Duration(
+          milliseconds:
+              _retryBackoffMsStep * (_maxRetriesPerService * (_maxRetriesPerService + 1) ~/ 2));
+
+  /// 全局超时必须按「实际配置的 Key 数」算，而不是写死一个 75 秒。
+  ///
+  /// 以前 narrative 固定 75s，而单个 Key 的惩罚序列是
+  /// 35s + 2s + 35s + 4s + 35s = 111s：第一个坏 Key 跑到第二三次尝试时
+  /// 全局超时就先炸，后面的 Key 一次都轮不到，_recordFailure 也记不满 3 次，
+  /// 熔断阈值永远达不到——加熔断时忘了删全局超时，熔断被自己人架空。
+  ///
+  /// 现在按 keyCount 给预算（每个 Key 一份 _perKeyBudget + 尾部余量），
+  /// 再按场景 clamp 到上下限：玩家最多等 ceil 秒，但健康 Key 一定能轮到。
+  static Duration globalTimeoutFor(AiScene scene, int keyCount) {
+    final raw = const Duration(seconds: 5) +
+        _perKeyBudget * (keyCount < 1 ? 1 : keyCount);
+    final floor = switch (scene) {
+      AiScene.narrative => const Duration(seconds: 60),
+      AiScene.choice => const Duration(seconds: 50),
+      _ => const Duration(seconds: 35),
+    };
+    final ceil = switch (scene) {
+      AiScene.narrative => const Duration(seconds: 120),
+      AiScene.choice => const Duration(seconds: 100),
+      _ => const Duration(seconds: 60),
+    };
+    if (raw < floor) return floor;
+    if (raw > ceil) return ceil;
+    return raw;
+  }
 
   /// 注册一个 API Key 对应的配置
   void register(AiConfig cfg) {
@@ -87,6 +152,22 @@ class AiRouter {
     if (c.failures >= _circuitThreshold) {
       c.openUntil = DateTime.now().add(_circuitCooldown);
     }
+  }
+
+  /// 本次调用真正会尝试的 Key 数（没配 key 的提供商不算）。
+  ///
+  /// 全局超时按它算：写死的 75 秒在只有 1 个 Key 时绰绰有余，在 3 个 Key
+  /// 时却连第二个 Key 都轮不到。
+  int _attemptedKeyCount(AiProvider primary) {
+    final candidates = <AiProvider>[primary];
+    for (final p in _config.fallbackOrder) {
+      if (!candidates.contains(p)) candidates.add(p);
+    }
+    var n = 0;
+    for (final p in candidates) {
+      n += _services[p]?.length ?? 0;
+    }
+    return n;
   }
   Future<ChatResult> chatComplete({
     required AiScene scene,
@@ -123,57 +204,42 @@ class AiRouter {
       cancelToken: cancelToken,
     );
 
-    if (scene == AiScene.narrative) {
+    // 全局超时按「实际会尝试的 Key 数」动态算，而不是写死一个值——
+    // 写死 75s 时，3 个 Key 的惩罚序列（111s）会在第二个 Key 还没上场前
+    // 就被掐断，熔断永远达不到阈值（详见 globalTimeoutFor 的注释）。
+    final keyCount = _attemptedKeyCount(primary);
+    final globalTimeout = globalTimeoutFor(scene, keyCount);
+    final seconds = globalTimeout.inSeconds;
+
+    Future<ChatResult> withGlobalTimeout(String label, String errorText) {
       return future.timeout(
-        const Duration(seconds: 75),
+        globalTimeout,
         onTimeout: () async {
-          cancelToken.cancel('narrative timeout');
+          cancelToken.cancel('$label timeout');
           await AiDebugLogger.instance.logComplete(
             callId: callId,
             timestamp: DateTime.now().toIso8601String(),
             scene: sceneLabel,
             provider: getProviderLabel(primary),
             action: 'TIMEOUT',
-            error: '剧情生成超时（75秒）',
+            error: errorText,
           );
-          throw AiRetryableException('剧情生成超时（75秒），请重试或切换提供商');
+          throw AiRetryableException(errorText, isTimeout: true);
         },
       );
+    }
+
+    if (scene == AiScene.narrative) {
+      return withGlobalTimeout('narrative',
+          '剧情生成超时（${seconds}秒，共 $keyCount 个 Key），请重试或切换提供商');
     }
     if (scene == AiScene.choice) {
-      return future.timeout(
-        const Duration(seconds: 60),
-        onTimeout: () async {
-          cancelToken.cancel('choice timeout');
-          await AiDebugLogger.instance.logComplete(
-            callId: callId,
-            timestamp: DateTime.now().toIso8601String(),
-            scene: sceneLabel,
-            provider: getProviderLabel(primary),
-            action: 'TIMEOUT',
-            error: '选项生成超时（60秒）',
-          );
-          throw AiRetryableException('选项生成超时（60秒），请重试');
-        },
-      );
+      return withGlobalTimeout('choice', '选项生成超时（${seconds}秒），请重试');
     }
     // summary / npcChat 之前没有超时：最坏 2 provider × N key × 3 次 × 45s，
-    // UI 会长时间转圈。这里给一个整体兜底超时。
-    return future.timeout(
-      const Duration(seconds: 45),
-      onTimeout: () async {
-        cancelToken.cancel('summary/npcChat timeout');
-        await AiDebugLogger.instance.logComplete(
-          callId: callId,
-          timestamp: DateTime.now().toIso8601String(),
-          scene: sceneLabel,
-          provider: getProviderLabel(primary),
-          action: 'TIMEOUT',
-          error: '摘要/闲聊生成超时（45秒）',
-        );
-        throw AiRetryableException('摘要/闲聊生成超时（45秒），请重试');
-      },
-    );
+    // UI 会长时间转圈。这里给一个整体兜底超时（同样按 Key 数算）。
+    return withGlobalTimeout(
+        'summary/npcChat', '摘要/闲聊生成超时（${seconds}秒），请重试');
   }
 
   Future<ChatResult> _callWithFallback({
@@ -228,7 +294,9 @@ class AiRouter {
         .where((p) => (_services[p]?.length ?? 0) > 0)
         .toList(growable: false);
 
-    const maxRetriesPerService = 2; // 每个 key 最多重试 2 次（共 3 次尝试）
+    // 每个 key 最多重试 2 次（共 3 次尝试）。只对「快速失败」的错误重试，
+    // 超时直接换 Key —— 见下面 catch 里的说明。
+    const maxRetriesPerService = _maxRetriesPerService;
 
     Object? lastError;
     for (final provider in attempted) {
@@ -264,8 +332,14 @@ class AiRouter {
                 )
                 .timeout(
                   _perCallTimeout,
-                  onTimeout: () =>
-                      throw AiRetryableException('单次 AI 请求超时（35秒），已切换 Key'),
+                  onTimeout: () {
+                    // 掐断的同时也要撤掉底层请求：以前只 throw 不 cancel，
+                    // 那次请求还在后台占着连接继续跑，等它自己收到响应才停。
+                    cancelToken?.cancel('per-call timeout');
+                    throw AiRetryableException(
+                        '单次 AI 请求超时（${_perCallTimeout.inSeconds}秒），已切换 Key',
+                        isTimeout: true);
+                  },
                 );
             _recordSuccess(service);
             // 缓存成功响应
@@ -298,9 +372,18 @@ class AiRouter {
             lastError = e;
             _recordFailure(service);
 
-            // 可重试错误且还有重试机会：指数退避后重试同一 key
-            if (e is AiRetryableException && attempt < maxRetriesPerService) {
-              final backoffMs = (attempt + 1) * 2000;
+            // 可重试错误且还有重试机会：指数退避后重试同一 key。
+            //
+            // 但**超时不重试**：对端这会儿就是慢，再试一次只会再吃满一个
+            // 35 秒窗口。以前 3 次尝试 = 35+2+35+4+35 = 111 秒，比全局 75 秒
+            // 还长——第一个坏 Key 就能把整条链的时间耗光，后面的 Key 一次都
+            // 轮不到，_recordFailure 也记不满 3 次，熔断阈值永远达不到。
+            // 现在超时一次就换人，健康 Key 才有机会上场。
+            final timedOut = e is AiRetryableException && e.isTimeout;
+            if (!timedOut &&
+                e is AiRetryableException &&
+                attempt < maxRetriesPerService) {
+              final backoffMs = (attempt + 1) * _retryBackoffMsStep;
               debugPrint('⚠️ ${provider.name}[$keyHash] 第${attempt + 1}次失败，${backoffMs}ms后重试: $e');
               await Future.delayed(Duration(milliseconds: backoffMs));
               continue;

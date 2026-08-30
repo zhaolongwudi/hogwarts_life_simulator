@@ -199,7 +199,7 @@ class GameProvider extends GameProviderBase
   /// 但"这件事有多大"是另一回事，结仇判定得看原始意图，
   /// 否则 AI 永远写不出一次真正的翻脸。不传就退回落地值 [change]。
   void updateNpcAffection(String npcId, int change,
-      {String? reason, int? severity}) {
+      {String? reason, int? severity, bool quiet = false}) {
     final npc = npcRegistry[npcId];
     if (npc == null) return;
     // 注意：不再在此处自动 markNpcIntroduced。
@@ -325,6 +325,10 @@ class GameProvider extends GameProviderBase
       _recordRelationshipMoment(npc, actualChange, reason);
     }
     checkAffectionAchievements(npc);
+    // 批量调用（quiet）由调用方在循环结束后统一通知一次：
+    // 以前「日常好感微调」遍历全 NPC，每人一次 notifyListeners + 一次
+    // 全量写档，一回合下来 5 次全量 rebuild、5 次整档序列化。
+    if (quiet) return;
     notifyListeners();
     unawaited(autoSave());
   }

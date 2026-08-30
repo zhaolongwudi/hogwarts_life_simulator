@@ -70,7 +70,7 @@ class KeyStore {
       await writeKey('${provider}_$i', keys[i]);
     }
   }
-  /// 删除指定提供商的所有多 key（不带索引的旧单 key 也保留）
+  /// 删除指定提供商的所有 key：带索引的多 key **和**不带索引的旧单 key。
   ///
   /// 终止条件必须用 read 判空，不能靠 delete 抛异常：
   /// Android 端 delete 的实现是 `editor.remove(key); editor.apply();`，删一个
@@ -78,6 +78,10 @@ class KeyStore {
   /// 在 Android 上永远出不来——玩家每次保存/修改 API Key 都卡在 writeKeys
   /// 里，界面直接冻住。（iOS 的 Keychain 碰巧会对找不到的项报错，所以在
   /// iOS 上"能跑"，问题只在真机上才暴露。）
+  ///
+  /// 以前只删带索引的，不带索引的 `api_key_<p>`（老玩家经明文迁移留下来的）
+  /// 一律保留。于是"删光全部 key"只删掉了索引副本，下次启动 readKeys 为空、
+  /// 回退到 readKey(p) 又把那份旧单 key 读回来——玩家以为清空了，key 却复活。
   Future<void> _deleteAllForProvider(String provider) async {
     for (int i = 0; i < kMaxKeysPerProvider; i++) {
       final key = '$_prefix${provider}_$i';
@@ -89,5 +93,7 @@ class KeyStore {
         break;
       }
     }
+    // 不带索引的旧单 key 一并清掉，否则它就是"删不掉的备份"。
+    await deleteKey(provider);
   }
 }

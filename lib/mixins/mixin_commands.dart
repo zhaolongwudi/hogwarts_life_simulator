@@ -1181,7 +1181,7 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('【装备栏】')
       ..writeln('袍子：${p.equipped['robe'] ?? '（空）'}  帽子：${p.equipped['hat'] ?? '（空）'}')
       ..writeln('扫帚：${p.equipped['broom'] ?? '（空）'}  饰品：${p.equipped['amulet'] ?? '（空）'}')
-      ..writeln('【学院杯】${p.house != null ? '本学年贡献 ${p.houseCupPoints} 分（/学院杯 查看）' : '未分院，暂未参与'}')
+      ..writeln('【学院杯】${houseKeyOrNull != null ? '本学年贡献 ${p.houseCupPoints} 分（/学院杯 查看）' : '未分院，暂未参与'}')
       ..writeln('【当前目标】${p.currentGoal ?? '尚未设定目标'}');
     return buf.toString();
   }

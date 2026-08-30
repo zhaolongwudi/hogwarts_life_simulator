@@ -205,7 +205,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
       // 永远放在【世界上下文】最前面，防止后面截断看不到
       // 2026-08-23：模型能力升级，所有条数限制整体翻倍
-      // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；importance 10永远保留)
+      // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；
+      //     永不遗忘层 = importance ≥ kPersistentFactImportance，永远保留)
       final t0 = memory.keyFacts
           .where((f) => f.importance >= 4)
           .toList()
@@ -273,8 +274,21 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       }
       // T3: 世界事件银行（重要性 * 新鲜度 取前 40 条）
       final ts = worldState.time.absoluteDayIndex;
+      final t3Order = <WorldEventRecord, int>{
+        for (var i = 0; i < memory.worldEvents.length; i++)
+          memory.worldEvents[i]: i,
+      };
       final t3 = List<WorldEventRecord>.from(memory.worldEvents)
-        ..sort((a, b) => b.score(ts).compareTo(a.score(ts)));
+        ..sort((a, b) {
+          final c = b.score(ts).compareTo(a.score(ts));
+          if (c != 0) return c;
+          // 与淘汰侧同一套次级键：自动提取的事件 importance 恒为 6，500 条
+          // 里大量同分，不补键的话 Dart 的不稳定排序会让每回合注入的前 40 条
+          // 换一批，玩家感觉 AI 记的世界线在随机漂移。
+          final d = b.absoluteDay.compareTo(a.absoluteDay);
+          if (d != 0) return d;
+          return (t3Order[b] ?? 0).compareTo(t3Order[a] ?? 0);
+        });
       if (t3.isNotEmpty) {
         contextBuffer.writeln('【T3 世界事件银行（按重要性+新鲜度排序）】');
         for (int i = 0; i < t3.length && i < 40; i++) {
@@ -634,17 +648,10 @@ $kNarrativeWritingRules
       // 这里改在每回合叙事定稿后执行，且必须早于选项生成：
       // checkNPCConfessions 会改写 currentNarrative 并给出「接受/婉拒」专属选项，
       // 被 AI 的 4 个通用选项覆盖掉的话，玩家就看不到对方面红耳赤地站在面前了。
-      final bool confessedThisTurn = _maybeTriggerConfession();
-      _tickWorldLineDeviation();
-
-      // 从叙事文本中提取新地点并同步 currentLocation
-      // 这是「场景推进」的闭环：AI 写了换场景 → 状态同步 → 停滞计数清零
-      // 否则 currentLocation 永远停在初始值，AI 会以为玩家还在原地
-      _syncLocationFromNarrative(currentNarrative);
-
-      // --- P0-2 短期断言：从本回合叙事末尾提取生效状态，下回合 Prompt 必注入 ---
-      final newAssertions = extractShortAssertions(currentNarrative);
-      rotateTurnAssertions(newAssertions);
+      //
+      // 结算本体抽到 _settleAfterNarrative，与无 AI 快速模式共用同一份——
+      // 第五轮只把「状态推进」搬去了离线路径，周期结算一项没搬。
+      final bool confessedThisTurn = _settleAfterNarrative();
 
       // 独立生成选项：基于已生成的剧情（与主叙事完全解耦，不再从叙事响应提取）
       // 注意：从 2026-08-23 起「写作要求」明确禁止主叙事 AI 输出选项，
@@ -702,31 +709,17 @@ $kNarrativeWritingRules
       // 立即通知 UI 刷新选项，确保用户看到最新选项
       notifyListeners();
 
-      // --- ContinuityBridge Step A：把本回合叙事的末尾锚点存档，下回合强制衔接 ---
-      // 注意：先同步 location（_syncLocationFromNarrative）后再 saveAnchor，确保 location 锚点是最新的
-      saveContinuityAnchor(currentNarrative);
-
-      accumulateForSummary(currentNarrative);
-      appendRecentTurn(currentNarrative);
-      advanceTimeForAction(action);
-      updateNPCsFromAction(action);
-      updatePlayerImpactScore(action);
+      // 收尾落库（与离线快速模式共用，见 _finalizeTurn）：
+      // ContinuityBridge Step A —— 把本回合叙事的末尾锚点存档，下回合强制衔接。
+      // 注意：先同步 location（_syncLocationFromNarrative）后再 saveAnchor，
+      // 确保 location 锚点是最新的。
+      _finalizeTurn(currentNarrative, action);
       // 锚点已成功注入本回合剧情，清除待注入状态（仅当未被新锚点替换时）
       if (consumedAnchor != null && pendingAnchorDirective == consumedAnchor) {
         pendingAnchorDirective = null;
       }
 
-      // 定期摘要：模型能力升级后回调到每15回合，缓冲阈值从3200→6000字
-      // 配合 _maxPendingSummaryChars=8000，每次摘要覆盖更长时间线，长线逻辑性更强
-      if ((turnCount % 15 == 0 || pendingSummary.length > 6000) && pendingSummary.isNotEmpty) {
-        unawaited(Future.microtask(() async {
-          try {
-            await _summarizeNarrative();
-          } catch (e) {
-            debugPrint('摘要生成失败(不影响游戏): $e');
-          }
-        }));
-      }
+      _maybeRunPeriodicSummary();
 
       loadingStage = '';
       isLoading = false;
@@ -759,6 +752,62 @@ $kNarrativeWritingRules
     }
   }
 
+  /// 叙事定稿之后、选项生成之前的周期结算。返回本回合是否有人表白。
+  ///
+  /// AI 正式路径与无 AI 快速模式共用同一份，原因很实在：第五轮把「状态推进」
+  /// （turnCount++ / lastPlayerAction / commandResult）搬进了离线路径，却把
+  /// 周期结算整个漏掉了，于是离线玩法下
+  ///   · NPC 主动表白永不触发（恋爱线是核心玩法）；
+  ///   · 世界线变动率恒为 0.5%，world_changer 成就永远拿不到；
+  ///   · 同地点停滞检测失效（_updateLocationTracking 只挂在 buildPrompt 里，
+  ///     离线不调 AI 就永远走不到）。
+  /// 抽成方法之后，一边加结算另一边自动跟上。
+  bool _settleAfterNarrative() {
+    final bool confessedThisTurn = _maybeTriggerConfession();
+    _tickWorldLineDeviation();
+
+    // 从叙事文本中提取新地点并同步 currentLocation
+    // 这是「场景推进」的闭环：AI 写了换场景 → 状态同步 → 停滞计数清零
+    // 否则 currentLocation 永远停在初始值，AI 会以为玩家还在原地
+    _syncLocationFromNarrative(currentNarrative);
+
+    // --- P0-2 短期断言：从本回合叙事末尾提取生效状态，下回合 Prompt 必注入 ---
+    final newAssertions = extractShortAssertions(currentNarrative);
+    rotateTurnAssertions(newAssertions);
+    return confessedThisTurn;
+  }
+
+  /// 回合收尾落库：锚点、摘要缓冲、近期回合、时间/精力、NPC、影响力。
+  ///
+  /// 与 [_settleAfterNarrative] 一起构成「一整个回合」的后半段，
+  /// 两条路径必须共用（理由同上）。
+  void _finalizeTurn(String narrative, String action) {
+    saveContinuityAnchor(narrative);
+    accumulateForSummary(narrative);
+    appendRecentTurn(narrative);
+    advanceTimeForAction(action);
+    updateNPCsFromAction(action);
+    updatePlayerImpactScore(action);
+  }
+
+  /// 定期摘要：模型能力升级后回调到每15回合，缓冲阈值从3200→6000字。
+  /// 配合 _maxPendingSummaryChars=8000，每次摘要覆盖更长时间线，长线逻辑性更强。
+  ///
+  /// 单独抽出来是因为它是长期记忆（T0/T1/T3）的**唯一生产者**：
+  /// 离线路径以前根本不调它，纯离线玩 200 回合后记忆库只剩开局那几条。
+  void _maybeRunPeriodicSummary() {
+    if ((turnCount % 15 == 0 || pendingSummary.length > 6000) &&
+        pendingSummary.isNotEmpty) {
+      unawaited(Future.microtask(() async {
+        try {
+          await _summarizeNarrative();
+        } catch (e) {
+          debugPrint('摘要生成失败(不影响游戏): $e');
+        }
+      }));
+    }
+  }
+
   /// 无 AI 快速模式：完全不调用 AI，用本地模板叙事 + 承接式选项推进一整回合。
   /// 审查 P0「无 AI 快速模式 + 本地兜底剧情」：免费额度耗尽 / 未配 Key 时保底可玩。
   /// 与 AI 失败时的瞬时兜底不同：这里**消耗回合**（推进时间/精力/NPC/影响力），
@@ -780,17 +829,23 @@ $kNarrativeWritingRules
     lastScannedNarrativeHash = null;
     lastPlayerAction = action;
 
+    // 地点停滞追踪：正式路径挂在 buildPrompt 里（生成叙事之前跑一次），
+    // 离线模式不调 AI 就没有 buildPrompt，这里补上，否则同地点停滞检测
+    // 在离线玩法下永远失效。
+    _updateLocationTracking();
+
     currentNarrative = generateFallbackNarrative();
-    choices = buildFallbackChoices(currentNarrative);
-    _syncLocationFromNarrative(currentNarrative);
-    final newAssertions = extractShortAssertions(currentNarrative);
-    rotateTurnAssertions(newAssertions);
-    saveContinuityAnchor(currentNarrative);
-    accumulateForSummary(currentNarrative);
-    appendRecentTurn(currentNarrative);
-    advanceTimeForAction(action);
-    updateNPCsFromAction(action);
-    updatePlayerImpactScore(action);
+
+    // 与 AI 正式路径同一套周期结算（详见 _settleAfterNarrative 的注释）。
+    // 表白会改写 currentNarrative 并写好「接受/婉拒」两个专属选项，
+    // 这时候不能再用承接型兜底选项把它冲掉。
+    final confessedThisTurn = _settleAfterNarrative();
+    if (!confessedThisTurn) {
+      choices = buildFallbackChoices(currentNarrative);
+    }
+
+    _finalizeTurn(currentNarrative, action);
+    _maybeRunPeriodicSummary();
     error = null;
     loadingStage = '';
     isLoading = false;
@@ -1047,45 +1102,10 @@ $kNarrativeWritingRules
     }
   }
 
-  /// 给自动提取的事实打重要性分。
-  ///
-  /// 这个分数决定它在 [LongTermMemory.maxKeyFacts]（100 条）容量溢出时的存亡。
-  /// 一律给 7 分的话，「你杀了一个人」和「今天魔药课拿了优秀」权重相同，
-  /// 而前者到毕业那天都还在影响剧情，后者一周后就没人提了。
-  ///
-  /// 9 分及以上在淘汰时被永久豁免（见 addKeyFact），所以这里只对真正
-  /// 不可逆、改写人生走向的事实给 9 分。
-  int importanceForFact(String fact) {
-    // 不可逆的重大变故 / 关系质变：永不淘汰
-    const critical = [
-      '死了', '死亡', '死去', '杀害', '杀死', '谋杀', '遇害', '殉职', '阵亡',
-      '复仇', '血债', '命债',
-      '订婚', '结婚', '婚礼', '婚约', '离婚', '分手', '决裂',
-      '背叛', '出卖', '告密', '倒戈',
-      '食死徒', '凤凰社', '加入', '宣誓', '誓言', '立誓', '效忠',
-      '通缉', '逃亡', '除名', '开除', '驱逐', '流放', '阿兹卡班',
-      '怀孕', '分娩', '出生', '孩子', '子女',
-      '不可饶恕', '魂器', '黑魔标记', '继承人', '遗书', '遗嘱',
-    ];
-    // 有分量但仍在剧情中层：可以被更早的同类挤掉
-    const notable = [
-      '表白', '交往', '恋人', '暧昧', '亲吻', '初吻',
-      '决斗', '重伤', '住院', '中毒', '诅咒',
-      '魁地奇', '队长', '冠军', '学院杯',
-      '学会', '掌握', '精通', '毕业', '留级', '跳级',
-      '抄写', '禁闭', '扣分', '嘉奖', '表彰',
-      '开店', '买下', '继承', '破产',
-      '搬家', '转学', '退学', '复学',
-      '发现了', '得知', '秘密', '真相',
-    ];
-    for (final w in critical) {
-      if (fact.contains(w)) return 9;
-    }
-    for (final w in notable) {
-      if (fact.contains(w)) return 7;
-    }
-    return 5; // 日常流水，容量吃紧时最先被淘汰
-  }
+  // 事实打分已下沉到 lib/models/long_term_memory.dart 的 [importanceForFact]：
+  // 写入侧（这里）与读取侧（KeyFactRecord.fromJson 的缺省回填）必须用同一份
+  // 表，否则一次结构变更丢掉 importance 字段时，读档会把「XX 死了」这类
+  // 身份级事实统统按 5 分日常流水回填，静默失去永不淘汰的豁免。
 
   /// 从摘要响应中提取结构化记忆块，写入 LongTermMemory
   void _extractMemoryFromSummary(String rawSummary) {
@@ -1254,7 +1274,10 @@ $kNarrativeWritingRules
     memory = memory.addKeyFact(KeyFactRecord(
       id: 'loop_closed_${l.id}',
       fact: loopClosedFact(l.description, l.loopType),
-      importance: l.importance >= 8 ? 9 : 7,
+      // 伏笔本身够重（≥8，即只比永不遗忘层低一档）→ 它的了结也进永不遗忘层。
+      importance: l.importance >= kPersistentFactImportance - 1
+          ? kPersistentFactImportance
+          : 7,
       timestamp: ts,
       category: 'loop_closed',
       npcIds: l.npcIds,
@@ -1274,9 +1297,15 @@ $kNarrativeWritingRules
       }
     }
     if (reward.npcAffection > 0) {
+      var touched = false;
       for (final id in l.npcIds) {
         updateNpcAffection(id, reward.npcAffection,
-            reason: '了结了${loopTypeLabel(l.loopType)}');
+            reason: '了结了${loopTypeLabel(l.loopType)}', quiet: true);
+        touched = true;
+      }
+      if (touched) {
+        notifyListeners();
+        unawaited(autoSave());
       }
     }
     debugPrint(
@@ -1549,7 +1578,11 @@ $kNarrativeWritingRules
     final location = worldState.currentLocation;
     if (location == null || location.isEmpty) return [];
     return npcRegistry.values.where((npc) {
-      return npc.introduced && npc.currentLocation.toLowerCase().contains(location.toLowerCase());
+      // 统一走 isSameLocation（两边先归一再比）：
+      // 以前这里裸写 `npc.currentLocation.contains(loc)`，两边都不归一，
+      // 玩家写「教室」而教授在「霍格沃茨·变形术教室」时匹配不上，
+      // 麦格 / 斯内普 / 弗利维等六位守教室的教授会从【在场】集体消失。
+      return npc.introduced && isSameLocation(npc.currentLocation, location);
     }).toList();
   }
 

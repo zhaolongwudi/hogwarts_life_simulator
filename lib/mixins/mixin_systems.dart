@@ -146,7 +146,10 @@ mixin GameSystemsMixin on GameProviderBase {
     }
 
     final p = player;
-    final myCn = (p != null && p.house != null) ? houseDisplayName(p.house) : null;
+    // 用 houseKeyOrNull 而不是 `p.house != null`：空串 / AI 写出的非四院名称
+    // 会被 houseDisplayName 兜成「未分院」，于是「玩家的学院行只由贡献驱动」
+    // 这条判断对不上任何一行，玩家的学院照样每天被 NPC 随机加分带着走。
+    final myCn = p == null ? null : houseDisplayName(houseKeyOrNull);
     final curWeekday = worldState.time.weekday; // 0=周日 … 6=周六
     for (var i = 0; i < dayDelta; i++) {
       // 从当前周几往前数第 i 天；weekday 往前回绕要用模 +7 保正
@@ -227,6 +230,12 @@ mixin GameSystemsMixin on GameProviderBase {
         mood: mood,
       ),
     );
+    // 与 forumPosts / jobHistory / letters 一样给个上限：
+    // 这三个都有 50 条封顶，唯独 diary 只 insert(0) 不 trim，
+    // 玩家每记一笔就多一条，万回合下来存档里堆的全是日记。
+    if (p.diary.length > kMaxDiaryEntries) {
+      p.diary.removeRange(kMaxDiaryEntries, p.diary.length);
+    }
     notifyListeners();
     unawaited(autoSave());
   }
@@ -881,15 +890,22 @@ mixin GameSystemsMixin on GameProviderBase {
     if (due.isNotEmpty) {
       final acYearStart = RegExp(r'^(\d{4})').firstMatch(worldState.academicYear)?.group(1);
       final acYearStartInt = acYearStart != null ? int.tryParse(acYearStart) : null;
+      // 用 removeWhere 而不是在 where(...) 的惰性迭代里边遍历边 remove：
+      // due.where(...) 返回的是惰性 Iterable，迭代过程中结构性修改底层列表
+      // 会直接抛 ConcurrentModificationError。现在只是恰好一条规则只匹配一个
+      // 锚点才没炸，哪天同一条规则挂上第二个锚点（或同一个锚点被两条规则
+      // 命中）就会在玩家推进剧情的瞬间崩掉。
       for (final rule in anchorGatedRules) {
-        final matchedAnchors = due.where((a) => a.id == rule.anchorId);
-        for (final anchor in matchedAnchors) {
-          final ok = rule.predicate(t.year, t.month, acYearStartInt);
-          if (!ok) {
-            due.remove(anchor);
-            debugPrint('📜 跳过「${anchor.title}」锚点：${rule.description} (academicYear=${worldState.academicYear}, year=${t.year})');
-          }
+        final matchedIds = due
+            .where((a) => a.id == rule.anchorId && !rule.predicate(t.year, t.month, acYearStartInt))
+            .map((a) => a.id)
+            .toSet();
+        if (matchedIds.isEmpty) continue;
+        for (final a in due.where((a) => matchedIds.contains(a.id)).toList()) {
+          debugPrint('📜 跳过「${a.title}」锚点：${rule.description} '
+              '(academicYear=${worldState.academicYear}, year=${t.year})');
         }
+        due.removeWhere((a) => matchedIds.contains(a.id));
       }
     }
 
@@ -1822,10 +1838,19 @@ mixin GameSystemsMixin on GameProviderBase {
     // 每日随机触发好感微调。
     // 改走 updateNpcAffection：直接改字段会绕过每周好感上限、记恨上限、
     // recentEvents 与长线记忆管线，等于给所有已认识的人开了个无上限的口子。
+    // quiet=true：循环内不通知、不写档，整批跑完才统一一次。
+    // 以前每命中一个 NPC 就 notifyListeners + autoSave（全量 rebuild +
+    // 整档序列化），一回合 ~5 次，长局下来是最显眼的一处无谓开销。
+    var dailyAffectionTouched = false;
     for (final npc in npcRegistry.values.toList()) {
       if (npc.affection > 0 && random.nextDouble() < 0.05) {
-        this.updateNpcAffection(npc.id, 1, reason: '日常相处');
+        this.updateNpcAffection(npc.id, 1, reason: '日常相处', quiet: true);
+        dailyAffectionTouched = true;
       }
+    }
+    if (dailyAffectionTouched) {
+      notifyListeners();
+      unawaited(autoSave());
     }
 
     // 检测表白时机（恋爱剧情推进时）
@@ -1995,7 +2020,9 @@ mixin GameSystemsMixin on GameProviderBase {
   bool isNearby(String npcId) {
     final npc = npcRegistry[npcId];
     if (npc == null || player == null) return false;
-    return npc.currentLocation == (worldState.currentLocation ?? '');
+    // 统一走 isSameLocation：以前裸写 `==`，两边都不归一，
+    // 「霍格沃茨·场地」和「魁地奇球场」明明是一个地方却永远算不上 nearby。
+    return isSameLocation(npc.currentLocation, worldState.currentLocation);
   }
   /// 地图「前往此地」：统一走规范名归一化 + 时间门/年级门（与叙事同步同款校验）。
   ///
