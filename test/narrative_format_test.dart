@@ -55,13 +55,13 @@ void main() {
       // 缩进 span 之后，应有一个 span 的内容是「赫敏」且颜色是角色金（0xFFE3B341）
       final hermione = spans.where((s) => s.text == '赫敏');
       expect(hermione.length, 1);
-      expect(hermione.first.style?.color, const Color(0xFFE3B341));
+      expect(hermione.first.style?.color, const Color(0xFFDDB54A));
       expect(hermione.first.style?.fontWeight, FontWeight.w600);
     });
 
     test('缩进 span 用叙述色（不会比正文更显眼）', () {
       final spans = StoryTextRenderer.parseParagraph('你推开大门。');
-      expect(spans.first.style?.color, const Color(0xFFC9D1D9));
+      expect(spans.first.style?.color, const Color(0xFFD0D7DE));
       expect(spans.first.style?.fontWeight, isNull,
           reason: '缩进不该加粗——它只是留白，不是内容');
     });

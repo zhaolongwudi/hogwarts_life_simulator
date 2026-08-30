@@ -10,12 +10,12 @@ import 'package:hogwarts_life_simulator/utils/story_text_renderer.dart';
 /// 剧情文字着色渲染规则测试：
 /// 冒号对话 / 叙述动词剥离 / 时间日期误判排除 / 未知说话人 / 选项行剥离
 void main() {
-  const narrationColor = Color(0xFFC9D1D9);
-  const dialogueColor = Color(0xFF58A6FF);
-  const speakerColor = Color(0xFFFFA657);
-  const locationColor = Color(0xFF56D364);
-  const characterColor = Color(0xFFE3B341);
-  const itemColor = Color(0xFFBC8CFF);
+  const narrationColor = Color(0xFFD0D7DE);
+  const dialogueColor = Color(0xFF79C0FF);
+  const speakerColor = Color(0xFFFFC87A);
+  const locationColor = Color(0xFF7EE787);
+  const characterColor = Color(0xFFDDB54A);
+  const itemColor = Color(0xFFD2A8FF);
 
   Color? colorOf(List<TextSpan> spans, String text) {
     for (final s in spans) {
