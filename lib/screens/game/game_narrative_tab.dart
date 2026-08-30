@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../providers/app_provider.dart';
 import '../../models/player.dart';
 import '../../models/world_state.dart';
 import '../../models/npc.dart';
@@ -44,6 +45,43 @@ class _NarrativeTabState extends State<NarrativeTab> {
   /// 用静态字段而不是实例字段：切到别的 tab 再回来 NarrativeTab 会重建，
   /// 实例字段一丢，玩家就得再收一次。这是个偏好，不是这一帧的状态。
   static bool choicesCollapsed = false;
+
+  /// 文本颜色图例是否收起。
+  ///
+  /// 图例是给新玩家看的：知道"蓝色=对话、绿色=地点"之后，这行东西
+  /// 每回合白占 ~40px 正文高度。前 3 回合强制展开（学习期），
+  /// 之后跟随此偏好，默认收起。静态字段，理由同 [choicesCollapsed]。
+  static bool legendCollapsed = true;
+
+  /// 场景横幅是否因向下滚动而收起成紧凑条。
+  ///
+  /// 阅读空间是这个页面最缺的资源：96px 的插图横幅在"看"的那一刻
+  /// 有价值，但玩家开始往下读时它就只是占地方的装饰。
+  /// 滚动超过 60px 自动收成 36px 紧凑条，滚回顶部 20px 内恢复——
+  /// 用滞回阈值而不是单阈值，避免在临界点来回抖动。
+  bool bannerCollapsedByScroll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scrollController.addListener(_onNarrativeScroll);
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onNarrativeScroll);
+    super.dispose();
+  }
+
+  void _onNarrativeScroll() {
+    if (!widget.scrollController.hasClients) return;
+    final offset = widget.scrollController.offset;
+    // 滞回：下去 60 才收，回到 20 才放，中间地带保持现状
+    final next = bannerCollapsedByScroll ? offset > 20 : offset > 60;
+    if (next != bannerCollapsedByScroll && mounted) {
+      setState(() => bannerCollapsedByScroll = next);
+    }
+  }
 
   Widget _buildPanelContent(Player player) {
     return Column(
@@ -125,7 +163,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildPanelEventTabs() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
         children: [
           Row(
@@ -134,7 +172,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 child: GestureDetector(
                   onTap: () => widget.onSubTabChanged(0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 7),
                     decoration: BoxDecoration(
                       color: widget.subTab == 0
                           ? Theme.of(context).colorScheme.primary
@@ -162,7 +200,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 child: GestureDetector(
                   onTap: () => widget.onSubTabChanged(1),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 7),
                     decoration: BoxDecoration(
                       color: widget.subTab == 1
                           ? Theme.of(context).colorScheme.primary
@@ -196,7 +234,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 },
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: widget.subTab == 2
                         ? Theme.of(context).colorScheme.primary
@@ -218,6 +256,31 @@ class _NarrativeTabState extends State<NarrativeTab> {
                             fontWeight: FontWeight.w600,
                           )),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 阅读模式：一键切沉浸显示（隐藏顶栏/输入栏/底部导航，
+              // 正文立省 ~230px）。入口原先只藏在设置页深处，
+              // 而需要它的人正在剧情页里嫌字挤——入口就该长在这里。
+              // 退出走沉浸模式自带的悬浮按钮/返回键（game_screen 已有闭环）。
+              Semantics(
+                button: true,
+                label: '进入阅读模式',
+                child: InkWell(
+                  onTap: () => context
+                      .read<AppProvider>()
+                      .setDisplayMode(DisplayMode.immersive),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: dividerColorOf(context)),
+                    ),
+                    child: const Icon(Icons.fullscreen,
+                        size: 18, color: Color(0xFF8B949E)),
                   ),
                 ),
               ),
@@ -469,8 +532,54 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildHeaderCard(String? timestamp, String? location,
-      {double height = 96}) {
+      {double height = 96, bool compact = false}) {
+    if (compact) {
+      // 滚动折叠后的紧凑条：信息一行不丢（时间戳+地点），插图让位给正文。
+      return Padding(
+        key: const ValueKey('header_compact'),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: dividerColorOf(context)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.schedule, size: 13, color: Color(0xFF8B949E)),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  timestamp ?? '',
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (location != null && location.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.place, size: 13, color: Color(0xFF56D364)),
+                const SizedBox(width: 2),
+                Flexible(
+                  child: Text(
+                    location,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF56D364),
+                        fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
+      key: const ValueKey('header_full'),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SceneIllustrationBanner(
         location: location,
@@ -1056,8 +1165,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final bodyNarrative = header['body'] ?? narrative;
     final hasHeader = timestamp != null || location != null;
 
-    // 悬浮横幅实际高度（SceneIllustrationBanner 固定 96，短屏收窄到 72）
-    final bannerH = constraints.maxHeight < 520 ? 72.0 : 96.0;
+    // 悬浮横幅实际高度（SceneIllustrationBanner 固定 96，短屏收窄到 72）。
+    // 向下滚动时收成 36px 紧凑条——插图在"看一眼"时值钱，读正文时它只是租金。
+    final fullBannerH = constraints.maxHeight < 520 ? 72.0 : 96.0;
+    final bannerH = bannerCollapsedByScroll ? 36.0 : fullBannerH;
     final headerReserve = hasHeader ? bannerH + 12 : 16.0;
 
     return Stack(
@@ -1071,7 +1182,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
               // 旧实现直接写死 top: 120 / bottom: 120，共 240px 死留白；
               // 但本组件位于 Expanded 内、输入栏是下方兄弟节点（不会盖住内容），
               // 底部那 120px 从头到尾都是纯浪费，小屏上正文只剩一条缝。
-              if (hasHeader) SizedBox(height: headerReserve),
+              // AnimatedContainer：滚动折叠横幅时留位跟着平滑缩，正文区不跳变。
+              if (hasHeader)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  height: headerReserve,
+                ),
               Expanded(
                 child: SingleChildScrollView(
                   controller:
@@ -1089,7 +1206,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                         _buildCommandResultPanel(gp, commandPanel),
                         const SizedBox(height: 12),
                       ],
-                      _buildLegendPanel(),
+                      _buildLegendPanel(gp),
                       const SizedBox(height: 8),
                       if (bodyNarrative.isNotEmpty)
                         _buildBodyCard(bodyNarrative),
@@ -1102,8 +1219,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   ),
                 ),
               ),
-              // 选项固定在底部：600~800 字正文时不必滑到屏幕最底下才能行动
-              _buildChoiceList(gp, maxHeight: constraints.maxHeight * 0.42),
+              // 选项固定在底部：600~800 字正文时不必滑到屏幕最底下才能行动。
+              // 限高 0.42 → 0.32：4 个选项约 230px 本就够放，
+              // 上限松到 42% 只是给长文案选项留的口子——
+              // 代价是正文区常年被预支一截，收紧后长选项自己内部滚动。
+              _buildChoiceList(gp, maxHeight: constraints.maxHeight * 0.32),
             ],
           ),
         ),
@@ -1112,7 +1232,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
             top: 0,
             left: 0,
             right: 0,
-            child: _buildHeaderCard(timestamp, location, height: bannerH),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _buildHeaderCard(timestamp, location,
+                  height: bannerH, compact: bannerCollapsedByScroll),
+            ),
           ),
         Positioned(
           top: headerReserve + 12,
@@ -1182,24 +1306,57 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
-  Widget _buildLegendPanel() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: dividerColorOf(context)),
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 4,
-        children: [
-          _buildLegendItem(const Color(0xFFE3B341), '人名'),
-          _buildLegendItem(const Color(0xFFFFA657), '说话人'),
-          _buildLegendItem(const Color(0xFF58A6FF), '对话'),
-          _buildLegendItem(const Color(0xFF56D364), '地点'),
-          _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
-        ],
+  Widget _buildLegendPanel(GameProvider gp) {
+    // 前 3 回合是学习期，强制展开；之后跟随玩家偏好（默认收起）。
+    // 图例一旦记住就是纯租金：每回合 ~40px，够多放两行正文。
+    final effectiveCollapsed = legendCollapsed && gp.turnCount > 3;
+    if (effectiveCollapsed) {
+      return GestureDetector(
+        onTap: () => setState(() => legendCollapsed = false),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color:
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('🎨', style: TextStyle(fontSize: 11)),
+              SizedBox(width: 4),
+              Text('文本颜色图例',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+              Icon(Icons.keyboard_arrow_down,
+                  size: 14, color: Color(0xFF8B949E)),
+            ],
+          ),
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: () {
+        // 学习期内（前 3 回合）不记偏好，免得玩家还没看懂就被收起来
+        if (gp.turnCount > 3) setState(() => legendCollapsed = true);
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: dividerColorOf(context)),
+        ),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          children: [
+            _buildLegendItem(const Color(0xFFE3B341), '人名'),
+            _buildLegendItem(const Color(0xFFFFA657), '说话人'),
+            _buildLegendItem(const Color(0xFF58A6FF), '对话'),
+            _buildLegendItem(const Color(0xFF56D364), '地点'),
+            _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
+          ],
+        ),
       ),
     );
   }
