@@ -5,6 +5,17 @@
 
 ---
 
+### v3.3.5 — 2026-08-30
+
+**📋 变更说明**
+fix(test): 同步测试颜色期望值到新调色板
+
+- narrationColor: #C9D1D9 → #D0D7DE
+- dialogueColor: #58A6FF → #79C0FF
+- speakerColor: #FFA657 → #FFC87A
+- locationColor: #56D364 → #7EE787
+- characterColor: #E3B341 → #DDB54A
+
 ### v3.3.4 — 2026-08-30
 
 **📋 变更说明**
