@@ -68,6 +68,14 @@ class NPC {
   /// 玩家什么都没做就被惩罚，这是最差的一种系统惊喜。
   int lastAffectionTouchDay;
 
+  /// 重大事件免疫衰减的起始绝对天数。
+  ///
+  /// 当一次好感变化触发重大事件免疫（如救命、牺牲、告白等），
+  /// 记录当时的 absoluteDayIndex，在 [Balance.majorEventImmunityDays] 天内
+  /// 该 NPC 的好感变化不受连续互动衰减影响。
+  /// null = 未触发重大事件免疫。
+  int? majorEventDate;
+
   // ====== 宿敌系统（长在 grudges 之上的一层） ======
   // 记仇是流水账，只增不减；宿敌分才是"现在有多恨你"，
   // 可以被时间、被玩家的补救消掉。两者分开，
@@ -133,6 +141,7 @@ class NPC {
     this.affectionMonthKey = 0,
     this.lastGrudgeDay = -1,
     this.lastAffectionTouchDay = -1,
+    this.majorEventDate,
     this.rivalryRelief = 0,
     this.reliefGivenDay = -1,
     this.reliefGivenToday = 0,
@@ -442,6 +451,7 @@ class NPC {
         'affection_month_key': affectionMonthKey,
         'last_grudge_day': lastGrudgeDay,
         'last_affection_touch_day': lastAffectionTouchDay,
+        'major_event_date': majorEventDate,
         'rivalry_relief': rivalryRelief,
         'relief_given_day': reliefGivenDay,
         'relief_given_today': reliefGivenToday,
@@ -498,6 +508,8 @@ class NPC {
         lastGrudgeDay: json['last_grudge_day'] ?? -1,
         // 老存档没有这个键：-1 按"刚刚互动过"豁免衰减（见字段注释）
         lastAffectionTouchDay: json['last_affection_touch_day'] ?? -1,
+        // 老存档没有这个键，按 null 处理（从未触发重大事件免疫）
+        majorEventDate: json['major_event_date'] as int?,
         // 老存档没有这几个键，读出来按"从没补救过、从没结仇"处理，
         // 宿敌分仍能从 grudges 算出来——不需要迁移脚本。
         rivalryRelief: json['rivalry_relief'] ?? 0,

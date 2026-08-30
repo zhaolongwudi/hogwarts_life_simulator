@@ -5,6 +5,35 @@
 
 ---
 
+### v3.3.0 — 2026-08-30
+
+**📋 变更说明**
+feat: 第十次审查修复落地 — 数值平衡重构 + 叙事多样性 + 机制新增
+
+依据 `.github/霍格沃兹第十次审查记录.md`，覆盖 15 个文件 +877/-23 行：
+
+**P0 收口（3/3）**
+- 好感压缩一刀切改分段映射（compressAffectionDelta），救命之恩+20 与顺手帮忙+8 不再同值
+- 好感维系衰减：30 天无互动每周淡 1~2 点，地板 10，快进按周补结
+- 导演节拍概率化：advance 30% / daily 25% / turn 25% / calm 10% / social 10%
+
+**P1 收口（6/8）**
+- 三层目标分解：学年/学期/月度子目标，含 3×14 条引导提示（goal_data.dart）
+- 事件池分层：26 条学年特异性事件，按学年+种子选事件（monthly_event_data.dart）
+- 原创 NPC 生成加速：每学年上限 4→6（mixin_relations.dart）
+- 传闻传播模型：addRumor 公开化 + 20% 概率自动生成（mixin_systems.dart）
+- 重要性打分补委婉表达关键词（long_term_memory.dart）
+- 传说特质与防崩坏规则冲突解除（world_rules.dart）
+
+**新增机制**
+- 属性成长曲线：8 项核心属性年度期望值参数表（balance_constants.dart）
+- 学院分多元化：6 种来源统一分值表（魁地奇/决斗/课堂/禁林/委托/考试）
+- 信息密度调节器：事件信号密度量化 + 自动兜底增强（mixin_narrative.dart）
+- 学年里程碑：1~7 学年特有事件叙事注入（mixin_systems.dart）
+- 离线模式关键事件补齐：月度/学年事件自动融入叙事（mixin_narrative.dart）
+- 叙事多样性规则：5 种开篇轮换 + 节奏变化 + 安静期检测提示（narrative_prompts.dart）
+- 社交成本机制：连续互动递减 -20%/回合，地板 30%（mixin_response_affection.dart）
+
 ### v3.2.0 — 2026-08-30
 
 **📋 变更说明**

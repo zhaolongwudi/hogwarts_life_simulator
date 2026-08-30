@@ -7,6 +7,7 @@ import '../data/narrative_forward_rules.dart';
 import '../data/narrative_time_rules.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
+import '../models/game_systems.dart';
 
 /// 场景过渡图里的匹配串（currentLocationPattern / requireVisited /
 /// requireNotVisited）是**运行时数据**，没法像字面量那样提到 static final
@@ -918,5 +919,112 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
         .detectForbiddenWords(text, eraKey: era)
         .map((h) => h.toMap())
         .toList();
+  }
+
+  /// 对 AI 生成的选项进行断言校验，标记与当前状态矛盾的选项。
+  /// 被标记的选项在 text 末尾追加 ⚠️ 标记，不会被丢弃，但 UI 可以识别。
+  List<GameChoice> validateChoicesAgainstAssertions(
+      List<GameChoice> choices, String narrative) {
+    if (choices.isEmpty || narrative.isEmpty) return choices;
+
+    final assertions = extractShortAssertions(narrative);
+    if (assertions.isEmpty) return choices;
+
+    final result = <GameChoice>[];
+    // 断言类型判断
+    final lockAssertionRe = RegExp(r'(锁死|封死|封住|挡死|堵死|施了锁门咒)');
+    final wandLostAssertionRe =
+        RegExp(r'(魔杖.*不在手中|魔杖.*掉在地上|魔杖.*脱手|魔杖.*被缴走)');
+    final calledAssertionRe =
+        RegExp(r'(被点名|提问|叫你|喊你|等你回答|注视着你)');
+    // 选项动作判断
+    final leaveActionRe =
+        RegExp(r'(推门|走出去|离开房间|走出|下楼|出门|推开|打开门)');
+    final castActionRe =
+        RegExp(r'(挥杖|施咒|举起魔杖|挥动魔杖|念咒|施展|施法)');
+    final respondActionRe = RegExp(r'(回答|回应|开口|说|答|回应|答话|应声)');
+
+    for (final choice in choices) {
+      bool needsMark = false;
+      String? markReason;
+
+      for (final assertion in assertions) {
+        // 封锁状态 vs 离开动作
+        if (lockAssertionRe.hasMatch(assertion) &&
+            leaveActionRe.hasMatch(choice.action)) {
+          needsMark = true;
+          markReason = '与状态断言矛盾';
+          break;
+        }
+        // 魔杖丢失 vs 施法动作
+        if (wandLostAssertionRe.hasMatch(assertion) &&
+            castActionRe.hasMatch(choice.action)) {
+          needsMark = true;
+          markReason = '与状态断言矛盾';
+          break;
+        }
+        // 被点名/提问 vs 未回应
+        if (calledAssertionRe.hasMatch(assertion) &&
+            !respondActionRe.hasMatch(choice.action)) {
+          needsMark = true;
+          markReason = '应在回应后再行动';
+          break;
+        }
+      }
+
+      if (needsMark) {
+        result.add(GameChoice(
+          text: '${choice.text} ⚠️',
+          action: choice.action,
+        ));
+      } else {
+        result.add(choice);
+      }
+    }
+
+    return result;
+  }
+
+  /// 计算叙事文本的信息密度。
+  /// 密度 = 有效事件信号数 / 总字数，低于 0.01 的返回 0.0。
+  double calculateInformationDensity(String narrative) {
+    if (narrative.isEmpty) return 0.0;
+
+    // 统计总字数：中文字符 + 英文单词
+    final chineseChars =
+        RegExp(r'[\u4e00-\u9fff]').allMatches(narrative).length;
+    final englishWords = RegExp(r'[a-zA-Z]+').allMatches(narrative).length;
+    final totalLength = chineseChars + englishWords;
+    if (totalLength == 0) return 0.0;
+
+    // 有效事件信号模式
+    final eventPatterns = <RegExp>[
+      // "你" + 动作 + "了" 结尾
+      RegExp(r'你[^，。！？\n]{1,20}了'),
+      // 动词 + 人物/对象
+      RegExp(
+          r'(遇见|找到|见到|碰到|看到|发现|叫住|拦住|跟着|走向|来到|进入|离开|'
+          r'推开|打开|关上|拿起|放下|接过|递给|告诉|询问|回答|解释|喊道|低声|'
+          r'沉声|开口|转身|点头|摇头|坐下|站起|蹲下|举起|拔出|收起|施展|念出|'
+          r'抽出|抓住|握住|拉着|扶着|抱起)[^，。！？\n]{1,10}'),
+      // 时间词 + 事件
+      RegExp(
+          r'(突然|这时|就在这时|紧接着|忽然|猛然|终于|总算|片刻后|过了一会儿|'
+          r'正当|正在|正要|刚想|还没来得及|与此同时|转眼间)[^，。！？\n]{1,30}'),
+      // 环境变化 / 事件触发
+      RegExp(
+          r'(响起|传来|震动|摇晃|亮起|熄灭|出现|消失|裂开|破碎|打开|关闭|'
+          r'涌入|冲出|飞来|射来|喷出|落下|掉下|升起|沉入|爆炸|燃烧|绽放)'),
+      // 对话信号
+      RegExp(r'[「"][^「"」]{2,40}[」"]'),
+    ];
+
+    int eventCount = 0;
+    for (final pattern in eventPatterns) {
+      eventCount += pattern.allMatches(narrative).length;
+    }
+
+    final density = eventCount / totalLength;
+    return density < 0.01 ? 0.0 : density;
   }
 }

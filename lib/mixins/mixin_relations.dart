@@ -28,14 +28,14 @@ mixin GameRelationsMixin on GameProviderBase {
     final p = player;
     if (p == null) return;
 
-    // 学年制上限：每学年最多生成4位新NPC，跨学年自动重置计数
+    // 学年制上限：每学年最多生成6位新NPC（原4位，加速填充社交圈），跨学年自动重置计数
     final sy = worldState.time.month >= 9 ? worldState.time.year : worldState.time.year - 1;
     if (npcGenerationSchoolYear != sy) {
       npcGenerationSchoolYear = sy;
       npcGeneratedThisSchoolYear = 0;
     }
-    if (npcGeneratedThisSchoolYear >= 4) {
-      currentNarrative = '新NPC数量已达到上限（每学年最多新增4位）。';
+    if (npcGeneratedThisSchoolYear >= 6) {
+      currentNarrative = '新NPC数量已达到上限（每学年最多新增6位）。';
       choices = [GameChoice(text: '返回', action: '继续')];
       return;
     }
@@ -772,8 +772,9 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// 追加一条传闻（去重 + 保留最近 20 条，避免无限膨胀）
+  /// 传闻内容支持模板变量，可自动融入 NPC 名称和地点
 
-  void _addRumor(String text) {
+  void addRumor(String text) {
     final p = player;
     if (p == null) return;
     if (p.rumors.contains(text)) return;
@@ -1355,7 +1356,7 @@ mixin GameRelationsMixin on GameProviderBase {
       unlockAchievement('in_love');
       notifications.add('💕 你与${npc.name}开始了恋爱！');
       worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！', turn: turnCount);
-      _addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
+      addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
       bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
       _applyLoveReputation(npc);
       currentNarrative =
@@ -1365,7 +1366,7 @@ mixin GameRelationsMixin on GameProviderBase {
     } else {
       this.updateNpcAffection(npc.id, -5, reason: '婉拒表白');
       unlockCG(cgById('CG-CF-002'));
-      _addRumor('听说${npc.name}向你表白，却被你拒绝了。');
+      addRumor('听说${npc.name}向你表白，却被你拒绝了。');
       bumpImpactScore(npc.isCanon ? 0.03 : 0.015, debugReason: '婉拒${npc.name}表白');
       currentNarrative =
           '你温和地摇了摇头。${npc.name}的眼神黯淡了一下，但很快挤出一个微笑。\n\n'
@@ -1459,7 +1460,7 @@ mixin GameRelationsMixin on GameProviderBase {
     worldState.addNarrativeEvent('💒 与$partnerName 结婚', turn: turnCount);
     worldState.addTimelineBranch(
         '与$partnerName 成婚：一条原作里不存在的家族线从这里开始');
-    _addRumor('$partnerName 和你在霍格沃茨举行了婚礼，这件事被念叨了整整一个学期。');
+    addRumor('$partnerName 和你在霍格沃茨举行了婚礼，这件事被念叨了整整一个学期。');
     bumpImpactScore(0.08, debugReason: '结婚：$partnerName');
     notifyListeners();
     return null;
@@ -1517,7 +1518,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
     notifications.add('👶 ${child.name}出生了（$gender）');
     worldState.addNarrativeEvent('👶 ${child.name}出生', turn: turnCount);
-    _addRumor('听说你和$partnerName 的孩子出生了，名字叫${child.name}。');
+    addRumor('听说你和$partnerName 的孩子出生了，名字叫${child.name}。');
     bumpImpactScore(0.1, debugReason: '生育：${child.name}');
     notifyListeners();
   }

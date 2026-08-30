@@ -39,6 +39,9 @@ import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
 
 mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
+  /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
+  double _lastNarrativeDensity = 0.0;
+
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
 
@@ -480,6 +483,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
               '不要给出倾向，不要预写后果，把决定权原样留在那一秒。\n\n'
           : '';
 
+      // 安静期提示：检测最近几回合是否连续平淡，若连续3回合以上无转折，
+      // 注入"本回合需要一点波澜"的指令，防止叙事陷入日常循环。
+      final quietPeriodHint = _buildQuietPeriodHint();
+
       return '''【世界上下文】
   $context
 
@@ -488,7 +495,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   ${timeBudgetPromptLine(resolveActionCost(safeAction))}
   $sceneInfo
   ${buildContinuityBridgePromptLine()}
-  $stagnationLine$anchorLine$causalLine$directorLine
+  $stagnationLine$anchorLine$causalLine$directorLine$quietPeriodHint
   ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
@@ -651,6 +658,33 @@ $kNarrativeWritingRules
       // 重试循环内被驳回的 response 不再污染好感度/声望/分院状态。
       if (!usedFallbackNarrative) {
         applyNarrativeSideEffects(finalResponseText);
+      }
+
+      // ====== 信息密度调节器：检测本回合叙事的事件密度 ======
+      // 密度低于阈值时记录警告，用于后续分析与 prompt 调优；
+      // 兜底叙事密度过低时自动增强，确保离线模式也有足够的叙事张力。
+      {
+        final density = calculateInformationDensity(currentNarrative);
+        _lastNarrativeDensity = density;
+        if (density < 0.02 && density > 0.0) {
+          debugPrint('⚠️ 信息密度偏低: ${density.toStringAsFixed(4)}（阈值 0.02）');
+          if (usedFallbackNarrative) {
+            // 兜底叙事密度过低 → 自动增强：追加一段具体的环境/事件描述
+            final p = player;
+            if (p != null) {
+              final location = worldState.currentLocation ?? '霍格沃茨';
+              final time = worldState.timestamp;
+              final weather = worldState.weather ?? '晴朗';
+              final enhancement = '\n\n你环顾四周，$location 的$weather天气下，'
+                  '城堡的走廊里传来远处学生的笑闹声和隐约的脚步声。'
+                  '墙上的画像低声交谈着最近的校园新闻，'
+                  '一只猫头鹰从窗外掠过，带起一阵微风。';
+              currentNarrative = currentNarrative.trimRight() + enhancement;
+            }
+          } else {
+            notifications.add('📝 本回合叙事密度偏低，AI 可能写得过于笼统。');
+          }
+        }
       }
 
       // ====== 每回合周期性结算（原先只挂在 parseResponse 里 = 只在开局跑一次）======
@@ -848,6 +882,33 @@ $kNarrativeWritingRules
 
     currentNarrative = generateFallbackNarrative();
 
+    // ====== 信息密度调节器：离线模式兜底叙事自动增强 ======
+    {
+      final density = calculateInformationDensity(currentNarrative);
+      _lastNarrativeDensity = density;
+      if (density < 0.02 && density > 0.0) {
+        debugPrint('⚠️ [离线] 信息密度偏低: ${density.toStringAsFixed(4)}，自动增强');
+        final p = player;
+        if (p != null) {
+          final location = worldState.currentLocation ?? '霍格沃茨';
+          final weather = worldState.weather ?? '晴朗';
+          final hour = worldState.time.hour;
+          final timeDesc = hour < 6 ? '深夜' : hour < 12 ? '上午' : hour < 14 ? '正午' : hour < 18 ? '下午' : '傍晚';
+          final eventSeed = turnCount % 5;
+          final eventLines = [
+            '走廊里几个低年级学生抱着书本匆匆跑过，其中一本差点掉在地上。',
+            '墙上的画像们正在争论魁地奇比赛的历史最佳找球手，声音越来越大。',
+            '窗外传来猫头鹰扑打翅膀的声音，一封新信被扔进了窗台。',
+            '远处的教室传来一阵整齐的咒语吟唱声，听起来像是弗立维教授的魔咒课。',
+            '拐角处皮皮鬼唱着怪调的歌飘过，又突然折返往另一个方向去了。',
+          ];
+          final enhancement = '\n\n你环顾四周，$timeDesc的$location在$weather中显得格外宁静。'
+              '${eventLines[eventSeed]}';
+          currentNarrative = currentNarrative.trimRight() + enhancement;
+        }
+      }
+    }
+
     // 与 AI 正式路径同一套周期结算（详见 _settleAfterNarrative 的注释）。
     // 表白会改写 currentNarrative 并写好「接受/婉拒」两个专属选项，
     // 这时候不能再用承接型兜底选项把它冲掉。
@@ -857,6 +918,29 @@ $kNarrativeWritingRules
     }
 
     _finalizeTurn(currentNarrative, action);
+
+    // ====== 离线模式补齐关键事件：将月度/学年事件融入叙事 ======
+    // _finalizeTurn → advanceTimeForAction → _advanceWorldClock 已在上面触发
+    // 了 _checkMonthlyEvolution / _checkEventAnchors 等事件检测，
+    // 但事件文本只进了 notifications 列表，没有写进 currentNarrative。
+    // 这里将最新的一条世界事件追加到叙事末尾，让离线模式也有"世界在动"的感觉。
+    {
+      final recentEvents = worldState.recentEvents;
+      if (recentEvents.isNotEmpty) {
+        // 找当前回合的最新事件（turnCount 匹配的）
+        final turnEvents = recentEvents
+            .where((e) => e.turn == turnCount)
+            .toList();
+        if (turnEvents.isNotEmpty) {
+          final latestEvent = turnEvents.last.text;
+          // 如果叙事末尾还没提到这个事件，追加进去
+          if (!currentNarrative.contains(latestEvent.substring(0, latestEvent.length.clamp(10, 40)))) {
+            currentNarrative = '$currentNarrative\n\n$latestEvent';
+          }
+        }
+      }
+    }
+
     _maybeRunPeriodicSummary();
     error = null;
     loadingStage = '';
@@ -1452,6 +1536,31 @@ $kNarrativeWritingRules
     if (t.month == 5 || t.month == 6) return true;
     if (t.hour >= 23 || t.hour < 6) return true;
     return false;
+  }
+
+  /// 检测最近几回合的叙事节奏，生成安静期提示。
+  /// 如果连续 3 回合以上没有转折（director beat 为 turn），
+  /// 注入"本回合需要一点波澜"的指令，防止叙事陷入日常循环。
+  String _buildQuietPeriodHint() {
+    // 如果最近一次转折回合数缺失（开局），跳过
+    if (turnsSinceLastTurnBeat < 0) return '';
+
+    // 连续 5 回合以上无转折 → 更强提示
+    if (turnsSinceLastTurnBeat >= 5) {
+      return '\n📌 【安静期提示】已经连续 $turnsSinceLastTurnBeat 回合没有转折，'
+          '本回合必须发生一件实质性的事件——可以是新情报、新冲突、新人物登场，'
+          '或者一个旧悬念的重新浮现。不能让剧情继续在原地打转。\n\n';
+    }
+
+    // 连续 3 回合无转折 → 提示注入小波澜
+    if (turnsSinceLastTurnBeat >= 3) {
+      return '\n📌 【安静期提示】最近 $turnsSinceLastTurnBeat 回合没有发生重大转折，'
+          '本回合请引入一点小小的波澜——可以是一封意外的信、一个奇怪的声音、'
+          '一个突然出现的同学、一句意味深长的话，或者一件打破常规的小事。'
+          '不必是惊天动地的大事，但必须让剧情有"往前走"的感觉。\n\n';
+    }
+
+    return '';
   }
 
   /// 构建场景上下文信息（当前存在的NPC、时间提示等）

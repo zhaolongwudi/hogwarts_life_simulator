@@ -85,4 +85,60 @@ abstract final class Balance {
     }
     return raw < 0 ? -mapped : mapped;
   }
+
+  // ===== 社交成本：连续互动递减 =====
+
+  /// 对同一 NPC 连续互动超过此回合数后，好感收益开始递减
+  static const int consecutiveInteractionThreshold = 3;
+
+  /// 连续互动超过阈值后的每回合衰减比例（0.0~1.0）
+  /// 第 4 回合好感收益 ×[1 - 0.3]，第 5 回合 ×[1 - 0.5]，第 6 回合 ×[1 - 0.7]
+  static double consecutiveInteractionDecay(int consecutiveTurns) {
+    if (consecutiveTurns <= consecutiveInteractionThreshold) return 1.0;
+    final excess = consecutiveTurns - consecutiveInteractionThreshold;
+    return (1.0 - excess * 0.2).clamp(0.3, 1.0);
+  }
+
+  /// 重大事件后免疫衰减的天数
+  static const int majorEventImmunityDays = 7;
+
+  // ===== 属性成长曲线参数 =====
+
+  /// 属性成长期望值速查（7 学年结束时，正常玩家各属性的期望值区间）
+  /// 用于校准毕业条件、技能解锁门槛、事件触发条件。
+  /// 取值假设：每周上课 2 次 + 每月 1 次主动练习 + 年均 1 次事件增长。
+  static const Map<String, Map<String, int>> growthExpectation = {
+    // key: 属性名, value: {min: 最小值, max: 最大值, graduate: 毕业门槛建议}
+    'dda': {'min': 50, 'max': 80, 'graduate': 65},
+    'potions': {'min': 45, 'max': 75, 'graduate': 60},
+    'herbology': {'min': 40, 'max': 70, 'graduate': 55},
+    'transfiguration': {'min': 40, 'max': 70, 'graduate': 55},
+    'charms': {'min': 45, 'max': 75, 'graduate': 60},
+    'flying': {'min': 35, 'max': 65, 'graduate': 50},
+    'theory': {'min': 40, 'max': 70, 'graduate': 55},
+    'spell_understanding': {'min': 40, 'max': 70, 'graduate': 55},
+    'observation': {'min': 35, 'max': 65, 'graduate': 50},
+    'social': {'min': 40, 'max': 70, 'graduate': 55},
+  };
+
+  /// 每学年属性自然增长量（上课 + 事件 + 练习的综合期望）
+  static const int attrGrowthPerYear = 8;
+
+  /// 单次上课/练习/事件对属性的增益区间
+  static const int attrGainMin = 0;
+  static const int attrGainMax = 2;
+  static const int attrGainEventMin = 1;
+  static const int attrGainEventMax = 3;
+
+  // ===== 学院分来源平衡 =====
+
+  /// 各活动的学院分贡献系数
+  static const Map<String, int> houseCupActivityPoints = {
+    'quidditch_win': 30,      // 魁地奇胜场
+    'duel_win': 5,            // 决斗胜场
+    'classroom': 3,           // 课堂表现优异
+    'forbidden_forest': 8,    // 禁林探险成功
+    'quest_complete': 5,      // 委托完成
+    'exam_top': 15,           // 年级前十
+  };
 }

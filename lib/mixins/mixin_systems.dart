@@ -121,6 +121,44 @@ mixin GameSystemsMixin on GameProviderBase {
     _runConsistencyChecks();
 
     _checkMonthlyEvolution(oldMonth, oldYear);
+
+    // ====== 传闻传播：从近期世界事件中自动生成传闻 ======
+    if (dayDelta > 0 && player != null) {
+      _maybeGenerateRumor();
+    }
+  }
+
+  /// 从近期世界事件中自动生成一条传闻（约 20% 概率）
+  void _maybeGenerateRumor() {
+    final p = player;
+    if (p == null) return;
+    final rand = random;
+    if (rand.nextDouble() > 0.2) return;
+
+    final recentEvents = worldState.recentEvents;
+    if (recentEvents.isEmpty) return;
+
+    final event = recentEvents[rand.nextInt(recentEvents.length)];
+    final text = event.text;
+
+    final rumorPrefixes = [
+      '最近校园里大家都在议论：',
+      '走廊上有人窃窃私语，说',
+      '有消息灵通的学生透露，',
+      '公共休息室里传开了：',
+      '据可靠消息，',
+    ];
+    final prefix = rumorPrefixes[rand.nextInt(rumorPrefixes.length)];
+
+    // 截取事件文本的核心部分（去掉标记和年份）
+    final cleanText = text
+        .replaceAll(RegExp(r'^【.*?】'), '')
+        .replaceAll(RegExp(r'^\d{4}年\d{1,2}月'), '')
+        .trim();
+    if (cleanText.length < 5) return;
+
+    final rumor = '$prefix$cleanText';
+    addRumor(rumor);
   }
 
   void advanceTimeForAction(String action) {
@@ -600,6 +638,19 @@ mixin GameSystemsMixin on GameProviderBase {
     // 学年结算：上一学年的学院杯排名揭晓（只结算有贡献的玩家）
     settleHouseCup();
     notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
+
+    // ====== 学年里程碑：注入学年特有的事件叙事 ======
+    {
+      final milestoneText = schoolYearEventText(newGrade, seed: turnCount);
+      if (milestoneText != null) {
+        notifications.add('📜 $milestoneText');
+        worldState.addNarrativeEvent(
+          '📜 第${newGrade}学年里程碑：$milestoneText',
+          turn: turnCount,
+        );
+      }
+    }
+
     worldState.addNarrativeEvent('🏫 ${worldState.time.year}年9月，你升入${newGrade}年级', turn: turnCount);
     worldState.addMarker('⏳新学年');
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）

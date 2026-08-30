@@ -12,6 +12,7 @@ import '../data/spell_data.dart';
 import '../data/collectible_data.dart';
 import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
+import '../data/balance_constants.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -1500,10 +1501,12 @@ mixin GamePlayMixin on GameProviderBase {
     buf.writeln('\n你的本学年贡献：${p.houseCupPoints} 分');
     if (p.houseCupSources.isEmpty) {
       buf.writeln('可加分的途径：');
-      buf.writeln('· 魁地奇取胜 +30，惜败 +5');
-      buf.writeln('· 巫师决斗获胜 +1~10');
-      buf.writeln('· 禁林战胜危险生物 +5');
-      buf.writeln('· 完成支线委托 +3~10');
+      buf.writeln('· 魁地奇取胜 +${Balance.houseCupActivityPoints['quidditch_win']}，惜败 +5');
+      buf.writeln('· 巫师决斗获胜 +${Balance.houseCupActivityPoints['duel_win']}');
+      buf.writeln('· 禁林战胜危险生物 +${Balance.houseCupActivityPoints['forbidden_forest']}');
+      buf.writeln('· 完成支线委托 +${Balance.houseCupActivityPoints['quest_complete']}');
+      buf.writeln('· 课堂表现优异 +${Balance.houseCupActivityPoints['classroom']}');
+      buf.writeln('· 期末考试年级前十 +${Balance.houseCupActivityPoints['exam_top']}');
       buf.writeln('· 日常：课堂上答对的问题、替同学解的围、'
           '还有你夜游被抓时扣掉的那些分（每天最多 +${kHouseNarrativeGainDailyCap}）');
     } else {

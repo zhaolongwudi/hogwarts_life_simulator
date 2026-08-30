@@ -258,6 +258,7 @@ abstract class GameProviderBase extends ChangeNotifier {
   String giveGift(String npcKeyword, String itemName);
   String formatReputation();
   String formatRumors();
+  void addRumor(String text);
   String formatWorldEvolution();
   Future<List<GameChoice>> generateChoicesSeparately(String narrative);
   List<GameChoice> generateContextualFallbackChoices();

@@ -33,8 +33,54 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
   /// 名字后面跟的括号备注（「赫敏（犹豫了一下）：+2」）要剥掉。
   static final RegExp _parenRemarkRe = RegExp(r'[（(].*?[）)]');
 
+  /// 连续互动回合追踪：NPC id → 当前连续回合数。
+  /// 每次调用 [parseAffectionChanges] 时先清空，[applySocialCost] 负责递增。
+  final Map<String, int> _consecutiveInteractionTurns = {};
+
+  /// 在好感度变化落地前应用社交成本——连续互动衰减。
+  ///
+  /// 从 [_consecutiveInteractionTurns] 获取当前 NPC 的连续互动回合数，
+  /// 调用 [Balance.consecutiveInteractionDecay] 获取衰减系数，
+  /// 将 [rawChange] 乘以衰减系数后取整返回，并在计数器 +1。
+  int _applySocialCost(String npcId, int rawChange) {
+    final consecutiveTurns = _consecutiveInteractionTurns[npcId] ?? 0;
+    final decay = Balance.consecutiveInteractionDecay(consecutiveTurns);
+    final result = (rawChange * decay).round();
+    _consecutiveInteractionTurns[npcId] = consecutiveTurns + 1;
+    return result;
+  }
+
+  /// 重置指定 NPC 的连续互动计数器。
+  ///
+  /// 当玩家与不同 NPC 互动时，重置之前 NPC 的连续计数器。
+  /// 每次调用 [parseAffectionChanges] 时整批清空，只保留当前文本中出现的 NPC。
+  void resetConsecutiveInteractions(String npcId) {
+    _consecutiveInteractionTurns.remove(npcId);
+  }
+
+  /// 检查某个好感变化是否触发了"重大事件免疫衰减"。
+  ///
+  /// 如果 [reason] 包含"救命""牺牲""告白""背叛""救""生死"等关键词，
+  /// 且 [rawChange.abs() >= 10]，标记该 NPC 为"重大事件免疫"——
+  /// 设置 [npc.majorEventDate] 为当前绝对天数。
+  /// 如果 NPC 模型没有 [majorEventDate] 字段则跳过该逻辑。
+  /// 返回 true 表示触发免疫。
+  bool _checkMajorEventImmunity(NPC npc, int rawChange, String reason) {
+    const keywords = ['救命', '牺牲', '告白', '背叛', '救', '生死'];
+    final matched = keywords.any((k) => reason.contains(k));
+    if (!matched || rawChange.abs() < 10) return false;
+    // 如果 NPC 模型有 majorEventDate 字段则设置
+    // 使用反射/interface 不可行，这里在编译期检查字段是否存在；
+    // NPC 类已添加 majorEventDate 字段，直接赋值即可。
+    npc.majorEventDate = worldState.time.absoluteDayIndex;
+    return true;
+  }
+
   void parseAffectionChanges(String text) {
     if (npcRegistry.isEmpty) return;
+
+    // 每次解析新文本时清空连续互动计数器，只追踪本轮内的连续互动
+    _consecutiveInteractionTurns.clear();
 
     // 修复：使用捕获组提取内容，避免 replaceFirst 把整段匹配（header+body）都删掉
     // 旧代码：sectionMatch.group(0)!.replaceFirst(sectionPattern, '') 会用同一个
@@ -121,6 +167,14 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // 那道门本来就是为大事准备的，旧压缩下它永远开不了。
         final rawDelta = delta;
         delta = Balance.compressAffectionDelta(delta);
+
+        // 应用社交成本——连续互动衰减，对压缩后的好感值进行衰减
+        delta = _applySocialCost(npc.id, delta);
+
+        // 检查是否触发重大事件免疫衰减
+        final reasonText = (remark == null || remark.isEmpty) ? '剧情互动' : remark;
+        _checkMajorEventImmunity(npc, rawDelta, reasonText);
+
         try {
           // 热路径：这几条日志每回合、每个好感行都要写一次，release 版照样
           // 往 stdout 打，长局下来是纯粹的 I/O 浪费。调试日志统一收进
@@ -133,7 +187,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
           // 一次解析出多行好感变化时静默批量更新，循环结束后统一通知一次
           // （见 parseAffectionChanges 末尾的 explicitChanged 判断）。
           updateNpcAffection(npc.id, delta,
-              reason: (remark == null || remark.isEmpty) ? '剧情互动' : remark,
+              reason: reasonText,
               severity: rawDelta,
               quiet: true);
           final after = npc.affection;
@@ -194,6 +248,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     // 判断玩家行动的情感倾向
     // 注意：不要放「和/与/跟」这类连词——中文行动描述几乎必然包含它们，
     // 会导致「骂了马尔福」也被判成正面互动，反向加好感。
+    // 单字关键字（如"打"）必须与上下文结合判断，避免"打招呼"→负面误判
     final positiveKeywords = [
       '聊天', '对话', '帮助', '帮', '救', '约', '邀', '送礼', '送',
       '陪伴', '陪', '鼓励', '安慰', '保护', '支持', '信任', '赞同',
@@ -201,11 +256,12 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       '一起', '散步',
     ];
     final negativeKeywords = [
-      '攻击', '打', '骂', '辱骂', '欺骗', '骗', '背叛', '出卖',
+      '攻击', '骂', '辱骂', '殴打', '欺骗', '骗', '背叛', '出卖',
       '嘲笑', '讽刺', '忽视', '无视', '拒绝', '反对', '争吵', '吵架',
       '冲突', '打架', '偷', '抢', '伤害', '恶意',
     ];
-
+    // 排除"打招呼"类误判：已从前面的关键字列表中移除"打"单字，
+    // 改用"殴打""打架"等更精确的双字词覆盖负面场景
     final isPositive = positiveKeywords.any((k) => action.contains(k));
     final isNegative = negativeKeywords.any((k) => action.contains(k));
     if (!isPositive && !isNegative) return;
