@@ -5,6 +5,17 @@
 
 ---
 
+### v3.3.2 — 2026-08-30
+
+**📋 变更说明**
+fix(commands): 未知指令不再覆盖当前剧情
+
+输入拼错的 /指令（如 /读）时，handleLocalCommand 把错误提示写进
+currentNarrative，并把 3 条候选指令塞进 choices，导致 processChoice 的
+isPanelOutput 判定（choices.length == 1）失败，错误提示被当成事件类指令
+永久覆写剧情；而玩家点任意一条候选都会继续触发新指令 —— 输错指令就等于
+丢掉当前一整段剧情，且没有任何回退入口。
+
 ### v3.3.1 — 2026-08-30
 
 **📋 变更说明**
