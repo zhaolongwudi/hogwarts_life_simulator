@@ -143,6 +143,10 @@ abstract class GameProviderBase extends ChangeNotifier {
   /// 用于判断跨周：上一状态对应的绝对天数除以 7 的桶编号。
   /// 与 gameWeek 一同在 new game/load game 时初始化，避免开局几天就跨周。
   int lastWeekBucket = 0;
+  /// 导演节拍器：距上次「转折」节拍的回合数。
+  /// 99 = 开局即视为"很久没转折"，不挡第一次转折抽取。
+  /// 不进存档：读档后从 99 重新开始计，影响只是一次转折可能来得早一点。
+  int turnsSinceLastTurnBeat = 99;
   /// 学年制新NPC上限追踪：当前学年已生成的数量
   int npcGeneratedThisSchoolYear = 0;
   /// 记录 npcGeneratedThisSchoolYear 所属学年的起始年份

@@ -312,6 +312,12 @@ class GameProvider extends GameProviderBase
     if (npc.affection > npc.maxAffectionReached) {
       npc.maxAffectionReached = npc.affection;
     }
+    // 好感真的动过才算"互动过"——维系衰减的 idle 计时从这天重新起算。
+    // 注意要用 actualChange（落地值）而不是 change（意图值）：
+    // 被周上限挡掉的 +0 不算互动，否则顶着上限硬刷也能保鲜。
+    if (actualChange != 0) {
+      npc.lastAffectionTouchDay = currentDay;
+    }
     _advanceLoveStage(npc);
     if (actualChange != 0) {
       final eventText = '好感 ${actualChange > 0 ? '+' : ''}$actualChange：${reason ?? '互动'}';

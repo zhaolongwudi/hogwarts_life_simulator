@@ -64,9 +64,10 @@ mixin GameSystemsMixin on GameProviderBase {
     final newBucket = worldState.time.absoluteDayIndex ~/ 7;
     if (newBucket > lastWeekBucket) {
       // 补齐跨过的所有整周（快进时一次可能跨很多周）
-      gameWeek += newBucket - lastWeekBucket;
+      final weeksCrossed = newBucket - lastWeekBucket;
+      gameWeek += weeksCrossed;
       lastWeekBucket = newBucket;
-      _resetWeeklyAffectionCaps();
+      _resetWeeklyAffectionCaps(weeksCrossed);
     }
 
     // 学院杯年度榜：跨过上学日时，其它三院逐日自然增长（世界不因玩家而停转）。
@@ -1525,11 +1526,75 @@ mixin GameSystemsMixin on GameProviderBase {
     return buf.toString();
   }
 
-  void _resetWeeklyAffectionCaps() {
+  void _resetWeeklyAffectionCaps([int weeksCrossed = 1]) {
     for (final npc in npcRegistry.values) {
       npc.affectionGainedThisWeek = 0;
     }
     debugPrint('📊 新的一周开始：好感周增量已重置');
+    _applyAffectionDrift(weeksCrossed);
+  }
+
+  /// 好感维系衰减：关系不经营是会淡的。
+  ///
+  /// 第九次审查前，好感只有「沉淀」（涨得慢）没有「维系」（不联系会回落），
+  /// 玩家可以把一排 NPC 刷到 85+ 然后放着不管——集邮式社交，
+  /// 关系网后期失真，也跟「NPC 有自己的生活」的设定矛盾。
+  ///
+  /// 规则（常量在 Balance）：
+  ///  - 连续 [Balance.affectionDriftIdleDays] 天没有任何好感互动后，
+  ///    每个游戏周自然转淡 1~2 点；
+  ///  - 只淡正好感，且在 [Balance.affectionDriftFloor]（「好感」段下沿）停住：
+  ///    会变生分，不会淡回素不相识；
+  ///  - 豁免：持有「信任锁」的（老朋友不联系也不会变陌生）、
+  ///    当前恋人、未登场的、已去世的、负好感（记恨不随时间消，那是宿敌系统的事）；
+  ///  - 快进跨多周时按实际跨过的周数结算，但每人每次最多补 4 周，
+  ///    防止一次长跳过把一段关系直接跳没。
+  void _applyAffectionDrift(int weeksCrossed) {
+    if (weeksCrossed <= 0) return;
+    final p = player;
+    final today = worldState.time.absoluteDayIndex;
+    final decayWeeksCap = weeksCrossed.clamp(1, 4);
+    final drifted = <String>[];
+
+    for (final npc in npcRegistry.values) {
+      if (!npc.isAlive || !npc.introduced) continue;
+      if (npc.affection <= Balance.affectionDriftFloor) continue;
+      if (npc.hasLock('信任锁')) continue;
+      if (p != null && p.loveState.partnerId == npc.id) continue;
+      // -1 = 老存档/从未互动：按刚刚互动过处理，豁免（见 NPC 字段注释）
+      if (npc.lastAffectionTouchDay < 0) continue;
+
+      final idleDays = today - npc.lastAffectionTouchDay;
+      if (idleDays < Balance.affectionDriftIdleDays) continue;
+
+      // idle 超过宽限期后，每多一周淡一次；本次跨了几周就最多补几周
+      final overdueWeeks = (idleDays - Balance.affectionDriftIdleDays) ~/ 7 + 1;
+      final weeks = overdueWeeks < decayWeeksCap ? overdueWeeks : decayWeeksCap;
+
+      var total = 0;
+      for (var i = 0; i < weeks; i++) {
+        total += Balance.affectionDriftPerWeekMin +
+            random.nextInt(Balance.affectionDriftPerWeekMax -
+                Balance.affectionDriftPerWeekMin +
+                1);
+      }
+      final before = npc.affection;
+      npc.affection =
+          (npc.affection - total).clamp(Balance.affectionDriftFloor, 100);
+      if (npc.affection != before) {
+        syncRelationshipLevel(npc);
+        drifted.add(npc.name);
+      }
+    }
+
+    if (drifted.isNotEmpty) {
+      // 聚合播报：一次跨多周时逐个刷通知是惩罚玩家，一句话说清即可
+      final shown = drifted.take(3).join('、');
+      final more = drifted.length > 3 ? ' 等 ${drifted.length} 人' : '';
+      final text = '💨 有些日子没和 $shown$more 联系了，彼此似乎都生分了一点';
+      notifications.add(text);
+      worldState.addNarrativeEvent(text, turn: turnCount);
+    }
   }
 
   void _checkMonthlyEvolution(int oldMonth, int oldYear) {

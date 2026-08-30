@@ -44,4 +44,45 @@ abstract final class Balance {
 
   /// 触发概率加成时视为「高好感」的阈值
   static const int confessionHighAffectionThreshold = 90;
+
+  // ===== 好感维系（防集邮式社交） =====
+  /// 连续多少天没有任何好感互动后，关系开始自然转淡
+  static const int affectionDriftIdleDays = 30;
+
+  /// 转淡速率：每个游戏周衰减的下限/上限（在两者之间取随机）
+  static const int affectionDriftPerWeekMin = 1;
+  static const int affectionDriftPerWeekMax = 2;
+
+  /// 转淡地板：淡到「好感」段下沿为止——不联系会变生分，
+  /// 但不会淡回素不相识（affectionStages 中「好感」段 min = 10）
+  static const int affectionDriftFloor = 10;
+
+  /// AI 原始好感幅度 → 落地值的分段压缩。
+  ///
+  /// 旧实现一刀切压到 ±5：AI 写「救命之恩 +20」和「顺手帮忙 +8」，
+  /// 落地都是 +5——大事件与日常好意在数值上完全无法区分，玩家对
+  /// 重大事件的反馈感知被抹平（数值钝化）。
+  ///
+  /// 分段映射保留"这件事有多大"的层次，同时上限 10 依然防暴涨：
+  ///   |raw| ≤ 5   → 原样（日常互动不被放大也不被缩小）
+  ///   |raw| 6–10  → 5–7（中等事件：帮助、共同冒险）
+  ///   |raw| 11–20 → 7–9（重大事件：救命、当众决裂）
+  ///   |raw| > 20  → 10（人生级事件：牺牲、背叛至极）
+  ///
+  /// 传入负值返回负值（符号对称）。正值落地后仍会过周/月沉淀上限，
+  /// 负值不过沉淀上限——伤害从来都是即时且全额的。
+  static int compressAffectionDelta(int raw) {
+    final d = raw.abs();
+    final int mapped;
+    if (d <= 5) {
+      mapped = d;
+    } else if (d <= 10) {
+      mapped = 5 + ((d - 5) * 2 / 5).round();
+    } else if (d <= 20) {
+      mapped = 7 + ((d - 10) * 2 / 10).round();
+    } else {
+      mapped = 10;
+    }
+    return raw < 0 ? -mapped : mapped;
+  }
 }

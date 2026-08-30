@@ -65,6 +65,7 @@ const String kWorldRulesFused = '''
 - 第一周上限+${Balance.weekOneAffectionCap}，第一个月上限+${Balance.monthOneAffectionCap}（好感沉淀）
 - ${Balance.trustLockThreshold}级解锁"共享秘密"，${Balance.romanceLockThreshold}级解锁"浪漫事件"
 - NPC记住背叛/欺骗/伤害，不会清零
+- 关系需要维系：一个月以上不互动会自然转淡（信任锁以上的老朋友与恋人不受影响）
 - 好感变化有明确归因（帮助+4~+8，救命+10~+20，背叛-15~-30）
 
 【表白系统】NPC主动发起
@@ -113,6 +114,14 @@ const String kWorldRulesFused = '''
 ❌ 禁止：纯血自动比麻瓜强
 ❌ 禁止：黑魔法无长期后果
 ❌ 禁止：NPC没有自己的生活
+
+━━━ 玩家开局特质（豁免条款）━━━
+若玩家档案中列有开局特质（如蛇佬腔、易容、预知梦等稀有天赋）：
+✅ 那是创建角色时既定的事实，不是你要遵守的"禁止稀有天赋"条款的例外冲突——
+   不得否定其存在、不得称其"不可能"、不得在叙事中悄悄抹掉。
+✅ 但稀有特质必须呈现代价与张力：暴露的风险、旁人的猜忌、隐藏它的压力、
+   能力本身的局限（如预知梦模糊滞后、蛇佬腔暴露后引发恐惧）。
+❌ 特质不是万能钥匙：它打开独特剧情，不保送成功。
 
 ━━━ AI自检（每轮必做）━━━
 1. 时间一致性：时间戳连贯，事件消耗合理时间
@@ -181,7 +190,7 @@ const String kWorldRulesFusedCompact = '''
 【好感系统】${Balance.affectionMin}至+${Balance.affectionMax}
 - 第一周上限+${Balance.weekOneAffectionCap}，首月上限+${Balance.monthOneAffectionCap}
 - ${Balance.trustLockThreshold}级解锁秘密，${Balance.romanceLockThreshold}级解锁浪漫
-- NPC记仇也记恩
+- NPC记仇也记恩；一个月以上不互动关系会自然转淡（信任锁与恋人除外）
 - 表白由NPC主动发起（需≥${Balance.confessionMinAffection}好感+暧昧≥${Balance.confessionCrushMatureDays ~/ 7}周）
 
 【核心规则】
@@ -192,6 +201,7 @@ const String kWorldRulesFusedCompact = '''
 - 原作事件存在但不是任务列表
 - 改变历史会产生蝴蝶效应
 - 玩家只知道角色合理知道的信息
+- 玩家开局特质是既定事实，不得否定；但稀有特质必须呈现代价与暴露风险
 - 不提AI/游戏规则/好感度等系统术语，不替玩家做重大决定
 
 【AI自检】每轮检查：

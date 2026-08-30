@@ -1,36 +1,166 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/director_beat_data.dart';
 
+/// 永不抽中转折的 Random（nextDouble 恒大于任何概率）
+class _NeverTurn implements Random {
+  @override
+  double nextDouble() => 0.999;
+
+  @override
+  int nextInt(int max) => 0;
+
+  @override
+  bool nextBool() => false;
+}
+
+/// 永远抽中转折的 Random
+class _AlwaysTurn implements Random {
+  @override
+  double nextDouble() => 0.0;
+
+  @override
+  int nextInt(int max) => 0;
+
+  @override
+  bool nextBool() => true;
+}
+
+/// 固定掷出指定值的 Random（用于卡概率边界）
+class _FixedRoll implements Random {
+  _FixedRoll(this.value);
+  final double value;
+
+  @override
+  double nextDouble() => value;
+
+  @override
+  int nextInt(int max) => 0;
+
+  @override
+  bool nextBool() => value < 0.5;
+}
+
 void main() {
   // ------------------------------------------------------------ 节拍选择
   group('导演指令的节拍选择', () {
-    test('三回合一个循环，转折至少每三回合来一次', () {
-      expect(directorBeatFor(turn: 0, hasUnresolvedHook: false), DirectorBeat.advance);
-      expect(directorBeatFor(turn: 1, hasUnresolvedHook: false), DirectorBeat.daily);
-      expect(directorBeatFor(turn: 2, hasUnresolvedHook: false), DirectorBeat.turn);
-      // 第二轮同样
-      expect(directorBeatFor(turn: 5, hasUnresolvedHook: false), DirectorBeat.turn);
+    test('不抽中转折时，日常与推进交替出现', () {
+      final rng = _NeverTurn();
+      expect(
+          directorBeatFor(turn: 0, hasUnresolvedHook: false, random: rng),
+          DirectorBeat.advance);
+      expect(
+          directorBeatFor(turn: 1, hasUnresolvedHook: false, random: rng),
+          DirectorBeat.daily);
+      expect(
+          directorBeatFor(turn: 2, hasUnresolvedHook: false, random: rng),
+          DirectorBeat.advance);
+      expect(
+          directorBeatFor(turn: 3, hasUnresolvedHook: false, random: rng),
+          DirectorBeat.daily);
+    });
+
+    test('转折有 2 回合最小间隔：刚转折过，掷骰再小也不转折', () {
+      // turnsSinceLastTurn < 2 时连概率抽取都不进
+      expect(
+        directorBeatFor(
+            turn: 2,
+            hasUnresolvedHook: false,
+            turnsSinceLastTurn: 1,
+            random: _AlwaysTurn()),
+        isNot(DirectorBeat.turn),
+      );
+    });
+
+    test('久未转折时必然抽中（间隔够大 → 概率封顶 0.55，必中骰必转折）', () {
+      expect(
+        directorBeatFor(
+            turn: 0,
+            hasUnresolvedHook: false,
+            turnsSinceLastTurn: 4,
+            random: _FixedRoll(0.54)),
+        DirectorBeat.turn,
+      );
+    });
+
+    test('低张力场景转折概率减半', () {
+      // turnsSinceLastTurn = 3 → 基础概率 0.45；roll 0.40：
+      // 普通场景 0.40 < 0.45 抽中；低张力减半到 0.225 抽不中
+      expect(
+        directorBeatFor(
+            turn: 0,
+            hasUnresolvedHook: false,
+            turnsSinceLastTurn: 3,
+            calmContext: false,
+            random: _FixedRoll(0.40)),
+        DirectorBeat.turn,
+      );
+      expect(
+        directorBeatFor(
+            turn: 0,
+            hasUnresolvedHook: false,
+            turnsSinceLastTurn: 3,
+            calmContext: true,
+            random: _FixedRoll(0.40)),
+        isNot(DirectorBeat.turn),
+      );
     });
 
     test('上一回合停在半截时，轮到日常也要改判推进', () {
       // 读者正等着下文，此刻写气氛段落是最扫兴的
-      expect(directorBeatFor(turn: 1, hasUnresolvedHook: true), DirectorBeat.advance);
-      expect(directorBeatFor(turn: 4, hasUnresolvedHook: true), DirectorBeat.advance);
+      expect(
+          directorBeatFor(
+              turn: 1, hasUnresolvedHook: true, random: _NeverTurn()),
+          DirectorBeat.advance);
+      expect(
+          directorBeatFor(
+              turn: 3, hasUnresolvedHook: true, random: _NeverTurn()),
+          DirectorBeat.advance);
     });
 
-    test('该转折的时候不被钩子抢走', () {
-      expect(directorBeatFor(turn: 2, hasUnresolvedHook: true), DirectorBeat.turn);
-      expect(directorBeatFor(turn: 0, hasUnresolvedHook: true), DirectorBeat.advance);
+    test('转折不被钩子拦截：转折本身就能收钩子', () {
+      expect(
+        directorBeatFor(
+            turn: 2,
+            hasUnresolvedHook: true,
+            turnsSinceLastTurn: 5,
+            random: _AlwaysTurn()),
+        DirectorBeat.turn,
+      );
     });
 
-    test('三种节拍在一个循环里都要出现，不能有一种永远轮不到', () {
+    test('长线模拟：转折不连续、不缺席太久、三种节拍都出现', () {
+      // 守性质不守定义式：固定 seed 下模拟 300 回合，
+      // 转折间隔恒 ≥2、相邻两次转折的间隔有界、三种节拍都轮得到。
+      final rng = Random(42);
       final seen = <DirectorBeat>{};
-      for (var t = 0; t < 12; t++) {
-        seen.add(directorBeatFor(turn: t, hasUnresolvedHook: false));
+      var sinceTurn = 99; // 开局即"很久没转折"——与生产侧初始值一致
+      var maxGap = 0;
+      var turnCount = 0;
+      for (var t = 0; t < 300; t++) {
+        final beat = directorBeatFor(
+          turn: t,
+          hasUnresolvedHook: false,
+          turnsSinceLastTurn: sinceTurn,
+          random: rng,
+        );
+        seen.add(beat);
+        if (beat == DirectorBeat.turn) {
+          expect(sinceTurn, greaterThanOrEqualTo(2),
+              reason: '转折间隔不得小于 2 回合');
+          // 首次转折的 sinceTurn=99 是初始值不是真间隔，从第二次起才统计
+          if (turnCount > 0 && sinceTurn > maxGap) maxGap = sinceTurn;
+          turnCount++;
+          sinceTurn = 0;
+        } else {
+          sinceTurn++;
+        }
       }
       expect(seen, containsAll(DirectorBeat.values));
+      expect(turnCount, greaterThanOrEqualTo(10), reason: '300 回合里转折不该是稀有动物');
+      expect(maxGap, lessThanOrEqualTo(15), reason: '转折不得缺席太久');
     });
   });
 
@@ -59,7 +189,8 @@ void main() {
     test('叙事 prompt 里会注入', () {
       final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
       expect(src.contains('directorLineFor'), isTrue);
-      expect(src.contains('directorBeatFor(turn: turnCount'), isTrue);
+      expect(src.contains('directorBeatFor('), isTrue);
+      expect(src.contains('turn: turnCount'), isTrue);
       // 注入点得在返回模板里，光算出来不拼进去等于没做
       expect(src.contains(r'$directorLine'), isTrue);
     });
@@ -68,6 +199,15 @@ void main() {
       final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
       // hasHook 在停滞判定那里已经算过一次（那是一次正则匹配）
       expect(src.contains('hasUnresolvedHook: hasHook'), isTrue);
+    });
+
+    test('节拍状态真的被追踪并回写', () {
+      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      // 概率化节拍依赖"距上次转折几回合"的状态，只算不回写等于没做
+      expect(src.contains('turnsSinceLastTurnBeat'), isTrue);
+      expect(src.contains('turnsSinceLastTurn: turnsSinceLastTurnBeat'), isTrue);
+      // 场景感知接线
+      expect(src.contains('calmContext:'), isTrue);
     });
   });
 

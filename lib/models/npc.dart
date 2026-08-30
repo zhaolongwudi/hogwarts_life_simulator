@@ -60,6 +60,14 @@ class NPC {
   int affectionMonthKey; // 记录 affectionGainedThisMonth 所属月份（year*12+month），跨月自动重置
   int lastGrudgeDay; // 上次记仇的游戏日
 
+  /// 最后一次好感互动（涨或跌都算）的 absoluteDayIndex。
+  ///
+  /// 好感维系衰减的 idle 计时起点：连续 [Balance.affectionDriftIdleDays] 天
+  /// 没有互动，关系开始自然转淡。-1 = 老存档/从未互动过，按"刚刚互动过"
+  /// 处理（豁免本次衰减），否则老存档一加载，所有 NPC 集体转淡——
+  /// 玩家什么都没做就被惩罚，这是最差的一种系统惊喜。
+  int lastAffectionTouchDay;
+
   // ====== 宿敌系统（长在 grudges 之上的一层） ======
   // 记仇是流水账，只增不减；宿敌分才是"现在有多恨你"，
   // 可以被时间、被玩家的补救消掉。两者分开，
@@ -124,6 +132,7 @@ class NPC {
     this.affectionGainedThisMonth = 0,
     this.affectionMonthKey = 0,
     this.lastGrudgeDay = -1,
+    this.lastAffectionTouchDay = -1,
     this.rivalryRelief = 0,
     this.reliefGivenDay = -1,
     this.reliefGivenToday = 0,
@@ -432,6 +441,7 @@ class NPC {
         'affection_gained_this_month': affectionGainedThisMonth,
         'affection_month_key': affectionMonthKey,
         'last_grudge_day': lastGrudgeDay,
+        'last_affection_touch_day': lastAffectionTouchDay,
         'rivalry_relief': rivalryRelief,
         'relief_given_day': reliefGivenDay,
         'relief_given_today': reliefGivenToday,
@@ -486,6 +496,8 @@ class NPC {
         affectionGainedThisMonth: json['affection_gained_this_month'] ?? 0,
         affectionMonthKey: json['affection_month_key'] ?? 0,
         lastGrudgeDay: json['last_grudge_day'] ?? -1,
+        // 老存档没有这个键：-1 按"刚刚互动过"豁免衰减（见字段注释）
+        lastAffectionTouchDay: json['last_affection_touch_day'] ?? -1,
         // 老存档没有这几个键，读出来按"从没补救过、从没结仇"处理，
         // 宿敌分仍能从 grudges 算出来——不需要迁移脚本。
         rivalryRelief: json['rivalry_relief'] ?? 0,

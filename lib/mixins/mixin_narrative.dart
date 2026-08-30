@@ -453,9 +453,17 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
       // 导演指令：prompt 里塞的全是"状态 + 规则 + 上下文"，
       // 唯独没说这一回合要干嘛，于是 AI 每回合平均用力，一整局读下来是平的。
-      // 三回合一个节奏单元（推进 → 日常 → 转折），转折至少每三回合来一次。
-      final directorLine =
-          directorLineFor(directorBeatFor(turn: turnCount, hasUnresolvedHook: hasHook));
+      // 第九次审查：三回合固定相位改为概率抽取（久未转折权重递增）+ 场景感知
+      // （考试周/暑假/深夜转折概率减半），转折仍不会缺席太久，但玩家摸不到规律。
+      final beat = directorBeatFor(
+        turn: turnCount,
+        hasUnresolvedHook: hasHook,
+        turnsSinceLastTurn: turnsSinceLastTurnBeat,
+        calmContext: _isCalmNarrativeContext(),
+        random: random,
+      );
+      turnsSinceLastTurnBeat = beat == DirectorBeat.turn ? 0 : turnsSinceLastTurnBeat + 1;
+      final directorLine = directorLineFor(beat);
 
       // 命运时刻：这一回合要把抉择摆到玩家面前，但不能替他做决定。
       // AI 一旦自己写"你冲了上去"或者"你转过身"，玩家点什么都没意义了。
@@ -1428,6 +1436,22 @@ $kNarrativeWritingRules
     }
 
     return parts.isNotEmpty ? '【状态】\n${parts.join('\n')}' : '';
+  }
+
+  /// 导演节拍器的低张力场景判定：这些时刻转折概率减半。
+  ///
+  ///  - 暑假（term == 'summer'）：城堡空了，人都不在，强插冲突没有落点；
+  ///  - 考试季（5-6 月）：叙事张力天然拉满，再来意外是叠加不是节奏；
+  ///  - 深夜（23:00-06:00）：宵禁后的独处时段，适合让人物喘口气。
+  ///
+  /// 注意是"概率减半"不是"禁止转折"——低张力场景偶尔来一下反而是好的，
+  /// 完全禁掉就成了另一种可预测的机械规则。
+  bool _isCalmNarrativeContext() {
+    final t = worldState.time;
+    if (worldState.term == 'summer') return true;
+    if (t.month == 5 || t.month == 6) return true;
+    if (t.hour >= 23 || t.hour < 6) return true;
+    return false;
   }
 
   /// 构建场景上下文信息（当前存在的NPC、时间提示等）

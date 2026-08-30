@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import '../data/balance_constants.dart';
 import '../providers/game_provider_base.dart';
 import '../models/npc.dart';
 import '../utils/affection_validator.dart';
@@ -110,9 +111,16 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // 压缩数值是为了不让好感一回合暴涨暴跌——那是数值层的事。
         // 但 AI 写下 -30 是在说"这件事很严重"，这个意图不能一起被压掉：
         // 结仇判定看的是下面这个 raw，不是压缩后的 delta。
+        //
+        // 第九次审查：一刀切 ±5 改为分段映射（Balance.compressAffectionDelta）。
+        // 旧公式 (delta*0.5).clamp(1,5) 把「救命 +20」和「帮忙 +8」都压成 +5，
+        // 大事件的反馈层次被抹平；分段后 6-10→5-7、11-20→7-9、20+→10，
+        // 上限仍在，但"这件事有多大"在数值上看得出来。
+        // 副作用（有意为之）：+8/+9 现在可达，updateNpcAffection 里
+        // 「actualChange >= 8 才算赎罪」的和解门从此能被重大示好推开——
+        // 那道门本来就是为大事准备的，旧压缩下它永远开不了。
         final rawDelta = delta;
-        if (delta > 5) delta = (delta * 0.5).round().clamp(1, 5);
-        if (delta < -5) delta = (delta * 0.7).round().clamp(-5, -1);
+        delta = Balance.compressAffectionDelta(delta);
         try {
           // 热路径：这几条日志每回合、每个好感行都要写一次，release 版照样
           // 往 stdout 打，长局下来是纯粹的 I/O 浪费。调试日志统一收进
