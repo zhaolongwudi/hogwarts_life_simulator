@@ -329,11 +329,18 @@ String npcExpectedLocation(NPC npc, int hour, {int weekday = 1}) {
   if (isStaff) {
     // 霍琦和海格常年在户外
     if (npc.id == 'hooch' || npc.id == 'hagrid') return kGroundsLocation;
-    // 上课时段（也是白天常待）：教授按课表守自己的专属教室——
-    // 麦格在变形术教室、斯内普在地窖、弗利维在魔咒教室……
-    // 这是「教授按课表在教室等」的硬耦合：玩家走进对应教室才见得到他。
-    // 没配专属教室的教职工回落到常驻点。
-    return kStaffClassLocations[npc.id] ?? home!;
+    // 上课时段：教授按课表守自己的专属教室——麦格在变形术教室、斯内普在
+    // 地窖、弗利维在魔咒教室……这是「教授按课表在教室等」的硬耦合：
+    // 玩家在上课时间去对应教室才见得到他。没配专属教室的回落常驻点。
+    if (isClassHour(hour)) {
+      return kStaffClassLocations[npc.id] ?? home!;
+    }
+    // 非上课时段（清晨 6-9 点、傍晚 17-22 点）：教授回自己的办公室或常驻点。
+    // （22 点后的深夜在更上面的 isLateHour 分支就回 home 了，走不到这里。）
+    // 这段判断曾经在做教室细分时被整段删掉，导致配了专属教室的教授在清晨和
+    // 傍晚也钉在教室里——傍晚六点去变形术教室还能撞见麦格，kStaffHomeLocations
+    // 对他们事实上失效。「世界在运转」要求位置随时间流动，而不是钉死在教室。
+    return kStaffHomeLocations[npc.id] ?? home!;
   }
 
   // ---- 学生 ----

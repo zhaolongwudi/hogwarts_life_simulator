@@ -119,13 +119,13 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         notifyListeners();
         return;
       }
-      _runOfflineQuickTurn(safeAction);
+      _runOfflineQuickTurn(safeAction, causalResult: causalResult);
       return;
     }
 
     // 主动开启「无 AI 快速模式」：即使配了 Key 也完全走本地生成，不消耗 AI 额度
     if (appProvider.offlineQuickMode) {
-      _runOfflineQuickTurn(safeAction);
+      _runOfflineQuickTurn(safeAction, causalResult: causalResult);
       return;
     }
 
@@ -763,7 +763,23 @@ $kNarrativeWritingRules
   /// 审查 P0「无 AI 快速模式 + 本地兜底剧情」：免费额度耗尽 / 未配 Key 时保底可玩。
   /// 与 AI 失败时的瞬时兜底不同：这里**消耗回合**（推进时间/精力/NPC/影响力），
   /// 因为这是玩家主动选择的正式离线玩法，而不是需要重试的失败。
-  void _runOfflineQuickTurn(String action) {
+  void _runOfflineQuickTurn(String action, {String? causalResult}) {
+    // 与 AI 正式路径保持完全一致的「回合推进」状态。
+    // 这些原本写在 processChoice 的正式分支里（commandResult / turnCount++ /
+    // lastPlayerAction），而快速模式是在那之前 return 的，于是长期漏掉：
+    //   ① turnCount 恒为 0 → directorBeatFor(turn:) 永远停在第一拍；
+    //   ② `turnCount % 15 == 0` 而 0 % 15 == 0 恒真 → 摘要每回合都触发；
+    //   ③ mixin_init 里 `id: 'meet_${npc.id}_$turnCount'` 在同一回合结识两名
+    //      NPC 时会生成重复 id；
+    //   ④ retryLastAction() 读的是 lastPlayerAction，会重试上一个行动；
+    //   ⑤ commandResult 不赋值 → 因果抉择/留校答复的后果面板丢失。
+    // 快速模式是同步执行的（没有 await 让出点），因此不需要 isLoading 并发守卫。
+    commandResult = causalResult;
+    error = null;
+    turnCount++;
+    lastScannedNarrativeHash = null;
+    lastPlayerAction = action;
+
     currentNarrative = generateFallbackNarrative();
     choices = buildFallbackChoices(currentNarrative);
     _syncLocationFromNarrative(currentNarrative);

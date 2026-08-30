@@ -60,7 +60,11 @@ const List<QuestTemplate> kQuestTemplates = [
     targetCount: 1,
     rewardGalleons: 45,
     rewardHousePoints: 10,
-    minGrade: 3,
+    // 与 q_spider_fang 同类的死锁修复：龙血只由挪威脊背龙 / 匈牙利树蜂掉落，
+    // 两者 danger 均为 5，而 maxDanger 表是「5 年级及以上才到 5」。
+    // 旧值 3 会让三、四年级玩家接了委托却永远遇不到龙（maxDanger 只有 4），
+    // 委托挂在那儿又占一个名额——同样的坑，上次只修了八眼巨蛛那条。
+    minGrade: 5,
   ),
   QuestTemplate(
     id: 'q_gnomes',

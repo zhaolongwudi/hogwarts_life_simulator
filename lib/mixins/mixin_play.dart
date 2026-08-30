@@ -1425,8 +1425,15 @@ mixin GamePlayMixin on GameProviderBase {
     p.houseCupSources[reason] = (p.houseCupSources[reason] ?? 0) + amount;
     // 年度榜同步：玩家的学院行 = 基准 + 玩家本学年贡献，随贡献实时更新，
     // /学院杯 的榜单才不会被"学期初那个初始值"卡住。
-    if (p.house != null) {
-      worldState.houseCupYearly[houseDisplayName(p.house)] =
+    //
+    // 必须同时排除空串：p.house 是 String?，但 mixin_response 从叙事里解析
+    // 分院结果时走 `en ??= 首字母大写(matched)`，AI 一旦写出四院之外的词，
+    // house 就会是个认不出来的值，houseDisplayName 回落到 '未分院'——
+    // 那会在 houseCupYearly 里多出第 5 个 key，而 formatHouseCup 的奖牌表
+    // 定长 4，按下标取就会 RangeError 崩溃。
+    final house = p.house;
+    if (house != null && house.isNotEmpty) {
+      worldState.houseCupYearly[houseDisplayName(house)] =
           kHouseCupBaseScore + p.houseCupPoints;
     }
   }
@@ -1473,7 +1480,11 @@ mixin GamePlayMixin on GameProviderBase {
       final e = ranked[i];
       final isMine = e.key == myCn;
       final extra = isMine ? '（你 +${p.houseCupPoints}）' : '';
-      buf.writeln('${medal[i]}${isMine ? '★ ' : '  '}${e.key}：${e.value} 分$extra');
+      // 越界保护：ranked 来自 houseCupYearly，正常是四院。但历史存档或
+      // 异常数据可能让这张表多出一行（例如 '未分院'），按下标取定长奖牌表
+      // 会 RangeError 直接崩在玩家点 /学院杯 的瞬间。宁可少一块奖牌。
+      final badge = i < medal.length ? medal[i] : '  ';
+      buf.writeln('$badge${isMine ? '★ ' : '  '}${e.key}：${e.value} 分$extra');
     }
 
     // 历届年度榜：让玩家看见七年榜单的走向
