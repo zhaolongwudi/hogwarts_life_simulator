@@ -4,12 +4,9 @@ import '../../providers/game_provider.dart';
 import '../../providers/app_provider.dart';
 import '../../models/player.dart';
 import '../../models/world_state.dart';
-import '../../models/npc.dart';
 import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
-import '../../utils/npc_lookup.dart';
-import '../../widgets/narrative_visuals.dart';
 import '../../widgets/scaled_rich_text.dart';
 
 import '../story_history_screen.dart';
@@ -1375,89 +1372,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildBodyCard(String body) {
-    final gp = context.read<GameProvider>();
-    final segments = StoryTextRenderer.splitIntoSegments(body);
-
-    // 分段失败（全空）时回退到原有整段渲染
-    if (segments.isEmpty) {
-      return _buildPlainBodyCard(body);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: dividerColorOf(context)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (int i = 0; i < segments.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
-            if (segments[i].isDialogue)
-              _buildDialogueSegment(gp, segments[i])
-            else
-              _buildNarrationBody(segments[i].text),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// 叙述段的「小说式」排版：按空行拆段、段间距、首行缩进、逐段淡入。
-  ///
-  /// 之前叙述段是一个 600~800 字的连体 RichText——那是一堵墙，
-  /// 不是一页书。拆段之后每段 100~200 字，眼睛有锚点；
-  /// 首行缩进让叙述段与对话气泡混排时依然一眼分得清边界
-  /// （气泡有头像和边框，缩进的文字块有"书页"的呼吸感）。
-  ///
-  /// 动画与 DialogueBubble 同款（300ms 淡入）：叙述和对话
-  /// 以同一种节奏出现，页面质感才统一。
-  Widget _buildNarrationBody(String text) {
-    final paragraphs = StoryTextRenderer.splitParagraphs(text);
-    if (paragraphs.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (int i = 0; i < paragraphs.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            builder: (context, value, child) =>
-                Opacity(opacity: value, child: child),
-            child: ScaledRichText(
-              text: TextSpan(
-                children: StoryTextRenderer.parseParagraph(paragraphs[i]),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// 对话段：头像 + 气泡。说话人解析到 NPC 时用其头像与学院色。
-  Widget _buildDialogueSegment(GameProvider gp, NarrativeSegment seg) {
-    final npc = _resolveNpcBySpeaker(gp, seg.speaker);
-    final houseColor = npc != null
-        ? UiHelpers.getHouseColorBright(npc.house)
-        : const Color(0xFFD3A625);
-    return DialogueBubble(
-      speaker: seg.speaker,
-      mood: seg.mood,
-      text: seg.text,
-      npcId: npc?.id,
-      houseColor: houseColor,
-    );
-  }
-
-  /// 按说话人名字在 NPC 注册表中找最佳匹配（统一实现见 lib/utils/npc_lookup.dart）。
-  NPC? _resolveNpcBySpeaker(GameProvider gp, String speaker) {
-    if (speaker.isEmpty || gp.npcRegistry.isEmpty) return null;
-    return findNpcByKeyword(gp.npcRegistry.values, speaker);
+    return _buildPlainBodyCard(body);
   }
 
   /// 原有整段渲染（无对话分段时的回退）
