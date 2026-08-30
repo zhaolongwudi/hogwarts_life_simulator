@@ -5,6 +5,17 @@
 
 ---
 
+### v3.1.5 — 2026-08-30
+
+**📋 变更说明**
+fix(ai): 修掉单 Key 超时炸掉整条 Key 链，并按第八次审查收口 P1/P2
+
+P0 — ai_router 的整条 Key 链此前共用一个 CancelToken，单 Key 超时取消的
+正是这个共享令牌，于是 catch 里的 `isCancelled → rethrow` 直接跳出三层循环：
+不切下一个 Key、不记 _recordFailure、还抛出「已切换 Key」的假消息。
+而 perCallTimeout 恒小于 receiveTimeout 决定了生产环境任何真实超时都必然
+走这条路径——第七轮新增的 24 条行为测试恰好只覆盖另一条，集体假绿。
+
 ### v3.1.4 — 2026-08-30
 
 **📋 变更说明**
