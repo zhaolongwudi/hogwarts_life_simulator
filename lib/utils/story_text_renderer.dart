@@ -1142,6 +1142,36 @@ class StoryTextRenderer {
     };
   }
 
+  // ==================== 小说式段落排版支持 ====================
+
+  /// 把叙述段按空行拆成段落列表。
+  ///
+  /// 单换行不拆——那是段内折行（或 AI 写的单行短段，
+  /// 与下一段没有空行隔开时不该自作主张拆成两段）。
+  static List<String> splitParagraphs(String text) {
+    return text
+        .split(RegExp(r'\n{2,}'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  /// 按段落解析：与 [parse] 相同的高亮规则，
+  /// 但段首加两个全角字符的首行缩进。
+  ///
+  /// 中文长篇阅读的眼睛锚点：齐头排的 600 字是一堵墙，
+  /// 尤其与对话气泡混排时，没有缩进的叙述段和气泡会糊成一片。
+  /// 缩进用全角空格而不是缩进 widget——RichText 内部完成，
+  /// 不引入额外的布局层，也跟随 ScaledRichText 的字号缩放。
+  static List<TextSpan> parseParagraph(String paragraph, {bool indent = true}) {
+    final spans = parse(paragraph);
+    if (!indent || spans.isEmpty) return spans;
+    return [
+      TextSpan(text: '　　', style: _narrationStyle),
+      ...spans,
+    ];
+  }
+
   // ==================== 对话气泡支持：叙事分段 ====================
 
   /// 把剧情正文切分为「叙述段 / 对话行」混合序列，供气泡式 UI 渲染。

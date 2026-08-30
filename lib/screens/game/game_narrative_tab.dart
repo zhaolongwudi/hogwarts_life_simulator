@@ -1385,14 +1385,44 @@ class _NarrativeTabState extends State<NarrativeTab> {
             if (segments[i].isDialogue)
               _buildDialogueSegment(gp, segments[i])
             else
-              ScaledRichText(
-                text: TextSpan(
-                  children: StoryTextRenderer.parse(segments[i].text),
-                ),
-              ),
+              _buildNarrationBody(segments[i].text),
           ],
         ],
       ),
+    );
+  }
+
+  /// 叙述段的「小说式」排版：按空行拆段、段间距、首行缩进、逐段淡入。
+  ///
+  /// 之前叙述段是一个 600~800 字的连体 RichText——那是一堵墙，
+  /// 不是一页书。拆段之后每段 100~200 字，眼睛有锚点；
+  /// 首行缩进让叙述段与对话气泡混排时依然一眼分得清边界
+  /// （气泡有头像和边框，缩进的文字块有"书页"的呼吸感）。
+  ///
+  /// 动画与 DialogueBubble 同款（300ms 淡入）：叙述和对话
+  /// 以同一种节奏出现，页面质感才统一。
+  Widget _buildNarrationBody(String text) {
+    final paragraphs = StoryTextRenderer.splitParagraphs(text);
+    if (paragraphs.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int i = 0; i < paragraphs.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            builder: (context, value, child) =>
+                Opacity(opacity: value, child: child),
+            child: ScaledRichText(
+              text: TextSpan(
+                children: StoryTextRenderer.parseParagraph(paragraphs[i]),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
