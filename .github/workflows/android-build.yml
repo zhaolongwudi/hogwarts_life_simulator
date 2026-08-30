@@ -172,14 +172,71 @@ jobs:
           path: ${{ env.RENAMED_APK }}
           retention-days: 7
 
+      # ================================================================
+      # 自动发布 Release + 清理老版本
+      #
+      # 此前 APK 只进 workflow artifacts（30 天过期）和 nightly.link（7 天），
+      # 「发行版」页面是空的，README 写的"历史版本见 GitHub Releases"
+      # 其实不存在——Release 全靠手动建。
+      #
+      # 现在：每次构建成功 → 以递增的版本号建 tag + Release（附 APK 与
+      # 本版本 changelog 段），然后按创建时间保留最新 5 个 Release，
+      # 更老的连同 tag 一起删除——版本号每次构建都递增，不留老 Release
+      # 列表会无限膨胀，保留窗口内的历史足够回退。
+      # ================================================================
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.bump.outputs.VERSION_NAME }}"
+          TAG="v$VERSION"
+
+          # 从 CHANGELOG.md 提取本版本段落作为 Release Notes
+          # （sync_changelog.sh 已保证"### vX.Y.Z — date"段落存在）
+          awk "/^### v${VERSION} /{flag=1; next} /^### v/{if(flag) exit} flag" \
+            CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "HogwartLige v${VERSION} 自动构建" > release_notes.md
+          fi
+
+          # 重复跑同一版本时 tag 可能已存在（例如 workflow 重跑）：
+          # 先删旧 Release 再重建，保证 Release 里的 APK 永远是本次构建产物
+          gh release delete "$TAG" --yes 2>/dev/null || true
+
+          gh release create "$TAG" "${{ env.RENAMED_APK }}" \
+            --title "HogwartLige v${VERSION}" \
+            --notes-file release_notes.md \
+            --latest
+
+          echo "✅ Released $TAG"
+
+      - name: Prune old releases (keep latest 5)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          KEEP=5
+          # 按创建时间倒序跳过前 KEEP 个，其余连 Release 带 tag 一起删。
+          # 删除失败不阻断构建——老版本清不掉是卫生问题，不是构建失败。
+          OLD_TAGS=$(gh release list --json tagName,createdAt \
+            --jq "sort_by(.createdAt) | reverse | .[$KEEP:] | .[].tagName")
+          for tag in $OLD_TAGS; do
+            echo "🧹 删除老版本 $tag"
+            gh release delete "$tag" --yes || true
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || true
+          done
+          REMAINING=$(gh release list --json tagName --jq 'length')
+          echo "✅ Release 清理完成，当前共 $REMAINING 个"
+
       - name: Output download links
         run: |
           echo "## 📱 下载地址" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**nightly.link（免登录直接下载最新版）**" >> $GITHUB_STEP_SUMMARY
+          echo "**GitHub Release 最新版（推荐，永久有效）**" >> $GITHUB_STEP_SUMMARY
+          echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**nightly.link（免登录直接下载最新构建）**" >> $GITHUB_STEP_SUMMARY
           echo "https://nightly.link/zhaolongwudi/hogwarts_life_simulator/workflows/android-build/main/HogwartLige-nightly.zip" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**GitHub Releases（历史版本）**" >> $GITHUB_STEP_SUMMARY
+          echo "**GitHub Releases（保留最近 5 个版本）**" >> $GITHUB_STEP_SUMMARY
           echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases" >> $GITHUB_STEP_SUMMARY
-
-      # 手动创建 Release：gh release create "v{VERSION}" ./path/to/apk --title "HogwartLige v{VERSION}" --generate-notes
