@@ -5,6 +5,17 @@
 
 ---
 
+### v3.3.3 — 2026-08-30
+
+**📋 变更说明**
+docs(proxy): 代理脚本升级 v2，修复 chunked 判定导致 clone 必挂
+
+原脚本以「上游关闭连接」作为响应结束的判据，而 GitHub 对 git 请求一律返回
+Transfer-Encoding: chunked 且保持 keep-alive，于是每个请求都要白等 15 秒
+socket 超时；超时后代理还会掐断客户端连接，导致 git 复用该连接发出的下一个
+请求（取 packfile 的 fetch）被丢弃 —— git clone 必挂
+「RPC failed; HTTP 400 ... fatal: expected 'packfile'」。
+
 ### v3.3.2 — 2026-08-30
 
 **📋 变更说明**
