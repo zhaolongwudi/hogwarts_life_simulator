@@ -5,6 +5,11 @@
 
 ---
 
+### v3.1.7 — 2026-08-30
+
+**📋 变更说明**
+Merge branch 'main' of https://gh-proxy.com/https://github.com/zhaolongwudi/hogwarts_life_simulator
+
 ### v3.1.6 — 2026-08-30
 
 **📋 变更说明**
