@@ -157,15 +157,30 @@ NarrativeTimeReport checkNarrativeTime(
   }
 
   final ai = parseAiTimestamp(narrative);
-  if (!ai.isComplete) {
-    return const NarrativeTimeReport(issue: NarrativeTimeIssue.none);
+  if (ai.isComplete) {
+    final current = DateTime(year, month, day);
+    final written = DateTime(ai.year!, ai.month!, ai.day!);
+    return _classify(written.difference(current).inDays, ai.toString());
   }
 
-  final current = DateTime(year, month, day);
-  final written = DateTime(ai.year!, ai.month!, ai.day!);
-  final delta = written.difference(current).inDays;
-  final evidence = ai.toString();
+  // P1-7：AI 只写「📅 9月3日」这类缺年日期时，以前直接 `return none`，倒流/跳跃
+  // 检测整体失效——玩家明明看到 AI 把时间写到了一个月后，却没有任何拦截。
+  // 现在把缺年日期按「当前年 / 次年」两种解释就近取一个（学校剧情的跨年叙事
+  // 允许"12月31日→1月1日"只差一天），再走与完整日期同一套判定。
+  if (ai.month != null && ai.day != null) {
+    final current = DateTime(year, month, day);
+    final deltaCur = DateTime(year, ai.month!, ai.day!).difference(current).inDays;
+    final deltaNext =
+        DateTime(year + 1, ai.month!, ai.day!).difference(current).inDays;
+    final delta = deltaCur.abs() <= deltaNext.abs() ? deltaCur : deltaNext;
+    return _classify(delta, '${ai.toString()}（缺年，就近解释）');
+  }
 
+  return const NarrativeTimeReport(issue: NarrativeTimeIssue.none);
+}
+
+/// 把「AI 日期 - 系统日期」的天数差归类成报告（完整/缺年共用同一套判定）。
+NarrativeTimeReport _classify(int delta, String evidence) {
   if (delta < 0) {
     return NarrativeTimeReport(
       issue: NarrativeTimeIssue.regression,

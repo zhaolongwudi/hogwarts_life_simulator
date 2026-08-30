@@ -69,7 +69,10 @@ const List<JobDef> jobCatalog = [
   JobDef(
     id: 'creature_keeper',
     title: '神奇动物照看员',
-    location: '海格小屋',
+    // 必须用规范名「海格的小屋」（locations.dart 里 '霍格沃茨·场地' 的别名）。
+    // 以前写「海格小屋」：resolveLocationName 解析不出 → 玩家在场地/小屋附近时
+    // 这个岗位永远拿不到位置加成（另 4 个 job 都是规范名/含关系的写法）。
+    location: '海格的小屋',
     pay: 35,
     energyCost: 4,
     minutes: 180,

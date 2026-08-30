@@ -163,6 +163,7 @@ class _SettingsBodyState extends State<SettingsBody> {
           },
         ),
         const SizedBox(height: 16),
+        _buildOfflineModeCard(context, appProvider),
         SettingsTokenUsage(
           gameProvider: gp,
           onReset: () {
@@ -308,6 +309,52 @@ class _SettingsBodyState extends State<SettingsBody> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineModeCard(BuildContext context, AppProvider appProvider) {
+    final enabled = appProvider.offlineQuickMode;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252C36),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: enabled ? const Color(0xFF10B981) : const Color(0xFF374151),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.offline_bolt, color: Color(0xFF10B981)),
+              SizedBox(width: 8),
+              Text('⚡ 无 AI 快速模式',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('完全离线游玩（不消耗 AI 额度）'),
+            subtitle: Text(
+              enabled
+                  ? '已开启：所有剧情与选项由本地模板生成，不调用 AI，'
+                      '适合免费额度耗尽或未配置 Key 时保底游玩。'
+                  : '未开启：正常使用 AI 生成剧情。AI 服务不可用或额度耗尽时，'
+                      '仍会自动切换到本地兜底剧情保证不断链。',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+            ),
+            value: enabled,
+            onChanged: (v) => context.read<AppProvider>().setOfflineQuickMode(v),
           ),
         ],
       ),

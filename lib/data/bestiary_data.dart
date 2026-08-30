@@ -50,7 +50,8 @@ const List<CreatureDef> kCreatureCatalog = [
     danger: 2,
     habitat: '禁林 · 月光下的空地',
     desc: '蓝白色的害羞生物，只在月圆时出来跳舞，粪便是最上等的肥料。',
-    loot: ['独角兽毛'],
+    // 月痴兽是温顺草食生物，不该掉「独角兽毛」（那是独角兽的专属掉落）。
+    // 不给掉落（与嗅嗅/护树罗锅/地精一致），保持语义正确。
     bond: 2,
   ),
   CreatureDef(
@@ -77,7 +78,9 @@ const List<CreatureDef> kCreatureCatalog = [
     danger: 3,
     habitat: '禁林深处 / 地下教室',
     desc: '十二英尺高，头脑简单力气大，最爱把棍子砸向所有会动的东西。',
-    loot: ['龙血'],
+    // 巨怪掉「巨怪指甲」而非「龙血」：以前掉龙血让 3 年级玩家（龙 danger=5
+    // 需 5 年级）靠杀巨怪就能完成「龙血的诱惑」委托，语义与等级都错位。
+    loot: ['巨怪指甲'],
     bond: 2,
   ),
   CreatureDef(
@@ -86,7 +89,9 @@ const List<CreatureDef> kCreatureCatalog = [
     danger: 4,
     habitat: '禁林深处',
     desc: '能说话的巨大蜘蛛，集体行动，会毫不犹豫地捕食猎物。',
-    loot: ['蛇的毒牙'],
+    // 蜘蛛掉「八眼巨蛛毒液」而非「蛇的毒牙」：蛇的毒牙是蛇怪专属材料
+    // （能贯穿魂器），八眼巨蛛的剧毒才是它自己的掉落，委托也据此改名。
+    loot: ['八眼巨蛛毒液'],
     bond: 2,
   ),
   CreatureDef(

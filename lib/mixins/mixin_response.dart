@@ -345,6 +345,38 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     final delta = housePointFromNarrative(text);
     if (delta == null) return;
 
+    // 刷分防御：只对"加分"卡上限（扣分本来就是负反馈，没人会为了被扣分
+    // 去刷文案）。玩家可以反复写"课堂上答对了问题"去凑词——每回合一次
+    // 挡不住，因为时间每回合都在走，一天能刷十几个回合。这里按天/周记账，
+    // 超上限后当天/本周不再通过叙事关键词加日常分。
+    if (delta.value > 0) {
+      final ws = worldState;
+      // 跨天清零（用绝对天数记账，快进/读档都能对上）
+      if (ws.narrativeHouseGainDayKey != worldState.time.absoluteDayIndex) {
+        ws.narrativeHouseGainDayKey = worldState.time.absoluteDayIndex;
+        ws.narrativeHouseGainDay = 0;
+      }
+      // 跨周清零（按游戏周分桶）
+      final weekBucket = worldState.time.absoluteDayIndex ~/ 7;
+      if (ws.narrativeHouseGainWeekKey != weekBucket) {
+        ws.narrativeHouseGainWeekKey = weekBucket;
+        ws.narrativeHouseGainWeek = 0;
+      }
+      // 任一路径已达上限就不加；没到就只把剩下的额度用完（截断而非整跳）
+      final remDay = kHouseNarrativeGainDailyCap - ws.narrativeHouseGainDay;
+      final remWeek = kHouseNarrativeGainWeeklyCap - ws.narrativeHouseGainWeek;
+      final rem = remDay < remWeek ? remDay : remWeek;
+      if (rem <= 0) return;
+      var capped = delta.value;
+      if (capped > rem) capped = rem;
+      ws.narrativeHouseGainDay += capped;
+      ws.narrativeHouseGainWeek += capped;
+      // 走 existing 的统一入口：它会把 reason 累计进来源明细，
+      // /学院杯 就能告诉玩家这一年分数是从哪儿挣来的。
+      addHouseCupPoints(capped, houseCupSourceLabelFor(delta));
+      return;
+    }
+
     // 走 existing 的统一入口：它会把 reason 累计进来源明细，
     // /学院杯 就能告诉玩家这一年分数是从哪儿挣来的。
     addHouseCupPoints(delta.value, houseCupSourceLabelFor(delta));
@@ -1486,11 +1518,30 @@ $kChoicePromptSuffix''';
         }
       }
 
-      // 最终兜底：如果仍然没有合格选项，生成承接式兜底选项并通知玩家
+      // 最终兜底：不足 4 条一律补齐到 4，杜绝「模型返回4条、过滤后只剩2~3条直接放行」的
+      // 历史事故（玩家只看到 2~3 个选项）。空 → 全量承接式兜底并通知玩家；
+      // 1~3 条 → 用承接式兜底补齐缺口，不打扰玩家。
       if (choices.isEmpty) {
         debugPrint('选项生成全部失败，使用承接式兜底选项');
         notifications.add('⏱️ 选项生成较慢，已为你基于当前剧情临时生成4个选项（可直接输入自由行动替代）。');
         choices.addAll(buildFallbackChoices(narrative));
+      } else if (choices.length < 4) {
+        debugPrint('选项数量不足(${choices.length}/4)，用承接式兜底补齐到 4');
+        final pad = buildFallbackChoices(narrative);
+        final existing = choices.map((c) => c.text).toSet();
+        for (final c in pad) {
+          if (choices.length >= 4) break;
+          if (existing.contains(c.text)) continue;
+          choices.add(c);
+          existing.add(c.text);
+        }
+        // buildFallbackChoices 自身保证 4 条，这里仅为极端情况兜底
+        while (choices.length < 4) {
+          choices.add(const GameChoice(
+            text: '冷静下来整理思路后再决定下一步',
+            action: '先深呼吸让情绪平稳下来，把已知的事实、未知的风险、自己的目标整理清楚，再继续下一步',
+          ));
+        }
       }
 
       // BUG-N 追踪日志：输出最终返回给UI的选项，方便定位不一致问题

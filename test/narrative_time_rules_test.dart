@@ -123,6 +123,44 @@ void main() {
     });
   });
 
+  // ---------------------------------------------------- 缺年时间戳（P1-7）
+  group('缺年时间戳（P1-7）', () {
+    NarrativeTimeReport check(String narrative) =>
+        checkNarrativeTime(narrative, year: 1991, month: 9, day: 1);
+
+    test('「📅 9月3日」缺年 → 判为跳跃，不再静默放行', () {
+      final r = check('📅 9月3日 傍晚\n正文');
+      expect(r.issue, NarrativeTimeIssue.jump,
+          reason: 'AI 只写月日不写年时，以前直接 return none，跳跃检测整体失效');
+      expect(r.needsRewrite, isTrue);
+    });
+
+    test('缺年但写的正是今天 → 通过', () {
+      final r = check('📅 9月1日 傍晚\n正文');
+      expect(r.issue, NarrativeTimeIssue.none,
+          reason: 'AI 照抄了当前日期只是省略年份，不该误伤');
+    });
+
+    test('缺年写的昨天 → 倒流', () {
+      final r = check('📅 8月31日 傍晚\n正文');
+      expect(r.issue, NarrativeTimeIssue.regression);
+      expect(r.needsRewrite, isTrue);
+    });
+
+    test('缺年写的明天 → 放行（深夜延续）', () {
+      final r = check('📅 9月2日 凌晨\n正文');
+      expect(r.issue, NarrativeTimeIssue.overnight);
+      expect(r.needsRewrite, isFalse);
+    });
+
+    test('缺年写「1月1日」从「12月31日」→ 按次年解释只差一天', () {
+      final r = checkNarrativeTime('📅 1月1日 凌晨\n正文',
+          year: 1991, month: 12, day: 31);
+      expect(r.issue, NarrativeTimeIssue.overnight,
+          reason: '跨年夜的凌晨叙事按「次年1月1日」解释只差一天，不该判成回归');
+    });
+  });
+
   // -------------------------------------------------------------- 时间戳回填
   group('时间戳回填', () {
     const systemTs = '📅 1991年9月1日，星期日，上午 9:00';

@@ -23,6 +23,11 @@ const Map<String, String> kBloodStatusLabels = {
   'half_giant': '半巨人',
   'muggle_family': '麻瓜家庭',
   'custom': '自定义',
+  // 'unknown' 是 NPC 侧用的（17 处种子数据 bloodStatus 默认值）——玩家
+  // 问卷选不到，但标签表里不能漏：否则 `_spouseBloodTypeOf` 返回的
+  // 'unknown' 会沿 bloodStatusLabelOf 原样打出英文。npcBloodStatusLabel
+  // 会先拦截 unknown 显示「血统不明」，不受影响。
+  'unknown': '未知',
   // 'ghost' 是 NPC 侧用的（宾斯教授），玩家选不了，所以只在标签表里、
   // 不进 kBloodStatusOptions。之前没这条，NPC 列表会直接打出 "ghost"。
   'ghost': '幽灵',

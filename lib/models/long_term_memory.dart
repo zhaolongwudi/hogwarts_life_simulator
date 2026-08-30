@@ -63,6 +63,10 @@ class KeyFactRecord {
         'npc_ids': npcIds.toList(),
       };
 
+  /// 写入时间戳对应的绝对天数（自 1991-01-01），供同分事实的稳定排序用。
+  /// 解析失败返回 0（按最早处理）。避免在注入/淘汰时重复解析正则。
+  int get absoluteDay => _estimateAbsoluteDay(timestamp);
+
   factory KeyFactRecord.fromJson(Map<String, dynamic> json) => KeyFactRecord(
         id: json['id'] as String,
         fact: json['fact'] as String,
@@ -270,31 +274,39 @@ class WorldEventRecord {
     final factor = (1.0 - ageDays / 365.0).clamp(0.2, 1.0);
     return importance * factor;
   }
+}
 
-  /// 从 timestamp（形如 "📅 1991年9月2日 星期一 23:25"）解析出绝对天数
-  /// （自 1991-01-01 起），与 GameTime.absoluteDayIndex 保持一致。
-  /// 解析失败返回 0（当成新事件）。
-  static int _estimateAbsoluteDay(String ts) {
-    try {
-      final m = RegExp(r'(\d{4})年(\d{1,2})月(\d{1,2})日').firstMatch(ts);
-      if (m == null) return 0;
-      final y = int.parse(m.group(1)!);
-      final mo = int.parse(m.group(2)!);
-      final d = int.parse(m.group(3)!);
-      const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-      int dayOfYear = d;
-      for (int i = 1; i < mo; i++) {
-        dayOfYear += days[i - 1];
-      }
-      if (mo > 2 && ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)) {
-        dayOfYear += 1;
-      }
-      return (y - 1991) * 365 + dayOfYear;
-    } catch (_) {
-      return 0;
+/// 从 timestamp（形如 "📅 1991年9月2日 星期一 23:25"）解析出绝对天数
+/// （自 1991-01-01 起），与 GameTime.absoluteDayIndex 使用同一公式。
+///
+/// 以前这里只算 `(y-1991)*365`，漏掉了 1991~y 之间的闰日：1993 年起差 1 天、
+/// 1997 年起差 2 天，注释写着「保持一致」实际并不一致。现在改为闭式累计
+/// 闰年数，与 GameTime.absoluteDayIndex 的逐闰年累计对齐。解析失败返回 0。
+int _estimateAbsoluteDay(String ts) {
+  try {
+    final m = RegExp(r'(\d{4})年(\d{1,2})月(\d{1,2})日').firstMatch(ts);
+    if (m == null) return 0;
+    final y = int.parse(m.group(1)!);
+    final mo = int.parse(m.group(2)!);
+    final d = int.parse(m.group(3)!);
+    const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    int dayOfYear = d;
+    for (int i = 1; i < mo; i++) {
+      dayOfYear += days[i - 1];
     }
+    if (mo > 2 && _isLeapYear(y)) {
+      dayOfYear += 1;
+    }
+    // 1991..y-1 之间的闰年数（闭式：leapsBefore(n) = n/4 - n/100 + n/400）
+    int leapsBefore(int yy) =>
+        (yy - 1) ~/ 4 - (yy - 1) ~/ 100 + (yy - 1) ~/ 400;
+    return (y - 1991) * 365 + (leapsBefore(y) - leapsBefore(1991)) + dayOfYear;
+  } catch (_) {
+    return 0;
   }
 }
+
+bool _isLeapYear(int y) => (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
 
 class LongTermMemory {
   final List<KeyFactRecord> keyFacts;          // T0
@@ -322,26 +334,39 @@ class LongTermMemory {
     } else {
       list.add(record);
     }
-    // 超过上限则删 importance 最低的，但永远保留 importance >= 8 的。
+    // 超过上限则淘汰，只给 10 分（身份级核心事实）永久豁免。
     //
-    // 排序必须自己补上稳定的次级键：Dart 的 List.sort 不保证稳定性，
-    // 而同一批自动提取的事实 importance 常常全部相同（历史上清一色 7 分），
-    // 于是「这 60 条里到底进了哪 60 条」每次运行都可能不一样——
-    // 同一回合刷新一次记忆、或读一次档，AI 看到的"你经历过什么"就变了。
-    // 同分时按插入顺序倒序排（后写入的靠前），淘汰从尾部砍，
-    // 也就是优先保留近期发生的事。
+    // 以前是「importance >= 8 永久豁免」：死亡/结婚/出生这类剧情事实由
+    // importanceForFact 判成 9 分，永不淘汰，跑得越久记忆越臃肿；且排序键
+    // 只有 importance，大量 9 分并列 + Dart 不稳定排序 → 「永不遗忘的核心
+    // 事实」每回合换一批，玩家发现 AI 记住了莫名其妙的旧事、忘了刚发生的大事。
+    //
+    // 现在 9 分及以下按「重要性 × 新鲜度」打分（与 T3 世界事件同一套衰减），
+    // 旧的自动提取事实会随时间让位给新的。排序仍要补稳定的次级键：Dart 的
+    // List.sort 不保证稳定性，同分时按插入顺序倒序排（后写入靠前），
+    // 淘汰从尾部砍，也就是优先保留近期发生的事。
     if (list.length > maxKeyFacts) {
+      final now = _estimateAbsoluteDay(record.timestamp);
+      double keepScore(KeyFactRecord r) {
+        if (r.importance >= 10) return double.infinity;
+        final day = _estimateAbsoluteDay(r.timestamp);
+        // 缺时间戳（解析失败）不误杀：按全分保留
+        if (day <= 0 || now <= 0) return r.importance * 1.0;
+        final factor = (1.0 - (now - day) / 365.0).clamp(0.2, 1.0);
+        return r.importance * factor;
+      }
+
       final order = <KeyFactRecord, int>{
         for (var i = 0; i < list.length; i++) list[i]: i,
       };
       list.sort((a, b) {
-        final c = b.importance.compareTo(a.importance);
+        final c = keepScore(b).compareTo(keepScore(a));
         if (c != 0) return c;
         return (order[b] ?? 0).compareTo(order[a] ?? 0);
       });
       while (list.length > maxKeyFacts) {
         final last = list.length - 1;
-        if (list[last].importance >= 8) break; // 不能删核心事实
+        if (list[last].importance >= 10) break; // 身份级核心事实不删
         list.removeLast();
       }
     }
@@ -431,10 +456,15 @@ class LongTermMemory {
       list.add(record);
     }
     if (list.length > maxEvents) {
-      // 用 score 排序，删分数最低的 (永远不删 importance >= 8 的)
+      // 用 score 排序，删分数最低的。
+      // 以前淘汰路径用 score(0)：对 1991 年之后的任何事件 ageDays 恒为负，
+      // 衰减因子被 clamp 恒吃成 1.0 → score ≡ importance，旧事件永不淘汰，
+      // 500 条后全部同分，淘汰谁由不稳定排序决定——T3 退化成「化石库」。
+      // 现在用新写入事件的时间戳当作「当前天」（写入即当前游戏时间），
+      // 衰减真实生效：越旧的事件分数越低，自动让位给新的。
+      final now = _estimateAbsoluteDay(record.timestamp);
       list.sort((a, b) {
-        // 拿当前日期做粗略衰减用 0 号即可，因为只是相对比较
-        return b.score(0).compareTo(a.score(0));
+        return b.score(now).compareTo(a.score(now));
       });
       while (list.length > maxEvents) {
         final last = list.length - 1;

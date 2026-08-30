@@ -137,18 +137,46 @@ class DeepSeekService {
         cancelToken: cancelToken,
       );
 
-      final data = response.data;
-      final content = data['choices']?[0]['message']['content'] as String? ?? '';
-      final usageData = data['usage'] as Map<String, dynamic>? ?? {};
-      final usage = TokenUsage.fromJson(usageData);
+      // 解析响应体。AI 服务商在免费/不稳定额度下可能返回 HTTP 200 但响应体是
+      // HTML 错误页、WAF 拦截页或网关占位页——response.data 不是 Map 而是 String。
+      // 这类响应不是 DioException，一旦在这里抛裸异常（NoSuchMethodError / RangeError）
+      // 就会绕过下方 on DioException 的归类，在 ai_router 里被当成不可重试的普通异常，
+      // 直接把整个 Key 弃用。所以这里统一做结构断言，任何畸形响应都归一为
+      // AiRetryableException，让路由层能正常重试/切 Key。
+      final Object? raw = response.data;
+      Map<String, dynamic>? payload;
+      if (raw is Map<String, dynamic>) {
+        payload = raw;
+      } else if (raw is Map) {
+        payload = raw.cast<String, dynamic>();
+      }
+      if (payload == null) {
+        throw AiRetryableException('AI 返回了非 JSON 响应体（可能被网关拦截），请重试');
+      }
+      final choices = payload['choices'];
+      final first = (choices is List && choices.isNotEmpty) ? choices[0] : null;
+      final message = (first is Map) ? first['message'] : null;
+      final content = (message is Map) ? (message['content'] as String? ?? '') : '';
+      Map<String, dynamic>? usageData;
+      final rawUsage = payload['usage'];
+      if (rawUsage is Map) {
+        usageData = rawUsage.cast<String, dynamic>();
+      }
+      final usage = TokenUsage.fromJson(usageData ?? const {});
 
+      // 空响应同样要可重试：模型偶发空输出是高频事件，不该被放大成「Key 失效」。
       if (content.isEmpty) {
-        throw Exception('Empty response from AI');
+        throw AiRetryableException('AI 返回了空响应，请重试');
       }
       return ChatResult(content: content, usage: usage);
     } on DioException catch (e) {
       _handleError(e);
       rethrow;
+    } on AiRetryableException {
+      rethrow; // 上面结构断言抛出的可重试异常，直接放行
+    } catch (e) {
+      // 兜底：任何非预期解析异常都归一为可重试，避免被当成 Key 失效
+      throw AiRetryableException('AI 响应解析失败: $e');
     }
   }
 

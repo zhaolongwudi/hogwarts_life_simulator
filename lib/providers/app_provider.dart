@@ -137,6 +137,7 @@ class AppProvider extends ChangeNotifier {
   Map<String, String> _models = {};
   Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
   bool _aiDebugLogEnabled = false;
+  bool _offlineQuickMode = false;
 
   String? get apiKey => _apiKey;
   bool get isGameStarted => _isGameStarted;
@@ -144,6 +145,9 @@ class AppProvider extends ChangeNotifier {
   IdentityMode get identityMode => _identityMode;
   Era get era => _era;
   bool get aiDebugLogEnabled => _aiDebugLogEnabled;
+  /// 无 AI 快速模式：整局用本地模板叙事 + 承接式选项，完全不调用 AI。
+  /// 免费额度耗尽 / 未配 Key 时保底可玩，防「商业模式反噬」。
+  bool get offlineQuickMode => _offlineQuickMode;
   Map<String, String> get models => Map.unmodifiable(_models);
   String providerModel(AiProvider p) => _models[p.name] ?? _defaultModel(p);
 
@@ -254,6 +258,9 @@ class AppProvider extends ChangeNotifier {
 
     // Load AI debug log switch
     _aiDebugLogEnabled = prefs.getBool('ai_debug_log_enabled') ?? false;
+
+    // Load offline quick mode switch
+    _offlineQuickMode = prefs.getBool('offline_quick_mode') ?? false;
 
     notifyListeners();
   }
@@ -406,6 +413,14 @@ class AppProvider extends ChangeNotifier {
     _aiDebugLogEnabled = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ai_debug_log_enabled', value);
+    notifyListeners();
+  }
+
+  /// 切换「无 AI 快速模式」，同步写入 SharedPreferences 持久化。
+  Future<void> setOfflineQuickMode(bool value) async {
+    _offlineQuickMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('offline_quick_mode', value);
     notifyListeners();
   }
 }

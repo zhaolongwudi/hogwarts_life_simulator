@@ -4,6 +4,7 @@ import '../providers/game_provider.dart';
 import '../models/game_systems.dart';
 import '../services/ai_router.dart';
 import '../data/job_data.dart';
+import '../data/locations.dart';
 
 class JobScreen extends StatefulWidget {
   const JobScreen({super.key});
@@ -38,8 +39,13 @@ class _JobScreenState extends State<JobScreen> {
 
     int score(JobDef j) {
       var s = 0;
-      if (location.isNotEmpty && j.location.contains(location)) s += 100;
-      if (location.isNotEmpty && location.contains(j.location)) s += 60;
+      // 两边都先归一化到规范主名，再按包含关系加分：
+      // 玩家在 '霍格沃茨·场地' 时，岗位 '海格的小屋'（该主名的别名）也能命中，
+      // 而不是靠裸子串「海格小屋」碰运气（以前解析不出、永远吃不到加成）。
+      final loc = resolveLocationName(location) ?? location;
+      final jLoc = resolveLocationName(j.location) ?? j.location;
+      if (loc.isNotEmpty && jLoc.contains(loc)) s += 100;
+      if (loc.isNotEmpty && loc.contains(jLoc)) s += 60;
       if (j.energyCost <= energy) s += 30;
       // 时薪（加隆/小时）放大 10 倍取整，避免浮点
       s += (j.pay * 600 / (j.minutes <= 0 ? 60 : j.minutes)).round();

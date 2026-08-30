@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../data/era_data.dart';
 import '../data/forbidden_words.dart' as dataForbidden;
+import '../data/narrative_forward_rules.dart';
 import '../data/narrative_time_rules.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
@@ -312,6 +313,42 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       buf.writeln(prev.join('\n'));
       buf.writeln('');
     }
+    return buf.toString();
+  }
+  // ==================== P0-一致性幻觉成本 · 正向约束块（生成前约束，而非事后打回）====================
+
+  /// 组装要在叙事生成**之前**注入的正向约束块（拼接进 buildPrompt）。
+  ///
+  /// 分两部分：
+  ///  1) 上一回合 warn 违规的温和反馈——此前这类软提醒只喂给了选项 AI，
+  ///     叙事 AI 看不到自己上回合犯的错，同类违和每回合重犯；
+  ///  2) 基于当前状态的动态铁律（月份/年级/主角身份 → 本回合硬禁止项）。
+  /// 纯判定在 data/narrative_forward_rules.dart，这里只负责取数拼接。
+  String buildForwardConstraintBlock() {
+    final buf = StringBuffer();
+
+    final warnLines = prevWarnFeedbackLines(worldState.consistencyViolations);
+    if (warnLines.isNotEmpty) {
+      buf.writeln('【上回合逻辑违和提醒·本回合请勿再犯】');
+      buf.writeln(warnLines.join('\n'));
+      buf.writeln('');
+    }
+
+    final p = player;
+    if (p != null) {
+      final rules = narrativeForwardRules(
+        month: worldState.time.month,
+        graduated: worldState.graduated,
+        grade: p.grade ?? 1,
+        isHarry: p.name.toLowerCase() == '哈利' || p.name.contains('波特'),
+      );
+      if (rules.isNotEmpty) {
+        buf.writeln('【本回合铁律·生成前必读】');
+        buf.writeln(rules.map((r) => '• $r').join('\n'));
+        buf.writeln('');
+      }
+    }
+
     return buf.toString();
   }
   // ==================== P0-1 一致性看门狗（Validate Narrative Consistency）====================

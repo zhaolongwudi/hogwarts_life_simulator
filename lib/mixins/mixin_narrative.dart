@@ -109,7 +109,25 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // 避免 awaitingConfession 悬挂期间被无关文本误结算。
     }
 
-    if (router == null || !router!.hasNarrativeService) return;
+    if (router == null || !router!.hasNarrativeService) {
+      // 审查 P0「无 AI 快速模式 + 本地兜底剧情」：未配 Key 时绝不静默卡死。
+      // 开过离线模式 → 直接本地快速模式；否则给出明确指引让玩家去配置或开离线。
+      if (!appProvider.offlineQuickMode) {
+        error = '未配置可用的 AI Key，无法生成剧情。请到「设置」配置 AI Key，'
+            '或开启「无 AI 快速模式」完全离线游玩。';
+        loadingStage = '';
+        notifyListeners();
+        return;
+      }
+      _runOfflineQuickTurn(safeAction);
+      return;
+    }
+
+    // 主动开启「无 AI 快速模式」：即使配了 Key 也完全走本地生成，不消耗 AI 额度
+    if (appProvider.offlineQuickMode) {
+      _runOfflineQuickTurn(safeAction);
+      return;
+    }
 
     // 提交真实行动时关闭指令面板；但因果抉择与留校答复的后果面板要留着，
     // 玩家得看见变动率跳了多少、或者自己到底签了什么。
@@ -191,7 +209,13 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       final t0 = memory.keyFacts
           .where((f) => f.importance >= 4)
           .toList()
-        ..sort((a, b) => b.importance.compareTo(a.importance));
+        ..sort((a, b) {
+          final c = b.importance.compareTo(a.importance);
+          // 同分按写入时间新的靠前：Dart 的 sort 不稳定，大量 9 分并列时
+          // 若不加次级键，前 60 条每回合可能换一批，AI 记住的旧事随机漂移。
+          if (c != 0) return c;
+          return b.absoluteDay.compareTo(a.absoluteDay);
+        });
       if (t0.isNotEmpty) {
         contextBuffer.writeln('【T0 核心事实（永不遗忘；纯事实，不得更改或遗忘）】');
         for (int i = 0; i < t0.length && i < 60; i++) {
@@ -442,6 +466,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
   $safeAction
 
+${buildForwardConstraintBlock()}
 $kNarrativeWritingRules
   ''';
     }
@@ -732,6 +757,29 @@ $kNarrativeWritingRules
         extra: 'action=$action, turn=$turnCount',
       ));
     }
+  }
+
+  /// 无 AI 快速模式：完全不调用 AI，用本地模板叙事 + 承接式选项推进一整回合。
+  /// 审查 P0「无 AI 快速模式 + 本地兜底剧情」：免费额度耗尽 / 未配 Key 时保底可玩。
+  /// 与 AI 失败时的瞬时兜底不同：这里**消耗回合**（推进时间/精力/NPC/影响力），
+  /// 因为这是玩家主动选择的正式离线玩法，而不是需要重试的失败。
+  void _runOfflineQuickTurn(String action) {
+    currentNarrative = generateFallbackNarrative();
+    choices = buildFallbackChoices(currentNarrative);
+    _syncLocationFromNarrative(currentNarrative);
+    final newAssertions = extractShortAssertions(currentNarrative);
+    rotateTurnAssertions(newAssertions);
+    saveContinuityAnchor(currentNarrative);
+    accumulateForSummary(currentNarrative);
+    appendRecentTurn(currentNarrative);
+    advanceTimeForAction(action);
+    updateNPCsFromAction(action);
+    updatePlayerImpactScore(action);
+    error = null;
+    loadingStage = '';
+    isLoading = false;
+    notifyListeners();
+    unawaited(autoSave());
   }
 
   /// 重试上一次失败的行动。
@@ -1598,8 +1646,11 @@ $kNarrativeWritingRules
 
     // ---- 只解析开头的【地点】标签（AI 标准输出格式，最准确）----
     String? detected;
+    // 用 [^\S\n]*（空白但不含换行）替代 \s*：AI 写「【地点】」后直接换行时，
+    // 旧正则 \s* 会跨行把正文首行吞成"地点"——若该行含 走廊/家里/花园/书房，
+    // 硬状态被误切成「家中·卧室」。空值标签现在匹配失败，保持原地点不动。
     final locationTagMatch = RegExp(
-      r'【地点】\s*([^\n]+)',
+      r'【地点】[^\S\n]*([^\n]+)',
       dotAll: false,
     ).firstMatch(narrative);
     if (locationTagMatch != null && locationTagMatch.group(1) != null) {

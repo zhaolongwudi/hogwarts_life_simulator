@@ -41,11 +41,17 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     //         sectionPattern 再次匹配整段文本然后替换为空 → section 永远是 "" →
     //         所有好感度变化都不会被解析 → NPC 好感度永远不变
     final sectionPattern = RegExp(r'【好感(?:度)?变化?】\s*([\s\S]*?)(?=【|$)');
-    final sectionMatch = sectionPattern.firstMatch(text);
 
+    // 修复（第五次审查 P2-4.3）：AI 偶尔会把好感变化拆成两个【好感度变化】区块
+    // （如先列主线、再列支线）。以前只取 firstMatch → 第二个区块静默丢弃，
+    // 玩家明明惹恼了支线 NPC 却毫无反应。现在拼接所有区块一起解析。
     String? sectionText;
-    if (sectionMatch != null) {
-      sectionText = sectionMatch.group(1)!.trim();
+    final sectionMatches = sectionPattern.allMatches(text).toList();
+    if (sectionMatches.isNotEmpty) {
+      sectionText = sectionMatches
+          .map((m) => m.group(1)!.trim())
+          .where((s) => s.isNotEmpty)
+          .join('\n');
     }
 
     // Fallback 1：AI 未输出【好感度变化】标签头时，扫描全文寻找散落的好感行

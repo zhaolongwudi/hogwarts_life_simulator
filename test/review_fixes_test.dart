@@ -2,7 +2,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/balance_constants.dart';
 import 'package:hogwarts_life_simulator/data/bestiary_data.dart';
+import 'package:hogwarts_life_simulator/data/cg_data.dart';
 import 'package:hogwarts_life_simulator/data/era_data.dart';
+import 'package:hogwarts_life_simulator/data/job_data.dart';
+import 'package:hogwarts_life_simulator/data/locations.dart';
 import 'package:hogwarts_life_simulator/data/npc_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
@@ -183,6 +186,93 @@ void main() {
     });
   });
 
+  // ==================== P2 数据账目：生物掉落语义 ====================
+  group('生物掉落语义（P2-4.3）', () {
+    test('月痴兽是温顺草食生物，不掉「独角兽毛」', () {
+      final mooncalf = kCreatureCatalog.firstWhere((c) => c.id == 'mooncalf');
+      expect(mooncalf.loot, isNot(contains('独角兽毛')),
+          reason: '独角兽毛是独角兽专属掉落，温顺的月痴兽不该掉');
+      expect(mooncalf.loot, isEmpty,
+          reason: '月痴兽应无掉落（与嗅嗅/护树罗锅/地精一致）');
+    });
+
+    test('巨怪掉「巨怪指甲」而非「龙血」', () {
+      final troll = kCreatureCatalog.firstWhere((c) => c.id == 'troll');
+      expect(troll.loot, contains('巨怪指甲'));
+      expect(troll.loot, isNot(contains('龙血')),
+          reason: '龙血是龙（danger=5）的专属掉落，巨怪掉龙血会绕过等级门');
+    });
+
+    test('八眼巨蛛掉「八眼巨蛛毒液」而非「蛇的毒牙」', () {
+      final acro = kCreatureCatalog.firstWhere((c) => c.id == 'acromantula');
+      expect(acro.loot, contains('八眼巨蛛毒液'));
+      expect(acro.loot, isNot(contains('蛇的毒牙')),
+          reason: '蛇的毒牙是蛇怪专属材料，八眼巨蛛的剧毒才是自己的掉落');
+    });
+
+    test('每个掉落材料都有对应物品定义', () {
+      for (final c in kCreatureCatalog) {
+        for (final loot in c.loot) {
+          expect(loot.isNotEmpty, true, reason: '${c.id} 有空的掉落名');
+        }
+      }
+    });
+  });
+
+  // ==================== P2 数据账目：岗位地点 ====================
+  group('岗位地点（P2-4.3）', () {
+    test('creature_keeper 岗位地点用规范名「海格的小屋」，能被解析', () {
+      final job = jobCatalog.firstWhere((j) => j.id == 'creature_keeper');
+      expect(job.location, '海格的小屋',
+          reason: '旧值「海格小屋」resolveLocationName 解析不出，位置加成永远失效');
+      // 解析后应命中「霍格沃茨·场地」（海格的小屋是该主名的别名）
+      expect(resolveLocationName(job.location), isNotNull,
+          reason: '岗位地点无法解析成任何已知地点主名');
+    });
+
+    test('所有岗位地点都能被 resolveLocationName 解析', () {
+      for (final j in jobCatalog) {
+        final resolved = resolveLocationName(j.location);
+        expect(resolved, isNotNull,
+            reason: '岗位 ${j.id}(${j.title}) 地点「${j.location}」解析不出 → '
+                '玩家在附近时永远拿不到位置加成');
+      }
+    });
+  });
+
+  // ==================== P2 数据账目：README 数字 ====================
+  group('README 宣称数字与实际数据对账（P2-4.1）', () {
+    test('CG 总数与 README 一致（33）', () {
+      expect(allCgs().length, 33,
+          reason: 'README 写 33 张 CG，实际应为 33（6+6+6+3+3+6+3）');
+    });
+
+    test('成就总数与 README 一致（33）', () {
+      expect(achievementCatalog.length, 33,
+          reason: 'README 写 33 项成就，实际应为 33');
+    });
+
+    test('README 岗位列表与 jobCatalog 一致（神奇动物照看员，无圣芒戈护工）', () {
+      final titles = jobCatalog.map((j) => j.title).toSet();
+      expect(titles, contains('神奇动物照看员'));
+      expect(titles, isNot(contains('圣芒戈护工')),
+          reason: '圣芒戈仅作为地点存在，无对应岗位；README 已改为真实岗位名');
+      expect(titles, hasLength(5),
+          reason: 'README 列出了 5 个岗位，jobCatalog 应为 5 个');
+    });
+
+    test('README 文本里写的数字与数据表一致', () {
+      final readme = File('README.md').readAsStringSync();
+      // 成就与 CG 均为 33，且岗位文案用「神奇动物照看员」
+      expect(readme, contains('33 项成就'));
+      expect(readme, contains('33 张 CG'));
+      expect(readme, contains('神奇动物照看员'));
+      expect(readme, isNot(contains('28 项成就')));
+      expect(readme, isNot(contains('36 张 CG')));
+      expect(readme, isNot(contains('圣芒戈护工')));
+    });
+  });
+
   // ==================== 时间大师成就修复 ====================
   group('时代起始年份', () {
     test('各时代 startYear 正确', () {
@@ -244,6 +334,36 @@ void main() {
       final limit = npc.getAffectionGainLimit(1);
       expect(limit, greaterThanOrEqualTo(0));
     });
+
+    test('KeyFactRecord.absoluteDay 与 GameTime.absoluteDayIndex 逐日一致', () {
+      // P0-2/P1-4：review_fixes_test 只测了 absoluteDayIndex 本身，没测长期记忆
+      // 的 _estimateAbsoluteDay（经 KeyFactRecord.absoluteDay 暴露）。两者公式必须
+      // 一致，否则世界事件新鲜度衰减会按错的天数算，AI 记忆错乱。
+      int estimate(String ts) => KeyFactRecord(
+            id: 'probe', fact: '探针', importance: 1, timestamp: ts,
+          ).absoluteDay;
+
+      // 覆盖：起始日、非闰年 2 月、闰年 2 月 29、闰年后 3 月、跨年、世纪闰年(2000)。
+      final probes = [
+        [1991, 1, 1],
+        [1991, 12, 31],
+        [1992, 2, 28],
+        [1992, 2, 29], // 1992 是闰年，2 月 29 日存在
+        [1992, 3, 1],
+        [1993, 2, 28], // 1993 非闰年
+        [1993, 3, 1],
+        [1997, 1, 1],
+        [2000, 2, 29], // 被 400 整除 → 闰年
+        [2000, 3, 1],
+      ];
+      for (final p in probes) {
+        final y = p[0], m = p[1], d = p[2];
+        final ts = '📅 $y年$m月$d日 星期一 09:00';
+        final expected = GameTime(year: y, month: m, day: d).absoluteDayIndex;
+        expect(estimate(ts), expected,
+            reason: '$y年$m月$d日 记忆估算=${estimate(ts)} ≠ GameTime=$expected');
+      }
+    });
   });
 
   // ==================== 禁林遭遇委托加权 ====================
@@ -282,18 +402,18 @@ void main() {
       expect(mem.keyFacts.first.importance, 7);
     });
 
-    test('addKeyFact 超上限时淘汰低重要度但保留 importance>=8', () {
+    test('addKeyFact 超上限时保留 importance=10 身份级事实', () {
       var mem = LongTermMemory();
-      // 写入 1 条核心事实（importance 9）+ 5 条普通事实
+      // 写入 1 条身份级核心事实（importance 10）+ 5 条普通事实
       mem = mem.addKeyFact(KeyFactRecord(
-        id: 'core', fact: '身份级事实', importance: 9, timestamp: 't',
+        id: 'core', fact: '身份级事实', importance: 10, timestamp: 't',
       ));
       for (int i = 0; i < 5; i++) {
         mem = mem.addKeyFact(KeyFactRecord(
           id: 'n$i', fact: '普通事实$i', importance: 3, timestamp: 't',
         ));
       }
-      // 上限设为 4：应淘汰普通事实，但核心事实必须保留
+      // 上限设为 4：应淘汰普通事实，但身份级核心事实必须保留
       mem = LongTermMemory(
         keyFacts: mem.keyFacts,
         openLoops: mem.openLoops,
@@ -304,8 +424,58 @@ void main() {
         id: 'trigger', fact: '触发淘汰', importance: 4, timestamp: 't',
       ), maxKeyFacts: 4);
       expect(trimmed.keyFacts.any((f) => f.id == 'core'), true,
-          reason: 'importance>=8 的核心事实永不被淘汰');
+          reason: 'importance=10 的身份级核心事实永不被淘汰');
       expect(trimmed.keyFacts.length, lessThanOrEqualTo(4));
+    });
+
+    test('importance=9 的旧事实会被时间衰减淘汰，让位给更新的 9 分事实', () {
+      // 第五次审查 P0-2：以前 importance>=8 永久豁免，死亡/结婚等 9 分事实
+      // 永不淘汰，记忆越跑越臃肿。现在只有 10 分豁免，9 分按「重要性×新鲜度」
+      // 打分：同样 9 分，旧的应该先被淘汰、新的保留。
+      var mem = LongTermMemory();
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'old9', fact: '旧的核心事件', importance: 9,
+        timestamp: '📅 1991年9月1日 星期一 09:00',
+      ));
+      mem = mem.addKeyFact(KeyFactRecord(
+        id: 'new9', fact: '新的核心事件', importance: 9,
+        timestamp: '📅 1992年9月1日 星期二 09:00',
+      ));
+      // 触发写入使用当前游戏时间，淘汰路径以它作为「当前天」做衰减
+      final trimmed = mem.addKeyFact(KeyFactRecord(
+        id: 'trigger', fact: '触发淘汰', importance: 2,
+        timestamp: '📅 1992年12月1日 星期二 09:00',
+      ), maxKeyFacts: 2);
+      expect(trimmed.keyFacts.any((f) => f.id == 'old9'), false,
+          reason: '旧的 9 分事实应因时间衰减被淘汰');
+      expect(trimmed.keyFacts.any((f) => f.id == 'new9'), true,
+          reason: '新的 9 分事实保留');
+    });
+
+    test('淘汰结果排序稳定：同分事实按写入时间新的靠前', () {
+      // 第五次审查 P0-2：Dart sort 不稳定，大量同分（如 9 分并列）时若不加
+      // 次级键，前 N 条每回合可能换一批，AI 记住的旧事随机漂移。
+      var mem = LongTermMemory();
+      final now = '📅 1992年12月1日 星期二 09:00';
+      for (int i = 0; i < 8; i++) {
+        final day = 10 + i; // 9月10..17，越晚写入 day 越大
+        mem = mem.addKeyFact(KeyFactRecord(
+          id: 'f$i', fact: '并列事实$i', importance: 9,
+          timestamp: '📅 1991年9月$day日 星期一 09:00',
+        ));
+      }
+      // 上限 5：同分 9 分，应保留写入时间最新的 5 条（day 14..17 + 最后写入？）
+      final trimmed = mem.addKeyFact(KeyFactRecord(
+        id: 'trigger', fact: '触发', importance: 2, timestamp: now,
+      ), maxKeyFacts: 5);
+      // 时间最新的（day 最大）必须保留
+      expect(trimmed.keyFacts.any((f) => f.id == 'f7'), true,
+          reason: '最新写入的同分事实保留');
+      // 最旧的（day 最小）必须被淘汰
+      expect(trimmed.keyFacts.any((f) => f.id == 'f0'), false,
+          reason: '最旧的同分事实被淘汰');
+      // 淘汰后仍按时间倒序稳定保留
+      expect(trimmed.keyFacts.length, 5);
     });
 
     test('upsertRelationshipAnchor 合并 keyMoments 且保留初见', () {

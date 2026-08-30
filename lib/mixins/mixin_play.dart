@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/item_data.dart';
 import '../data/house_data.dart';
+import '../data/house_cup_data.dart';
 import '../data/bestiary_data.dart';
 import '../data/quest_data.dart';
 import '../data/pet_data.dart';
@@ -1422,6 +1423,34 @@ mixin GamePlayMixin on GameProviderBase {
     if (p == null || amount == 0) return;
     p.houseCupPoints += amount;
     p.houseCupSources[reason] = (p.houseCupSources[reason] ?? 0) + amount;
+    // 年度榜同步：玩家的学院行 = 基准 + 玩家本学年贡献，随贡献实时更新，
+    // /学院杯 的榜单才不会被"学期初那个初始值"卡住。
+    if (p.house != null) {
+      worldState.houseCupYearly[houseDisplayName(p.house)] =
+          kHouseCupBaseScore + p.houseCupPoints;
+    }
+  }
+
+  /// 懒初始化年度榜：四院都以 [kHouseCupBaseScore] 起步，并把玩家学院行
+  /// 同步为「基准 + 玩家本学年贡献」。
+  ///
+  /// 老存档没有 houseCupYearly 字段，第一次读到是空表；玩家还没分院时
+  /// （开场一路到分院帽前）不参与榜单，四院保持基准分。
+  Map<String, int> _ensureHouseCupYearly() {
+    final yearly = worldState.houseCupYearly;
+    // 四院缺谁补谁（putIfAbsent 不动已有的行）：
+    // 玩家可能先挣分把自家学院行写进去，再点开 /学院杯——
+    // 不能因为表非空就把另外三院漏掉。
+    if (yearly.length < kHouseNames.length) {
+      for (final h in kHouseNames) {
+        yearly.putIfAbsent(h, () => kHouseCupBaseScore);
+      }
+    }
+    final p = player;
+    if (p?.house != null) {
+      yearly[houseDisplayName(p!.house)] = kHouseCupBaseScore + p.houseCupPoints;
+    }
+    return yearly;
   }
 
   String formatHouseCup() {
@@ -1433,16 +1462,37 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('你还没有被分院，暂未参与学院杯竞争。');
       return buf.toString();
     }
-    buf.writeln('$myCn 学院杯积分（你的贡献）：${p.houseCupPoints} 分\n');
 
+    // 年度榜：四院实时排名。玩家的学院行已经由 _ensureHouseCupYearly 同步。
+    final yearly = _ensureHouseCupYearly();
+    final ranked = yearly.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    const medal = ['🥇', '🥈', '🥉', '  '];
+    buf.writeln('本学年四院累计（你的贡献已计入你的学院）：');
+    for (var i = 0; i < ranked.length; i++) {
+      final e = ranked[i];
+      final isMine = e.key == myCn;
+      final extra = isMine ? '（你 +${p.houseCupPoints}）' : '';
+      buf.writeln('${medal[i]}${isMine ? '★ ' : '  '}${e.key}：${e.value} 分$extra');
+    }
+
+    // 历届年度榜：让玩家看见七年榜单的走向
+    if (worldState.houseCupYearHistory.isNotEmpty) {
+      buf.writeln('\n历届年度榜：');
+      worldState.houseCupYearHistory.forEach((year, summary) {
+        buf.writeln('· $year：$summary');
+      });
+    }
+
+    buf.writeln('\n你的本学年贡献：${p.houseCupPoints} 分');
     if (p.houseCupSources.isEmpty) {
-      buf.writeln('你还没有为学院挣下任何一分。可加分的途径：');
+      buf.writeln('可加分的途径：');
       buf.writeln('· 魁地奇取胜 +30，惜败 +5');
       buf.writeln('· 巫师决斗获胜 +1~10');
       buf.writeln('· 禁林战胜危险生物 +5');
       buf.writeln('· 完成支线委托 +3~10');
       buf.writeln('· 日常：课堂上答对的问题、替同学解的围、'
-          '还有你夜游被抓时扣掉的那些分');
+          '还有你夜游被抓时扣掉的那些分（每天最多 +${kHouseNarrativeGainDailyCap}）');
     } else {
       final sources = p.houseCupSources.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
@@ -1462,23 +1512,22 @@ mixin GamePlayMixin on GameProviderBase {
   /// 学年结算（由 mixin_systems 学年切换时调用）
   void settleHouseCup() {
     final p = player;
-    // 注意是 `== 0` 而不是 `<= 0`：
-    // 只扣过分（净分为负）的玩家原本会被这条挡在外面，
-    // 于是他既看不到结算，那些负分也**永远不清零**——
-    // 会一直滚到下一个学年，越欠越多。
-    if (p == null || p.house == null || p.houseCupPoints == 0) return;
+    // 未分院就不参与学院杯。注意这里不再有 `houseCupPoints == 0` 的拦截：
+    // 年度榜是四院全程累计的真实排名，玩家就算一分没挣，自己的学院也
+    // 有基准分和对手在竞争，学年末该揭晓的榜单必须揭晓。
+    if (p == null || p.house == null) return;
     final myCn = houseDisplayName(p.house, fallback: p.house!);
-    // 其它三院基准分（随机），本学院 = 基准 + 玩家贡献
-    final others = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇']
-        .where((h) => h != myCn)
-        .toList();
-    final scores = <String, int>{
-      for (final o in others) o: 120 + random.nextInt(80),
-      myCn: 130 + p.houseCupPoints,
-    };
-    final ranked = scores.entries.toList()
+    final yearly = _ensureHouseCupYearly();
+    final ranked = yearly.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final rank = ranked.indexWhere((e) => e.key == myCn) + 1;
+
+    // 记入历届年度榜（key=刚结束的学年，如 1991-1992）
+    final winner = ranked.first.key;
+    final summary = ranked
+        .map((e) => e.key == winner ? '${e.key} 夺冠' : '${e.key} ${e.value}')
+        .join('｜');
+    worldState.houseCupYearHistory[worldState.academicYear] = summary;
 
     final buf = StringBuffer('【学院杯 · 学年结算】\n');
     ranked.forEach((e) {
@@ -1488,9 +1537,11 @@ mixin GamePlayMixin on GameProviderBase {
     // 一年下来净扣分，值得单独说一句，不该混在同一句话里。
     if (p.houseCupPoints > 0) {
       buf.writeln('\n你在本学年为$myCn 赢得了 ${p.houseCupPoints} 分。');
-    } else {
+    } else if (p.houseCupPoints < 0) {
       buf.writeln('\n你在本学年给$myCn 净扣掉了 ${-p.houseCupPoints} 分。'
           '没有人当众说起这件事，但账是记着的。');
+    } else {
+      buf.writeln('\n你在本学年没有为$myCn 挣到分，但榜单还是照常揭晓了。');
     }
 
     if (rank == 1) {
@@ -1514,6 +1565,7 @@ mixin GamePlayMixin on GameProviderBase {
     }
     p.houseCupPoints = 0;
     p.houseCupSources.clear();
+    worldState.houseCupYearly.clear();
     notifications.add('🏆 学院杯学年结算：$myCn 排名第$rank 名');
     _finishLocal(buf.toString());
   }

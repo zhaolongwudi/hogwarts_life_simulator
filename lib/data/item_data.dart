@@ -425,6 +425,13 @@ const List<ItemDef> kItemCatalog = [
     desc: '尖锐的毒牙，能贯穿魂器与绝大多数咒语防护',
   ),
   ItemDef(
+    id: 'acromantula_venom',
+    name: '八眼巨蛛毒液',
+    type: '材料',
+    price: 30,
+    desc: '八眼巨蛛的剧毒，稀有魔药的关键材料',
+  ),
+  ItemDef(
     id: 'phoenix_feather',
     name: '凤羽',
     type: '材料',

@@ -303,11 +303,14 @@ void main() {
     test('负分玩家也能结算', () {
       // 原来是 `<= 0 return`：只扣过分的人既看不到结算，
       // 那些负分也永远不清零，会一路滚到下一个学年，越欠越多。
+      // 现在任何积分门槛都没有了——年度榜是四院全程累计的真实排名，
+      // 净分为 0 或负的玩家，自己的学院照样有基准分和对手在竞争。
       final src = _code('mixins/mixin_play.dart');
       final fn = src.indexOf('void settleHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
-      expect(body, contains('houseCupPoints == 0'));
       expect(body, isNot(contains('houseCupPoints <= 0')));
+      expect(body, isNot(contains('houseCupPoints == 0')),
+          reason: '有净分为 0 或负分的玩家也必须能结算，不能有任何积分拦截');
     });
 
     test('结算会清零，负分不会滚到下一学年', () {
@@ -369,6 +372,87 @@ void main() {
         expect(src, isNot(contains(forbidden)),
             reason: '$forbidden 属于 mixin_play 的学院杯系统，这里不该有第二份');
       }
+    });
+  });
+
+  // ============================================================ P1：年度榜 + 刷分防御
+  group('P1 年度榜 + 刷分防御', () {
+    test('刷分上限与年度榜常量的合理性', () {
+      expect(kHouseNarrativeGainDailyCap, greaterThan(0));
+      expect(kHouseNarrativeGainWeeklyCap,
+          greaterThanOrEqualTo(kHouseNarrativeGainDailyCap),
+          reason: '周上限不能比日上限还小，否则第一天就用光了');
+      expect(kHouseCupBaseScore, greaterThan(0));
+      expect(kHouseRivalDailyMin, greaterThan(0));
+      expect(kHouseRivalDailyMax, greaterThanOrEqualTo(kHouseRivalDailyMin));
+    });
+
+    test('其它三院逐日增长挂在跨天逻辑里', () {
+      final src = _code('mixins/mixin_systems.dart');
+      final fn = src.indexOf('void _advanceWorldClock');
+      expect(fn, greaterThan(-1));
+      expect(src.indexOf('_accumulateHouseCupRivals(dayDelta)', fn), greaterThan(fn),
+          reason: '_accumulateHouseCupRivals 没在 _advanceWorldClock 里调用');
+      expect(src.indexOf('void _accumulateHouseCupRivals', fn), greaterThan(-1),
+          reason: '_accumulateHouseCupRivals 没有定义');
+    });
+
+    test('对手增长跳过周末与暑假', () {
+      final src = _code('mixins/mixin_systems.dart');
+      final fn = src.indexOf('void _accumulateHouseCupRivals');
+      final body = src.substring(fn, src.indexOf('\n  }', fn));
+      expect(body, contains("'summer'"),
+          reason: '暑假大家都回家了，学院之间没有公开加分在跑');
+      expect(body, contains('wd == 0 || wd == 6'),
+          reason: '周末（周日/周六）不上课，不该增长');
+    });
+
+    test('玩家的学院行只由贡献驱动，不在这里再长一遍', () {
+      final src = _code('mixins/mixin_systems.dart');
+      final fn = src.indexOf('void _accumulateHouseCupRivals');
+      final body = src.substring(fn, src.indexOf('\n  }', fn));
+      expect(body, contains('myCn'),
+          reason: '增长对手时要跳过玩家自己的学院');
+      expect(body, isNot(contains('p.houseCupPoints')),
+          reason: '对手增长逻辑不该碰玩家的贡献分');
+    });
+
+    test('叙事加分按天/周卡上限，扣分不卡', () {
+      final src = _code('mixins/mixin_response.dart');
+      final fn = src.indexOf('void tryHousePointsFromNarrative');
+      final body = src.substring(fn, src.indexOf('\n  }', fn));
+      expect(body, contains('kHouseNarrativeGainDailyCap'),
+          reason: '日上限没接进叙事加分');
+      expect(body, contains('kHouseNarrativeGainWeeklyCap'),
+          reason: '周上限没接进叙事加分');
+      expect(body, contains('delta.value > 0'),
+          reason: '只有加分走上限；扣分本来就是负反馈，没人会为被扣分去刷文案');
+    });
+
+    test('加分时实时同步年度榜的玩家学院行', () {
+      final src = _code('mixins/mixin_play.dart');
+      final fn = src.indexOf('void addHouseCupPoints');
+      final body = src.substring(fn, src.indexOf('\n  }', fn));
+      expect(body, contains('kHouseCupBaseScore + p.houseCupPoints'),
+          reason: '玩家的学院行 = 基准 + 本学年贡献，随贡献实时更新');
+    });
+
+    test('学年结算写入历届榜并清空当前榜', () {
+      final src = _code('mixins/mixin_play.dart');
+      final fn = src.indexOf('void settleHouseCup()');
+      final body = src.substring(fn, src.indexOf('\n  }', fn));
+      expect(body, contains('houseCupYearHistory['),
+          reason: '学年结算要写进历届年度榜');
+      expect(body, contains('houseCupYearly.clear()'),
+          reason: '结算后要清空当前榜，让新学年从基准分重新开始');
+    });
+
+    test('年度榜与刷分记账进存档', () {
+      final ws = _code('models/world_state.dart');
+      expect(ws, contains("'house_cup_yearly'"));
+      expect(ws, contains("'house_cup_year_history'"));
+      expect(ws, contains("'narrative_house_gain_day'"));
+      expect(ws, contains('narrativeHouseGainWeek'));
     });
   });
 }

@@ -13,6 +13,7 @@ import '../data/blood_status.dart';
 import '../data/ending_review_data.dart';
 import '../data/scar_data.dart';
 import '../data/house_data.dart';
+import '../data/house_cup_data.dart';
 import '../data/attribute_data.dart';
 import '../services/save_service.dart';
 import '../models/player.dart';
@@ -68,6 +69,12 @@ mixin GameSystemsMixin on GameProviderBase {
       _resetWeeklyAffectionCaps();
     }
 
+    // 学院杯年度榜：跨过上学日时，其它三院逐日自然增长（世界不因玩家而停转）。
+    // 学年末结算时揭晓真实排名，不再掷一次骰子。
+    if (dayDelta > 0) {
+      _accumulateHouseCupRivals(dayDelta);
+    }
+
     // 轻伤会好。
     //
     // 这里是清空而不是"逐条好"：`injuries` 存的是纯文本、没有受伤时间，
@@ -117,6 +124,41 @@ mixin GameSystemsMixin on GameProviderBase {
 
   void advanceTimeForAction(String action) {
     _advanceWorldClock(resolveActionCost(action));
+  }
+
+  /// 学院杯年度榜：其它三院按上学日逐日自然增长。
+  ///
+  /// 由 `_advanceWorldClock` 跨天时调用。只算上学日（周一~周五）且只在
+  /// 学期内（第一/第二学期）增长——暑假大家都回家了，没有公开加分的
+  /// 校规在跑。玩家学院的行不在这里加：它 = 基准 + 玩家本学年贡献，
+  /// 由 `addHouseCupPoints` 实时同步，避免这里再加一遍把玩家学院顶飞。
+  void _accumulateHouseCupRivals(int dayDelta) {
+    if (dayDelta <= 0) return;
+    if (worldState.term == 'summer') return;
+
+    final yearly = worldState.houseCupYearly;
+    // 四院缺谁补谁（putIfAbsent 不动已有的行）：
+    // 玩家可能先挣分把自家学院行写进去——不能因为表非空就把其它三院漏掉。
+    if (yearly.length < kHouseNames.length) {
+      for (final h in kHouseNames) {
+        yearly.putIfAbsent(h, () => kHouseCupBaseScore);
+      }
+    }
+
+    final p = player;
+    final myCn = (p != null && p.house != null) ? houseDisplayName(p.house) : null;
+    final curWeekday = worldState.time.weekday; // 0=周日 … 6=周六
+    for (var i = 0; i < dayDelta; i++) {
+      // 从当前周几往前数第 i 天；weekday 往前回绕要用模 +7 保正
+      final wd = ((curWeekday - i) % 7 + 7) % 7;
+      if (wd == 0 || wd == 6) continue; // 周末不上课
+      for (final h in yearly.keys) {
+        if (h == myCn) continue; // 玩家的学院行只由贡献驱动
+        yearly[h] = yearly[h]! +
+            random.nextInt(kHouseRivalDailyMax - kHouseRivalDailyMin + 1) +
+            kHouseRivalDailyMin;
+      }
+    }
   }
 
   // ==================== 每日活动次数上限 ====================
@@ -1729,11 +1771,15 @@ mixin GameSystemsMixin on GameProviderBase {
     _checkMonthlyEvolution(oldMonth, oldYear);
     _checkEventAnchors();
     _runConsistencyChecks();
-    // 同步游戏周：绝对天数跨过整周边界时推进
+    // 同步游戏周：绝对天数跨过整周边界时推进。
+    // 以前是 `gameWeek++`：快进 30 天（4 周）只加 1 周，而
+    // getAffectionGainLimit（npc.dart）在 gameWeek<=1 用周上限、<=4 用月上限
+    // → 实际已过数月仍受首月 +50 约束，好感被长期压死。与上方 advanceTime
+    // 对齐：按 newBucket - lastWeekBucket 补齐跨过的所有整周。
     final newBucket = worldState.time.absoluteDayIndex ~/ 7;
     if (newBucket > lastWeekBucket) {
+      gameWeek += newBucket - lastWeekBucket;
       lastWeekBucket = newBucket;
-      gameWeek++;
       _resetWeeklyAffectionCaps();
     }
   }

@@ -47,6 +47,17 @@ class AiRouter {
   final _responseCache = ResponseCache.instance;
   int _roundRobinIndex = 0; // 轮询索引，用于随机选择多 key
 
+  // ====== 单 Key 熔断 ======
+  // 一个坏 Key 若每回合都走完整惩罚流程，会持续偷走时间预算、拖垮健康 Key。
+  // 连续失败达到阈值后该 Key 进入冷却窗口，窗口内直接跳过；窗口过后的下一次
+  // 请求作为半开试探，成功即清零恢复。
+  static const int _circuitThreshold = 3;
+  static const Duration _circuitCooldown = Duration(seconds: 60);
+  /// 单次 Key 调用的超时上限。比 Dio 的 receiveTimeout（45/90s）短，专治
+  /// "连不上也不报错、一直挂着"的坏 Key——挂死到全局超时不如在这先掐掉。
+  static const Duration _perCallTimeout = Duration(seconds: 35);
+  final Map<DeepSeekService, _KeyCircuit> _circuits = {};
+
   AiRouter(this._config);
 
   /// 注册一个 API Key 对应的配置
@@ -57,6 +68,26 @@ class AiRouter {
   /// 是否存在任何可用 AI 服务。任一提供商已注册（配置了 key）即可通过 fallback 生成叙事，
   /// 不再只检查主 narrativeProvider，避免「有备用 key 却被挡死」。
   bool get hasNarrativeService => _configs.values.any((list) => list.isNotEmpty);
+
+  bool _circuitOpen(DeepSeekService s) {
+    final c = _circuits[s];
+    if (c == null || c.failures < _circuitThreshold) return false;
+    // 冷却窗口内保持熔断；窗口过后放一次试探（半开）
+    return DateTime.now().isBefore(c.openUntil);
+  }
+
+  void _recordSuccess(DeepSeekService s) {
+    final c = _circuits[s];
+    if (c != null) c.failures = 0;
+  }
+
+  void _recordFailure(DeepSeekService s) {
+    final c = _circuits.putIfAbsent(s, () => _KeyCircuit());
+    c.failures++;
+    if (c.failures >= _circuitThreshold) {
+      c.openUntil = DateTime.now().add(_circuitCooldown);
+    }
+  }
   Future<ChatResult> chatComplete({
     required AiScene scene,
     required String prompt,
@@ -126,7 +157,23 @@ class AiRouter {
         },
       );
     }
-    return future;
+    // summary / npcChat 之前没有超时：最坏 2 provider × N key × 3 次 × 45s，
+    // UI 会长时间转圈。这里给一个整体兜底超时。
+    return future.timeout(
+      const Duration(seconds: 45),
+      onTimeout: () async {
+        cancelToken.cancel('summary/npcChat timeout');
+        await AiDebugLogger.instance.logComplete(
+          callId: callId,
+          timestamp: DateTime.now().toIso8601String(),
+          scene: sceneLabel,
+          provider: getProviderLabel(primary),
+          action: 'TIMEOUT',
+          error: '摘要/闲聊生成超时（45秒）',
+        );
+        throw AiRetryableException('摘要/闲聊生成超时（45秒），请重试');
+      },
+    );
   }
 
   Future<ChatResult> _callWithFallback({
@@ -198,16 +245,29 @@ class AiRouter {
             : service.config.apiKey;
 
         for (var attempt = 0; attempt <= maxRetriesPerService; attempt++) {
+          if (_circuitOpen(service)) {
+            // 熔断中的 Key 直接跳过，不再点卯
+            debugPrint('⚠️ ${provider.name}[$keyHash] 熔断中，跳过');
+            break;
+          }
           try {
             // 限流闸门在 DeepSeekService.chatComplete 内部（_acquireSlot），
             // 这里不要再加一层，否则同一个 Key 会被两道互不知情的闸门串着等。
-            final result = await service.chatComplete(
-              prompt: prompt,
-              systemPrompt: systemPrompt ?? '',
-              temperature: temperature,
-              maxTokens: maxTokens,
-              cancelToken: cancelToken,
-            );
+            // 单 Key 级超时：坏 Key 挂死时不拖到全局超时，在这里掐断并切下一个。
+            final result = await service
+                .chatComplete(
+                  prompt: prompt,
+                  systemPrompt: systemPrompt ?? '',
+                  temperature: temperature,
+                  maxTokens: maxTokens,
+                  cancelToken: cancelToken,
+                )
+                .timeout(
+                  _perCallTimeout,
+                  onTimeout: () =>
+                      throw AiRetryableException('单次 AI 请求超时（35秒），已切换 Key'),
+                );
+            _recordSuccess(service);
             // 缓存成功响应
             if (useCache) {
               _responseCache.set(
@@ -236,6 +296,7 @@ class AiRouter {
               rethrow;
             }
             lastError = e;
+            _recordFailure(service);
 
             // 可重试错误且还有重试机会：指数退避后重试同一 key
             if (e is AiRetryableException && attempt < maxRetriesPerService) {
@@ -277,3 +338,9 @@ class AiRouter {
       providerDisplayName(provider.name);
 
   }
+
+/// 单个 Key 的熔断状态：连续失败次数 + 熔断窗口截止时间。
+class _KeyCircuit {
+  int failures = 0;
+  DateTime openUntil = DateTime.fromMillisecondsSinceEpoch(0);
+}

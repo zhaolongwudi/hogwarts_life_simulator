@@ -33,6 +33,43 @@ const Map<String, String> kStaffHomeLocations = {
 /// 没在 [kStaffHomeLocations] 里的教职工（含动态生成的）默认待的地方。
 const String kDefaultStaffLocation = '霍格沃茨·教室';
 
+/// 每位教授/教职工**上课时段**（也是白天常待）的具体教室——「教授按课表在
+/// 教室等」的硬耦合本体。没列出的教职工回落到自己的常驻点。
+///
+/// 之前所有教授共享一个泛化「霍格沃茨·教室」，玩家进教室看到的是"一屋子
+/// 教授"，哪个都不像在上课。细分之后：麦格只在变形术教室、弗利维只在魔咒
+/// 教室、斯内普守地窖……玩家走进对应教室才见得到那位教授，世界才像在运转。
+const Map<String, String> kStaffClassLocations = {
+  'mcgonagall': '霍格沃茨·变形术教室', // 变形术
+  'snape': '霍格沃茨·地窖', // 魔药学（原著：魔药课在地下教室）
+  'flitwick': '霍格沃茨·魔咒教室', // 魔咒学
+  'sprout': '霍格沃茨·温室', // 草药学
+  'trelawney': '霍格沃茨·占卜教室', // 占卜学
+  'binns': '霍格沃茨·魔法史教室', // 魔法史
+  'hooch': '霍格沃茨·场地', // 飞行课
+  'hagrid': '霍格沃茨·场地', // 保护神奇生物
+};
+
+/// 上课时段学生可能待的教室池。按 npc 身份哈希分配，避免一整个年级的人
+/// 同时挤进同一个教室——不同教室该有不同的面孔。
+const List<String> kStudentClassRooms = [
+  '霍格沃茨·教室',
+  '霍格沃茨·变形术教室',
+  '霍格沃茨·魔咒教室',
+  '霍格沃茨·魔法史教室',
+  '霍格沃茨·占卜教室',
+];
+
+/// 稳定字符串哈希：Dart 的 hashCode 对同一字符串在同一平台稳定，但跨版本/
+/// 跨平台不保证；这里用固定算法保证存档迁移与测试可复现。
+int _stableHash(String s) {
+  var h = 0;
+  for (final c in s.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return h;
+}
+
 /// 学生默认待的地方。
 const String kStudentCommonRoom = '霍格沃茨·公共休息室';
 const String kStudentDorm = '霍格沃茨·宿舍';
@@ -290,10 +327,13 @@ String npcExpectedLocation(NPC npc, int hour, {int weekday = 1}) {
   }
 
   if (isStaff) {
-    // 教授白天守着自己的教室；霍琦和海格常年在户外
+    // 霍琦和海格常年在户外
     if (npc.id == 'hooch' || npc.id == 'hagrid') return kGroundsLocation;
-    // 不上课的时间，教授回办公室而不是教室
-    return isClassHour(hour) ? home! : kStaffHomeLocations[npc.id] ?? home!;
+    // 上课时段（也是白天常待）：教授按课表守自己的专属教室——
+    // 麦格在变形术教室、斯内普在地窖、弗利维在魔咒教室……
+    // 这是「教授按课表在教室等」的硬耦合：玩家走进对应教室才见得到他。
+    // 没配专属教室的教职工回落到常驻点。
+    return kStaffClassLocations[npc.id] ?? home!;
   }
 
   // ---- 学生 ----
@@ -315,7 +355,9 @@ String npcExpectedLocation(NPC npc, int hour, {int weekday = 1}) {
   final isAthlete = const ['wood', 'angelina', 'cedric', 'roger'].contains(npc.id);
   if (isAthlete && hour >= 15) return kGroundsLocation;
 
-  return '霍格沃茨·教室';
+  // 学生按身份稳定哈希分散到不同教室，不再全员挤进同一个「教室」——
+  // 每个教室该有不同的面孔，玩家才感受得到「这一屋是变形术课、那屋是魔咒课」。
+  return kStudentClassRooms[_stableHash(npc.id) % kStudentClassRooms.length];
 }
 
 /// 按当前世界时间刷新所有存活 NPC 的位置。

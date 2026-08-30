@@ -99,6 +99,23 @@ class WorldState {
   // 统计连续"不衔接"的次数，达到阈值会给玩家一条通知，避免一次误判就响警报。
   int continuityBridgeMisses;
 
+  // ====== 学院杯 · 年度榜 ======
+  // 学年榜不是学年末掷一次骰子：四院各从基准分起步，其它三院在学期内按
+  // 上学日逐日自然增长（世界不因玩家而停转），玩家的学院行 = 基准 + 玩家
+  // 本学年贡献。学年结算时揭晓并写入 houseCupYearHistory，随后清空开始新学年。
+  final Map<String, int> houseCupYearly;
+
+  /// 历届年度榜：学年名（"1991-1992"）→ 结算摘要。七年榜单可随时回顾。
+  final Map<String, String> houseCupYearHistory;
+
+  // ====== 学院杯 · 刷分防御 ======
+  // 日常加分靠 AI 文本关键词触发，可被反复凑词刷分。这里按天/周记账，
+  // 超上限后当天/本周不再通过叙事关键词加日常分（扣分不受限）。
+  int narrativeHouseGainDay; // 当日已通过叙事关键词加的日常分
+  int narrativeHouseGainDayKey; // 记账的绝对天数，跨天清零
+  int narrativeHouseGainWeek; // 本周已通过叙事关键词加的日常分
+  int narrativeHouseGainWeekKey; // 记账的游戏周序号，跨周清零
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -127,6 +144,12 @@ class WorldState {
     List<Map<String, dynamic>>? consistencyViolations,
     Map<String, String>? lastNarrativeAnchor,
     this.continuityBridgeMisses = 0,
+    Map<String, int>? houseCupYearly,
+    Map<String, String>? houseCupYearHistory,
+    this.narrativeHouseGainDay = 0,
+    this.narrativeHouseGainDayKey = 0,
+    this.narrativeHouseGainWeek = 0,
+    this.narrativeHouseGainWeekKey = 0,
   })  : time = time ?? GameTime(),
         recentEvents = List<NarrativeEvent>.from(recentEvents ?? <NarrativeEvent>[]),
         recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
@@ -141,7 +164,10 @@ class WorldState {
         previousTurnAssertions = List<String>.from(previousTurnAssertions ?? const []),
         consistencyViolations = List<Map<String, dynamic>>.from(
             consistencyViolations ?? const <Map<String, dynamic>>[]),
-        lastNarrativeAnchor = Map<String, String>.from(lastNarrativeAnchor ?? const {});
+        lastNarrativeAnchor = Map<String, String>.from(lastNarrativeAnchor ?? const {}),
+        houseCupYearly = Map<String, int>.from(houseCupYearly ?? const {}),
+        houseCupYearHistory =
+            Map<String, String>.from(houseCupYearHistory ?? const {});
 
   /// 当前时间戳字符串
   String get timestamp => time.format();
@@ -231,6 +257,12 @@ class WorldState {
         'consistency_violations': consistencyViolations,
         'last_narrative_anchor': lastNarrativeAnchor,
         'continuity_bridge_misses': continuityBridgeMisses,
+        'house_cup_yearly': houseCupYearly,
+        'house_cup_year_history': houseCupYearHistory,
+        'narrative_house_gain_day': narrativeHouseGainDay,
+        'narrative_house_gain_day_key': narrativeHouseGainDayKey,
+        'narrative_house_gain_week': narrativeHouseGainWeek,
+        'narrative_house_gain_week_key': narrativeHouseGainWeekKey,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -277,6 +309,16 @@ class WorldState {
           (json['last_narrative_anchor'] as Map<String, dynamic>? ?? const {})
               .map((k, v) => MapEntry(k.toString(), v.toString()))),
       continuityBridgeMisses: json['continuity_bridge_misses'] as int? ?? 0,
+      houseCupYearly: Map<String, int>.from(
+          (json['house_cup_yearly'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k.toString(), v is int ? v : int.tryParse('$v') ?? 0))),
+      houseCupYearHistory: Map<String, String>.from(
+          (json['house_cup_year_history'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k.toString(), v.toString()))),
+      narrativeHouseGainDay: json['narrative_house_gain_day'] as int? ?? 0,
+      narrativeHouseGainDayKey: json['narrative_house_gain_day_key'] as int? ?? 0,
+      narrativeHouseGainWeek: json['narrative_house_gain_week'] as int? ?? 0,
+      narrativeHouseGainWeekKey: json['narrative_house_gain_week_key'] as int? ?? 0,
     );
   }
 

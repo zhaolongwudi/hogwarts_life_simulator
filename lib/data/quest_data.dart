@@ -40,10 +40,10 @@ const List<QuestTemplate> kQuestTemplates = [
   ),
   QuestTemplate(
     id: 'q_spider_fang',
-    title: '巨蛛的毒牙',
-    desc: '校医院需要八眼巨蛛毒牙标本。危险，但报酬可观。',
+    title: '巨蛛的毒液',
+    desc: '校医院需要八眼巨蛛毒液做解药研究。危险，但报酬可观。',
     type: 'gather',
-    target: '蛇的毒牙',
+    target: '八眼巨蛛毒液',
     targetCount: 1,
     rewardGalleons: 40,
     rewardHousePoints: 8,
