@@ -5,6 +5,17 @@
 
 ---
 
+### v3.3.6 — 2026-08-30
+
+**📋 变更说明**
+revert(ui): 删除对话气泡 UI，回退到整段正文渲染
+
+对话气泡识别频繁出错，导致叙事面板显示混乱。
+- _buildBodyCard 直接调用 _buildPlainBodyCard
+- 删除 _buildDialogueSegment / _resolveNpcBySpeaker
+- 删除 _buildNarrationBody（无调用方）
+- 清理无用导入：narrative_visuals, npc_lookup, npc.dart
+
 ### v3.3.5 — 2026-08-30
 
 **📋 变更说明**
