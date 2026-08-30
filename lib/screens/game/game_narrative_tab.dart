@@ -560,14 +560,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
               ),
               if (location != null && location.isNotEmpty) ...[
                 const SizedBox(width: 8),
-                const Icon(Icons.place, size: 13, color: Color(0xFF56D364)),
+                const Icon(Icons.place, size: 13, color: Color(0xFF7EE787)),
                 const SizedBox(width: 2),
                 Flexible(
                   child: Text(
                     location,
                     style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF56D364),
+                        color: Color(0xFF7EE787),
                         fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -962,7 +962,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Expanded(
                 child: Text(attr['label'] as String,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFFC9D1D9))),
+                        fontSize: 11, color: Color(0xFFD0D7DE))),
               ),
               Text('$value',
                   style: TextStyle(
@@ -1004,7 +1004,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Expanded(
                 child: Text(attr['label'] as String,
                     style: const TextStyle(
-                        fontSize: 12, color: Color(0xFFC9D1D9))),
+                        fontSize: 12, color: Color(0xFFD0D7DE))),
               ),
               Text('$value',
                   style: TextStyle(
@@ -1106,8 +1106,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.pink.withValues(alpha: 0.15),
+                    color: const Color(0xFF2D333B),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFD3A625).withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1115,14 +1118,20 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFD3A625),
+                          )),
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text(
                           gp.loadingStage.isNotEmpty
                               ? gp.loadingStage
                               : '推进中...',
-                          style: const TextStyle(fontSize: 13),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFFD0D7DE),
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1132,13 +1141,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4A5568),
-                            borderRadius: BorderRadius.circular(10),
+                            color: const Color(0xFF374151),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '${gp.lastRoundTokens} tokens',
                             style: const TextStyle(
-                                fontSize: 11, color: Color(0xFFA0AEC0)),
+                                fontSize: 11, color: Color(0xFF8B949E)),
                           ),
                         ),
                       ],
@@ -1250,15 +1259,19 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildCommandResultPanel(GameProvider gp, String content) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF232A36),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: const Color(0xFFD3A625).withValues(alpha: 0.5), width: 1.1),
+        color: const Color(0xFF2D333B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(
+            color: const Color(0xFFD3A625).withValues(alpha: 0.7),
+            width: 3.0,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1287,19 +1300,19 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF374151),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.close,
-                      size: 16, color: Color(0xFFC9D1D9)),
+                      size: 16, color: Color(0xFFD0D7DE)),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             content,
             style: const TextStyle(
-                fontSize: 13, color: Color(0xFFD0D7DE), height: 1.55),
+                fontSize: 13, color: Color(0xFFD0D7DE), height: 1.6),
           ),
         ],
       ),
@@ -1350,11 +1363,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
           spacing: 12,
           runSpacing: 4,
           children: [
-            _buildLegendItem(const Color(0xFFE3B341), '人名'),
-            _buildLegendItem(const Color(0xFFFFA657), '说话人'),
-            _buildLegendItem(const Color(0xFF58A6FF), '对话'),
-            _buildLegendItem(const Color(0xFF56D364), '地点'),
-            _buildLegendItem(const Color(0xFFBC8CFF), '物品'),
+            _buildLegendItem(const Color(0xFFDDB54A), '人名'),
+            _buildLegendItem(const Color(0xFFFFC87A), '说话人'),
+            _buildLegendItem(const Color(0xFF79C0FF), '对话'),
+            _buildLegendItem(const Color(0xFF7EE787), '地点'),
+            _buildLegendItem(const Color(0xFFD2A8FF), '物品'),
           ],
         ),
       ),
@@ -1469,18 +1482,18 @@ class _NarrativeTabState extends State<NarrativeTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF444444)),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: dividerColorOf(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '📊 本回合变化',
             style: TextStyle(
               fontSize: 12,
-              color: Color(0xFF8B949E),
+              color: Theme.of(context).textTheme.bodyMedium!.color,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1491,7 +1504,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   section,
                   style: const TextStyle(
                     fontSize: 13,
-                    color: Color(0xFFC9D1D9),
+                    color: Color(0xFFD0D7DE),
                   ),
                 ),
               )),
@@ -1579,13 +1592,13 @@ class _ResourceFloatState extends State<_ResourceFloat>
               margin: const EdgeInsets.only(top: 6),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: const Color(0xFF232A36).withValues(alpha: 0.95),
+                color: const Color(0xFF2D333B).withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: const Color(0xFFD3A625).withValues(alpha: 0.6)),
+                    color: const Color(0xFFD3A625).withValues(alpha: 0.5)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
+                    color: Colors.black.withValues(alpha: 0.25),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -1596,7 +1609,7 @@ class _ResourceFloatState extends State<_ResourceFloat>
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFF8F6EE),
+                  color: Color(0xFFD0D7DE),
                 ),
               ),
             ),
@@ -1630,8 +1643,12 @@ class _AiErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF5C2222),
         borderRadius: BorderRadius.circular(10),
-        border:
-            Border.all(color: const Color(0xFFFF7B72).withValues(alpha: 0.5)),
+        border: Border(
+          left: BorderSide(
+            color: const Color(0xFFFF7B72).withValues(alpha: 0.7),
+            width: 3.0,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -1652,7 +1669,7 @@ class _AiErrorBanner extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: const Text('重试',
-                  style: TextStyle(fontSize: 12, color: Color(0xFFFFC107))),
+                  style: TextStyle(fontSize: 12, color: Color(0xFFD3A625))),
             ),
           GestureDetector(
             onTap: onDismiss,

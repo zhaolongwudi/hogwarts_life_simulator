@@ -55,13 +55,13 @@ class GameBottomInput extends StatelessWidget {
                 height: 52,
                 decoration: BoxDecoration(
                   color: gp.isLoading ? const Color(0xFF374151) : const Color(0xFFD3A625),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     if (!gp.isLoading)
                       BoxShadow(
-                        color: const Color(0xFFD3A625).withValues(alpha: 0.4),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
+                        color: const Color(0xFFD3A625).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                   ],
                 ),
@@ -159,7 +159,7 @@ class GameBottomInput extends StatelessWidget {
     final ready = !gp.isLoading && gp.player != null;
     final actions = <({String label, IconData icon, Color color, String? command, Widget Function()? page})>[
       (label: '委托板', icon: Icons.assignment_outlined, color: const Color(0xFFD3A625), command: null, page: () => const QuestBoardScreen()),
-      (label: '装备', icon: Icons.shield_outlined, color: const Color(0xFF56D364), command: null, page: () => const EquipmentScreen()),
+      (label: '装备', icon: Icons.shield_outlined, color: const Color(0xFF7EE787), command: null, page: () => const EquipmentScreen()),
       (label: '宠物', icon: Icons.pets, color: const Color(0xFFF59E0B), command: '/宠物', page: null),
       (label: '魁地奇', icon: Icons.sports_score, color: const Color(0xFF3B82F6), command: '/魁地奇', page: null),
       (label: '决斗', icon: Icons.gavel, color: const Color(0xFFEF4444), command: '/决斗', page: null),

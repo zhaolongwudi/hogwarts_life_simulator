@@ -37,17 +37,43 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
         opacity: _locked ? 0.5 : 1,
         duration: const Duration(milliseconds: 120),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            // dividerTheme.color 是可以为 null 的（默认 ThemeData 就没配），
-            // 这里强解包过，主题一变就整页报错。给个兜底色。
-            border: Border.all(color: dividerColorOf(context)),
+            color: const Color(0xFF2D333B),
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              left: BorderSide(
+                color: const Color(0xFFD3A625).withValues(alpha: 0.5),
+                width: 2.5,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
-          child: Text(
-            widget.label,
-            style: const TextStyle(fontSize: 14, color: Color(0xFFE6EDF3)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFFE6EDF3),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 12,
+                color: const Color(0xFFD3A625).withValues(alpha: 0.6),
+              ),
+            ],
           ),
         ),
       ),

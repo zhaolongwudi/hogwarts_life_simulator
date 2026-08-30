@@ -144,8 +144,9 @@ class SceneIllustrationBanner extends StatelessWidget {
 }
 
 /// 对话气泡：渲染单个「说话人 + 台词」气泡。
-/// 头像在左，气泡带说话人名字与神态标签。
-/// 带有淡入+上移的入场动画，提升阅读体验。
+///
+/// 头像在左，气泡带说话人名字与神态标签。气泡采用圆角容器 + 左侧学院色
+/// 强调条，视觉上统一、干净。带有淡入+上移的入场动画，提升阅读体验。
 class DialogueBubble extends StatelessWidget {
   final String speaker;
   final String mood;
@@ -178,7 +179,7 @@ class DialogueBubble extends StatelessWidget {
           houseColor: houseColor,
           size: 36,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         // 气泡
         Expanded(
           child: Column(
@@ -186,15 +187,16 @@ class DialogueBubble extends StatelessWidget {
             children: [
               // 说话人 + 神态
               Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 3),
+                padding: const EdgeInsets.only(left: 6, bottom: 4),
                 child: Row(
                   children: [
                     Text(
                       speaker,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: houseColor,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     if (mood.isNotEmpty) ...[
@@ -211,30 +213,31 @@ class DialogueBubble extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF232A36),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(4),
-                    topRight: Radius.circular(14),
-                    bottomLeft: Radius.circular(14),
-                    bottomRight: Radius.circular(14),
-                  ),
-                  border: Border.all(
-                    color: houseColor.withValues(alpha: 0.25),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: houseColor.withValues(alpha: 0.08),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+              // 气泡主体：圆角容器 + 左侧学院色强调条
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D333B),
+                    border: Border(
+                      left: BorderSide(
+                        color: houseColor.withValues(alpha: 0.7),
+                        width: 3.0,
+                      ),
                     ),
-                  ],
-                ),
-                child: ScaledRichText(
-                  text: TextSpan(
-                    children: StoryTextRenderer.parse(text),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ScaledRichText(
+                    text: TextSpan(
+                      children: StoryTextRenderer.parse(text),
+                    ),
                   ),
                 ),
               ),

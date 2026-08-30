@@ -161,49 +161,60 @@ class StoryTextRenderer {
       List<String>.from(_items)
         ..sort((a, b) => b.length.compareTo(a.length));
 
-  static const Color _narrationColor = Color(0xFFC9D1D9);
-  static const Color _dialogueColor = Color(0xFF58A6FF);
-  static const Color _dialogueSpeakerColor = Color(0xFFFFA657);
-  static const Color _characterColor = Color(0xFFE3B341);
-  static const Color _locationColor = Color(0xFF56D364);
-  static const Color _itemColor = Color(0xFFBC8CFF);
+  // ====== 语义化颜色体系（深色主题·柔和调色板） ======
+  //
+  // 设计原则：
+  // 1. 基色（叙述）为暖灰白，不刺眼、支撑长时间阅读
+  // 2. 高亮色降低饱和度，减少互相争夺注意力
+  // 3. 蓝色只用于对话引用，金色只用于说话人，避免混淆
+  // 4. 角色/地点/物品三类实体高亮使用柔和的低饱和色
+  static const Color _narrationColor = Color(0xFFD0D7DE);
+  static const Color _dialogueColor = Color(0xFF79C0FF);
+  static const Color _dialogueSpeakerColor = Color(0xFFFFC87A);
+  static const Color _characterColor = Color(0xFFDDB54A);
+  static const Color _locationColor = Color(0xFF7EE787);
+  static const Color _itemColor = Color(0xFFD2A8FF);
+
+  /// 共同行高：1.6 在中文长文本中提供舒适的阅读间距，
+  /// 相比 1.8 更紧凑，让每个屏幕能多显示 2-3 行正文。
+  static const double _bodyLineHeight = 1.6;
 
   static TextStyle _narrationStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: _narrationColor,
+    fontSize: 15, height: _bodyLineHeight, color: _narrationColor,
   );
 
   static TextStyle _dialogueStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: _dialogueColor,
+    fontSize: 15, height: _bodyLineHeight, color: _dialogueColor,
     fontWeight: FontWeight.w500,
   );
 
   static TextStyle _dialogueSpeakerStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: _dialogueSpeakerColor,
+    fontSize: 15, height: _bodyLineHeight, color: _dialogueSpeakerColor,
     fontWeight: FontWeight.w700,
   );
 
   static TextStyle _characterStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: _characterColor,
+    fontSize: 15, height: _bodyLineHeight, color: _characterColor,
     fontWeight: FontWeight.w600,
   );
 
   static TextStyle _locationStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: _locationColor,
+    fontSize: 15, height: _bodyLineHeight, color: _locationColor,
     fontWeight: FontWeight.w500,
   );
 
   static TextStyle _itemStyle = const TextStyle(
-    fontSize: 15, height: 1.8, color: _itemColor,
+    fontSize: 15, height: _bodyLineHeight, color: _itemColor,
     fontWeight: FontWeight.w500,
   );
 
   static const Color _affectionColor = Color(0xFF8B949E);
   static TextStyle _affectionStyle = const TextStyle(
-    fontSize: 12, height: 1.8, color: _affectionColor,
+    fontSize: 12, height: _bodyLineHeight, color: _affectionColor,
     fontStyle: FontStyle.italic,
   );
   static TextStyle _affectionCharacterStyle = const TextStyle(
-    fontSize: 12, height: 1.8, color: _affectionColor,
+    fontSize: 12, height: _bodyLineHeight, color: _affectionColor,
     fontStyle: FontStyle.italic, fontWeight: FontWeight.w600,
   );
 
@@ -988,7 +999,9 @@ class StoryTextRenderer {
   static bool _looksLikeNarrationPhrase(String s) {
     if (s.isEmpty) return true;
     // 常见叙述虚词：人名几乎不会包含这些字
-    if (RegExp(r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个]').hasMatch(s)) {
+    // 注意：代词（你我他她它）、常见叙述动词（抬低扫盯闻感）、
+    // 指示代词（这那哪）都绝不可能是说话人名字的一部分。
+    if (RegExp(r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个你我他她它抬低扫盯闻感这那哪]').hasMatch(s)) {
       return true;
     }
     // 时间词开头（清晨的霍格沃茨：… / 下午三点：…）
@@ -1014,6 +1027,7 @@ class StoryTextRenderer {
       '时间', '日期', '星期', '月份', '地点', '位置', '状态', '身份',
       '模式', '目标', '学年', '学期', '年级', '天气', '场景', '当前',
       '剩余', '选项', '行动', '提示', '备注', '说明', '编号', '总结',
+      '建议', '效果', '结果', '影响', '关系', '评价', '反馈', '概括',
     ];
     for (final l in labels) {
       if (s.contains(l)) return true;
@@ -1246,6 +1260,12 @@ class StoryTextRenderer {
             : fullSpeaker)
         .trim();
     if (speaker.isEmpty) return null;
+
+    // 未知说话人（不在已知角色表中）且 3 字以上 → 必须冒号后跟引号才算对话
+    // 防止「环顾四周：」「清晨的霍格沃茨：」等叙述被误判为对话
+    if (!_characterNames.contains(speaker) && speaker.length > 3 && !quoteFollow) {
+      return null;
+    }
 
     final content = _stripOuterQuotes(afterColon);
     if (content.isEmpty) return null;
