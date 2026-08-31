@@ -242,7 +242,8 @@ String backfillTimestamp(String narrative, String systemTimestamp) {
 String timeBudgetPromptLine(int minutes) {
   final span = minutes >= 60 ? '${minutes ~/ 60} 小时' : '$minutes 分钟';
   return '【时间预算】本回合剧情覆盖约 $span（$minutes 分钟）的剧情时间。'
-      '日期由系统日历独占推进——严禁写「三天后」「一周过去」「一个月过去了」，'
-      '也不要把【时间戳】里的日期改成别的一天。'
+      '日期由系统日历独占推进——严禁写「三天后」「一周过去」「一个月过去了」。'
+      '【时间戳】铁律：必须以【当前场景】给出的日期与时刻为基准（一字不差地照抄日期，'
+      '可在其基础上向前推进至多 $span），严禁把日期改成别的日子、严禁写未来日期。'
       '日历不会因为你写了就跟着走，只会让剧情和日历对不上。';
 }

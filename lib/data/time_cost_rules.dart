@@ -87,8 +87,10 @@ const List<TimeCostRule> timeCostRules = [
   ),
 ];
 
-/// 默认耗时（所有规则都不匹配时）
-const int kDefaultActionMinutes = 15;
+/// 默认耗时（所有规则都不匹配时）：15 分钟对自由行动（探索/观察/发愣）太碎，
+/// 十回合才过两小时，剧情永远困在同一天。默认提到 30 分钟，
+/// 配合上面的场景转移规则（90 分钟），"收到信→出门对角巷"3 回合内可完成。
+const int kDefaultActionMinutes = 30;
 
 /// 按优先级降序排好的规则表。排序结果只算一次——原来每次调用
 /// resolveActionCost 都要复制一份列表再排一遍。

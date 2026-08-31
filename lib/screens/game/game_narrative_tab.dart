@@ -495,6 +495,16 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
+  /// 判断 AI 时间戳与系统时间的「日期」是否一致（忽略时刻）。
+  /// 例如 AI 写「1991年8月1日 07:30」而系统是「1991年7月31日 19:30」→ false。
+  bool _sameGameDate(String aiTs, String sysTs) {
+    final re = RegExp(r'(\d{4}年\d{1,2}月\d{1,2}日)');
+    final a = re.firstMatch(aiTs)?.group(1);
+    final b = re.firstMatch(sysTs)?.group(1);
+    if (a == null || b == null) return true; // 解析不了就放行，别误伤
+    return a == b;
+  }
+
   Map<String, String?> _extractHeader(String narrative) {
     String? timestamp;
     String? location;
@@ -1175,7 +1185,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
     // （加载中的一回合可能 narrative 为空，但 choices 可能有历史残留）
     final affectionSections = gp.lastAffectionSections;
     final header = _extractHeader(narrative);
-    final timestamp = header['timestamp'];
+    // 时间戳兜底：AI 常写错时间（如"23:45/凌晨"或"8月1日"而系统还是 7月31日傍晚）。
+    // 只要 AI 写的日期与系统日历的日期不一致，就改用系统时间展示，
+    // 避免 UI 出现"叙事说 8月1日、顶栏说 7月31日"的矛盾。
+    var timestamp = header['timestamp'];
+    if (timestamp != null && !_sameGameDate(timestamp, gp.worldState.timestamp)) {
+      timestamp = null;
+    }
     final location = header['location'];
     final bodyNarrative = header['body'] ?? narrative;
     final hasHeader = timestamp != null || location != null;
