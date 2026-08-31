@@ -5,6 +5,11 @@
 
 ---
 
+### v3.4.0 — 2026-08-31
+
+**📋 变更说明**
+ci: grep key analyze lines into annotations (skip pub noise)
+
 ### v3.3.9 — 2026-08-31
 
 **📋 变更说明**
