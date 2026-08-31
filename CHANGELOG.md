@@ -5,6 +5,11 @@
 
 ---
 
+### v3.3.9 — 2026-08-31
+
+**📋 变更说明**
+ci: report analyze output via check annotations (azure log unreachable from sandbox)
+
 ### v3.3.8 — 2026-08-31
 
 **📋 变更说明**
