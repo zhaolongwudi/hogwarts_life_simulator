@@ -67,6 +67,11 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
     // 本地指令解析
     var action = choice.action.trim();
+    // 「//」转义：以 // 开头的输入按自由剧情发送（剥掉一个 /），
+    // 这是玩家想聊 "/xxx" 内容的唯一途径——否则任何 / 开头都会被当指令吞掉。
+    if (action.startsWith('//')) {
+      action = action.substring(1);
+    }
     String? causalResult;
 
     // 因果锚点抉择（见 lib/data/worldline_data.dart）：

@@ -4,6 +4,7 @@ import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
 import '../data/game_config_rules.dart';
 import '../data/command_registry.dart';
+import '../utils/prompt_sanitizer.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/cg_data.dart';
@@ -1383,7 +1384,11 @@ mixin GameCommandsMixin on GameProviderBase {
       currentNarrative = '使用方式：/cheat 知晓 <秘密内容>，例如 /cheat 知晓 斯内普是凤凰社的人';
       return;
     }
-    final secret = parts.sublist(1).join(' ');
+    final secret = PromptSanitizer.sanitize(parts.sublist(1).join(' '));
+    if (secret.isEmpty) {
+      currentNarrative = '输入内容为空或全为无效字符，未写入。';
+      return;
+    }
     final ts = worldState.time.format();
     memory = memory.addKeyFact(KeyFactRecord(
       id: 'cheat_secret_${DateTime.now().millisecondsSinceEpoch}',

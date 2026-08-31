@@ -111,7 +111,9 @@ class NpcChatService {
         kept.insert(0, msg);
       }
       for (final msg in kept) {
-        buffer.writeln('${msg.role.toUpperCase()}: ${msg.content}');
+        // 历史消息回放前重净化：当次消息的 sanitize 覆盖不了历史里的注入内容
+        buffer.writeln(
+            '${msg.role.toUpperCase()}: ${PromptSanitizer.sanitize(msg.content)}');
       }
       promptBuffer.write(buffer);
     }

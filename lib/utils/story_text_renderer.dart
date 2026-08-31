@@ -1113,6 +1113,54 @@ class StoryTextRenderer {
     return s.trimLeft();
   }
 
+  // ==================== 输出侧正文兜底清洗（v3.8） ====================
+  //
+  // 输入侧已有 PromptSanitizer（注入防御/限长）；这里是输出侧兜底——
+  // AI 生成内容偶尔带 Markdown 残留或整段复读，玩家不该看到。
+
+  /// 轻量 Markdown 残留清理（正文侧兜底）。
+  ///
+  /// 保守处理，避免误伤正文标点：
+  ///  - **加粗** / __斜体__ → 去掉成对标记
+  ///  - 中文内容被单星号包裹（*斜体*）→ 去掉星号（数字算式不受影响）
+  ///  - 行首 ### 标题符、- / * / 1. 列表符 → 去符号留文本
+  static String stripMarkdownArtifacts(String text) {
+    if (text.isEmpty) return text;
+    var s = text;
+    // 注意：Dart 的 replaceAll 对 RegExp 的替换串按字面量处理（不支持 $1），
+    // 反向引用必须用 replaceAllMapped
+    s = s.replaceAllMapped(
+        RegExp(r'\*\*([^*\n]+)\*\*'), (m) => m.group(1)!);
+    s = s.replaceAllMapped(
+        RegExp(r'__([^_\n]+)__'), (m) => m.group(1)!);
+    // 单星号包裹：仅当内容是中文（避免误伤 3*4=12 这类算式）
+    s = s.replaceAllMapped(
+        RegExp(r'\*([\u4e00-\u9fa5][^*\n]{0,40})\*'), (m) => m.group(1)!);
+    // 行首标题符（Dart RegExp 不支持 (?m) 内联标志，用 multiLine 参数）
+    s = s.replaceAll(RegExp(r'^\s*#+\s*', multiLine: true), '');
+    // 行首列表符（- * • 数字. 数字、）→ 去符号留文本
+    s = s.replaceAll(RegExp(r'^\s*[-*•]\s+(?=\S)', multiLine: true), '');
+    s = s.replaceAll(RegExp(r'^\s*\d{1,2}[.、]\s+(?=\S)', multiLine: true), '');
+    return s.trim();
+  }
+
+  /// 相邻重复段落去重：AI 输出偶尔整段复读（复制粘贴式/首尾呼应式）。
+  /// 只处理「与上一条完全相同的段落」，保留第一条。
+  static String dedupeRepeatedParagraphs(String text) {
+    if (text.isEmpty) return text;
+    final paras = text.split(RegExp(r'\n{2,}'));
+    if (paras.length < 2) return text;
+    final out = <String>[];
+    String? prev;
+    for (final p in paras) {
+      final t = p.trim();
+      if (t == prev) continue;
+      out.add(p);
+      prev = t;
+    }
+    return out.join('\n\n');
+  }
+
   /// 自动段落排版：将长文本按句号/问号/感叹号 + 长度阈值自动分段
   static String autoParagraph(String text) {
     if (text.isEmpty) return '';

@@ -264,6 +264,9 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
 
     var narrative = narrativeLines.join('\n');
     narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    // 输出侧兜底清洗：Markdown 残留（**加粗**/行首标题/列表符）与整段复读
+    narrative = StoryTextRenderer.dedupeRepeatedParagraphs(narrative);
+    narrative = StoryTextRenderer.stripMarkdownArtifacts(narrative);
     narrative = StoryTextRenderer.autoParagraph(narrative);
     currentNarrative = narrative;
 

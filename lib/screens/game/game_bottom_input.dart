@@ -107,13 +107,15 @@ class GameBottomInput extends StatelessWidget {
                     Expanded(
                       child: TextField(
                         controller: inputController,
+                        maxLength: 500,
                         style: const TextStyle(color: Color(0xFFE6EDF3), fontSize: 14),
                         decoration: const InputDecoration(
-                          hintText: '输入行动或 /命令',
-                          hintStyle: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                          hintText: '输入行动或 /命令（// 开头按普通内容发送）',
+                          hintStyle: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           isDense: true,
+                          counterText: '',
                         ),
                         onSubmitted: gp.isLoading ? null : (_) => onHandleFreeAction(),
                       ),
