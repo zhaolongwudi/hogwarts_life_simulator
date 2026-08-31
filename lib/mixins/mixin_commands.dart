@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/widgets.dart';
 import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
 import '../data/game_config_rules.dart';
 import '../data/command_registry.dart';
 import '../utils/prompt_sanitizer.dart';
+import '../utils/npc_lookup.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/cg_data.dart';
@@ -765,38 +767,91 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '新NPC',
         group: '玩法&活动',
-        helpText: '生成一位新NPC（每学年限4次）',
+        helpText: '生成/查看新NPC：/新NPC（列表）｜/新NPC [全名]（档案）｜/新NPC 生成 [数量]',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          // 支持：/新NPC（生成1位）｜/新NPC 生成 [数量]｜/新NPC 好感 [全名] [数值]
+          // 框架 7.7：/新NPC 查看所有已生成新NPC列表；/新NPC [全名] 查看指定档案；
+          // /新NPC 生成 [数量] 生成。历史版本把「查档案」误触发生成（副作用+BUG-FIX），
+          // 这里对齐框架：无参=列表，名字=档案，只有显式 生成/数字 才生成。
+          final generated =
+              m.npcRegistry.values.where((n) => n.isGenerated).toList();
+
+          // 1) 作弊路径
           if (ctx.parts.isNotEmpty && ctx.arg(0) == '好感') {
             m._cheatNewNpc(['新NPC', '好感', ctx.arg(1) ?? '', ctx.arg(2) ?? '']);
             m.choices = [GameChoice(text: '返回', action: '继续')];
             return true;
           }
-          var count = 1;
+
+          // 2) 生成路径：/新NPC 生成 [N] 或 /新NPC <数字>
           if (ctx.parts.isNotEmpty) {
             if (ctx.arg(0) == '生成') {
-              count = int.tryParse(ctx.arg(1) ?? '') ?? 1;
-            } else {
-              count = int.tryParse(ctx.arg(0) ?? '') ?? 1;
+              final count = (int.tryParse(ctx.arg(1) ?? '') ?? 1).clamp(1, 5);
+              final names = <String>[];
+              for (var i = 0; i < count; i++) {
+                m.generateNewNPC();
+                final gen = m.npcRegistry.values
+                    .where((n) => n.isGenerated)
+                    .toList();
+                if (gen.isNotEmpty) names.add(gen.last.name);
+              }
+              m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
+                  '他们或许会成为你故事里的一部分。';
+              m.choices = [GameChoice(text: '返回', action: '继续')];
+              return true;
+            }
+            final asNumber = int.tryParse(ctx.arg(0) ?? '');
+            if (asNumber != null) {
+              final count = asNumber.clamp(1, 5);
+              final names = <String>[];
+              for (var i = 0; i < count; i++) {
+                m.generateNewNPC();
+                final gen = m.npcRegistry.values
+                    .where((n) => n.isGenerated)
+                    .toList();
+                if (gen.isNotEmpty) names.add(gen.last.name);
+              }
+              m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
+                  '他们或许会成为你故事里的一部分。';
+              m.choices = [GameChoice(text: '返回', action: '继续')];
+              return true;
             }
           }
-          count = count.clamp(1, 5);
-          if (count > 1) {
-            final names = <String>[];
-            for (var i = 0; i < count; i++) {
-              m.generateNewNPC();
-              final gen = m.npcRegistry.values
-                  .where((n) => n.isGenerated)
-                  .toList();
-              if (gen.isNotEmpty) names.add(gen.last.name);
+
+          // 3) 档案路径：/新NPC [全名]（仅已生成 NPC）
+          final kw = ctx.tailFrom(0).trim();
+          if (kw.isNotEmpty) {
+            final target = generated.isEmpty
+                ? null
+                : findNpcByKeyword(generated, kw);
+            if (target != null) {
+              m.currentNarrative = m.formatCharacterDossier(target.name);
+              m.choices = [GameChoice(text: '返回', action: '继续')];
+              return true;
             }
-            m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
-                '他们或许会成为你故事里的一部分。';
+            m.currentNarrative = '【新NPC】\n没有叫「$kw」的生成NPC。\n\n'
+                '已生成 ${generated.length} 位：${generated.map((n) => n.name).join('、')}。\n'
+                '用 /新NPC 生成 一位新同学。';
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
+
+          // 4) 列表路径：/新NPC（无参数）
+          if (generated.isEmpty) {
+            m.currentNarrative = '【新NPC】\n还没有生成过新NPC。\n'
+                '用 /新NPC 生成 一位属于你故事的新同学。';
           } else {
-            m.generateNewNPC();
+            final lines = generated
+                .map((n) => '· ${n.name}｜${n.house.isEmpty ? '未知学院' : n.house}'
+                    '${n.grade}年级｜好感 ${n.affection}'
+                    '（${n.affectionStage}）\n'
+                    '   ${n.appearance.isNotEmpty ? n.appearance : ''}'
+                    '${n.personalGoal != null && n.personalGoal!.isNotEmpty ? '｜${n.personalGoal}' : ''}')
+                .join('\n');
+            m.currentNarrative = '【新NPC · 已生成 ${generated.length} 位】\n$lines\n\n'
+                '想看某位详情：/新NPC [全名]';
           }
+          m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
       ),
@@ -1947,7 +2002,10 @@ mixin GameCommandsMixin on GameProviderBase {
   /// /cheat 时间 <天数>
   void _cheatTime(List<String> parts) {
     if (parts.length >= 2) {
-      final days = int.tryParse(parts[1]);
+      final raw = int.tryParse(parts[1]);
+      // BUG-FIX: 天数无上限时 fastForwardTime 按天循环，超大值会冻结主线程，
+      // 与 resolveFastForwardDays 的上限对齐（最多 365 天）。
+      final days = raw == null ? null : min(raw.abs(), 365);
       if (days != null) fastForwardTime(days);
       currentNarrative = '时间已推进 $days 天。\n${worldState.timestamp}';
     } else {
@@ -2161,7 +2219,9 @@ $knownRegions
       }
     }
     gains.forEach((k, v) {
-      p.attributes[k] = (p.attributes[k] ?? 50 + v).clamp(0, 100);
+      // BUG-FIX: `+` 优先级高于 `??`，原来写成 (p.attributes[k] ?? 50 + v)
+      // 等价于 p.attributes[k] ?? (50+v)，属性已存在时加成被整体丢弃。
+      p.attributes[k] = ((p.attributes[k] ?? 50) + v).clamp(0, 100);
     });
     p.energy = (p.energy - 10).clamp(0, 100);
     _advanceWeek('学习');

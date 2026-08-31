@@ -72,7 +72,10 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     try {
       await context.read<GameProvider>().loadFromSave(slotId);
       if (!mounted) return;
-      Navigator.pop(context);
+      // BUG-FIX: 原来先 pop 再用同一 context pushReplacementNamed，
+      // pop 后 element 已 deactivate，debug 下会触发
+      // "Looking up a deactivated widget's ancestor is unsafe"。
+      // 直接 pushReplacementNamed 即可替换当前页。
       Navigator.pushReplacementNamed(context, '/game');
     } catch (e) {
       if (!mounted) return;

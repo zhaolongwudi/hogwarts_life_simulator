@@ -188,6 +188,21 @@ class AiRouter {
     (_configs[cfg.provider] ??= []).add(cfg);
     (_services[cfg.provider] ??= []).add(DeepSeekService(config: cfg));
   }
+
+  /// 释放所有底层服务（Dio 连接池）。
+  ///
+  /// Dio 泄漏修复：GameProvider.updateClient() 每次重建 AiRouter 前调用，
+  /// 否则旧的 HttpClient/socket 从不关闭，反复切换 API Key 会泄漏连接。
+  /// 测试注入的 MockDio 由 DeepSeekService.close() 内部 try/catch 兜底。
+  void dispose() {
+    for (final services in _services.values) {
+      for (final s in services) {
+        s.close();
+      }
+    }
+    _services.clear();
+    _configs.clear();
+  }
   /// 是否存在任何可用 AI 服务。任一提供商已注册（配置了 key）即可通过 fallback 生成叙事，
   /// 不再只检查主 narrativeProvider，避免「有备用 key 却被挡死」。
   bool get hasNarrativeService => _configs.values.any((list) => list.isNotEmpty);

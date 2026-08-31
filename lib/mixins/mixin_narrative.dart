@@ -962,7 +962,11 @@ $kNarrativeWritingRules
         if (turnEvents.isNotEmpty) {
           final latestEvent = turnEvents.last.text;
           // 如果叙事末尾还没提到这个事件，追加进去
-          if (!currentNarrative.contains(latestEvent.substring(0, latestEvent.length.clamp(10, 40)))) {
+          // 取前 10~40 字作为探测片段；事件文本可能短于 10 字，
+          // clamp(10,40) 对短文本会返回 10 导致 substring 越界崩溃（BUG-FIX），
+          // 这里直接用「全文（≤40 字）或前 40 字」的探测片段。
+          final probe = narrativeEventProbe(latestEvent);
+          if (!currentNarrative.contains(probe)) {
             currentNarrative = '$currentNarrative\n\n$latestEvent';
           }
         }
@@ -2106,4 +2110,16 @@ $kNarrativeWritingRules
   }
 
   // ==================== 分院仪式（本地逻辑，不消耗 token） ====================
+}
+
+/// 从一条世界事件文本中取「叙事去重探测片段」。
+///
+/// 历史上这里直接写 `latestEvent.substring(0, latestEvent.length.clamp(10, 40))`：
+/// 事件文本短于 10 字时 clamp 返回 10，substring 越界抛 RangeError，
+/// 离线模式整回合崩溃（BUG-FIX）。提取成纯函数便于回归测试。
+String narrativeEventProbe(String latestEvent) {
+  if (latestEvent.isEmpty) return '';
+  return latestEvent.length <= 40
+      ? latestEvent
+      : latestEvent.substring(0, 40);
 }

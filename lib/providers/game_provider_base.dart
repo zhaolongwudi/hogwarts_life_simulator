@@ -19,7 +19,13 @@ import '../data/cg_data.dart';
 /// GameProviderBase: 字段承载抽象基类。
 /// 必须放在 `with` 6个Mixin 之前被 6个Mixin 的 `on GameProviderBase` 引用，
 /// 从而打破 Dart 3 中 recursive_interface_inheritance 继承环。
-abstract class GameProviderBase extends ChangeNotifier {
+abstract class GameProviderBase extends ChangeNotifier
+    implements WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 默认空实现：GameProvider 覆写为「退后台时存档」。
+    // 声明在基类上是为了让 mixin 的 dispose 也能 removeObserver(this)。
+  }
   // ====== 依赖注入（构造时提供） ======
   AppProvider get appProvider;
   AiRouter? get router;

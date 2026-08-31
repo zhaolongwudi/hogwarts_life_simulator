@@ -107,14 +107,24 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     const houseGroup = '格兰芬多|斯莱特林|拉文克劳|赫奇帕奇'
         '|Gryffindor|Slytherin|Ravenclaw|Hufflepuff';
 
+    // BUG-FIX: 主语锚点原先硬编码「凌天的/凌天」（历史默认主角名），
+    // 玩家自定义姓名后命中率下降、分院识别延迟。改为用 player.name 动态拼接。
+    final pn = RegExp.escape(player!.name);
+    // 顺序：较长的「你的名字」类组合在前，避免被短组合抢先吞掉字符
+    final possessor = '你的|我的|$pn的|主角的';
+    final subject = '你|我|$pn|主角';
+
     // 2) 强信号A：分院仪式真正发生在主角身上的证据（必须有一个命中）
     final ceremonyAnchors = <Pattern>[
       // 分院帽和主角头直接接触
-      RegExp(r'分院帽[^，。！？\n]{0,20}(扣在|戴在|落在|碰到|触到|停在)[^，。！？\n]{0,20}(你的|凌天的|我的|主角的|头上)', caseSensitive: false),
+      RegExp(r'分院帽[^，。！？\n]{0,20}(扣在|戴在|落在|碰到|触到|停在)[^，。！？\n]{0,20}('
+          '$possessor)头上', caseSensitive: false),
       // 叫名字（麦格教授/分院仪式上/叫到你的名字）
-      RegExp(r'(叫到|念到|喊道|点到)[^，。！？\n]{0,15}(你的名字|凌天|你了)', caseSensitive: false),
+      RegExp(r'(叫到|念到|喊道|点到)[^，。！？\n]{0,15}(你的名字|$pn|你了)',
+          caseSensitive: false),
       // 走流程到你
-      RegExp(r'(终于|终于轮到|下一个就是|走到你面前)[^，。！？\n]{0,20}(你|凌天)', caseSensitive: false),
+      RegExp(r'(终于|终于轮到|下一个就是|走到你面前)[^，。！？\n]{0,20}(你|$pn)',
+          caseSensitive: false),
     ];
     int? anchorIdx;
     for (final p in ceremonyAnchors) {
@@ -137,14 +147,14 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       return;
     }
     // 额外：叫到了主角名字但还没到你 → 也不算（比如AI写了"叫到了纳威·隆巴顿"）
-    // => anchorIdx 本身已要求 "叫到 你的名字/凌天/你了"，所以已排除
+    // => anchorIdx 本身已要求 "叫到 你的名字/$pn/你了"，所以已排除
 
     // 3) 候选匹配：学院名匹配必须发生在 anchorIdx 之后（不能是正文开头的"马尔福来自斯莱特林"）
     //    并且满足：紧邻动作词 或 分院帽喊出（!!） 或 结果宣布
     final candidates = <(int, String)>[
-      // 模式1：动作词+学院（必须主语是你/凌天/我）
+      // 模式1：动作词+学院（必须主语是你/我/主角）
       ...RegExp(
-        '(你|我|凌天|主角)[^，。！？\n]{0,10}(?:分到|分进|被分到|被分进|进入了|进了|分到了|进了)\\s*($houseGroup)',
+        '($subject)[^，。！？\n]{0,10}(?:分到|分进|被分到|被分进|进入了|进了|分到了|进了)\\s*($houseGroup)',
         caseSensitive: false,
       ).allMatches(text).map((m) => (m.start, m.group(2)!)),
       // 模式2：分院帽喊（连续感叹号+学院名）

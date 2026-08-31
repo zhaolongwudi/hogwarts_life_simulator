@@ -24,6 +24,7 @@ import '../data/cg_data.dart' as cgData;
 /// `mixin X on GameProviderBase` 访问，从而解决 recursive_interface_inheritance。
 class GameProvider extends GameProviderBase
     with
+        WidgetsBindingObserver,
         GameInitMixin,
         GameNarrativeContinuityMixin,
         GameNarrativeMixin,
@@ -70,11 +71,24 @@ class GameProvider extends GameProviderBase
     chatService = NpcChatService(appProvider: appProvider);
     updateClient();
     appProvider.addListener(onApiKeyChange);
+    // 应用退到后台/被杀前主动存档（防丢失存档修复）：dispose 里发起的
+    // 异步写盘无人 await，进程回收时 Future 可能根本没机会跑完，
+    // 所以在 AppLifecycleState.paused/detached 时提前触发同步快照写盘。
+    WidgetsBinding.instance.addObserver(this);
     if (appProvider.isGameStarted) {
       isInitializing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         tryAutoLoad();
       });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.inactive) {
+      unawaited(saveNow());
     }
   }
 
@@ -174,6 +188,8 @@ class GameProvider extends GameProviderBase
       npcChatProvider: appProvider.providerForScene(AiScene.npcChat),
       choiceProvider: appProvider.providerForScene(AiScene.choice),
     );
+    // Dio 泄漏修复：重建前先释放旧 router 的连接池
+    router?.dispose();
     final newRouter = AiRouter(config);
     // 注册每个提供商的所有 API Key（每个 Key 注册一个独立的服务，实现独立限流 + 自动轮询）
     for (final p in AiProvider.values) {

@@ -2378,6 +2378,11 @@ mixin GameSystemsMixin on GameProviderBase {
 
   Future<ChatResult> callDeepSeek(String prompt, {AiScene scene = AiScene.narrative}) async {
     if (router == null) throw Exception('AI 服务未初始化');
+    // BUG-FIX: 检查与使用之间存在 await 间隙（buildSystemPrompt），
+    // 若玩家在请求在飞时重置游戏（resetAllState 会把 router 置空），
+    // router! 会抛 Null check operator used on a null value。
+    final r = router;
+    if (r == null) throw Exception('AI 服务已重置，请重试');
     String effectiveSystemPrompt;
     if (scene == AiScene.choice || scene == AiScene.summary) {
       // 选项/摘要场景：无需注入完整世界观 + 玩家档案，提示词本身已经包含了指令
@@ -2402,7 +2407,7 @@ mixin GameSystemsMixin on GameProviderBase {
       AiScene.summary => 4000,
       AiScene.npcChat => 4000,
     };
-    final result = await router!.chatComplete(
+    final result = await r.chatComplete(
       scene: scene,
       prompt: prompt,
       systemPrompt: effectiveSystemPrompt,
@@ -2602,13 +2607,25 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   Future<void> loadFromSave(String slotId) async {
-    final data = await saveService.loadGame(slotId);
-    if (data == null) return;
-    applySaveData(data);
-    // _applySaveData 里已经把 isLoading/isInitializing 复位了
-    appProvider.setGameStarted(true);
-    notifyListeners();
-    unawaited(autoSave());
+    try {
+      final data = await saveService.loadGame(slotId);
+      if (data == null) {
+        // 存档不存在或已损坏且无备份可回滚：静默 return 会让 UI 毫无反馈（BUG-FIX）
+        error = '存档加载失败：存档不存在或已损坏（slot $slotId）';
+        notifyListeners();
+        return;
+      }
+      applySaveData(data);
+      // _applySaveData 里已经把 isLoading/isInitializing 复位了
+      appProvider.setGameStarted(true);
+      notifyListeners();
+      unawaited(autoSave());
+    } catch (e, st) {
+      // 解析中途抛异常会留下半截状态（player 已换、npc 已清），必须兜底
+      error = '存档加载失败：$e';
+      debugPrint('❌ loadFromSave($slotId) failed: $e\n$st');
+      notifyListeners();
+    }
   }
 
   void _migrateSave(Map<String, dynamic> data, int version) {
@@ -2700,8 +2717,12 @@ mixin GameSystemsMixin on GameProviderBase {
   @override
 
   void dispose() {
-    saveNow(); // 异步但会同步快照状态并立即写盘，避免 300ms 防抖未完成导致存档丢失
+    // 注意：这里发起的 saveNow() 是异步写盘，进程回收时 Future 可能跑不完，
+    // 真正的防丢档靠 GameProvider 的 WidgetsBindingObserver（退后台时提前存档）。
+    // 这里保留 saveNow() 作为最后兜底（至少同步快照了状态）。
+    saveNow();
     appProvider.removeListener(onApiKeyChange);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

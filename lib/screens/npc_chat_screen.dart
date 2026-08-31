@@ -43,6 +43,9 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
   }
 
   void _sendInitialGreeting() {
+    // BUG-FIX: _loadHistory 是磁盘 IO，玩家在返回前退出页面时
+    // setState 会抛 "setState() called after dispose()"。
+    if (!mounted) return;
     if (_messages.isEmpty) {
       final greeting = _generateGreeting(widget.npc);
       setState(() {

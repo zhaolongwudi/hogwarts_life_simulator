@@ -94,6 +94,19 @@ class DeepSeekService {
               receiveTimeout: receiveTimeoutFor(config.provider),
             ));
 
+  /// 释放底层 HttpClient 连接池（Dio 泄漏修复）。
+  ///
+  /// 以前更换 API Key / 切提供商时直接丢弃旧 AiRouter，旧的
+  /// DeepSeekService/Dio（含 socket 连接池）从不 close，反复切换会泄漏。
+  /// AiRouter.dispose() 会遍历调用本方法；测试注入的 MockDio 不受影响。
+  void close() {
+    try {
+      _dio.close(force: true);
+    } catch (_) {
+      // 测试注入的 Dio 可能不支持 close，忽略即可
+    }
+  }
+
   /// 规范化 baseUrl：去除末尾 /v1 前缀（因为 chatPath/balancePath 通常已经以 /v1/ 开头）
   /// 避免 Agnes 等官方文档风格 "https://api.agnes-ai.cn/v1" + chatPath="/v1/..."
   /// 导致变成 /v1/v1/chat/completions 404
