@@ -3,6 +3,17 @@
 所有版本变更记录都在这里。日常小修小补、analyze 报错修复不单独列出。
 新条目由 CI（`scripts/sync_changelog.sh`）在每次 `main` 分支推送时自动追加到顶部。
 
+### v3.6.5 — 2026-08-31
+
+**📋 变更说明**
+feat(ai): AI链路审计修复 v3.8.0——注入防线补漏/输入体验/输出正文清洗
+
+- 注入绕过封死：NPC历史回放逐条重净化；/cheat 知晓 写入T0前 sanitize
+- // 转义：/ 开头内容可作自由剧情发送（此前被指令系统吞掉）
+- 输入框 maxLength 500 + 转义提示
+- 输出侧正文清洗：stripMarkdownArtifacts（Markdown残留）+ dedupeRepeatedParagraphs（整段复读），接入 parseNarrativeOnly
+- 修复 Dart replaceAll 不支持 $1 反向引用的坑（改用 replaceAllMapped）
+
 ### v3.6.4 — 2026-08-31
 
 **📋 变更说明**
