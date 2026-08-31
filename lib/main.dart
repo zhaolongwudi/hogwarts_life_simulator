@@ -19,23 +19,24 @@ void main() async {
       // 捕获 Flutter 框架错误（例如 Widget build 抛出）
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
-        unawaited(CrashLogger.instance.record(
+        // 同步写：崩溃瞬间进程可能马上被杀，异步 record 没机会完成
+        CrashLogger.instance.recordSync(
           details.exception,
           details.stack,
           screen: 'FlutterFrame',
           extra: _appTag() + ' | ' +
               (details.context?.toString() ?? details.library ?? ''),
-        ));
+        );
       };
 
       // 捕获 Dart 层未处理的 async 错误
       PlatformDispatcher.instance.onError = (error, stack) {
-        unawaited(CrashLogger.instance.record(
+        CrashLogger.instance.recordSync(
           error,
           stack,
           screen: 'PlatformDispatcher',
           extra: _appTag(),
-        ));
+        );
         return true;
       };
 
@@ -58,7 +59,7 @@ void main() async {
     (error, stack) {
       // 任何 zone 兜不住的错误都落盘崩溃日志
       FlutterError.presentError(FlutterErrorDetails(exception: error, stack: stack));
-      CrashLogger.instance.record(
+      CrashLogger.instance.recordSync(
         error,
         stack,
         screen: 'runZonedGuarded',

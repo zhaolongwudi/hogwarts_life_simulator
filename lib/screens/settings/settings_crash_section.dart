@@ -183,11 +183,57 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
             title: Text('全部崩溃日志 (${CrashLogger.instance.entries.length})'),
             backgroundColor: const Color(0xFF161B22),
           ),
-          body: ListView.separated(
+          body: ListView(
             padding: const EdgeInsets.all(12),
-            itemCount: CrashLogger.instance.entries.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, i) => _buildCrashItem(CrashLogger.instance.entries[i]),
+            children: [
+              // 心跳诊断：上次崩溃/卡死前最后在做的事（ANR 不会触发异常记录，
+              // 靠这个定位"转圈卡死"发生在哪一步）
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161B22),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF30363D)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('💓 上次心跳（卡死前最后一步）',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFDDB54A))),
+                    const SizedBox(height: 6),
+                    Text(
+                      CrashLogger.instance.heartbeatSnapshot.isEmpty
+                          ? '暂无心跳记录（重新启动后自动写入）'
+                          : '${CrashLogger.instance.heartbeatSnapshot['time']}\n'
+                              '最后在做：${CrashLogger.instance.heartbeatSnapshot['marker']}',
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF8B949E), height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...CrashLogger.instance.entries.isEmpty
+                  ? [
+                      const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Center(
+                          child: Text('暂无崩溃记录',
+                              style: TextStyle(
+                                  color: Color(0xFF6B7280), fontSize: 13)),
+                        ),
+                      ),
+                    ]
+                  : CrashLogger.instance.entries
+                      .map((e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _buildCrashItem(e),
+                          ))
+                      .toList(),
+            ],
           ),
         ),
       ),
