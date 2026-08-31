@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.5.8 — 2026-08-31
+
+**📋 变更说明**
+docs: 新增 PROJECT_GUIDE.md 项目结构与维护指南——降低后续模型维修成本
+
+- 目录地图：lib/ 全部目录与关键文件职责（54 data / 14 mixin / 5 models / 7 services / 40 screens）
+- 架构约定：mixin 组合模式与跨 mixin 调用、数据/状态层分离与老档兼容铁律、
+  AI 链路全流程（输入净化→prompt分层→路由熔断→输出清洗）、指令系统自动同步机制
+- 测试契约：源码扫描测试清单（narrative_format/progression_fix/command_registry 的断言方式）
+- 版本与 CI 机制：pubspec 唯一来源、勿手动写 CHANGELOG 标题、CI 自动 bump patch
+
 ### v3.5.7 — 2026-08-31
 
 **📋 变更说明**
