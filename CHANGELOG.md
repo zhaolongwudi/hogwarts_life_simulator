@@ -3,6 +3,17 @@
 所有版本变更记录都在这里。日常小修小补、analyze 报错修复不单独列出。
 新条目由 CI（`scripts/sync_changelog.sh`）在每次 `main` 分支推送时自动追加到顶部。
 
+### v3.6.4 — 2026-08-31
+
+**📋 变更说明**
+feat(ui): 整体 UI 检查优化 v3.7.1——颜色token化/操作确认/溢出与反馈
+
+- AppColors 语义色常量；古灵阁浅黄卡片、世界地图浅色残留深色化
+- 好感色 5档/8档冲突统一为 UiHelpers 8 档；世界地图金橙漂移归一
+- 页面层状态色批量收敛 26 处；labelLarge 归一
+- 删除存档/删帖/删日记/清API Key 全部加 confirmDangerDialog 二次确认
+- 姓名 maxLength+顶栏ellipsis；商品名/宠物卡名溢出保护
+
 ### v3.6.3 — 2026-08-31
 
 **📋 变更说明**
