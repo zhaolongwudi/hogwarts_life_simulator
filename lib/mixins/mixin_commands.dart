@@ -8,6 +8,7 @@ import '../models/game_systems.dart';
 import '../data/cg_data.dart';
 import '../data/goal_data.dart';
 import '../data/wand_data.dart';
+import '../data/castle_data.dart';
 import '../data/worldline_data.dart';
 import '../data/legacy_data.dart';
 import '../models/player.dart';
@@ -103,6 +104,69 @@ mixin GameCommandsMixin on GameProviderBase {
             GameChoice(text: '再快进一个月', action: '/快进 下月'),
           ];
           m.notifyListeners();
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '城堡',
+        aliases: ['秘密通道', '幽灵', '休息室'],
+        group: '基础信息',
+        helpText: '城堡设定：/城堡 通道 [名字]｜/城堡 幽灵 [名字]｜/城堡 学院 [院名]',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          final sub = ctx.arg(0);
+          if (sub == '通道') {
+            final q = ctx.tailFrom(1).trim();
+            if (q.isEmpty) {
+              m.currentNarrative = formatCastlePassages();
+            } else {
+              final p = passageByName(q);
+              if (p == null) {
+                m.currentNarrative = '【秘密通道】\n城堡里没有「$q」这条路。\n\n'
+                    '输入 /城堡 通道 看看已知的七条。';
+              } else {
+                final known = p.knownToStudents
+                    ? '这条路在学生间口耳相传。'
+                    : '这条路几乎无人知晓。';
+                m.currentNarrative =
+                    '【${p.name}】\n${p.from} → ${p.to}\n\n${p.note}\n\n$known';
+              }
+            }
+          } else if (sub == '幽灵') {
+            final q = ctx.tailFrom(1).trim();
+            if (q.isEmpty) {
+              m.currentNarrative = formatCastleResidents();
+            } else {
+              final r = residentByName(q);
+              if (r == null) {
+                m.currentNarrative =
+                    '【常驻居民】\n城堡里没有叫「$q」的幽灵或居民。\n\n'
+                        '输入 /城堡 幽灵 看看都有谁。';
+              } else {
+                m.currentNarrative =
+                    '【${r.name}】（${r.kind}）\n常驻：${r.haunt}\n\n${r.persona}';
+              }
+            }
+          } else if (sub == '学院') {
+            // 不带名字时给玩家自己所在学院的档案；还没分院就如实说。
+            final q = ctx.tailFrom(1).trim();
+            final profile =
+                q.isEmpty ? houseProfileOf(m.player?.house) : houseProfileOf(q);
+            if (profile == null) {
+              final why = q.isEmpty
+                  ? '你还没有分院，暂时没有自己的学院档案。'
+                  : '查不到「$q」的学院档案。';
+              m.currentNarrative = '【学院】\n$why\n\n'
+                  '四所学院是：格兰芬多、赫奇帕奇、拉文克劳、斯莱特林。';
+            } else {
+              m.currentNarrative = houseProfileBlock(profile);
+            }
+          } else {
+            m.currentNarrative =
+                formatCastleOverview(houseKey: m.player?.house) +
+                    '\n\n输入 /城堡 通道 或 /城堡 幽灵 看更多。';
+          }
+          m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
       ),
