@@ -532,3 +532,71 @@ while True:
 - **证书链仍校验**：所有连接保留 `CERT_REQUIRED`，仅关闭主机名匹配，可识别伪造证书的中间人。
 - **一次性写文件最省事**：如果只是往仓库加个文档/配置，用「方法一」的 Contents API（PUT contents）一步到位，
   不必起代理、改 `/etc/hosts`。
+
+---
+
+## 8. 沙箱重置后的快速恢复（2026-09-01 实战补充）
+
+> 场景：今天（新会话/沙箱休眠恢复后）遇到 `git pull/push` 全部报
+> `gnutls_handshake() failed: The TLS connection was non-properly terminated`，
+> 但**上一次会话明明已经配好通道**。排查发现沙箱把两样东西悄悄重置了：
+> ① `/etc/hosts` 里的代理映射被清空；② 上次 nohup 启动的代理进程随会话死亡。
+> 以下是可以直接照抄的「三板斧诊断 + 三步恢复」。
+
+### 8.1 诊断三板斧（按顺序跑）
+
+```bash
+# ① hosts 映射还在吗？（0 = 丢了，这是最常见原因）
+grep -c "hogwarts-proxy" /etc/hosts
+
+# ② 代理进程还活着吗？（空输出 = 死了）
+pgrep -f "python3.*gh_proxy" | head -2
+# 注意：pgrep -f "gh_proxy" 会误匹配到包含该字符串的 shell 命令，
+# 用 "python3.*gh_proxy" 并肉眼确认不是 zsh/bash 行
+
+# ③ 通道真的通吗？（200 = 通）
+curl -sI --cacert /opt/ghproxy/ca.crt https://github.com -o /dev/null -w "%{http_code}\n"
+```
+
+### 8.2 两个必踩的坑
+
+1. **`curl` 不认 `GIT_SSL_CAINFO`**。`GIT_SSL_CAINFO` 只对 git 生效；
+   用 curl 验证通道必须显式 `--cacert /opt/ghproxy/ca.crt`（或 `export CURL_CA_BUNDLE=...`），
+   否则 curl 会报 `000`/`exit 35`，造成"通道坏了"的**误判**。
+2. **代理进程与 hosts 是两件事，要分开查**。代理"看起来在"（pgrep 有输出）
+   但 curl 000 —— 先查 hosts；hosts 在但 push 失败 —— 再查代理日志
+   `/tmp/ghproxy.log`（看有没有 `[proxy] GET/POST ...` 转发记录，
+   有记录说明代理活着且在干活，问题在别处）。
+
+### 8.3 三步恢复
+
+```bash
+# 1) 恢复 /etc/hosts 映射（内容与 §5.4 完全一致）
+cat >> /etc/hosts <<'EOF'
+
+# hogwarts-proxy: 沙箱内让 git/gh 走本地无-SNI代理
+127.0.0.1 github.com
+127.0.0.1 api.github.com
+127.0.0.1 raw.githubusercontent.com
+127.0.0.1 codeload.github.com
+127.0.0.1 objects.githubusercontent.com
+EOF
+
+# 2) 重启代理（证书/脚本放固定位置，避免每次重建；nohup 保活）
+cd /opt/ghproxy   # 证书 ca.crt/leaf.crt/leaf.key 与 gh_proxy.py 都在这里
+nohup python3 -u gh_proxy.py > /tmp/ghproxy.log 2>&1 &
+sleep 2
+ss -tlnp 2>/dev/null | grep ":443"   # 应看到 LISTEN 127.0.0.1:443
+
+# 3) 验证通道
+export GIT_SSL_CAINFO=/opt/ghproxy/ca.crt
+curl -sI --cacert /opt/ghproxy/ca.crt https://github.com -o /dev/null -w "%{http_code}\n"   # 200
+git ls-remote https://github.com/<owner>/<repo>.git | head -2                                 # 正常返回
+```
+
+### 8.4 防复发建议
+
+- 把证书（`ca.crt`/`leaf.crt`/`leaf.key`）与 `gh_proxy.py` 固定放在 `/opt/ghproxy/`，
+  沙箱不清理 `/opt`（实测 hosts 会重置，但 /opt 文件保留），恢复时只需重启进程。
+- 每个新会话开工前先跑一遍 §8.1 的三板斧，10 秒确认通道，别等 push 报错再排查。
+- 代理日志统一写 `/tmp/ghproxy.log`（nohup 重定向），排查第一现场。
