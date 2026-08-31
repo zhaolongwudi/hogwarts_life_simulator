@@ -13,3 +13,4 @@ export 'mixin_response_choices.dart';
 export 'mixin_relations.dart';
 export 'mixin_systems.dart';
 export 'mixin_play.dart';
+export 'mixin_animagus.dart';

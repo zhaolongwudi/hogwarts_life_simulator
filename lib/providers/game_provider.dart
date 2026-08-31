@@ -33,7 +33,8 @@ class GameProvider extends GameProviderBase
         GameResponseMixin,
         GameRelationsMixin,
         GameSystemsMixin,
-        GamePlayMixin {
+        GamePlayMixin,
+        GameAnimagusMixin {
   @override
   bool markScanIfNew(String narrative) {
     final h = narrative.hashCode;
@@ -202,6 +203,9 @@ class GameProvider extends GameProviderBase
       {String? reason, int? severity, bool quiet = false}) {
     final npc = npcRegistry[npcId];
     if (npc == null) return;
+    // /cheat 固定好感：锁定后好感对一切系统变动免疫（衰减/背叛/送礼/事件），
+    // 只有 /cheat 好感 直接改数值本身才动得了。
+    if (npc.affectionLocked) return;
     // 注意：不再在此处自动 markNpcIntroduced。
     // introduced 必须仅在 markIntroducedFromNarrative（剧情扫描）或
     // 显式的 markNpcIntroduced 调用路径中触发。否则任何被动好感推断

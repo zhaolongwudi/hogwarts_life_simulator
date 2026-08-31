@@ -109,6 +109,36 @@ class Player {
   final List<ForumPost> forumPosts; // 玩家在魔法论坛发的帖（含点赞/回复计数）
   final List<String> traits; // 开局特质 id 列表
 
+  // ====== 作弊模式开关（框架1 第八部分 · 完整作弊指令系统） ======
+  /// /cheat 无敌：开启后不会因伤害/事故死亡，属性不跌穿下限。
+  bool cheatInvincible;
+  /// /cheat 全知：开启后 /查看、选项生成等环节可展示隐藏信息。
+  bool cheatOmniscient;
+
+  /// /cheat 配对 性取向 修改前的备份：NPC名 → 原始取向（用于重置）。
+  final Map<String, String> cheatOrientationBackup;
+  /// /cheat 配对 修改过的配对键列表（'甲|乙'，用于 /cheat 配对 列表）。
+  final List<String> cheatModifiedPairs;
+
+  /// 考试成绩记录：key = 'Y1'~'Y7'（学年期末）、'OWL'、'NEWT'；
+  /// value = Map<科目id, 成绩等级>。见 lib/data/exam_data.dart。
+  final Map<String, Map<String, String>> examRecords;
+
+  // ====== 阿尼马格斯（框架2 第67条 · 困难且长期的魔法道路） ======
+  /// 阿尼马格斯状态。null = 从未开始。
+  /// {
+  ///   'status': 'none'|'studying'|'potionReady'|'transformed'|'failed',
+  ///   'form': 动物形态名（transformed 后生效）,
+  ///   'progress': 训练进度 0~100,
+  ///   'attempts': 月圆夜尝试次数,
+  ///   'registered': 是否已在魔法部登记,
+  ///   'failedReason': 失败原因描述,
+  /// }
+  Map<String, dynamic>? animagus;
+
+  /// 守护神形态（框架2 第66条）。null = 尚未唤醒。
+  String? patronus;
+
   // ====== 新玩法扩展字段（v1.10） ======
   final Map<String, String> equipped; // 装备槽 → 物品名（robe/hat/broom/amulet）
   final List<String> bestiary; // 已发现生物 id
@@ -202,6 +232,13 @@ class Player {
     this.qMatches = 0,
     this.qWins = 0,
     this.qLastWeek = 0,
+    this.cheatInvincible = false,
+    this.cheatOmniscient = false,
+    this.animagus,
+    this.patronus,
+    Map<String, String>? cheatOrientationBackup,
+    List<String>? cheatModifiedPairs,
+    Map<String, Map<String, String>>? examRecords,
   })  : id = id ?? _uuid.v4(),
         personalityTraits = List<String>.from(personalityTraits ?? const []),
         attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
@@ -231,7 +268,14 @@ class Player {
         equipped = Map<String, String>.from(equipped ?? const {}),
         bestiary = List<String>.from(bestiary ?? const []),
         quests = List<QuestRecord>.from(quests ?? const []),
-        houseCupSources = Map<String, int>.from(houseCupSources ?? const {});
+        houseCupSources = Map<String, int>.from(houseCupSources ?? const {}),
+        cheatOrientationBackup =
+            Map<String, String>.from(cheatOrientationBackup ?? const {}),
+        cheatModifiedPairs =
+            List<String>.from(cheatModifiedPairs ?? const []),
+        examRecords = (examRecords ?? const {}).map(
+          (k, v) => MapEntry(k, Map<String, String>.from(v)),
+        );
 
   /// 是否为合法属性键。
   ///
@@ -352,6 +396,13 @@ class Player {
         'q_matches': qMatches,
         'q_wins': qWins,
         'q_last_week': qLastWeek,
+        'cheat_invincible': cheatInvincible,
+        'cheat_omniscient': cheatOmniscient,
+        'animagus': animagus,
+        'patronus': patronus,
+        'cheat_orientation_backup': cheatOrientationBackup,
+        'cheat_modified_pairs': cheatModifiedPairs,
+        'exam_records': examRecords,
       };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -467,6 +518,16 @@ class Player {
         qMatches: json['q_matches'] ?? 0,
         qWins: json['q_wins'] ?? 0,
         qLastWeek: json['q_last_week'] ?? 0,
+        cheatInvincible: json['cheat_invincible'] ?? false,
+        cheatOmniscient: json['cheat_omniscient'] ?? false,
+        animagus: (json['animagus'] as Map<String, dynamic>?)?.cast<String, dynamic>(),
+        patronus: json['patronus'] as String?,
+        cheatOrientationBackup: Map<String, String>.from(
+            (json['cheat_orientation_backup'] as Map<String, dynamic>?) ?? const {}),
+        cheatModifiedPairs: List<String>.from(json['cheat_modified_pairs'] ?? const []),
+        examRecords: (json['exam_records'] as Map<String, dynamic>? ?? const {})
+            .map((k, v) => MapEntry(
+                k, Map<String, String>.from((v as Map).cast<String, dynamic>()))),
       );
 }
 

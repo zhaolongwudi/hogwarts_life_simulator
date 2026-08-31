@@ -270,6 +270,8 @@ abstract class GameProviderBase extends ChangeNotifier {
   // 避免一个走老的简易关键词池、一个走新的末尾800字承接池，造成断链。
   List<GameChoice> buildFallbackChoices(String narrative);
   void generateNewNPC();
+  /// 处理 /阿尼马格斯 子命令（实现在 GameAnimagusMixin）。
+  void handleAnimagusCommand(List<String> parts);
   String generateSortingNarrative(String house);
   void handleLetterCommand(List<String> parts);
   bool handleLocalCommand(String command);

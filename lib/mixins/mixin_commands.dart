@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import '../data/pet_data.dart';
 import '../data/pet_narrative_config.dart';
 import '../data/game_config_rules.dart';
@@ -11,6 +12,13 @@ import '../data/wand_data.dart';
 import '../data/castle_data.dart';
 import '../data/worldline_data.dart';
 import '../data/legacy_data.dart';
+import '../data/event_anchors.dart';
+import '../data/collectible_data.dart';
+import '../data/exam_data.dart';
+import '../data/course_data.dart';
+import '../data/patronus_data.dart';
+import '../data/attribute_data.dart';
+import '../models/long_term_memory.dart';
 import '../models/player.dart';
 import '../providers/game_provider_base.dart';
 import 'mixin_systems.dart';
@@ -261,10 +269,26 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '声望',
         group: '关系&情感',
-        helpText: '查看声望档案',
+        helpText: '查看声望（/声望 恋爱·/声望 NPC [名字]·/声望 NPC 列表·/声望 NPC 排名 [维度]）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          m.currentNarrative = m.formatReputation();
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '恋爱') {
+            m.currentNarrative = m._formatLoveReputation();
+          } else if (ctx.parts.isNotEmpty && ctx.arg(0) == 'NPC') {
+            final p2 = ctx.parts.skip(1).toList();
+            if (p2.isNotEmpty && p2[0] == '列表') {
+              m.currentNarrative = m._formatNpcReputationList();
+            } else if (p2.isNotEmpty && p2[0] == '排名') {
+              m.currentNarrative = m._formatNpcReputationRanking(
+                  p2.length > 1 ? p2[1] : 'academic');
+            } else if (p2.isNotEmpty) {
+              m.currentNarrative = m._formatNpcReputation(p2.join(' '));
+            } else {
+              m.currentNarrative = '用法：/声望 NPC [名字] ｜ /声望 NPC 列表 ｜ /声望 NPC 排名 [维度]';
+            }
+          } else {
+            m.currentNarrative = m.formatReputation();
+          }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -446,10 +470,19 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '课程',
         group: '学业&成长',
-        helpText: '查看课程表与进度',
+        helpText: '查看课程表与进度（/课程 成绩 查看考试成绩单）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          m.currentNarrative = m.formatCourses();
+          if (ctx.parts.isNotEmpty && (ctx.arg(0) == '成绩' || ctx.arg(0) == '考试')) {
+            m.currentNarrative = m._formatExamRecords();
+          } else if (ctx.parts.isNotEmpty &&
+              (ctx.arg(0) == '选课' || ctx.arg(0) == '选修')) {
+            m.currentNarrative = '【选修课】（三年级起，至少选2门）\n'
+                '${electiveCourses.map((c) => '· ${c.name}（${c.professor}，${c.minGrade}年级起）').join('\n')}\n\n'
+                '选课通过课堂系统自动生效——随着年级提升，选修课会自然进入你的课表。';
+          } else {
+            m.currentNarrative = m.formatCourses();
+          }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -734,7 +767,35 @@ mixin GameCommandsMixin on GameProviderBase {
         helpText: '生成一位新NPC（每学年限4次）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          m.generateNewNPC();
+          // 支持：/新NPC（生成1位）｜/新NPC 生成 [数量]｜/新NPC 好感 [全名] [数值]
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '好感') {
+            m._cheatNewNpc(['新NPC', '好感', ctx.arg(1) ?? '', ctx.arg(2) ?? '']);
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
+          var count = 1;
+          if (ctx.parts.isNotEmpty) {
+            if (ctx.arg(0) == '生成') {
+              count = int.tryParse(ctx.arg(1) ?? '') ?? 1;
+            } else {
+              count = int.tryParse(ctx.arg(0) ?? '') ?? 1;
+            }
+          }
+          count = count.clamp(1, 5);
+          if (count > 1) {
+            final names = <String>[];
+            for (var i = 0; i < count; i++) {
+              m.generateNewNPC();
+              final gen = m.npcRegistry.values
+                  .where((n) => n.isGenerated)
+                  .toList();
+              if (gen.isNotEmpty) names.add(gen.last.name);
+            }
+            m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
+                '他们或许会成为你故事里的一部分。';
+          } else {
+            m.generateNewNPC();
+          }
           return true;
         },
       ),
@@ -869,6 +930,42 @@ mixin GameCommandsMixin on GameProviderBase {
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatWorldEvolution();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '守护神',
+        aliases: ['呼神护卫'],
+        group: '学业&成长',
+        helpText: '守护神之路：/守护神 状态 ｜ /守护神 尝试（框架2 第66条）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m._handlePatronus(ctx.parts);
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '阿尼马格斯',
+        aliases: ['阿尼玛格斯', '变身'],
+        group: '学业&成长',
+        helpText: '阿尼马格斯之路：/阿尼马格斯 状态｜学习｜训练｜尝试｜登记（框架2 第67条）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m.handleAnimagusCommand(ctx.parts);
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '计划',
+        aliases: ['周计划', '这周'],
+        group: '学业&成长',
+        helpText: '批量推进一周：/计划 学习｜社交｜魁地奇｜调查｜放松（框架2 周计划）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m._handlePlan(ctx.parts);
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -1059,125 +1156,105 @@ mixin GameCommandsMixin on GameProviderBase {
     final sub = parts[0];
 
     switch (sub) {
+      // ============ 8.1 基础作弊 ============
+      case '属性':
+      case '熟练度':
+      case 'attr':
+      case 'skill':
+        _cheatAttribute(parts);
+        break;
+      case '加隆':
+      case 'galleons':
+        _cheatGalleons(parts);
+        break;
+      case '世界线':
+      case 'worldline':
+        _cheatWorldline(parts);
+        break;
+      case '知晓':
+      case 'know':
+        _cheatKnow(parts);
+        break;
+      case '剧情':
+      case 'event':
+        _cheatEvent(parts);
+        break;
+      case '无敌':
+      case 'invincible':
+        p.cheatInvincible = !p.cheatInvincible;
+        currentNarrative = p.cheatInvincible
+            ? '⚔️ 无敌模式开启：伤害与死亡结算对你失效。'
+            : '⚔️ 无敌模式关闭。';
+        break;
+      case '全知':
+      case 'omniscient':
+        p.cheatOmniscient = !p.cheatOmniscient;
+        currentNarrative = p.cheatOmniscient
+            ? '👁️ 全知模式开启：查看档案将显示隐藏信息。'
+            : '👁️ 全知模式关闭。';
+        break;
+      case '重置':
+      case 'reset':
+        _cheatReset();
+        break;
+      case '列表':
+      case 'list':
+        currentNarrative = _formatCheatHelp();
+        break;
+
+      // ============ 8.2 好感度与关系作弊 ============
       case '好感':
       case 'affection':
-        if (parts.length >= 3) {
-          final nameKey = parts[1];
-          NPC? npc;
-          for (final n in npcRegistry.values) {
-            if (n.name.contains(nameKey)) { npc = n; break; }
-          }
-          npc ??= npcRegistry[nameKey];
-          if (npc == null) {
-            final allNames = npcRegistry.values.map((n) => n.name).join('、');
-            currentNarrative = '未找到NPC "$nameKey"。可用：$allNames';
-            break;
-          }
-          final delta = int.tryParse(parts[2]);
-          if (delta != null) {
-            // 作弊指令刻意绕过好感上限，这里只补上状态同步：
-            // 恋爱阶段与关系等级原本会停在旧值，导致面板与实际数值对不上。
-            npc.affection = (npc.affection + delta).clamp(-100, 100);
-            if (npc.affection > npc.maxAffectionReached) {
-              npc.maxAffectionReached = npc.affection;
-            }
-            syncRelationshipLevel(npc);
-            checkAffectionAchievements(npc);
-            notifyListeners();
-            currentNarrative = '已调整「${npc.name}」的好感度：${npc.affection}（${npc.affectionStage}）';
-          }
-        }
+        _cheatAffection(parts);
         break;
-
-      case '资源':
-      case 'resources':
-        if (parts.length >= 3) {
-          final amount = int.tryParse(parts[1]) ?? 0;
-          switch (parts[2]) {
-            case '魔力':
-            case 'mp':
-              p.magic = (p.magic + amount).clamp(0, 100);
-              break;
-            case '精神力':
-            case 'sp':
-              p.spirit = (p.spirit + amount).clamp(0, 100);
-              break;
-            case '饱食':
-            case 'sat':
-              p.satiety = (p.satiety + amount).clamp(0, 100);
-              break;
-            case '精力':
-            case 'energy':
-              p.energy = (p.energy + amount).clamp(0, 100);
-              break;
-            case '生命':
-            case 'hp':
-              p.health = (p.health + amount).clamp(0, 100);
-              break;
-          }
-          currentNarrative = '资源已调整。';
-        }
+      case '固定好感':
+        _cheatLockAffection(parts);
         break;
-
-      case '声望':
-      case 'reputation':
-        if (parts.length >= 3) {
-          final amount = int.tryParse(parts[1]) ?? 0;
-          p.playerReputation.add(parts[2], amount);
-          currentNarrative =
-              '${p.playerReputation.labelOf(parts[2])} ${p.playerReputation.get(parts[2])}';
-        }
-        break;
-
-      case '时间':
-      case 'time':
-        if (parts.length >= 2) {
-          final days = int.tryParse(parts[1]);
-          if (days != null) fastForwardTime(days);
-          currentNarrative = '时间已推进 $days 天。\n${worldState.timestamp}';
-        }
-        break;
-
-      case '骨科':
-        if (parts.length >= 2 && parts[1] == '无视') {
-          p.boneMode = true;
-          unlockAchievement('bone_mode');
-          notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
-          worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除', turn: turnCount);
-          bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
-          currentNarrative =
-              '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
-        } else {
-          currentNarrative = '使用方式：/cheat 骨科 无视（开启骨科模式）';
-        }
-        break;
-
-      case '舆论':
-      case 'rumor':
-        if (parts.length >= 2 && parts[1] == '重置') {
-          p.rumors.clear();
-          currentNarrative = '已清除所有舆论传闻。';
-        } else if (parts.length >= 3 && parts[1] == '清除') {
-          final key = parts.sublist(2).join(' ');
-          final before = p.rumors.length;
-          p.rumors.removeWhere((r) => r.contains(key));
-          currentNarrative = '已清除 ${before - p.rumors.length} 条相关传闻。';
-        } else {
-          currentNarrative = '使用方式：/cheat 舆论 清除 <关键词> 或 /cheat 舆论 重置';
-        }
-        break;
-
       case '解锁CG':
       case 'cg':
-        if (parts.length >= 2) {
-          final cg = cgById(parts[1]);
-          if (cg != null) {
-            unlockCG(cg);
-            currentNarrative = '已解锁 CG：${cg.name}';
-          } else {
-            currentNarrative = '未找到该 CG，可用：${allCgs().map((c) => c.id).take(10).join(', ')}...';
-          }
-        }
+        _cheatUnlockCg(parts);
+        break;
+      case '骨科':
+        _cheatBone(parts);
+        break;
+
+      // ============ 8.3 拉郎配作弊 ============
+      case '配对':
+        _cheatPair(parts);
+        break;
+
+      // ============ 8.4 声望与收藏作弊 ============
+      case '声望':
+      case 'reputation':
+        _cheatReputation(parts);
+        break;
+      case '舆论':
+      case 'rumor':
+        _cheatRumor(parts);
+        break;
+      case '收藏':
+        _cheatCollectible(parts);
+        break;
+      case '成就':
+        _cheatAchievement(parts);
+        break;
+      case '宠物':
+        _cheatPet(parts);
+        break;
+
+      // ============ 8.5 新NPC作弊 ============
+      case '新NPC':
+        _cheatNewNpc(parts);
+        break;
+
+      // ============ 兼容旧子命令 ============
+      case '资源':
+      case 'resources':
+        _cheatResource(parts);
+        break;
+      case '时间':
+      case 'time':
+        _cheatTime(parts);
         break;
 
       default:
@@ -1186,16 +1263,728 @@ mixin GameCommandsMixin on GameProviderBase {
     choices = [GameChoice(text: '返回', action: '继续')];
   }
 
+  /// 按关键词查找 NPC（先精确 id，再名字包含）。找不到返回 null。
+  NPC? _cheatFindNpc(String key) {
+    if (key.isEmpty) return null;
+    final direct = npcRegistry[key];
+    if (direct != null) return direct;
+    for (final n in npcRegistry.values) {
+      if (n.name.contains(key) || n.aliases.any((a) => a.contains(key))) {
+        return n;
+      }
+    }
+    return null;
+  }
+
+  String _cheatAllNpcNames() =>
+      npcRegistry.values.map((n) => n.name).join('、');
+
+  // ---------- 8.1 基础作弊 ----------
+
+  /// /cheat 熟练度 <技能名> <数值> —— 直接设定指定技能熟练度（0~100）
+  void _cheatAttribute(List<String> parts) {
+    final p = player!;
+    if (parts.length < 3) {
+      currentNarrative = '使用方式：/cheat 熟练度 <技能名> <0-100>，例如 /cheat 熟练度 魔药学 80';
+      return;
+    }
+    final skillKey = parts[1];
+    final value = int.tryParse(parts[2]);
+    if (value == null) {
+      currentNarrative = '数值必须是整数。';
+      return;
+    }
+    // 属性键归一化：中文名/课程名 → 属性 key（权威表在 attribute_data）
+    final resolved = _resolveAttrKey(skillKey);
+    if (resolved == null) {
+      currentNarrative =
+          '未知技能「$skillKey」。可用：${kAttributeLabels.values.join('/')}。';
+      return;
+    }
+    p.attributes[resolved] = value.clamp(0, 100);
+    currentNarrative =
+        '已将「${attributeLabel(resolved)}」熟练度设为 ${p.attributes[resolved]}。';
+  }
+
+  /// 属性 key 归一化：key / 中文名 / 课程名 → 属性 key。查不到返回 null。
+  String? _resolveAttrKey(String input) {
+    if (input.isEmpty) return null;
+    if (Player.isAttributeKey(input)) return input;
+    for (final e in kAttributeLabels.entries) {
+      if (e.value == input || e.value.contains(input) || input.contains(e.value)) {
+        return e.key;
+      }
+    }
+    // 课程名别名（course_data 里的课程名 → 属性）
+    const courseAliases = {
+      '魔咒学': 'spell_understanding',
+      '黑魔法防御术': 'dda',
+      '魔法史': 'memory',
+      '天文学': 'theory',
+      '天文': 'theory',
+      '魔药': 'potions',
+      '飞行术': 'flying',
+      '草药': 'herbology',
+      '如尼文': 'memory',
+      '算术占卜': 'logic',
+      '占卜学': 'intuition',
+    };
+    return courseAliases[input];
+  }
+
+  /// /cheat 加隆 <数值> —— 增加/减少加隆数量
+  void _cheatGalleons(List<String> parts) {
+    final p = player!;
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 加隆 <数值>（负数扣钱）';
+      return;
+    }
+    final amount = int.tryParse(parts[1]);
+    if (amount == null) {
+      currentNarrative = '数值必须是整数。';
+      return;
+    }
+    p.galleons = (p.galleons + amount).clamp(0, 999999);
+    currentNarrative = '💰 加隆余额：${p.galleons}（+$amount）';
+  }
+
+  /// /cheat 世界线 <数值> —— 直接调整世界线变动率（0~100）
+  void _cheatWorldline(List<String> parts) {
+    final p = player!;
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 世界线 <0-100>，例如 /cheat 世界线 35';
+      return;
+    }
+    final value = int.tryParse(parts[1]);
+    if (value == null) {
+      currentNarrative = '数值必须是整数（0~100）。';
+      return;
+    }
+    p.worldLineDeviation = (value.clamp(0, 100) / 100).toDouble();
+    currentNarrative =
+        '🌍 世界线变动率已设为 ${(p.worldLineDeviation * 100).toStringAsFixed(0)}%。';
+  }
+
+  /// /cheat 知晓 <秘密内容> —— 强制知晓一个隐藏秘密（写入永不遗忘层）
+  void _cheatKnow(List<String> parts) {
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 知晓 <秘密内容>，例如 /cheat 知晓 斯内普是凤凰社的人';
+      return;
+    }
+    final secret = parts.sublist(1).join(' ');
+    final ts = worldState.time.format();
+    memory = memory.addKeyFact(KeyFactRecord(
+      id: 'cheat_secret_${DateTime.now().millisecondsSinceEpoch}',
+      fact: '主角已得知一个秘密：$secret。',
+      importance: 9,
+      timestamp: ts,
+      category: 'secret',
+    ));
+    worldState.addNarrativeEvent('🔍 你知晓了一个隐藏秘密（作弊）', turn: turnCount);
+    currentNarrative = '🔍 你已强制知晓：$secret\n（已写入永不遗忘层，AI 不会再把你当不知情者。）';
+  }
+
+  /// /cheat 剧情 <事件关键词> —— 直接触发指定剧情事件（事件锚点）
+  void _cheatEvent(List<String> parts) {
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 剧情 <事件关键词>，例如 /cheat 剧情 魁地奇';
+      return;
+    }
+    final keyword = parts.sublist(1).join(' ');
+    final matches = eventAnchors
+        .where((a) => a.title.contains(keyword) || a.directive.contains(keyword))
+        .toList();
+    if (matches.isEmpty) {
+      final titles = eventAnchors.map((a) => a.title).toSet().take(12).join('、');
+      currentNarrative = '未找到匹配「$keyword」的剧情事件。可尝试关键词：$titles……';
+      return;
+    }
+    final anchor = matches.first;
+    pendingAnchorDirective = anchor.directive;
+    worldState.addNarrativeEvent('⚡ 已强制触发剧情：${anchor.title}（作弊）', turn: turnCount);
+    currentNarrative = '⚡ 已强制触发剧情事件：「${anchor.title}」\n'
+        '接下来的剧情将围绕它展开。\n\n（若同时匹配多个事件，已取第一条；'
+        '共匹配 ${matches.length} 条）';
+  }
+
+  /// /cheat 重置 —— 重置所有作弊修改（开关类 + 锁定类 + 配对修改）
+  void _cheatReset() {
+    final p = player!;
+    var restored = <String>[];
+    // 解除所有好感锁定
+    for (final n in npcRegistry.values) {
+      if (n.affectionLocked) {
+        n.affectionLocked = false;
+        restored.add('解除锁定：${n.name}');
+      }
+    }
+    // 恢复被修改过的性取向
+    if (p.cheatOrientationBackup.isNotEmpty) {
+      p.cheatOrientationBackup.forEach((name, original) {
+        final npc = _cheatFindNpc(name);
+        if (npc != null) {
+          npc.sexOrientation = original;
+          restored.add('恢复取向：$name');
+        }
+      });
+      p.cheatOrientationBackup.clear();
+    }
+    // 重置被修改过的配对好感（清掉作弊写入的 NPC 间好感）
+    for (final pairKey in p.cheatModifiedPairs) {
+      final parts2 = pairKey.split('|');
+      if (parts2.length == 2) {
+        final a = npcRegistry.values.where((n) => n.name == parts2[0]).firstOrNull;
+        final b = npcRegistry.values.where((n) => n.name == parts2[1]).firstOrNull;
+        if (a != null && b != null) {
+          a.relationships.remove(b.id);
+          b.relationships.remove(a.id);
+          restored.add('重置配对：${a.name} × ${b.name}');
+        }
+      }
+    }
+    p.cheatModifiedPairs.clear();
+    // 关闭开关
+    if (p.cheatInvincible) {
+      p.cheatInvincible = false;
+      restored.add('关闭无敌模式');
+    }
+    if (p.cheatOmniscient) {
+      p.cheatOmniscient = false;
+      restored.add('关闭全知模式');
+    }
+    currentNarrative = restored.isEmpty
+        ? '当前没有任何作弊修改需要重置。'
+        : '【作弊重置完成】\n${restored.join('\n')}\n\n'
+            '（注：属性/加隆/声望/世界线等数值型调整不可逆，不属于重置范围；'
+            '如需恢复请手动调整回来。）';
+  }
+
+  // ---------- 8.2 好感度与关系作弊 ----------
+
+  /// /cheat 好感 <NPC名> <数值> —— 调整好感度
+  void _cheatAffection(List<String> parts) {
+    if (parts.length >= 3) {
+      final npc = _cheatFindNpc(parts[1]);
+      if (npc == null) {
+        currentNarrative = '未找到NPC "${parts[1]}"。可用：${_cheatAllNpcNames()}';
+        return;
+      }
+      final delta = int.tryParse(parts[2]);
+      if (delta != null) {
+        npc.affection = (npc.affection + delta).clamp(-100, 100);
+        if (npc.affection > npc.maxAffectionReached) {
+          npc.maxAffectionReached = npc.affection;
+        }
+        syncRelationshipLevel(npc);
+        checkAffectionAchievements(npc);
+        notifyListeners();
+        currentNarrative =
+            '已调整「${npc.name}」的好感度：${npc.affection}（${npc.affectionStage}）';
+      } else {
+        currentNarrative = '数值必须是整数。';
+      }
+    } else {
+      currentNarrative = '使用方式：/cheat 好感 <NPC名> <数值>';
+    }
+  }
+
+  /// /cheat 固定好感 <NPC名> —— 锁定该 NPC 好感（再输一次解锁）
+  void _cheatLockAffection(List<String> parts) {
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 固定好感 <NPC名>';
+      return;
+    }
+    final npc = _cheatFindNpc(parts[1]);
+    if (npc == null) {
+      currentNarrative = '未找到NPC "${parts[1]}"。可用：${_cheatAllNpcNames()}';
+      return;
+    }
+    npc.affectionLocked = !npc.affectionLocked;
+    currentNarrative = npc.affectionLocked
+        ? '🔒 「${npc.name}」的好感已固定为 ${npc.affection}：'
+            '衰减/背叛/送礼/事件都不会再改变它。'
+        : '🔓 「${npc.name}」的好感锁定已解除。';
+  }
+
+  /// /cheat 解锁CG <CG编号> —— 直接解锁指定CG
+  void _cheatUnlockCg(List<String> parts) {
+    if (parts.length >= 2) {
+      final cg = cgById(parts[1]);
+      if (cg != null) {
+        unlockCG(cg);
+        currentNarrative = '已解锁 CG：${cg.name}';
+      } else {
+        currentNarrative =
+            '未找到该 CG，可用：${allCgs().map((c) => c.id).take(10).join(', ')}...';
+      }
+    } else {
+      currentNarrative = '使用方式：/cheat 解锁CG <CG编号>';
+    }
+  }
+
+  /// /cheat 骨科 无视 / /cheat 骨科 恢复
+  void _cheatBone(List<String> parts) {
+    final p = player!;
+    if (parts.length >= 2 && (parts[1] == '无视' || parts[1] == '开启')) {
+      p.boneMode = true;
+      unlockAchievement('bone_mode');
+      notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
+      worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除', turn: turnCount);
+      bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
+      currentNarrative =
+          '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
+    } else if (parts.length >= 2 && (parts[1] == '恢复' || parts[1] == '关闭')) {
+      p.boneMode = false;
+      currentNarrative = '【骨科模式已关闭】血缘限制已恢复。';
+    } else {
+      currentNarrative = '使用方式：/cheat 骨科 无视（开启）｜/cheat 骨科 恢复（关闭）';
+    }
+  }
+
+  // ---------- 8.3 拉郎配作弊 ----------
+
+  /// /cheat 配对 <子命令>：好感 / 关系 / 重置 / 查看 / 性取向 / 列表
+  void _cheatPair(List<String> parts) {
+    if (parts.length < 2) {
+      currentNarrative = '【配对作弊】\n'
+          '  /cheat 配对 好感 <NPC1> <NPC2> <数值>\n'
+          '  /cheat 配对 关系 <NPC1> <NPC2> <阶段>（陌生/认识/朋友/暧昧/恋爱/深爱）\n'
+          '  /cheat 配对 重置 <NPC1> <NPC2>\n'
+          '  /cheat 配对 查看 <NPC1> <NPC2>\n'
+          '  /cheat 配对 性取向 <NPC名> <男|女|双性>\n'
+          '  /cheat 配对 性取向 重置 <NPC名>\n'
+          '  /cheat 配对 列表';
+      return;
+    }
+    final cmd = parts[1];
+    final p = player!;
+    switch (cmd) {
+      case '好感':
+        if (parts.length >= 5) {
+          final a = _cheatFindNpc(parts[2]);
+          final b = _cheatFindNpc(parts[3]);
+          final value = int.tryParse(parts[4]);
+          if (a == null || b == null) {
+            currentNarrative = '未找到NPC，请检查名字。';
+            return;
+          }
+          if (value == null) {
+            currentNarrative = '数值必须是整数（-100~100）。';
+            return;
+          }
+          final v = value.clamp(-100, 100);
+          a.relationships[b.id] = v;
+          b.relationships[a.id] = v;
+          p.cheatModifiedPairs.add(ShipRecord.keyOf(a.name, b.name));
+          currentNarrative =
+              '已设置 ${a.name} × ${b.name} 的互有好感：$v';
+        } else {
+          currentNarrative = '使用方式：/cheat 配对 好感 <NPC1> <NPC2> <数值>';
+        }
+        break;
+      case '关系':
+        if (parts.length >= 5) {
+          final a = _cheatFindNpc(parts[2]);
+          final b = _cheatFindNpc(parts[3]);
+          final stageName = parts[4];
+          const stageMap = {
+            '陌生': 0, '认识': 20, '朋友': 45, '暧昧': 65, '恋爱': 80, '深爱': 95,
+          };
+          final v = stageMap[stageName];
+          if (a == null || b == null) {
+            currentNarrative = '未找到NPC，请检查名字。';
+            return;
+          }
+          if (v == null) {
+            currentNarrative = '阶段必须是：陌生/认识/朋友/暧昧/恋爱/深爱。';
+            return;
+          }
+          a.relationships[b.id] = v;
+          b.relationships[a.id] = v;
+          p.cheatModifiedPairs.add(ShipRecord.keyOf(a.name, b.name));
+          currentNarrative =
+              '已设置 ${a.name} × ${b.name} 的关系阶段：「$stageName」（好感 $v）';
+        } else {
+          currentNarrative = '使用方式：/cheat 配对 关系 <NPC1> <NPC2> <阶段>';
+        }
+        break;
+      case '重置':
+        if (parts.length >= 4) {
+          final a = _cheatFindNpc(parts[2]);
+          final b = _cheatFindNpc(parts[3]);
+          if (a == null || b == null) {
+            currentNarrative = '未找到NPC，请检查名字。';
+            return;
+          }
+          a.relationships.remove(b.id);
+          b.relationships.remove(a.id);
+          currentNarrative = '已重置 ${a.name} × ${b.name} 的互有好感。';
+        } else {
+          currentNarrative = '使用方式：/cheat 配对 重置 <NPC1> <NPC2>';
+        }
+        break;
+      case '查看':
+        if (parts.length >= 4) {
+          final a = _cheatFindNpc(parts[2]);
+          final b = _cheatFindNpc(parts[3]);
+          if (a == null || b == null) {
+            currentNarrative = '未找到NPC，请检查名字。';
+            return;
+          }
+          final ab = a.relationships[b.id];
+          final ba = b.relationships[a.id];
+          currentNarrative = '【配对状态】${a.name} × ${b.name}\n'
+              '· ${a.name} 对 ${b.name}：${ab ?? 0}\n'
+              '· ${b.name} 对 ${a.name}：${ba ?? 0}';
+        } else {
+          currentNarrative = '使用方式：/cheat 配对 查看 <NPC1> <NPC2>';
+        }
+        break;
+      case '性取向':
+        if (parts.length >= 4 && parts[2] == '重置') {
+          final npc = _cheatFindNpc(parts[3]);
+          if (npc == null) {
+            currentNarrative = '未找到NPC "${parts[3]}"。';
+            return;
+          }
+          final original = p.cheatOrientationBackup.remove(npc.name);
+          if (original != null) {
+            npc.sexOrientation = original;
+            currentNarrative = '已恢复「${npc.name}」的默认性取向：${original}';
+          } else {
+            currentNarrative = '「${npc.name}」没有被修改过性取向，无需重置。';
+          }
+          return;
+        }
+        if (parts.length >= 4) {
+          final npc = _cheatFindNpc(parts[2]);
+          final type = parts[3];
+          if (npc == null) {
+            currentNarrative = '未找到NPC "${parts[2]}"。';
+            return;
+          }
+          if (!['男', '女', '双性'].contains(type)) {
+            currentNarrative = '性取向必须是：男 / 女 / 双性。';
+            return;
+          }
+          p.cheatOrientationBackup.putIfAbsent(npc.name, () => npc.sexOrientation ?? '');
+          npc.sexOrientation = type;
+          currentNarrative = '已修改「${npc.name}」的性取向：$type';
+        } else {
+          currentNarrative = '使用方式：/cheat 配对 性取向 <NPC名> <男|女|双性>';
+        }
+        break;
+      case '列表':
+        final pairs = p.cheatModifiedPairs.map((k) {
+          final parts2 = k.split('|');
+          if (parts2.length == 2) {
+            final a = npcRegistry.values.where((n) => n.name == parts2[0]).firstOrNull;
+            final b = npcRegistry.values.where((n) => n.name == parts2[1]).firstOrNull;
+            if (a != null && b != null) {
+              return '· ${a.name} × ${b.name}：${a.relationships[b.id] ?? 0}';
+            }
+          }
+          return '· $k';
+        }).toList();
+        currentNarrative = pairs.isEmpty
+            ? '【被修改过的配对】\n暂无——还没有用配对作弊改过任何关系。'
+            : '【被修改过的配对】\n${pairs.join('\n')}';
+        break;
+      default:
+        currentNarrative = '未知配对子命令「$cmd」，输入 /cheat 配对 查看全部用法。';
+    }
+  }
+
+  // ---------- 8.4 声望与收藏作弊 ----------
+
+  /// /cheat 声望 <数值> <维度> ｜ /cheat 声望 NPC <NPC名> <维度> <数值> ｜ /cheat 声望 NPC 重置 <NPC名>
+  void _cheatReputation(List<String> parts) {
+    final p = player!;
+    if (parts.length >= 2 && parts[1] == 'NPC') {
+      // NPC 声望作弊
+      if (parts.length >= 3 && parts[2] == '重置') {
+        if (parts.length >= 4) {
+          final npc = _cheatFindNpc(parts[3]);
+          if (npc == null) {
+            currentNarrative = '未找到NPC "${parts[3]}"。';
+            return;
+          }
+          npc.reputation = Reputation(
+            academic: 25, social: 25, combat: 20,
+            moral: 30, leadership: 20, dark: 10,
+          );
+          currentNarrative = '已重置「${npc.name}」的声望至默认值。';
+        } else {
+          currentNarrative = '使用方式：/cheat 声望 NPC 重置 <NPC名>';
+        }
+        return;
+      }
+      if (parts.length >= 5) {
+        final npc = _cheatFindNpc(parts[2]);
+        final value = int.tryParse(parts[4]);
+        if (npc == null) {
+          currentNarrative = '未找到NPC "${parts[2]}"。';
+          return;
+        }
+        if (value == null) {
+          currentNarrative = '数值必须是整数。';
+          return;
+        }
+        npc.reputation.add(parts[3], value);
+        currentNarrative = '「${npc.name}」的${npc.reputation.labelOf(parts[3])}：'
+            '${npc.reputation.get(parts[3])}';
+      } else {
+        currentNarrative =
+            '使用方式：/cheat 声望 NPC <NPC名> <维度> <数值>（维度：academic、social、combat、moral、leadership、dark）';
+      }
+      return;
+    }
+    if (parts.length >= 3) {
+      final amount = int.tryParse(parts[1]) ?? 0;
+      p.playerReputation.add(parts[2], amount);
+      currentNarrative =
+          '${p.playerReputation.labelOf(parts[2])} ${p.playerReputation.get(parts[2])}';
+    } else {
+      currentNarrative =
+          '使用方式：/cheat 声望 <数值> <academic|social|combat|moral|leadership|dark>';
+    }
+  }
+
+  /// /cheat 舆论 清除 <关键词> ｜ /cheat 舆论 重置
+  void _cheatRumor(List<String> parts) {
+    final p = player!;
+    if (parts.length >= 2 && parts[1] == '重置') {
+      p.rumors.clear();
+      currentNarrative = '已清除所有舆论传闻。';
+    } else if (parts.length >= 3 && parts[1] == '清除') {
+      final key = parts.sublist(2).join(' ');
+      final before = p.rumors.length;
+      p.rumors.removeWhere((r) => r.contains(key));
+      currentNarrative = '已清除 ${before - p.rumors.length} 条相关传闻。';
+    } else {
+      currentNarrative = '使用方式：/cheat 舆论 清除 <关键词> 或 /cheat 舆论 重置';
+    }
+  }
+
+  /// /cheat 收藏 <物品名或id> —— 添加指定物品到收藏
+  void _cheatCollectible(List<String> parts) {
+    final p = player!;
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 收藏 <物品名或id>，例如 /cheat 收藏 巧克力蛙';
+      return;
+    }
+    final key = parts.sublist(1).join(' ');
+    CollectibleDef? def;
+    for (final c in kCollectibleCatalog) {
+      if (c.id == key || c.name == key || c.name.contains(key)) {
+        def = c;
+        break;
+      }
+    }
+    if (def == null) {
+      currentNarrative = '未找到收藏品「$key」。可输入 /cheat 收藏 列表 查看全部。';
+      return;
+    }
+    if (p.collection.contains(def.id)) {
+      currentNarrative = '该收藏品已在收藏册中：${def.name}';
+      return;
+    }
+    p.collection.add(def.id);
+    currentNarrative = '📖 已将「${def.name}」加入收藏册（${def.series}·${def.starText}）。';
+  }
+
+  /// /cheat 成就 <成就名> —— 解锁指定成就
+  void _cheatAchievement(List<String> parts) {
+    if (parts.length < 2) {
+      currentNarrative = '使用方式：/cheat 成就 <成就名>，例如 /cheat 成就 分院仪式';
+      return;
+    }
+    final key = parts.sublist(1).join(' ');
+    Achievement? def;
+    for (final a in achievementCatalog) {
+      if (a.id == key || a.name == key || a.name.contains(key)) {
+        def = a;
+        break;
+      }
+    }
+    if (def == null) {
+      currentNarrative = '未找到成就「$key」。';
+      return;
+    }
+    unlockAchievement(def.id);
+    currentNarrative = '🏆 已解锁成就：${def.name}';
+  }
+
+  /// /cheat 宠物 羁绊 <数值>
+  void _cheatPet(List<String> parts) {
+    final p = player!;
+    if (parts.length >= 3 && parts[1] == '羁绊') {
+      final value = int.tryParse(parts[2]);
+      if (value == null) {
+        currentNarrative = '数值必须是整数。';
+        return;
+      }
+      p.petBond = value.clamp(0, 100);
+      currentNarrative = '🐾 宠物羁绊已设为 ${p.petBond}/100';
+    } else {
+      currentNarrative = '使用方式：/cheat 宠物 羁绊 <0-100>';
+    }
+  }
+
+  // ---------- 8.5 新NPC作弊 ----------
+
+  /// /cheat 新NPC 生成 ｜ /cheat 新NPC 好感 <全名> <数值> ｜ /cheat 新NPC 删除 <全名>
+  void _cheatNewNpc(List<String> parts) {
+    final p = player!;
+    if (parts.length < 2) {
+      currentNarrative = '【新NPC作弊】\n'
+          '  /cheat 新NPC 生成 — 强制生成一位新NPC\n'
+          '  /cheat 新NPC 好感 <全名> <数值>\n'
+          '  /cheat 新NPC 删除 <全名>（不可逆）';
+      return;
+    }
+    switch (parts[1]) {
+      case '生成':
+        // 作弊强制生成：先清空本学年计数绕过上限
+        npcGeneratedThisSchoolYear = 0;
+        generateNewNPC();
+        currentNarrative = '（作弊强制生成）${currentNarrative}';
+        break;
+      case '好感':
+        if (parts.length >= 4) {
+          final npc = _cheatFindNpc(parts[2]);
+          final value = int.tryParse(parts[3]);
+          if (npc == null) {
+            currentNarrative = '未找到NPC "${parts[2]}"。';
+            return;
+          }
+          if (value == null) {
+            currentNarrative = '数值必须是整数。';
+            return;
+          }
+          npc.affection = value.clamp(-100, 100);
+          if (npc.affection > npc.maxAffectionReached) {
+            npc.maxAffectionReached = npc.affection;
+          }
+          syncRelationshipLevel(npc);
+          currentNarrative =
+              '已将「${npc.name}」的好感设为 ${npc.affection}（${npc.affectionStage}）';
+        } else {
+          currentNarrative = '使用方式：/cheat 新NPC 好感 <全名> <数值>';
+        }
+        break;
+      case '删除':
+        if (parts.length >= 3) {
+          final npc = _cheatFindNpc(parts[2]);
+          if (npc == null) {
+            currentNarrative = '未找到NPC "${parts[2]}"。';
+            return;
+          }
+          npcRegistry.remove(npc.id);
+          p.relationships.remove(npc.id);
+          currentNarrative = '🗑️ 已删除NPC：${npc.name}（不可逆）。';
+        } else {
+          currentNarrative = '使用方式：/cheat 新NPC 删除 <全名>';
+        }
+        break;
+      default:
+        currentNarrative = '未知新NPC子命令「${parts[1]}」。';
+    }
+  }
+
+  // ---------- 兼容旧子命令 ----------
+
+  /// /cheat 资源 <数值> <魔力|精神力|饱食|精力|生命>
+  void _cheatResource(List<String> parts) {
+    final p = player!;
+    if (parts.length >= 3) {
+      final amount = int.tryParse(parts[1]) ?? 0;
+      switch (parts[2]) {
+        case '魔力':
+        case 'mp':
+          p.magic = (p.magic + amount).clamp(0, 100);
+          break;
+        case '精神力':
+        case 'sp':
+          p.spirit = (p.spirit + amount).clamp(0, 100);
+          break;
+        case '饱食':
+        case 'sat':
+          p.satiety = (p.satiety + amount).clamp(0, 100);
+          break;
+        case '精力':
+        case 'energy':
+          p.energy = (p.energy + amount).clamp(0, 100);
+          break;
+        case '生命':
+        case 'hp':
+          p.health = (p.health + amount).clamp(0, 100);
+          break;
+      }
+      currentNarrative = '资源已调整。';
+    } else {
+      currentNarrative = '使用方式：/cheat 资源 <数值> <魔力|精神力|饱食|精力|生命>';
+    }
+  }
+
+  /// /cheat 时间 <天数>
+  void _cheatTime(List<String> parts) {
+    if (parts.length >= 2) {
+      final days = int.tryParse(parts[1]);
+      if (days != null) fastForwardTime(days);
+      currentNarrative = '时间已推进 $days 天。\n${worldState.timestamp}';
+    } else {
+      currentNarrative = '使用方式：/cheat 时间 <天数>';
+    }
+  }
+
   String _formatCheatHelp() {
-    return '''【作弊指令】
-  /cheat 好感 <NPC名> <数值>  — 调整好感度
+    return '''【作弊指令】（框架1 · 第八部分完整版）
+
+━━━ 8.1 基础作弊 ━━━
+  /cheat 熟练度 <技能名> <0-100>  调整技能熟练度（魔药学/变形术/飞行…）
+  /cheat 属性 <技能名> <0-100>    同上（别名）
+  /cheat 加隆 <数值>             增加/减少加隆
   /cheat 资源 <数值> <魔力|精神力|饱食|精力|生命>
-  /cheat 声望 <数值> <academic|social|combat|moral|leadership|dark>
-  /cheat 时间 <天数>
-  /cheat 骨科 无视 — 开启骨科模式
-  /cheat 舆论 清除 <关键词> — 清除相关传闻
-  /cheat 舆论 重置 — 清空所有传闻
-  /cheat 解锁CG <CG编号> — 解锁指定CG''';
+  /cheat 时间 <天数>             跳转时间
+  /cheat 世界线 <0-100>          直接调整世界线变动率
+  /cheat 知晓 <秘密内容>         强制知晓一个隐藏秘密
+  /cheat 剧情 <事件关键词>       直接触发剧情事件（如：魁地奇、O.W.L）
+  /cheat 无敌                    无敌模式开关
+  /cheat 全知                    全知模式开关（查看档案显示隐藏信息）
+  /cheat 重置                    重置所有开关类/锁定类作弊修改
+  /cheat 列表                    显示本列表
+
+━━━ 8.2 好感度与关系作弊 ━━━
+  /cheat 好感 <NPC名> <数值>     调整好感度
+  /cheat 固定好感 <NPC名>        锁定好感（再输一次解锁，多人惩罚免疫）
+  /cheat 解锁CG <CG编号>         直接解锁CG
+  /cheat 骨科 无视               开启骨科模式（无视血缘限制）
+  /cheat 骨科 恢复               关闭骨科模式
+
+━━━ 8.3 拉郎配作弊 ━━━
+  /cheat 配对 好感 <NPC1> <NPC2> <数值>
+  /cheat 配对 关系 <NPC1> <NPC2> <阶段>  （陌生/认识/朋友/暧昧/恋爱/深爱）
+  /cheat 配对 重置 <NPC1> <NPC2>
+  /cheat 配对 查看 <NPC1> <NPC2>
+  /cheat 配对 性取向 <NPC名> <男|女|双性>
+  /cheat 配对 性取向 重置 <NPC名>
+  /cheat 配对 列表
+
+━━━ 8.4 声望与收藏作弊 ━━━
+  /cheat 声望 <数值> <维度>      维度：academic、social、combat、moral、leadership、dark
+  /cheat 声望 NPC <NPC名> <维度> <数值>
+  /cheat 声望 NPC 重置 <NPC名>
+  /cheat 舆论 清除 <关键词>      清除指定传闻
+  /cheat 舆论 重置               重置所有舆论
+  /cheat 收藏 <物品名>           添加收藏品
+  /cheat 成就 <成就名>           解锁成就
+  /cheat 宠物 羁绊 <0-100>       调整宠物羁绊
+
+━━━ 8.5 新NPC作弊 ━━━
+  /cheat 新NPC 生成              强制生成一位新NPC
+  /cheat 新NPC 好感 <全名> <数值>
+  /cheat 新NPC 删除 <全名>       删除新NPC（不可逆）''';
   }
 
   // ==================== 生成新NPC（增强版：多人格+多样化） ====================
@@ -1251,6 +2040,20 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('扫帚：${p.equipped['broom'] ?? '（空）'}  饰品：${p.equipped['amulet'] ?? '（空）'}')
       ..writeln('【学院杯】${houseKeyOrNull != null ? '本学年贡献 ${p.houseCupPoints} 分（/学院杯 查看）' : '未分院，暂未参与'}')
       ..writeln('【当前目标】${p.currentGoal ?? '尚未设定目标'}');
+    // 阿尼马格斯状态（若有）
+    if (p.animagus != null) {
+      final av = p.animagus!;
+      final aStatus = av['status'] as String? ?? 'none';
+      if (aStatus == 'transformed') {
+        buf.writeln('【阿尼马格斯】形态：${av['form']}'
+            '${av['registered'] == true ? '（已登记）' : '（⚠️ 未登记）'}');
+      } else if (aStatus == 'studying' || aStatus == 'potionReady') {
+        buf.writeln('【阿尼马格斯】研习中（训练进度 ${av['progress'] ?? 0}/100）');
+      }
+    }
+    if (p.patronus != null && p.patronus!.isNotEmpty) {
+      buf.writeln('【守护神】${p.patronus}');
+    }
     return buf.toString();
   }
 
@@ -1291,7 +2094,423 @@ $knownRegions
     return '【通知】\n${notifications.reversed.take(10).map((n) => '· $n').join('\n')}';
   }
 
+  // ==================== 周计划（框架2 第62条 · 时间是一种资源） ====================
+
+  /// /计划 指令：玩家声明「这一周以什么为主」，系统批量结算一周时间。
+  /// 时间推进走 fastForwardTime（自动处理学年推进/月度演化/事件锚点/好感衰减），
+  /// 再叠加对应的成长结算——玩家把时间花在哪，哪条线就会前进。
+  void _handlePlan(List<String> parts) {
+    final p = player;
+    if (p == null) return;
+    final sub = parts.isEmpty ? '' : parts[0];
+
+    switch (sub) {
+      case '学习':
+        _planStudy(p);
+        break;
+      case '社交':
+        _planSocial(p);
+        break;
+      case '魁地奇':
+        _planQuidditch(p);
+        break;
+      case '调查':
+        _planInvestigate(p);
+        break;
+      case '放松':
+        _planRest(p);
+        break;
+      case '打工':
+        _planWork(p);
+        break;
+      default:
+        currentNarrative = '【周计划】把一整周的时间投给一件事，系统批量结算。\n\n'
+            '  /计划 学习 — 泡图书馆，学业属性成长\n'
+            '  /计划 社交 — 经营关系，好感提升\n'
+            '  /计划 魁地奇 — 训练技巧与体能\n'
+            '  /计划 调查 — 探索禁林与城堡的秘密\n'
+            '  /计划 放松 — 恢复精力与精神\n'
+            '  /计划 打工 — 赚一周的零花钱\n\n'
+            '（每周推进 7 天，中间的关键事件会自动进入通知）';
+    }
+  }
+
+  void _planStudy(Player p) {
+    const pool = ['spell_understanding', 'transfiguration', 'potions', 'herbology', 'theory', 'memory'];
+    final gains = <String, int>{};
+    for (final key in pool) {
+      if (random.nextDouble() < 0.6) {
+        gains[key] = 1 + random.nextInt(3); // 1~3
+      }
+    }
+    gains.forEach((k, v) {
+      p.attributes[k] = (p.attributes[k] ?? 50 + v).clamp(0, 100);
+    });
+    p.energy = (p.energy - 10).clamp(0, 100);
+    _advanceWeek('学习');
+    final line = gains.entries
+        .map((e) => '${attributeLabel(e.key)} +${e.value}')
+        .join('，');
+    worldState.addNarrativeEvent('📚 这一周你几乎把时间都泡在了图书馆', turn: turnCount);
+    currentNarrative = '这一周，你的生活节奏简单而充实：上午上课，下午图书馆，晚上在公共休息室的角落里'
+        '翻书写作业。蜡烛的火焰在羊皮纸上投下晃动的影子，你偶尔抬头，看见窗外禁林的轮廓在夜色里沉默。\n\n'
+        '一周下来，你明显感到自己在${gains.length == 0 ? '原地踏步——状态不太好，也许该换换节奏' : '进步'}'
+        '${gains.isEmpty ? '' : '：$line'}。\n\n'
+        '（时间推进一周）';
+  }
+
+  void _planSocial(Player p) {
+    final candidates = npcRegistry.values
+        .where((n) => n.isAlive && n.introduced)
+        .toList();
+    var affected = 0;
+    final names = <String>[];
+    if (candidates.isNotEmpty) {
+      candidates.shuffle(random);
+      final count = random.nextInt(3) + 1; // 1~3 位
+      for (var i = 0; i < count && i < candidates.length; i++) {
+        final npc = candidates[i];
+        final delta = 1 + random.nextInt(2); // 1~2
+        updateNpcAffection(npc.id, delta, reason: '周计划·社交', quiet: true);
+        affected++;
+        names.add('${npc.name}（+$delta）');
+      }
+    }
+    p.attributes['social'] = (p.attributes['social'] ?? 50) + 2;
+    p.energy = (p.energy - 10).clamp(0, 100);
+    _advanceWeek('社交');
+    worldState.addNarrativeEvent('☕ 这一周你忙于经营人际关系', turn: turnCount);
+    currentNarrative = '你主动调整了这一周的重心：和同学一起吃饭、帮朋友跑腿、参加公共休息室的闲聊、'
+        '给远方的人写信。魔法世界的人情冷暖，说到底也是靠一次次小小的来往织成的。\n\n'
+        '${affected > 0 ? '一周下来，你们的关系更近了一些：${names.join('，')}。' : '这一周没什么特别的交集，但至少你让自己出现在了人群里。'}\n\n'
+        '（时间推进一周）';
+  }
+
+  void _planQuidditch(Player p) {
+    final qGain = 3 + random.nextInt(3); // 3~5
+    p.qSkill = (p.qSkill + qGain).clamp(0, 100);
+    p.attributes['flying'] = (p.attributes['flying'] ?? 50) + 2;
+    p.attributes['reaction_time'] = (p.attributes['reaction_time'] ?? 50) + 1;
+    p.energy = (p.energy - 25).clamp(0, 100);
+    p.satiety = (p.satiety + 5).clamp(0, 100);
+    _advanceWeek('魁地奇');
+    worldState.addNarrativeEvent('🏏 这一周你在魁地奇球场挥汗如雨', turn: turnCount);
+    currentNarrative = '这一周，魁地奇球场几乎成了你的第二个家。清晨的风里，你绕着球门做俯冲练习；'
+        '傍晚的余晖中，你和队友磨合配合。扫帚的抛光油味混着青草的气息，是这一周最熟悉的味道。\n\n'
+        '一周下来，你的魁地奇技巧 +$qGain，飞行能力也见长。\n\n'
+        '（时间推进一周）';
+  }
+
+  void _planInvestigate(Player p) {
+    p.attributes['observation'] = (p.attributes['observation'] ?? 50) + 2;
+    p.attributes['theory'] = (p.attributes['theory'] ?? 50) + 1;
+    p.attributes['magic_control'] = (p.attributes['magic_control'] ?? 50) + 1;
+    p.energy = (p.energy - 15).clamp(0, 100);
+    _advanceWeek('调查');
+    // 小概率发现彩蛋：写一条随机传闻/事件
+    final found = random.nextDouble() < 0.3;
+    if (found) {
+      final bits = [
+        '图书馆禁书区的一本书里夹着一张泛黄的羊皮纸，上面的字迹已经模糊',
+        '城堡某条密道的入口附近有一串新鲜的脚印，通向你们不该去的地方',
+        '有同学在夜里听见走廊深处传来低低的歌声，没人说得清它来自哪里',
+        '禁林边缘的树丛里，有什么东西在月光下闪了一下',
+      ];
+      final bit = bits[random.nextInt(bits.length)];
+      worldState.addNarrativeEvent('🔍 调查发现：$bit', turn: turnCount);
+      notifications.add('🔍 这周的调查有了点发现：$bit');
+      currentNarrative = '这一周你像一只安静的猫，在霍格沃茨的角落里搜寻线索。图书馆、废弃教室、'
+          '画像背后的走廊——你几乎把城堡的纹理摸了一遍。\n\n'
+          '周三深夜，你发现：$bit\n\n'
+          '（时间推进一周）';
+    } else {
+      worldState.addNarrativeEvent('🔍 这一周你在城堡里调查走访，没有特别的发现', turn: turnCount);
+      currentNarrative = '这一周你像一只安静的猫，在霍格沃茨的角落里搜寻线索。图书馆、废弃教室、'
+          '画像背后的走廊——你几乎把城堡的纹理摸了一遍。\n\n'
+          '遗憾的是，这一周并没有惊天动地的发现。城堡的古老秘密，从来不会轻易向人敞开。\n\n'
+          '（时间推进一周）';
+    }
+  }
+
+  void _planRest(Player p) {
+    p.energy = (p.energy + 45).clamp(0, 100);
+    p.spirit = (p.spirit + 35).clamp(0, 100);
+    p.satiety = (p.satiety + 25).clamp(0, 100);
+    _advanceWeek('放松');
+    worldState.addNarrativeEvent('🛋️ 这一周你好好休息了一番', turn: turnCount);
+    currentNarrative = '你决定这一周不为任何事奔忙：睡到自然醒，和同学去霍格莫德喝黄油啤酒，'
+        '在城堡外的草地上晒晒太阳，晚上窝在休息室的扶手椅里发呆。\n\n'
+        '一周下来，身心都得到了喘息。\n\n'
+        '（时间推进一周）';
+  }
+
+  void _planWork(Player p) {
+    final income = 150 + random.nextInt(100); // 150~249 加隆
+    p.galleons += income;
+    p.energy = (p.energy - 20).clamp(0, 100);
+    p.attributes['social'] = (p.attributes['social'] ?? 50) + 1;
+    _advanceWeek('打工');
+    worldState.addNarrativeEvent('🪙 这一周你接了一份短工', turn: turnCount);
+    currentNarrative = '这一周你把自己卖给了一份短工——跑腿、整理货架、帮忙照看摊位，'
+        '偶尔还要应付难缠的顾客。腰酸背痛是免不了的，但每天晚上数着西可和纳特入睡的感觉，'
+        '也不算太糟。\n\n'
+        '一周下来，你赚了 💰 $income 加隆。\n\n'
+        '（时间推进一周）';
+  }
+
+  void _advanceWeek(String focus) {
+    final before = worldState.time.format();
+    fastForwardTime(7);
+    final after = worldState.time.format();
+    debugPrint('📅 周计划[$focus]：$before → $after');
+  }
+
+
+  // ==================== 守护神（框架2 第66条） ====================
+
+  /// /守护神 状态 ｜ /守护神 尝试
+  void _handlePatronus(List<String> parts) {
+    final p = player;
+    if (p == null) return;
+    final sub = parts.isEmpty ? '状态' : parts[0];
+
+    switch (sub) {
+      case '状态':
+        currentNarrative = _formatPatronusStatus();
+        break;
+      case '尝试':
+        _patronusAttempt(p);
+        break;
+      default:
+        currentNarrative = '【守护神】未知子命令「$sub」。\n'
+            '可用：/守护神 状态 ｜ /守护神 尝试';
+    }
+  }
+
+  String _formatPatronusStatus() {
+    final p = player!;
+    final buf = StringBuffer('【守护神】\n');
+    if (p.patronus != null && p.patronus!.isNotEmpty) {
+      final f = patronusFormByName(p.patronus!);
+      buf.writeln('形态：${p.patronus}');
+      if (f != null) buf.writeln(f.description);
+      buf.writeln('\n守护神是灵魂的映照。它可能随着你人生的巨变而改变——'
+          '但此刻，它就是你的模样。');
+      return buf.toString();
+    }
+    final grade = p.grade ?? 1;
+    final emotion = p.attributes['emotional_stability'] ?? 50;
+    final knowsSpell = p.learnedSpells.containsKey('守护神咒');
+    buf.writeln('你还没有属于自己的守护神。');
+    if (grade < 5 && !knowsSpell) {
+      buf.writeln('\n守护神咒是高年级（五年级起）的黑魔法防御术咒语——'
+          '你的魔法还不够成熟，强行尝试只会让杖尖凝出一缕毫无形状的银雾。');
+    } else {
+      buf.writeln('\n你已经掌握了守护神咒的基础，但召唤成形守护神'
+          '需要内心深处的幸福记忆与稳定的情绪。');
+      if (emotion < 60) {
+        buf.writeln('\n（情绪稳定度 ${emotion}/100——你的内心还不够平静，'
+            '建议先学会在混乱中稳住自己。）');
+      } else {
+        buf.writeln('\n（情绪稳定度 ${emotion}/100，可以尝试：/守护神 尝试）');
+      }
+    }
+    return buf.toString();
+  }
+
+  void _patronusAttempt(Player p) {
+    final grade = p.grade ?? 1;
+    final knowsSpell = p.learnedSpells.containsKey('守护神咒');
+    if (grade < 5 && !knowsSpell) {
+      currentNarrative = '你举起魔杖，拼尽全力回想快乐的记忆，念出「Expecto Patronum！」——\n\n'
+          '杖尖只飘出一缕不成形的银雾，转瞬即逝。\n\n'
+          '守护神咒是高年级的领域。你的魔法还不够成熟，强行尝试只会让自己头晕目眩。\n\n'
+          '（五年级后可学习守护神咒，再作尝试。）';
+      p.spirit = (p.spirit - 10).clamp(0, 100);
+      return;
+    }
+    final emotion = p.attributes['emotional_stability'] ?? 50;
+    if (emotion < 60) {
+      currentNarrative = '你努力回想快乐的记忆，但思绪总是被焦虑和杂念打断。'
+          '银雾在杖尖聚了又散，始终无法成形。\n\n'
+          '守护神是心灵的映照——内心不平静，它就无处可依。'
+          '（情绪稳定度 ${emotion}/100，需 ≥60）';
+      p.spirit = (p.spirit - 10).clamp(0, 100);
+      return;
+    }
+    // 尝试召唤：成功概率由情绪稳定 + 魔法控制 + DDA 决定
+    final emotionScore = emotion;
+    final control = p.attributes['magic_control'] ?? 50;
+    final dda = p.attributes['dda'] ?? 50;
+    final chance =
+        (0.5 + (emotionScore - 60) / 200 + (control - 50) / 200 + (dda - 50) / 200)
+            .clamp(0.3, 0.9);
+    p.spirit = (p.spirit - 15).clamp(0, 100);
+    if (random.nextDouble() <= chance) {
+      final form = resolvePatronusForm(
+        personality: p.personalityTraits,
+        house: p.house ?? '',
+        beliefs: p.beliefs ?? '',
+        dice: random.nextDouble(),
+      );
+      p.patronus = form;
+      worldState.addNarrativeEvent('✨ 你的守护神成形了：$form', turn: turnCount);
+      notifications.add('✨ 你的守护神成形了：$form');
+      final f = patronusFormByName(form);
+      currentNarrative = '这一次，你没有费力去想快乐的记忆。\n\n'
+          '你只是闭上眼，让某个早已刻进心底的画面浮现——'
+          '然后，杖尖喷涌出耀眼的白光。\n\n'
+          '光芒凝聚成形：$form。${f?.description ?? ''}\n\n'
+          '它绕着你奔跑了一圈，然后停在你面前，静静地看着你。'
+          '你知道，从今往后，无论黑暗多深，你都不再是独自一人。';
+    } else {
+      worldState.addNarrativeEvent('🌫️ 守护神尝试失败：银雾聚了又散', turn: turnCount);
+      currentNarrative = '白光从杖尖涌出，但始终凝不成形。银雾在空气中徘徊片刻，'
+          '像一个欲言又止的词，然后散去了。\n\n'
+          '你放下魔杖，喘了口气。还差一点——也许是记忆还不够清晰，'
+          '也许是情绪还不够纯粹。\n\n'
+          '（提升情绪稳定度与魔法控制后，再来尝试。）';
+    }
+  }
+
+  // ==================== 声望子命令（框架1 7.3） ====================
+
+  /// /声望 恋爱 —— 恋爱关系的声望影响明细
+  String _formatLoveReputation() {
+    final p = player;
+    if (p == null) return '尚未开始游戏。';
+    final love = p.loveState;
+    final buf = StringBuffer('【恋爱声望影响】（设定 13.3）\n');
+    for (final e in loveReputationEffects) {
+      buf.writeln('· ${e.type}：${e.min >= 0 ? '+' : ''}${e.min} ~ ${e.max >= 0 ? '+' : ''}${e.max}');
+    }
+    // 当前关系的命中情况
+    if (love.partnerName != null || love.currentCrushName != null) {
+      final npcName = love.partnerName ?? love.currentCrushName!;
+      final npc = _cheatFindNpc(npcName);
+      if (npc != null) {
+        final ctx = LovePairContext(
+          playerHouse: p.house ?? '',
+          npcHouse: npc.house,
+          playerBlood: p.bloodType,
+          npcBlood: npc.bloodStatus,
+          npcIsStaff: npc.grade <= 0,
+          playerStance: p.politicalTendency ?? '',
+          npcBloodSupremacist: npc.bloodSupremacist,
+        );
+        buf.writeln();
+        buf.writeln('【当前关系 · $npcName】');
+        var hit = false;
+        for (final e in loveReputationEffects) {
+          if (loveEffectApplies(e, ctx)) {
+            buf.writeln('  ⚡ 命中「${e.type}」：${e.min >= 0 ? '+' : ''}${e.min} ~ ${e.max >= 0 ? '+' : ''}${e.max}');
+            hit = true;
+          }
+        }
+        if (!hit) buf.writeln('  当前关系不触发任何声望惩罚。');
+      }
+    } else {
+      buf.writeln('\n（当前单身，暂无关系判定。）');
+    }
+    return buf.toString();
+  }
+
+  /// /声望 NPC [名字] —— 指定 NPC 的声望档案
+  String _formatNpcReputation(String nameKey) {
+    final npc = _cheatFindNpc(nameKey);
+    if (npc == null) {
+      return '未找到NPC "$nameKey"。可用：${_cheatAllNpcNames()}';
+    }
+    final r = npc.reputation;
+    final buf = StringBuffer('【${npc.name} · 声望档案】\n');
+    for (final dim in Reputation.dimensions) {
+      final v = r.get(dim);
+      buf.writeln('· ${r.labelOf(dim)}：$v（${reputationGrade(v)}）');
+    }
+    return buf.toString();
+  }
+
+  /// /声望 NPC 列表 —— 所有已认识 NPC 的声望摘要
+  String _formatNpcReputationList() {
+    final buf = StringBuffer('【NPC声望摘要】（已登场）\n');
+    final list = npcRegistry.values
+        .where((n) => n.introduced)
+        .toList()
+      ..sort((a, b) => b.reputation.social.compareTo(a.reputation.social));
+    if (list.isEmpty) {
+      buf.writeln('（还没有结识任何人。）');
+      return buf.toString();
+    }
+    for (final n in list) {
+      final r = n.reputation;
+      buf.writeln('· ${n.name}：学术${r.academic} 社交${r.social} 战斗${r.combat}'
+          ' 道德${r.moral} 领导${r.leadership} 黑魔法${r.dark}');
+    }
+    return buf.toString();
+  }
+
+  /// /声望 NPC 排名 [维度] —— 按指定维度排名
+  String _formatNpcReputationRanking(String dim) {
+    final norm = dim.startsWith('黑') ? 'dark' : dim;
+    final valid = Reputation.dimensions.contains(norm);
+    if (!valid) {
+      return '未知维度「$dim」。维度：academic(学术)、social(社交)、combat(战斗)、moral(道德)、leadership(领导)、dark(黑魔法)';
+    }
+    final list = npcRegistry.values.where((n) => n.introduced).toList()
+      ..sort((a, b) => b.reputation.get(norm).compareTo(a.reputation.get(norm)));
+    final label = list.isEmpty ? '' : list.first.reputation.labelOf(norm);
+    final buf = StringBuffer('【$label · 排名】（已登场 ${list.length} 人）\n');
+    for (var i = 0; i < list.length && i < 10; i++) {
+      final n = list[i];
+      buf.writeln('${i + 1}. ${n.name}：${n.reputation.get(norm)}');
+    }
+    return buf.toString();
+  }
+
   // ==================== 人生目标系统 ====================
+
+  /// 考试成绩单展示（/课程 成绩）
+  String _formatExamRecords() {
+    final p = player;
+    if (p == null) return '尚未开始游戏。';
+    final records = p.examRecords;
+    if (records.isEmpty) {
+      return '【考试成绩】\n还没有任何考试成绩——学年结束时（9月升学年结算）会揭晓期末成绩，'
+          '五年级末还有 O.W.L.，七年级末有 N.E.W.T.。\n\n'
+          '平时上课（/课堂 互动）、学习魔咒、认真对待学业，都会让成绩变得更好看。';
+    }
+    final buf = StringBuffer('╔══════════════════════════════════════╗\n')
+      ..writeln('  《学业成绩册》')
+      ..writeln('╚══════════════════════════════════════╝');
+    // 学年成绩
+    for (var i = 1; i <= 7; i++) {
+      final key = 'Y$i';
+      final r = records[key];
+      if (r == null) continue;
+      final s = examSummary(r);
+      buf.writeln();
+      buf.writeln('【第$i 学年期末】${s.oCount}O / ${s.eCount}E / ${s.aPlusCount} 及格以上');
+      buf.writeln(formatExamSheet(r));
+    }
+    // 大考
+    for (final key in ['OWL', 'NEWT']) {
+      final r = records[key];
+      if (r == null) continue;
+      final s = examSummary(r);
+      buf.writeln();
+      buf.writeln('【${key == 'OWL' ? 'O.W.L. 普通巫师等级考试（五年级末）' : 'N.E.W.T. 终极巫师等级考试（七年级末）'}】'
+          ' ${s.oCount}O / ${s.eCount}E / ${s.aPlusCount} 及格以上');
+      buf.writeln(formatExamSheet(r));
+      if (s.oCount >= 3) {
+        buf.writeln('🏅 这份成绩单足以叩开绝大多数高阶职业的大门。');
+      } else if (s.aPlusCount >= 6) {
+        buf.writeln('📖 稳健的成绩，多数常规职业都会接纳你。');
+      } else {
+        buf.writeln('⚠️ 成绩平平——部分要求苛刻的职业会对你关上大门。');
+      }
+    }
+    return buf.toString();
+  }
 
   String _formatGoals() {
     final p = player;

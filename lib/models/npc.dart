@@ -41,7 +41,8 @@ class NPC {
   // ====== 设定文档扩展字段 ======
   final String appearance; // 电影形象外貌描述
   final String gender; // 性别：'男' / '女' / '' = 未知（恋爱取向匹配必需）
-  final String? sexOrientation; // 性取向：被吸引的性别（'男'/'女'/'双性'）
+  // 非 final：/cheat 配对 性取向 会修改它（作弊功能），重置走玩家档案里的备份。
+  String? sexOrientation; // 性取向：被吸引的性别（'男'/'女'/'双性'）
   int affection; // 对玩家的好感度 -100 ~ +100
   final List<String> affectionLocks; // 已解锁的好感锁
   final Map<String, int> giftPrefs; // 礼物偏好: 名称 -> 分值
@@ -94,6 +95,10 @@ class NPC {
   bool introduced; // 是否已经在剧情中登场/被玩家认识
   bool graduated; // 在校生是否已毕业离校
 
+  /// /cheat 固定好感：锁定后好感不随任何系统变动（含衰减/背叛/送礼）。
+  /// 作弊项，存档兼容老档（缺省 false）。
+  bool affectionLocked;
+
   NPC({
     required this.id,
     required this.name,
@@ -102,6 +107,7 @@ class NPC {
     this.bloodStatus = 'unknown',
     this.isCanon = false,
     this.isAlive = true,
+    this.affectionLocked = false,
 
     /// 死因。活着的时候是 null。
     ///
@@ -460,6 +466,7 @@ class NPC {
         'pending_spite': pendingSpite,
         'introduced': introduced,
         'graduated': graduated,
+        'affection_locked': affectionLocked,
       };
 
   factory NPC.fromJson(Map<String, dynamic> json) => NPC(
@@ -520,5 +527,6 @@ class NPC {
         pendingSpite: json['pending_spite'] ?? 0,
         introduced: json['introduced'] ?? false,
         graduated: json['graduated'] ?? false,
+        affectionLocked: json['affection_locked'] ?? false,
       );
 }

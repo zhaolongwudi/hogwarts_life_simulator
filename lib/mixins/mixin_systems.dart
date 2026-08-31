@@ -23,6 +23,7 @@ import '../data/goal_data.dart';
 import '../data/parallel_data.dart';
 import '../data/npc_schedule_rules.dart';
 import '../data/rivalry_data.dart';
+import '../data/exam_data.dart';
 import '../data/wand_data.dart';
 import '../data/faculty_data.dart';
 import '../data/legacy_data.dart';
@@ -585,6 +586,9 @@ mixin GameSystemsMixin on GameProviderBase {
       settleHouseCup();
       p.grade = 7;
       worldState.graduated = true;
+      // 七年级末的 N.E.W.T（终极巫师等级考试）与最后一次期末考
+      _settleExams('Y7');
+      _settleExams('NEWT', newt: true);
       _onPlayerGraduated(oldGrade);
     } else {
       p.grade = newGrade;
@@ -639,6 +643,15 @@ mixin GameSystemsMixin on GameProviderBase {
     settleHouseCup();
     notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
 
+    // ====== 期末考试成绩结算（框架2 第60条：考试真实存在） ======
+    // 上一学年末的期末考成绩此时揭晓。成绩由平时熟练度主导，
+    // 全科优秀的概率极低——差生不会因为过了一个暑假就变天才。
+    _settleExams('Y${newGrade - 1}');
+    if (newGrade == 6) {
+      // 五年级末的 O.W.L（普通巫师等级考试）
+      _settleExams('OWL', owl: true);
+    }
+
     // ====== 学年里程碑：注入学年特有的事件叙事 ======
     {
       final milestoneText = schoolYearEventText(newGrade, seed: turnCount);
@@ -655,6 +668,50 @@ mixin GameSystemsMixin on GameProviderBase {
     worldState.addMarker('⏳新学年');
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
     debugPrint('🎓 学年推进：玩家升入${newGrade}年级');
+  }
+
+  // ==================== 考试成绩结算（框架2 第60条） ====================
+
+  /// 结算一场考试：按玩家当前熟练度 + 临场随机算出各科成绩，写入
+  /// player.examRecords[key]，并发通知。同 key 已结算过则不重复覆盖
+  /// （一场考试一辈子只有一次成绩，重读档也不该变）。
+  void _settleExams(String key, {bool owl = false, bool newt = false}) {
+    final p = player;
+    if (p == null) return;
+    if (p.examRecords.containsKey(key)) return;
+
+    final records = settleExams(
+      playerAttrs: p.attributes,
+      nextDouble: random.nextDouble,
+      owl: owl,
+      newt: newt,
+    );
+    p.examRecords[key] = records;
+    final s = examSummary(records);
+
+    final buf = StringBuffer();
+    if (owl) {
+      buf.writeln('📜 【O.W.L. 普通巫师等级考试成绩揭晓】');
+      worldState.addNarrativeEvent('📜 O.W.L. 考试成绩揭晓：${s.oCount}个O，${s.eCount}个E', turn: turnCount);
+    } else if (newt) {
+      buf.writeln('📜 【N.E.W.T. 终极巫师等级考试成绩揭晓】');
+      worldState.addNarrativeEvent('📜 N.E.W.T. 考试成绩揭晓：${s.oCount}个O，${s.eCount}个E', turn: turnCount);
+    } else {
+      buf.writeln('📜 【第$key 学年期末考试成绩揭晓】');
+      worldState.addNarrativeEvent('📜 $key 学年期末考试成绩揭晓：${s.oCount}个O，${s.eCount}个E', turn: turnCount);
+    }
+    buf.writeln(formatExamSheet(records));
+    if (s.oCount >= 3) {
+      buf.writeln('\n🏅 ${s.oCount} 个「O」——全年级都听说过你的名字了。');
+      p.playerReputation.add('academic', 8);
+    } else if (s.aPlusCount >= 6) {
+      buf.writeln('\n📖 大部分科目都拿到了 A 以上，教授们对你印象不错。');
+      p.playerReputation.add('academic', 4);
+    } else if (s.aPlusCount <= 2) {
+      buf.writeln('\n⚠️ 成绩单不太好看。教授们看你的眼神里多了几分欲言又止。');
+      p.playerReputation.add('academic', -3);
+    }
+    notifications.add(buf.toString());
   }
 
   /// 玩家毕业（七年级结束）

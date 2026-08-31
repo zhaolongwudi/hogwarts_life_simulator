@@ -92,6 +92,30 @@ mixin GameInitMixin on GameProviderBase {
           characterLines.add('【魔杖】$woodClean·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他木材；$src）');
         }
       }
+      if (p.animagus != null) {
+        final av = p.animagus!;
+        final aStatus = av['status'] as String? ?? 'none';
+        if (aStatus == 'transformed') {
+          final form = av['form'] as String? ?? '';
+          final reg = av['registered'] == true;
+          characterLines.add('【阿尼马格斯】主角已掌握阿尼马格斯，动物形态为「$form」'
+              '${reg ? '，已在魔法部登记' : '，尚未登记（存在法律风险，叙事中应体现这份隐忧）'}。'
+              '变形是困难且有限制的力量：变身后有暴露风险，不得随意滥用，且魔力消耗巨大。');
+        } else if (aStatus == 'studying' || aStatus == 'potionReady') {
+          characterLines.add('【阿尼马格斯研习中】主角正在研习阿尼马格斯'
+              '（训练进度 ${av['progress'] ?? 0}）——这是漫长而危险的变形之路，'
+              '可在叙事中体现主角的投入与进展，但尚未掌握变形，不得写其成功变形。');
+        } else if (aStatus == 'failed') {
+          characterLines.add('【阿尼马格斯受挫】主角的阿尼马格斯尝试曾失败'
+              '（${av['failedReason'] ?? '变形溃散'}），身体与意志都受到了打击，'
+              '叙事中可体现这份余悸，但不要写成永久性残废。');
+        }
+      }
+      if (p.patronus != null && p.patronus!.isNotEmpty) {
+        characterLines.add('【守护神】主角的守护神形态是「${p.patronus}」。'
+            '守护神是灵魂的映照，叙事中召唤时应描写它的姿态与性情，'
+            '不得随意改变形态。');
+      }
     }
 
     // 身份模式：穿越者拥有对原作剧情的隐约记忆，原住民则一无所知

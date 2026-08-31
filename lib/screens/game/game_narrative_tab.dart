@@ -8,6 +8,7 @@ import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/scaled_rich_text.dart';
+import '../../widgets/narrative_visuals.dart';
 
 import '../story_history_screen.dart';
 import 'choice_panel.dart';

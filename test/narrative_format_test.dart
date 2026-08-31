@@ -70,21 +70,27 @@ void main() {
   group('渲染层接线', () {
     final src =
         File('lib/screens/game/game_narrative_tab.dart').readAsStringSync();
+    final rendererSrc =
+        File('lib/utils/story_text_renderer.dart').readAsStringSync();
 
     test('叙述段走小说式排版方法', () {
-      expect(src.contains('_buildNarrationBody(segments[i].text)'), isTrue);
-      expect(src.contains('StoryTextRenderer.parseParagraph('), isTrue);
-      expect(src.contains('StoryTextRenderer.splitParagraphs('), isTrue);
+      // v3.3.6 起对话气泡被移除，叙事改为整段正文渲染
+      expect(src.contains('_buildBodyCard(bodyNarrative)'), isTrue);
+      expect(src.contains('StoryTextRenderer.parseWithAffectionStyle('), isTrue);
+      // 拆段/缩进能力由渲染器提供（game_narrative_tab 只调用上层入口）
+      expect(rendererSrc.contains('static List<String> splitParagraphs('), isTrue);
+      expect(rendererSrc.contains('static List<TextSpan> parseParagraph('), isTrue);
     });
 
-    test('叙述段与对话气泡同款淡入动画（页面质感统一）', () {
-      // 叙述段动画 300ms，气泡 350ms——同一节奏家族，不锁死数值，
-      // 但必须存在 TweenAnimationBuilder 包裹叙述段
-      expect(src.contains('TweenAnimationBuilder<double>'), isTrue);
+    test('叙述段渲染路径完整（正文卡 → 整段渲染）', () {
+      // 叙述段必须经过统一的正文渲染路径，而不是散落的多套排版
+      expect(src.contains('Widget _buildBodyCard(String body)'), isTrue);
+      expect(src.contains('return _buildPlainBodyCard(body);'), isTrue);
     });
 
-    test('对话气泡渲染路径未被误伤', () {
-      expect(src.contains('_buildDialogueSegment(gp, segments[i])'), isTrue);
+    test('整段渲染使用 ScaledRichText 承载高亮（未被误伤）', () {
+      expect(src.contains('ScaledRichText('), isTrue);
+      expect(src.contains('parseWithAffectionStyle(body)'), isTrue);
     });
   });
 }
