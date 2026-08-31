@@ -178,6 +178,8 @@ flutter run
 
 ## 👨‍💻 开发相关
 
+> 📘 想快速理解项目结构 / 上手维护？请看 **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)**（目录地图 + 架构约定 + 维修避坑清单）。
+
 ### 技术栈
 - **框架**：Flutter 3.16+ / Dart 3.2+
 - **状态管理**：Provider
