@@ -13,10 +13,14 @@ class ChatMessage {
   final String content;
   final DateTime timestamp;
 
+  /// 是否为离线兜底回复（AI 调用失败时生成）。仅内存标记，不落盘。
+  final bool offline;
+
   ChatMessage({
     required this.role,
     required this.content,
     DateTime? timestamp,
+    this.offline = false,
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
@@ -75,7 +79,9 @@ class NpcChatService {
     _conversationCache.clear();
   }
 
-  Future<String> chatWithNPC({
+  /// NPC 聊天返回 (回复文本, 是否离线兜底)。
+  /// AI 调用失败或返回空内容时，离线位为 true，回复为本地模板。
+  Future<(String, bool)> chatWithNPC({
     required NPC npc,
     required Player player,
     required WorldState worldState,
@@ -83,7 +89,7 @@ class NpcChatService {
     List<ChatMessage>? history,
   }) async {
     if (_router == null) {
-      return _generateLocalResponse(npc, userMessage);
+      return (_generateLocalResponse(npc, userMessage), true);
     }
 
     // 用户输入进入 Prompt 前做注入防御净化
@@ -121,10 +127,13 @@ class NpcChatService {
         maxTokens: 500,
       );
 
-      final responseText = response.content.replaceFirst(RegExp(r'^[\*\[]'), '').trim();
-      return responseText;
+      var responseText = response.content.replaceFirst(RegExp(r'^[\*\[]'), '').trim();
+      if (responseText.isEmpty) {
+        return (_generateLocalResponse(npc, safeMessage), true);
+      }
+      return (responseText, false);
     } catch (e) {
-      return _generateLocalResponse(npc, safeMessage);
+      return (_generateLocalResponse(npc, safeMessage), true);
     }
   }
 

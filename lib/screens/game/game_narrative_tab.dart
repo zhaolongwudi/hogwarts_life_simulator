@@ -343,8 +343,16 @@ class _NarrativeTabState extends State<NarrativeTab> {
               border: Border.all(color: dividerColorOf(context)),
             ),
             child: const Center(
-              child: Text('暂无事件记录\n行动起来创建你的故事吧！',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_stories_outlined, size: 36, color: Color(0xFF6B7280)),
+                  SizedBox(height: 8),
+                  Text('暂无事件记录\n行动起来创建你的故事吧！',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+                ],
+              ),
             ),
           )
         else ...[
@@ -558,14 +566,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
               ),
               if (location != null && location.isNotEmpty) ...[
                 const SizedBox(width: 8),
-                const Icon(Icons.place, size: 13, color: Color(0xFF7EE787)),
+                const Icon(Icons.place, size: 13, color: AppColors.success),
                 const SizedBox(width: 2),
                 Flexible(
                   child: Text(
                     location,
                     style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF7EE787),
+                        color: AppColors.success,
                         fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -767,7 +775,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         'label': '体质',
         'value': player.attributes['constitution'] ?? 50,
         'icon': Icons.favorite,
-        'color': const Color(0xFFDC2626)
+        'color': AppColors.danger
       },
       {
         'label': '智力',
@@ -785,7 +793,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         'label': '体能',
         'value': player.attributes['strength'] ?? 50,
         'icon': Icons.fitness_center,
-        'color': const Color(0xFF059669)
+        'color': AppColors.success
       },
       {
         'label': '道德',
@@ -819,7 +827,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           'label': '草药',
           'value': player.attributes['herbology'] ?? 50,
           'icon': Icons.local_florist,
-          'color': const Color(0xFF84CC16)
+          'color': AppColors.success
         },
         {
           'label': '黑防',
@@ -837,7 +845,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           'label': '勇气',
           'value': player.attributes['courage'] ?? 50,
           'icon': Icons.bolt,
-          'color': const Color(0xFFF59E0B)
+          'color': AppColors.warning
         },
         {
           'label': '意志',
@@ -1364,7 +1372,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             _buildLegendItem(const Color(0xFFDDB54A), '人名'),
             _buildLegendItem(const Color(0xFFFFC87A), '说话人'),
             _buildLegendItem(const Color(0xFF79C0FF), '对话'),
-            _buildLegendItem(const Color(0xFF7EE787), '地点'),
+            _buildLegendItem(AppColors.success, '地点'),
             _buildLegendItem(const Color(0xFFD2A8FF), '物品'),
             _buildLegendItem(const Color(0xFFB8A6E3), '内心独白'),
           ],
@@ -1650,14 +1658,14 @@ class _AiErrorBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border(
           left: BorderSide(
-            color: const Color(0xFFFF7B72).withValues(alpha: 0.7),
+            color: AppColors.danger.withValues(alpha: 0.7),
             width: 3.0,
           ),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_off, size: 18, color: Color(0xFFFF7B72)),
+          const Icon(Icons.cloud_off, size: 18, color: AppColors.danger),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

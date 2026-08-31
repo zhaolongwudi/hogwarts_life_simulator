@@ -2,6 +2,42 @@ import 'package:flutter/material.dart';
 import '../models/npc.dart';
 import '../data/house_data.dart';
 
+/// 全局语义色 token：全项目统一从这里取，杜绝裸色值漂移。
+///
+/// 历史遗留：UI 层散落着 100+ 个硬编码色值，同一语义（危险红/成功绿/强调金）
+/// 有 6~9 种写法，深色主题里还混着浅色主题残留的卡片底色。新代码一律用这里
+/// 的 token；存量页面按审计清单逐步收敛。
+class AppColors {
+  // ===== 主题金 =====
+  /// 主金：按钮/强调/选中态
+  static const gold = Color(0xFFD3A625);
+  /// 提亮金：深底上的文字/图标
+  static const goldBright = Color(0xFFDDB54A);
+  /// 深金：描边/次级强调
+  static const goldDeep = Color(0xFFB8860B);
+
+  // ===== 状态色 =====
+  /// 危险/负面/伤害
+  static const danger = Color(0xFFEF4444);
+  /// 成功/正面/升温
+  static const success = Color(0xFF10B981);
+  /// 警告/中性偏负
+  static const warning = Color(0xFFF59E0B);
+  /// 信息/对话蓝
+  static const info = Color(0xFF79C0FF);
+
+  // ===== 文字三灰阶 =====
+  static const textPrimary = Color(0xFFE6EDF3);
+  static const textSecondary = Color(0xFF8B949E);
+  static const textMuted = Color(0xFF6B7280);
+
+  // ===== 背景体系（GitHub Dark 风格） =====
+  static const bg = Color(0xFF0D1117);
+  static const surface = Color(0xFF161B22);
+  static const card = Color(0xFF21262D);
+  static const border = Color(0xFF30363D);
+}
+
 class UiHelpers {
   static Color getHouseColor(String house) {
     final key = house.toLowerCase();
@@ -54,18 +90,26 @@ class UiHelpers {
     return '死敌 💀';
   }
 
+  /// 好感度 → 颜色（8 档，与地图/通讯录/关系页共用同一套映射）。
+  ///
+  /// 历史遗留：地图页自己写了一份 8 档自定义色，通讯录用这里的 5 档——
+  /// 同一好感值在两个页面颜色完全不同。统一收敛为 8 档 token 色：
+  /// 敌对红 → 冷淡橙 → 未明灰 → 初识蓝 → 朋友绿 → 好友紫 → 亲密粉 → 灵魂品红。
   static Color getAffectionColor(int affection) {
-    if (affection >= 70) return Colors.pink;
-    if (affection >= 30) return Colors.green;
-    if (affection >= -9) return Colors.grey;
-    if (affection >= -50) return Colors.orange;
-    return Colors.red;
+    if (affection <= -30) return AppColors.danger;
+    if (affection <= -10) return AppColors.warning;
+    if (affection <= 10) return AppColors.textMuted;
+    if (affection <= 30) return const Color(0xFF3B82F6);
+    if (affection <= 50) return AppColors.success;
+    if (affection <= 70) return const Color(0xFF8B5CF6);
+    if (affection <= 90) return const Color(0xFFEC4899);
+    return const Color(0xFFD946EF);
   }
 
   static Color getScoreColor(int score) {
-    if (score >= 50) return Colors.red;
-    if (score >= 35) return Colors.pink;
-    return Colors.orange;
+    if (score >= 50) return AppColors.danger;
+    if (score >= 35) return const Color(0xFFEC4899);
+    return AppColors.warning;
   }
 
   // 典型 NPC 名字 → 工作/身份标签（剧情开始阶段一眼识别角色）
@@ -153,3 +197,34 @@ Color dividerColorOf(BuildContext context) =>
     (Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF30363D)
         : const Color(0xFFD0D7DE));
+
+/// 通用危险操作确认对话框。
+///
+/// 删除存档/删帖/删日记/清空数据等不可恢复操作统一走这里，
+/// 返回 `true` 表示用户确认。确认按钮默认危险红。
+Future<bool> confirmDangerDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String confirmText = '确定',
+  Color confirmColor = AppColors.danger,
+}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(confirmText, style: TextStyle(color: confirmColor)),
+        ),
+      ],
+    ),
+  );
+  return ok ?? false;
+}

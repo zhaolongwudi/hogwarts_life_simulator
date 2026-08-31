@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/ui_helpers.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/cg_data.dart';
@@ -349,7 +350,15 @@ class _JournalTab extends StatelessWidget {
       itemCount: entries.length,
       itemBuilder: (context, index) => _JournalCard(
         entry: entries[index],
-        onDelete: () => gp.removeDiaryEntry(index),
+        onDelete: () async {
+          final ok = await confirmDangerDialog(
+            context,
+            title: '删除手记',
+            message: '确定要删除「${entries[index].title}」吗？删除后无法恢复。',
+            confirmText: '删除',
+          );
+          if (ok) gp.removeDiaryEntry(index);
+        },
       ),
     );
   }

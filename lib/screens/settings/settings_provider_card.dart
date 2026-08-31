@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/ui_helpers.dart';
 import '../../data/provider_defaults.dart';
 import '../../providers/app_provider.dart';
 
@@ -385,7 +386,15 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               obscureText: _obscureAdditionalKeys,
               helperText: 'Key ${i + 2}',
               showDelete: true,
-              onDelete: () => _confirmDeleteKey(i + 1),
+              onDelete: () async {
+                final ok = await confirmDangerDialog(
+                  context,
+                  title: '删除此 Key',
+                  message: '确定要删除第 ${i + 1} 个 API Key 吗？删除后无法恢复。',
+                  confirmText: '删除',
+                );
+                if (ok) _confirmDeleteKey(i + 1);
+              },
               onToggleVisibility: () => setState(() => _obscureAdditionalKeys = !_obscureAdditionalKeys),
             ),
           ],

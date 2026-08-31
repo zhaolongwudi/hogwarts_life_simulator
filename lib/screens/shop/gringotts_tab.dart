@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
+import '../../utils/ui_helpers.dart';
 
 class GringottsTab extends StatefulWidget {
   const GringottsTab({super.key});
@@ -29,14 +30,14 @@ class _GringottsTabState extends State<GringottsTab> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.amber.shade50,
+              color: const Color(0xFF21262D),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.shade200),
+              border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.5)),
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('🏛 古灵阁巫师银行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('🏛 古灵阁巫师银行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFDDB54A))),
                 SizedBox(height: 6),
                 Text(
                   '由妖精运营的千年银行。存款无利息，但绝对安全——没有人敢抢古灵阁。',
@@ -54,7 +55,7 @@ class _GringottsTabState extends State<GringottsTab> {
                   title: '存入加隆',
                   subtitle: '从随身钱包转入金库',
                   icon: Icons.arrow_upward,
-                  color: Colors.green,
+                  color: AppColors.success,
                   controller: _depositCtrl,
                   hint: '存入数量',
                   onConfirm: (amount) {
@@ -70,7 +71,7 @@ class _GringottsTabState extends State<GringottsTab> {
                   title: '取出加隆',
                   subtitle: '从金库转回随身钱包',
                   icon: Icons.arrow_downward,
-                  color: Colors.orange,
+                  color: AppColors.warning,
                   controller: _withdrawCtrl,
                   hint: '取出数量',
                   onConfirm: (amount) {

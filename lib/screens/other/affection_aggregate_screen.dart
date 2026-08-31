@@ -342,7 +342,7 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
             padding: EdgeInsets.only(bottom: 4),
             child: Text(
               '🤝 曾经是你最难缠的对头，如今已经和解。',
-              style: TextStyle(fontSize: 11, color: Colors.lightGreenAccent),
+              style: TextStyle(fontSize: 11, color: AppColors.success),
             ),
           ),
         );
@@ -507,6 +507,6 @@ Color _rivalryColor(RivalryTier tier) => switch (tier) {
       RivalryTier.none => Colors.grey,
       RivalryTier.grudge => Colors.amber,
       RivalryTier.hostile => Colors.deepOrange,
-      RivalryTier.nemesis => Colors.redAccent,
+      RivalryTier.nemesis => AppColors.danger,
       RivalryTier.archenemy => const Color(0xFFB71C1C),
     };

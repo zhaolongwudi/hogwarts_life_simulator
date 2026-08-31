@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
+import '../../utils/ui_helpers.dart';
 
 class GameTopBar extends StatelessWidget {
   const GameTopBar({super.key});
@@ -51,8 +52,13 @@ class GameTopBar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(player.name,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                    Flexible(
+                      child: Text(player.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                    ),
                     if (houseLabel.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       Container(
@@ -115,11 +121,11 @@ class GameTopBar extends StatelessWidget {
   /// 顶部 HUD：5 条细长状态条（生命/魔力/精神力/饱食/精力），低值变红提醒
   Widget _buildResourceBars(Player player) {
     final resources = <({String label, int value, Color color})>[
-      (label: '生命', value: player.health, color: const Color(0xFFDC2626)),
+      (label: '生命', value: player.health, color: AppColors.danger),
       (label: '魔力', value: player.magic, color: const Color(0xFF2563EB)),
       (label: '精神', value: player.spirit, color: const Color(0xFF7C3AED)),
       (label: '饱食', value: player.satiety, color: const Color(0xFFD97706)),
-      (label: '精力', value: player.energy, color: const Color(0xFF059669)),
+      (label: '精力', value: player.energy, color: AppColors.success),
     ];
     return Row(
       children: List.generate(resources.length, (i) {

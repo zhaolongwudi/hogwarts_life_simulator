@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/ui_helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
@@ -313,7 +314,16 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteSave(save['id']),
+              onPressed: () async {
+                final ok = await confirmDangerDialog(
+                  context,
+                  title: '删除存档',
+                  message: '确定要删除存档「${save['slotName'] ?? save['id']}」吗？\n'
+                      '删除后无法恢复。',
+                  confirmText: '删除',
+                );
+                if (ok) _deleteSave(save['id']);
+              },
             ),
           ],
         ),

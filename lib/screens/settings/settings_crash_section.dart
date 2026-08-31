@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../utils/crash_logger.dart';
 import '../../utils/ai_debug_logger.dart';
+import '../../utils/ui_helpers.dart';
 
 class SettingsCrashSection extends StatefulWidget {
   final VoidCallback? onCleared;
@@ -50,7 +51,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
-            const Icon(Icons.bug_report, color: Color(0xFFFF6B6B), size: 20),
+            const Icon(Icons.bug_report, color: AppColors.danger, size: 20),
             const SizedBox(width: 8),
             const Expanded(
               child: Text('崩溃详情', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
@@ -80,7 +81,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
               if (e.screen.isNotEmpty) _buildDetailRow('场景', e.screen),
               if (e.extra.isNotEmpty) _buildDetailRow('补充', e.extra),
               const SizedBox(height: 8),
-              const Text('错误信息', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFF6B6B))),
+              const Text('错误信息', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
               const SizedBox(height: 4),
               Container(
                 width: double.infinity,
@@ -149,7 +150,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
           children: [
             Row(
               children: [
-                const Icon(Icons.error, size: 14, color: Color(0xFFFF6B6B)),
+                const Icon(Icons.error, size: 14, color: AppColors.danger),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -207,11 +208,11 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
         children: [
           Row(
             children: [
-              const Icon(Icons.bug_report, color: Color(0xFFFF6B6B), size: 18),
+              const Icon(Icons.bug_report, color: AppColors.danger, size: 18),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text('🐞 崩溃日志',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFF6B6B))),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.danger)),
               ),
               TextButton(
                 onPressed: CrashLogger.instance.entries.isEmpty
@@ -260,8 +261,8 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                   icon: const Icon(Icons.list, size: 16),
                   label: Text('查看全部 (${CrashLogger.instance.entries.length})'),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFFF6B6B)),
-                    foregroundColor: const Color(0xFFFF6B6B),
+                    side: const BorderSide(color: AppColors.danger),
+                    foregroundColor: AppColors.danger,
                     minimumSize: const Size.fromHeight(40),
                   ),
                 ),

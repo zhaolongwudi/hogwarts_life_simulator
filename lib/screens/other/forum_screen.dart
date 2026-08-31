@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/ui_helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -486,7 +487,15 @@ class _PostCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 18),
                 GestureDetector(
-                  onTap: () => gp.removeForumPost(post.id),
+                  onTap: () async {
+                    final ok = await confirmDangerDialog(
+                      context,
+                      title: '删除帖子',
+                      message: '确定要删除这篇「${post.category}」版块的帖子吗？\n帖子与全部回复、点赞将一并删除，无法恢复。',
+                      confirmText: '删除',
+                    );
+                    if (ok) gp.removeForumPost(post.id);
+                  },
                   child: const Icon(Icons.delete_outline,
                       size: 18, color: Color(0xFF8B949E)),
                 ),

@@ -129,7 +129,16 @@ class _ShopTabState extends State<ShopTab> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text('背包里没有可出售的东西。\n去禁林采集点材料，或者上课得点奖励。'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 40, color: Color(0xFF6B7280)),
+              SizedBox(height: 10),
+              Text('背包里没有可出售的东西。\n去禁林采集点材料，或者上课得点奖励。',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            ],
+          ),
         ),
       );
     }
@@ -171,7 +180,10 @@ class _ShopTabState extends State<ShopTab> {
             child: Icon(item['icon'] as IconData, color: Theme.of(context).colorScheme.primary),
           ),
           const SizedBox(height: 8),
-          Text(item['name'] as String, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(item['name'] as String,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Text(
             item['desc'] as String,

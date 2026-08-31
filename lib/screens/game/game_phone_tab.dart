@@ -6,6 +6,7 @@ import '../other/other_screens.dart';
 import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';
+import '../../utils/ui_helpers.dart';
 
 void _editSignature(BuildContext context) {
   final gp = context.read<GameProvider>();
@@ -175,7 +176,7 @@ class PhoneTab extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildAppItem(context, Icons.store_mall_directory, '魔法商店', Color(0xFFF59E0B), () {
+            _buildAppItem(context, Icons.store_mall_directory, '魔法商店', AppColors.warning, () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
             }),
             // 以前这一格是「应用商店」，点了只弹「还在开发中」。
@@ -250,7 +251,7 @@ class PhoneTab extends StatelessWidget {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
           }),
           // 好感排行榜：同样是从没人 import 的 phone_home_screen.dart 里救出来的
-          _buildQuickItem(context, Icons.leaderboard, '好感排行', Color(0xFFF97316), () {
+          _buildQuickItem(context, Icons.leaderboard, '好感排行', AppColors.warning, () {
             Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AffectionAggregateScreen()));
           }),

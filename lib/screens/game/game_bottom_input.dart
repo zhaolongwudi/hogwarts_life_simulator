@@ -4,6 +4,7 @@ import '../../providers/game_provider.dart';
 import '../../models/game_systems.dart';
 import 'game_play_screens.dart';
 import 'command_center_panel.dart';
+import '../../utils/ui_helpers.dart';
 
 class GameBottomInput extends StatelessWidget {
   final TextEditingController inputController;
@@ -162,53 +163,58 @@ class GameBottomInput extends StatelessWidget {
     final ready = !gp.isLoading && gp.player != null;
     final actions = <({String label, IconData icon, Color color, String? command, Widget Function()? page})>[
       (label: '委托板', icon: Icons.assignment_outlined, color: const Color(0xFFD3A625), command: null, page: () => const QuestBoardScreen()),
-      (label: '装备', icon: Icons.shield_outlined, color: const Color(0xFF7EE787), command: null, page: () => const EquipmentScreen()),
-      (label: '宠物', icon: Icons.pets, color: const Color(0xFFF59E0B), command: '/宠物', page: null),
+      (label: '装备', icon: Icons.shield_outlined, color: AppColors.success, command: null, page: () => const EquipmentScreen()),
+      (label: '宠物', icon: Icons.pets, color: AppColors.warning, command: '/宠物', page: null),
       (label: '魁地奇', icon: Icons.sports_score, color: const Color(0xFF3B82F6), command: '/魁地奇', page: null),
       (label: '决斗', icon: Icons.gavel, color: const Color(0xFFEF4444), command: '/决斗', page: null),
-      (label: '禁林', icon: Icons.forest_outlined, color: const Color(0xFF059669), command: '/禁林 探险', page: null),
+      (label: '禁林', icon: Icons.forest_outlined, color: AppColors.success, command: '/禁林 探险', page: null),
       (label: '图鉴', icon: Icons.menu_book, color: const Color(0xFF8B5CF6), command: '/图鉴', page: null),
-      (label: '学院杯', icon: Icons.emoji_events_outlined, color: const Color(0xFFF59E0B), command: '/学院杯', page: null),
+      (label: '学院杯', icon: Icons.emoji_events_outlined, color: AppColors.warning, command: '/学院杯', page: null),
     ];
 
     return SizedBox(
-      height: 30,
+      height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         itemCount: actions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final a = actions[index];
-          return GestureDetector(
-            onTap: !ready
-                ? null
-                : () {
-                    if (a.page != null) {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => a.page!()));
-                    } else if (a.command != null) {
-                      gp.processChoice(GameChoice(text: a.command!, action: a.command!));
-                    }
-                  },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: a.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: a.color.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(a.icon, size: 14, color: a.color),
-                  const SizedBox(width: 4),
-                  Text(a.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: ready ? a.color : const Color(0xFF6B7280),
-                      )),
-                ],
+          return Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              onTap: !ready
+                  ? null
+                  : () {
+                      if (a.page != null) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => a.page!()));
+                      } else if (a.command != null) {
+                        gp.processChoice(GameChoice(text: a.command!, action: a.command!));
+                      }
+                    },
+              borderRadius: BorderRadius.circular(20),
+              child: Ink(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: a.color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: a.color.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(a.icon, size: 16, color: a.color),
+                    const SizedBox(width: 5),
+                    Text(a.label,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: ready ? a.color : const Color(0xFF6B7280),
+                        )),
+                  ],
+                ),
               ),
             ),
           );

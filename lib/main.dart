@@ -98,7 +98,7 @@ class HogwartsLifeSimulator extends StatelessWidget {
         bodyLarge: TextStyle(fontSize: 16, color: textPrimary),
         bodyMedium: TextStyle(fontSize: 14, color: textPrimary),
         bodySmall: TextStyle(fontSize: 12, color: textSecondary),
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
         labelMedium: TextStyle(fontSize: 12, color: textSecondary),
       ),
       appBarTheme: const AppBarTheme(

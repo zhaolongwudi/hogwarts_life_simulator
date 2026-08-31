@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/ui_helpers.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 
@@ -279,7 +280,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: const Color(0xFF161B22).withValues(alpha: 0.96),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
                 boxShadow: [
@@ -293,9 +294,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.public, size: 18, color: Color(0xFFB8860B)),
+                  const Icon(Icons.public, size: 18, color: AppColors.goldBright),
                   const SizedBox(width: 6),
-                  const Text('大世界', style: TextStyle(fontSize: 16, color: Color(0xFFB8860B), fontWeight: FontWeight.w700)),
+                  const Text('大世界', style: TextStyle(fontSize: 16, color: AppColors.goldBright, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -378,7 +379,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     return ListTile(
       leading: Icon(
         isSub ? Icons.subdirectory_arrow_right : Icons.map,
-        color: isSub ? const Color(0xFFD97706) : const Color(0xFFD3A625),
+        color: isSub ? AppColors.warning : const Color(0xFFD3A625),
       ),
       title: Text(name,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -469,7 +470,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.white.withValues(alpha: 0.95), Colors.white.withValues(alpha: 0.0)],
+            colors: [const Color(0xFF0D1117).withValues(alpha: 0.95), const Color(0xFF0D1117).withValues(alpha: 0.0)],
           ),
         ),
         child: Column(
@@ -700,7 +701,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           color: isSelected
                               ? const Color(0xFFD3A625)
                               : isBranch
-                                  ? const Color(0xFFD97706)
+                                  ? AppColors.warning
                                   : const Color(0xFF3E5B4A),
                           width: isSelected || isBranch ? 2 : 1.2,
                         ),
@@ -716,7 +717,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isBranch) ...[
-                            const Icon(Icons.subdirectory_arrow_right, size: 15, color: Color(0xFFB45309)),
+                            const Icon(Icons.subdirectory_arrow_right, size: 15, color: AppColors.gold),
                             const SizedBox(width: 4),
                           ],
                           Flexible(
@@ -728,9 +729,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
                                 color: isSelected
-                                    ? const Color(0xFF8B6914)
+                                    ? AppColors.gold
                                     : isBranch
-                                        ? const Color(0xFFB45309)
+                                        ? AppColors.gold
                                         : const Color(0xFF1F2937),
                               ),
                             ),
@@ -746,14 +747,14 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         color: isSelected
                             ? const Color(0xFFD3A625)
                             : isBranch
-                                ? const Color(0xFFD97706)
+                                ? AppColors.warning
                                 : Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isSelected
-                              ? const Color(0xFFB8860B)
+                              ? AppColors.goldBright
                               : isBranch
-                                  ? const Color(0xFFB45309)
+                                  ? AppColors.gold
                                   : const Color(0xFFD3A625),
                           width: 2.5,
                         ),
@@ -882,7 +883,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               ],
             ),
             child: Text(_currentArea,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFB8860B))),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.goldBright)),
           ),
           GestureDetector(
             onTap: () {
@@ -969,13 +970,13 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: (isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A))
+                        color: (isBranch ? AppColors.warning : const Color(0xFF3E5B4A))
                             .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         isBranch ? Icons.subdirectory_arrow_right : loc['icon'] as IconData,
-                        color: isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A),
+                        color: isBranch ? AppColors.warning : const Color(0xFF3E5B4A),
                         size: 24,
                       ),
                     ),
@@ -994,11 +995,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                                    color: AppColors.warning.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: const Text('子地图',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
+                                      style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
                                 ),
                             ],
                           ),
@@ -1015,10 +1016,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
+                          color: const Color(0xFF21262D),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close, size: 18, color: Color(0xFF6B7280)),
+                        child: const Icon(Icons.close, size: 18, color: Color(0xFF8B949E)),
                       ),
                     ),
                   ],
@@ -1027,18 +1028,18 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: const Color(0xFF161B22),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    border: Border.all(color: const Color(0xFF30363D)),
                   ),
                   child: Row(
                     children: [
-                      Icon(isBranch ? Icons.map : Icons.flag, size: 18, color: isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A)),
+                      Icon(isBranch ? Icons.map : Icons.flag, size: 18, color: isBranch ? AppColors.warning : const Color(0xFF4CAF7D)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           isBranch ? '点击进入子地图探索更多地点' : '前往此地并开始你的冒险',
-                          style: TextStyle(fontSize: 13, color: isBranch ? const Color(0xFFD97706) : const Color(0xFF3E5B4A)),
+                          style: TextStyle(fontSize: 13, color: isBranch ? AppColors.warning : const Color(0xFF3E5B4A)),
                         ),
                       ),
                     ],
@@ -1066,7 +1067,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       height: 46,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isBranch ? const Color(0xFFD97706) : const Color(0xFFD3A625),
+                          backgroundColor: isBranch ? AppColors.warning : const Color(0xFFD3A625),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 22),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1157,7 +1158,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             const SizedBox(width: 5),
             const Text('当前', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
             const SizedBox(width: 12),
-            Container(width: 12, height: 12, decoration: const BoxDecoration(color: Color(0xFFD97706), shape: BoxShape.circle)),
+            Container(width: 12, height: 12, decoration: const BoxDecoration(color: AppColors.warning, shape: BoxShape.circle)),
             const SizedBox(width: 5),
             const Text('子地图', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
             const SizedBox(width: 12),

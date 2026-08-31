@@ -19,6 +19,8 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+  /// 最近一条用户消息：离线回复时用于一键重试。
+  String _lastUserMessage = '';
   late final NpcChatService _chatService;
 
   @override
@@ -72,11 +74,12 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
       _messages.add(ChatMessage(role: 'user', content: text));
       _controller.clear();
     });
+    _lastUserMessage = text;
     _scrollToBottom();
 
     try {
       final historyForApi = _messages.length > 1 ? _messages.sublist(0, _messages.length - 1) : <ChatMessage>[];
-      final response = await _chatService.chatWithNPC(
+      final (reply, offline) = await _chatService.chatWithNPC(
         npc: widget.npc,
         player: player,
         worldState: gp.worldState,
@@ -86,24 +89,37 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
 
       if (mounted) {
         setState(() {
-          _messages.add(ChatMessage(role: 'assistant', content: response));
+          // 离线兜底回复带标记：气泡下方会显示「（连接不稳定，已离线回复）」
+          _messages.add(ChatMessage(role: 'assistant', content: reply, offline: offline));
           _isLoading = false;
         });
         _scrollToBottom();
         await _chatService.saveConversation(widget.npc.id, _messages);
         // 等待落盘后再访问 context，期间可能已退出页面，需要重新确认 mounted
         if (mounted) {
-          _updateAffection(text, response);
+          _updateAffection(text, reply);
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _messages.add(ChatMessage(role: 'assistant', content: '（${widget.npc.name}似乎没听清...）'));
+          _messages.add(ChatMessage(
+              role: 'assistant', content: '（${widget.npc.name}似乎没听清...）', offline: true));
           _isLoading = false;
         });
       }
     }
+  }
+
+  /// 重试上一条离线回复：移除最后的离线气泡，原消息重发。
+  void _retryLastReply() {
+    if (_isLoading || _lastUserMessage.isEmpty) return;
+    if (_messages.isNotEmpty && _messages.last.offline) {
+      setState(() => _messages.removeLast());
+    }
+    // 把待重发消息放回输入框走正常发送流程
+    _controller.text = _lastUserMessage;
+    _sendMessage();
   }
 
   void _updateAffection(String userMsg, String npcReply) {
@@ -278,22 +294,52 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isUser
-                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.85)
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: isUser ? null : Border.all(color: Theme.of(context).dividerColor),
-              ),
-              child: Text(
-                message.content,
-                style: TextStyle(
-                  color: isUser ? const Color(0xFF0d1117) : const Color(0xFFE6EDF3),
-                  fontSize: 14,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isUser
+                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.85)
+                        : Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: isUser ? null : Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: Text(
+                    message.content,
+                    style: TextStyle(
+                      color: isUser ? const Color(0xFF0d1117) : const Color(0xFFE6EDF3),
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-              ),
+                // 离线兜底标记 + 一键重试：AI 失败不再静默
+                if (message.offline && !isUser) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: _retryLastReply,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('（连接不稳定，已离线回复）',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF8B949E),
+                                fontStyle: FontStyle.italic)),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.refresh, size: 12, color: Color(0xFFD3A625)),
+                        Text('重试',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (isUser) ...[

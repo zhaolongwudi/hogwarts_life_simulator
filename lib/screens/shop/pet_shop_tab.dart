@@ -96,7 +96,12 @@ class PetShopTab extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(pet.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Flexible(
+                      child: Text(pet.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '${pet.species}',

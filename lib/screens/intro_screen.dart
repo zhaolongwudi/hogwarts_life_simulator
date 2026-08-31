@@ -493,9 +493,10 @@ class _IntroScreenState extends State<IntroScreen> {
         children: [
           TextField(
             controller: _nameController,
+            maxLength: 12,
             decoration: const InputDecoration(
               labelText: '你的名字',
-              hintText: '输入巫师名字...',
+              hintText: '输入巫师名字（12 字以内）...',
               prefixIcon: Icon(Icons.person),
             ),
           ),

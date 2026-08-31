@@ -198,10 +198,18 @@ class WorldTab extends StatelessWidget {
               ),
               if (isEmpty)
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    '暂无',
-                    style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.travel_explore, size: 32, color: Color(0xFF6B7280)),
+                      const SizedBox(height: 8),
+                      Text(
+                        '暂无内容\n多行动，世界会回应你',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12.5, color: Theme.of(context).textTheme.bodyMedium!.color),
+                      ),
+                    ],
                   ),
                 )
               else
@@ -410,16 +418,8 @@ class WorldTab extends StatelessWidget {
     }
   }
 
-  Color _getAffectionColor(int affection) {
-    if (affection <= -30) return const Color(0xFFEF4444);
-    if (affection <= -10) return const Color(0xFFF97316);
-    if (affection <= 10) return const Color(0xFF6B7280);
-    if (affection <= 30) return const Color(0xFF3B82F6);
-    if (affection <= 50) return const Color(0xFF10B981);
-    if (affection <= 70) return const Color(0xFF8B5CF6);
-    if (affection <= 90) return const Color(0xFFEC4899);
-    return const Color(0xFFD946EF);
-  }
+  Color _getAffectionColor(int affection) =>
+      UiHelpers.getAffectionColor(affection);
 
   String _getRelationLabel(NPC npc) {
     if (npc.affection <= -30) return '敌对';

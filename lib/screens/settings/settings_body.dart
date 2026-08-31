@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/ui_helpers.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 import '../../data/provider_defaults.dart';
@@ -485,7 +486,15 @@ class _SettingsBodyState extends State<SettingsBody> {
             title: const Text('清除所有 API Key'),
             subtitle: const Text('删除本地保存的所有 AI 提供商 Key'),
             trailing: const Icon(Icons.delete, color: Colors.red),
-            onTap: () {
+            onTap: () async {
+              final ok = await confirmDangerDialog(
+                context,
+                title: '清除所有 API Key',
+                message: '确定要删除本地保存的所有 AI 提供商 Key 吗？\n'
+                    '清除后 AI 对话将无法使用，需要重新粘贴 Key。',
+                confirmText: '全部清除',
+              );
+              if (!ok) return;
               for (final p in AiProvider.values) {
                 context.read<AppProvider>().clearApiKeyFor(p);
                 _keyControllers[p]!.clear();
