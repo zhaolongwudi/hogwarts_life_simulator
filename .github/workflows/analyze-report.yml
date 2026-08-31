@@ -31,10 +31,14 @@ jobs:
           set +e
           flutter analyze > analyze_out.txt 2>&1
           echo "analyze exit: $?"
-          # 截断到 60000 字符（commit comment 上限 65536），并附总行数
+          # 载体 1：analyze 输出本身 -> annotations（前 45 行）
+          head -45 analyze_out.txt | awk '{gsub(/%/, "%25"); gsub(/\r/, "%0D"); gsub(/\n/, "%0A"); if (length($0) > 900) $0 = substr($0, 1, 900); print "::error::" $0}'
+          # 载体 2：commit comment（其 HTTP 响应也经 annotations 回传以诊断）
           jq -Rs '{body: ("### `flutter analyze` @ " + env.GH_SHA + "\n\n总行数: " + (split("\n") | length) + "\n\n```\n" + .[:60000] + "\n```")}' analyze_out.txt > body.json
-          curl -s -X POST \
+          echo "body.json bytes: $(wc -c < body.json)"
+          RESP=$(curl -s -w '\nHTTP_CODE:%{http_code}' -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$GH_REPO_FULL/commits/$GH_SHA/comments" \
-            -d @body.json | jq -r '.html_url // .message'
+            -d @body.json)
+          echo "$RESP" | awk '{gsub(/%/, "%25"); gsub(/\r/, "%0D"); gsub(/\n/, "%0A"); if (length($0) > 900) $0 = substr($0, 1, 900); print "::error::RESP: " $0}'
