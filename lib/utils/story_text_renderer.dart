@@ -4,6 +4,35 @@ import '../data/item_data.dart';
 import '../data/locations.dart';
 import '../data/npc_data.dart';
 
+// ==================== 小说式段落分类（v3.7 正文段落层次） ====================
+//
+// 正文不再是一整坨 600~800 字：按空行拆段后逐段分类，
+// 叙述/对话/内心独白/时间戳各有独立的视觉形态（缩进、色系、背景）。
+// 分类与 inline 高亮（人名/地点/物品）互不冲突——段落级样式管"这一段
+// 读起来是什么"，inline 高亮管"这个词是什么"。
+//
+// Dart 不支持类内嵌套类型，故枚举与段落类放库顶层，
+// StoryTextRenderer 内通过静态方法消费。
+
+/// 段落类型。
+enum ParagraphKind {
+  /// 普通叙述：首行缩进两全角空格。
+  narration,
+  /// 对话段（含引号台词或「说话人：」开头）：顶格 + 左侧色条衬底。
+  dialogue,
+  /// 内心独白（括号包裹/心想/暗自）：斜体 + 浅紫。
+  innerVoice,
+  /// 时间戳 / 标记段（【时间戳】/📅/⏳ 开头）：金色胶囊。
+  timestamp,
+}
+
+/// 分类后的剧情段落。
+class StoryParagraph {
+  final ParagraphKind kind;
+  final String text;
+  const StoryParagraph(this.kind, this.text);
+}
+
 class StoryTextRenderer {
   // ====== 解析缓存（key=文本内容，避免 hash 冲突） ======
   static final Map<String, List<TextSpan>> _cache = {};
@@ -1184,6 +1213,162 @@ class StoryTextRenderer {
       TextSpan(text: '　　', style: _narrationStyle),
       ...spans,
     ];
+  }
+
+  // ==================== 小说式段落分类：段落级样式与分类逻辑 ====================
+
+  // 内心独白：比正文淡一档的紫，斜体制造"声音在脑内"的层次
+  static const Color _innerVoiceColor = Color(0xFFB8A6E3);
+  static TextStyle _innerVoiceStyle = const TextStyle(
+    fontSize: 15, height: _bodyLineHeight, color: _innerVoiceColor,
+    fontStyle: FontStyle.italic,
+  );
+
+  // 时间戳：与金色主题同族的深金，胶囊内展示
+  static const Color _timestampColor = Color(0xFFE3B341);
+  static TextStyle _timestampStyle = const TextStyle(
+    fontSize: 12.5, height: 1.4, color: _timestampColor,
+    fontWeight: FontWeight.w700, letterSpacing: 0.3,
+  );
+
+  /// 整段括号包裹（（内心独白））的判定。
+  static final RegExp _parenWrappedRe =
+      RegExp(r'^\s*[（(][^（(]*[）)]\s*$');
+
+  /// 内心独白关键词：出现即把整段当作内心活动。
+  static final RegExp _innerVoiceHintRe = RegExp(
+    r'心想|心里想|暗自想|暗自|默默|默念|暗暗|心里说|在心底',
+  );
+
+  /// 时间戳/标记段：以这些标记开头。
+  static final RegExp _timestampStartRe = RegExp(
+    r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)',
+  );
+
+  /// 按空行拆段 + 逐段分类，供段落式 UI 渲染。
+  ///
+  /// 分类口径：
+  ///  - 时间戳段：以【时间戳】/📅/⏳ 等标记开头；
+  ///  - 对话段：段内含成对引号台词（"「『 等），或行首是「说话人：」台词；
+  ///  - 内心独白：整段括号包裹，或含心想/暗自/默默等提示词；
+  ///  - 其余为普通叙述。
+  static List<StoryParagraph> classifyParagraphs(String text) {
+    if (text.isEmpty) return const [];
+    var cleaned = stripInternalMetaMarkers(text);
+    cleaned = _stripOutlineLabels(cleaned);
+    cleaned = _stripChoiceBlocks(cleaned);
+    cleaned = _promoteAffectionLines(cleaned);
+
+    return splitParagraphs(cleaned).map((para) {
+      return StoryParagraph(_classifyParagraph(para), para);
+    }).toList();
+  }
+
+  static ParagraphKind _classifyParagraph(String para) {
+    // 1) 时间戳/标记段：前缀后只跟着短时间文本才算；若后面还拖着正文
+    //    （AI 用单换行把时间戳和正文连在一起），降级为叙述段，避免
+    //    整段被金色胶囊吞掉。
+    if (_timestampStartRe.hasMatch(para)) {
+      final rest = stripTimestampPrefix(para);
+      if (rest.length <= 30 && !rest.contains('。') && !rest.contains('\n')) {
+        return ParagraphKind.timestamp;
+      }
+      return ParagraphKind.narration;
+    }
+    // 2) 整段括号包裹 → 内心独白
+    if (_parenWrappedRe.hasMatch(para)) {
+      return ParagraphKind.innerVoice;
+    }
+    // 3) 内心独白关键词
+    if (_innerVoiceHintRe.hasMatch(para)) {
+      return ParagraphKind.innerVoice;
+    }
+    // 4) 含引号台词 → 对话段
+    if (para.contains('"') || para.contains('「') || para.contains('『') ||
+        para.contains('”') || para.contains('』') || para.contains('“')) {
+      return ParagraphKind.dialogue;
+    }
+    // 5) 行首「说话人：」+ 台词（复用冒号检测口径）
+    for (final line in para.split('\n')) {
+      final colon = _findDialogueColon(line, 0, line.length);
+      if (colon > 0) {
+        final rest = line.substring(colon + 1).trimLeft();
+        if (rest.startsWith('"') || rest.startsWith('「') ||
+            rest.startsWith('“') || rest.startsWith('『')) {
+          return ParagraphKind.dialogue;
+        }
+      }
+    }
+    // 6) 其余
+    return ParagraphKind.narration;
+  }
+
+  /// 去掉段落前的时间戳标记词（【时间戳】/📅/⏳…），留下时间正文。
+  static String stripTimestampPrefix(String para) {
+    return para
+        .replaceFirst(RegExp(r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)\s*'), '')
+        .trim();
+  }
+
+  /// 按段落类型渲染：叙述带首行缩进、对话顶格（内部高亮已染说话人/台词）、
+  /// 内心独白统一浅紫斜体、时间戳金色小字。
+  static List<TextSpan> parseParagraphStyled(
+    StoryParagraph p, {
+    bool indent = true,
+  }) {
+    switch (p.kind) {
+      case ParagraphKind.narration:
+        return parseParagraph(p.text, indent: indent);
+      case ParagraphKind.dialogue:
+        // parse 内部已把「说话人：」染橙、台词染蓝，段落级不再叠色
+        return parse(p.text);
+      case ParagraphKind.innerVoice:
+        // 内心独白整段统一紫斜体：内部的词级颜色（人名/地点）让位，
+        // 保证"这一段是在心里想"的第一眼可读性
+        return [
+          for (final s in parse(p.text))
+            TextSpan(text: s.text, style: _innerVoiceStyle),
+        ];
+      case ParagraphKind.timestamp:
+        return [
+          TextSpan(text: stripTimestampPrefix(p.text), style: _timestampStyle),
+        ];
+    }
+  }
+
+  /// 解析好感变化行（「姓名：+5（说明）」）：说话人/人名照常高亮，
+  /// 数值按正负着色——正绿（#7EE787）负红（#FF7B72），一眼看清谁升温谁降温。
+  static List<TextSpan> parseAffectionLine(String line) {
+    final out = <TextSpan>[];
+    final re = RegExp(r'([+-]\d+)');
+    for (final s in parse(line)) {
+      final text = s.text;
+      if (text == null) {
+        out.add(s);
+        continue;
+      }
+      var last = 0;
+      for (final m in re.allMatches(text)) {
+        if (m.start > last) {
+          out.add(TextSpan(text: text.substring(last, m.start), style: s.style));
+        }
+        final v = int.tryParse(m.group(1)!);
+        out.add(TextSpan(
+          text: m.group(1),
+          style: TextStyle(
+            color: (v ?? 0) >= 0
+                ? const Color(0xFF7EE787)
+                : const Color(0xFFFF7B72),
+            fontWeight: FontWeight.w700,
+          ),
+        ));
+        last = m.end;
+      }
+      if (last < text.length) {
+        out.add(TextSpan(text: text.substring(last), style: s.style));
+      }
+    }
+    return out;
   }
 
   // ==================== 对话气泡支持：叙事分段 ====================

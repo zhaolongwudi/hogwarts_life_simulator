@@ -1366,17 +1366,108 @@ class _NarrativeTabState extends State<NarrativeTab> {
             _buildLegendItem(const Color(0xFF79C0FF), '对话'),
             _buildLegendItem(const Color(0xFF7EE787), '地点'),
             _buildLegendItem(const Color(0xFFD2A8FF), '物品'),
+            _buildLegendItem(const Color(0xFFB8A6E3), '内心独白'),
           ],
         ),
       ),
     );
   }
 
+  /// 正文卡：小说式分段渲染。
+  ///
+  /// 600~800 字的剧情按空行拆段、逐段分类（叙述/对话/内心独白/时间戳），
+  /// 每段有独立的视觉形态：叙述首行缩进、对话段左侧色条衬底、内心独白
+  /// 斜体浅紫、时间戳金色胶囊。段落间距 10px 替代双空行，阅读节奏更清晰。
+  /// 单段短文本（指令结果/通知）保留原整段渲染，不给短内容搭段落舞台。
   Widget _buildBodyCard(String body) {
-    return _buildPlainBodyCard(body);
+    final paragraphs = StoryTextRenderer.classifyParagraphs(body);
+    if (paragraphs.isEmpty) return const SizedBox.shrink();
+    if (paragraphs.length == 1 &&
+        paragraphs.first.kind == ParagraphKind.narration) {
+      return _buildPlainBodyCard(body);
+    }
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: dividerColorOf(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < paragraphs.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            _buildStoryParagraph(paragraphs[i]),
+          ],
+        ],
+      ),
+    );
   }
 
-  /// 原有整段渲染（无对话分段时的回退）
+  /// 单段落渲染：按类型给出不同的视觉形态。
+  Widget _buildStoryParagraph(StoryParagraph p) {
+    switch (p.kind) {
+      case ParagraphKind.dialogue:
+        // 对话段：浅蓝衬底 + 左侧色条（对话蓝的淡化版本），顶格不缩进——
+        // 与叙述段的缩进形成对比锚点，一眼认出"这里有人开口了"
+        return Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF79C0FF).withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              left: BorderSide(
+                color: const Color(0xFF79C0FF).withValues(alpha: 0.45),
+                width: 3,
+              ),
+            ),
+          ),
+          child: ScaledRichText(
+            text: TextSpan(
+              children: StoryTextRenderer.parseParagraphStyled(p,
+                  indent: false),
+            ),
+          ),
+        );
+      case ParagraphKind.innerVoice:
+        // 内心独白：斜体浅紫，跟随系统缩放
+        return ScaledRichText(
+          text: TextSpan(
+            children: StoryTextRenderer.parseParagraphStyled(p),
+          ),
+        );
+      case ParagraphKind.timestamp:
+        // 时间戳：金色胶囊徽章，与主题金同族
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD3A625).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: const Color(0xFFD3A625).withValues(alpha: 0.35),
+              ),
+            ),
+            child: ScaledRichText(
+              text: TextSpan(
+                children: StoryTextRenderer.parseParagraphStyled(p),
+              ),
+            ),
+          ),
+        );
+      case ParagraphKind.narration:
+        // 普通叙述：首行缩进两全角空格
+        return ScaledRichText(
+          text: TextSpan(
+            children: StoryTextRenderer.parseParagraphStyled(p),
+          ),
+        );
+    }
+  }
+
+  /// 原有整段渲染（单段短文本回退）
   Widget _buildPlainBodyCard(String body) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1416,11 +1507,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
           const SizedBox(height: 6),
           ...sections.map((section) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  section,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFD0D7DE),
+                child: ScaledRichText(
+                  text: TextSpan(
+                    children: StoryTextRenderer.parseAffectionLine(section),
                   ),
                 ),
               )),
