@@ -5,6 +5,11 @@
 
 ---
 
+### v3.3.8 — 2026-08-31
+
+**📋 变更说明**
+ci: add manual analyze report workflow (post flutter analyze output as commit comment)
+
 ### v3.3.7 — 2026-08-31
 
 **📋 变更说明**
