@@ -436,6 +436,39 @@ mixin GameRelationsMixin on GameProviderBase {
         break;
       }
     }
+    // ====== 打工限制（防经济通胀 + 需求校验） ======
+    if (!canDoDaily('job')) {
+      notifications.add('💼 今天的零工已经做满了（每日 2 单），明天再来。');
+      return 0;
+    }
+    if (job != null) {
+      final grade = p.grade ?? 1;
+      // 一年级新生：只能干最基础的活（魔法部文员），其他岗位有经验要求
+      final isBasic = job.requirements.contains('基础');
+      if (!worldState.graduated && grade < 2 && !isBasic) {
+        notifications.add('💼 「${job.title}」要求一定经验——一年级新生只能先做基础岗位（魔法部临时文员）。');
+        return 0;
+      }
+      // 需求属性抽查：requirements 里的关键词 → 属性门槛
+      final req = job.requirements;
+      String? needAttr;
+      int needVal = 40;
+      if (req.contains('社交')) {
+        needAttr = 'social';
+      } else if (req.contains('魔法物品') || req.contains('知识')) {
+        needAttr = 'theory';
+      } else if (req.contains('神奇动物')) {
+        needAttr = 'observation';
+      }
+      if (needAttr != null) {
+        final cur = p.attributes[needAttr] ?? 0;
+        if (cur < needVal) {
+          notifications.add('💼 「${job.title}」需要${needVal}点${needAttr == 'social' ? '社交' : needAttr == 'theory' ? '魔法知识' : '观察力'}（当前 $cur）。');
+          return 0;
+        }
+      }
+    }
+    recordDailyActivity('job');
     final pay = job?.pay ?? 10;
     final energyCost = job?.energyCost ?? 2;
     final minutes = job?.minutes ?? 120;
@@ -492,7 +525,8 @@ mixin GameRelationsMixin on GameProviderBase {
         '【人生目标】${goalSteeringLine(p.currentGoal).isEmpty ? '未设定' : goalSteeringLine(p.currentGoal)}\n'
         '【声望】$repSummary\n'
         '【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}\n'
-        '【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}\n';
+        '【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}\n'
+        '${p.isDead ? '【结局】已于 ${p.deadOn ?? '未知时间'} 去世（${p.deathCause ?? '原因不明'}）\n' : ''}';
 
     // 回望：把七年编成一篇能读的文章。
     //
@@ -521,6 +555,8 @@ mixin GameRelationsMixin on GameProviderBase {
   【人生目标】${p.currentGoal ?? '未设定'}（评价：是否实现、以怎样的方式实现或错失）
 
   【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}
+
+  【结局状态】${p.isDead ? '主角已经去世：${p.deadOn}，${p.deathCause}。终章必须如实书写这场死亡，把它作为人生的句点。' : '主角仍在人间。'}${rep.dark >= 70 && rep.moral < 35 ? '【堕落】主角的黑魔法声望压过了道德底线，终章应诚实呈现"成为自己曾经害怕的人"的代价。' : ''}
 
   【声望】$repSummary
   【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}
@@ -779,8 +815,10 @@ mixin GameRelationsMixin on GameProviderBase {
     if (p == null) return;
     if (p.rumors.contains(text)) return;
     p.rumors.insert(0, text);
+    p.rumorDates[text] = worldState.time.absoluteDayIndex;
     if (p.rumors.length > 20) {
       p.rumors.removeRange(20, p.rumors.length);
+      p.rumorDates.removeWhere((k, _) => !p.rumors.contains(k));
     }
   }
 
@@ -803,6 +841,23 @@ mixin GameRelationsMixin on GameProviderBase {
   void classroomInteraction() {
     final p = player;
     if (p == null) return;
+    // 每日上限 + 成本：课堂互动有实打实的收益（声望/熟练度/好感），
+    // 不限次数就能一天刷满——和决斗/禁林一样按天封顶。
+    if (!canDoDaily('classroom')) {
+      currentNarrative = '今天的课已经上得够多了。你的笔记写满了三页羊皮纸，'
+          '再待在教室里也只是让墨水瓶空得更快。\n\n（课堂互动每日上限 3 次，明天再来）';
+      choices = [GameChoice(text: '返回', action: '继续')];
+      return;
+    }
+    if (p.energy < 10) {
+      currentNarrative = '你太累了，连魔杖都快握不稳——这种状态上课只会被教授点名批评。'
+          '先休息恢复精力吧。\n\n（精力不足 10）';
+      choices = [GameChoice(text: '返回', action: '继续')];
+      return;
+    }
+    recordDailyActivity('classroom');
+    p.energy = (p.energy - 8).clamp(0, 100);
+    advanceTimeForAction('上课');
     final roll = random.nextInt(100);
     String result;
 

@@ -959,6 +959,18 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
       CommandDef(
+        primary: '职业',
+        aliases: ['工作', '就职'],
+        group: '世界&结局',
+        helpText: '毕业后正式职业（/职业 列表｜选择 <职业名>｜状态｜辞职）',
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m.handleCareerCommand(ctx.parts);
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
         primary: '计划',
         aliases: ['周计划', '这周'],
         group: '学业&成长',

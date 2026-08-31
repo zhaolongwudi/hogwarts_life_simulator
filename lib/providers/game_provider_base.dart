@@ -272,6 +272,14 @@ abstract class GameProviderBase extends ChangeNotifier {
   void generateNewNPC();
   /// 处理 /阿尼马格斯 子命令（实现在 GameAnimagusMixin）。
   void handleAnimagusCommand(List<String> parts);
+  /// 玩家死亡判定（实现在 GameDeathMixin）：health ≤ 0 时触发死亡终章。
+  void checkPlayerDeath(String cause);
+  /// 处理 /职业 子命令（实现在 GameCareerMixin）。
+  void handleCareerCommand(List<String> parts);
+  /// 职业年结（实现在 GameCareerMixin）：每年九月发薪+晋升。
+  void settleCareerYear(int yearsPassed);
+  /// 死亡后拦截普通行动（实现在 GameDeathMixin），返回 true 表示已拦截。
+  bool blockActionIfDead();
   String generateSortingNarrative(String house);
   void handleLetterCommand(List<String> parts);
   bool handleLocalCommand(String command);

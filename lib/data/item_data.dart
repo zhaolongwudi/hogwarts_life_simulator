@@ -154,6 +154,8 @@ const List<ItemDef> kItemCatalog = [
     type: '道具',
     price: 15,
     desc: '能粘住任何东西的胶带',
+    usable: true,
+    effect: {'spirit': 3},
   ),
   ItemDef(
     id: 'telescope',
@@ -161,6 +163,8 @@ const List<ItemDef> kItemCatalog = [
     type: '道具',
     price: 22,
     desc: '天文课必备，也能看见远处的人影',
+    usable: true,
+    effect: {'observation': 2, 'theory': 1},
   ),
   ItemDef(
     id: 'brass_scales',
@@ -168,6 +172,8 @@ const List<ItemDef> kItemCatalog = [
     type: '道具',
     price: 18,
     desc: '魔药称量用，做工精致',
+    usable: true,
+    effect: {'potions': 1, 'observation': 1},
   ),
   // ===== 装备 =====
   ItemDef(

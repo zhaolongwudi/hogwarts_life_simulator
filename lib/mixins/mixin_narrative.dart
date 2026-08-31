@@ -45,6 +45,18 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
 
+    // 死亡后拦截：只剩查看终章/回望/引导三条路（/结局 与 /状态 放行，
+    // 其余全部挡下；blockActionIfDead 已写好引导文案）
+    if (blockActionIfDead()) {
+      final a = choice.action.trim();
+      if (a.startsWith('/结局') || a.startsWith('/状态') || a.startsWith('/传承')) {
+        // 放行：这些是死亡后仍可查看的指令
+      } else {
+        notifyListeners();
+        return;
+      }
+    }
+
     // 并发守卫。UI 侧三处入口是在 build 时把 isLoading 固化进 onTap 的，
     // 而 onTap 要从「可点」变成「不可点」得等下一帧重建——同一帧内连点两下
     // 就会进来两次。后果不是丢一次请求那么简单：turnCount +2、

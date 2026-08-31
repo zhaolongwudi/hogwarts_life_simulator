@@ -700,8 +700,8 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
       if (extractedChoices.isNotEmpty) {
         choices.addAll(extractedChoices);
       } else {
-        // 最后才使用兜底选项（但现在也基于剧情生成，而不是静态位置选项）
-        choices.addAll(generateContextualFallbackChoices());
+        // 最后才使用兜底选项（统一走基于剧情末尾的承接池，不再用旧静态/关键词版）
+        choices.addAll(buildFallbackChoices(currentNarrative));
       }
     }
     // 避免出现过多选项：裁剪到 4 个
@@ -816,16 +816,37 @@ mixin GameResponseMixin on GameProviderBase, GameResponseChoiceMixin, GameRespon
     final location = worldState.currentLocation ?? '霍格沃茨';
     final time = worldState.timestamp;
     final weather = worldState.weather ?? '晴朗';
+    final grade = p.grade ?? 1;
 
-    final fallbacks = [
-      '📅 $time\n\n你在$location，感受着魔法世界的脉搏。周围的一切都在等待你的下一步行动。',
-      '📅 $time\n\n$location的空气中弥漫着魔法的气息。$weather的天气让人想继续探索这个奇妙的世界。',
-      '📅 $time\n\n作为一名${p.grade}年级的学生，你在$location经历着霍格沃茨的又一天。每件事都可能改变故事的走向。',
-      '📅 $time\n\n${p.name}，你身处$location。接下来会发生什么，完全取决于你的选择。',
+    // 事件种子：AI 失败时给离线叙事一点"正在发生的事"，而不是干巴巴的地点介绍。
+    // 与天气/环境结合，让同一地点不同回合也有差异。
+    final eventSeeds = <String>[
+      '走廊尽头传来一阵急促的脚步声——有同学正抱着厚厚一摞书跑向教室，其中两本摇摇欲坠。',
+      '一只猫头鹰从你头顶掠过，丢下一封信，又振翅消失在窗外的暮色里。',
+      '皮皮鬼从天花板上倒挂下来，冲你做了个鬼脸，又消失在墙里——他今天心情不错。',
+      '远处的礼堂飘来南瓜汁和烤面包的香气，提醒你差不多该去吃饭了。',
+      '有几位同学聚在走廊拐角低声讨论着什么，看见你走近，声音自然地小了下去。',
+      '窗外掠过一把飞天扫帚——是有人在练习，动作还不太熟练，几次差点撞上塔楼。',
+      '墙上的画像们正为某个话题争论不休，一位戴帽子的老绅士对你挤了挤眼。',
+      '你注意到$location的一角有些异样——某个平时不会注意到的细节，似乎和记忆里不太一样。',
     ];
 
-    final idx = turnCount % fallbacks.length;
-    return fallbacks[idx];
+    final frames = <String>[
+      '📅 $time\n\n你站在$location。$weather的天气里，魔法世界的脉搏平稳地跳动着。\n\n${_pickFallbackEvent(eventSeeds)}\n\n接下来，你打算做些什么？',
+      '📅 $time\n\n$location的日常在继续：上课、聊天、追逐、争吵——这就是霍格沃茨的又一天。\n\n${_pickFallbackEvent(eventSeeds)}\n\n你的选择，会把它推向不同的方向。',
+      '📅 $time\n\n作为${grade}年级的学生，你已经熟悉了这里的每一条走廊、每一幅会说话的画像。但今天似乎有些不同。\n\n${_pickFallbackEvent(eventSeeds)}\n\n你决定——',
+      '📅 $time\n\n${p.name}，你身处$location。魔法世界里没有真正静止的时刻，而你就是此刻故事的中心。\n\n${_pickFallbackEvent(eventSeeds)}',
+    ];
+
+    final idx = turnCount % frames.length;
+    return frames[idx];
+  }
+
+  /// 从事件种子池里取一条，尽量不与上一轮重复。
+  String _pickFallbackEvent(List<String> seeds) {
+    if (seeds.isEmpty) return '';
+    // 简单轮换：turnCount 让种子自然错开，避免连续同一条
+    return seeds[(turnCount + random.nextInt(seeds.length)) % seeds.length];
   }
 
   List<GameChoice> generateFallbackChoices() {

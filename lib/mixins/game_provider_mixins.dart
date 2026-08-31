@@ -14,3 +14,5 @@ export 'mixin_relations.dart';
 export 'mixin_systems.dart';
 export 'mixin_play.dart';
 export 'mixin_animagus.dart';
+export 'mixin_death.dart';
+export 'mixin_career.dart';

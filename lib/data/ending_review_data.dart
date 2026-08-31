@@ -92,6 +92,9 @@ class EndingFacts {
   final int dark;
   final int leadership;
 
+  /// 伤疤清单（scar_data 的 Scar）。终章里会有一节「身上的痕迹」。
+  final List<String> scars;
+
   const EndingFacts({
     required this.playerName,
     required this.house,
@@ -111,6 +114,7 @@ class EndingFacts {
     required this.academic,
     required this.dark,
     required this.leadership,
+    this.scars = const [],
   });
 }
 
@@ -198,6 +202,10 @@ class EndingEpithet {
 /// 按顺序匹配，命中第一条就用它。
 /// 顺序即优先级——越靠前的越特指。
 final List<EndingEpithet> kEndingEpithets = [
+  // 被黑暗吞没的人——框架2 §118 坏结局三：成为自己曾经害怕的人
+  // 黑魔法声望压过道德底线的人，说什么别的都轻了
+  EndingEpithet('一个最后被黑暗吞没的人',
+      (f) => f.dark >= 70 && f.moral < 35),
   // 改写过世界的人，说什么别的都轻了
   EndingEpithet('一个动过世界的人', (f) => f.worldLineDeviation >= 0.40),
   EndingEpithet('一个在关键时刻站出来过的人',
@@ -249,6 +257,18 @@ EndingReview buildEndingReview(EndingFacts f) {
       epithetFor(f),
     ],
   ));
+
+  // ——— 一·五、身上的痕迹 ———
+  // 伤疤是七年的印记：有伤疤说明你经历过什么，而且活了下来。
+  if (f.scars.isNotEmpty) {
+    sections.add((
+      '身上的痕迹',
+      [
+        '那些没有愈合、也不该被忘记的印记：',
+        ...f.scars.map((s) => '· $s'),
+      ],
+    ));
+  }
 
   // ——— 二、那些人 ———
   final allies = closestAllies(f.affections);

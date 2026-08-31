@@ -211,6 +211,10 @@ mixin GameSystemsMixin on GameProviderBase {
     'duel': 3,
     'quidditch': 2,
     'forest': 4,
+    // 课堂互动有属性/声望收益：不限次数会击穿成长曲线（一天刷满全属性）。
+    'classroom': 3,
+    // 打工是稳定印钞机：每天最多两单，经济才不会被通胀。
+    'job': 2,
     // 练咒是「优等生」成就（任一学业熟练度 ≥ 90）唯一稳定的熟练度来源，
     // 不设限的话一个下午就能把某门课顶到 90；设 3 次则七年的学业节奏刚好。
     'spell': 3,
@@ -468,8 +472,9 @@ mixin GameSystemsMixin on GameProviderBase {
       final t = worldState.time;
       // 每次最多走到次月 1 日：保证 _checkMonthlyEvolution 每个月都能触发
       final step = min(remaining, _daysLeftInMonth(t.year, t.month, t.day) + 1);
-      final isLastStep = step >= remaining;
-      _advanceWorldClock(0, days: step, fireAnchors: isLastStep);
+      // 每一步都查锚点：只查末步会把跨过的整月锚点整个吞掉
+      // （月份已经过去，错过即错过——但至少要触发"本月该发生的事"）。
+      _advanceWorldClock(0, days: step, fireAnchors: true);
       remaining -= step;
     }
 
@@ -566,10 +571,11 @@ mixin GameSystemsMixin on GameProviderBase {
     final yearsPassed = newStart - lastSchoolYearStart;
     lastSchoolYearStart = newStart;
 
-    // 玩家已毕业则不再推进年级，但教职要照常走年结：
+    // 玩家已毕业则不再推进年级，但教职与正式职业要照常走年结：
     // 任教年限、年薪、晋升考核都挂在九月这个节点上。
     if (worldState.graduated) {
       _settleFacultyYear(yearsPassed);
+      settleCareerYear(yearsPassed);
       updateAcademicYearLabel();
       return;
     }
@@ -666,6 +672,18 @@ mixin GameSystemsMixin on GameProviderBase {
 
     worldState.addNarrativeEvent('🏫 ${worldState.time.year}年9月，你升入${newGrade}年级', turn: turnCount);
     worldState.addMarker('⏳新学年');
+    // 学年子目标：从 SubGoal 池抽一条作为本学年的记忆锚点（此前整个池是死数据）。
+    // 注入 AI 指令让这一年有方向感，但不强制——玩家仍可自由行动。
+    try {
+      final sub = selectYearGoal(newGrade, seed: turnCount);
+      if (sub.steeringHint.isNotEmpty) {
+        pendingAnchorDirective = (pendingAnchorDirective ?? '')
+            .isEmpty ? sub.steeringHint : '$pendingAnchorDirective\n${sub.steeringHint}';
+        notifications.add('🎯 本学年方向：${sub.label}');
+      }
+    } catch (_) {
+      // 子目标池为空/异常时静默降级，不影响学年推进
+    }
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
     debugPrint('🎓 学年推进：玩家升入${newGrade}年级');
   }
@@ -730,6 +748,8 @@ mixin GameSystemsMixin on GameProviderBase {
     debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
     _graduationSettlement();
+    // 职业引导：毕业不是结局——用成绩与名声去叩开职业的大门
+    notifications.add('💼 毕业不是结局：/职业 列表 看看你七年攒下的成绩能叩开哪扇门');
   }
 
   // ==================== 毕业结算系统 ====================
@@ -806,8 +826,27 @@ mixin GameSystemsMixin on GameProviderBase {
       ..writeln('· 深厚羁绊：$deepCount 人')
       ..writeln('· 世界线变动率：${(p.worldLineDeviation * 100).toStringAsFixed(1)}%')
       ..writeln('· 成就：${p.achievements.length} / ${achievementCatalog.length}')
-      ..writeln()
-      ..writeln('输入 /结局 可生成完整终章评语，或继续你的毕业后人生。');
+      ..writeln();
+
+    // 学业总评：与官方毕业期望对比（growthExpectation 此前从未被读过）
+    buf.writeln('【学业总评】');
+    var metCount = 0;
+    var totalCount = 0;
+    for (final e in Balance.growthExpectation.entries) {
+      // 'charms' 是课程键，对应属性键 spell_understanding
+      final attrKey = e.key == 'charms' ? 'spell_understanding' : e.key;
+      final cur = p.attributes[attrKey] ?? 50;
+      final exp = e.value['graduate'] ?? 50;
+      totalCount++;
+      final ok = cur >= exp;
+      if (ok) metCount++;
+      buf.writeln('  ${ok ? '✅' : '▫️'} ${attrLabel(attrKey)}：$cur（毕业期望 $exp）');
+    }
+    buf.writeln(metCount >= totalCount * 0.7
+        ? '\n你拿着这份成绩单，可以理直气壮地叩开大多数职业的大门。'
+        : '\n部分科目未达到毕业期望——但人生不只有成绩单，你还有别的路。');
+    buf.writeln();
+    buf.writeln('输入 /结局 可生成完整终章评语，或继续你的毕业后人生。');
 
     // 回望：把七年编成一篇能读的文章。
     //
@@ -933,6 +972,10 @@ mixin GameSystemsMixin on GameProviderBase {
       witnessedUnchanged: witnessedEchoesOf(worldState.causalChoices),
       deepBonds: affections.values.where((v) => v >= 50).length,
       wasFaculty: p.facultyRankId != null,
+      scars: p.scars.map((sc) {
+        final d = sc.def;
+        return d.aftermath.isEmpty ? d.label : '${d.label}（${d.aftermath}）';
+      }).toList(),
       moral: rep.moral,
       combat: rep.combat,
       academic: rep.academic,
@@ -978,8 +1021,18 @@ mixin GameSystemsMixin on GameProviderBase {
     if (worldState.graduated) return; // 毕业后不再触发校内锚点
 
     final t = worldState.time;
-    final fired = worldState.firedAnchorIds.toSet();
     final grade = p.grade ?? 1;
+    // common 锚点（era==null）按学年触发：fired 记录带 '@年级' 后缀，
+    // 这样开学宴/万圣节这类事件每年都能发生一次，而不是七年只响一次。
+    // 老存档里的裸 id 仍然有效（兼容）。
+    final rawFired = worldState.firedAnchorIds;
+    final fired = <String>{...rawFired};
+    for (final id in List.of(rawFired)) {
+      final at = id.indexOf('@');
+      if (at > 0 && id.substring(at + 1) == '$grade') {
+        fired.add(id.substring(0, at));
+      }
+    }
 
     final due = anchorsFor(
       month: t.month,
@@ -1022,7 +1075,9 @@ mixin GameSystemsMixin on GameProviderBase {
 
     // 每个回合最多注入一个锚点，避免信息过载；其余顺延
     final anchor = due.first;
-    worldState.firedAnchorIds.add(anchor.id);
+    // common 锚点（era==null）按学年记录，时代锚点全局记录
+    final anchorKey = anchor.era == null ? '${anchor.id}@$grade' : anchor.id;
+    worldState.firedAnchorIds.add(anchorKey);
     pendingAnchorDirective = anchor.directive;
     notifications.add('📜 ${anchor.title}');
     worldState.addNarrativeEvent('📜 ${anchor.title}', turn: turnCount);
@@ -1702,6 +1757,26 @@ mixin GameSystemsMixin on GameProviderBase {
       final text = '💨 有些日子没和 $shown$more 联系了，彼此似乎都生分了一点';
       notifications.add(text);
       worldState.addNarrativeEvent(text, turn: turnCount);
+    }
+
+    // 传闻时间衰减：超过 30 天的旧闻自动淡出（舆论不是永久档案）
+    _decayRumors();
+  }
+
+  /// 传闻衰减：旧闻（超过 30 个游戏日）从传闻列表里淡出。
+  void _decayRumors() {
+    final p = player;
+    if (p == null || p.rumors.isEmpty) return;
+    final today = worldState.time.absoluteDayIndex;
+    final before = p.rumors.length;
+    p.rumors.removeWhere((r) {
+      final d = p.rumorDates[r];
+      if (d == null) return false; // 老存档无日期：保留
+      return today - d > 30;
+    });
+    if (p.rumors.length != before) {
+      p.rumorDates.removeWhere((k, _) => !p.rumors.contains(k));
+      debugPrint('📰 传闻衰减：${before - p.rumors.length} 条旧闻淡出');
     }
   }
 
@@ -2512,7 +2587,7 @@ mixin GameSystemsMixin on GameProviderBase {
     }
 
     // 完整性兜底：只在空的时候补默认
-    if (choices.isEmpty) choices = generateFallbackChoices();
+    if (choices.isEmpty) choices = buildFallbackChoices(currentNarrative);
     if (choices.length > 4) choices = choices.sublist(0, 4);
     if (currentNarrative.isEmpty) currentNarrative = generateFallbackNarrative();
 

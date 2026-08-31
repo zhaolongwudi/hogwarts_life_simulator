@@ -9,6 +9,8 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/animagus_data.dart';
+import 'package:hogwarts_life_simulator/data/career_data.dart';
+import 'package:hogwarts_life_simulator/data/ending_review_data.dart';
 import 'package:hogwarts_life_simulator/data/exam_data.dart';
 import 'package:hogwarts_life_simulator/data/patronus_data.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
@@ -241,6 +243,106 @@ void main() {
 
       final oldJson = {'id': 'n2', 'name': '旧NPC'};
       expect(NPC.fromJson(oldJson).affectionLocked, isFalse);
+    });
+
+    test('死亡/职业/传闻字段存档往返', () {
+      final p = Player(
+        name: '测试',
+        birthYear: '1980',
+        bloodType: 'pureblood',
+        birthLocation: '伦敦',
+        isDead: true,
+        deathCause: '决斗落败',
+        deadOn: '1991年9月1日',
+        endingType: 'death',
+        careerId: 'auror',
+        careerRankIndex: 2,
+        careerYears: 5,
+        rumors: ['旧闻'],
+        rumorDates: {'旧闻': 100},
+      );
+      final restored = Player.fromJson(p.toJson());
+      expect(restored.isDead, isTrue);
+      expect(restored.deathCause, '决斗落败');
+      expect(restored.endingType, 'death');
+      expect(restored.careerId, 'auror');
+      expect(restored.careerRankIndex, 2);
+      expect(restored.careerYears, 5);
+      expect(restored.rumorDates['旧闻'], 100);
+      // 老存档缺省
+      final old = Player.fromJson({'id': 'x', 'name': '旧', 'birth_year': '1980', 'blood_status': 'muggleborn', 'birth_location': '伦敦'});
+      expect(old.isDead, isFalse);
+      expect(old.careerId, isNull);
+      expect(old.rumorDates, isEmpty);
+    });
+  });
+
+  // ------------------------------------------------------------ 职业系统
+  group('毕业后职业系统（框架2 §95/§96）', () {
+    test('职业门槛：达标可入职，未达标被拦', () {
+      final auror = careerById('auror')!;
+      // 合格的傲罗：DDA 75 + 战斗声望 65 + OWL DDA=E、魔药=A + NEWT 存在
+      final ok = auror.eligible(
+        attributes: {'dda': 75, 'potions': 65},
+        owlGrades: {'dda': 'E', 'potions': 'A'},
+        newtGrades: {'dda': 'E'},
+        repValue: 65,
+      );
+      expect(ok, isTrue);
+      // 不合格：DDA 只有 55
+      final bad = auror.eligible(
+        attributes: {'dda': 55, 'potions': 65},
+        owlGrades: {'dda': 'E', 'potions': 'A'},
+        newtGrades: {'dda': 'E'},
+        repValue: 65,
+      );
+      expect(bad, isFalse);
+      // 无 NEWT 也不行（requiresNewt）
+      final noNewt = auror.eligible(
+        attributes: {'dda': 75, 'potions': 65},
+        owlGrades: {'dda': 'E', 'potions': 'A'},
+        newtGrades: const {},
+        repValue: 65,
+      );
+      expect(noNewt, isFalse);
+    });
+
+    test('职级年薪单调上升', () {
+      final auror = careerById('auror')!;
+      final p0 = auror.payAt(0);
+      final pLast = auror.payAt(auror.ranks.length - 1);
+      expect(pLast, greaterThan(p0));
+      expect(p0, auror.startPay);
+    });
+
+    test('职业查表', () {
+      expect(careerById('ordinary')?.name, '普通巫师');
+      expect(careerByName('傲罗')?.id, 'auror');
+      expect(careerByName('不存在的职业'), isNull);
+    });
+
+    test('黑化结局定性：dark 高且道德低 → 被黑暗吞没', () {
+      final f = EndingFacts(
+        playerName: '测试',
+        house: '斯莱特林',
+        bloodLabel: '纯血',
+        keyFacts: const [],
+        openLoops: const [],
+        worldEvents: const [],
+        affections: const {},
+        rivals: const [],
+        worldLineDeviation: 0.1,
+        rewrittenEchoes: const [],
+        witnessedUnchanged: const [],
+        deepBonds: 0,
+        wasFaculty: false,
+        moral: 20,
+        combat: 60,
+        academic: 40,
+        dark: 80,
+        leadership: 30,
+      );
+      expect(epithetFor(f), contains('黑暗'));
     });
   });
 }

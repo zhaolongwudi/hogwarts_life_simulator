@@ -106,6 +106,8 @@ class Player {
   final List<String> bloodRelatives; // 血缘亲属NPC名
   final List<Letter> letters; // 信件
   final List<String> rumors; // 舆论传闻
+  /// 传闻 → 首次出现的绝对天数（用于时间衰减，30 天以上的旧闻自动淡出）。
+  final Map<String, int> rumorDates;
   final List<ForumPost> forumPosts; // 玩家在魔法论坛发的帖（含点赞/回复计数）
   final List<String> traits; // 开局特质 id 列表
 
@@ -138,6 +140,24 @@ class Player {
 
   /// 守护神形态（框架2 第66条）。null = 尚未唤醒。
   String? patronus;
+
+  // ====== 玩家死亡与结局（框架2 §74/§118 三类坏结局） ======
+  /// 是否已死亡。死亡后游戏进入终章流程（不可复活）。
+  bool isDead;
+  /// 死亡原因（叙事友好文案）。
+  String? deathCause;
+  /// 死亡时的游戏内日期文本。
+  String? deadOn;
+  /// 结局类型：'normal'（正常终章）/ 'death'（死亡）/ 'imprisoned'（自由尽失）/ 'corrupted'（黑化）。
+  String endingType;
+
+  // ====== 毕业后正式职业（lib/data/career_data.dart） ======
+  /// 当前职业线 id（null = 未入职，仍可打工）。
+  String? careerId;
+  /// 职级下标（0 = 最低级）。
+  int careerRankIndex;
+  /// 入职以来的服务年数。
+  int careerYears;
 
   // ====== 新玩法扩展字段（v1.10） ======
   final Map<String, String> equipped; // 装备槽 → 物品名（robe/hat/broom/amulet）
@@ -217,6 +237,7 @@ class Player {
     List<String>? bloodRelatives,
     List<Letter>? letters,
     List<String>? rumors,
+    Map<String, int>? rumorDates,
     List<ForumPost>? forumPosts,
     List<String>? traits,
     Map<String, String>? equipped,
@@ -236,6 +257,13 @@ class Player {
     this.cheatOmniscient = false,
     this.animagus,
     this.patronus,
+    this.isDead = false,
+    this.deathCause,
+    this.deadOn,
+    this.endingType = 'normal',
+    this.careerId,
+    this.careerRankIndex = 0,
+    this.careerYears = 0,
     Map<String, String>? cheatOrientationBackup,
     List<String>? cheatModifiedPairs,
     Map<String, Map<String, String>>? examRecords,
@@ -262,6 +290,7 @@ class Player {
         bloodRelatives = List<String>.from(bloodRelatives ?? const []),
         letters = List<Letter>.from(letters ?? const []),
         rumors = List<String>.from(rumors ?? const []),
+        rumorDates = Map<String, int>.from(rumorDates ?? const {}),
         forumPosts = List<ForumPost>.from(forumPosts ?? const []),
         traits = List<String>.from(traits ?? const []),
         jobHistory = List<String>.from(jobHistory ?? const []),
@@ -380,6 +409,7 @@ class Player {
         'blood_relatives': bloodRelatives,
         'letters': letters.map((e) => e.toJson()).toList(),
         'rumors': rumors,
+        'rumor_dates': rumorDates,
         'forum_posts': forumPosts.map((e) => e.toJson()).toList(),
         'traits': traits,
         'political_tendency': politicalTendency,
@@ -400,6 +430,13 @@ class Player {
         'cheat_omniscient': cheatOmniscient,
         'animagus': animagus,
         'patronus': patronus,
+        'is_dead': isDead,
+        'death_cause': deathCause,
+        'dead_on': deadOn,
+        'ending_type': endingType,
+        'career_id': careerId,
+        'career_rank_index': careerRankIndex,
+        'career_years': careerYears,
         'cheat_orientation_backup': cheatOrientationBackup,
         'cheat_modified_pairs': cheatModifiedPairs,
         'exam_records': examRecords,
@@ -496,6 +533,8 @@ class Player {
                 .toList() ??
             [],
         rumors: List<String>.from(json['rumors'] ?? []),
+        rumorDates: Map<String, int>.from(
+            (json['rumor_dates'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, (v as num).toInt())) ?? const {}),
         forumPosts: (json['forum_posts'] as List<dynamic>? ?? [])
             .whereType<Map<String, dynamic>>()
             .map(ForumPost.fromJson)
@@ -522,6 +561,13 @@ class Player {
         cheatOmniscient: json['cheat_omniscient'] ?? false,
         animagus: (json['animagus'] as Map<String, dynamic>?)?.cast<String, dynamic>(),
         patronus: json['patronus'] as String?,
+        isDead: json['is_dead'] ?? false,
+        deathCause: json['death_cause'] as String?,
+        deadOn: json['dead_on'] as String?,
+        endingType: json['ending_type'] ?? 'normal',
+        careerId: json['career_id'] as String?,
+        careerRankIndex: json['career_rank_index'] ?? 0,
+        careerYears: json['career_years'] ?? 0,
         cheatOrientationBackup: Map<String, String>.from(
             (json['cheat_orientation_backup'] as Map<String, dynamic>?) ?? const {}),
         cheatModifiedPairs: List<String>.from(json['cheat_modified_pairs'] ?? const []),

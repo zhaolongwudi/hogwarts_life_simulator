@@ -34,7 +34,9 @@ class GameProvider extends GameProviderBase
         GameRelationsMixin,
         GameSystemsMixin,
         GamePlayMixin,
-        GameAnimagusMixin {
+        GameAnimagusMixin,
+        GameDeathMixin,
+        GameCareerMixin {
   @override
   bool markScanIfNew(String narrative) {
     final h = narrative.hashCode;

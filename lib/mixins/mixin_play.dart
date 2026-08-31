@@ -23,6 +23,8 @@ import '../providers/game_provider_base.dart';
 /// 禁林探险 / 魔法生物图鉴 / 支线委托板 / 学院杯积分。
 /// 全部本地判定、零 token 消耗，叙事结果走 currentNarrative + choices 通道。
 mixin GamePlayMixin on GameProviderBase {
+  /// 最近一次伤害结算可能致死的候选死因；_finishLocal 统一检查。
+  String _pendingDeathCause = '';
   /// 已被击败过的 NPC id（打赢只加一次好感，避免反复刷同一个对手）
   final Set<String> _duelBeatenNpcIds = {};
 
@@ -31,6 +33,12 @@ mixin GamePlayMixin on GameProviderBase {
   void _finishLocal(String narrative) {
     currentNarrative = narrative;
     choices = [GameChoice(text: '返回', action: '继续')];
+    // 本地结算路径的致命伤害在这里统一判定（会覆写为死亡终章）
+    if (_pendingDeathCause.isNotEmpty) {
+      final cause = _pendingDeathCause;
+      _pendingDeathCause = '';
+      checkPlayerDeath(cause);
+    }
     notifyListeners();
     unawaited(autoSave());
   }
@@ -1023,7 +1031,8 @@ mixin GamePlayMixin on GameProviderBase {
       }
       unlockAchievement('first_duel_win');
     } else {
-      p.health = (p.health - 12 - random.nextInt(14)).clamp(1, 100);
+      p.health = (p.health - 12 - random.nextInt(14)).clamp(0, 100);
+      _pendingDeathCause = '决斗落败，伤势过重';
       p.playerReputation.add('combat', 2 + random.nextInt(3));
       buf.writeln('\n你被${opponent.name}的咒语击中，好在只是擦伤。对方收杖向你点了点头。');
       buf.writeln('落败：战斗声望 +2~4 · 你受了些轻伤（生命 ${p.health}/100）');
@@ -1152,7 +1161,8 @@ mixin GamePlayMixin on GameProviderBase {
             }
             _progressQuest('defeat', creature.name, 1);
           } else {
-            p.health = (p.health - 15 - 5 * creature.danger).clamp(1, 100);
+            p.health = (p.health - 15 - 5 * creature.danger).clamp(0, 100);
+            _pendingDeathCause = '禁林中${creature.name}的致命袭击';
             buf.writeln('\n你没能拦住${creature.name}的冲击，被重重撞飞。'
                 '好在它没有追杀，你拖着受伤的身体逃回了城堡。'
                 '（生命 ${p.health}/100，可去校医院用白鲜香精治疗）');
