@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.6.0 — 2026-08-31
+
+**📋 变更说明**
+fix(ui): 剧情面板排版克制化 + 选项移到正文末 + 崩溃兜底——提升阅读空间与稳定性
+
+P0 稳定性（崩溃 + 转圈卡死）：
+- mixin_narrative: 主叙事 try/catch 加 finally 兜底，确保 isLoading 必重置
+  （修复 AI 完成但 UI 仍转圈的卡死：catch 内部抛二次异常或 setState 顺序异常时不再泄漏）
+- main.dart: 包 runZonedGuarded 接住 FlutterError.onError 还未安装前的异常
+  以及 isolate 层 unhandled async error
+
 ### v3.5.9 — 2026-08-31
 
 **📋 变更说明**
