@@ -1,0 +1,40 @@
+name: Analyze Report
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze and report
+        env:
+          GH_SHA: ${{ github.sha }}
+          GH_REPO_FULL: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          flutter analyze > analyze_out.txt 2>&1
+          echo "analyze exit: $?"
+          # 截断到 60000 字符（commit comment 上限 65536），并附总行数
+          jq -Rs '{body: ("### `flutter analyze` @ " + env.GH_SHA + "\n\n总行数: " + (split("\n") | length) + "\n\n```\n" + .[:60000] + "\n```")}' analyze_out.txt > body.json
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GH_REPO_FULL/commits/$GH_SHA/comments" \
+            -d @body.json | jq -r '.html_url // .message'
