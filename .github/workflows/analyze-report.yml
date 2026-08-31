@@ -31,8 +31,8 @@ jobs:
           set +e
           flutter analyze > analyze_out.txt 2>&1
           echo "analyze exit: $?"
-          # 载体 1：analyze 输出本身 -> annotations（前 45 行）
-          head -45 analyze_out.txt | awk '{gsub(/%/, "%25"); gsub(/\r/, "%0D"); gsub(/\n/, "%0A"); if (length($0) > 900) $0 = substr($0, 1, 900); print "::error::" $0}'
+          # 载体 1：analyze 关键行 -> annotations（跳过 pub 依赖解析噪音）
+          grep -E "error •|warning •|info •|Analyzing|issues? found|No issues" analyze_out.txt | head -45 | awk '{gsub(/%/, "%25"); gsub(/\r/, "%0D"); gsub(/\n/, "%0A"); if (length($0) > 900) $0 = substr($0, 1, 900); print "::error::" $0}'
           # 载体 2：commit comment（其 HTTP 响应也经 annotations 回传以诊断）
           jq -Rs '{body: ("### `flutter analyze` @ " + env.GH_SHA + "\n\n总行数: " + (split("\n") | length) + "\n\n```\n" + .[:60000] + "\n```")}' analyze_out.txt > body.json
           echo "body.json bytes: $(wc -c < body.json)"
@@ -41,4 +41,6 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$GH_REPO_FULL/commits/$GH_SHA/comments" \
             -d @body.json)
-          echo "$RESP" | awk '{gsub(/%/, "%25"); gsub(/\r/, "%0D"); gsub(/\n/, "%0A"); if (length($0) > 900) $0 = substr($0, 1, 900); print "::error::RESP: " $0}'
+          echo "$RESP" | head -3 | awk '{gsub(/%/, "%25"); gsub(/\r/, "%0D"); gsub(/\n/, "%0A"); if (length($0) > 900) $0 = substr($0, 1, 900); print "::error::RESP: " $0}'
+          # 输出总行数也回传，确认拿到了什么
+          echo "::error::TOTAL_LINES=$(wc -l < analyze_out.txt)"
