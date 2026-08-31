@@ -57,7 +57,7 @@ class GameTopBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3), letterSpacing: 0.2)),
                     ),
                     if (houseLabel.isNotEmpty) ...[
                       const SizedBox(width: 6),
@@ -82,7 +82,7 @@ class GameTopBar extends StatelessWidget {
                     const SizedBox(width: 2),
                     Expanded(
                       child: Text(gp.worldState.timestamp,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF8B949E), letterSpacing: 0.1),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1),
                     ),

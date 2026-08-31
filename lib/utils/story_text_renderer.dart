@@ -291,7 +291,7 @@ class StoryTextRenderer {
     }
 
     if (currentPos < cleaned.length) {
-      spans.addAll(parse(cleaned.substring(currentPos)));
+      spans.addAll(parseNarrative(cleaned.substring(currentPos)));
     }
 
     return spans;
@@ -569,7 +569,15 @@ class StoryTextRenderer {
     return null;
   }
 
-  static List<TextSpan> parse(String text) {
+  static List<TextSpan> parse(String text) => _parse(text, quiet: false);
+
+  /// 正文专用解析：地点/物品的颜色降级为 narration（与正文同色）。
+  /// 保留人名/说话人/对话/内心独白的颜色——核心信息（是谁、说了什么、心里想）。
+  /// 设计意图：上一版所有实体词都上色导致正文"花里胡哨"，阅读疲劳；
+  /// 现在只有语义关键的颜色存在，地点/物品与正文融为一体。
+  static List<TextSpan> parseNarrative(String text) => _parse(text, quiet: true);
+
+  static List<TextSpan> _parse(String text, {required bool quiet}) {
     if (text.isEmpty) return [];
     var cleaned = _stripOutlineLabels(text);
     cleaned = _stripChoiceBlocks(cleaned);
@@ -593,9 +601,14 @@ class StoryTextRenderer {
       } else if (token is _CharacterToken) {
         spans.add(TextSpan(text: token.text, style: _characterStyle));
       } else if (token is _LocationToken) {
-        spans.add(TextSpan(text: token.text, style: _locationStyle));
+        // quiet 模式：地点融入正文，不上色；full 模式保持原色（其他模块可能用）
+        spans.add(TextSpan(
+            text: token.text,
+            style: quiet ? _narrationStyle : _locationStyle));
       } else if (token is _ItemToken) {
-        spans.add(TextSpan(text: token.text, style: _itemStyle));
+        spans.add(TextSpan(
+            text: token.text,
+            style: quiet ? _narrationStyle : _itemStyle));
       } else {
         spans.add(TextSpan(text: token.text, style: _narrationStyle));
       }

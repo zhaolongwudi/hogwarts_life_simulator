@@ -812,6 +812,15 @@ $kNarrativeWritingRules
         screen: 'processChoice',
         extra: 'action=$action, turn=$turnCount',
       ));
+    } finally {
+      // 兜底：无论 try 正常完成、catch 兜底，还是 catch 内部自身抛了二次异常，
+      // 都保证 isLoading 重置、UI 退出 loading 状态。
+      // 否则玩家看到的就是"正在生成剧情..."转圈无限卡死（之前的 UI 反馈 bug）。
+      loadingStage = '';
+      if (isLoading) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 

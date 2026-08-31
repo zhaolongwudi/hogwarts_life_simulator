@@ -1229,16 +1229,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
                         const SizedBox(height: 8),
                         _buildAffectionCard(affectionSections),
                       ],
-                      const SizedBox(height: 8),
+                      // 选项紧跟正文：滚到底即行动，不需要固定悬浮。
+                      // 面板内限高 0.32（长选项自己内部滚动），不预支正文高度。
+                      const SizedBox(height: 12),
+                      _buildChoiceList(gp, maxHeight: constraints.maxHeight * 0.32),
                     ],
                   ),
                 ),
               ),
-              // 选项固定在底部：600~800 字正文时不必滑到屏幕最底下才能行动。
-              // 限高 0.42 → 0.32：4 个选项约 230px 本就够放，
-              // 上限松到 42% 只是给长文案选项留的口子——
-              // 代价是正文区常年被预支一截，收紧后长选项自己内部滚动。
-              _buildChoiceList(gp, maxHeight: constraints.maxHeight * 0.32),
             ],
           ),
         ),
@@ -1249,7 +1247,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
             right: 0,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              child: _buildHeaderCard(timestamp, location,
+              // 时间戳只在 banner 卡内显示，避免与顶栏重复
+              child: _buildHeaderCard(null, location,
                   height: bannerH, compact: bannerCollapsedByScroll),
             ),
           ),
@@ -1477,13 +1476,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   /// 原有整段渲染（单段短文本回退）
   Widget _buildPlainBodyCard(String body) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: dividerColorOf(context)),
-      ),
+    // 短正文（指令结果/通知）融入背景，无装饰，避免视觉碎片化
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: ScaledRichText(
         text: TextSpan(
           children: StoryTextRenderer.parseWithAffectionStyle(body),
