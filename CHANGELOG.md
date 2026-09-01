@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.6.5 — 2026-09-01
+
+**📋 变更说明**
+fix: changelog sync 的 rebase 前清工作区——根治 step18 'unstaged changes'
+
+run 33497533573 的 step18：commit 成功后 git rebase origin/main 报
+'cannot rebase: You have unstaged changes'，导致 changelog 提交没推上去
+（a508c18 丢失，origin/main 停在 3f8c503，v3.6.5 条目未入库）。
+
+根因：构建流程（pub get/analyze/test）在 checkout 之后可能再次改动
+
 ### v3.6.4 — 2026-08-31
 
 **📋 变更说明**
