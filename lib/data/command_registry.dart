@@ -33,6 +33,26 @@ class CommandContext {
   String tailFrom(int idx) => parts.sublist(idx).join(' ');
 }
 
+/// 二级指令（子命令）定义。
+///
+/// 解决「面板里带子命令的指令要点『填参』手动打字」的问题：
+/// 注册表把子命令结构化出来，面板就能渲染成可点击的按钮——
+/// 无附加参数的直接执行（如 /时间 快进），需要参数的填入输入框补参
+/// （如 /送礼 赫敏 <物品>）。
+class CommandSub {
+  /// 子命令关键词：/时间 快进 里的 '快进'
+  final String keyword;
+
+  /// 面板上显示的简短说明
+  final String help;
+
+  /// 附加参数提示：非空表示点击后还需玩家补一个参数
+  /// （如 /快进 [天数] 的 '天数'）；为 null 表示该子命令可直接执行。
+  final String? argHint;
+
+  const CommandSub(this.keyword, this.help, {this.argHint});
+}
+
 /// 指令定义
 class CommandDef {
   /// 主命令：/状态 → primary = '状态'
@@ -63,6 +83,9 @@ class CommandDef {
   /// 指令看不到任何结果。改为注册时显式声明，判定不再猜。
   final bool panel;
 
+  /// 结构化二级指令。为空列表 = 无子命令（保持旧交互：带参则填参）。
+  final List<CommandSub> subs;
+
   const CommandDef({
     required this.primary,
     this.aliases = const [],
@@ -71,6 +94,7 @@ class CommandDef {
     this.group = '基础',
     this.permission = 'player',
     this.panel = false,
+    this.subs = const [],
   });
 
   bool matches(String cmd) {

@@ -2254,6 +2254,17 @@ mixin GameSystemsMixin on GameProviderBase {
     if (npc.isConsideringConfession) {
       buf.writeln('💭 似乎在酝酿着什么话……');
     }
+    // P2#14：新 NPC 的「背景故事」段落（来自 generatedProfile，老档 null 跳过）。
+    // 日程/目标已在上面按字段展示，这里只补背景故事，避免整段档案重复。
+    if (npc.isGenerated &&
+        npc.generatedProfile != null &&
+        npc.generatedProfile!.isNotEmpty) {
+      final bgMatch = RegExp(r'【背景故事】(.*?)(?=【日常日程】|【人生目标】|$)')
+          .firstMatch(npc.generatedProfile!);
+      if (bgMatch != null && bgMatch.group(1)!.trim().isNotEmpty) {
+        buf.writeln('背景：${bgMatch.group(1)!.trim()}');
+      }
+    }
     return buf.toString();
   }
 

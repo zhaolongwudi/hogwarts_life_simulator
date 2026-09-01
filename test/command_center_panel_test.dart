@@ -21,6 +21,16 @@ void main() {
         handler: _noopHandler,
       ),
       CommandDef(
+        primary: '快进',
+        group: '基础信息',
+        helpText: '快进时间：/快进 [天数|明天|下周]',
+        subs: [
+          CommandSub('明天', '快进 1 天'),
+          CommandSub('天数', '按天快进', argHint: '天数'),
+        ],
+        handler: _noopHandler,
+      ),
+      CommandDef(
         primary: 'cheat',
         group: '作弊',
         helpText: '作弊指令总入口，详情见 /cheat',
@@ -37,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('⚡ 指令中心'), findsOneWidget);
-    expect(find.text('共 3 条指令'), findsOneWidget);
+    expect(find.text('共 4 条指令'), findsOneWidget);
     // 分组标题都在
     expect(find.text('基础信息'), findsOneWidget);
     expect(find.text('关系&情感'), findsOneWidget);
@@ -88,10 +98,37 @@ void main() {
     await tester.tap(find.byIcon(Icons.terminal));
     await tester.pumpAndSettle();
 
-    // 「填参」只有 /送礼 一个（其余注册指令均无参数）
-    await tester.tap(find.text('填参'));
+    // 精准定位 /送礼 那一行的「填参」按钮（/快进 带参也有一个「填参」）
+    final giftRow = find.ancestor(of: find.text('/送礼'), matching: find.byType(Row)).first;
+    await tester.tap(find.descendant(of: giftRow, matching: find.text('填参')));
     await tester.pumpAndSettle();
     expect(filled, '/送礼 ');
+    expect(find.text('⚡ 指令中心'), findsNothing);
+  });
+
+  testWidgets('二级指令 chip：无附加参数 → 直接执行完整命令', (tester) async {
+    String? executed;
+    await tester.pumpWidget(_host((cmd) { executed = cmd; }));
+    await tester.tap(find.byIcon(Icons.terminal));
+    await tester.pumpAndSettle();
+
+    // /快进 注册了 subs：无参子命令「明天」显示为纯关键词
+    await tester.tap(find.text('明天'));
+    await tester.pumpAndSettle();
+    expect(executed, '/快进 明天');
+    expect(find.text('⚡ 指令中心'), findsNothing);
+  });
+
+  testWidgets('二级指令 chip：带附加参数 → 填入输入框补参', (tester) async {
+    String? filled;
+    await tester.pumpWidget(_host(null, (t) { filled = t; }));
+    await tester.tap(find.byIcon(Icons.terminal));
+    await tester.pumpAndSettle();
+
+    // 带 argHint 的子命令显示为「天数 <天数>」，点击后填入 /快进 天数 等待补参
+    await tester.tap(find.text('天数 <天数>'));
+    await tester.pumpAndSettle();
+    expect(filled, '/快进 天数 ');
     expect(find.text('⚡ 指令中心'), findsNothing);
   });
 

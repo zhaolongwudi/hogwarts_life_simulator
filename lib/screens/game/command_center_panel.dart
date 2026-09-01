@@ -301,73 +301,134 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
   Widget _buildCommandTile(CommandDef c, bool isCheat) {
     final needsArgs = _needsArgs(c);
     final aliases = c.aliases.isNotEmpty ? '（/${c.aliases.join('、/')}）' : '';
+    final accent = isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: (isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625))
-                  .withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              isCheat ? Icons.bug_report : Icons.bolt,
-              size: 16,
-              color: isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('/${c.primary}$aliases',
-                    style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFE6EDF3))),
-                const SizedBox(height: 2),
-                Text(c.helpText,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF8B949E))),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => _run('/${c.primary}'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: (isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625))
-                    .withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isCheat ? Icons.bug_report : Icons.bolt,
+                  size: 16,
+                  color: accent,
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('/${c.primary}$aliases',
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFE6EDF3))),
+                    const SizedBox(height: 2),
+                    Text(c.helpText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11.5, color: Color(0xFF8B949E))),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _run('/${c.primary}'),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        needsArgs ? Icons.edit_outlined : Icons.play_arrow,
+                        size: 15,
+                        color: accent,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        needsArgs ? '填参' : '运行',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: accent),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // 结构化二级指令：渲染成可点击按钮，不用再手动打字
+          if (c.subs.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 46, top: 6),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
-                  Icon(
-                    needsArgs ? Icons.edit_outlined : Icons.play_arrow,
-                    size: 15,
-                    color: isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    needsArgs ? '填参' : '运行',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625)),
-                  ),
+                  for (final sub in c.subs) _buildSubChip(c, sub, accent),
                 ],
               ),
             ),
-          ),
         ],
+      ),
+    );
+  }
+
+  /// 二级指令按钮：无附加参数 → 直接执行；有附加参数 → 填入输入框补参。
+  Widget _buildSubChip(CommandDef c, CommandSub sub, Color accent) {
+    final hasArg = sub.argHint != null;
+    return GestureDetector(
+      onTap: () {
+        final text = '/${c.primary} ${sub.keyword}';
+        if (hasArg) {
+          Navigator.of(context).pop();
+          widget.onFillInput('$text ');
+        } else {
+          Navigator.of(context).pop();
+          widget.onExecute(text);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hasArg ? Icons.edit_outlined : Icons.play_arrow,
+              size: 12,
+              color: accent,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              hasArg ? '${sub.keyword} <${sub.argHint}>' : sub.keyword,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFE6EDF3)),
+            ),
+          ],
+        ),
       ),
     );
   }

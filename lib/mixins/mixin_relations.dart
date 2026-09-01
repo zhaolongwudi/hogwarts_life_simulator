@@ -135,6 +135,37 @@ mixin GameRelationsMixin on GameProviderBase {
       sexOrientation = '双性';
     }
 
+    // P2#14：生成时就拼好档案的原料（背景/日程/目标），
+    // generatedProfile 不再是一行干巴巴的标签。
+    final backstory = _generateNpcBackstoryFlavor(archetype, isMale, house);
+    final goal = _generatePersonalGoal(archetype, house);
+    final schedule = _generateNpcSchedule(house, grade);
+    final scheduleLine =
+        schedule.entries.map((e) => '${e.key} ${e.value}').join('；');
+
+    /// 新 NPC 的完整档案文本（背景故事 + 日常日程 + 目标）。
+    String _buildGeneratedProfile({
+      required String archetype,
+      required String houseLabel,
+      required bool isMale,
+      required String backstory,
+      required String scheduleLine,
+      required String? goal,
+    }) {
+      final who = isMale ? '男生' : '女生';
+      final buf = StringBuffer()
+        ..writeln('$archetype气质｜$houseLabel｜$who｜与你同年级')
+        ..writeln()
+        ..writeln('【背景故事】$backstory');
+      if (scheduleLine.isNotEmpty) {
+        buf.writeln();
+        buf.writeln('【日常日程】$scheduleLine');
+      }
+      buf.writeln();
+      buf.writeln('【人生目标】${goal ?? '尚未明确'}');
+      return buf.toString();
+    }
+
     final npc = NPC(
       id: id,
       name: name,
@@ -148,9 +179,19 @@ mixin GameRelationsMixin on GameProviderBase {
       mood: roll(40, 70),
       affection: roll(5, 15),
       isGenerated: true,
-      generatedProfile: '$archetype气质｜$houseLabel｜${isMale ? '男' : '女'}生｜与你同年级',
+      // P2#14：新 NPC 档案补全「背景故事/日常日程」——此前 generatedProfile
+      // 只有一行干巴巴的标签，/查看 档案看不到任何血肉。现在把背景故事、
+      // 日程、目标一起写进档案，老档（null）由展示层兜底。
+      generatedProfile: _buildGeneratedProfile(
+        archetype: archetype,
+        houseLabel: houseLabel,
+        isMale: isMale,
+        backstory: backstory,
+        scheduleLine: scheduleLine,
+        goal: goal,
+      ),
       giftPrefs: generateGiftPrefsFor(archetype),
-      personalGoal: _generatePersonalGoal(archetype, house),
+      personalGoal: goal,
       schedule: _generateNpcSchedule(house, grade),
       knowsAbout: _generateKnownFacts(archetype),
       reputation: _generateNpcReputation(archetype, house),
@@ -607,7 +648,12 @@ mixin GameRelationsMixin on GameProviderBase {
         .where((n) => n.isAlive && n.introduced)
         .toList()
       ..sort((a, b) => b.affection.compareTo(a.affection));
-    if (met.isEmpty) {
+    // P2#13：已故 NPC 不再从列表里消失——法则五（NPC 会死）要能被看见，
+    // 玩家才能知道谁不在了，而不是某天突然发现少了一个人。
+    final dead = npcRegistry.values
+        .where((n) => !n.isAlive && n.introduced)
+        .toList();
+    if (met.isEmpty && dead.isEmpty) {
       return '暂无认识的人。在剧情中与其他角色互动后会自动登记。';
     }
     final today = worldState.time.absoluteDayIndex;
@@ -620,6 +666,15 @@ mixin GameRelationsMixin on GameProviderBase {
           : (n.hasGrudge ? '${rivalryBadgeFor(n.rivalryTier(today))}${tierDefFor(n.rivalryTier(today)).label}' : '');
       buf.writeln('· ${n.name}：好感 ${n.affection}（${n.affectionStage}）'
           '${tag.isEmpty ? '' : ' $tag'}');
+    }
+    if (dead.isNotEmpty) {
+      buf.writeln('\n☠️ 已故（${dead.length}）');
+      for (final n in dead) {
+        final cause =
+            (n.deathCause == null || n.deathCause!.isEmpty) ? '' : '（${n.deathCause}）';
+        final on = (n.diedOn == null || n.diedOn!.isEmpty) ? '' : ' ${n.diedOn}';
+        buf.writeln('· ${n.name}$cause$on');
+      }
     }
     return buf.toString();
   }
@@ -642,6 +697,48 @@ mixin GameRelationsMixin on GameProviderBase {
         .toList();
     if (hints.isEmpty) return '还没有人对你表现出特别的好感。';
     return '对你有较高好感的NPC：\n${hints.join('\n')}';
+  }
+
+  /// P2#11：/恋爱 历史 —— 恋爱历程 + 心动事件时间线。
+  ///
+  /// formatLove 只展示当前状态；这里把 loveState.history（每个阶段的里程碑）
+  /// 和 recentNarrativeEvents 里带情感标记的事件拼成一条时间线，让玩家能
+  /// 回看这段关系是怎么一步步走到今天的。
+  String formatLoveHistory() {
+    final love = player?.loveState;
+    final buf = StringBuffer('【恋爱历史】');
+    if (love == null || love.status == '单身') {
+      buf.writeln('\n你还没有恋爱经历。');
+    } else {
+      buf.writeln('\n当前：${love.status}（${love.partnerName ?? '?'}）');
+      if (love.history.isNotEmpty) {
+        buf.writeln('\n—— 恋爱历程 ——');
+        for (final h in love.history) {
+          buf.writeln('· ${h['date']}：${h['event']}');
+        }
+      }
+      if (love.engagedDate != null) {
+        buf.writeln('· ${love.engagedDate}：订婚');
+      }
+      if (love.marriedDate != null) {
+        buf.writeln('· ${love.marriedDate}：结婚');
+      }
+    }
+    const loveKws = ['💗', '心动', '告白', '表白', '约会', '恋人', '接吻', 'kiss', '拥抱', '情书'];
+    final related = worldState.recentNarrativeEvents
+        .where((e) => loveKws.any((k) => e.text.contains(k)))
+        .take(8)
+        .toList();
+    if (related.isNotEmpty) {
+      buf.writeln('\n—— 心动事件（最近的记录）——');
+      for (final e in related) {
+        buf.writeln('· ${e.turn != null ? '第${e.turn}回合' : '?'}：${e.text}');
+      }
+    }
+    if (buf.toString() == '【恋爱历史】\n你还没有恋爱经历。') {
+      buf.writeln('\n去和喜欢的人多说说话，好感到了一切都有可能。');
+    }
+    return buf.toString();
   }
 
   // ==================== 恋爱等待状态 ====================
@@ -1739,11 +1836,16 @@ mixin GameRelationsMixin on GameProviderBase {
     }
     for (var i = 0; i < p.shippings.length; i++) {
       final s = p.shippings[i];
+      // P2#15：把拉郎配六档（60/65/70/75/80/90）与玩家侧好感十一档
+      // 收口到同一把尺——直接复用 affectionStageFor 给羁绊值贴档位标签，
+      // 玩家不再面对两套互不相认的"好感标尺"。
+      final stageLabel = affectionStageFor(s.bond);
       buf.writeln('\n${i + 1}. ${s.pairLabel}');
-      buf.writeln('   羁绊 ${s.bond}/100 · 阶段 ${s.stage}/6');
+      buf.writeln('   羁绊 ${s.bond}/100 · 阶段 ${s.stage}/6 · $stageLabel');
       final barLen = (s.bond / 10).round();
       buf.writeln('   [${'\u2588' * barLen}${'\u2591' * (10 - barLen)}]');
     }
+    buf.writeln('\n（羁绊与好感共用 0~100 一把尺：50 信任、70 亲密、85 深爱、95 灵魂伴侣）');
     buf.writeln('\n/拉郎配 [甲] [乙] 撮合 ｜ /拉郎配 放弃 [编号] 放手');
     return buf.toString();
   }
@@ -2000,6 +2102,10 @@ mixin GameRelationsMixin on GameProviderBase {
     final npc = findNpcByKeyword(npcRegistry.values, kw);
     if (npc == null) {
       return '【送礼】\n你不认识叫「$kw」的人。';
+    }
+    // P2#13：死人收不了礼——法则五要求死亡有实感，而不是假装没发生
+    if (!npc.isAlive) {
+      return '【送礼】\n${npc.name}已经无法收下你的礼物了……';
     }
 
     // 只写名字：给个提示，不消耗任何东西

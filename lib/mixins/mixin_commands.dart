@@ -53,10 +53,58 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '时间',
         group: '基础信息',
-        helpText: '查看当前时间与特殊标记',
+        helpText: '查看当前时间与特殊标记（/时间 快进 [天数|明天|下周…]·/时间 日程）',
         panel: true,
+        subs: [
+          CommandSub('快进', '快进时间，可接天数/明天/下周/下月/假期/暑假/开学', argHint: '天数|明天|下周…'),
+          CommandSub('日程', '查看本周安排与最近事件'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
+          final sub = ctx.arg(0);
+          // P2#11 指令缺口：/时间 快进 —— 与 /快进 同一套结算逻辑
+          if (sub == '快进') {
+            final gm = ctx.provider as GameSystemsMixin;
+            final days = gm.resolveFastForwardDays(ctx.tailFrom(1));
+            if (days <= 0) {
+              m.currentNarrative = '【时间快进】\n'
+                  '${m.worldState.time.formatDate()} —— 你要的时间点已经到了，无需快进。';
+              m.choices = [const GameChoice(text: '继续', action: '继续')];
+              m.notifyListeners();
+              return true;
+            }
+            final before = m.worldState.time.formatDate();
+            final produced = gm.fastForwardDays(days);
+            final after = m.worldState.time.formatDate();
+            final buf = StringBuffer()
+              ..writeln('【时间快进】')
+              ..writeln('$before → $after（共 $days 天）');
+            if (produced.isNotEmpty) {
+              buf.writeln('\n期间发生：');
+              for (final n in produced.take(12)) {
+                buf.writeln('· $n');
+              }
+              if (produced.length > 12) {
+                buf.writeln('……等共 ${produced.length} 条（/通知 查看全部）');
+              }
+            } else {
+              buf.writeln('\n这段日子里没有发生什么值得一提的事。');
+            }
+            buf.writeln('\n接下来你想做些什么？');
+            m.currentNarrative = buf.toString();
+            m.choices = [
+              GameChoice(text: '继续', action: '继续'),
+              GameChoice(text: '再快进一个月', action: '/快进 下月'),
+            ];
+            m.notifyListeners();
+            return true;
+          }
+          // P2#11 指令缺口：/时间 日程
+          if (sub == '日程' || sub == '安排' || sub == '本周') {
+            m.currentNarrative = m.formatDailySchedule();
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
           m.currentNarrative = m._formatTime();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -67,6 +115,14 @@ mixin GameCommandsMixin on GameProviderBase {
         aliases: ['跳过', '时间跳跃', 'skip'],
         group: '基础信息',
         helpText: '快进时间：/快进 [天数|明天|下周|下月|假期|暑假|开学]',
+        subs: [
+            CommandSub('明天', '快进 1 天'),
+            CommandSub('下周', '快进 7 天'),
+            CommandSub('下月', '快进到下月'),
+            CommandSub('假期', '快进到假期'),
+            CommandSub('暑假', '快进到暑假'),
+            CommandSub('开学', '快进到开学'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameSystemsMixin;
           final days = m.resolveFastForwardDays(ctx.tailFrom(0));
@@ -126,6 +182,11 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '基础信息',
         panel: true,
         helpText: '城堡设定：/城堡 通道 [名字]｜/城堡 幽灵 [名字]｜/城堡 学院 [院名]',
+        subs: [
+            CommandSub('通道', '全部通道 / 查指定通道', argHint: '名字'),
+            CommandSub('幽灵', '全部幽灵 / 查指定幽灵', argHint: '名字'),
+            CommandSub('学院', '四院档案 / 查指定学院', argHint: '院名'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           final sub = ctx.arg(0);
@@ -269,10 +330,19 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '恋爱',
         group: '关系&情感',
-        helpText: '查看恋爱状态',
+        helpText: '查看恋爱状态（/恋爱 历史 回看一路走来的心动事件）',
         panel: true,
+        subs: [
+          CommandSub('历史', '回看恋爱相关的事件记录'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
+          if (ctx.parts.isNotEmpty &&
+              (ctx.arg(0) == '历史' || ctx.arg(0) == '回顾' || ctx.arg(0) == '过往')) {
+            m.currentNarrative = m.formatLoveHistory();
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
           m.currentNarrative = m.formatLove();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -282,6 +352,11 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '声望',
         group: '关系&情感',
         helpText: '查看声望（/声望 恋爱·/声望 NPC [名字]·/声望 NPC 列表·/声望 NPC 排名 [维度]）',
+        subs: [
+            CommandSub('恋爱', '查看恋爱声望'),
+            CommandSub('NPC 列表', '列出可查声望的 NPC'),
+            CommandSub('NPC 排名', '按维度排名', argHint: '维度'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -491,6 +566,10 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '课程',
         group: '学业&成长',
         helpText: '查看课程表与进度（/课程 成绩 查看考试成绩单）',
+        subs: [
+            CommandSub('成绩', '查看考试成绩单'),
+            CommandSub('选课', '管理选修课'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -512,6 +591,9 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '课堂',
         group: '学业&成长',
         helpText: '触发课堂互动（/课堂 互动）',
+        subs: [
+            CommandSub('互动', '触发课堂互动'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '互动') {
@@ -527,6 +609,11 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '咒语',
         group: '学业&成长',
         helpText: '魔咒一览（/咒语 学习 漂浮咒 ｜ /咒语 练习 漂浮咒 ｜ /咒语 详情 漂浮咒）',
+        subs: [
+            CommandSub('学习', '学习新咒语', argHint: '咒语名'),
+            CommandSub('练习', '练习咒语', argHint: '咒语名'),
+            CommandSub('详情', '查看咒语详情', argHint: '咒语名'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -572,10 +659,40 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '收藏',
         group: '学业&成长',
-        helpText: '查看收藏品',
+        helpText: '查看收藏品（/收藏 [名称] 查看单件详情）',
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
+          // P2#11 指令缺口：/收藏 [物品] —— 查单件收藏的详情
+          if (ctx.parts.isNotEmpty) {
+            final q = ctx.tailFrom(0);
+            CollectibleDef? found;
+            for (final c in kCollectibleCatalog) {
+              if (c.id == q || c.name == q) {
+                found = c;
+                break;
+              }
+            }
+            if (found == null) {
+              m.currentNarrative = '【收藏】\n没有找到叫「$q」的收藏品。'
+                  '\n\n输入 /收藏 看看收集册里都有哪些系列。';
+              m.choices = [GameChoice(text: '返回', action: '继续')];
+              return true;
+            }
+            final owned = m.player?.collection.contains(found.id) ?? false;
+            final buf = StringBuffer('【收藏·${found.name}】');
+            if (owned) {
+              buf.writeln('\n✅ 已收入册子（${found.starText}）');
+            } else {
+              buf.writeln('\n🔒 尚未收集（${found.starText}）');
+            }
+            if (found.desc.isNotEmpty) {
+              buf.writeln('\n${found.desc}');
+            }
+            m.currentNarrative = buf.toString();
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
           m.currentNarrative = m.formatCollection();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -585,6 +702,10 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '日记',
         group: '学业&成长',
         helpText: 'CG图鉴：统计/详情/重播（/日记 统计·/日记 [编号]·/日记 重播 [编号]）',
+        subs: [
+            CommandSub('统计', 'CG 收集统计'),
+            CommandSub('重播', '重播某张 CG', argHint: '编号'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -604,10 +725,19 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '档案',
         group: '学业&成长',
-        helpText: '查看角色完整档案',
+        helpText: '查看角色完整档案（/档案 回忆 回看人生大事记）',
         panel: true,
+        subs: [
+          CommandSub('回忆', '回看人生大事记与成长痕迹'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
+          if (ctx.parts.isNotEmpty &&
+              (ctx.arg(0) == '回忆' || ctx.arg(0) == '大事记')) {
+            m.currentNarrative = m.formatMemories();
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+            return true;
+          }
           m.currentNarrative = m._formatArchive();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -633,6 +763,12 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '宠物',
         group: '物品&宠物',
         helpText: '宠物：查看 / 喂食 / 玩耍 / 训练 / 购买',
+        subs: [
+            CommandSub('喂食', '喂宠物'),
+            CommandSub('玩耍', '陪宠物玩'),
+            CommandSub('训练', '训练宠物'),
+            CommandSub('购买', '去商店买宠物'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -705,6 +841,10 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '魁地奇',
         group: '玩法&活动',
         helpText: '魁地奇：/魁地奇 比赛·/魁地奇 位置 <位置>',
+        subs: [
+            CommandSub('比赛', '参加魁地奇比赛'),
+            CommandSub('位置', '查看/更换场上位置', argHint: '位置'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '比赛') {
@@ -733,6 +873,9 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '禁林',
         group: '玩法&活动',
         helpText: '禁林探险：/禁林 探险',
+        subs: [
+            CommandSub('探险', '进入禁林探险'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '探险') {
@@ -763,6 +906,11 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '委托',
         group: '玩法&活动',
         helpText: '支线委托板：/委托 刷新·接受 [编号]·交付 [编号]',
+        subs: [
+            CommandSub('刷新', '刷新委托板'),
+            CommandSub('接受', '接受委托', argHint: '编号'),
+            CommandSub('交付', '交付委托', argHint: '编号'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -795,6 +943,10 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '新NPC',
         group: '玩法&活动',
         helpText: '生成/查看新NPC：/新NPC（列表）｜/新NPC [全名]（档案）｜/新NPC 生成 [数量]',
+        subs: [
+            CommandSub('生成', '批量生成新 NPC', argHint: '数量'),
+            CommandSub('好感', '调整新 NPC 好感', argHint: 'NPC名'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -892,6 +1044,11 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '信',
         group: '信件&目标',
         helpText: '查看信件：读/回/寄（/信 读 [编号]·/信 回 [编号] [内容]·/信 寄 [NPC] [内容]）',
+        subs: [
+            CommandSub('读', '读一封信', argHint: '编号'),
+            CommandSub('回', '回信', argHint: '编号'),
+            CommandSub('寄', '寄信给 NPC', argHint: 'NPC'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.handleLetterCommand(ctx.parts);
@@ -902,8 +1059,11 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '联动',
         group: '世界&结局',
-        helpText: '查看时代联动痕迹',
+        helpText: '查看时代联动痕迹（/联动 状态 查看当前时代详情）',
         panel: true,
+        subs: [
+          CommandSub('状态', '查看当前时代与世界线详情'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           // 文案以前许诺的是"与其他时代剧情产生关联（遇到亲世代留下的物品或
@@ -987,6 +1147,9 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '传承',
         group: '世界&结局',
         helpText: '把这一生交棒给下一代；/传承 名字 正式开始新的一局',
+        subs: [
+            CommandSub('名字', '指定继承人名字开始新一局', argHint: '名字'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider;
@@ -1019,6 +1182,10 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '教职',
         group: '世界&结局',
         helpText: '查看留校任教的资格与晋升进度；/教职 接受 或 /教职 婉拒 答复邀请',
+        subs: [
+            CommandSub('接受', '接受留校任教邀请'),
+            CommandSub('婉拒', '婉拒留校任教邀请'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider;
@@ -1045,6 +1212,10 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         panel: true,
         helpText: '守护神之路：/守护神 状态 ｜ /守护神 尝试（框架2 第66条）',
+        subs: [
+            CommandSub('状态', '查看守护神状态'),
+            CommandSub('尝试', '尝试召唤守护神'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m._handlePatronus(ctx.parts);
@@ -1058,6 +1229,13 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         panel: true,
         helpText: '阿尼马格斯之路：/阿尼马格斯 状态｜学习｜训练｜尝试｜登记（框架2 第67条）',
+        subs: [
+            CommandSub('状态', '查看变身进度'),
+            CommandSub('学习', '学习阿尼马格斯'),
+            CommandSub('训练', '训练变身'),
+            CommandSub('尝试', '尝试变身'),
+            CommandSub('登记', '登记变身'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.handleAnimagusCommand(ctx.parts);
@@ -1071,6 +1249,12 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '世界&结局',
         panel: true,
         helpText: '毕业后正式职业（/职业 列表｜选择 <职业名>｜状态｜辞职）',
+        subs: [
+            CommandSub('列表', '查看可选职业'),
+            CommandSub('选择', '选择职业', argHint: '职业名'),
+            CommandSub('状态', '查看职业状态'),
+            CommandSub('辞职', '辞去当前职业'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.handleCareerCommand(ctx.parts);
@@ -1083,6 +1267,13 @@ mixin GameCommandsMixin on GameProviderBase {
         aliases: ['周计划', '这周'],
         group: '学业&成长',
         helpText: '批量推进一周：/计划 学习｜社交｜魁地奇｜调查｜放松（框架2 周计划）',
+        subs: [
+            CommandSub('学习', '本周计划：学习'),
+            CommandSub('社交', '本周计划：社交'),
+            CommandSub('魁地奇', '本周计划：魁地奇'),
+            CommandSub('调查', '本周计划：调查'),
+            CommandSub('放松', '本周计划：放松'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m._handlePlan(ctx.parts);
@@ -1094,6 +1285,9 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '目标',
         group: '信件&目标',
         helpText: '查看/设定人生目标（/目标 [编号]·/目标 进度）',
+        subs: [
+            CommandSub('进度', '查看目标进度'),
+        ],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1148,6 +1342,15 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '作弊',
         permission: 'cheat',
         helpText: '作弊指令总入口（好感/资源/声望/时间/骨科/舆论/解锁CG），详情见 /cheat',
+        subs: [
+            CommandSub('好感', '好感作弊'),
+            CommandSub('资源', '资源作弊'),
+            CommandSub('声望', '声望作弊'),
+            CommandSub('时间', '时间作弊'),
+            CommandSub('骨科', '骨科模式'),
+            CommandSub('舆论', '舆论作弊'),
+            CommandSub('解锁CG', '解锁全部 CG'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m._handleCheat(ctx.parts);
@@ -2784,6 +2987,71 @@ $knownRegions
   初始天赋：${p.initialTalent ?? '未设定'}
   性格特质：${p.personalityTraits.isEmpty ? '未设定' : p.personalityTraits.join('、')}
   当前目标：${p.currentGoal ?? '无'}''';
+  }
+
+  /// P2#11：/档案 回忆 —— 人生大事记。
+  ///
+  /// 没有自建"回忆"表：大事记的原料是 recentNarrativeEvents（最多保留 20 条），
+  /// 这里把最近的成长痕迹按时间倒序摊开，再补上收藏/成就/恋爱等一眼能看到的
+  /// 累积数字，让"回忆"不只是流水账。
+  String formatMemories() {
+    final p = player;
+    final buf = StringBuffer('【人生回忆】');
+    if (p == null) {
+      buf.writeln('\n还没有人生可言——先创建角色吧。');
+      return buf.toString();
+    }
+    buf.writeln('\n第 ${p.grade ?? 1} 学年 · ${p.house ?? '未分院'} · 第 $turnCount 回合');
+    final events = worldState.recentNarrativeEvents.take(12).toList();
+    if (events.isEmpty) {
+      buf.writeln('\n还没有值得写进回忆的事。去经历点什么吧。');
+    } else {
+      buf.writeln('\n—— 最近的人生切片 ——');
+      for (final e in events) {
+        final t = e.turn;
+        final when = e.at != null
+            ? '${e.at!.month}月${e.at!.day}日'
+            : (t != null ? '第$t回合' : '');
+        buf.writeln('· ${when.isEmpty ? '' : '[$when] '}${e.text}');
+      }
+    }
+    // 一眼可见的积累
+    buf.writeln('\n—— 一路走来 ——');
+    buf.writeln('· 收藏：${p.collection.length} 件');
+    buf.writeln('· 成就：${p.achievements.length} 项');
+    final love = p.loveState;
+    if (love.status != '单身') {
+      buf.writeln('· 感情：${love.status}（${love.partnerName ?? '?'}）');
+    }
+    buf.writeln('\n（输入 /恋爱 历史 回看感情线，/日记 重播 CG）');
+    return buf.toString();
+  }
+
+  /// P2#11：/时间 日程 —— 本周安排与最近事件。
+  String formatDailySchedule() {
+    final p = player;
+    if (p == null) return '【日程】\n尚未创建角色。';
+    final buf = StringBuffer('【日程】');
+    buf.writeln('\n${worldState.time.formatDate()}'
+        '（第 ${worldState.academicYear} 学年 · 第 ${worldState.term} 学期）');
+    // 课程：必修 + 选修
+    final required =
+        requiredCourses.map((c) => c.name).take(4).join('、');
+    final electives = electiveCourses.map((c) => c.name).take(3).join('、');
+    buf.writeln('\n本周课程：');
+    buf.writeln('· 必修：$required${requiredCourses.length > 4 ? ' 等' : ''}');
+    if (electives.isNotEmpty) {
+      buf.writeln('· 选修：$electives');
+    }
+    buf.writeln('\n输入 /计划 学习|社交|魁地奇|调查|放松 把一整周投给一件事。');
+    final events = worldState.recentNarrativeEvents.take(5).toList();
+    if (events.isNotEmpty) {
+      buf.writeln('\n最近发生：');
+      for (final e in events) {
+        buf.writeln('· ${e.text}');
+      }
+    }
+    return buf.toString();
   }
 
   String _formatAchievements() {

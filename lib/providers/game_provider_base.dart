@@ -252,6 +252,7 @@ abstract class GameProviderBase extends ChangeNotifier
   String formatGoalProgress();
   String goalSteeringLine(String? goalName);
   String formatLove();
+  String formatLoveHistory();
   String formatLoveStages();
   String formatLoveWaiting();
   String formatNpcRelationship(String npc1, String npc2);
