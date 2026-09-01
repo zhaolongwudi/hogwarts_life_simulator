@@ -35,6 +35,15 @@ $ getent hosts api.github.com
 198.18.0.5      api.github.com
 ```
 
+> **2026-09-01 复核补充：被劫持的是 UDP/53，TCP/53 是干净的。**
+> 实测 8.8.8.8 / 1.1.1.1 / 9.9.9.9 / 223.5.5.5 与系统 DNS（183.60.83.19）的
+> **UDP/53 一律返回 198.18.0.x**，但同一台服务器的 **TCP/53 返回真实 IP**
+> （例如 `api.github.com = 20.205.243.168`）。DoH（`dns.google` 等）依旧被掐，
+> 因为那也是带 SNI 的 443。
+>
+> 因此脚本策略升级为：**TCP/53 解析 → 过滤掉 `198.18.*` → 失败才回退 §6 的硬编码池**，
+> 不必再靠手动刷新 IP 清单续命。
+
 ### 2.2 按 SNI 匹配的 DPI 掐断 ClientHello
 即便绕开假 DNS、直连真实 IP，**只要 TLS ClientHello 里带 `server_name` 扩展（SNI）**，
 出口 DPI 就会在握手阶段直接RST/掐断，表现同样是 `SSL_ERROR_SYSCALL` / `EOF`。
@@ -600,3 +609,153 @@ git ls-remote https://github.com/<owner>/<repo>.git | head -2                   
   沙箱不清理 `/opt`（实测 hosts 会重置，但 /opt 文件保留），恢复时只需重启进程。
 - 每个新会话开工前先跑一遍 §8.1 的三板斧，10 秒确认通道，别等 push 报错再排查。
 - 代理日志统一写 `/tmp/ghproxy.log`（nohup 重定向），排查第一现场。
+
+---
+
+## 9. GitHub Actions 排障：从"只能看到 exit 1"到拿到完整日志（2026-09-01 实战）
+
+> 场景：CI（run 33453510436）的 **Analyze** 步骤红了。点开链接只有一句
+> `Process completed with exit code 1`，看不到任何错误行。
+> 这一节记录：可见性边界在哪、**有 token 后怎样把完整日志拿到手**（有两个额外的坑），
+> 以及最后的真实根因——它跟环境漂移毫无关系，是我第一版判断错了。
+
+### 9.1 匿名（无 token）能看到什么
+
+| 数据 | 匿名可读 | 端点 |
+|---|---|---|
+| job / steps 状态与耗时 | ✅ | `GET /repos/{o}/{r}/actions/jobs/{job_id}` |
+| 失败步骤编号 | ✅ | 同上（`steps[].conclusion`） |
+| 注解（annotations） | ✅ | `GET /repos/{o}/{r}/check-runs/{id}/annotations` |
+| **日志正文** | ❌ 403（要 admin） | `GET /repos/{o}/{r}/actions/jobs/{job_id}/logs` |
+| commit 评论 | ✅ | `GET /repos/{o}/{r}/commits/{sha}/comments` |
+
+**最大的误导**：GitHub 页面顶部写 "1 error and 4 warnings"，看着像"代码里有 1 条 error"。
+实际上那条 error 就是失败步骤本身（`Process completed with exit code 1`），
+另外 4 条是 Node.js 弃用、artifact 为空之类的噪音。**别拿这个数字推断代码状况。**
+
+没有 token 时的替代路径（按成本排序）：
+
+1. **翻 commit 评论**：`analyze-report.yml` 会把 `flutter analyze` 全文写成 commit
+   comment（匿名可读）。前提是它在目标 commit 上跑过（该 workflow 是 `workflow_dispatch`）。
+2. **拉同 commit 源码本地复现**：`codeload.github.com` 匿名可下 tarball：
+   ```bash
+   curl --cacert /opt/ghproxy/ca.cr \
+     "https://codeload.github.com/{o}/{r}/tar.gz/{sha}" -o repo.tgz
+   ```
+   复现时**别只看 error 数量，一定要看命令的退出码**（见 9.4 的教训）。
+
+### 9.2 有 token 后：下载日志的两个额外坑
+
+```bash
+curl -sSL --cacert /opt/ghproxy/ca.crt \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/{o}/{r}/actions/jobs/{job_id}/logs" -o job_logs.zip
+```
+
+拿到 302 之后还有两道坎，都会表现为 `SSL_ERROR_SYSCALL`：
+
+1. **日志不在 GitHub，在 Azure Blob**。`Location` 指向
+   `productionresultssa*.blob.core.windows.net`，这个域名同样被拦，
+   也要加进 `/etc/hosts` 走本地代理（它同样吃"无 SNI"这一套，握手能过）。
+2. **叶子证书的 SAN 不含 blob 域名**，客户端校验主机名会失败。
+   重签叶子证书时把 `DNS:*.blob.core.windows.net` 加进 `subjectAltName`：
+
+   ```bash
+   # /opt/ghproxy/leaf.ext
+   subjectAltName=DNS:github.com,DNS:api.github.com,DNS:*.github.com,\
+   DNS:*.githubusercontent.com,DNS:raw.githubusercontent.com,\
+   DNS:codeload.github.com,DNS:objects.githubusercontent.com,\
+   DNS:*.blob.core.windows.net
+   extendedKeyUsage=serverAuth
+   ```
+
+   然后重启代理让新证书生效（`kill $(cat /tmp/ghproxy.pid)` 再起）。
+   省事的话可以 `curl -k`，但那样就放弃了链路校验，不推荐。
+
+下载到的是**转义过的纯文本**（`\n` 是字面两字符，不是换行），
+看之前先还原：`s.replace('\\r\\n','\n').replace('\\n','\n')`。
+
+### 9.3 真实根因：不是环境漂移，是 fatal-infos
+
+日志到手后真相很朴素——CI 与本地**完全一致**：
+
+```
+593 issues found. (ran in 10.8s)
+##[error]Process completed with exit code 1.
+```
+
+**0 error、7 warning、593 info**，和本地复现一字不差。所以"runner 上 stable 漂移、
+analyzer 提级"的推测是错的。真正的退出码来源是：
+
+```bash
+flutter analyze --no-fatal-warnings                     # exit 1  ← CI 就是这个
+flutter analyze --no-fatal-warnings --no-fatal-infos    # exit 0  ← 正确写法
+```
+
+`flutter analyze` 的 **`--fatal-infos` 默认是开启的**，`--no-fatal-warnings` 只豁免
+warning，几百条 info 级 lint 照样把退出码打成 1。
+
+时间线也对得上：`analysis_options.yaml` 此前被 `.gitignore` 排除、`flutter_lints` 是死依赖，
+analyze 只报编译错误（0 issue）→ 恢复 lint 门禁（P1-8）后 lint 全开，593 条 info 涌进来
+→ 下一次 CI 立刻红。**门禁恢复时忘了同步放 informational lint 的口子。**
+
+所以我第一版做的两件事要重新定性：
+
+- **锁 `flutter-version: '3.47.2'`**：跟本次故障无关，但保留。理由是可复现——
+  `channel: stable` 会跟着官方发布漂移，出问题时要先回答"版本变没变"这个变量；
+  而且 `pr-check.yml` 与 `android-build.yml` 必须同版本，否则会出现 PR 绿、main 红。
+- **清理 7 处 warning**：跟本次故障也无关，但保留。warning 清零后，
+  下次再红就能一眼排除 warning 层，只盯 error。
+
+### 9.4 让失败自动留下证据（已落地）
+
+日志正文是最值钱的信息，而且**只有仓库 admin 能下载**，必须在 CI 内部自己存下来：
+
+```yaml
+      - name: Analyze
+        run: |
+          set -o pipefail                      # 保住 flutter 的真实退出码
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee analyze_output.log
+
+      - name: Upload analyze log
+        if: always()                           # 失败也要上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-log-${{ github.sha }}
+          path: analyze_output.log
+          retention-days: 14
+```
+
+两个配套坑：
+
+- `permissions:` 里只写 `contents: write` 会把其余权限压成 `none`，
+  `upload-artifact` 会 403。需要显式加 `actions: write`。
+- 没有 `set -o pipefail` 时，`cmd | tee` 的退出码是 `tee` 的（永远 0），
+  失败步骤会被判成成功。
+
+### 9.5 排查顺序（下次照这个来，别再猜）
+
+1. 拿 job 的 `steps[].conclusion` 定位失败步骤（匿名即可）。
+2. **有 token 就直接下载日志**，别对着 "1 error" 那个数字推理。
+3. 没 token 就本地复现 —— 复现时**一定要打印退出码**（`echo $?`），
+   只看 grep 出来的 error 行数会漏掉"0 error 但仍然 exit 1"这类情况。
+4. 结论写进文档前，先确认本地与 CI 的 **issue 数、warning 数是否一致**：
+   一致 → 是命令/配置问题；不一致 → 才是环境差异。
+
+---
+
+## 10. 沙箱重置：对 §8.4 的两处修正（2026-09-01 二次重置后）
+
+1. **`/opt` 里的证书留下了，但脚本没了。** 这次重置后 `/opt/ghproxy/`
+   只剩 `ca.crt`/`leaf.crt`/`leaf.key`，`gh_proxy.py` 一起被清掉。
+   修正建议：**脚本的唯一可信副本放仓库里**（`scripts/gh_proxy.py`），
+   恢复时从仓库取或照它重写，`/opt/ghproxy` 只当证书与运行目录。
+2. **别用 `pkill -f gh_proxy` 停进程。** `-f` 匹配整条命令行，
+   而当前 shell 的命令行里也含这个字符串，结果是**把自己也杀了**
+   （表现为命令直接 SIGTERM/SIGKILL、没任何输出）。改用 pid 文件：
+
+   ```bash
+   setsid nohup python3 gh_proxy.py 443 > /tmp/ghproxy.log 2>&1 < /dev/null &
+   echo $! > /tmp/ghproxy.pid
+   # 停止时：kill -9 $(cat /tmp/ghproxy.pid)
+   ```
