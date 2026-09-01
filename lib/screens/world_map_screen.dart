@@ -258,6 +258,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 if (_selectedLocation != null) _buildLocationCard(gp),
                 _buildBackButton(),
                 _buildMapLegend(),
+                _buildQuickAreaSwitch(),
               ],
             ),
           ),
@@ -519,7 +520,14 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               child: Text(
                                 _displayHeaderName(context),
 
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                // 第16轮E：用户反馈地图上方标题看不清——
+                                // 原样式无 color，跟随 Theme 在白底卡片上对比度低。
+                                // 改为深色高对比（与 subtitle 区分层级）
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1F2937),
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -528,7 +536,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         const SizedBox(height: 2),
                         Text(
                           _displaySubtitle,
-                          style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+                          // subtitle 用更深的中绿，提高白底可读性
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: const Color(0xFF3E5B4A).withValues(alpha: 0.95),
+                            fontWeight: FontWeight.w500,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1127,6 +1140,88 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               size: 24,
               color: const Color(0xFF2C4A3A),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 底部快速切换大区域按钮（第16轮E：用户期望「< 霍格莫德村 | 霍格沃茨 | 伦敦 >」
+  /// 三按钮左右切区域，代码里之前缺失——切区域只能走「大世界」总览）。
+  /// 三按钮：左 = 上一区域（<），中 = 当前（点击打开总览），右 = 下一区域（>）。
+  Widget _buildQuickAreaSwitch() {
+    const order = ['霍格莫德村', '霍格沃茨', '伦敦'];
+    final idx = order.indexOf(_currentArea);
+    if (idx < 0 || _isInSubArea) return const SizedBox.shrink();
+    final prev = order[(idx - 1 + order.length) % order.length];
+    final next = order[(idx + 1) % order.length];
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 8,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _areaChip('‹ $prev', () => _switchArea(prev)),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: _areaChip(_currentArea, _showWorldOverview,
+                      isCurrent: true),
+                ),
+              ),
+              _areaChip('$next ›', () => _switchArea(next)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 切换大区域：清掉子区域/选中态，重置归位指示，避免上一区域的状态污染。
+  void _switchArea(String area) {
+    if (area == _currentArea) return;
+    setState(() {
+      _currentArea = area;
+      _currentSubArea = null;
+      _parentArea = null;
+      _selectedLocation = null;
+    });
+  }
+
+  Widget _areaChip(String label, VoidCallback onTap, {bool isCurrent = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: isCurrent
+              ? const Color(0xFF1F2937)
+              : Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isCurrent
+                ? const Color(0xFF1F2937)
+                : const Color(0xFFD3A625).withValues(alpha: 0.55),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: isCurrent ? Colors.white : const Color(0xFF1F2937),
           ),
         ),
       ),

@@ -46,9 +46,25 @@ List<String> narrativeForwardRules({
 }
 
 /// 把上一回合 warn 级违规转成温和反馈行（最多 2 条，供叙事 AI 生成前自省）。
-List<String> prevWarnFeedbackLines(List<Map<String, dynamic>> violations) =>
-    violations
-        .where((v) => v['severity'] == 'warn')
-        .take(2)
-        .map((v) => '• ${v['message']}')
-        .toList();
+/// [currentTurn] 当前回合号：只反馈「上一回合」（turn == currentTurn-1）新增的
+/// 违规——历史旧违规（如早期回合的「战力膨胀」）不得每回合重复注入污染
+/// prompt（AI 会困惑"我明明没写，为什么说我写了"）；同一条按 message 去重。
+List<String> prevWarnFeedbackLines(
+  List<Map<String, dynamic>> violations, {
+  required int currentTurn,
+}) {
+  final seen = <String>{};
+  final out = <String>[];
+  for (final v in violations) {
+    if (v['severity'] != 'warn') continue;
+    final turn = v['turn'];
+    // 无 turn 字段的旧记录（历史存档）视为不满足时效，直接跳过；
+    // 有 turn 则必须恰为上一回合
+    if (turn is! int || turn != currentTurn - 1) continue;
+    final msg = v['message'] as String? ?? '';
+    if (msg.isEmpty || !seen.add(msg)) continue;
+    out.add('• $msg');
+    if (out.length >= 2) break;
+  }
+  return out;
+}

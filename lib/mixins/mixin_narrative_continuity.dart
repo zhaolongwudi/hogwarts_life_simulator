@@ -334,7 +334,10 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   String buildForwardConstraintBlock() {
     final buf = StringBuffer();
 
-    final warnLines = prevWarnFeedbackLines(worldState.consistencyViolations);
+    final warnLines = prevWarnFeedbackLines(
+      worldState.consistencyViolations,
+      currentTurn: turnCount,
+    );
     if (warnLines.isNotEmpty) {
       buf.writeln('【上回合逻辑违和提醒·本回合请勿再犯】');
       buf.writeln(warnLines.join('\n'));
@@ -658,8 +661,13 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     return violations;
   }
   /// 记录一致性违规（保留最近 20 条，便于 UI 展示和人工调参）
+  /// 自动补 turn 字段（当前回合号），供违规反馈按回合过滤时效（见
+  /// narrative_forward_rules.dart 的 prevWarnFeedbackLines）。
   void recordConsistencyViolation(Map<String, dynamic> v) {
-    worldState.consistencyViolations.insert(0, v);
+    worldState.consistencyViolations.insert(0, {
+      ...v,
+      if (v['turn'] == null) 'turn': turnCount,
+    });
     while (worldState.consistencyViolations.length > 20) {
       worldState.consistencyViolations.removeLast();
     }

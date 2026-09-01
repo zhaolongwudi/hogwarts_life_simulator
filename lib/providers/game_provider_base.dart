@@ -533,4 +533,24 @@ abstract class GameProviderBase extends ChangeNotifier
   void setQuidditchPosition(String pos);
   void unequipItem(String slot);
   void useItem(String name);
+
+  // ====== 通用工具 ======
+
+  /// 把截断点回退到最近的段落（\n\n）或句末（。！？…）边界之后，
+  /// 避免从词中间硬切（日志分析第16轮D：「8月1日」被切成「日」，
+  /// AI 读断词）；回退幅度限制 60 字符，不突破 token 预算。
+  /// narrative 前情与 choice 选项依据共用。
+  int snapCutToBoundary(String text, int cut) {
+    if (cut <= 0) return cut;
+    final prefix = text.substring(0, cut);
+    int best = -1;
+    final para = prefix.lastIndexOf('\n\n');
+    if (para > best) best = para;
+    for (final end in ['。', '！', '？', '…', '.', '!', '?']) {
+      final s = prefix.lastIndexOf(end);
+      if (s > best) best = s;
+    }
+    if (best > 0 && cut - best <= 60) return best + 1;
+    return cut;
+  }
 }

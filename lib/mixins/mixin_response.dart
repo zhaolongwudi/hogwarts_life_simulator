@@ -14,6 +14,7 @@ import '../data/death_data.dart';
 import '../data/house_cup_data.dart';
 import '../data/rivalry_data.dart';
 import '../data/narrative_time_rules.dart';
+import '../data/narrative_forward_rules.dart';
 import '../data/worldline_data.dart';
 import '../prompts/choice_prompts.dart';
 import 'mixin_response_choices.dart';
@@ -1574,7 +1575,10 @@ mixin GameResponseMixin
     final narrativeTail = cleanNarrativeForChoice.length > 800
         ? '…（前略，以下为当前剧情的最末尾800字，请严格按结尾最后几行生成选项）\n' +
               cleanNarrativeForChoice.substring(
-                cleanNarrativeForChoice.length - 800,
+                snapCutToBoundary(
+                  cleanNarrativeForChoice,
+                  cleanNarrativeForChoice.length - 800,
+                ),
               )
         : cleanNarrativeForChoice;
 
@@ -1697,11 +1701,11 @@ mixin GameResponseMixin
     final nearbyNpcs = nearbyNpcList8.map(nearbyNpcsFormat).join('、');
 
     // P1-1 轻度 OOC 软提醒：上回合有 warn 级违规时，给选项 AI 一段温和提醒（不打回，只提示修正风格）
-    final prevViolations = worldState.consistencyViolations
-        .where((v) => v['severity'] == 'warn')
-        .take(2)
-        .map((v) => '• ${v['message']}')
-        .join('\n');
+    // 时效与去重与叙事侧同口径（prevWarnFeedbackLines）：只反馈上一回合新增、按 message 去重
+    final prevViolations = prevWarnFeedbackLines(
+      worldState.consistencyViolations,
+      currentTurn: turnCount,
+    ).join('\n');
     final oocWarn = prevViolations.isNotEmpty
         ? '【上回合轻微逻辑违和提醒（选项请避免同类问题）】\n$prevViolations\n'
         : '';

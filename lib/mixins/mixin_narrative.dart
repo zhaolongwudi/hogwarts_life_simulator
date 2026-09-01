@@ -31,6 +31,7 @@ import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
 import '../data/wand_data.dart';
+import '../data/pet_data.dart';
 import '../data/worldline_data.dart';
 import '../data/monthly_event_data.dart';
 import '../data/npc_schedule_rules.dart';
@@ -445,11 +446,22 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         return false;
       }
 
+      // 日志分析第16轮D：CG/成就类锚点对 AI 当前回合零信息量却刷屏
+      // （16 条里 14 条是「解锁CG」），挤掉真正的剧情事件 → 降权：
+      // 成就/CG 全局最多保留 2 条（且只取最新的），剧情事件优先占满。
+      bool isMetaEvent(String e) =>
+          e.contains('🏆') || e.contains('📸') || e.contains('解锁成就') ||
+          e.contains('解锁CG');
+      var metaKept = 0;
       if (ws.recentEvents.isNotEmpty) {
         for (final ev in ws.recentEvents.reversed) {
           final e = ev.text;
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
           if (looksFake(e)) continue;
+          if (isMetaEvent(e)) {
+            if (metaKept >= 2) continue;
+            metaKept++;
+          }
           final k = e.replaceAll(_anchorIconPrefix, '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add(e);
@@ -461,6 +473,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
           final e = ev.text;
           if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
           if (looksFake(e)) continue;
+          if (isMetaEvent(e)) {
+            if (metaKept >= 2) continue;
+            metaKept++;
+          }
           final k = e.replaceAll(_anchorIconPrefix, '').trim();
           if (!alreadyAnchors.add(k)) continue;
           worldAnchors.add('剧情锚：$e');
@@ -617,18 +633,25 @@ $kNarrativeWritingRules
       bool narrativeParseInvalid = false; // BUG-H 标记：模型返回的是选项不是叙事
       bool usedFallbackNarrative = false; // 走了本地兜底叙事 → 不再应用 AI 副作用
       String? finalResponseText; // 最终采纳的原始响应文本（供副作用解析）
+      // 日志分析第16轮D：SenseNova 偶发空响应（10 次请求里 3 次），
+      // 重试时复用同 prompt 没强化指令，命中率靠运气。给重试 prompt
+      // 追加「直接输出正文」硬约束（per-call 临时后缀，不污染下次构建）。
+      String currentPrompt = prompt;
       do {
         needsRetry = false;
         narrativeParseInvalid = false;
         try {
-          response = (await callDeepSeek(prompt)).content;
+          response = (await callDeepSeek(currentPrompt)).content;
         } on AiNonRetryableException {
           rethrow;
         } catch (e) {
           loadingStage = '请求失败，正在重试...';
           notifyListeners();
           await Future.delayed(const Duration(milliseconds: 500));
-          response = (await callDeepSeek(prompt)).content;
+          // 重试前强化指令：要求直接输出纯正文，禁止空行/前言/解释
+          currentPrompt =
+              '$prompt\n\n⚠️【重试指令】上一轮返回为空或不合规，请直接输出当前回合的剧情正文（中文纯文本），不要任何前言、解释、空行、Markdown 或代码块标记。';
+          response = (await callDeepSeek(currentPrompt)).content;
         }
 
         loadingStage = '正在解析剧情...';
@@ -1224,11 +1247,43 @@ $kNarrativeWritingRules
 
   // ==================== Token 优化：上下文截断 + 状态精简 ====================
 
+  /// 摘要用主角既定事实（权威字段，非记忆层——防止摘要 AI 凭叙事猜测，
+  /// 把哈利特征张冠李戴到原创主角身上，如"闪电疤/猫头鹰宠物"）。
+  String buildCoreFactsForSummary() {
+    final p = player;
+    if (p == null) return '';
+    final lines = <String>[];
+    lines.add('- 主角是${p.name}（原创角色，不是哈利·波特，严禁把哈利特征写给他）');
+    if (p.familyBackground != null && p.familyBackground!.isNotEmpty) {
+      lines.add('- 家族与血统：${p.familyBackground}');
+    }
+    if (p.wandId != null && p.wandId!.isNotEmpty) {
+      final wd = wandById(p.wandId!);
+      if (wd != null) {
+        final woodClean = wd.wood.endsWith('木') ? wd.wood : '${wd.wood}木';
+        lines.add('- 魔杖：$woodClean·${wd.core}·${wd.length}');
+      }
+    }
+    if (p.petId != null && p.petId!.isNotEmpty) {
+      final pd = petById(p.petId!);
+      final petName = (p.petName != null && p.petName!.isNotEmpty)
+          ? p.petName
+          : (pd?.name ?? '宠物');
+      lines.add('- 契约宠物：$petName（${pd?.species ?? '未知'}）');
+    }
+    if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
+      lines.add('- 初始天赋专精：${p.initialTalent}');
+    }
+    return lines.join('\n');
+  }
+
   /// 截断叙事上下文，只保留末尾 maxChars 字，保证连贯性同时控制 token
+  /// （日志分析第16轮D：硬切字符会把「8月1日」切成「日」——AI 读断词，
+  /// 截断点回退到段落/句末边界）
 
   String _truncateNarrativeContext(String narrative, int maxChars) {
     if (narrative.length <= maxChars) return narrative;
-    final cut = narrative.length - maxChars;
+    final cut = snapCutToBoundary(narrative, narrative.length - maxChars);
     return '…（前情略）${narrative.substring(cut)}';
   }
 
@@ -1293,6 +1348,7 @@ $kNarrativeWritingRules
       previousSummary: narrativeSummary,
       newChunk: chunk,
       relSnapshot: relationSnapshot,
+      coreFacts: buildCoreFactsForSummary(),
     );
 
     try {
@@ -1477,6 +1533,9 @@ $kNarrativeWritingRules
     cleaned = cleaned.replaceAll(RegExp(r'【了结】[\s\S]*?(?=【|$)'), '');
     cleaned = cleaned.replaceAll(RegExp(r'【核心事实】[\s\S]*?(?=【|$)'), '');
     cleaned = cleaned.replaceAll(RegExp(r'【世界事件】[\s\S]*?(?=【|$)'), '');
+    // 日志分析第16轮D：摘要 AI 常把指令编号也输出（"1. 精简剧情摘要"），
+    // 剥掉行首「数字+句点」序号残渣，避免摘要正文带着编号注入前情
+    cleaned = cleaned.replaceAll(RegExp(r'^\s*\d{1,2}[.．、]\s*', multiLine: true), '');
     return cleaned.trim();
   }
 

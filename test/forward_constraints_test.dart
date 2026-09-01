@@ -86,20 +86,24 @@ void main() {
 
   group('prevWarnFeedbackLines · 上回合违规反馈', () {
     test('只取 warn 级、最多 2 条', () {
+      // 第16轮D：违规必须 turn==currentTurn-1 才反馈（时效），否则跳过；
+      // currentTurn=5 时只取 turn=4 的违规。
       final lines = prevWarnFeedbackLines([
-        {'severity': 'warn', 'message': '违和A'},
-        {'severity': 'critical', 'message': '严重B'},
-        {'severity': 'warn', 'message': '违和C'},
-        {'severity': 'warn', 'message': '违和D'},
-      ]);
+        {'severity': 'warn', 'message': '违和A', 'turn': 4},
+        {'severity': 'critical', 'message': '严重B', 'turn': 4},
+        {'severity': 'warn', 'message': '违和C', 'turn': 4},
+        {'severity': 'warn', 'message': '违和D', 'turn': 4},
+        {'severity': 'warn', 'message': '上上回合违规-不应出现', 'turn': 2},
+        {'severity': 'warn', 'message': '本回合-不应出现', 'turn': 5},
+      ], currentTurn: 5);
       expect(lines, ['• 违和A', '• 违和C']);
     });
 
     test('无 warn 违规 → 空列表', () {
       expect(
         prevWarnFeedbackLines([
-          {'severity': 'critical', 'message': '严重B'},
-        ]),
+          {'severity': 'critical', 'message': '严重B', 'turn': 4},
+        ], currentTurn: 5),
         isEmpty,
       );
     });
