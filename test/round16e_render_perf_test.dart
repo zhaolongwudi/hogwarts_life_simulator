@@ -18,9 +18,19 @@ void main() {
     late String narrative;
 
     setUpAll(() {
-      final raw = File('test/fixtures_auto_save.json').readAsStringSync();
-      final data = jsonDecode(raw) as Map<String, dynamic>;
-      narrative = data['narrative'] as String;
+      // fixture（用户真实叙事）含隐私不提交仓库：本地存在时用它做基准，
+      // CI/他人 clone 时用等长的硬编码叙事替代（回归目标一致：不卡死）。
+      if (File('test/fixtures_auto_save.json').existsSync()) {
+        final raw = File('test/fixtures_auto_save.json').readAsStringSync();
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        narrative = data['narrative'] as String;
+      } else {
+        narrative = '【时间戳】📅 1991年8月1日，星期四，深夜 0:30\n'
+            '你看着哈利，他正用指尖无意识地摩挲着餐巾的边缘。'
+            '“他们不只是为了钱，”你打破了沉默，声音压得很低。'
+            '他深吸一口气，像是在压抑某种长期积压的情绪，然后开口了，声音沙哑：“阁楼。'
+            '“然后我就学会了闭嘴。”哈利低下头。';
+      }
     });
 
     test('用户 narrative 渲染耗时 < 500ms（每段解析）', () {
