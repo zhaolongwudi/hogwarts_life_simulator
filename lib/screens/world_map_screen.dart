@@ -937,11 +937,19 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   Widget _buildLocationCard(GameProvider gp) {
-    final loc = _currentLocations.firstWhere(
-      (l) => l['name'] == _selectedLocation,
-      orElse: () => {},
-    );
-    if (loc.isEmpty) return const SizedBox.shrink();
+    // 崩溃修复（用户日志：v3.5.x `firstWhere orElse` 类型不匹配）：
+    // `orElse: () => {}` 推断为 Map<String, dynamic>，而列表元素在旧版
+    // const 字面量下推断为 Map<String, Object> → 运行时类型断言崩溃。
+    // 改用循环查找：无泛型推导歧义，任何列表元素类型都不崩。
+    Map<String, dynamic>? selected;
+    for (final l in _currentLocations) {
+      if (l['name'] == _selectedLocation) {
+        selected = l;
+        break;
+      }
+    }
+    final loc = selected;
+    if (loc == null || loc.isEmpty) return const SizedBox.shrink();
 
     final isBranch = loc['branch'] == true;
 
