@@ -221,7 +221,9 @@ const List<TraitDef> traitCatalog = [
 class TraitRarityWeights {
   static const double commonBase = 0.70;
   static const double rareBase = 0.25;
-  static const double legendaryBase = 0.05;
+  // 0.05 → 0.02：框架2 §64「特殊天赋极其罕见」+ §1「不得自动拥有极其罕见的
+  // 魔法天赋」。3 连抽至少 1 传说 ≈14% 偏高，且可与「特殊资质」叠加出双稀有。
+  static const double legendaryBase = 0.02;
 
   /// 软保底：每连续 N 次未出该稀有度，概率提升
   static const int pityThreshold = 3;

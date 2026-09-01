@@ -1966,7 +1966,9 @@ void _commandReferenceGroup() {
         checked++;
         expect(text, contains('helpText'),
             reason: '/${primary.group(1)} 没有 helpText，/帮助 里会是空白');
-        final help = RegExp(r"helpText: *'([^']*)'").firstMatch(text);
+        // 格式容忍：dart format 会把 `helpText: 'xxx'` 拆成 `helpText:\n 'xxx'`
+        // （第15/16轮教训：结构性契约匹配结构，不锁字面格式）
+        final help = RegExp(r"helpText:\s*'([^']*)'").firstMatch(text);
         expect(help?.group(1)?.trim(), isNotEmpty,
             reason: '/${primary.group(1)} 的 helpText 是空的');
       }

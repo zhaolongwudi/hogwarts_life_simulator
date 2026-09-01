@@ -18,6 +18,7 @@ import '../utils/inventory_ops.dart';
 import '../data/gift_rules.dart';
 import '../data/item_data.dart';
 import '../data/attribute_data.dart';
+import '../data/wand_data.dart';
 import '../data/collectible_data.dart';
 import '../data/rivalry_data.dart';
 import '../services/ai_router.dart';
@@ -615,6 +616,14 @@ mixin GameRelationsMixin on GameProviderBase {
     final repSummary =
         '学术${rep.academic} 社交${rep.social} 战斗${rep.combat} 道德${rep.moral} 领导${rep.leadership} 黑魔法${rep.dark}';
 
+    // 结局类型标识（框架2 §118 三类坏结局 + 黑化定性）：
+    // 死亡/囚禁在 header 已单独列【结局】；黑化（堕落）此前只藏在 AI 评语
+    // 的提示里，本地回退玩家永远看不到，这里升格为明确标识。
+    final corruptedMark =
+        (!p.isDead && !p.isImprisoned && rep.dark >= 70 && rep.moral < 35)
+        ? '【结局】你成为了自己曾经害怕的人——黑魔法声望压过了道德底线，'
+              '这段人生以另一种方式走向了终结（仍在人间，但那份改变已经无法回头）。\n'
+        : '';
     final header =
         '╔══════════════════════════════════════╗\n'
         '  《终章报告》· ${p.name}的魔法人生\n'
@@ -628,7 +637,8 @@ mixin GameRelationsMixin on GameProviderBase {
         '【声望】$repSummary\n'
         '【成就】${unlockedNames.isEmpty ? '尚无' : unlockedNames.join('、')}\n'
         '【重要羁绊】${relationSnapshot.isEmpty ? '暂无深入关系' : relationSnapshot}\n'
-        '${p.isDead ? '【结局】已于 ${p.deadOn ?? '未知时间'} 去世（${p.deathCause ?? '原因不明'}）\n' : ''}';
+        '${p.isDead ? '【结局】已于 ${p.deadOn ?? '未知时间'} 去世（${p.deathCause ?? '原因不明'}）\n' : ''}'
+        '$corruptedMark';
 
     // 回望：把七年编成一篇能读的文章。
     //
@@ -640,10 +650,43 @@ mixin GameRelationsMixin on GameProviderBase {
     );
 
     // 本地回退（无 AI 或调用失败时使用）
+    // 框架2 §121「很多年以后」：把有数据的字段落成问答段，缺失字段不硬编。
+    final wandLine = p.wandId != null
+        ? (wandById(p.wandId!)?.name ?? p.wandId)
+        : null;
+    final treasureLine = p.inventory.isNotEmpty ? p.inventory.first.name : null;
+    final manyYearsLater = StringBuffer()
+      ..writeln()
+      ..writeln('【七年之后，很多年以后】');
+    if (p.patronus != null && p.patronus!.isNotEmpty) {
+      manyYearsLater.writeln('· 你的守护神：${p.patronus}');
+    }
+    if (wandLine != null) {
+      manyYearsLater.writeln('· 陪了你一辈子的魔杖：$wandLine');
+    }
+    if (treasureLine != null) {
+      manyYearsLater.writeln('· 最珍贵的东西：$treasureLine');
+    }
+    if (p.worldLineDeviation > 0.3) {
+      manyYearsLater.writeln(
+        '· 你改变过历史：世界线变动率 ${(p.worldLineDeviation * 100).toStringAsFixed(1)}%，'
+        '史书上没有你的名字，但有些人的命运确实被你改写。',
+      );
+    }
+    if (p.children.isNotEmpty) {
+      manyYearsLater.writeln(
+        '· 你的孩子：${p.children.take(3).map((c) => c.name).join('、')}',
+      );
+    }
+    if (p.loveState.partnerName != null) {
+      manyYearsLater.writeln('· 陪你走到最后的人：${p.loveState.partnerName}');
+    }
+    manyYearsLater.writeln('· 如果十一岁的你，能够看见这一生——你觉得他会满意吗？');
     final localFallback =
         header +
         (retrospective.isEmpty ? '' : '\n$retrospective\n\n') +
-        '这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
+        manyYearsLater.toString() +
+        '\n这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
             '也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，'
             '在无数平行世界里继续生长。\n\n'
             '—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';

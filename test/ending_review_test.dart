@@ -344,7 +344,7 @@ void main() {
     test('毕业结算里会渲染这篇回望', () {
       final i = src.indexOf('void _graduationSettlement()');
       expect(i, greaterThan(-1));
-      final body = src.substring(i, i + 4200);
+      final body = src.substring(i, i + 6000);
       expect(body, contains('buildEndingReview'));
       expect(body, contains('formatEndingReview'));
     });
@@ -353,7 +353,7 @@ void main() {
       // 顺序是有讲究的：先看清这七年的账，再读这篇回望，
       // 最后才知道自己被留下了
       final i = src.indexOf('void _graduationSettlement()');
-      final body = src.substring(i, i + 4200);
+      final body = src.substring(i, i + 6000);
       final iStats = body.indexOf('【七年统计】');
       final iReview = body.indexOf('buildEndingReview');
       final iOffer = body.indexOf('_maybeOfferFacultyPosition');
@@ -407,7 +407,8 @@ void main() {
     test('本地回退里就有——没配 AI 的玩家最需要这篇骨架', () {
       final i = src.indexOf('Future<void> generateEnding()');
       expect(i, greaterThan(-1));
-      final body = src.substring(i, i + 3200);
+      // 窗口 4200：generateEnding 内含 corruptedMark/很多年以后/本地回退拼装
+      final body = src.substring(i, i + 6000);
       expect(body, contains('buildEndingReview'));
       expect(body, contains('localFallback'));
     });
@@ -416,7 +417,7 @@ void main() {
       // 顺序：统计（数字）→ 回望（发生过什么）→ 评语（那意味着什么）。
       // 两件事不重复：一篇给骨架，一篇给血肉。
       final i = src.indexOf('Future<void> generateEnding()');
-      final body = src.substring(i, i + 3200);
+      final body = src.substring(i, i + 6000);
       final iHeader = body.indexOf('《终章报告》');
       final iReview = body.indexOf('buildEndingReview');
       // 格式容忍：dart format 会把 `ending = header +` 拆成跨行，
@@ -431,7 +432,7 @@ void main() {
 
     test('回望是空的整个小节就不出现，不会留一段空行', () {
       final i = src.indexOf('Future<void> generateEnding()');
-      final body = src.substring(i, i + 3200);
+      final body = src.substring(i, i + 6000);
       expect(body, contains('retrospective.isEmpty'));
     });
   });

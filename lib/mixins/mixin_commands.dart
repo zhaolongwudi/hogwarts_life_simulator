@@ -67,7 +67,8 @@ mixin GameCommandsMixin on GameProviderBase {
             final gm = ctx.provider as GameSystemsMixin;
             final days = gm.resolveFastForwardDays(ctx.tailFrom(1));
             if (days <= 0) {
-              m.currentNarrative = '【时间快进】\n'
+              m.currentNarrative =
+                  '【时间快进】\n'
                   '${m.worldState.time.formatDate()} —— 你要的时间点已经到了，无需快进。';
               m.choices = [const GameChoice(text: '继续', action: '继续')];
               m.notifyListeners();
@@ -116,12 +117,12 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '基础信息',
         helpText: '快进时间：/快进 [天数|明天|下周|下月|假期|暑假|开学]',
         subs: [
-            CommandSub('明天', '快进 1 天'),
-            CommandSub('下周', '快进 7 天'),
-            CommandSub('下月', '快进到下月'),
-            CommandSub('假期', '快进到假期'),
-            CommandSub('暑假', '快进到暑假'),
-            CommandSub('开学', '快进到开学'),
+          CommandSub('明天', '快进 1 天'),
+          CommandSub('下周', '快进 7 天'),
+          CommandSub('下月', '快进到下月'),
+          CommandSub('假期', '快进到假期'),
+          CommandSub('暑假', '快进到暑假'),
+          CommandSub('开学', '快进到开学'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameSystemsMixin;
@@ -130,7 +131,8 @@ mixin GameCommandsMixin on GameProviderBase {
           // 「/快进 暑假」就是这种。老实现会借 _daysUntilMonth 的循环
           // 绕满一整年，直接跳掉 351 天。
           if (days <= 0) {
-            m.currentNarrative = '【时间快进】\n'
+            m.currentNarrative =
+                '【时间快进】\n'
                 '${m.worldState.time.formatDate()} —— 你要的时间点已经到了，无需快进。';
             m.choices = [const GameChoice(text: '继续', action: '继续')];
             m.notifyListeners();
@@ -183,9 +185,9 @@ mixin GameCommandsMixin on GameProviderBase {
         panel: true,
         helpText: '城堡设定：/城堡 通道 [名字]｜/城堡 幽灵 [名字]｜/城堡 学院 [院名]',
         subs: [
-            CommandSub('通道', '全部通道 / 查指定通道', argHint: '名字'),
-            CommandSub('幽灵', '全部幽灵 / 查指定幽灵', argHint: '名字'),
-            CommandSub('学院', '四院档案 / 查指定学院', argHint: '院名'),
+          CommandSub('通道', '全部通道 / 查指定通道', argHint: '名字'),
+          CommandSub('幽灵', '全部幽灵 / 查指定幽灵', argHint: '名字'),
+          CommandSub('学院', '四院档案 / 查指定学院', argHint: '院名'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -197,12 +199,11 @@ mixin GameCommandsMixin on GameProviderBase {
             } else {
               final p = passageByName(q);
               if (p == null) {
-                m.currentNarrative = '【秘密通道】\n城堡里没有「$q」这条路。\n\n'
+                m.currentNarrative =
+                    '【秘密通道】\n城堡里没有「$q」这条路。\n\n'
                     '输入 /城堡 通道 看看已知的七条。';
               } else {
-                final known = p.knownToStudents
-                    ? '这条路在学生间口耳相传。'
-                    : '这条路几乎无人知晓。';
+                final known = p.knownToStudents ? '这条路在学生间口耳相传。' : '这条路几乎无人知晓。';
                 m.currentNarrative =
                     '【${p.name}】\n${p.from} → ${p.to}\n\n${p.note}\n\n$known';
               }
@@ -216,7 +217,7 @@ mixin GameCommandsMixin on GameProviderBase {
               if (r == null) {
                 m.currentNarrative =
                     '【常驻居民】\n城堡里没有叫「$q」的幽灵或居民。\n\n'
-                        '输入 /城堡 幽灵 看看都有谁。';
+                    '输入 /城堡 幽灵 看看都有谁。';
               } else {
                 m.currentNarrative =
                     '【${r.name}】（${r.kind}）\n常驻：${r.haunt}\n\n${r.persona}';
@@ -225,13 +226,13 @@ mixin GameCommandsMixin on GameProviderBase {
           } else if (sub == '学院') {
             // 不带名字时给玩家自己所在学院的档案；还没分院就如实说。
             final q = ctx.tailFrom(1).trim();
-            final profile =
-                q.isEmpty ? houseProfileOf(m.player?.house) : houseProfileOf(q);
+            final profile = q.isEmpty
+                ? houseProfileOf(m.player?.house)
+                : houseProfileOf(q);
             if (profile == null) {
-              final why = q.isEmpty
-                  ? '你还没有分院，暂时没有自己的学院档案。'
-                  : '查不到「$q」的学院档案。';
-              m.currentNarrative = '【学院】\n$why\n\n'
+              final why = q.isEmpty ? '你还没有分院，暂时没有自己的学院档案。' : '查不到「$q」的学院档案。';
+              m.currentNarrative =
+                  '【学院】\n$why\n\n'
                   '四所学院是：格兰芬多、赫奇帕奇、拉文克劳、斯莱特林。';
             } else {
               m.currentNarrative = houseProfileBlock(profile);
@@ -239,7 +240,7 @@ mixin GameCommandsMixin on GameProviderBase {
           } else {
             m.currentNarrative =
                 formatCastleOverview(houseKey: m.player?.house) +
-                    '\n\n输入 /城堡 通道 或 /城堡 幽灵 看更多。';
+                '\n\n输入 /城堡 通道 或 /城堡 幽灵 看更多。';
           }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -314,7 +315,8 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '送礼',
         aliases: ['送', '赠', '赠送', '给'],
         group: '关系&情感',
-        helpText: '把背包里的东西送给NPC：/送礼 [名字] [物品]，例如 /送礼 赫敏 旧书'
+        helpText:
+            '把背包里的东西送给NPC：/送礼 [名字] [物品]，例如 /送礼 赫敏 旧书'
             '（只写名字则提示对方喜好）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -332,13 +334,13 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '关系&情感',
         helpText: '查看恋爱状态（/恋爱 历史 回看一路走来的心动事件）',
         panel: true,
-        subs: [
-          CommandSub('历史', '回看恋爱相关的事件记录'),
-        ],
+        subs: [CommandSub('历史', '回看恋爱相关的事件记录')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.isNotEmpty &&
-              (ctx.arg(0) == '历史' || ctx.arg(0) == '回顾' || ctx.arg(0) == '过往')) {
+              (ctx.arg(0) == '历史' ||
+                  ctx.arg(0) == '回顾' ||
+                  ctx.arg(0) == '过往')) {
             m.currentNarrative = m.formatLoveHistory();
             m.choices = [GameChoice(text: '返回', action: '继续')];
             return true;
@@ -353,9 +355,9 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '关系&情感',
         helpText: '查看声望（/声望 恋爱·/声望 NPC [名字]·/声望 NPC 列表·/声望 NPC 排名 [维度]）',
         subs: [
-            CommandSub('恋爱', '查看恋爱声望'),
-            CommandSub('NPC 列表', '列出可查声望的 NPC'),
-            CommandSub('NPC 排名', '按维度排名', argHint: '维度'),
+          CommandSub('恋爱', '查看恋爱声望'),
+          CommandSub('NPC 列表', '列出可查声望的 NPC'),
+          CommandSub('NPC 排名', '按维度排名', argHint: '维度'),
         ],
         panel: true,
         handler: (ctx) {
@@ -368,11 +370,13 @@ mixin GameCommandsMixin on GameProviderBase {
               m.currentNarrative = m._formatNpcReputationList();
             } else if (p2.isNotEmpty && p2[0] == '排名') {
               m.currentNarrative = m._formatNpcReputationRanking(
-                  p2.length > 1 ? p2[1] : 'academic');
+                p2.length > 1 ? p2[1] : 'academic',
+              );
             } else if (p2.isNotEmpty) {
               m.currentNarrative = m._formatNpcReputation(p2.join(' '));
             } else {
-              m.currentNarrative = '用法：/声望 NPC [名字] ｜ /声望 NPC 列表 ｜ /声望 NPC 排名 [维度]';
+              m.currentNarrative =
+                  '用法：/声望 NPC [名字] ｜ /声望 NPC 列表 ｜ /声望 NPC 排名 [维度]';
             }
           } else {
             m.currentNarrative = m.formatReputation();
@@ -443,7 +447,10 @@ mixin GameCommandsMixin on GameProviderBase {
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 2) {
-            m.currentNarrative = m.formatNpcRelationship(ctx.arg(0)!, ctx.arg(1)!);
+            m.currentNarrative = m.formatNpcRelationship(
+              ctx.arg(0)!,
+              ctx.arg(1)!,
+            );
           } else {
             m.currentNarrative = '请输入两位NPC的名字：/关系网络 [NPC1] [NPC2]';
           }
@@ -550,7 +557,9 @@ mixin GameCommandsMixin on GameProviderBase {
             }
           } else if (a != null && b != null) {
             final err = m.startShipping(a, b);
-            m.currentNarrative = err != null ? '【拉郎配】\n$err' : m.formatShippings();
+            m.currentNarrative = err != null
+                ? '【拉郎配】\n$err'
+                : m.formatShippings();
           } else {
             m.currentNarrative = m.formatShippings();
           }
@@ -566,18 +575,17 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '课程',
         group: '学业&成长',
         helpText: '查看课程表与进度（/课程 成绩 查看考试成绩单）',
-        subs: [
-            CommandSub('成绩', '查看考试成绩单'),
-            CommandSub('选课', '管理选修课'),
-        ],
+        subs: [CommandSub('成绩', '查看考试成绩单'), CommandSub('选课', '管理选修课')],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.isNotEmpty && (ctx.arg(0) == '成绩' || ctx.arg(0) == '考试')) {
+          if (ctx.parts.isNotEmpty &&
+              (ctx.arg(0) == '成绩' || ctx.arg(0) == '考试')) {
             m.currentNarrative = m._formatExamRecords();
           } else if (ctx.parts.isNotEmpty &&
               (ctx.arg(0) == '选课' || ctx.arg(0) == '选修')) {
-            m.currentNarrative = '【选修课】（三年级起，至少选2门）\n'
+            m.currentNarrative =
+                '【选修课】（三年级起，至少选2门）\n'
                 '${electiveCourses.map((c) => '· ${c.name}（${c.professor}，${c.minGrade}年级起）').join('\n')}\n\n'
                 '选课通过课堂系统自动生效——随着年级提升，选修课会自然进入你的课表。';
           } else {
@@ -591,15 +599,14 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '课堂',
         group: '学业&成长',
         helpText: '触发课堂互动（/课堂 互动）',
-        subs: [
-            CommandSub('互动', '触发课堂互动'),
-        ],
+        subs: [CommandSub('互动', '触发课堂互动')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '互动') {
             m.classroomInteraction();
           } else {
-            m.currentNarrative = '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
+            m.currentNarrative =
+                '【课堂互动】\n输入 /课堂 互动 触发当前课堂的互动环节（教授提问、实践练习、同桌互动、随机意外）。\n\n当前课表见 /课程。';
             m.choices = [GameChoice(text: '返回', action: '继续')];
           }
           return true;
@@ -610,9 +617,9 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         helpText: '魔咒一览（/咒语 学习 漂浮咒 ｜ /咒语 练习 漂浮咒 ｜ /咒语 详情 漂浮咒）',
         subs: [
-            CommandSub('学习', '学习新咒语', argHint: '咒语名'),
-            CommandSub('练习', '练习咒语', argHint: '咒语名'),
-            CommandSub('详情', '查看咒语详情', argHint: '咒语名'),
+          CommandSub('学习', '学习新咒语', argHint: '咒语名'),
+          CommandSub('练习', '练习咒语', argHint: '咒语名'),
+          CommandSub('详情', '查看咒语详情', argHint: '咒语名'),
         ],
         panel: true,
         handler: (ctx) {
@@ -623,7 +630,8 @@ mixin GameCommandsMixin on GameProviderBase {
             case '学习':
             case '学':
               if (rest.isEmpty) {
-                m.currentNarrative = '要学哪个咒语？用法：/咒语 学习 漂浮咒\n\n'
+                m.currentNarrative =
+                    '要学哪个咒语？用法：/咒语 学习 漂浮咒\n\n'
                     '不知道能学什么就先输入 /咒语';
                 m.choices = [GameChoice(text: '返回', action: '继续')];
               } else {
@@ -674,7 +682,8 @@ mixin GameCommandsMixin on GameProviderBase {
               }
             }
             if (found == null) {
-              m.currentNarrative = '【收藏】\n没有找到叫「$q」的收藏品。'
+              m.currentNarrative =
+                  '【收藏】\n没有找到叫「$q」的收藏品。'
                   '\n\n输入 /收藏 看看收集册里都有哪些系列。';
               m.choices = [GameChoice(text: '返回', action: '继续')];
               return true;
@@ -703,8 +712,8 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         helpText: 'CG图鉴：统计/详情/重播（/日记 统计·/日记 [编号]·/日记 重播 [编号]）',
         subs: [
-            CommandSub('统计', 'CG 收集统计'),
-            CommandSub('重播', '重播某张 CG', argHint: '编号'),
+          CommandSub('统计', 'CG 收集统计'),
+          CommandSub('重播', '重播某张 CG', argHint: '编号'),
         ],
         panel: true,
         handler: (ctx) {
@@ -727,9 +736,7 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         helpText: '查看角色完整档案（/档案 回忆 回看人生大事记）',
         panel: true,
-        subs: [
-          CommandSub('回忆', '回看人生大事记与成长痕迹'),
-        ],
+        subs: [CommandSub('回忆', '回看人生大事记与成长痕迹')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.isNotEmpty &&
@@ -764,10 +771,10 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '物品&宠物',
         helpText: '宠物：查看 / 喂食 / 玩耍 / 训练 / 购买',
         subs: [
-            CommandSub('喂食', '喂宠物'),
-            CommandSub('玩耍', '陪宠物玩'),
-            CommandSub('训练', '训练宠物'),
-            CommandSub('购买', '去商店买宠物'),
+          CommandSub('喂食', '喂宠物'),
+          CommandSub('玩耍', '陪宠物玩'),
+          CommandSub('训练', '训练宠物'),
+          CommandSub('购买', '去商店买宠物'),
         ],
         panel: true,
         handler: (ctx) {
@@ -776,8 +783,7 @@ mixin GameCommandsMixin on GameProviderBase {
           if (sub != null &&
               ['喂食', '喂', '食物', '玩耍', '玩', '训练', '练'].contains(sub)) {
             m.petInteract(sub);
-          } else if (sub != null &&
-              ['购买', '买', '选购', '挑选'].contains(sub)) {
+          } else if (sub != null && ['购买', '买', '选购', '挑选'].contains(sub)) {
             // 以前没宠物时 /宠物 会让人「去对角巷挑选」，但商店里没宠物卖。
             // 现在这里真能买。
             m.currentNarrative = m.buyPet(ctx.tailFrom(1));
@@ -842,8 +848,8 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '玩法&活动',
         helpText: '魁地奇：/魁地奇 比赛·/魁地奇 位置 <位置>',
         subs: [
-            CommandSub('比赛', '参加魁地奇比赛'),
-            CommandSub('位置', '查看/更换场上位置', argHint: '位置'),
+          CommandSub('比赛', '参加魁地奇比赛'),
+          CommandSub('位置', '查看/更换场上位置', argHint: '位置'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -873,15 +879,14 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '禁林',
         group: '玩法&活动',
         helpText: '禁林探险：/禁林 探险',
-        subs: [
-            CommandSub('探险', '进入禁林探险'),
-        ],
+        subs: [CommandSub('探险', '进入禁林探险')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '探险') {
             m.exploreForbiddenForest();
           } else {
-            m.currentNarrative = '【禁林】\n'
+            m.currentNarrative =
+                '【禁林】\n'
                 '黑暗而神秘的森林，栖息着许多神奇生物，也藏着危险。\n'
                 '输入 /禁林 探险 进入禁林探索（消耗 3 小时，可能遭遇生物、采集材料或受伤）。\n\n'
                 '低年级学生请量力而行——一年级的魔杖在这里还很脆弱。';
@@ -907,9 +912,9 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '玩法&活动',
         helpText: '支线委托板：/委托 刷新·接受 [编号]·交付 [编号]',
         subs: [
-            CommandSub('刷新', '刷新委托板'),
-            CommandSub('接受', '接受委托', argHint: '编号'),
-            CommandSub('交付', '交付委托', argHint: '编号'),
+          CommandSub('刷新', '刷新委托板'),
+          CommandSub('接受', '接受委托', argHint: '编号'),
+          CommandSub('交付', '交付委托', argHint: '编号'),
         ],
         panel: true,
         handler: (ctx) {
@@ -944,8 +949,8 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '玩法&活动',
         helpText: '生成/查看新NPC：/新NPC（列表）｜/新NPC [全名]（档案）｜/新NPC 生成 [数量]',
         subs: [
-            CommandSub('生成', '批量生成新 NPC', argHint: '数量'),
-            CommandSub('好感', '调整新 NPC 好感', argHint: 'NPC名'),
+          CommandSub('生成', '批量生成新 NPC', argHint: '数量'),
+          CommandSub('好感', '调整新 NPC 好感', argHint: 'NPC名'),
         ],
         panel: true,
         handler: (ctx) {
@@ -953,8 +958,9 @@ mixin GameCommandsMixin on GameProviderBase {
           // 框架 7.7：/新NPC 查看所有已生成新NPC列表；/新NPC [全名] 查看指定档案；
           // /新NPC 生成 [数量] 生成。历史版本把「查档案」误触发生成（副作用+BUG-FIX），
           // 这里对齐框架：无参=列表，名字=档案，只有显式 生成/数字 才生成。
-          final generated =
-              m.npcRegistry.values.where((n) => n.isGenerated).toList();
+          final generated = m.npcRegistry.values
+              .where((n) => n.isGenerated)
+              .toList();
 
           // 1) 作弊路径
           if (ctx.parts.isNotEmpty && ctx.arg(0) == '好感') {
@@ -975,7 +981,8 @@ mixin GameCommandsMixin on GameProviderBase {
                     .toList();
                 if (gen.isNotEmpty) names.add(gen.last.name);
               }
-              m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
+              m.currentNarrative =
+                  '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
                   '他们或许会成为你故事里的一部分。';
               // 事件类指令：清空选项，输出即剧情（面板标记只适用于列表/档案查看）
               m.choices = [];
@@ -992,7 +999,8 @@ mixin GameCommandsMixin on GameProviderBase {
                     .toList();
                 if (gen.isNotEmpty) names.add(gen.last.name);
               }
-              m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
+              m.currentNarrative =
+                  '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
                   '他们或许会成为你故事里的一部分。';
               m.choices = [];
               return true;
@@ -1010,7 +1018,8 @@ mixin GameCommandsMixin on GameProviderBase {
               m.choices = [GameChoice(text: '返回', action: '继续')];
               return true;
             }
-            m.currentNarrative = '【新NPC】\n没有叫「$kw」的生成NPC。\n\n'
+            m.currentNarrative =
+                '【新NPC】\n没有叫「$kw」的生成NPC。\n\n'
                 '已生成 ${generated.length} 位：${generated.map((n) => n.name).join('、')}。\n'
                 '用 /新NPC 生成 一位新同学。';
             m.choices = [GameChoice(text: '返回', action: '继续')];
@@ -1019,17 +1028,22 @@ mixin GameCommandsMixin on GameProviderBase {
 
           // 4) 列表路径：/新NPC（无参数）
           if (generated.isEmpty) {
-            m.currentNarrative = '【新NPC】\n还没有生成过新NPC。\n'
+            m.currentNarrative =
+                '【新NPC】\n还没有生成过新NPC。\n'
                 '用 /新NPC 生成 一位属于你故事的新同学。';
           } else {
             final lines = generated
-                .map((n) => '· ${n.name}｜${n.house.isEmpty ? '未知学院' : n.house}'
-                    '${n.grade}年级｜好感 ${n.affection}'
-                    '（${n.affectionStage}）\n'
-                    '   ${n.appearance.isNotEmpty ? n.appearance : ''}'
-                    '${n.personalGoal != null && n.personalGoal!.isNotEmpty ? '｜${n.personalGoal}' : ''}')
+                .map(
+                  (n) =>
+                      '· ${n.name}｜${n.house.isEmpty ? '未知学院' : n.house}'
+                      '${n.grade}年级｜好感 ${n.affection}'
+                      '（${n.affectionStage}）\n'
+                      '   ${n.appearance.isNotEmpty ? n.appearance : ''}'
+                      '${n.personalGoal != null && n.personalGoal!.isNotEmpty ? '｜${n.personalGoal}' : ''}',
+                )
                 .join('\n');
-            m.currentNarrative = '【新NPC · 已生成 ${generated.length} 位】\n$lines\n\n'
+            m.currentNarrative =
+                '【新NPC · 已生成 ${generated.length} 位】\n$lines\n\n'
                 '想看某位详情：/新NPC [全名]';
           }
           m.choices = [GameChoice(text: '返回', action: '继续')];
@@ -1045,9 +1059,9 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '信件&目标',
         helpText: '查看信件：读/回/寄（/信 读 [编号]·/信 回 [编号] [内容]·/信 寄 [NPC] [内容]）',
         subs: [
-            CommandSub('读', '读一封信', argHint: '编号'),
-            CommandSub('回', '回信', argHint: '编号'),
-            CommandSub('寄', '寄信给 NPC', argHint: 'NPC'),
+          CommandSub('读', '读一封信', argHint: '编号'),
+          CommandSub('回', '回信', argHint: '编号'),
+          CommandSub('寄', '寄信给 NPC', argHint: 'NPC'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1061,9 +1075,7 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '世界&结局',
         helpText: '查看时代联动痕迹（/联动 状态 查看当前时代详情）',
         panel: true,
-        subs: [
-          CommandSub('状态', '查看当前时代与世界线详情'),
-        ],
+        subs: [CommandSub('状态', '查看当前时代与世界线详情')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           // 文案以前许诺的是"与其他时代剧情产生关联（遇到亲世代留下的物品或
@@ -1071,7 +1083,8 @@ mixin GameCommandsMixin on GameProviderBase {
           // 永远是一句「暂无。」加一段兑现不了的说明。改成如实描述：这里记的
           // 是你亲手造成的不可逆分叉。
           final branches = m.worldState.timelineBranches;
-          m.currentNarrative = '【世界线】\n当前时代：${m.eraLabel(m.appProvider.era)}\n'
+          m.currentNarrative =
+              '【世界线】\n当前时代：${m.eraLabel(m.appProvider.era)}\n'
               '每跨过一个回不了头的节点，世界线就分出一条只有这一周目存在的支流。\n'
               '世界线变动次数：${m.worldState.timelineChanges}\n'
               '已记录的分叉：\n${branches.isEmpty ? '暂无——毕业、成婚这类不可逆的节点会出现在这里。' : branches.reversed.map((b) => '· $b').join('\n')}';
@@ -1107,11 +1120,11 @@ mixin GameCommandsMixin on GameProviderBase {
           final anchor = id == null ? null : causalAnchorFor(id);
           m.currentNarrative = anchor == null
               ? '【抉择】\n眼下没有悬而未决的分歧点。\n'
-                  '它们只在原著里那些写死的节点上出现，而且得等你的世界线'
-                  '偏得够远——输入 /世界线 看看还差多少。'
+                    '它们只在原著里那些写死的节点上出现，而且得等你的世界线'
+                    '偏得够远——输入 /世界线 看看还差多少。'
               : '【${anchor.title}】\n${anchor.setup}\n\n'
-                  '${anchor.options.map((o) => '· ${o.text}').join('\n')}\n\n'
-                  '在下面的选项里挑一个就行。';
+                    '${anchor.options.map((o) => '· ${o.text}').join('\n')}\n\n'
+                    '在下面的选项里挑一个就行。';
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -1147,9 +1160,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '传承',
         group: '世界&结局',
         helpText: '把这一生交棒给下一代；/传承 名字 正式开始新的一局',
-        subs: [
-            CommandSub('名字', '指定继承人名字开始新一局', argHint: '名字'),
-        ],
+        subs: [CommandSub('名字', '指定继承人名字开始新一局', argHint: '名字')],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider;
@@ -1160,11 +1171,12 @@ mixin GameCommandsMixin on GameProviderBase {
             return true;
           }
           final heir = m.heirsOfAge().cast<ChildRecord?>().firstWhere(
-                (c) => c!.name == name,
-                orElse: () => null,
-              );
+            (c) => c!.name == name,
+            orElse: () => null,
+          );
           if (heir == null) {
-            m.currentNarrative = '没有找到叫「$name」的孩子，'
+            m.currentNarrative =
+                '没有找到叫「$name」的孩子，'
                 '或者他还没到 $kHeirEntranceAge 岁。\n'
                 '输入 /传承 看看谁能接棒。';
             m.choices = [GameChoice(text: '返回', action: '继续')];
@@ -1182,10 +1194,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '教职',
         group: '世界&结局',
         helpText: '查看留校任教的资格与晋升进度；/教职 接受 或 /教职 婉拒 答复邀请',
-        subs: [
-            CommandSub('接受', '接受留校任教邀请'),
-            CommandSub('婉拒', '婉拒留校任教邀请'),
-        ],
+        subs: [CommandSub('接受', '接受留校任教邀请'), CommandSub('婉拒', '婉拒留校任教邀请')],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider;
@@ -1212,10 +1221,7 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         panel: true,
         helpText: '守护神之路：/守护神 状态 ｜ /守护神 尝试（框架2 第66条）',
-        subs: [
-            CommandSub('状态', '查看守护神状态'),
-            CommandSub('尝试', '尝试召唤守护神'),
-        ],
+        subs: [CommandSub('状态', '查看守护神状态'), CommandSub('尝试', '尝试召唤守护神')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m._handlePatronus(ctx.parts);
@@ -1230,11 +1236,11 @@ mixin GameCommandsMixin on GameProviderBase {
         panel: true,
         helpText: '阿尼马格斯之路：/阿尼马格斯 状态｜学习｜训练｜尝试｜登记（框架2 第67条）',
         subs: [
-            CommandSub('状态', '查看变身进度'),
-            CommandSub('学习', '学习阿尼马格斯'),
-            CommandSub('训练', '训练变身'),
-            CommandSub('尝试', '尝试变身'),
-            CommandSub('登记', '登记变身'),
+          CommandSub('状态', '查看变身进度'),
+          CommandSub('学习', '学习阿尼马格斯'),
+          CommandSub('训练', '训练变身'),
+          CommandSub('尝试', '尝试变身'),
+          CommandSub('登记', '登记变身'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1250,10 +1256,10 @@ mixin GameCommandsMixin on GameProviderBase {
         panel: true,
         helpText: '毕业后正式职业（/职业 列表｜选择 <职业名>｜状态｜辞职）',
         subs: [
-            CommandSub('列表', '查看可选职业'),
-            CommandSub('选择', '选择职业', argHint: '职业名'),
-            CommandSub('状态', '查看职业状态'),
-            CommandSub('辞职', '辞去当前职业'),
+          CommandSub('列表', '查看可选职业'),
+          CommandSub('选择', '选择职业', argHint: '职业名'),
+          CommandSub('状态', '查看职业状态'),
+          CommandSub('辞职', '辞去当前职业'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1268,11 +1274,11 @@ mixin GameCommandsMixin on GameProviderBase {
         group: '学业&成长',
         helpText: '批量推进一周：/计划 学习｜社交｜魁地奇｜调查｜放松（框架2 周计划）',
         subs: [
-            CommandSub('学习', '本周计划：学习'),
-            CommandSub('社交', '本周计划：社交'),
-            CommandSub('魁地奇', '本周计划：魁地奇'),
-            CommandSub('调查', '本周计划：调查'),
-            CommandSub('放松', '本周计划：放松'),
+          CommandSub('学习', '本周计划：学习'),
+          CommandSub('社交', '本周计划：社交'),
+          CommandSub('魁地奇', '本周计划：魁地奇'),
+          CommandSub('调查', '本周计划：调查'),
+          CommandSub('放松', '本周计划：放松'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1285,9 +1291,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '目标',
         group: '信件&目标',
         helpText: '查看/设定人生目标（/目标 [编号]·/目标 进度）',
-        subs: [
-            CommandSub('进度', '查看目标进度'),
-        ],
+        subs: [CommandSub('进度', '查看目标进度')],
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1308,7 +1312,8 @@ mixin GameCommandsMixin on GameProviderBase {
             }
             if (goal != null) {
               ctx.provider.player?.currentGoal = goal.name;
-              m.currentNarrative = '✅ 已设定人生目标：${goal.name}\n'
+              m.currentNarrative =
+                  '✅ 已设定人生目标：${goal.name}\n'
                   '『${goal.description}』\n\n'
                   '这条目标将牵引后续剧情方向，但你仍可自由行动。\n'
                   '输入 /目标 可重新查看或更换。';
@@ -1343,13 +1348,13 @@ mixin GameCommandsMixin on GameProviderBase {
         permission: 'cheat',
         helpText: '作弊指令总入口（好感/资源/声望/时间/骨科/舆论/解锁CG），详情见 /cheat',
         subs: [
-            CommandSub('好感', '好感作弊'),
-            CommandSub('资源', '资源作弊'),
-            CommandSub('声望', '声望作弊'),
-            CommandSub('时间', '时间作弊'),
-            CommandSub('骨科', '骨科模式'),
-            CommandSub('舆论', '舆论作弊'),
-            CommandSub('解锁CG', '解锁全部 CG'),
+          CommandSub('好感', '好感作弊'),
+          CommandSub('资源', '资源作弊'),
+          CommandSub('声望', '声望作弊'),
+          CommandSub('时间', '时间作弊'),
+          CommandSub('骨科', '骨科模式'),
+          CommandSub('舆论', '舆论作弊'),
+          CommandSub('解锁CG', '解锁全部 CG'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1437,8 +1442,10 @@ mixin GameCommandsMixin on GameProviderBase {
         buf.writeln('  /${c.primary} — ${c.helpText}');
       }
     } else {
-      buf.writeln('\n输入 /帮助 查看全部可用指令。'
-          '\n如果你想把这段话当成自由行动交给 AI，请把开头的「/」去掉。');
+      buf.writeln(
+        '\n输入 /帮助 查看全部可用指令。'
+        '\n如果你想把这段话当成自由行动交给 AI，请把开头的「/」去掉。',
+      );
     }
     return buf.toString();
   }
@@ -1600,8 +1607,7 @@ mixin GameCommandsMixin on GameProviderBase {
     return null;
   }
 
-  String _cheatAllNpcNames() =>
-      npcRegistry.values.map((n) => n.name).join('、');
+  String _cheatAllNpcNames() => npcRegistry.values.map((n) => n.name).join('、');
 
   // ---------- 8.1 基础作弊 ----------
 
@@ -1635,7 +1641,9 @@ mixin GameCommandsMixin on GameProviderBase {
     if (input.isEmpty) return null;
     if (Player.isAttributeKey(input)) return input;
     for (final e in kAttributeLabels.entries) {
-      if (e.value == input || e.value.contains(input) || input.contains(e.value)) {
+      if (e.value == input ||
+          e.value.contains(input) ||
+          input.contains(e.value)) {
         return e.key;
       }
     }
@@ -1701,13 +1709,15 @@ mixin GameCommandsMixin on GameProviderBase {
       return;
     }
     final ts = worldState.time.format();
-    memory = memory.addKeyFact(KeyFactRecord(
-      id: 'cheat_secret_${DateTime.now().millisecondsSinceEpoch}',
-      fact: '主角已得知一个秘密：$secret。',
-      importance: 9,
-      timestamp: ts,
-      category: 'secret',
-    ));
+    memory = memory.addKeyFact(
+      KeyFactRecord(
+        id: 'cheat_secret_${DateTime.now().millisecondsSinceEpoch}',
+        fact: '主角已得知一个秘密：$secret。',
+        importance: 9,
+        timestamp: ts,
+        category: 'secret',
+      ),
+    );
     worldState.addNarrativeEvent('🔍 你知晓了一个隐藏秘密（作弊）', turn: turnCount);
     currentNarrative = '🔍 你已强制知晓：$secret\n（已写入永不遗忘层，AI 不会再把你当不知情者。）';
   }
@@ -1720,17 +1730,27 @@ mixin GameCommandsMixin on GameProviderBase {
     }
     final keyword = parts.sublist(1).join(' ');
     final matches = eventAnchors
-        .where((a) => a.title.contains(keyword) || a.directive.contains(keyword))
+        .where(
+          (a) => a.title.contains(keyword) || a.directive.contains(keyword),
+        )
         .toList();
     if (matches.isEmpty) {
-      final titles = eventAnchors.map((a) => a.title).toSet().take(12).join('、');
+      final titles = eventAnchors
+          .map((a) => a.title)
+          .toSet()
+          .take(12)
+          .join('、');
       currentNarrative = '未找到匹配「$keyword」的剧情事件。可尝试关键词：$titles……';
       return;
     }
     final anchor = matches.first;
     pendingAnchorDirective = anchor.directive;
-    worldState.addNarrativeEvent('⚡ 已强制触发剧情：${anchor.title}（作弊）', turn: turnCount);
-    currentNarrative = '⚡ 已强制触发剧情事件：「${anchor.title}」\n'
+    worldState.addNarrativeEvent(
+      '⚡ 已强制触发剧情：${anchor.title}（作弊）',
+      turn: turnCount,
+    );
+    currentNarrative =
+        '⚡ 已强制触发剧情事件：「${anchor.title}」\n'
         '接下来的剧情将围绕它展开。\n\n（若同时匹配多个事件，已取第一条；'
         '共匹配 ${matches.length} 条）';
   }
@@ -1761,8 +1781,12 @@ mixin GameCommandsMixin on GameProviderBase {
     for (final pairKey in p.cheatModifiedPairs) {
       final parts2 = pairKey.split('|');
       if (parts2.length == 2) {
-        final a = npcRegistry.values.where((n) => n.name == parts2[0]).firstOrNull;
-        final b = npcRegistry.values.where((n) => n.name == parts2[1]).firstOrNull;
+        final a = npcRegistry.values
+            .where((n) => n.name == parts2[0])
+            .firstOrNull;
+        final b = npcRegistry.values
+            .where((n) => n.name == parts2[1])
+            .firstOrNull;
         if (a != null && b != null) {
           a.relationships.remove(b.id);
           b.relationships.remove(a.id);
@@ -1783,8 +1807,8 @@ mixin GameCommandsMixin on GameProviderBase {
     currentNarrative = restored.isEmpty
         ? '当前没有任何作弊修改需要重置。'
         : '【作弊重置完成】\n${restored.join('\n')}\n\n'
-            '（注：属性/加隆/声望/世界线等数值型调整不可逆，不属于重置范围；'
-            '如需恢复请手动调整回来。）';
+              '（注：属性/加隆/声望/世界线等数值型调整不可逆，不属于重置范围；'
+              '如需恢复请手动调整回来。）';
   }
 
   // ---------- 8.2 好感度与关系作弊 ----------
@@ -1830,7 +1854,7 @@ mixin GameCommandsMixin on GameProviderBase {
     npc.affectionLocked = !npc.affectionLocked;
     currentNarrative = npc.affectionLocked
         ? '🔒 「${npc.name}」的好感已固定为 ${npc.affection}：'
-            '衰减/背叛/送礼/事件都不会再改变它。'
+              '衰减/背叛/送礼/事件都不会再改变它。'
         : '🔓 「${npc.name}」的好感锁定已解除。';
   }
 
@@ -1859,8 +1883,7 @@ mixin GameCommandsMixin on GameProviderBase {
       notifications.add('⚠️ 骨科模式已开启：禁忌的大门已为你敞开');
       worldState.addNarrativeEvent('⚠️ 骨科模式已开启：禁忌限制解除', turn: turnCount);
       bumpImpactScore(0.1, debugReason: '开启骨科模式(世界线剧烈扰动)');
-      currentNarrative =
-          '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
+      currentNarrative = '【骨科模式已开启】三代内血亲的禁忌限制已解除，但这意味着你的选择将付出更沉重的代价。';
     } else if (parts.length >= 2 && (parts[1] == '恢复' || parts[1] == '关闭')) {
       p.boneMode = false;
       currentNarrative = '【骨科模式已关闭】血缘限制已恢复。';
@@ -1874,7 +1897,8 @@ mixin GameCommandsMixin on GameProviderBase {
   /// /cheat 配对 <子命令>：好感 / 关系 / 重置 / 查看 / 性取向 / 列表
   void _cheatPair(List<String> parts) {
     if (parts.length < 2) {
-      currentNarrative = '【配对作弊】\n'
+      currentNarrative =
+          '【配对作弊】\n'
           '  /cheat 配对 好感 <NPC1> <NPC2> <数值>\n'
           '  /cheat 配对 关系 <NPC1> <NPC2> <阶段>（陌生/认识/朋友/暧昧/恋爱/深爱）\n'
           '  /cheat 配对 重置 <NPC1> <NPC2>\n'
@@ -1904,8 +1928,7 @@ mixin GameCommandsMixin on GameProviderBase {
           a.relationships[b.id] = v;
           b.relationships[a.id] = v;
           p.cheatModifiedPairs.add(ShipRecord.keyOf(a.name, b.name));
-          currentNarrative =
-              '已设置 ${a.name} × ${b.name} 的互有好感：$v';
+          currentNarrative = '已设置 ${a.name} × ${b.name} 的互有好感：$v';
         } else {
           currentNarrative = '使用方式：/cheat 配对 好感 <NPC1> <NPC2> <数值>';
         }
@@ -1916,7 +1939,12 @@ mixin GameCommandsMixin on GameProviderBase {
           final b = _cheatFindNpc(parts[3]);
           final stageName = parts[4];
           const stageMap = {
-            '陌生': 0, '认识': 20, '朋友': 45, '暧昧': 65, '恋爱': 80, '深爱': 95,
+            '陌生': 0,
+            '认识': 20,
+            '朋友': 45,
+            '暧昧': 65,
+            '恋爱': 80,
+            '深爱': 95,
           };
           final v = stageMap[stageName];
           if (a == null || b == null) {
@@ -1961,7 +1989,8 @@ mixin GameCommandsMixin on GameProviderBase {
           }
           final ab = a.relationships[b.id];
           final ba = b.relationships[a.id];
-          currentNarrative = '【配对状态】${a.name} × ${b.name}\n'
+          currentNarrative =
+              '【配对状态】${a.name} × ${b.name}\n'
               '· ${a.name} 对 ${b.name}：${ab ?? 0}\n'
               '· ${b.name} 对 ${a.name}：${ba ?? 0}';
         } else {
@@ -1995,7 +2024,10 @@ mixin GameCommandsMixin on GameProviderBase {
             currentNarrative = '性取向必须是：男 / 女 / 双性。';
             return;
           }
-          p.cheatOrientationBackup.putIfAbsent(npc.name, () => npc.sexOrientation ?? '');
+          p.cheatOrientationBackup.putIfAbsent(
+            npc.name,
+            () => npc.sexOrientation ?? '',
+          );
           npc.sexOrientation = type;
           currentNarrative = '已修改「${npc.name}」的性取向：$type';
         } else {
@@ -2006,8 +2038,12 @@ mixin GameCommandsMixin on GameProviderBase {
         final pairs = p.cheatModifiedPairs.map((k) {
           final parts2 = k.split('|');
           if (parts2.length == 2) {
-            final a = npcRegistry.values.where((n) => n.name == parts2[0]).firstOrNull;
-            final b = npcRegistry.values.where((n) => n.name == parts2[1]).firstOrNull;
+            final a = npcRegistry.values
+                .where((n) => n.name == parts2[0])
+                .firstOrNull;
+            final b = npcRegistry.values
+                .where((n) => n.name == parts2[1])
+                .firstOrNull;
             if (a != null && b != null) {
               return '· ${a.name} × ${b.name}：${a.relationships[b.id] ?? 0}';
             }
@@ -2038,8 +2074,12 @@ mixin GameCommandsMixin on GameProviderBase {
             return;
           }
           npc.reputation = Reputation(
-            academic: 25, social: 25, combat: 20,
-            moral: 30, leadership: 20, dark: 10,
+            academic: 25,
+            social: 25,
+            combat: 20,
+            moral: 30,
+            leadership: 20,
+            dark: 10,
           );
           currentNarrative = '已重置「${npc.name}」的声望至默认值。';
         } else {
@@ -2059,7 +2099,8 @@ mixin GameCommandsMixin on GameProviderBase {
           return;
         }
         npc.reputation.add(parts[3], value);
-        currentNarrative = '「${npc.name}」的${npc.reputation.labelOf(parts[3])}：'
+        currentNarrative =
+            '「${npc.name}」的${npc.reputation.labelOf(parts[3])}：'
             '${npc.reputation.get(parts[3])}';
       } else {
         currentNarrative =
@@ -2118,7 +2159,8 @@ mixin GameCommandsMixin on GameProviderBase {
       return;
     }
     p.collection.add(def.id);
-    currentNarrative = '📖 已将「${def.name}」加入收藏册（${def.series}·${def.starText}）。';
+    currentNarrative =
+        '📖 已将「${def.name}」加入收藏册（${def.series}·${def.starText}）。';
   }
 
   /// /cheat 成就 <成就名> —— 解锁指定成就
@@ -2165,7 +2207,8 @@ mixin GameCommandsMixin on GameProviderBase {
   void _cheatNewNpc(List<String> parts) {
     final p = player!;
     if (parts.length < 2) {
-      currentNarrative = '【新NPC作弊】\n'
+      currentNarrative =
+          '【新NPC作弊】\n'
           '  /cheat 新NPC 生成 — 强制生成一位新NPC\n'
           '  /cheat 新NPC 好感 <全名> <数值>\n'
           '  /cheat 新NPC 删除 <全名>（不可逆）';
@@ -2338,10 +2381,14 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('【学院】${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
       // 以前这里打的是 initialTalent，和下面的「主修天赋」是同一个字段。
       // 在校就是学生，毕业后用最近一次打工的岗位。
-      ..writeln('【职业】${worldState.graduated ? (p.currentJobTitle ?? '待业') : '霍格沃茨${p.grade ?? 1}年级学生'}')
+      ..writeln(
+        '【职业】${worldState.graduated ? (p.currentJobTitle ?? '待业') : '霍格沃茨${p.grade ?? 1}年级学生'}',
+      )
       ..writeln('【财富】💰 ${p.galleons}金加隆 · 🏦 ${p.bankGalleons}古灵阁')
       ..writeln('【家庭】${p.familyBackground ?? '未设定'}')
-      ..writeln('【社会地位】学院声望${p.houseReputation} · 魔法界声望${p.wizardingReputation} · 阵营声望${p.factionReputation}')
+      ..writeln(
+        '【社会地位】学院声望${p.houseReputation} · 魔法界声望${p.wizardingReputation} · 阵营声望${p.factionReputation}',
+      )
       ..writeln()
       ..writeln('【生存状态】')
       ..writeln('❤️ 生命：${p.health}/100')
@@ -2355,29 +2402,45 @@ mixin GameCommandsMixin on GameProviderBase {
       ..writeln('主修天赋：${p.initialTalent ?? '未设定'}')
       // 这一行以前永远是「尚未学会任何魔咒」或「1个咒语」——咒语没有学习
       // 入口。现在 /咒语 能学能练，这里顺手指一下，玩家才知道有这条路。
-      ..writeln('已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒（/咒语 查看可学的）' : '${p.learnedSpells.length}个咒语（/咒语 查看详情）'}')
+      ..writeln(
+        '已学魔咒：${p.learnedSpells.isEmpty ? '尚未学会任何魔咒（/咒语 查看可学的）' : '${p.learnedSpells.length}个咒语（/咒语 查看详情）'}',
+      )
       ..writeln()
       ..writeln('【学院四维】')
-      ..writeln('勇气：${p.houseDimensions['courage']}  智慧：${p.houseDimensions['wisdom']}')
-      ..writeln('忠诚：${p.houseDimensions['loyalty']}  野心：${p.houseDimensions['ambition']}')
+      ..writeln(
+        '勇气：${p.houseDimensions['courage']}  智慧：${p.houseDimensions['wisdom']}',
+      )
+      ..writeln(
+        '忠诚：${p.houseDimensions['loyalty']}  野心：${p.houseDimensions['ambition']}',
+      )
       ..writeln()
       ..writeln('【政治倾向】${p.politicalTendency ?? '未设定'}')
       ..writeln('【模拟风格】${p.simulationStyle ?? '混合模式'}')
-      ..writeln('【恋爱状态】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}')
+      ..writeln(
+        '【恋爱状态】${p.loveState.status}${p.loveState.partnerName != null ? '（${p.loveState.partnerName}）' : ''}',
+      )
       ..writeln('【世界线变动率】${(p.worldLineDeviation * 100).toStringAsFixed(1)}%')
       ..writeln()
       ..writeln('【装备栏】')
-      ..writeln('袍子：${p.equipped['robe'] ?? '（空）'}  帽子：${p.equipped['hat'] ?? '（空）'}')
-      ..writeln('扫帚：${p.equipped['broom'] ?? '（空）'}  饰品：${p.equipped['amulet'] ?? '（空）'}')
-      ..writeln('【学院杯】${houseKeyOrNull != null ? '本学年贡献 ${p.houseCupPoints} 分（/学院杯 查看）' : '未分院，暂未参与'}')
+      ..writeln(
+        '袍子：${p.equipped['robe'] ?? '（空）'}  帽子：${p.equipped['hat'] ?? '（空）'}',
+      )
+      ..writeln(
+        '扫帚：${p.equipped['broom'] ?? '（空）'}  饰品：${p.equipped['amulet'] ?? '（空）'}',
+      )
+      ..writeln(
+        '【学院杯】${houseKeyOrNull != null ? '本学年贡献 ${p.houseCupPoints} 分（/学院杯 查看）' : '未分院，暂未参与'}',
+      )
       ..writeln('【当前目标】${p.currentGoal ?? '尚未设定目标'}');
     // 阿尼马格斯状态（若有）
     if (p.animagus != null) {
       final av = p.animagus!;
       final aStatus = av['status'] as String? ?? 'none';
       if (aStatus == 'transformed') {
-        buf.writeln('【阿尼马格斯】形态：${av['form']}'
-            '${av['registered'] == true ? '（已登记）' : '（⚠️ 未登记）'}');
+        buf.writeln(
+          '【阿尼马格斯】形态：${av['form']}'
+          '${av['registered'] == true ? '（已登记）' : '（⚠️ 未登记）'}',
+        );
       } else if (aStatus == 'studying' || aStatus == 'potionReady') {
         buf.writeln('【阿尼马格斯】研习中（训练进度 ${av['progress'] ?? 0}/100）');
       }
@@ -2402,12 +2465,17 @@ mixin GameCommandsMixin on GameProviderBase {
     // unlockCondition 以前只是打印出来的文案——有没有人真的去不了，
     // 全看 AI 那天心情好不好。现在按年级/周末实判，未开放的标 🔒。
     final p = player;
-    final isWeekend = worldState.time.weekday == 0 || worldState.time.weekday == 6;
-    final knownRegions = mapRegions.map((r) {
-      final unlocked = r.isUnlocked(grade: p?.grade, isWeekend: isWeekend);
-      final cond = r.unlockCondition != null ? '（${r.unlockCondition}）' : '';
-      return '  ${unlocked ? r.icon : '🔒'} ${r.name}$cond';
-    }).join('\n');
+    final isWeekend =
+        worldState.time.weekday == 0 || worldState.time.weekday == 6;
+    final knownRegions = mapRegions
+        .map((r) {
+          final unlocked = r.isUnlocked(grade: p?.grade, isWeekend: isWeekend);
+          final cond = r.unlockCondition != null
+              ? '（${r.unlockCondition}）'
+              : '';
+          return '  ${unlocked ? r.icon : '🔒'} ${r.name}$cond';
+        })
+        .join('\n');
     return '''【霍格沃茨地图】
   当前地点：${worldState.currentLocation ?? '九又四分之三站台 / 霍格沃茨特快'}
 
@@ -2455,7 +2523,8 @@ $knownRegions
         _planWork(p);
         break;
       default:
-        currentNarrative = '【周计划】把一整周的时间投给一件事，系统批量结算。\n\n'
+        currentNarrative =
+            '【周计划】把一整周的时间投给一件事，系统批量结算。\n\n'
             '  /计划 学习 — 泡图书馆，学业属性成长\n'
             '  /计划 社交 — 经营关系，好感提升\n'
             '  /计划 魁地奇 — 训练技巧与体能\n'
@@ -2467,7 +2536,14 @@ $knownRegions
   }
 
   void _planStudy(Player p) {
-    const pool = ['spell_understanding', 'transfiguration', 'potions', 'herbology', 'theory', 'memory'];
+    const pool = [
+      'spell_understanding',
+      'transfiguration',
+      'potions',
+      'herbology',
+      'theory',
+      'memory',
+    ];
     final gains = <String, int>{};
     for (final key in pool) {
       if (random.nextDouble() < 0.6) {
@@ -2485,7 +2561,8 @@ $knownRegions
         .map((e) => '${attributeLabel(e.key)} +${e.value}')
         .join('，');
     worldState.addNarrativeEvent('📚 这一周你几乎把时间都泡在了图书馆', turn: turnCount);
-    currentNarrative = '这一周，你的生活节奏简单而充实：上午上课，下午图书馆，晚上在公共休息室的角落里'
+    currentNarrative =
+        '这一周，你的生活节奏简单而充实：上午上课，下午图书馆，晚上在公共休息室的角落里'
         '翻书写作业。蜡烛的火焰在羊皮纸上投下晃动的影子，你偶尔抬头，看见窗外禁林的轮廓在夜色里沉默。\n\n'
         '一周下来，你明显感到自己在${gains.length == 0 ? '原地踏步——状态不太好，也许该换换节奏' : '进步'}'
         '${gains.isEmpty ? '' : '：$line'}。\n\n'
@@ -2513,7 +2590,8 @@ $knownRegions
     p.energy = (p.energy - 10).clamp(0, 100);
     _advanceWeek('社交');
     worldState.addNarrativeEvent('☕ 这一周你忙于经营人际关系', turn: turnCount);
-    currentNarrative = '你主动调整了这一周的重心：和同学一起吃饭、帮朋友跑腿、参加公共休息室的闲聊、'
+    currentNarrative =
+        '你主动调整了这一周的重心：和同学一起吃饭、帮朋友跑腿、参加公共休息室的闲聊、'
         '给远方的人写信。魔法世界的人情冷暖，说到底也是靠一次次小小的来往织成的。\n\n'
         '${affected > 0 ? '一周下来，你们的关系更近了一些：${names.join('，')}。' : '这一周没什么特别的交集，但至少你让自己出现在了人群里。'}\n\n'
         '（时间推进一周）';
@@ -2528,7 +2606,8 @@ $knownRegions
     p.satiety = (p.satiety + 5).clamp(0, 100);
     _advanceWeek('魁地奇');
     worldState.addNarrativeEvent('🏏 这一周你在魁地奇球场挥汗如雨', turn: turnCount);
-    currentNarrative = '这一周，魁地奇球场几乎成了你的第二个家。清晨的风里，你绕着球门做俯冲练习；'
+    currentNarrative =
+        '这一周，魁地奇球场几乎成了你的第二个家。清晨的风里，你绕着球门做俯冲练习；'
         '傍晚的余晖中，你和队友磨合配合。扫帚的抛光油味混着青草的气息，是这一周最熟悉的味道。\n\n'
         '一周下来，你的魁地奇技巧 +$qGain，飞行能力也见长。\n\n'
         '（时间推进一周）';
@@ -2552,13 +2631,15 @@ $knownRegions
       final bit = bits[random.nextInt(bits.length)];
       worldState.addNarrativeEvent('🔍 调查发现：$bit', turn: turnCount);
       notifications.add('🔍 这周的调查有了点发现：$bit');
-      currentNarrative = '这一周你像一只安静的猫，在霍格沃茨的角落里搜寻线索。图书馆、废弃教室、'
+      currentNarrative =
+          '这一周你像一只安静的猫，在霍格沃茨的角落里搜寻线索。图书馆、废弃教室、'
           '画像背后的走廊——你几乎把城堡的纹理摸了一遍。\n\n'
           '周三深夜，你发现：$bit\n\n'
           '（时间推进一周）';
     } else {
       worldState.addNarrativeEvent('🔍 这一周你在城堡里调查走访，没有特别的发现', turn: turnCount);
-      currentNarrative = '这一周你像一只安静的猫，在霍格沃茨的角落里搜寻线索。图书馆、废弃教室、'
+      currentNarrative =
+          '这一周你像一只安静的猫，在霍格沃茨的角落里搜寻线索。图书馆、废弃教室、'
           '画像背后的走廊——你几乎把城堡的纹理摸了一遍。\n\n'
           '遗憾的是，这一周并没有惊天动地的发现。城堡的古老秘密，从来不会轻易向人敞开。\n\n'
           '（时间推进一周）';
@@ -2571,7 +2652,8 @@ $knownRegions
     p.satiety = (p.satiety + 25).clamp(0, 100);
     _advanceWeek('放松');
     worldState.addNarrativeEvent('🛋️ 这一周你好好休息了一番', turn: turnCount);
-    currentNarrative = '你决定这一周不为任何事奔忙：睡到自然醒，和同学去霍格莫德喝黄油啤酒，'
+    currentNarrative =
+        '你决定这一周不为任何事奔忙：睡到自然醒，和同学去霍格莫德喝黄油啤酒，'
         '在城堡外的草地上晒晒太阳，晚上窝在休息室的扶手椅里发呆。\n\n'
         '一周下来，身心都得到了喘息。\n\n'
         '（时间推进一周）';
@@ -2584,7 +2666,8 @@ $knownRegions
     p.attributes['social'] = (p.attributes['social'] ?? 50) + 1;
     _advanceWeek('打工');
     worldState.addNarrativeEvent('🪙 这一周你接了一份短工', turn: turnCount);
-    currentNarrative = '这一周你把自己卖给了一份短工——跑腿、整理货架、帮忙照看摊位，'
+    currentNarrative =
+        '这一周你把自己卖给了一份短工——跑腿、整理货架、帮忙照看摊位，'
         '偶尔还要应付难缠的顾客。腰酸背痛是免不了的，但每天晚上数着西可和纳特入睡的感觉，'
         '也不算太糟。\n\n'
         '一周下来，你赚了 💰 $income 加隆。\n\n'
@@ -2597,7 +2680,6 @@ $knownRegions
     final after = worldState.time.format();
     debugPrint('📅 周计划[$focus]：$before → $after');
   }
-
 
   // ==================== 守护神（框架2 第66条） ====================
 
@@ -2615,7 +2697,8 @@ $knownRegions
         _patronusAttempt(p);
         break;
       default:
-        currentNarrative = '【守护神】未知子命令「$sub」。\n'
+        currentNarrative =
+            '【守护神】未知子命令「$sub」。\n'
             '可用：/守护神 状态 ｜ /守护神 尝试';
     }
   }
@@ -2627,8 +2710,10 @@ $knownRegions
       final f = patronusFormByName(p.patronus!);
       buf.writeln('形态：${p.patronus}');
       if (f != null) buf.writeln(f.description);
-      buf.writeln('\n守护神是灵魂的映照。它可能随着你人生的巨变而改变——'
-          '但此刻，它就是你的模样。');
+      buf.writeln(
+        '\n守护神是灵魂的映照。它可能随着你人生的巨变而改变——'
+        '但此刻，它就是你的模样。',
+      );
       return buf.toString();
     }
     final grade = p.grade ?? 1;
@@ -2636,14 +2721,20 @@ $knownRegions
     final knowsSpell = p.learnedSpells.containsKey('守护神咒');
     buf.writeln('你还没有属于自己的守护神。');
     if (grade < 5 && !knowsSpell) {
-      buf.writeln('\n守护神咒是高年级（五年级起）的黑魔法防御术咒语——'
-          '你的魔法还不够成熟，强行尝试只会让杖尖凝出一缕毫无形状的银雾。');
+      buf.writeln(
+        '\n守护神咒是高年级（五年级起）的黑魔法防御术咒语——'
+        '你的魔法还不够成熟，强行尝试只会让杖尖凝出一缕毫无形状的银雾。',
+      );
     } else {
-      buf.writeln('\n你已经掌握了守护神咒的基础，但召唤成形守护神'
-          '需要内心深处的幸福记忆与稳定的情绪。');
+      buf.writeln(
+        '\n你已经掌握了守护神咒的基础，但召唤成形守护神'
+        '需要内心深处的幸福记忆与稳定的情绪。',
+      );
       if (emotion < 60) {
-        buf.writeln('\n（情绪稳定度 ${emotion}/100——你的内心还不够平静，'
-            '建议先学会在混乱中稳住自己。）');
+        buf.writeln(
+          '\n（情绪稳定度 ${emotion}/100——你的内心还不够平静，'
+          '建议先学会在混乱中稳住自己。）',
+        );
       } else {
         buf.writeln('\n（情绪稳定度 ${emotion}/100，可以尝试：/守护神 尝试）');
       }
@@ -2655,7 +2746,8 @@ $knownRegions
     final grade = p.grade ?? 1;
     final knowsSpell = p.learnedSpells.containsKey('守护神咒');
     if (grade < 5 && !knowsSpell) {
-      currentNarrative = '你举起魔杖，拼尽全力回想快乐的记忆，念出「Expecto Patronum！」——\n\n'
+      currentNarrative =
+          '你举起魔杖，拼尽全力回想快乐的记忆，念出「Expecto Patronum！」——\n\n'
           '杖尖只飘出一缕不成形的银雾，转瞬即逝。\n\n'
           '守护神咒是高年级的领域。你的魔法还不够成熟，强行尝试只会让自己头晕目眩。\n\n'
           '（五年级后可学习守护神咒，再作尝试。）';
@@ -2664,7 +2756,8 @@ $knownRegions
     }
     final emotion = p.attributes['emotional_stability'] ?? 50;
     if (emotion < 60) {
-      currentNarrative = '你努力回想快乐的记忆，但思绪总是被焦虑和杂念打断。'
+      currentNarrative =
+          '你努力回想快乐的记忆，但思绪总是被焦虑和杂念打断。'
           '银雾在杖尖聚了又散，始终无法成形。\n\n'
           '守护神是心灵的映照——内心不平静，它就无处可依。'
           '（情绪稳定度 ${emotion}/100，需 ≥60）';
@@ -2676,7 +2769,10 @@ $knownRegions
     final control = p.attributes['magic_control'] ?? 50;
     final dda = p.attributes['dda'] ?? 50;
     final chance =
-        (0.5 + (emotionScore - 60) / 200 + (control - 50) / 200 + (dda - 50) / 200)
+        (0.5 +
+                (emotionScore - 60) / 200 +
+                (control - 50) / 200 +
+                (dda - 50) / 200)
             .clamp(0.3, 0.9);
     p.spirit = (p.spirit - 15).clamp(0, 100);
     if (random.nextDouble() <= chance) {
@@ -2690,7 +2786,8 @@ $knownRegions
       worldState.addNarrativeEvent('✨ 你的守护神成形了：$form', turn: turnCount);
       notifications.add('✨ 你的守护神成形了：$form');
       final f = patronusFormByName(form);
-      currentNarrative = '这一次，你没有费力去想快乐的记忆。\n\n'
+      currentNarrative =
+          '这一次，你没有费力去想快乐的记忆。\n\n'
           '你只是闭上眼，让某个早已刻进心底的画面浮现——'
           '然后，杖尖喷涌出耀眼的白光。\n\n'
           '光芒凝聚成形：$form。${f?.description ?? ''}\n\n'
@@ -2698,7 +2795,8 @@ $knownRegions
           '你知道，从今往后，无论黑暗多深，你都不再是独自一人。';
     } else {
       worldState.addNarrativeEvent('🌫️ 守护神尝试失败：银雾聚了又散', turn: turnCount);
-      currentNarrative = '白光从杖尖涌出，但始终凝不成形。银雾在空气中徘徊片刻，'
+      currentNarrative =
+          '白光从杖尖涌出，但始终凝不成形。银雾在空气中徘徊片刻，'
           '像一个欲言又止的词，然后散去了。\n\n'
           '你放下魔杖，喘了口气。还差一点——也许是记忆还不够清晰，'
           '也许是情绪还不够纯粹。\n\n'
@@ -2715,8 +2813,14 @@ $knownRegions
     final love = p.loveState;
     final buf = StringBuffer('【恋爱声望影响】（设定 13.3）\n');
     for (final e in loveReputationEffects) {
-      buf.writeln('· ${e.type}：${e.min >= 0 ? '+' : ''}${e.min} ~ ${e.max >= 0 ? '+' : ''}${e.max}');
+      buf.writeln(
+        '· ${e.type}：${e.min >= 0 ? '+' : ''}${e.min} ~ ${e.max >= 0 ? '+' : ''}${e.max}',
+      );
     }
+    buf.writeln(
+      '（多档可叠加，实际结算封顶 -30 ~ +10；'
+      '同学院恋爱是唯一正向项，师生恋代价最重）',
+    );
     // 当前关系的命中情况
     if (love.partnerName != null || love.currentCrushName != null) {
       final npcName = love.partnerName ?? love.currentCrushName!;
@@ -2736,7 +2840,9 @@ $knownRegions
         var hit = false;
         for (final e in loveReputationEffects) {
           if (loveEffectApplies(e, ctx)) {
-            buf.writeln('  ⚡ 命中「${e.type}」：${e.min >= 0 ? '+' : ''}${e.min} ~ ${e.max >= 0 ? '+' : ''}${e.max}');
+            buf.writeln(
+              '  ⚡ 命中「${e.type}」：${e.min >= 0 ? '+' : ''}${e.min} ~ ${e.max >= 0 ? '+' : ''}${e.max}',
+            );
             hit = true;
           }
         }
@@ -2766,9 +2872,7 @@ $knownRegions
   /// /声望 NPC 列表 —— 所有已认识 NPC 的声望摘要
   String _formatNpcReputationList() {
     final buf = StringBuffer('【NPC声望摘要】（已登场）\n');
-    final list = npcRegistry.values
-        .where((n) => n.introduced)
-        .toList()
+    final list = npcRegistry.values.where((n) => n.introduced).toList()
       ..sort((a, b) => b.reputation.social.compareTo(a.reputation.social));
     if (list.isEmpty) {
       buf.writeln('（还没有结识任何人。）');
@@ -2776,8 +2880,10 @@ $knownRegions
     }
     for (final n in list) {
       final r = n.reputation;
-      buf.writeln('· ${n.name}：学术${r.academic} 社交${r.social} 战斗${r.combat}'
-          ' 道德${r.moral} 领导${r.leadership} 黑魔法${r.dark}');
+      buf.writeln(
+        '· ${n.name}：学术${r.academic} 社交${r.social} 战斗${r.combat}'
+        ' 道德${r.moral} 领导${r.leadership} 黑魔法${r.dark}',
+      );
     }
     return buf.toString();
   }
@@ -2790,7 +2896,9 @@ $knownRegions
       return '未知维度「$dim」。维度：academic(学术)、social(社交)、combat(战斗)、moral(道德)、leadership(领导)、dark(黑魔法)';
     }
     final list = npcRegistry.values.where((n) => n.introduced).toList()
-      ..sort((a, b) => b.reputation.get(norm).compareTo(a.reputation.get(norm)));
+      ..sort(
+        (a, b) => b.reputation.get(norm).compareTo(a.reputation.get(norm)),
+      );
     final label = list.isEmpty ? '' : list.first.reputation.labelOf(norm);
     final buf = StringBuffer('【$label · 排名】（已登场 ${list.length} 人）\n');
     for (var i = 0; i < list.length && i < 10; i++) {
@@ -2822,7 +2930,9 @@ $knownRegions
       if (r == null) continue;
       final s = examSummary(r);
       buf.writeln();
-      buf.writeln('【第$i 学年期末】${s.oCount}O / ${s.eCount}E / ${s.aPlusCount} 及格以上');
+      buf.writeln(
+        '【第$i 学年期末】${s.oCount}O / ${s.eCount}E / ${s.aPlusCount} 及格以上',
+      );
       buf.writeln(formatExamSheet(r));
     }
     // 大考
@@ -2831,8 +2941,10 @@ $knownRegions
       if (r == null) continue;
       final s = examSummary(r);
       buf.writeln();
-      buf.writeln('【${key == 'OWL' ? 'O.W.L. 普通巫师等级考试（五年级末）' : 'N.E.W.T. 终极巫师等级考试（七年级末）'}】'
-          ' ${s.oCount}O / ${s.eCount}E / ${s.aPlusCount} 及格以上');
+      buf.writeln(
+        '【${key == 'OWL' ? 'O.W.L. 普通巫师等级考试（五年级末）' : 'N.E.W.T. 终极巫师等级考试（七年级末）'}】'
+        ' ${s.oCount}O / ${s.eCount}E / ${s.aPlusCount} 及格以上',
+      );
       buf.writeln(formatExamSheet(r));
       if (s.oCount >= 3) {
         buf.writeln('🏅 这份成绩单足以叩开绝大多数高阶职业的大门。');
@@ -2853,7 +2965,9 @@ $knownRegions
       ..writeln('  《人生目标》')
       ..writeln('╚══════════════════════════════════════╝')
       ..writeln()
-      ..writeln('【当前目标】${(current == null || current.isEmpty) ? '尚未设定' : current}');
+      ..writeln(
+        '【当前目标】${(current == null || current.isEmpty) ? '尚未设定' : current}',
+      );
     if (current != null && current.isNotEmpty) {
       final g = goalByName(current);
       if (g != null) {
@@ -2891,7 +3005,9 @@ $knownRegions
     if (player!.cgRecords.isEmpty) {
       return '【日记 / CG图鉴】\n暂无解锁CG。在关键剧情节点将解锁专属CG。\n\n（输入 /日记 统计 查看进度；/日记 [编号] 查看详情）';
     }
-    final buf = StringBuffer('【日记 / CG图鉴】（已解锁 ${player!.cgRecords.length}/${allCgs().length}）\n');
+    final buf = StringBuffer(
+      '【日记 / CG图鉴】（已解锁 ${player!.cgRecords.length}/${allCgs().length}）\n',
+    );
     for (final cg in allCgs()) {
       final rec = player!.cgRecords[cg.id];
       if (rec == null) continue;
@@ -3002,7 +3118,9 @@ $knownRegions
       buf.writeln('\n还没有人生可言——先创建角色吧。');
       return buf.toString();
     }
-    buf.writeln('\n第 ${p.grade ?? 1} 学年 · ${p.house ?? '未分院'} · 第 $turnCount 回合');
+    buf.writeln(
+      '\n第 ${p.grade ?? 1} 学年 · ${p.house ?? '未分院'} · 第 $turnCount 回合',
+    );
     final events = worldState.recentNarrativeEvents.take(12).toList();
     if (events.isEmpty) {
       buf.writeln('\n还没有值得写进回忆的事。去经历点什么吧。');
@@ -3033,11 +3151,12 @@ $knownRegions
     final p = player;
     if (p == null) return '【日程】\n尚未创建角色。';
     final buf = StringBuffer('【日程】');
-    buf.writeln('\n${worldState.time.formatDate()}'
-        '（第 ${worldState.academicYear} 学年 · 第 ${worldState.term} 学期）');
+    buf.writeln(
+      '\n${worldState.time.formatDate()}'
+      '（第 ${worldState.academicYear} 学年 · 第 ${worldState.term} 学期）',
+    );
     // 课程：必修 + 选修
-    final required =
-        requiredCourses.map((c) => c.name).take(4).join('、');
+    final required = requiredCourses.map((c) => c.name).take(4).join('、');
     final electives = electiveCourses.map((c) => c.name).take(3).join('、');
     buf.writeln('\n本周课程：');
     buf.writeln('· 必修：$required${requiredCourses.length > 4 ? ' 等' : ''}');
@@ -3061,7 +3180,9 @@ $knownRegions
     final buf = StringBuffer('【成就】（${unlocked.length}/${catalog.length}）\n');
     for (final a in catalog) {
       final has = unlocked.contains(a.id);
-      buf.writeln('${has ? '✅' : '🔒'} ${a.name}${has ? ' — ${a.description}' : ''}');
+      buf.writeln(
+        '${has ? '✅' : '🔒'} ${a.name}${has ? ' — ${a.description}' : ''}',
+      );
     }
     return buf.toString();
   }
@@ -3082,7 +3203,9 @@ $knownRegions
       buf.writeln('种类：${def.species}');
       buf.writeln('能力：${def.abilities.join('、')}');
       if (cfg != null && cfg.bondGatedTransform) {
-        buf.writeln('特性：可化人形（羁绊≥${cfg.specialInteractionBondThreshold}后会触发人形互动）');
+        buf.writeln(
+          '特性：可化人形（羁绊≥${cfg.specialInteractionBondThreshold}后会触发人形互动）',
+        );
       } else if (def.canTransform) {
         buf.writeln('特性：可化人形');
       }

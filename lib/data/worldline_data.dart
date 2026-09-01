@@ -118,7 +118,8 @@ const List<WorldLineStageDef> kWorldLineStages = [
     minDeviation: 0.0,
     label: '原典未改',
     badge: '📖',
-    aiDirective: '这个世界仍严格沿着史书记载的轨道运行。所有已知的原著事件'
+    aiDirective:
+        '这个世界仍严格沿着史书记载的轨道运行。所有已知的原著事件'
         '都会照常发生，玩家的举动只能改变他自己和身边人的处境，'
         '改变不了那些已经写进历史的大事。',
   ),
@@ -127,7 +128,8 @@ const List<WorldLineStageDef> kWorldLineStages = [
     minDeviation: 0.10,
     label: '边缘松动',
     badge: '📖❓',
-    aiDirective: '世界线的边缘开始松动：一些不载入史册的小事——某场决斗的胜负、'
+    aiDirective:
+        '世界线的边缘开始松动：一些不载入史册的小事——某场决斗的胜负、'
         '某次考试的排名、某个人那天晚上走了哪条路——已经可以因玩家而改变。'
         '但大事件的走向仍然牢固。',
   ),
@@ -136,7 +138,8 @@ const List<WorldLineStageDef> kWorldLineStages = [
     minDeviation: 0.24,
     label: '分歧显现',
     badge: '🌗',
-    aiDirective: '分歧已经显现：重要人物的命运开始出现变量。有些本该发生的事'
+    aiDirective:
+        '分歧已经显现：重要人物的命运开始出现变量。有些本该发生的事'
         '发生了细节上的偏移，有些本该无恙的人出了岔子。'
         '史书正在被一点点擦掉重写的边缘。',
   ),
@@ -145,7 +148,8 @@ const List<WorldLineStageDef> kWorldLineStages = [
     minDeviation: 0.40,
     label: '已被改写',
     badge: '🌘',
-    aiDirective: '这段历史已经被改写过——请严格依据【已被你改写的事】里列出的条目'
+    aiDirective:
+        '这段历史已经被改写过——请严格依据【已被你改写的事】里列出的条目'
         '来写当前世界的状态，不要沿用原著情节。若那一条说某人活了下来，'
         '他就活着；说某事没有发生，它就没有发生。'
         '这是当前世界的既成事实，优先级高于你的任何先验知识。',
@@ -155,7 +159,8 @@ const List<WorldLineStageDef> kWorldLineStages = [
     minDeviation: 0.60,
     label: '面目全非',
     badge: '🌑',
-    aiDirective: '这个世界已经面目全非，连最硬的定数都被改写过。'
+    aiDirective:
+        '这个世界已经面目全非，连最硬的定数都被改写过。'
         '请严格依据【已被你改写的事】来写。此外，世界本身开始出现'
         '不安定的迹象：有人隐约记得"事情不该是这样的"，'
         '猫头鹰送错信、画像里的人记混了年份、有人在梦里看见另一个版本的自己。'
@@ -220,6 +225,14 @@ class CausalOption {
   /// 旁观选项留空字符串：世界回到原典，不留痕迹。
   final String echo;
 
+  /// NPC 本地状态联动（框架2 §93：改写历史后 NPC 状态必须同步，不能只靠
+  /// AI prompt 自觉）。key 为 npcRegistry 的 NPC id，value 为状态修改：
+  ///   {'alive': false}      —— 该 NPC 死亡（如塔楼之夜干预失败/城堡之战）
+  ///   {'alive': true}       —— 该 NPC 存活（干预救下）
+  ///   {'grade': 7}          —— 改写年级/位置等
+  /// 只写"发生变化的字段"；npcRegistry 中不存在的 id 静默忽略。
+  final Map<String, Map<String, dynamic>> npcEffects;
+
   const CausalOption({
     required this.id,
     required this.text,
@@ -231,6 +244,7 @@ class CausalOption {
     this.impactDelta = 0.0,
     required this.consequence,
     this.echo = '',
+    this.npcEffects = const {},
   });
 
   bool get isIntervention => echo.isNotEmpty;
@@ -274,7 +288,8 @@ const List<CausalAnchor> kCausalAnchors = [
     anchorId: 'g2_feb_duelling',
     title: '决斗俱乐部·那一下犯规',
     minStage: WorldLineStage.fraying,
-    setup: '决斗俱乐部散场的时候你看见了：那个总赢的人赢在裁判看不见的地方——'
+    setup:
+        '决斗俱乐部散场的时候你看见了：那个总赢的人赢在裁判看不见的地方——'
         '袍子底下藏着一枚已经缴械过的备用魔杖。下一场，他对上的是你认识的人。',
     options: [
       CausalOption(
@@ -285,11 +300,13 @@ const List<CausalAnchor> kCausalAnchors = [
         reputation: {'moral': 6, 'social': -4, 'combat': 3},
         attributes: {'courage': 4, 'social': -2},
         impactDelta: 0.04,
-        consequence: '你指了出来。那一瞬间整个大厅安静得能听见火把的噼啪声。'
+        consequence:
+            '你指了出来。那一瞬间整个大厅安静得能听见火把的噼啪声。'
             '他脸上那种表情你后来在很多场合又见过——不是被抓包的慌张，'
             '是被人当面撕下皮的那种恨。他从此再没赢过一场正当的决斗，'
             '也再没跟你说过一句话。',
-        echo: '你在决斗俱乐部当场揭穿了那人的作弊。他从此记恨你，'
+        echo:
+            '你在决斗俱乐部当场揭穿了那人的作弊。他从此记恨你，'
             '而那一年往后的决斗排名，和原本该有的不一样。',
       ),
       CausalOption(
@@ -299,7 +316,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.05,
         reputation: {'moral': -5, 'social': 3},
         attributes: {'caution': 3, 'courage': -2},
-        consequence: '你什么也没说。你朋友输了，还笑着恭喜对手。'
+        consequence:
+            '你什么也没说。你朋友输了，还笑着恭喜对手。'
             '那人从台上下来时冲你点了下头——他知道你看见了，'
             '你们从此共享一个秘密，尽管你一个字都没说过。',
       ),
@@ -312,7 +330,8 @@ const List<CausalAnchor> kCausalAnchors = [
     anchorId: 'g5_jun_owls',
     title: 'O.W.L.·提前拿到的试题',
     minStage: WorldLineStage.fraying,
-    setup: '考前一周，一份试题出现在你抽屉里。没有署名，没有勒索信，'
+    setup:
+        '考前一周，一份试题出现在你抽屉里。没有署名，没有勒索信，'
         '就那么放着——像有人替你把路铺好了，又像是有人在测试你会不会走上去。',
     options: [
       CausalOption(
@@ -324,10 +343,12 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'willpower': 4, 'courage': 3},
         healthDelta: -5,
         impactDelta: 0.05,
-        consequence: '考试照常举行，题目全换了。有人考砸了，有人在考场里骂了脏话。'
+        consequence:
+            '考试照常举行，题目全换了。有人考砸了，有人在考场里骂了脏话。'
             '你那几门成绩平平，其中一门还挂了。'
             '但你之后每次走过那条走廊，都能直视任何一双眼睛。',
-        echo: '你交回了那份提前拿到的 O.W.L. 试题，导致当年考题全部重出。'
+        echo:
+            '你交回了那份提前拿到的 O.W.L. 试题，导致当年考题全部重出。'
             '你的成绩因此比本该有的差了一截，但你知道是谁在背后替你骄傲。',
       ),
       CausalOption(
@@ -337,7 +358,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.06,
         reputation: {'moral': -8, 'academic': 6, 'social': 2},
         attributes: {'caution': 4, 'willpower': -3},
-        consequence: '你考得很好。好到有人来问你复习的诀窍，'
+        consequence:
+            '你考得很好。好到有人来问你复习的诀窍，'
             '你编了个说得通的谎。那份纸你烧掉了，'
             '但灰烬的形状你记了很久。',
       ),
@@ -350,7 +372,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '新法令·被当众念出来的名字',
     minStage: WorldLineStage.diverging,
     era: 'harry_same',
-    setup: '那位派来的官员在礼堂里念名单，念到一半停下，'
+    setup:
+        '那位派来的官员在礼堂里念名单，念到一半停下，'
         '抬起头说：还有一个名字，念出来之前给她最后一次机会。'
         '你认识那个"她"——她就站在离你三步远的地方，'
         '整个人僵着，像被人从背后顶住了一把刀。',
@@ -364,11 +387,13 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'courage': 6, 'caution': -4},
         healthDelta: -12,
         impactDelta: 0.09,
-        consequence: '礼堂安静了很久。最后官员把名单折起来，'
+        consequence:
+            '礼堂安静了很久。最后官员把名单折起来，'
             '说今天到此为止。你被记了过，抄了一整夜的校规，'
             '而那个人这之后再没在食堂里单独坐过——总有人陪她。'
             '那不全是你的功劳，但你开了头。',
-        echo: '你在礼堂上当众站到了被点名的人身边。她没有被带走，'
+        echo:
+            '你在礼堂上当众站到了被点名的人身边。她没有被带走，'
             '而那份名单从那天起改了写法——他们不再当众念名字。',
       ),
       CausalOption(
@@ -378,7 +403,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.09,
         reputation: {'moral': -9, 'caution': 0},
         attributes: {'caution': 5, 'courage': -4, 'emotional_stability': -3},
-        consequence: '名字被念完了。她后来还来上课，'
+        consequence:
+            '名字被念完了。她后来还来上课，'
             '只是不再抬头看黑板。你每次想跟她说话，'
             '都先想起那天自己鞋尖上的那块灰。',
       ),
@@ -391,7 +417,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '身边的人出事了·来得及',
     minStage: WorldLineStage.diverging,
     era: 'harry_same',
-    setup: '消息传来的时候你离那边只有一条走廊。'
+    setup:
+        '消息传来的时候你离那边只有一条走廊。'
         '没有大人，没有教授，只有你和一扇还没关上的门。'
         '你跑过去大概要二十秒——二十秒，够做点什么。',
     options: [
@@ -404,12 +431,14 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'courage': 7, 'reaction_time': 3},
         healthDelta: -20,
         impactDelta: 0.11,
-        consequence: '你到了。你做了你当时能想到的一切，'
+        consequence:
+            '你到了。你做了你当时能想到的一切，'
             '其中大部分是错的，但你到了。'
             '他活下来了——代价是你自己在医疗翼躺了两周，'
             '左肩到现在阴雨天还会疼。'
             '史书上那一年的名单是错的，因为你在上面划掉了一个名字。',
-        echo: '你在那条走廊上赶到了，本该出事的人活了下来。'
+        echo:
+            '你在那条走廊上赶到了，本该出事的人活了下来。'
             '史书上那一年的名单少了一个名字，而你的左肩从此阴雨天会疼。',
       ),
       CausalOption(
@@ -419,7 +448,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.11,
         reputation: {'moral': -11, 'social': 2},
         attributes: {'emotional_stability': -5, 'caution': 4, 'willpower': -3},
-        consequence: '你站在原地。后来的事你都是从别人嘴里听来的，'
+        consequence:
+            '你站在原地。后来的事你都是从别人嘴里听来的，'
             '每个版本都不一样。葬礼上你去了，'
             '站得比谁都久。没人知道你当时离得有多近。',
       ),
@@ -433,7 +463,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '塔楼那一夜',
     minStage: WorldLineStage.rewritten,
     era: 'harry_same',
-    setup: '城堡里乱成一团，所有人都在往外跑，只有你注意到'
+    setup:
+        '城堡里乱成一团，所有人都在往外跑，只有你注意到'
         '通往塔楼的那道楼梯上有人在往上走——走得很稳，稳得不对劲。'
         '你不知道上面会发生什么。你只知道如果现在上去，'
         '你还有可能来得及；如果不上去，明天的一切都会照着某个'
@@ -448,7 +479,8 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'courage': 8, 'willpower': 6, 'emotional_stability': -6},
         healthDelta: -30,
         impactDelta: 0.18,
-        consequence: '你上了塔。'
+        consequence:
+            '你上了塔。'
             '后来的事情没有一个版本说得清楚——包括你自己。'
             '你记得有人坠落，但你不确定是谁；你记得自己的魔杖亮了，'
             '但你不确定那道咒有没有打中。'
@@ -456,10 +488,19 @@ const List<CausalAnchor> kCausalAnchors = [
             '混着一些别的什么：有人活着走下了那座塔，'
             '尽管史书上写的是他死在了上面。'
             '你在医疗翼躺了整整一个月。有些事你至今没跟任何人说过。',
-        echo: '塔楼那一夜你上了塔。那位本该在那晚死去的校长活了下来，'
+        echo:
+            '塔楼那一夜你上了塔。那位本该在那晚死去的校长活了下来，'
             '还活着，还在当校长。史书上没有这一笔，'
             '但整个世界的后两年都是照着"他还活着"往下走的。'
             '你自己身上留下了那一夜的伤，阴雨天会疼。',
+        // 本地状态联动：邓布利多存活（npcRegistry['dumbledore'] 存在时生效，
+        // 死亡状态解除、位置回到城堡、RecentEvent 打标记——双保险，不依赖 AI 自觉）
+        npcEffects: {
+          'dumbledore': {
+            'alive': true,
+            'recent_event': '塔楼那一夜活了下来，仍在当校长（世界线被改写）',
+          },
+        },
       ),
       CausalOption(
         id: 'standAside',
@@ -468,7 +509,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.15,
         reputation: {'moral': -12, 'caution': 0, 'leadership': -5},
         attributes: {'caution': 6, 'courage': -6, 'emotional_stability': -4},
-        consequence: '你跟着人群往外走。'
+        consequence:
+            '你跟着人群往外走。'
             '第二天全校被要求保持安静，走廊里全是压着嗓子的哭声。'
             '你站在人群里抬头看那座塔，和其他所有人一样。'
             '一切照着书上写的发生了。'
@@ -484,7 +526,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '回不去的学校·名单上的另一个名字',
     minStage: WorldLineStage.rewritten,
     era: 'harry_same',
-    setup: '你拿到了回学校的许可。名单上有你的名字，'
+    setup:
+        '你拿到了回学校的许可。名单上有你的名字，'
         '也有另一个人的名字——那个人本不该在上面，'
         '是有人填错了，还是有人故意的，都一样：'
         '他只要踏进城堡大门，就会被带走。'
@@ -499,13 +542,15 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'courage': 6, 'caution': -3, 'intuition': 3},
         healthDelta: -10,
         impactDelta: 0.12,
-        consequence: '第二天点名的时候那个名字被跳过了，'
+        consequence:
+            '第二天点名的时候那个名字被跳过了，'
             '念名字的人皱了下眉，没多问。'
             '他没来学校，但他在——有人在霍格莫德见过他，'
             '瘦了很多，还活着。'
             '至于你是怎么知道那份名单的，'
             '你编了个谎，谎编得不算好，但没人再追问。',
-        echo: '你把那个人从回校名单上划掉了。他没进城堡，也因此没被带走，'
+        echo:
+            '你把那个人从回校名单上划掉了。他没进城堡，也因此没被带走，'
             '还活着。有人在霍格莫德见过他。',
       ),
       CausalOption(
@@ -515,7 +560,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.12,
         reputation: {'moral': -10, 'caution': 0},
         attributes: {'caution': 5, 'courage': -5, 'emotional_stability': -5},
-        consequence: '你回了学校。他回了学校。'
+        consequence:
+            '你回了学校。他回了学校。'
             '第三天他没来上课，第四天他的名字从宿舍门牌上被摘了下来。'
             '你照常上课，照常吃饭，照常在走廊里低头走路。'
             '一切照旧。',
@@ -532,7 +578,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '城堡之下',
     minStage: WorldLineStage.unrecognizable,
     era: 'harry_same',
-    setup: '城堡被要求交出一个人。学生们被集中到一处，'
+    setup:
+        '城堡被要求交出一个人。学生们被集中到一处，'
         '然后战争在校园里正面打响了。'
         '你有大概十秒钟决定自己往哪边走。',
     options: [
@@ -545,14 +592,16 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'courage': 10, 'willpower': 8, 'emotional_stability': -8},
         healthDelta: -35,
         impactDelta: 0.22,
-        consequence: '你留下了。'
+        consequence:
+            '你留下了。'
             '这一夜之后有人叫你英雄，有人只记得你身上沾了血。'
             '你救回来的人比你以为的少，'
             '你没救回来的人比你以为的多。'
             '但那天晚上站在前面的一共有十几个人，'
             '而原本该站出来的那几个，'
             '其中有两个是被你拉过去的。',
-        echo: '城堡之战那一夜你留在了前面。你没能让所有人活下来，'
+        echo:
+            '城堡之战那一夜你留在了前面。你没能让所有人活下来，'
             '但你拉住了两个人，而那两个人原本不在那份名单上。',
       ),
       CausalOption(
@@ -564,12 +613,14 @@ const List<CausalAnchor> kCausalAnchors = [
         attributes: {'courage': 6, 'social': 4, 'willpower': 4},
         healthDelta: -18,
         impactDelta: 0.15,
-        consequence: '你没打，你拽人。'
+        consequence:
+            '你没打，你拽人。'
             '你一共把七个愣在原地的人推进了那条通道，'
             '第八个你没拉住——你回头找的时候，'
             '通道已经被封了。'
             '那七个人后来都活到了战后。其中一个每年给你寄一张圣诞卡。',
-        echo: '城堡之战那一夜你没打，你拽人。你把七个愣在原地的人推进了通道，'
+        echo:
+            '城堡之战那一夜你没打，你拽人。你把七个愣在原地的人推进了通道，'
             '第八个没拉住。那七个人都活到了战后。',
       ),
       CausalOption(
@@ -579,7 +630,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.18,
         reputation: {'moral': -15, 'combat': -8, 'leadership': -10},
         attributes: {'caution': 8, 'courage': -8, 'emotional_stability': -10},
-        consequence: '你活下来了。'
+        consequence:
+            '你活下来了。'
             '天亮的时候你从藏身处爬出来，'
             '城堡还在，但已经不是你认识的那座了。'
             '毕业宴会上没有人提那一夜你去了哪里，'
@@ -605,7 +657,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '草坪上那一下',
     minStage: WorldLineStage.diverging,
     era: 'marauders',
-    setup: '考完最后一门的下午，草坪上围了一圈人。'
+    setup:
+        '考完最后一门的下午，草坪上围了一圈人。'
         '被倒吊在半空中的是那个斯莱特林男生，袍子被褪到了头上，'
         '围观的人在笑。动手的那个人很得意，'
         '他没注意到人群外沿站着的那个红头发女生——'
@@ -619,7 +672,8 @@ const List<CausalAnchor> kCausalAnchors = [
         reputation: {'moral': 10, 'social': -6, 'combat': 2},
         attributes: {'courage': 6, 'social': -3, 'willpower': 3},
         impactDelta: 0.08,
-        consequence: '你挤了进去。'
+        consequence:
+            '你挤了进去。'
             '笑声是慢慢停的，先是旁边的人，再是更外圈的人，'
             '等教授走过来的时候，已经没有人笑了。'
             '被放下来的那个人没有看你，'
@@ -632,7 +686,8 @@ const List<CausalAnchor> kCausalAnchors = [
             '然后她去追那个被放下来的人了。'
             '她没有留下来跟你说话，'
             '而你知道她把这件事记住了。',
-        echo: 'O.W.L. 考完那天你挤进了人群，喊来了教授。'
+        echo:
+            'O.W.L. 考完那天你挤进了人群，喊来了教授。'
             '那个被倒吊的人一辈子没对你说过谢谢，'
             '但他此后在你面前，少了一点要刺你的劲儿。',
       ),
@@ -643,7 +698,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.08,
         reputation: {'moral': -8, 'social': 4},
         attributes: {'courage': -5, 'caution': 4},
-        consequence: '你走开了。'
+        consequence:
+            '你走开了。'
             '身后的笑声没有停，一直到很晚才停。'
             '第二天再见到那个斯莱特林男生的时候，'
             '他看你的眼神跟看别人没有区别——'
@@ -667,7 +723,8 @@ const List<CausalAnchor> kCausalAnchors = [
     title: '告诉那个等了很久的人',
     minStage: WorldLineStage.diverging,
     era: 'first_war',
-    setup: '消息还没有被宣布，但你手里已经有了确切的东西：'
+    setup:
+        '消息还没有被宣布，但你手里已经有了确切的东西：'
         '一封拆开的信，或者一个刚从外面回来的人说的话。'
         '没有官方说法，可你知道这是真的。'
         '你也知道有一个人已经等了很久了——'
@@ -686,7 +743,8 @@ const List<CausalAnchor> kCausalAnchors = [
         reputation: {'moral': 8, 'social': -3, 'leadership': 4},
         attributes: {'courage': 5, 'caution': -3},
         impactDelta: 0.06,
-        consequence: '你去了。'
+        consequence:
+            '你去了。'
             '他一个人在天文塔上——他最近总在那儿待着，'
             '说那里能看见猫头鹰来的方向。'
             '你把信递给他，他没有接，让你念。'
@@ -706,7 +764,8 @@ const List<CausalAnchor> kCausalAnchors = [
             '有人说你造谣，也有人说你在抢风头。'
             '往后的清算里，"就是他先说的"这句话'
             '一直跟在你名字后面。',
-        echo: '「他倒了」的消息是你送到那个等了十年的人手里的。'
+        echo:
+            '「他倒了」的消息是你送到那个等了十年的人手里的。'
             '你在天文塔上把那封信念给他听，'
             '他只说了一个字：好。',
       ),
@@ -717,7 +776,8 @@ const List<CausalAnchor> kCausalAnchors = [
         deviationDelta: -0.06,
         reputation: {'moral': -6, 'social': 2},
         attributes: {'courage': -4, 'caution': 5},
-        consequence: '你把信收起来了。'
+        consequence:
+            '你把信收起来了。'
             '第二天早上，全校都知道了。'
             '你后来在人群里看见他——'
             '他是笑着被人拍着肩膀的，'
@@ -794,9 +854,9 @@ List<String> witnessedEchoesOf(Map<String, String> causalChoices) {
 /// 抉择按钮的 action 就是这条指令——不能直接拿选项文本当玩家行动，
 /// 因为那会绕过数值结算。
 ({CausalAnchor anchor, CausalOption option})? parseCausalCommand(
-    String command) {
-  final m =
-      RegExp(r'^/抉择\s+(\S+)\s+(\S+)\s*$').firstMatch(command.trim());
+  String command,
+) {
+  final m = RegExp(r'^/抉择\s+(\S+)\s+(\S+)\s*$').firstMatch(command.trim());
   if (m == null) return null;
   final anchor = causalAnchorFor(m.group(1)!);
   if (anchor == null) return null;

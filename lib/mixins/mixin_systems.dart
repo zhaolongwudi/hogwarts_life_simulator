@@ -1244,6 +1244,25 @@ mixin GameSystemsMixin on GameProviderBase {
       }
     }
 
+    // NPC 本地状态联动（框架2 §93）：改写历史后同步 NPC 生死/位置，
+    // 与上面的 echo（AI 注入凭证）形成双保险——AI 不守规矩时本地状态兜底。
+    for (final entry in opt.npcEffects.entries) {
+      final npc = npcRegistry[entry.key];
+      if (npc == null) continue; // 该时代没有这个 NPC 实体，静默跳过
+      final fx = entry.value;
+      if (fx.containsKey('alive')) {
+        npc.isAlive = fx['alive'] == true;
+      }
+      if (fx.containsKey('grade') && fx['grade'] is int) {
+        npc.grade = fx['grade'] as int;
+      }
+      if (fx['recent_event'] is String &&
+          (fx['recent_event'] as String).isNotEmpty) {
+        npc.recentEvents.insert(0, fx['recent_event'] as String);
+        if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
+      }
+    }
+
     buf.writeln();
     final pctBefore = (before * 100).toStringAsFixed(1);
     final pctAfter = (after * 100).toStringAsFixed(1);

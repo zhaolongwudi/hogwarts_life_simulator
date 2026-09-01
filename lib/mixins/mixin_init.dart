@@ -8,6 +8,7 @@ import '../data/house_data.dart';
 import '../data/opening_scene_data.dart';
 import '../data/era_data.dart';
 import '../data/game_config_rules.dart';
+import '../data/transmemory.dart';
 import '../providers/app_provider.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -160,9 +161,10 @@ mixin GameInitMixin on GameProviderBase {
       }
     }
 
-    // 身份模式：穿越者拥有对原作剧情的隐约记忆，原住民则一无所知
+    // 身份模式：穿越者拥有对原作剧情的记忆（等级随机，见 transmemory.dart），
+    // 原住民则一无所知。首次构建时掷档并写入存档，之后每回合按档位注入。
     final identityLine = appProvider.identityMode == IdentityMode.transmigration
-        ? '【身份模式】穿越者：你对原作的命运走向留有隐约记忆，可作为行动依据，但他人不会轻信"预言"；引用未来信息需克制并举证自洽。'
+        ? _transmemoryLine()
         : '【身份模式】原住民：你对命运走向一无所知，只凭自己的判断与本能行事。';
 
     // 人生目标：若已设定，注入为剧情牵引方向（非强制任务）
@@ -204,6 +206,28 @@ mixin GameInitMixin on GameProviderBase {
   }
 
   String eraLabel(Era era) => eraDefByEra(era).label;
+
+  /// 穿越者记忆等级行（框架2 §11）：首次调用时掷档写入存档。
+  /// 原住民/未开局不调用。世界线变动率高时追加"记忆不可靠"警告。
+  String _transmemoryLine() {
+    final p = player;
+    if (p == null) return '【身份模式】穿越者。';
+    var level = transmemoryLevelFromName(p.transmemoryLevel);
+    if (p.transmemoryLevel == null) {
+      // 首次掷档：按权重随机（vivid 罕见，其余均匀），写入存档持久化
+      final roll = random.nextInt(100);
+      var acc = 0;
+      for (final entry in kTransmemoryWeights.entries) {
+        acc += entry.value;
+        if (roll < acc) {
+          level = entry.key;
+          break;
+        }
+      }
+      p.transmemoryLevel = level.name;
+    }
+    return transmemoryPromptLine(level, p.worldLineDeviation);
+  }
 
   /// 短版时代描述（节省 token。系统提示词和开场叙事中使用）
 

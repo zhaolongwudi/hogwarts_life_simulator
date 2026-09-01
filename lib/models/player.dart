@@ -78,6 +78,9 @@ class Player {
   int generation;
   String? housePreference; // 学院倾向（第75章）
   String? politicalTendency; // 初始政治倾向（第75章）
+  /// 穿越者原著记忆等级（框架2 §11）。'vivid'/'partial'/'faded'/'endingOnly'/'errors'；
+  /// 原住民恒为 null。老存档缺省 null = 未掷档（按 partial 处理）。
+  String? transmemoryLevel;
   String? simulationStyle; // 模拟风格（第75章）
   String? birthIdentity; // 出生身份（第75章）
   String? petName;
@@ -241,6 +244,7 @@ class Player {
     this.generation = 1,
     this.housePreference,
     this.politicalTendency,
+    this.transmemoryLevel,
     this.simulationStyle,
     this.birthIdentity,
     this.petName,
@@ -452,6 +456,7 @@ class Player {
     'forum_posts': forumPosts.map((e) => e.toJson()).toList(),
     'traits': traits,
     'political_tendency': politicalTendency,
+    'transmemory_level': transmemoryLevel,
     'equipped': equipped,
     'bestiary': bestiary,
     'quests': quests.map((e) => e.toJson()).toList(),
@@ -602,6 +607,7 @@ class Player {
         .toList(),
     traits: List<String>.from(json['traits'] ?? []),
     politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
+    transmemoryLevel: json['transmemory_level'] as String?,
     equipped: Map<String, String>.from(json['equipped'] ?? {}),
     bestiary: List<String>.from(json['bestiary'] ?? []),
     quests:
