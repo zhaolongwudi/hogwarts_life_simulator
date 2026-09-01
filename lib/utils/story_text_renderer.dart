@@ -623,8 +623,16 @@ class StoryTextRenderer {
   /// 名字表改成从 NPC 数据派生后有 300 多个分支，而这个正则是在解析缓存
   /// 之前构造的（见 parseWithAffectionStyle），原先每次渲染都重新拼一遍
   /// 字符串、重新编译一次。名字表是静态的，正则也应该是静态的。
+  ///
+  /// 性能红线（第16轮C/D/E 修复）：`(?<prefix>.*?)` 惰性匹配 × 300+ 名字
+  /// alternation × `\s*$`，对「不含好感数字的普通叙述行」会灾难性回溯
+  /// （O(n²×300)）——AI 长正文几乎每行都触发，主线程被占死成 ANR，
+  /// 无异常可记（用户报告：生成剧情/继续冒险卡死闪退、无崩溃日志）。
+  /// 修复：①前缀加长度上限 {0,80}（超长前缀本就不是好感行，直接不匹配，
+  /// 回溯深度被封顶 O(80×300)）；②调用侧再加快路径预筛（见
+  /// _promoteAffectionLines），绝大多数行根本不进这个正则。
   static final RegExp _lineAffection = RegExp(
-    r'^(?<prefix>.*?)'
+    r'^(?<prefix>.{0,80}?)'
             r'(?:'
             r'(?<name>' +
         _affectionNameUnion +
@@ -637,6 +645,13 @@ class StoryTextRenderer {
             r'\s*$',
     multiLine: true,
     unicode: true,
+  );
+
+  /// 快路径预筛：一行里连「+/-数字」或「好感度变化/声望变化」字样都没有，
+  /// 就不可能命中 _lineAffection（名字+数字 或 区块头），直接跳过。
+  /// 宽松判定（宁可放行也不漏报），配合上面已封顶回溯深度的完整正则。
+  static final RegExp _affectionFastGate = RegExp(
+    r'[+-]\d{1,3}|好感度?变化?[：:]|声望变化?[：:]',
   );
 
   /// 名字分支（长名在前，保证「哈利·波特」优先于「哈利」）。
@@ -664,6 +679,14 @@ class StoryTextRenderer {
 
     while (i < lines.length) {
       final line = lines[i];
+      // 快路径：绝大多数行是普通叙述（无好感数字/区块头），直接跳过
+      // 完整正则——避免 _lineAffection 的 alternation 回溯（见上注释）。
+      if (!_affectionFastGate.hasMatch(line)) {
+        flushBlock();
+        buffer.add(line);
+        i++;
+        continue;
+      }
       final match = _lineAffection.firstMatch(line);
 
       if (match != null) {
@@ -866,6 +889,19 @@ class StoryTextRenderer {
         final newlineIdx = text.indexOf('\n', lineStart);
         final lineEnd = newlineIdx == -1 ? safeMax : newlineIdx;
         if (lineStart > lineEnd || lineStart > safeMax) break;
+        // BUG-ANR（第16轮D/E 修复）：本循环里所有「跳过本行」的 continue 都
+        // 必须先把 lineStart 推到下一行再 continue，否则单行文本（AI 极常输出
+        // 「叙述：”台词”」模式，如 `声音沙哑：“阁楼。`）会因 lineStart 永不
+        // 前进而无限循环——主线程被占死成 ANR，无异常可记（用户报告：生成
+        // 剧情/继续冒险卡死闪退、无崩溃日志）。
+        void advanceLine() {
+          if (newlineIdx == -1) {
+            lineStart = safeMax + 1; // 单行：直接跳出 while
+          } else {
+            lineStart = newlineIdx + 1;
+          }
+        }
+
         final k = _findDialogueColon(text, lineStart, lineEnd);
         if (k >= lineStart && k < lineEnd) {
           final speakerStartIdx = _speakerStart(text, lineStart, k);
@@ -876,13 +912,22 @@ class StoryTextRenderer {
               : speakerStartIdx;
           final raw = text.substring(safeSpeakerStart, k).trim();
           final nameEndInRaw = _validSpeakerNameEnd(raw);
-          if (nameEndInRaw < 0) continue; // 无效，跳过这段
+          if (nameEndInRaw < 0) {
+            advanceLine(); // 无效，跳过这段（必须推进，防死循环）
+            continue;
+          }
           // BUG-CRASH 修复：nameEndInRaw（raw内）转 absolute 后不能超过 k（冒号前）
           final safeNameEnd = safeSpeakerStart + nameEndInRaw;
-          if (safeNameEnd < safeSpeakerStart || safeNameEnd > k) continue;
+          if (safeNameEnd < safeSpeakerStart || safeNameEnd > k) {
+            advanceLine();
+            continue;
+          }
           // k + 1（colonEnd）不能超 safeMax
           final colonEnd = k + 1;
-          if (colonEnd > safeMax) continue;
+          if (colonEnd > safeMax) {
+            advanceLine();
+            continue;
+          }
           // lineEnd（contentEnd）不能超 safeMax
           final contentEnd = lineEnd;
           colonSegments.add(
