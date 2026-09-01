@@ -147,12 +147,22 @@ class GameProvider extends GameProviderBase
       return;
     }
     _saveScheduled = true;
+    // 补存循环必须设上限：极端情况下（写盘完成瞬间又有新的 autoSave 请求）
+    // 会一直循环，主线程被 doSave 的等待链占住 → 卡死无异常（用户报告的
+    // 「卡死闪退且无崩溃日志」疑似与此相关）。上限 5 次，超限丢弃本次补存，
+    // 把控制权交还事件循环；下个回合自然会有新的 autoSave。
+    var loops = 0;
     do {
       _saveDirty = false;
       _pendingSave = doSave(debounce: true);
       await _pendingSave;
       _pendingSave = null;
-    } while (_saveDirty);
+      loops++;
+    } while (_saveDirty && loops < 5);
+    if (_saveDirty) {
+      _saveDirty = false;
+      debugPrint('⚠️ autoSave 补存循环达到上限(5)，本次补存丢弃，下回合再存');
+    }
   }
 
   @override
