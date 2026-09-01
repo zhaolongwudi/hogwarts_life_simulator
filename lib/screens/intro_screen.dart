@@ -142,9 +142,10 @@ class _IntroScreenState extends State<IntroScreen> {
   ];
 
   // 9b. 魔法资质（第75章）
+  // 哑炮线已永久删除：「哑炮·无魔法天赋」曾是假选项（只有 prompt 文案注入、
+  // 没有任何本地机制配合），玩家选了之后课堂/咒语/决斗照常，纯属误导。
   String _magicAptitude = '良好';
   static const List<String> _magicAptitudeOptions = [
-    '哑炮·无魔法天赋',
     '普通',
     '良好',
     '优秀',

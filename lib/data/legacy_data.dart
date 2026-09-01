@@ -70,7 +70,9 @@ String mixBloodType(String parentA, String parentB, int roll) {
   }
   // 有一方麻瓜出身
   if (hi == 1) return roll < 75 ? 'halfblood' : 'muggleborn';
-  // 双方麻瓜出身：极小的概率出个哑炮之外的意外
+  // 双方麻瓜出身：极小概率出个"隔代返祖"的巫师——麻瓜家庭的孩子
+  // 有魔力，本身就是这个世界最普通的奇迹。（哑炮线已永久删除，
+  // 此处不产出哑炮。）
   return roll < 92 ? 'muggleborn' : 'halfblood';
 }
 

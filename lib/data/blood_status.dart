@@ -37,12 +37,14 @@ const Map<String, String> kBloodStatusLabels = {
 ///
 /// 不是所有血统都适合让玩家开局就选（'pureblood' 和 'special' 是
 /// 剧情/NPC 侧用的），所以这张表比 [kBloodStatusLabels] 短。
+/// 'squib' 不出现在这里：哑炮玩家线已永久删除（见问卷「魔法资质」，
+/// 「哑炮·无魔法天赋」选项已移除），但标签表里保留 'squib'——
+/// 费尔奇等 NPC 的原著血统要靠它显示。
 const List<String> kBloodStatusOptions = [
   'muggleborn',
   'halfblood',
   'pureblood_side',
   'pureblood_sacred',
-  'squib',
   'obscurial',
   'veela',
   'werewolf',
@@ -74,7 +76,6 @@ const Map<String, String> kBloodStatusDescriptions = {
   'halfblood': '父母一方巫师一方麻瓜，魔法能力未必弱于纯血',
   'pureblood_side': '纯血家族非核心成员，有姓氏便利也背负期望',
   'pureblood_sacred': '古老纯血家族核心成员，拥有财富与人脉',
-  'squib': '出生于巫师家庭但无法使用魔法，地位尴尬',
   'obscurial': '幼年压抑魔法诞生的危险黑暗力量，极高不稳定',
   'veela': '拥有媚娃血统，外貌魅惑但面临偏见',
   'werewolf': '被狼人咬伤，满月变形，面临严重就业歧视',
