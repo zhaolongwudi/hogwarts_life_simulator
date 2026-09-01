@@ -196,7 +196,19 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git commit -m "docs: sync changelog for v${{ steps.bump.outputs.VERSION_NAME }} [skip ci]"
-            git fetch origin main && git rebase origin/main
+            git fetch origin main
+            # 构建流程（pub get / analyze / test）可能在 checkout 之后又改过
+            # 已跟踪文件（实测出现过 pubspec.lock / analysis_options.yaml 这类
+            # 意外改动），不清理掉 rebase 会报 "cannot rebase: You have
+            # unstaged changes"（run 33497533573 的 step18 即栽在这里）。
+            # 这些改动都是构建副产物，无保留价值：checkout -- . 还原已跟踪文件，
+            # clean -fd 删未跟踪产物（build/coverage 等已被 .gitignore 排除，
+            # 不会被误删）。先打印状态留证据，下次再失败可直接对照。
+            echo "--- dirty before cleanup ---"
+            git status --porcelain
+            git checkout -- .
+            git clean -fd
+            git rebase origin/main
             git push origin main
             echo "✅ Changelog synced and pushed"
             echo "SYNCED=true" >> "$GITHUB_OUTPUT"
