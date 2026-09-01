@@ -1148,14 +1148,20 @@ $kNarrativeWritingRules
     final currentLoc = worldState.currentLocation ?? '';
     final narrativeLower = currentNarrative.toLowerCase();
     final playerAction = lastPlayerAction;
+    // 第16轮E：玩家误用 `/` 开头的输入时，原样存入会让离线兜底选项把 `/xxx`
+    // 原样当选项文本（"A. /握紧魔杖..."），玩家点选即回到原输入 → 死循环。
+    // 兜底场景下清洗：去掉 `/` 前缀当作自由行动。
+    final actionForChoice = playerAction.startsWith('/')
+        ? playerAction.substring(1)
+        : playerAction;
 
     // 基于玩家最近的行动生成相关选项
     final actionRelatedChoices = <GameChoice>[];
 
     // 如果有玩家行动，生成延续性选项
-    if (playerAction.isNotEmpty) {
+    if (actionForChoice.isNotEmpty) {
       actionRelatedChoices.addAll([
-        GameChoice(text: '$playerAction（继续）', action: '$playerAction（继续）'),
+        GameChoice(text: '$actionForChoice（继续）', action: '$actionForChoice（继续）'),
         GameChoice(text: '改变策略', action: '改变策略'),
       ]);
     }

@@ -1406,6 +1406,9 @@ mixin GameCommandsMixin on GameProviderBase {
     // 而玩家点任何一条候选都会继续触发新指令 —— 输错指令就等于丢掉当前一整段剧情。
     // 候选指令仍写在提示正文里（_formatUnknownCommand 已逐条列出），信息没丢。
     if (cmd.startsWith('/')) {
+      // 第16轮E：清空 lastPlayerAction，避免下次 AI 把"/握紧魔杖..."原样
+      // 当选项返回（A./握紧魔杖...）——玩家点选项又触发新一轮 → 死循环。
+      lastPlayerAction = '';
       currentNarrative = _formatUnknownCommand(slashless);
       choices = [GameChoice(text: '返回', action: '继续')];
       return true;
