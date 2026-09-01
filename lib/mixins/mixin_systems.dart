@@ -745,7 +745,8 @@ mixin GameSystemsMixin on GameProviderBase {
     // timelineBranches 此前一次都没被写过（只有测试在调用 addTimelineBranch），
     // 而 /联动 又把它显示给玩家，于是那一栏永远只有「暂无。」。
     worldState.addTimelineBranch(
-        '${worldState.time.year} 年从霍格沃茨毕业，人生轨迹自此不再跟着既定的学年走');
+        '${worldState.time.year} 年从霍格沃茨毕业，人生轨迹自此不再跟着既定的学年走',
+        snapshot: worldSnapshot());
     debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
     _graduationSettlement();
@@ -1164,7 +1165,7 @@ mixin GameSystemsMixin on GameProviderBase {
     // 1) /联动 的「已记录的分叉」——玩家随时能翻自己改过什么
     // 2) 之后每一回合的 AI 上下文——不然 AI 下一回合就照着原著写回去了
     if (opt.echo.isNotEmpty) {
-      worldState.addTimelineBranch(opt.echo);
+      worldState.addTimelineBranch(opt.echo, snapshot: worldSnapshot());
       worldState.addNarrativeEvent('⏳ ${anchor.title}·你选择了「${opt.text}」',
           turn: turnCount);
       notifications.add('⏳ 你改写了一段已经写好的历史');
@@ -1281,7 +1282,44 @@ mixin GameSystemsMixin on GameProviderBase {
           '而每一次「干预」都会让它跳一大截，每一次「旁观」都会把它压回去。');
     }
 
+    // 世界线重演（记录侧）：每个分叉点发生时的世界快照时间轴。
+    // 交互式重演（改选择看世界怎么变）需要完整状态快照与分支树，
+    // 是后续产品决策项；当前先让玩家能回看"我当时站在哪、世界什么样"。
+    if (worldState.timelineBranches.isNotEmpty) {
+      buf.writeln();
+      buf.writeln('【分叉时间轴】（世界线重演记录）');
+      for (var i = 0; i < worldState.timelineBranches.length; i++) {
+        final snap = i < worldState.timelineSnapshots.length
+            ? worldState.timelineSnapshots[i]
+            : const <String, dynamic>{};
+        final date = snap['date'];
+        final loc = snap['location'];
+        final dev = snap['deviation'];
+        final dateStr = date is String && date.isNotEmpty ? '[$date]' : '';
+        final locStr = loc is String && loc.isNotEmpty ? '· $loc' : '';
+        final devStr = dev is num
+            ? '· 当时变动率 ${(dev * 100).toStringAsFixed(1)}%'
+            : '';
+        buf.writeln('· $dateStr ${worldState.timelineBranches[i]}'
+            '${locStr.isEmpty ? '' : ' $locStr'}$devStr');
+      }
+    }
+
     return buf.toString();
+  }
+
+  /// 世界线分叉时的世界快照（供 addTimelineBranch 记录）。
+  @override
+  Map<String, dynamic> worldSnapshot() {
+    final p = player;
+    return {
+      'date': worldState.time.formatDate(),
+      'year': worldState.time.year,
+      'academic_year': worldState.academicYear,
+      'location': worldState.currentLocation ?? '',
+      'deviation': p?.worldLineDeviation ?? 0.0,
+      'impact': worldState.playerImpactScore,
+    };
   }
 
   // ==================== 毕业后留校任教 ====================
@@ -1414,7 +1452,8 @@ mixin GameSystemsMixin on GameProviderBase {
         '🎓 留校任教：${e.subject}${rank.title}', turn: turnCount);
     // 和毕业、成婚一样，这是回不了头的节点
     worldState.addTimelineBranch(
-        '${worldState.time.year} 年留校任教，任「${e.subject}」${rank.title}');
+        '${worldState.time.year} 年留校任教，任「${e.subject}」${rank.title}',
+        snapshot: worldSnapshot());
     notifications.add('🏫 你留下了，教${e.subject}');
 
     final buf = StringBuffer()
@@ -1462,7 +1501,8 @@ mixin GameSystemsMixin on GameProviderBase {
     worldState.addNarrativeEvent(
         '🏫 晋升：${p.facultySubject ?? ''}${next.title}', turn: turnCount);
     worldState.addTimelineBranch(
-        '${worldState.time.year} 年晋升为「${p.facultySubject ?? ''}」${next.title}');
+        '${worldState.time.year} 年晋升为「${p.facultySubject ?? ''}」${next.title}',
+        snapshot: worldSnapshot());
   }
 
   // ==================== 家族传承 ====================
@@ -1558,8 +1598,11 @@ mixin GameSystemsMixin on GameProviderBase {
     final p = player;
     if (p == null) return '尚未创建角色。';
 
+    // 传承闭环：显示家族代数（第 1 代不标注，传承局从第 2 代起）
+    final genTag = p.generation > 1 ? '　第 ${p.generation} 代' : '';
+
     if (p.children.isEmpty) {
-      return '【传承】\n你还没有孩子。\n'
+      return '【传承】$genTag\n你还没有孩子。\n'
           '结婚之后可以备孕，等孩子长到 $kHeirEntranceAge 岁，'
           '就能把这一生交给他。';
     }
@@ -1658,6 +1701,9 @@ mixin GameSystemsMixin on GameProviderBase {
     if (heir == null) return false;
 
     final legacy = buildLegacyFor(heir);
+    // 传承闭环：家族代数 +1——孩子是"第 N+1 代"，多周目有了刻度。
+    // initializeGame 重建 player 后赋值（父辈代数在重建前先取出）。
+    final parentGeneration = p.generation;
     await initializeGame(
       name: legacy.heirName,
       bloodStatus: legacy.bloodType,
@@ -1667,6 +1713,7 @@ mixin GameSystemsMixin on GameProviderBase {
       familyBackground: legacy.familyBackground,
       legacy: legacy,
     );
+    player!.generation = parentGeneration + 1;
     return true;
   }
 

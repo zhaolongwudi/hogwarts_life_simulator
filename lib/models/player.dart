@@ -71,6 +71,10 @@ class Player {
   /// 所以这里只记最近一次，毕业后 /状态 用它当职业。
   String? currentJobTitle;
   String? magicAptitude; // 魔法资质（第75章）
+
+  /// 家族第几代（传承局）。开局默认 1，/传承 开局 = 父辈 + 1。
+  /// 老存档没有这个字段时按 1 处理（存档兼容）。
+  int generation;
   String? housePreference; // 学院倾向（第75章）
   String? politicalTendency; // 初始政治倾向（第75章）
   String? simulationStyle; // 模拟风格（第75章）
@@ -220,6 +224,7 @@ class Player {
     this.initialTalent,
     this.currentJobTitle,
     this.magicAptitude,
+    this.generation = 1,
     this.housePreference,
     this.politicalTendency,
     this.simulationStyle,
@@ -396,6 +401,7 @@ class Player {
         'initial_talent': initialTalent,
         'current_job_title': currentJobTitle,
         'magic_aptitude': magicAptitude,
+        'generation': generation,
         'house_preference': housePreference,
         'simulation_style': simulationStyle,
         'birth_identity': birthIdentity,
@@ -507,6 +513,7 @@ class Player {
         initialTalent: json['initial_talent'],
         currentJobTitle: json['current_job_title'],
         magicAptitude: json['magic_aptitude'],
+        generation: (json['generation'] as num?)?.toInt() ?? 1,
         housePreference: json['house_preference'],
         simulationStyle: json['simulation_style'],
         birthIdentity: json['birth_identity'],

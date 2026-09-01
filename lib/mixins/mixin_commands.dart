@@ -2974,6 +2974,7 @@ $knownRegions
     final p = player!;
     return '''【角色完整档案】
   姓名：${p.name}｜性别：${p.gender.isEmpty ? '未设定' : p.gender}
+  家族：第 ${p.generation} 代${p.generation > 1 ? '（传承局）' : ''}
   生日：${p.birthDay ?? '未设定'}｜出生年份：${p.birthYear}
   血统：${bloodStatusLabel(p.bloodType)}｜出生地：${p.birthLocation}
   学院：${p.house ?? '未分院'}｜年级：${p.grade ?? 1}

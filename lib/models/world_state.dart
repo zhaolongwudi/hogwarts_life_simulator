@@ -56,6 +56,15 @@ class WorldState {
   int timelineChanges; // 世界线变动次数
   final List<String> timelineBranches; // 已分叉的世界线描述
 
+  /// 世界线分叉时的世界快照（世界线重演的记录侧基建）。
+  ///
+  /// 与 [timelineBranches] 按下标一一对应：第 i 条分支附第 i 份快照。
+  /// 快照只记"当时的世界长什么样"（日期/学年/地点/变动率/影响力），
+  /// 不存可回放状态——交互式重演（改一个选择看世界怎么变）需要完整
+  /// 状态快照与分支树，工程量大，是后续产品决策项。当前先让玩家能
+  /// "回看"每个分叉点发生时的世界状态。
+  final List<Map<String, dynamic>> timelineSnapshots;
+
   // ====== 学年系统扩展字段 ======
   final List<String> firedAnchorIds; // 已触发的事件锚点（防重复）
 
@@ -134,6 +143,7 @@ class WorldState {
     this.weather,
     this.timelineChanges = 0,
     List<String>? timelineBranches,
+    List<Map<String, dynamic>>? timelineSnapshots,
     List<String>? firedAnchorIds,
     Map<String, String>? causalChoices,
     Map<String, int>? monthlyEventFiredAt,
@@ -155,6 +165,8 @@ class WorldState {
         recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
         specialMarkers = List<String>.from(specialMarkers ?? const []),
         timelineBranches = List<String>.from(timelineBranches ?? const []),
+        timelineSnapshots = List<Map<String, dynamic>>.from(
+            timelineSnapshots ?? const []),
         firedAnchorIds = List<String>.from(firedAnchorIds ?? const []),
         causalChoices = Map<String, String>.from(causalChoices ?? const {}),
         monthlyEventFiredAt =
@@ -220,12 +232,18 @@ class WorldState {
     }
   }
 
-  /// 记录一条世界线分支
-  void addTimelineBranch(String description) {
+  /// 记录一条世界线分支，并附上"当时的世界快照"（重演记录侧）。
+  ///
+  /// [snapshot] 由调用方构造（mixin 里能拿到 player 的变动率等数据），
+  /// 传 null 时记一个空快照占位，保证两表下标始终对齐。
+  void addTimelineBranch(String description,
+      {Map<String, dynamic>? snapshot}) {
     timelineChanges += 1;
     timelineBranches.add(description);
+    timelineSnapshots.add(snapshot ?? const {});
     if (timelineBranches.length > 20) {
       timelineBranches.removeAt(0);
+      timelineSnapshots.removeAt(0);
     }
   }
 
@@ -247,6 +265,7 @@ class WorldState {
         'weather': weather,
         'timeline_changes': timelineChanges,
         'timeline_branches': timelineBranches,
+        'timeline_snapshots': timelineSnapshots,
         'fired_anchor_ids': firedAnchorIds,
         'causal_choices': causalChoices,
         'monthly_event_fired_at': monthlyEventFiredAt,
@@ -291,6 +310,8 @@ class WorldState {
       weather: json['weather'],
       timelineChanges: json['timeline_changes'] ?? 0,
       timelineBranches: List<String>.from(json['timeline_branches'] ?? []),
+      timelineSnapshots: List<Map<String, dynamic>>.from(
+          json['timeline_snapshots'] as List<dynamic>? ?? const []),
       firedAnchorIds: List<String>.from(json['fired_anchor_ids'] ?? []),
       causalChoices: Map<String, String>.from(
           (json['causal_choices'] as Map<String, dynamic>? ?? const {})

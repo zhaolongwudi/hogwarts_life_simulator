@@ -1615,7 +1615,8 @@ mixin GameRelationsMixin on GameProviderBase {
     notifications.add('💒 你与$partnerName 在亲友的祝福中举行了婚礼');
     worldState.addNarrativeEvent('💒 与$partnerName 结婚', turn: turnCount);
     worldState.addTimelineBranch(
-        '与$partnerName 成婚：一条原作里不存在的家族线从这里开始');
+        '与$partnerName 成婚：一条原作里不存在的家族线从这里开始',
+        snapshot: worldSnapshot());
     addRumor('$partnerName 和你在霍格沃茨举行了婚礼，这件事被念叨了整整一个学期。');
     bumpImpactScore(0.08, debugReason: '结婚：$partnerName');
     notifyListeners();

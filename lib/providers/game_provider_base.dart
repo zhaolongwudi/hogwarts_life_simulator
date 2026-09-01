@@ -299,6 +299,9 @@ abstract class GameProviderBase extends ChangeNotifier
   /// /世界线 的输出。实现在 GameSystemsMixin。
   String formatWorldLine();
 
+  /// 世界线分叉时的世界快照（重演记录侧）。实现在 GameSystemsMixin。
+  Map<String, dynamic> worldSnapshot();
+
   /// /成长 的输出（属性成长总账）。实现在 GameSystemsMixin。
   String formatGrowth();
 
