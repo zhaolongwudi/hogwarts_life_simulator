@@ -945,29 +945,25 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     final respondActionRe = RegExp(r'(回答|回应|开口|说|答|回应|答话|应声)');
 
     for (final choice in choices) {
-      bool needsMark = false;
-      String? markReason;
+      var needsMark = false;
 
       for (final assertion in assertions) {
         // 封锁状态 vs 离开动作
         if (lockAssertionRe.hasMatch(assertion) &&
             leaveActionRe.hasMatch(choice.action)) {
           needsMark = true;
-          markReason = '与状态断言矛盾';
           break;
         }
         // 魔杖丢失 vs 施法动作
         if (wandLostAssertionRe.hasMatch(assertion) &&
             castActionRe.hasMatch(choice.action)) {
           needsMark = true;
-          markReason = '与状态断言矛盾';
           break;
         }
         // 被点名/提问 vs 未回应
         if (calledAssertionRe.hasMatch(assertion) &&
             !respondActionRe.hasMatch(choice.action)) {
           needsMark = true;
-          markReason = '应在回应后再行动';
           break;
         }
       }

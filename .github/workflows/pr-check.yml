@@ -10,6 +10,8 @@ on:
 
 permissions:
   contents: read
+  # upload-artifact 需要 actions: write；只写 contents 会把其余权限压成 none
+  actions: write
 
 jobs:
   analyze-test:
@@ -21,14 +23,27 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          # 与 android-build.yml 保持同一版本，避免 PR 绿了、main 红了。
           channel: 'stable'
+          flutter-version: '3.47.2'
           cache: true
 
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze --no-fatal-warnings
+        run: |
+          # fatal-infos 默认开启，必须显式关掉（同 android-build.yml）
+          set -o pipefail
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee analyze_output.log
+
+      - name: Upload analyze log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-log-pr-${{ github.sha }}
+          path: analyze_output.log
+          retention-days: 14
 
       - name: Run tests
         run: flutter test

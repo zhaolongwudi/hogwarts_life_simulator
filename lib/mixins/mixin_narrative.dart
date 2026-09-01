@@ -43,6 +43,13 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
   double _lastNarrativeDensity = 0.0;
 
+  /// 上一回合的叙事信息密度（只读）。
+  ///
+  /// 保留这个出口是为了让"密度"这个只在内部算过的数有被观察到的机会：
+  /// 调试面板、控制台、未来的自适应阈值都从这里取值，否则字段写进去
+  /// 却永远没人读，analyzer 版本一升级就会被判成死代码。
+  double get lastNarrativeDensity => _lastNarrativeDensity;
+
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
     CrashLogger.instance.logHeartbeat('processChoice:start action=${choice.action.length > 30 ? choice.action.substring(0, 30) : choice.action}');
@@ -696,7 +703,6 @@ $kNarrativeWritingRules
             final p = player;
             if (p != null) {
               final location = worldState.currentLocation ?? '霍格沃茨';
-              final time = worldState.timestamp;
               final weather = worldState.weather ?? '晴朗';
               final enhancement = '\n\n你环顾四周，$location 的$weather天气下，'
                   '城堡的走廊里传来远处学生的笑闹声和隐约的脚步声。'

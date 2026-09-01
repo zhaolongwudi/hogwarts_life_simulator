@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/game_systems.dart';
 import '../../mixins/mixin_response_choices.dart';
-import '../../utils/ui_helpers.dart';
 
 /// 剧情选项按钮。
 ///
@@ -30,7 +29,6 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: _handleTap,
       child: AnimatedOpacity(

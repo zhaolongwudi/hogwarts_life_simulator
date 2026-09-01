@@ -14,3 +14,6 @@ analyzer:
     # CI 用 --no-fatal-warnings，不阻塞；error 级必须为 0。
     invalid_use_of_protected_member: error
     unused_import: warning
+  exclude:
+    - build/**
+    - android/**

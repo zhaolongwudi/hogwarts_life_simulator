@@ -187,7 +187,6 @@ class HomePage extends StatelessWidget {
 
   /// P0-4 新手引导：还没配 AI Key 时给一条醒目的提示（第一道断崖的工程侧缓解）。
   Widget _buildAiSetupHint(BuildContext context, ThemeData theme) {
-    final appProvider = context.read<AppProvider>();
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Material(

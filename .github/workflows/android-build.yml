@@ -11,6 +11,8 @@ concurrency:
 
 permissions:
   contents: write
+  # upload-artifact 需要 actions: write；只写 contents 会把其余权限压成 none
+  actions: write
 
 jobs:
   build:
@@ -40,7 +42,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          # 锁定版本，不追 stable 漂移。
+          # 原因：CI 曾出现「本地 0 error、CI 1 error」的幽灵失败——代码没变，
+          # 只是 runner 上的 stable 悄悄升了级，analyzer 把某条诊断提级成 error。
+          # 锁死版本后 CI 与本地完全可复现；要升级时由人显式改这里。
           channel: 'stable'
+          flutter-version: '3.47.2'
           cache: true
 
       - name: Bump version for build
@@ -72,7 +79,23 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze --no-fatal-warnings
+        id: analyze
+        run: |
+          # 两个 --no-fatal 都不能少：flutter analyze 的 fatal-infos 默认是开的，
+          # 只写 --no-fatal-warnings 时，几百条 info 级 lint 照样把退出码打成 1
+          # （run 33453510436 就是这样红的：0 error / 7 warning / 593 info → exit 1）。
+          # 门禁只卡 error 级，info 作为技术债单独跟踪。
+          # tee 落盘 + pipefail：analyze 失败时保留完整输出，排障不必靠猜。
+          set -o pipefail
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee analyze_output.log
+
+      - name: Upload analyze log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-log-${{ steps.bump.outputs.VERSION_NAME }}
+          path: analyze_output.log
+          retention-days: 14
 
       - name: Run tests with coverage
         run: |

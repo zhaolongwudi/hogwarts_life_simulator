@@ -1191,7 +1191,6 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 关键是**把"还差多少"摆出来**。变动率是个只有小数点后三位的数字，
   /// 不给出通往下一个分歧点的距离，玩家永远不知道自己该做什么、
   /// 也不知道这套系统到底在不在跑。
-  @override
   /// 世界线变动率的文本进度条（20 格），让「0.3 黑箱」一眼可见（P1-9）。
   String _worldLineBar(double dev) {
     final filled = (dev.clamp(0.0, 1.0) * 20).round();
