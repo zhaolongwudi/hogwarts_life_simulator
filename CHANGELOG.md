@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.7.0 — 2026-09-01
+
+**📋 变更说明**
+docs: 档案总览补第16次B行 + 说明 api_push 脚本 commit message bug 与修复
+
+- 档案总览：第16次B（剧情输入内容质量审查 F1-F7）补入时间线
+- docs/api-push-commit-message-bug.md：记录 c278ff3/249405ef/53a3fe2 共用
+  第15轮标题的脚本 bug 与修复（脚本已改为实时读 git HEAD message）
+  本条 docs 用修好后的脚本推送，标题/日期应与本地一致
+
 ### v3.6.9 — 2026-09-01
 
 **📋 变更说明**
