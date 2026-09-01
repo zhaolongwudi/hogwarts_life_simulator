@@ -1381,6 +1381,106 @@ const List<NpcSeed> firstWarOriginals = [
     era: 'first_war',
     personalGoal: '守着这家酒吧，不掺和任何大事',
   ),
+  // ===== 时代的阴影：伏地魔本人（P2#12 补实体）=====
+  NpcSeed(
+    id: 'voldemort',
+    name: '伏地魔',
+    gender: '男',
+    aliases: ['汤姆·里德尔', '神秘人', '黑魔王', 'Voldemort'],
+    house: 'Slytherin',
+    grade: 0,
+    bloodStatus: 'halfblood',
+    personality: ['冷酷', '狡诈', '野心', '偏执'],
+    appearance:
+        '苍白而蛇一般的面容，猩红色的眼睛，瞳孔像竖线一样细。说话声嘶嘶作响，仿佛蛇在吐信。黑袍之下，是整个魔法界都不敢直呼其名的恐惧。',
+    era: 'first_war',
+    personalGoal: '获得永生，支配整个魔法世界',
+  ),
+];
+
+/// 对角巷与霍格莫德的店主（P2#12：此前 6 位店主全缺席）。
+///
+/// 店主是商店的经营者，跨时代经营，era 用 all——无论玩家在哪个时代，
+/// 走进三把扫帚或奥利凡德，都有人站在柜台后面。
+const List<NpcSeed> shopkeeperSeeds = [
+  NpcSeed(
+    id: 'ollivander',
+    name: '加里克·奥利凡德',
+    gender: '男',
+    aliases: ['奥利凡德', '奥利凡德先生', '魔杖店老板'],
+    grade: 0,
+    bloodStatus: 'unknown',
+    personality: ['博学', '挑剔', '专注'],
+    appearance:
+        '银白色头发的瘦高老人，眼睛亮得像两轮满月。修长的手指在魔杖盒间翻飞，仿佛在抚摸什么有生命的东西。',
+    era: 'all',
+    personalGoal: '为每一位巫师找到最合适的魔杖',
+  ),
+  NpcSeed(
+    id: 'florean_fortescue',
+    name: '弗洛林·福斯科',
+    gender: '男',
+    aliases: ['福斯科', '冷饮店老板'],
+    grade: 0,
+    bloodStatus: 'unknown',
+    personality: ['热情', '慷慨', '健谈'],
+    appearance:
+        '圆润的脸颊总是带着笑意，系着一条被冰淇淋污渍染花的围裙，招呼起客人来嗓门洪亮。',
+    era: 'all',
+    personalGoal: '把冰淇淋店经营成对角巷最受欢迎的歇脚处',
+  ),
+  NpcSeed(
+    id: 'borgin',
+    name: '博金先生',
+    gender: '男',
+    aliases: ['博金', '博金-博克老板'],
+    grade: 0,
+    bloodStatus: 'unknown',
+    personality: ['精明', '阴郁', '贪婪'],
+    appearance:
+        '佝偻着背的老头，脸藏在阴影里，只剩一双精明的眼睛在货架之间游走。店里摆满来历不明的黑魔法器物。',
+    era: 'all',
+    personalGoal: '让博金-博克店成为魔法界最会做生意的黑魔法商店',
+  ),
+  NpcSeed(
+    id: 'rosmerta',
+    name: '罗斯默塔夫人',
+    gender: '女',
+    aliases: ['罗斯默塔', '三把扫帚老板娘'],
+    grade: 0,
+    bloodStatus: 'unknown',
+    personality: ['爽朗', '精明', '热心'],
+    appearance:
+        '风韵犹存的女店主，栗色头发挽成髻，笑起来整个三把扫帚的杯子都会跟着晃。黄油啤酒的配方在她手里从不出错。',
+    era: 'all',
+    personalGoal: '让三把扫帚成为霍格莫德最热闹的酒馆',
+  ),
+  NpcSeed(
+    id: 'abeforth',
+    name: '阿不福思·邓布利多',
+    gender: '男',
+    aliases: ['阿不福思', '猪头酒吧老板'],
+    grade: 0,
+    bloodStatus: 'halfblood',
+    personality: ['孤僻', '固执', '外冷内热'],
+    appearance:
+        '留着灰白络腮胡的老人，看起来比实际年龄老得多。山羊在吧台边踱步，他把所有故事都咽进了啤酒沫里。',
+    era: 'all',
+    personalGoal: '守住猪头酒吧，也守住那个不许人谈论的秘密',
+  ),
+  NpcSeed(
+    id: 'ambrosius_flume',
+    name: '安布罗修·弗鲁姆',
+    gender: '男',
+    aliases: ['弗鲁姆', '蜂蜜公爵老板'],
+    grade: 0,
+    bloodStatus: 'unknown',
+    personality: ['开朗', '童趣', '慷慨'],
+    appearance:
+        '胖乎乎的老好人，围裙上别着各色糖果徽章。店里每一罐糖果他都亲手尝过，脸上因此常年挂着甜蜜的笑。',
+    era: 'all',
+    personalGoal: '让蜂蜜公爵的糖果征服每个孩子的口袋',
+  ),
 ];
 
 /// 全部 NPC 种子（按 id 去重）。
@@ -1441,19 +1541,23 @@ final List<NpcSeed> postWarStaff = _pickStaff({
 /// 各时代 NPC 种子（按 Era 过滤）
 final Map<String, List<NpcSeed>> eraNpcSeeds = {
   'dumbledore': [
+    ...shopkeeperSeeds,
     ...dumbledoreStaff,
     ...dumbledoreEraSeeds,
   ],
   'marauders': [
+    ...shopkeeperSeeds,
     ...maraudersStaff,
     ...maraudersSeeds,
   ],
   'first_war': [
+    ...shopkeeperSeeds,
     ...maraudersStaff,
     ...firstWarSeeds,
     ...firstWarOriginals,
   ],
   'harry_same': [
+    ...shopkeeperSeeds,
     ...staffSeeds,
     ...harrySameGryffindor,
     ...harrySameSenior,
@@ -1462,10 +1566,12 @@ final Map<String, List<NpcSeed>> eraNpcSeeds = {
     ...harrySameHufflepuff,
   ],
   'post_war': [
+    ...shopkeeperSeeds,
     ...postWarStaff,
     ...postWarSeeds,
   ],
   'random': [
+    ...shopkeeperSeeds,
     ...staffSeeds,
     ...harrySameGryffindor,
     ...harrySameSlytherin,

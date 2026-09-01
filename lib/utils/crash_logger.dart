@@ -51,6 +51,13 @@ class CrashLogger {
   Map<String, String> get heartbeatSnapshot => _heartbeat;
   Map<String, String> _heartbeat = {};
 
+  /// 心跳写盘节流：同步写 + flush 的主成本在 fsync，不是写那 100 字节。
+  /// 同一瞬间爆发的连续心跳（如一次 notifyListeners 风暴里连埋 3 个 marker）
+  /// 只落盘第一条，后续只更新内存——卡死定位需要的是"最后一步"，300ms
+  /// 粒度完全够用。P2#17：把每回合 2~4 次同步写盘降到 1~2 次。
+  static const Duration _heartbeatThrottle = Duration(milliseconds: 300);
+  DateTime? _lastHeartbeatWrite;
+
   File? _logFile;
   Future<File> _ensureFile() async {
     if (_logFile != null) return _logFile!;
@@ -100,11 +107,18 @@ class CrashLogger {
   ///
   /// ANR（主线程卡死，UI 冻结后系统杀进程）不会触发任何 onError，
   /// 异常记录永远接不到。靠心跳文件在下次启动时定位卡死前的最后一步。
-  /// 只在回合边界调用（每回合 2~4 次），每次同步写一个小文件，开销可忽略。
+  /// 只在回合边界调用（每回合 2~4 次）；同步写盘但带 300ms 节流，
+  /// 同一瞬间的连续 marker 只落盘第一条（内存始终是最新的）。
   void logHeartbeat(String marker) {
-    _heartbeat = {'time': DateTime.now().toIso8601String(), 'marker': marker};
+    final now = DateTime.now();
+    _heartbeat = {'time': now.toIso8601String(), 'marker': marker};
     final dir = _cachedDir;
     if (dir == null) return;
+    if (_lastHeartbeatWrite != null &&
+        now.difference(_lastHeartbeatWrite!) < _heartbeatThrottle) {
+      return; // 节流窗口内只更新内存，不落盘
+    }
+    _lastHeartbeatWrite = now;
     try {
       File('$dir/heartbeat.json')
           .writeAsStringSync(jsonEncode(_heartbeat), flush: true);
