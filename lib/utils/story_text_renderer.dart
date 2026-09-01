@@ -1520,6 +1520,10 @@ class StoryTextRenderer {
   static String stripMarkdownArtifacts(String text) {
     if (text.isEmpty) return text;
     var s = text;
+    // 韩文兜底（审查 F2）：Agnes 偶有韩文输出，主剧情/选项都走 Agnes。
+    // 剔除韩文音节/谚文字母（가-힣 / ㄱ-ㅎㅏ-ㅣ / 兼容字母区），
+    // 混排时只删韩文字符；纯韩文段落删后留空行由段落清理兜底。
+    s = s.replaceAll(RegExp(r'[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]'), '');
     // 注意：Dart 的 replaceAll 对 RegExp 的替换串按字面量处理（不支持 $1），
     // 反向引用必须用 replaceAllMapped
     s = s.replaceAllMapped(RegExp(r'\*\*([^*\n]+)\*\*'), (m) => m.group(1)!);

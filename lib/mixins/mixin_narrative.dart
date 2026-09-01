@@ -320,27 +320,39 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         contextBuffer.writeln(t2Lines.join('\n'));
         contextBuffer.writeln('');
       }
-      // T3: 世界事件银行（重要性 * 新鲜度 取前 40 条）
+      // T3: 世界事件银行（重要性 * 新鲜度，近期优先 + 高分补位，总 40 条）
+      // 审查 F7：老事件（>60 天）分数低但仍占名额，事件多时把近期事件挤掉，
+      // AI 参考的是"几个月前的旧闻"。改为：近 60 天事件取前 30 条，
+      // 60 天外的高分事件最多补 10 条——近期优先，重要旧事不丢。
       final ts = worldState.time.absoluteDayIndex;
       final t3Order = <WorldEventRecord, int>{
         for (var i = 0; i < memory.worldEvents.length; i++)
           memory.worldEvents[i]: i,
       };
-      final t3 = List<WorldEventRecord>.from(memory.worldEvents)
-        ..sort((a, b) {
-          final c = b.score(ts).compareTo(a.score(ts));
-          if (c != 0) return c;
-          // 与淘汰侧同一套次级键：自动提取的事件 importance 恒为 6，500 条
-          // 里大量同分，不补键的话 Dart 的不稳定排序会让每回合注入的前 40 条
-          // 换一批，玩家感觉 AI 记的世界线在随机漂移。
-          final d = b.absoluteDay.compareTo(a.absoluteDay);
-          if (d != 0) return d;
-          return (t3Order[b] ?? 0).compareTo(t3Order[a] ?? 0);
-        });
+      int _t3Cmp(WorldEventRecord a, WorldEventRecord b) {
+        final c = b.score(ts).compareTo(a.score(ts));
+        if (c != 0) return c;
+        // 与淘汰侧同一套次级键：自动提取的事件 importance 恒为 6，500 条
+        // 里大量同分，不补键的话 Dart 的不稳定排序会让每回合注入的前 40 条
+        // 换一批，玩家感觉 AI 记的世界线在随机漂移。
+        final d = b.absoluteDay.compareTo(a.absoluteDay);
+        if (d != 0) return d;
+        return (t3Order[b] ?? 0).compareTo(t3Order[a] ?? 0);
+      }
+
+      final recentEvents = List<WorldEventRecord>.from(
+        memory.worldEvents,
+      ).where((e) => ts - e.absoluteDay <= 60).toList()..sort(_t3Cmp);
+      final oldEvents = List<WorldEventRecord>.from(
+        memory.worldEvents,
+      ).where((e) => ts - e.absoluteDay > 60).toList()..sort(_t3Cmp);
+      final t3 = <WorldEventRecord>[
+        ...recentEvents.take(30),
+        ...oldEvents.take(10),
+      ];
       if (t3.isNotEmpty) {
-        contextBuffer.writeln('【T3 世界事件银行（按重要性+新鲜度排序）】');
-        for (int i = 0; i < t3.length && i < 40; i++) {
-          final e = t3[i];
+        contextBuffer.writeln('【T3 世界事件银行（近期优先，按重要性+新鲜度排序）】');
+        for (final e in t3) {
           final cons = e.consequences.isNotEmpty
               ? ' → 后续:${e.consequences.join(";")}'
               : '';
@@ -554,7 +566,11 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
       // 安静期提示：检测最近几回合是否连续平淡，若连续3回合以上无转折，
       // 注入"本回合需要一点波澜"的指令，防止叙事陷入日常循环。
-      final quietPeriodHint = _buildQuietPeriodHint();
+      // 审查 F6：停滞 forced 档已下发"必须换场景"的强指令，此时再注入
+      // "来点小波澜"会形成两条长指令叠加，Agnes 注意力被分散——互斥跳过。
+      final quietPeriodHint = level == StagnationLevel.forced
+          ? ''
+          : _buildQuietPeriodHint();
 
       return '''【世界上下文】
   $context
@@ -1723,11 +1739,15 @@ $kNarrativeWritingRules
     // worldState 始终非空，此处无需 null 判断（避免 analyzer unnecessary_null_comparison）
     final npcsHere = npcsInCurrentLocation();
     if (npcsHere.isNotEmpty) {
+      // 档位标签而非裸好感数值（框架2 §6 信息限制 + 审查 F1）：
+      // 裸数字「斯内普55」对模型是噪音/误导（它会把数字当指令写出与真实
+      // 关系不符的剧情），档位标签「斯内普（对你态度冷淡）」才是关系基调。
       final npcNames = npcsHere
           .where((n) => n.introduced)
           .map((n) {
-            final status = n.isAlive ? n.affection.toString() : '';
-            return '${n.name}$status';
+            if (!n.isAlive) return '${n.name}（已故）';
+            final stage = n.affectionStage;
+            return stage.isEmpty ? n.name : '${n.name}（$stage）';
           })
           .join('、');
       if (npcNames.isNotEmpty) {

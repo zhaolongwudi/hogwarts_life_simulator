@@ -1,5 +1,6 @@
 import 'balance_constants.dart';
 import 'castle_data.dart';
+import '../models/game_systems.dart';
 
 // 世界观规则常量 - 融合版（两份大纲精华整合）
 // 基于"玩家不是天命主角"核心理念 + 完整系统架构
@@ -15,8 +16,24 @@ import 'castle_data.dart';
 /// 那是普通函数调用，const 上下文里调不了。城堡设定必须和
 /// [castle_data.dart] 保持单一来源——否则改了通道走向而提示词还在说旧的，
 /// AI 会理直气壮地把玩家送错地方。
-String get kWorldRulesFused => '''
+/// 恋爱声望区间（审查 F3：数据驱动，不再写死数字）。
+/// 真实区间在 loveReputationEffects（game_systems.dart），这里逐条拼出，
+/// 与 /声望 恋爱 面板同一数据源——AI 学到的舆论代价与实际结算一致。
+String loveReputationPromptLine() {
+  final lines = <String>[];
+  for (final e in loveReputationEffects) {
+    final lo = e.min >= 0 ? '+${e.min}' : '${e.min}';
+    final hi = e.max >= 0 ? '+${e.max}' : '${e.max}';
+    lines.add('- ${e.type}$lo~$hi');
+  }
+  return lines.join('\n');
+}
+
+String get kWorldRulesFused =>
+    '''
 你是【哈利·波特·魔法人生模拟器】的叙事AI，严格遵循以下融合设定：
+
+【语言铁律】必须使用简体中文输出全部叙事与区块内容，严禁混入任何其他语言文字——包括韩文、日文、英文单词、拼音。违反即整段作废。
 
 ━━━ 最高原则 ━━━
 1. 你收到的只是一张入场券。哈利会继续走向属于他的命运，而你只是同一时代里无数巫师中的一个。
@@ -84,7 +101,7 @@ ${castleBriefForPrompt()}
 
 【声望系统】多维度
 - 学术/社交/战斗/道德/领导/黑魔法声望
-- 跨学院恋爱-3~-5，跨血统-5~-10，跨阵营-8~-15
+${loveReputationPromptLine()}
 
 【战斗系统】
 - 施法成功率=熟练度×环境×心理×装备
@@ -189,8 +206,11 @@ NPC名:±X(原因)
 ''';
 
 /// 融合版精简系统提示词（默认使用，节省token）
-const String kWorldRulesFusedCompact = '''
+const String kWorldRulesFusedCompact =
+    '''
 你是【哈利·波特·魔法人生模拟器】叙事AI。
+
+【语言铁律】必须使用简体中文输出全部内容，严禁混入韩文/日文/英文等其他语言文字。
 
 【核心理念】
 你收到的只是一张入场券。哈利会继续走向他的命运，而你只是同一时代里无数巫师中的一个。世界不围绕你运转。你不是天命主角。
@@ -224,7 +244,7 @@ const String kWorldRulesFusedCompact = '''
 【输出格式】
 📅时间戳（照抄【当前场景】给出的日期时刻，不得改动；严禁时间快进）
 [叙事分4-8段]
-【好感变化】
+【好感度变化】
 
 ⚠️ 本轮不输出任何选项（【可选行动】/ A.B.C.D. 行动列表都不要写）——
 选项由系统在下一步单独生成，写了会触发整段重写。

@@ -6,10 +6,14 @@
 /// 测试纪律：注入与生产同侧、断言性质不锁细节。
 library;
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hogwarts_life_simulator/data/transmemory.dart';
+import 'package:hogwarts_life_simulator/data/world_rules.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
+import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
@@ -155,6 +159,43 @@ void main() {
       // 用不存在 npcEffects 的选项（如 O.W.L. 试题，无 NPC 联动）直接调用不崩
       final result = gp.resolveCausalChoice('g5_jun_owls', 'intervene');
       expect(result, isNotEmpty);
+    });
+  });
+
+  group('剧情输入内容质量（审查 F1/F3）', () {
+    test('F3 恋爱声望区间数据驱动：与 loveReputationEffects 逐条一致且含师生恋', () {
+      final line = loveReputationPromptLine();
+      expect(line, isNotEmpty);
+      for (final e in loveReputationEffects) {
+        expect(line, contains(e.type), reason: '「${e.type}」应出现在数据驱动行');
+      }
+      expect(
+        line,
+        contains('师生恋-25~-15'),
+        reason: '师生恋（代价最重）此前被写死规则漏掉，数据驱动后必须出现',
+      );
+      expect(line, isNot(contains('-3~-5')), reason: '旧的倒序写死区间（-3~-5）应被移除');
+    });
+
+    test('F1 【在场】不再输出裸好感数字（源码契约）', () {
+      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final sceneCtx = src.substring(
+        src.indexOf('final npcsHere = npcsInCurrentLocation()'),
+      );
+      expect(
+        sceneCtx,
+        isNot(contains('affection.toString()')),
+        reason: '【在场】应显示档位标签而非裸好感数值',
+      );
+      expect(sceneCtx, contains('affectionStage'), reason: '【在场】应使用好感档位');
+    });
+
+    test('F1 affectionStage 档位标签可表达关系基调', () {
+      final npc = _dumbledoreNpc();
+      npc.affection = 55;
+      expect(npc.affectionStage, isNotEmpty);
+      npc.affection = 90;
+      expect(npc.affectionStage, '深爱');
     });
   });
 }
