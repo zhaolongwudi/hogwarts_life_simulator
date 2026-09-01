@@ -178,7 +178,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         try {
           // 热路径：这几条日志每回合、每个好感行都要写一次，release 版照样
           // 往 stdout 打，长局下来是纯粹的 I/O 浪费。调试日志统一收进
-          // kDebugMode（同文件其它 debug 日志同理）。
+          // kDebugMode（同文件其他 debug 日志同理）。
           if (kDebugMode) {
             debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta'
                 '${rawDelta == delta ? '' : '（原文 $rawDelta）'}');
@@ -327,7 +327,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         // AI 偶尔会写出 +50 这种离谱值，这里限幅到 ±5（与 prompt 约定一致）
         player!.playerReputation.add(d.dimension, d.delta.clamp(-5, 5));
       } catch (e) {
-        // 维度名不在白名单里（AI 自造词）→ 静默忽略，不影响其它维度
+        // 维度名不在白名单里（AI 自造词）→ 静默忽略，不影响其他维度
       }
     }
   }

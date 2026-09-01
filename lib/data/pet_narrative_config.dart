@@ -1,7 +1,7 @@
 /// R8：宠物叙事配置（去掉 mixin_init.dart / mixin_play.dart 中多处 kyuubi 特判）
 ///
 /// 旧代码中 petId == 'kyuubi' 出现在：
-///   - mixin_init.dart 开局 T0：神话级 importance=9 特判（其它宠物 importance=7）
+///   - mixin_init.dart 开局 T0：神话级 importance=9 特判（其他宠物 importance=7）
 ///   - mixin_init.dart L1084：宠物兜底描述的 switch case
 ///   - mixin_commands.dart L731：化人形条件特判
 ///   - mixin_play.dart（化人形触发门槛）

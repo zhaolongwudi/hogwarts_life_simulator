@@ -67,6 +67,10 @@ class GameProvider extends GameProviderBase
   Future<void>? _pendingSave;
   bool _saveScheduled = false;
 
+  /// 防抖窗口内又产生了新进度（新回合已结算但没能赶上本次写盘）：
+  /// 写盘完成后若发现该标记，立即补存一次，防止「最后一步操作永不落盘」。
+  bool _saveDirty = false;
+
   GameProvider(this.appProvider) {
     chatService = NpcChatService(appProvider: appProvider);
     updateClient();
@@ -112,7 +116,9 @@ class GameProvider extends GameProviderBase
       // 却是好的。_applySaveData 内部已复位 isLoading/isInitializing/error。
       applySaveData(data);
 
-      debugPrint('✅ 自动存档加载成功: ${player?.name} 第$turnCount回合 (第$gameWeek周) 叙事${currentNarrative.length}字');
+      debugPrint(
+        '✅ 自动存档加载成功: ${player?.name} 第$turnCount回合 (第$gameWeek周) 叙事${currentNarrative.length}字',
+      );
       notifyListeners();
     } catch (e) {
       isLoading = false;
@@ -121,22 +127,32 @@ class GameProvider extends GameProviderBase
       appProvider.setGameStarted(false);
       error = '存档加载失败: $e';
       notifyListeners();
-      unawaited(CrashLogger.instance.record(
-        e,
-        StackTrace.current,
-        screen: 'autoLoad',
-        extra: 'error during tryAutoLoad',
-      ));
+      unawaited(
+        CrashLogger.instance.record(
+          e,
+          StackTrace.current,
+          screen: 'autoLoad',
+          extra: 'error during tryAutoLoad',
+        ),
+      );
     }
   }
 
   @override
   Future<void> autoSave() async {
     if (player == null) return;
-    if (_saveScheduled) return;
+    if (_saveScheduled) {
+      // 防抖窗口内第二次保存：不丢弃，标记「还有新进度」，写完补存
+      _saveDirty = true;
+      return;
+    }
     _saveScheduled = true;
-    _pendingSave = doSave(debounce: true);
-    await _pendingSave;
+    do {
+      _saveDirty = false;
+      _pendingSave = doSave(debounce: true);
+      await _pendingSave;
+      _pendingSave = null;
+    } while (_saveDirty);
   }
 
   @override
@@ -163,10 +179,7 @@ class GameProvider extends GameProviderBase
       if (debounce) {
         await Future.delayed(const Duration(milliseconds: 300));
       }
-      await writeSave(
-        slotId: SaveService.autoSaveSlotId,
-        slotName: '自动存档',
-      );
+      await writeSave(slotId: SaveService.autoSaveSlotId, slotName: '自动存档');
     } catch (e) {
       debugPrint('❌ 自动存档失败: $e');
     } finally {
@@ -217,8 +230,13 @@ class GameProvider extends GameProviderBase
   /// 好感解析器会把一次 -30 压成 -5 以抑制数值膨胀——那是数值层的事；
   /// 但"这件事有多大"是另一回事，结仇判定得看原始意图，
   /// 否则 AI 永远写不出一次真正的翻脸。不传就退回落地值 [change]。
-  void updateNpcAffection(String npcId, int change,
-      {String? reason, int? severity, bool quiet = false}) {
+  void updateNpcAffection(
+    String npcId,
+    int change, {
+    String? reason,
+    int? severity,
+    bool quiet = false,
+  }) {
     final npc = npcRegistry[npcId];
     if (npc == null) return;
     // /cheat 固定好感：锁定后好感对一切系统变动免疫（衰减/背叛/送礼/事件），
@@ -247,7 +265,10 @@ class GameProvider extends GameProviderBase
         actualChange = 0;
         if (npc.affectionGainedThisWeek == Balance.weekOneAffectionCap) {
           notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
-          worldState.addNarrativeEvent('📊 ${npc.name}的好感本周已达上限，无法继续提升', turn: turnCount);
+          worldState.addNarrativeEvent(
+            '📊 ${npc.name}的好感本周已达上限，无法继续提升',
+            turn: turnCount,
+          );
         }
       } else if (change > cap) {
         actualChange = cap;
@@ -262,19 +283,28 @@ class GameProvider extends GameProviderBase
         actualChange = cap - npc.affection;
         if (actualChange < 0) actualChange = 0;
         notifications.add('⚠️ ${npc.name}对你的信任因过去的背叛而受限');
-        worldState.addNarrativeEvent('⚠️ ${npc.name}对你的信任因过去的背叛而受限', turn: turnCount);
+        worldState.addNarrativeEvent(
+          '⚠️ ${npc.name}对你的信任因过去的背叛而受限',
+          turn: turnCount,
+        );
       }
       // 和解的门留在这儿：结了仇不是死局，一次真心实意的示好能削掉一点旧账。
       // 门槛设在 8，是因为日常 +1/+2 的寒暄不该算赎罪——
       // 那会让宿敌在不知不觉中被时间刷白，玩家的补救也就没了意义。
       if (actualChange >= 8 && npc.applyAmends(currentDay) > 0) {
         notifications.add('🕊️ ${npc.name}对你的态度松动了一些');
-        worldState.addNarrativeEvent('🕊️ ${npc.name}对你的态度松动了一些', turn: turnCount);
+        worldState.addNarrativeEvent(
+          '🕊️ ${npc.name}对你的态度松动了一些',
+          turn: turnCount,
+        );
       }
       if (npc.tickRivalry(currentDay)) {
         // 从死对头到能坐下来喝一杯，这条线索值得单独留一笔
         notifications.add('🤝 你和${npc.name}之间那笔旧账，就这么过去了');
-        worldState.addNarrativeEvent(formerRivalLine(npc.name), turn: turnCount);
+        worldState.addNarrativeEvent(
+          formerRivalLine(npc.name),
+          turn: turnCount,
+        );
       }
     }
     // ====== 怨气累计与结仇判定 ======
@@ -291,7 +321,10 @@ class GameProvider extends GameProviderBase
     final burst = (severity ?? change) <= kBurstSeverityThreshold;
 
     if (shouldRecordGrudge(
-        change: change, severity: severity, pendingSpite: npc.pendingSpite)) {
+      change: change,
+      severity: severity,
+      pendingSpite: npc.pendingSpite,
+    )) {
       // 宿敌成因从 reason 里认。原先一律记成 'betrayal'，
       // 于是"当众让他下不来台"和"骗了他"在宿敌分里完全等价，
       // 玩家自然也感觉不出区别。
@@ -342,7 +375,8 @@ class GameProvider extends GameProviderBase
     }
     _advanceLoveStage(npc);
     if (actualChange != 0) {
-      final eventText = '好感 ${actualChange > 0 ? '+' : ''}$actualChange：${reason ?? '互动'}';
+      final eventText =
+          '好感 ${actualChange > 0 ? '+' : ''}$actualChange：${reason ?? '互动'}';
       npc.recentEvents.insert(0, eventText);
       if (npc.recentEvents.length > 10) npc.recentEvents.removeLast();
     }
@@ -364,7 +398,8 @@ class GameProvider extends GameProviderBase
   /// 好感显著变化时写入 T2 关系锚点（关键转折点）
   void _recordRelationshipMoment(NPC npc, int change, String? reason) {
     final ts = worldState.time.format();
-    final moment = '$ts 好感${change > 0 ? '+' : ''}$change（${reason ?? '互动'}），当前好感${npc.affection}';
+    final moment =
+        '$ts 好感${change > 0 ? '+' : ''}$change（${reason ?? '互动'}），当前好感${npc.affection}';
     // 根据好感值推断关系阶段
     String stage;
     if (npc.affection <= -30) {
@@ -382,13 +417,15 @@ class GameProvider extends GameProviderBase
     } else {
       stage = '深爱';
     }
-    memory = memory.upsertRelationshipAnchor(NpcRelationshipAnchor(
-      npcId: npc.id,
-      firstMeeting: '', // 空=保留已有初见记录
-      keyMoments: [moment],
-      currentStage: stage,
-      lastUpdatedTurn: turnCount,
-    ));
+    memory = memory.upsertRelationshipAnchor(
+      NpcRelationshipAnchor(
+        npcId: npc.id,
+        firstMeeting: '', // 空=保留已有初见记录
+        keyMoments: [moment],
+        currentStage: stage,
+        lastUpdatedTurn: turnCount,
+      ),
+    );
   }
 
   /// 恋爱链路接线：好感跨过阈值时推进关系阶段（陌生→好感→暧昧）。
@@ -404,7 +441,10 @@ class GameProvider extends GameProviderBase
     if (npc.affection >= Balance.romanceLockThreshold) {
       love.setStage(npc.name, '暧昧', currentDay: absDay);
       notifications.add('💗 你和${npc.name}之间的关系变得暧昧起来……');
-      worldState.addNarrativeEvent('💗 你和${npc.name}之间的关系变得暧昧起来……', turn: turnCount);
+      worldState.addNarrativeEvent(
+        '💗 你和${npc.name}之间的关系变得暧昧起来……',
+        turn: turnCount,
+      );
     } else if (npc.affection >= Balance.trustLockThreshold && stage == '陌生') {
       love.setStage(npc.name, '好感');
     }

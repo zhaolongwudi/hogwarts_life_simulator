@@ -52,7 +52,9 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
-    CrashLogger.instance.logHeartbeat('processChoice:start action=${choice.action.length > 30 ? choice.action.substring(0, 30) : choice.action}');
+    CrashLogger.instance.logHeartbeat(
+      'processChoice:start action=${choice.action.length > 30 ? choice.action.substring(0, 30) : choice.action}',
+    );
 
     // 死亡后拦截：只剩查看终章/回望/引导三条路（/结局 与 /状态 放行，
     // 其余全部挡下；blockActionIfDead 已写好引导文案）
@@ -91,8 +93,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     final causal = parseCausalCommand(action);
     final faculty = parseFacultyCommand(action);
     if (causal != null) {
-      causalResult =
-          resolveCausalChoice(causal.anchor.anchorId, causal.option.id);
+      causalResult = resolveCausalChoice(
+        causal.anchor.anchorId,
+        causal.option.id,
+      );
       action = causal.option.action;
     } else if (faculty != null) {
       // 留校邀请同上：先结算，再把"我留下来了"发给 AI 续写毕业后的第一天。
@@ -109,8 +113,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         // /计划、/新NPC 生成 这类事件指令也设置了「返回」选项 → 被误判为
         // 面板型、执行结果剧情被还原成上一段（玩家看不到任何结果）。
         // 改为注册时显式声明 panel，判定不再猜（BUG-FIX）。
-        final slashless =
-            action.startsWith('/') ? action.substring(1) : action;
+        final slashless = action.startsWith('/') ? action.substring(1) : action;
         final cmdHead = slashless.split(RegExp(r'\s+')).first;
         final def = CommandRegistry.instance.find(cmdHead);
         final isPanelOutput =
@@ -150,7 +153,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // 审查 P0「无 AI 快速模式 + 本地兜底剧情」：未配 Key 时绝不静默卡死。
       // 开过离线模式 → 直接本地快速模式；否则给出明确指引让玩家去配置或开离线。
       if (!appProvider.offlineQuickMode) {
-        error = '未配置可用的 AI Key，无法生成剧情。请到「设置」配置 AI Key，'
+        error =
+            '未配置可用的 AI Key，无法生成剧情。请到「设置」配置 AI Key，'
             '或开启「无 AI 快速模式」完全离线游玩。';
         loadingStage = '';
         notifyListeners();
@@ -178,75 +182,76 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     notifyListeners();
 
     String _formatImpact(double score) {
-        if (score >= 1.0) return '极高影响力（深度改变历史走向）';
-        if (score >= 0.5) return '高影响力（知名人物/学院领袖候选）';
-        if (score >= 0.2) return '中等影响力（小有名气）';
-        if (score >= 0.05) return '低影响力（普通学生）';
-        return '无影响力（边缘人物）';
+      if (score >= 1.0) return '极高影响力（深度改变历史走向）';
+      if (score >= 0.5) return '高影响力（知名人物/学院领袖候选）';
+      if (score >= 0.2) return '中等影响力（小有名气）';
+      if (score >= 0.05) return '低影响力（普通学生）';
+      return '无影响力（边缘人物）';
+    }
+
+    String buildPrompt() {
+      final p = player!;
+
+      final contextBuffer = StringBuffer();
+
+      // 优先使用 Player 字段；若为 null，resolveMagicAptitude 会从 T0 核心事实回填
+      // （并写回 Player，避免后续每回合都解析）
+      final effectiveAptitude = resolveMagicAptitude(p);
+      final aptitudeForPrompt = effectiveAptitude.isEmpty
+          ? '普通'
+          : effectiveAptitude;
+
+      final profileLine =
+          '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋$aptitudeForPrompt·精神${p.spirit}·精力${p.energy}';
+      final impactLine = '影响力：${_formatImpact(worldState.playerImpactScore)}';
+      contextBuffer.writeln('$profileLine｜$impactLine');
+      contextBuffer.writeln('');
+
+      // ========== 硬设定：在任校长 / 杖芯 / 当前可达区域 ==========
+      // 这三样以前都写在数据表里却没人读：
+      //  - eraHeadmaster 零引用 → 开学宴的致辞者在 1892 年还是邓布利多
+      //    （那年他本人是 11 岁的新生）；
+      //  - wandCoreTraits 零引用 → 选什么杖芯对数值和叙事都没影响；
+      //  - MapRegionDef.unlockCondition 只当文案打印 →
+      //    写着「高年级开放」的禁林，一年级新生照样一个人走进去。
+      final settingLine = <String>[
+        '校长：${headmasterLineForEra(eraDefByEra(appProvider.era).eraKey)}',
+        if (wandCoreTraitLine(wandById(p.wandId ?? '')?.core).isNotEmpty)
+          wandCoreTraitLine(wandById(p.wandId ?? '')?.core),
+      ].join('｜');
+      contextBuffer.writeln('【本局硬设定】$settingLine');
+
+      // 政治立场原先只在开局的 system prompt 里注入过一次。
+      // LLM 记不住二十回合前的设定，中期立场会漂：开局定的「纯血至上」，
+      // 二十回合后开始跟麻瓜出身的同学称兄道弟，玩家会觉得这人设是假的。
+      // 每回合重述一次，成本一行。
+      final stance = p.politicalTendency?.trim() ?? '';
+      if (stance.isNotEmpty) {
+        contextBuffer.writeln(
+          '【政治立场】$stance（主角对纯血论、麻瓜出身、混血的态度；'
+          'NPC 的台词与玩家可选的做法都需贴合此立场，'
+          '不要因为剧情一时温情就软化或反转）',
+        );
       }
 
-      String buildPrompt() {
-        final p = player!;
+      final isWeekend =
+          worldState.time.weekday == 0 || worldState.time.weekday == 6;
+      final lockedNow = lockedRegionsFor(grade: p.grade, isWeekend: isWeekend);
+      if (lockedNow.isNotEmpty) {
+        contextBuffer.writeln(
+          '【当前无法进入的区域】${lockedNow.map((r) => '${r.name}（${r.unlockCondition ?? '未开放'}）').join('、')}'
+          ' —— 玩家现在到不了这些地方，不要安排他独自前往；'
+          '确有需要时必须有教授带队或给出明确的违规代价。',
+        );
+      }
+      contextBuffer.writeln('');
 
-        final contextBuffer = StringBuffer();
-
-        // 优先使用 Player 字段；若为 null，resolveMagicAptitude 会从 T0 核心事实回填
-        // （并写回 Player，避免后续每回合都解析）
-        final effectiveAptitude = resolveMagicAptitude(p);
-        final aptitudeForPrompt = effectiveAptitude.isEmpty ? '普通' : effectiveAptitude;
-
-        final profileLine = '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋$aptitudeForPrompt·精神${p.spirit}·精力${p.energy}';
-        final impactLine = '影响力：${_formatImpact(worldState.playerImpactScore)}';
-        contextBuffer.writeln('$profileLine｜$impactLine');
-        contextBuffer.writeln('');
-
-        // ========== 硬设定：在任校长 / 杖芯 / 当前可达区域 ==========
-        // 这三样以前都写在数据表里却没人读：
-        //  - eraHeadmaster 零引用 → 开学宴的致辞者在 1892 年还是邓布利多
-        //    （那年他本人是 11 岁的新生）；
-        //  - wandCoreTraits 零引用 → 选什么杖芯对数值和叙事都没影响；
-        //  - MapRegionDef.unlockCondition 只当文案打印 →
-        //    写着「高年级开放」的禁林，一年级新生照样一个人走进去。
-        final settingLine = <String>[
-          '校长：${headmasterLineForEra(eraDefByEra(appProvider.era).eraKey)}',
-          if (wandCoreTraitLine(wandById(p.wandId ?? '')?.core).isNotEmpty)
-            wandCoreTraitLine(wandById(p.wandId ?? '')?.core),
-        ].join('｜');
-        contextBuffer.writeln('【本局硬设定】$settingLine');
-
-        // 政治立场原先只在开局的 system prompt 里注入过一次。
-        // LLM 记不住二十回合前的设定，中期立场会漂：开局定的「纯血至上」，
-        // 二十回合后开始跟麻瓜出身的同学称兄道弟，玩家会觉得这人设是假的。
-        // 每回合重述一次，成本一行。
-        final stance = p.politicalTendency?.trim() ?? '';
-        if (stance.isNotEmpty) {
-          contextBuffer.writeln(
-            '【政治立场】$stance（主角对纯血论、麻瓜出身、混血的态度；'
-            'NPC 的台词与玩家可选的做法都需贴合此立场，'
-            '不要因为剧情一时温情就软化或反转）',
-          );
-        }
-
-        final isWeekend =
-            worldState.time.weekday == 0 || worldState.time.weekday == 6;
-        final lockedNow =
-            lockedRegionsFor(grade: p.grade, isWeekend: isWeekend);
-        if (lockedNow.isNotEmpty) {
-          contextBuffer.writeln(
-              '【当前无法进入的区域】${lockedNow.map((r) => '${r.name}（${r.unlockCondition ?? '未开放'}）').join('、')}'
-              ' —— 玩家现在到不了这些地方，不要安排他独自前往；'
-              '确有需要时必须有教授带队或给出明确的违规代价。');
-        }
-        contextBuffer.writeln('');
-
-        // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
+      // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
       // 永远放在【世界上下文】最前面，防止后面截断看不到
       // 2026-08-23：模型能力升级，所有条数限制整体翻倍
       // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；
       //     永不遗忘层 = importance ≥ kPersistentFactImportance，永远保留)
-      final t0 = memory.keyFacts
-          .where((f) => f.importance >= 4)
-          .toList()
+      final t0 = memory.keyFacts.where((f) => f.importance >= 4).toList()
         ..sort((a, b) {
           final c = b.importance.compareTo(a.importance);
           // 同分按写入时间新的靠前：Dart 的 sort 不稳定，大量 9 分并列时
@@ -284,24 +289,30 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         contextBuffer.write(loopsHint);
       }
       // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚，仅展示已登场NPC）
-      final topNpcs = npcRegistry.values
-          .where((npc) => npc.introduced == true)
-          .toList()
-        ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
+      final topNpcs =
+          npcRegistry.values.where((npc) => npc.introduced == true).toList()
+            ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
       final t2Lines = <String>[];
       for (int i = 0; i < topNpcs.length && i < 24; i++) {
         final npc = topNpcs[i];
         final anchor = memory.relationshipAnchors[npc.id];
         if (anchor == null) continue;
         final buf = StringBuffer();
-        buf.write('${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})');
-        if (anchor.firstMeeting.isNotEmpty) buf.write('｜初见:${anchor.firstMeeting}');
+        buf.write(
+          '${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})',
+        );
+        if (anchor.firstMeeting.isNotEmpty)
+          buf.write('｜初见:${anchor.firstMeeting}');
         if (anchor.keyMoments.isNotEmpty) {
           // 注入最后 6 个关键转折点（3→6）
-          buf.write('｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 6)).join("；")}');
+          buf.write(
+            '｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 6)).join("；")}',
+          );
         }
-        if (anchor.secretsShared.isNotEmpty) buf.write('｜交换秘密:${anchor.secretsShared.take(6).join("；")}');
-        if (anchor.promisesExchanged.isNotEmpty) buf.write('｜承诺:${anchor.promisesExchanged.take(6).join("；")}');
+        if (anchor.secretsShared.isNotEmpty)
+          buf.write('｜交换秘密:${anchor.secretsShared.take(6).join("；")}');
+        if (anchor.promisesExchanged.isNotEmpty)
+          buf.write('｜承诺:${anchor.promisesExchanged.take(6).join("；")}');
         t2Lines.add('• ${buf.toString()}');
       }
       if (t2Lines.isNotEmpty) {
@@ -334,7 +345,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
               ? ' → 后续:${e.consequences.join(";")}'
               : '';
           contextBuffer.writeln(
-              '• [${e.importance}]${e.timestamp} ${e.category}｜${e.title}:${e.description}$cons');
+            '• [${e.importance}]${e.timestamp} ${e.category}｜${e.title}:${e.description}$cons',
+          );
         }
         contextBuffer.writeln('');
       }
@@ -356,13 +368,15 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         final budget = structuredCount < 30
             ? 600
             : structuredCount < 60
-                ? 400
-                : 250;
+            ? 400
+            : 250;
         final trimmedSummary = narrativeSummary.length > budget
             ? '${narrativeSummary.substring(0, budget)}…'
             : narrativeSummary;
         // 强约束：只当"关系和转折"参考，严格禁止基于此生成当前回合选项/场景
-        contextBuffer.write('【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n');
+        contextBuffer.write(
+          '【历史背景（仅供参考，严禁基于此生成当前回合的选项与场景）】\n$trimmedSummary\n\n',
+        );
       }
 
       // 保留旧的 world_state.recent* 注入，作为软备份（与 T3 并存不冲突）
@@ -374,7 +388,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // - 🏆成就类：必须真正解锁才允许注入（check against player.achievements）
       // - 👤结识类：必须对应 NPC 确实 introduced=true 才允许注入
       // - 否则直接丢弃（AI 之前乱塞"你认识哈利""你获得了什么什么成就"都是伪造事件）
-      final introducedSet = npcRegistry.values.where((n) => n.introduced).map((n) => n.name).toSet();
+      final introducedSet = npcRegistry.values
+          .where((n) => n.introduced)
+          .map((n) => n.name)
+          .toSet();
 
       bool looksFake(String text) {
         final clean = text.replaceAll(RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*'), '');
@@ -384,19 +401,38 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
           // 尝试找成就id/名称；若在已解锁集合找不到，算伪造
           if (unlocked.isEmpty) return true; // 宣称解锁但全局没解过任何成就=假
           // 按名称匹配：把 clean 与已解锁成就描述做交集
-          final names = achievementCatalog.map((a) => a.id).toSet()..addAll(achievementCatalog.map((a) => a.name));
+          final names = achievementCatalog.map((a) => a.id).toSet()
+            ..addAll(achievementCatalog.map((a) => a.name));
           final hitAch = names.any((n) => n.isNotEmpty && clean.contains(n));
           // 双重校验：还必须有具体成就 ID 出现在已解锁列表中（避免文案命中但未解锁）
-          final hitUnlocked = unlocked.any((id) => clean.contains(id) || clean.contains(achievementCatalog.firstWhere((a) => a.id == id, orElse: () => achievementCatalog.first).name));
+          final hitUnlocked = unlocked.any(
+            (id) =>
+                clean.contains(id) ||
+                clean.contains(
+                  achievementCatalog
+                      .firstWhere(
+                        (a) => a.id == id,
+                        orElse: () => achievementCatalog.first,
+                      )
+                      .name,
+                ),
+          );
           if (!(hitAch && hitUnlocked)) return true;
         }
         // 结识类伪造：含"结识/认识/见面/认识了/👤"但对应NPC没introduced
-        if (RegExp(r'(结识|认识了|正式见面|成为朋友|初见了)', caseSensitive: false).hasMatch(clean) || text.contains('👤')) {
-          final hitNpc = introducedSet.any((n) => n.isNotEmpty && clean.contains(n));
+        if (RegExp(
+              r'(结识|认识了|正式见面|成为朋友|初见了)',
+              caseSensitive: false,
+            ).hasMatch(clean) ||
+            text.contains('👤')) {
+          final hitNpc = introducedSet.any(
+            (n) => n.isNotEmpty && clean.contains(n),
+          );
           if (!hitNpc) return true;
         }
         return false;
       }
+
       if (ws.recentEvents.isNotEmpty) {
         for (final ev in ws.recentEvents.reversed) {
           final e = ev.text;
@@ -495,7 +531,9 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         calmContext: _isCalmNarrativeContext(),
         random: random,
       );
-      turnsSinceLastTurnBeat = beat == DirectorBeat.turn ? 0 : turnsSinceLastTurnBeat + 1;
+      turnsSinceLastTurnBeat = beat == DirectorBeat.turn
+          ? 0
+          : turnsSinceLastTurnBeat + 1;
       final directorLine = directorLineFor(beat);
 
       // 命运时刻：这一回合要把抉择摆到玩家面前，但不能替他做决定。
@@ -503,14 +541,15 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       final pendingCausal = pendingCausalAnchorId == null
           ? null
           : causalAnchorFor(pendingCausalAnchorId!);
-      final causalLine = pendingCausal != null &&
+      final causalLine =
+          pendingCausal != null &&
               !worldState.causalChoices.containsKey(pendingCausal.anchorId)
           ? '【命运时刻·${pendingCausal.title}】\n'
-              '${pendingCausal.setup}\n'
-              '本回合的叙事必须停在这个抉择的当口：把上面这个情境写出来，'
-              '一直写到"要不要动手"的那一瞬间为止。'
-              '严禁替玩家做出选择——不要写他冲上去了，也不要写他转身走了；'
-              '不要给出倾向，不要预写后果，把决定权原样留在那一秒。\n\n'
+                '${pendingCausal.setup}\n'
+                '本回合的叙事必须停在这个抉择的当口：把上面这个情境写出来，'
+                '一直写到"要不要动手"的那一瞬间为止。'
+                '严禁替玩家做出选择——不要写他冲上去了，也不要写他转身走了；'
+                '不要给出倾向，不要预写后果，把决定权原样留在那一秒。\n\n'
           : '';
 
       // 安静期提示：检测最近几回合是否连续平淡，若连续3回合以上无转折，
@@ -552,6 +591,9 @@ $kNarrativeWritingRules
       notifyListeners();
 
       String response;
+      // 世代守卫：await AI 期间若发生「重置游戏/读档」，旧局响应必须整体丢弃。
+      // 否则旧局的好感/死伤/疤痕副作用会写进新局，玩家=null 时直接空指针崩。
+      final int epoch = sessionEpoch;
       int retriesLeft = 2; // 允许 critical 级违规 / BUG-H(模型返回选项而非叙事) 自动重试 2 次
       List<Map<String, dynamic>> violations = const [];
       List<Map<String, dynamic>> forbiddenHits = const [];
@@ -585,7 +627,9 @@ $kNarrativeWritingRules
         if (!parseOk) {
           // BUG-H：模型把 narrative 场景当 choice 场景用了，全返回 A.B.C.D.
           narrativeParseInvalid = true;
-          debugPrint('❌ [BUG-H] 当前 parseNarrativeOnly 返回 false，视为 critical 级异常触发重试');
+          debugPrint(
+            '❌ [BUG-H] 当前 parseNarrativeOnly 返回 false，视为 critical 级异常触发重试',
+          );
         }
 
         // --- ContinuityBridge Step C：新叙事必须承接上回合末尾锚点 ---
@@ -596,7 +640,9 @@ $kNarrativeWritingRules
             // 先保存当前已经提取好的好感度，避免被覆盖清空
             // ❗为什么：bridged 已经移除了好感区块（来自第一次 parseNarrativeOnly）
             // 重新解析时没有原始好感区块，会导致 lastAffectionSections 被清空
-            final savedAffectionSections = List<String>.from(lastAffectionSections);
+            final savedAffectionSections = List<String>.from(
+              lastAffectionSections,
+            );
             currentNarrative = bridged;
             // 重新跑 parseNarrativeOnly，但只重新解析头部位置/时间戳提取，不覆盖好感度
             // 因为好感变化区块在原始完整响应中已经提取过了
@@ -604,7 +650,8 @@ $kNarrativeWritingRules
             //  再跑一次副作用会让被动好感被重复结算一遍）
             parseNarrativeOnly(currentNarrative, applySideEffects: false);
             // 如果重新解析没有提取到新的好感度（本来就没有），恢复保存的好感度
-            if (lastAffectionSections.isEmpty && savedAffectionSections.isNotEmpty) {
+            if (lastAffectionSections.isEmpty &&
+                savedAffectionSections.isNotEmpty) {
               lastAffectionSections = savedAffectionSections;
             }
           }
@@ -618,12 +665,15 @@ $kNarrativeWritingRules
           recordConsistencyViolation({
             'severity': h['severity'],
             'rule': 'R6_forbidden_${h['category']}',
-            'message': '违和词命中(${h['category']}): ${h['word']} — 霍格沃茨世界观不应出现现代物品/跨IP角色/网络梗。',
+            'message':
+                '违和词命中(${h['category']}): ${h['word']} — 霍格沃茨世界观不应出现现代物品/跨IP角色/网络梗。',
             'evidence': h['word'],
             'at': DateTime.now().toIso8601String(),
           });
         }
-        final criticalForbidden = forbiddenHits.where((h) => h['severity'] == 'critical').toList();
+        final criticalForbidden = forbiddenHits
+            .where((h) => h['severity'] == 'critical')
+            .toList();
 
         // --- P0-1 一致性看门狗：6 大类校验 ---
         violations = narrativeParseInvalid
@@ -632,17 +682,27 @@ $kNarrativeWritingRules
         for (final v in violations) {
           recordConsistencyViolation(v);
         }
-        final criticalViolations = violations.where((v) => v['severity'] == 'critical').toList();
+        final criticalViolations = violations
+            .where((v) => v['severity'] == 'critical')
+            .toList();
 
         // --- 判定：critical 违规 / critical 禁止词 / BUG-H(叙事返回选项) → 重试
-        final anyCritical = criticalViolations.isNotEmpty || criticalForbidden.isNotEmpty || narrativeParseInvalid;
+        final anyCritical =
+            criticalViolations.isNotEmpty ||
+            criticalForbidden.isNotEmpty ||
+            narrativeParseInvalid;
         if (retriesLeft > 0 && anyCritical) {
           final msgs = <String>[
-            if (narrativeParseInvalid) '模型搞错场景了，本应生成剧情正文但返回了选项A/B/C/D。请严格按照【写作要求】输出600-800字剧情叙事，绝对不要包含任何选项格式的行(A./B./C./D.)！',
+            if (narrativeParseInvalid)
+              '模型搞错场景了，本应生成剧情正文但返回了选项A/B/C/D。请严格按照【写作要求】输出600-800字剧情叙事，绝对不要包含任何选项格式的行(A./B./C./D.)！',
             ...criticalViolations.map((v) => '${v['rule']}: ${v['message']}'),
-            ...criticalForbidden.map((h) => '违和词(${h['category']}): ${h['word']}'),
+            ...criticalForbidden.map(
+              (h) => '违和词(${h['category']}): ${h['word']}',
+            ),
           ];
-          debugPrint('⚠️ 叙事 critical 级异常，准备重试（剩余${retriesLeft}次）：${msgs.take(3).join(" | ")}');
+          debugPrint(
+            '⚠️ 叙事 critical 级异常，准备重试（剩余${retriesLeft}次）：${msgs.take(3).join(" | ")}',
+          );
           // 给新 prompt 加一段"修正要求"，明确告诉 AI 错在哪
           final correction = StringBuffer();
           correction.writeln('【⚠️ 上一次生成被驳回，必须严格修正以下问题再重写】');
@@ -664,19 +724,24 @@ $kNarrativeWritingRules
 
         // ====== 重试全部用完还是 BUG-H？ → 直接走本地兜底叙事（保证不是选项） ======
         if (narrativeParseInvalid && retriesLeft == 0) {
-          debugPrint('❌ [BUG-H] 2次重试后仍返回选项，切换为 generateFallbackNarrative() 本地兜底叙事');
+          debugPrint(
+            '❌ [BUG-H] 2次重试后仍返回选项，切换为 generateFallbackNarrative() 本地兜底叙事',
+          );
           currentNarrative = generateFallbackNarrative();
           usedFallbackNarrative = true;
           // 兜底叙事是 Dart 代码生成的，不会夹带选项，也没有好感度区块
           // 所以不用再跑 parseNarrativeOnly，也不应用任何 AI 副作用，
           // 但要跑一遍地点同步等后续流程
-          notifications.add('📝 AI 返回了选项而非剧情（偶尔会发生），已为你切换为系统本地过渡剧情，确保不断链。稍后重跑会恢复正常。');
+          notifications.add(
+            '📝 AI 返回了选项而非剧情（偶尔会发生），已为你切换为系统本地过渡剧情，确保不断链。稍后重跑会恢复正常。',
+          );
           break;
         }
 
         // warn 级违规不必打回，只是记录到 consistencyViolations 并在下回合注入软提醒。
         // warn 也加到通知里，方便玩家/开发者看到
-        final warnCount = violations.where((v) => v['severity'] == 'warn').length +
+        final warnCount =
+            violations.where((v) => v['severity'] == 'warn').length +
             forbiddenHits.where((h) => h['severity'] == 'warn').length;
         if (warnCount > 0) {
           notifications.add('📝 剧情逻辑警告：本回合有 $warnCount 处轻微违和，已记录。');
@@ -686,6 +751,12 @@ $kNarrativeWritingRules
 
       // ====== 叙事定稿：副作用此时才落库，且整回合只落一次 ======
       // 重试循环内被驳回的 response 不再污染好感度/声望/分院状态。
+      if (epoch != sessionEpoch) {
+        // 游戏已在 await 期间被重置/读档：旧局响应作废，只复位加载态
+        isLoading = false;
+        notifyListeners();
+        return;
+      }
       if (!usedFallbackNarrative) {
         applyNarrativeSideEffects(finalResponseText);
       }
@@ -704,7 +775,8 @@ $kNarrativeWritingRules
             if (p != null) {
               final location = worldState.currentLocation ?? '霍格沃茨';
               final weather = worldState.weather ?? '晴朗';
-              final enhancement = '\n\n你环顾四周，$location 的$weather天气下，'
+              final enhancement =
+                  '\n\n你环顾四周，$location 的$weather天气下，'
                   '城堡的走廊里传来远处学生的笑闹声和隐约的脚步声。'
                   '墙上的画像低声交谈着最近的校园新闻，'
                   '一只猫头鹰从窗外掠过，带起一阵微风。';
@@ -735,7 +807,8 @@ $kNarrativeWritingRules
       final pendingCausal = pendingCausalAnchorId == null
           ? null
           : causalAnchorFor(pendingCausalAnchorId!);
-      final causalDecided = pendingCausal != null &&
+      final causalDecided =
+          pendingCausal != null &&
           worldState.causalChoices.containsKey(pendingCausal.anchorId);
       if (confessedThisTurn) {
         // 表白已就位：checkNPCConfessions 内部写入了专属的「接受/婉拒」两个选项，
@@ -756,10 +829,12 @@ $kNarrativeWritingRules
         // 七年里能改写原著的机会一只手数得过来，
         // 混进「仔细查看四周」这种选项会把它稀释成一次普通的场景交互。
         choices = pendingCausal.options
-            .map((o) => GameChoice(
-                  text: o.text,
-                  action: '/抉择 ${pendingCausal.anchorId} ${o.id}',
-                ))
+            .map(
+              (o) => GameChoice(
+                text: o.text,
+                action: '/抉择 ${pendingCausal.anchorId} ${o.id}',
+              ),
+            )
             .toList(growable: false);
         loadingStage = '';
         notifyListeners();
@@ -768,7 +843,9 @@ $kNarrativeWritingRules
         notifyListeners();
 
         // ---- 选项端也跑一次禁止词 & OOC软提示（轻微的OOC不会打回，改 prompt 软提醒）----
-        final separateChoices = await generateChoicesSeparately(currentNarrative);
+        final separateChoices = await generateChoicesSeparately(
+          currentNarrative,
+        );
         if (separateChoices.isNotEmpty) {
           choices = separateChoices;
         } else {
@@ -819,12 +896,14 @@ $kNarrativeWritingRules
       isLoading = false;
       notifyListeners();
       unawaited(autoSave());
-      unawaited(CrashLogger.instance.record(
-        e,
-        StackTrace.current,
-        screen: 'processChoice',
-        extra: 'action=$action, turn=$turnCount',
-      ));
+      unawaited(
+        CrashLogger.instance.record(
+          e,
+          StackTrace.current,
+          screen: 'processChoice',
+          extra: 'action=$action, turn=$turnCount',
+        ),
+      );
     } finally {
       // 兜底：无论 try 正常完成、catch 兜底，还是 catch 内部自身抛了二次异常，
       // 都保证 isLoading 重置、UI 退出 loading 状态。
@@ -850,6 +929,9 @@ $kNarrativeWritingRules
   bool _settleAfterNarrative() {
     final bool confessedThisTurn = _maybeTriggerConfession();
     _tickWorldLineDeviation();
+    // 坏结局二「自由尽失」：黑魔法声望压过道德底线时，回合结算触发被捕
+    // （内部自带 isDead/isImprisoned/无敌/年级 前置判定，无条件满足不动作）
+    checkImprisonment();
 
     // 从叙事文本中提取新地点并同步 currentLocation
     // 这是「场景推进」的闭环：AI 写了换场景 → 状态同步 → 停滞计数清零
@@ -883,13 +965,15 @@ $kNarrativeWritingRules
   void _maybeRunPeriodicSummary() {
     if ((turnCount % 15 == 0 || pendingSummary.length > 6000) &&
         pendingSummary.isNotEmpty) {
-      unawaited(Future.microtask(() async {
-        try {
-          await _summarizeNarrative();
-        } catch (e) {
-          debugPrint('摘要生成失败(不影响游戏): $e');
-        }
-      }));
+      unawaited(
+        Future.microtask(() async {
+          try {
+            await _summarizeNarrative();
+          } catch (e) {
+            debugPrint('摘要生成失败(不影响游戏): $e');
+          }
+        }),
+      );
     }
   }
 
@@ -932,7 +1016,15 @@ $kNarrativeWritingRules
           final location = worldState.currentLocation ?? '霍格沃茨';
           final weather = worldState.weather ?? '晴朗';
           final hour = worldState.time.hour;
-          final timeDesc = hour < 6 ? '深夜' : hour < 12 ? '上午' : hour < 14 ? '正午' : hour < 18 ? '下午' : '傍晚';
+          final timeDesc = hour < 6
+              ? '深夜'
+              : hour < 12
+              ? '上午'
+              : hour < 14
+              ? '正午'
+              : hour < 18
+              ? '下午'
+              : '傍晚';
           final eventSeed = turnCount % 5;
           final eventLines = [
             '走廊里几个低年级学生抱着书本匆匆跑过，其中一本差点掉在地上。',
@@ -941,7 +1033,8 @@ $kNarrativeWritingRules
             '远处的教室传来一阵整齐的咒语吟唱声，听起来像是弗立维教授的魔咒课。',
             '拐角处皮皮鬼唱着怪调的歌飘过，又突然折返往另一个方向去了。',
           ];
-          final enhancement = '\n\n你环顾四周，$timeDesc的$location在$weather中显得格外宁静。'
+          final enhancement =
+              '\n\n你环顾四周，$timeDesc的$location在$weather中显得格外宁静。'
               '${eventLines[eventSeed]}';
           currentNarrative = currentNarrative.trimRight() + enhancement;
         }
@@ -1031,31 +1124,41 @@ $kNarrativeWritingRules
     // 基于剧情内容生成情境相关选项
     final narrativeBasedChoices = <GameChoice>[];
 
-    if (narrativeLower.contains('决斗') || narrativeLower.contains('战斗') || narrativeLower.contains('对抗')) {
+    if (narrativeLower.contains('决斗') ||
+        narrativeLower.contains('战斗') ||
+        narrativeLower.contains('对抗')) {
       narrativeBasedChoices.addAll([
         GameChoice(text: '应战', action: '应战'),
         GameChoice(text: '寻求帮助', action: '寻求帮助'),
       ]);
     }
-    if (narrativeLower.contains('对话') || narrativeLower.contains('交谈') || narrativeLower.contains('聊天')) {
+    if (narrativeLower.contains('对话') ||
+        narrativeLower.contains('交谈') ||
+        narrativeLower.contains('聊天')) {
       narrativeBasedChoices.addAll([
         GameChoice(text: '继续交谈', action: '继续交谈'),
         GameChoice(text: '告辞离开', action: '告辞离开'),
       ]);
     }
-    if (narrativeLower.contains('受伤') || narrativeLower.contains('疼痛') || narrativeLower.contains('流血')) {
+    if (narrativeLower.contains('受伤') ||
+        narrativeLower.contains('疼痛') ||
+        narrativeLower.contains('流血')) {
       narrativeBasedChoices.addAll([
         GameChoice(text: '寻求医疗帮助', action: '寻求医疗帮助'),
         GameChoice(text: '自己处理伤势', action: '自己处理伤势'),
       ]);
     }
-    if (narrativeLower.contains('发现') || narrativeLower.contains('找到') || narrativeLower.contains('看到')) {
+    if (narrativeLower.contains('发现') ||
+        narrativeLower.contains('找到') ||
+        narrativeLower.contains('看到')) {
       narrativeBasedChoices.addAll([
         GameChoice(text: '仔细查看', action: '仔细查看'),
         GameChoice(text: '报告他人', action: '报告他人'),
       ]);
     }
-    if (narrativeLower.contains('魔法') || narrativeLower.contains('咒语') || narrativeLower.contains('施法')) {
+    if (narrativeLower.contains('魔法') ||
+        narrativeLower.contains('咒语') ||
+        narrativeLower.contains('施法')) {
       narrativeBasedChoices.addAll([
         GameChoice(text: '尝试施法', action: '尝试施法'),
         GameChoice(text: '研究魔法理论', action: '研究魔法理论'),
@@ -1064,48 +1167,18 @@ $kNarrativeWritingRules
 
     // 基于当前地点生成基础选项
     final locationChoices = {
-      '霍格沃茨': [
-        ('继续探索', '继续探索'),
-        ('找人询问', '找人询问'),
-        ('观察环境', '观察环境'),
-      ],
-      '霍格莫德村': [
-        ('继续逛街', '继续逛街'),
-        ('进店看看', '进店看看'),
-        ('返回学校', '返回霍格沃茨'),
-      ],
-      '对角巷': [
-        ('继续购物', '继续购物'),
-        ('逛其他店铺', '逛其他店铺'),
-        ('返回霍格沃茨', '返回霍格沃茨'),
-      ],
-      '禁林': [
-        ('小心前进', '小心前进'),
-        ('观察周围', '观察周围'),
-        ('原路返回', '原路返回'),
-      ],
-      '大礼堂': [
-        ('继续用餐', '继续用餐'),
-        ('与人交谈', '与人交谈'),
-        ('离席活动', '离席活动'),
-      ],
-      '教室': [
-        ('认真听讲', '认真听讲'),
-        ('做笔记', '做笔记'),
-        ('课后请教', '课后请教'),
-      ],
-      '图书馆': [
-        ('查阅资料', '查阅资料'),
-        ('安静阅读', '安静阅读'),
-        ('借阅书籍', '借阅书籍'),
-      ],
+      '霍格沃茨': [('继续探索', '继续探索'), ('找人询问', '找人询问'), ('观察环境', '观察环境')],
+      '霍格莫德村': [('继续逛街', '继续逛街'), ('进店看看', '进店看看'), ('返回学校', '返回霍格沃茨')],
+      '对角巷': [('继续购物', '继续购物'), ('逛其他店铺', '逛其他店铺'), ('返回霍格沃茨', '返回霍格沃茨')],
+      '禁林': [('小心前进', '小心前进'), ('观察周围', '观察周围'), ('原路返回', '原路返回')],
+      '大礼堂': [('继续用餐', '继续用餐'), ('与人交谈', '与人交谈'), ('离席活动', '离席活动')],
+      '教室': [('认真听讲', '认真听讲'), ('做笔记', '做笔记'), ('课后请教', '课后请教')],
+      '图书馆': [('查阅资料', '查阅资料'), ('安静阅读', '安静阅读'), ('借阅书籍', '借阅书籍')],
     };
 
-    final locationOptions = locationChoices[currentLoc] ?? [
-      ('继续前进', '继续前进'),
-      ('仔细观察', '仔细观察'),
-      ('与人交谈', '与人交谈'),
-    ];
+    final locationOptions =
+        locationChoices[currentLoc] ??
+        [('继续前进', '继续前进'), ('仔细观察', '仔细观察'), ('与人交谈', '与人交谈')];
 
     final fallbackChoices = locationOptions
         .map((e) => GameChoice(text: e.$1, action: e.$2))
@@ -1196,9 +1269,7 @@ $kNarrativeWritingRules
 
     // 摘要长度随游戏进度逐步放宽
     // 2026-08-23：模型能力升级，整体翻倍放开
-    final limit = turnCount <= 40
-        ? 800
-        : (turnCount <= 100 ? 1500 : 2400);
+    final limit = turnCount <= 40 ? 800 : (turnCount <= 100 ? 1500 : 2400);
     final relationSnapshot = buildRelationshipSnapshot();
 
     final prompt = buildSummaryPrompt(
@@ -1209,10 +1280,15 @@ $kNarrativeWritingRules
     );
 
     try {
-      final result = await callDeepSeek(
-        prompt,
-        scene: AiScene.summary,
-      );
+      final int epoch = sessionEpoch;
+      final result = await callDeepSeek(prompt, scene: AiScene.summary);
+
+      // 世代守卫：await 期间游戏被重置/读档 → 旧局摘要作废，内容交还缓冲
+      if (epoch != sessionEpoch) {
+        pendingSummary = chunk + pendingSummary;
+        isSummarizing = false;
+        return;
+      }
 
       // 硬限制摘要保存长度——如果 AI 不肯遵守字数限制，直接强截断前 limit×1.2 字
       // 防止出现 1500+ 字摘要，造成下回合 prompt 暴涨 5000 tokens
@@ -1262,16 +1338,18 @@ $kNarrativeWritingRules
       for (final fact in facts) {
         // 用事实内容的前20字做去重 id
         final factId = 'auto_${fact.hashCode.toRadixString(36)}';
-        memory = memory.addKeyFact(KeyFactRecord(
-          id: factId,
-          fact: fact.length > 80 ? fact.substring(0, 80) : fact,
-          // 以前一律给 7 分，导致 importance 这个字段在淘汰时完全失去区分度：
-          // 100 条容量溢出时按分数排等于按插入顺序排，最早发生的事先被冲掉。
-          // 于是第 200 回合 AI 会忘了你早已订婚、早已结仇、早已立下过誓言。
-          importance: importanceForFact(fact),
-          timestamp: ts,
-          category: 'auto_extracted',
-        ));
+        memory = memory.addKeyFact(
+          KeyFactRecord(
+            id: factId,
+            fact: fact.length > 80 ? fact.substring(0, 80) : fact,
+            // 以前一律给 7 分，导致 importance 这个字段在淘汰时完全失去区分度：
+            // 100 条容量溢出时按分数排等于按插入顺序排，最早发生的事先被冲掉。
+            // 于是第 200 回合 AI 会忘了你早已订婚、早已结仇、早已立下过誓言。
+            importance: importanceForFact(fact),
+            timestamp: ts,
+            category: 'auto_extracted',
+          ),
+        );
       }
       if (facts.isNotEmpty) {
         // 记忆提取日志已移除（核心事实）
@@ -1292,15 +1370,17 @@ $kNarrativeWritingRules
         // 只添加新的（不覆盖已有的）
         final existing = memory.openLoops.where((l) => l.id == loopId);
         if (existing.isEmpty) {
-          memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
-            id: loopId,
-            description: loop.length > 100 ? loop.substring(0, 100) : loop,
-            status: 'open',
-            importance: 6,
-            openedAt: ts,
-            loopType: 'foreshadow',
-            openedTurn: turnCount,
-          ));
+          memory = memory.addOrUpdateOpenLoop(
+            OpenLoopRecord(
+              id: loopId,
+              description: loop.length > 100 ? loop.substring(0, 100) : loop,
+              status: 'open',
+              importance: 6,
+              openedAt: ts,
+              loopType: 'foreshadow',
+              openedTurn: turnCount,
+            ),
+          );
         }
       }
       if (loops.isNotEmpty) {
@@ -1344,14 +1424,16 @@ $kNarrativeWritingRules
         final desc = parts.sublist(1).join('|').trim();
         if (title.isEmpty || desc.isEmpty) continue;
         final evId = 'auto_ev_${title.hashCode.toRadixString(36)}';
-        memory = memory.addWorldEvent(WorldEventRecord(
-          id: evId,
-          timestamp: ts,
-          title: title.length > 12 ? title.substring(0, 12) : title,
-          description: desc.length > 60 ? desc.substring(0, 60) : desc,
-          importance: 6,
-          category: 'wizarding',
-        ));
+        memory = memory.addWorldEvent(
+          WorldEventRecord(
+            id: evId,
+            timestamp: ts,
+            title: title.length > 12 ? title.substring(0, 12) : title,
+            description: desc.length > 60 ? desc.substring(0, 60) : desc,
+            importance: 6,
+            category: 'wizarding',
+          ),
+        );
       }
       if (events.isNotEmpty) {
         // 记忆提取日志已移除（世界事件）
@@ -1388,44 +1470,53 @@ $kNarrativeWritingRules
   /// 那不是错误，只是这一条没法挂到某条伏笔上。硬凑一个上去，
   /// 玩家会看到一件还没办的事被宣布了结。
   void _closeLoopIfMatched(String closedText, String ts) {
-    final match =
-        pickLoopToClose(closedText, memory.openLoops, currentTurn: turnCount);
+    final match = pickLoopToClose(
+      closedText,
+      memory.openLoops,
+      currentTurn: turnCount,
+    );
     if (match == null) return;
 
     final l = match.loop;
     final held = l.openedTurn > 0 ? turnCount - l.openedTurn : 0;
 
-    memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
-      id: l.id,
-      description: l.description,
-      status: 'done',
-      importance: l.importance,
-      openedAt: l.openedAt,
-      closedAt: ts,
-      npcIds: l.npcIds,
-      loopType: l.loopType,
-      openedTurn: l.openedTurn,
-    ));
+    memory = memory.addOrUpdateOpenLoop(
+      OpenLoopRecord(
+        id: l.id,
+        description: l.description,
+        status: 'done',
+        importance: l.importance,
+        openedAt: l.openedAt,
+        closedAt: ts,
+        npcIds: l.npcIds,
+        loopType: l.loopType,
+        openedTurn: l.openedTurn,
+      ),
+    );
 
     // 回响一：一条长期记忆。
     // 给 7 分而不是沿用伏笔自己的 6 分，是为了让它挤得过日常琐事——
     // 100 条容量溢出时按分数淘汰，伏笔了结该留下来。
-    memory = memory.addKeyFact(KeyFactRecord(
-      id: 'loop_closed_${l.id}',
-      fact: loopClosedFact(l.description, l.loopType),
-      // 伏笔本身够重（≥8，即只比永不遗忘层低一档）→ 它的了结也进永不遗忘层。
-      importance: l.importance >= kPersistentFactImportance - 1
-          ? kPersistentFactImportance
-          : 7,
-      timestamp: ts,
-      category: 'loop_closed',
-      npcIds: l.npcIds,
-    ));
+    memory = memory.addKeyFact(
+      KeyFactRecord(
+        id: 'loop_closed_${l.id}',
+        fact: loopClosedFact(l.description, l.loopType),
+        // 伏笔本身够重（≥8，即只比永不遗忘层低一档）→ 它的了结也进永不遗忘层。
+        importance: l.importance >= kPersistentFactImportance - 1
+            ? kPersistentFactImportance
+            : 7,
+        timestamp: ts,
+        category: 'loop_closed',
+        npcIds: l.npcIds,
+      ),
+    );
 
     // 回响二：一句通知，带上这件事悬了多久
     notifications.add(loopClosedNotice(l.description, l.loopType, held));
     worldState.addNarrativeEvent(
-        '🔗 了结${loopTypeLabel(l.loopType)}：${l.description}', turn: turnCount);
+      '🔗 了结${loopTypeLabel(l.loopType)}：${l.description}',
+      turn: turnCount,
+    );
 
     // 回响三：一点声望与好感，按这件事的性质给
     final reward = rewardForLoop(l.loopType);
@@ -1438,8 +1529,12 @@ $kNarrativeWritingRules
     if (reward.npcAffection > 0) {
       var touched = false;
       for (final id in l.npcIds) {
-        updateNpcAffection(id, reward.npcAffection,
-            reason: '了结了${loopTypeLabel(l.loopType)}', quiet: true);
+        updateNpcAffection(
+          id,
+          reward.npcAffection,
+          reason: '了结了${loopTypeLabel(l.loopType)}',
+          quiet: true,
+        );
         touched = true;
       }
       if (touched) {
@@ -1451,7 +1546,8 @@ $kNarrativeWritingRules
     // 收进 kDebugMode（第八次审查 P2-4）。
     if (kDebugMode) {
       debugPrint(
-          '🔗 伏笔了结 id=${l.id} score=${match.score.toStringAsFixed(2)} 悬了$held回合');
+        '🔗 伏笔了结 id=${l.id} score=${match.score.toStringAsFixed(2)} 悬了$held回合',
+      );
     }
   }
 
@@ -1463,28 +1559,32 @@ $kNarrativeWritingRules
   void _dropStaleLoops(String ts) {
     final drops = staleLoopsToDrop(memory.openLoops, turnCount);
     for (final l in drops) {
-      memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
-        id: l.id,
-        description: l.description,
-        status: 'dropped',
-        importance: l.importance,
-        openedAt: l.openedAt,
-        closedAt: ts,
-        npcIds: l.npcIds,
-        loopType: l.loopType,
-        openedTurn: l.openedTurn,
-      ));
+      memory = memory.addOrUpdateOpenLoop(
+        OpenLoopRecord(
+          id: l.id,
+          description: l.description,
+          status: 'dropped',
+          importance: l.importance,
+          openedAt: l.openedAt,
+          closedAt: ts,
+          npcIds: l.npcIds,
+          loopType: l.loopType,
+          openedTurn: l.openedTurn,
+        ),
+      );
     }
   }
 
   /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
 
   String buildRelationshipSnapshot() {
-    final npcs = npcRegistry.values
-        .where((n) => n.introduced && n.affection != 0)
-        .toList()
-      ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
-    return npcs.take(5)
+    final npcs =
+        npcRegistry.values
+            .where((n) => n.introduced && n.affection != 0)
+            .toList()
+          ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
+    return npcs
+        .take(5)
         .map((n) => '${n.name}:${n.affectionStage}/${n.affection}')
         .join('；');
   }
@@ -1520,7 +1620,10 @@ $kNarrativeWritingRules
           .join(' ');
       if (combatAttrs.isNotEmpty) parts.add('【战斗】$combatAttrs');
       if (p.learnedSpells.isNotEmpty) {
-        final spells = p.learnedSpells.entries.take(3).map((e) => e.key).join('、');
+        final spells = p.learnedSpells.entries
+            .take(3)
+            .map((e) => e.key)
+            .join('、');
         parts.add('魔咒:$spells');
       }
       parts.add('HP:${p.health} MP:${p.magic}');
@@ -1544,7 +1647,8 @@ $kNarrativeWritingRules
         .where((n) => action.contains(n.name))
         .toList();
     if (mentioned.isNotEmpty) {
-      final affs = mentioned.take(2)
+      final affs = mentioned
+          .take(2)
           .map((n) => '${n.name}:好感${n.affection}(${n.affectionStage})')
           .join('；');
       parts.add('【关系】$affs');
@@ -1622,9 +1726,10 @@ $kNarrativeWritingRules
       final npcNames = npcsHere
           .where((n) => n.introduced)
           .map((n) {
-        final status = n.isAlive ? n.affection.toString() : '';
-        return '${n.name}$status';
-      }).join('、');
+            final status = n.isAlive ? n.affection.toString() : '';
+            return '${n.name}$status';
+          })
+          .join('、');
       if (npcNames.isNotEmpty) {
         parts.add('【在场】$npcNames');
       }
@@ -1638,8 +1743,10 @@ $kNarrativeWritingRules
       if (!r.introduced || !r.hasGrudge) continue;
       final tier = r.rivalryTier(today);
       if (tier == RivalryTier.none) continue;
-      parts.add('【宿敌·${rivalryBadgeFor(tier)} ${r.name}】'
-          '${rivalryDirectiveFor(tier, r.name, r.rivalryReason())}');
+      parts.add(
+        '【宿敌·${rivalryBadgeFor(tier)} ${r.name}】'
+        '${rivalryDirectiveFor(tier, r.name, r.rivalryReason())}',
+      );
     }
     for (final r in npcsHere) {
       if (!r.introduced || !r.formerRival) continue;
@@ -1663,9 +1770,11 @@ $kNarrativeWritingRules
         weekday: ws.time.weekday,
       );
       if (ex == null) continue;
-      parts.add('【意外·${n.name}】他此刻不该在这儿：${ex.reason}'
-          '（这是本回合免费送上门的一个场面，可以正经写一段，'
-          '也可以只是路过时看见一眼）');
+      parts.add(
+        '【意外·${n.name}】他此刻不该在这儿：${ex.reason}'
+        '（这是本回合免费送上门的一个场面，可以正经写一段，'
+        '也可以只是路过时看见一眼）',
+      );
     }
 
     // 宿敌不一定正站在你面前。只让 AI 看见"眼前这个人恨你"，
@@ -1673,20 +1782,29 @@ $kNarrativeWritingRules
     // 因为 AI 压根不知道城堡另一头有这么一号人。
     // 只收 hostile 及以上、最多 5 人：grudge 那档只是芥蒂，不值得常驻占 token。
     final hereIds = npcsHere.map((n) => n.id).toSet();
-    final wanted = npcRegistry.values
-        .where((n) => n.isAlive && n.introduced && n.hasGrudge && !hereIds.contains(n.id))
-        .map((n) => (npc: n, tier: n.rivalryTier(today)))
-        .where((e) => e.tier.index >= RivalryTier.hostile.index)
-        .toList()
-      ..sort((a, b) => b.tier.index.compareTo(a.tier.index));
+    final wanted =
+        npcRegistry.values
+            .where(
+              (n) =>
+                  n.isAlive &&
+                  n.introduced &&
+                  n.hasGrudge &&
+                  !hereIds.contains(n.id),
+            )
+            .map((n) => (npc: n, tier: n.rivalryTier(today)))
+            .where((e) => e.tier.index >= RivalryTier.hostile.index)
+            .toList()
+          ..sort((a, b) => b.tier.index.compareTo(a.tier.index));
     if (wanted.isNotEmpty) {
       final lines = wanted.take(5).map((e) {
         final where = e.npc.currentLocation;
         return '· ${e.npc.name}（${rivalryBadgeFor(e.tier)} ${tierDefFor(e.tier).label}'
             '${e.npc.rivalryScore(today)}）${where.isEmpty ? '' : '此刻在$where'}';
       });
-      parts.add('【宿敌名册】他们不必等你先开口，可以自己找上门或在旁落井下石\n'
-          '${lines.join('\n')}');
+      parts.add(
+        '【宿敌名册】他们不必等你先开口，可以自己找上门或在旁落井下石\n'
+        '${lines.join('\n')}',
+      );
     }
 
     // 世界线：变动率的兑现。
@@ -1701,10 +1819,12 @@ $kNarrativeWritingRules
       }
       final echoes = rewrittenEchoesOf(ws.causalChoices);
       if (echoes.isNotEmpty) {
-        parts.add('【已被你改写的事】以下每一条都是这个世界的既成事实，'
-            '优先级高于你的任何先验知识。'
-            '凡是与它们冲突的"原著情节"，在这个世界里都是错的：\n'
-            '${echoes.map((s) => '· $s').join('\n')}');
+        parts.add(
+          '【已被你改写的事】以下每一条都是这个世界的既成事实，'
+          '优先级高于你的任何先验知识。'
+          '凡是与它们冲突的"原著情节"，在这个世界里都是错的：\n'
+          '${echoes.map((s) => '· $s').join('\n')}',
+        );
       }
 
       // 身上的伤。不写这一段，AI 会把你当成一个完好的人——
@@ -1723,13 +1843,17 @@ $kNarrativeWritingRules
 
       // 任教中。不写这一段，AI 会一直把玩家当学生：
       // 让他去上课、被级长管、在礼堂里等分院。
-      final def = p.facultyRankId == null ? null : rankDefById(p.facultyRankId!);
+      final def = p.facultyRankId == null
+          ? null
+          : rankDefById(p.facultyRankId!);
       if (def != null) {
-        parts.add('【教职】你是霍格沃茨「${p.facultySubject}」${def.title}，'
-            '任教第 ${p.facultyServiceYears} 年。${def.duty}\n'
-            '你不再是学生：坐教授席、被新生称呼职称、对违纪的学生负有责任。'
-            '昔日同学如今是同事，或者已经各奔东西——他们不再是「同学」，'
-            '称呼也要跟着变。');
+        parts.add(
+          '【教职】你是霍格沃茨「${p.facultySubject}」${def.title}，'
+          '任教第 ${p.facultyServiceYears} 年。${def.duty}\n'
+          '你不再是学生：坐教授席、被新生称呼职称、对违纪的学生负有责任。'
+          '昔日同学如今是同事，或者已经各奔东西——他们不再是「同学」，'
+          '称呼也要跟着变。',
+        );
       }
     }
 
@@ -1743,10 +1867,15 @@ $kNarrativeWritingRules
     if (atmosphere.isNotEmpty) parts.add('【时令】$atmosphere');
 
     final hour = ws.time.hour;
-    final timeDesc = hour >= 22 || hour < 6 ? '深夜' :
-                     hour >= 18 ? '夜晚' :
-                     hour >= 14 ? '下午' :
-                     hour >= 10 ? '上午' : '清晨';
+    final timeDesc = hour >= 22 || hour < 6
+        ? '深夜'
+        : hour >= 18
+        ? '夜晚'
+        : hour >= 14
+        ? '下午'
+        : hour >= 10
+        ? '上午'
+        : '清晨';
     parts.add('【时段】$timeDesc·${ws.time.formattedTime}');
 
     if (p != null && p.energy < 30) {
@@ -1779,7 +1908,7 @@ $kNarrativeWritingRules
   // 把之前散落的 3 个独立函数（阈值分级/豁免地点/未解决钩子）+ buildPrompt 里的停滞文案拼接逻辑，
   // 集中封装成一个独立对象。好处：
   //   - 后期新增地点、新增"豁免剧情类型"，只改这一处数据 + 规则；
-  //   - mixin_narrative / mixin_response / 未来其它 mixin 调用统一出口，不会出现各自 if 版本不一致；
+  //   - mixin_narrative / mixin_response / 未来其他 mixin 调用统一出口，不会出现各自 if 版本不一致；
   //   - "停滞 → 强制推进文案" 从 buildPrompt 里解耦出来，可单独单测。
   //
   // 旧 API（stagnationThresholdFor / narrativeHasUnresolvedHook）
@@ -1835,8 +1964,9 @@ $kNarrativeWritingRules
 
     // 沿用原先的节奏：每 5 回合查一次，或玩家这回合明显在跟人互动。
     // 不每回合都查，一是省算力，二是表白来得太密会掉价。
-    final interactive = lastPlayerAction.contains(RegExp(
-        r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'));
+    final interactive = lastPlayerAction.contains(
+      RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'),
+    );
     if (turnCount > 0 && (turnCount % 5 != 0) && !interactive) return false;
 
     final before = p.loveState.awaitingConfession;
@@ -1859,7 +1989,8 @@ $kNarrativeWritingRules
     // 开局那一桶不算：玩家还没来得及做任何事，不该凭空先偏一点。
     if (first || bucket == 0) return;
     incrementWorldLineDeviation(
-        deviationDriftFor(player?.worldLineDeviation ?? 0.0));
+      deviationDriftFor(player?.worldLineDeviation ?? 0.0),
+    );
   }
 
   /// 从叙事开头的【地点】**结构化标签**同步玩家所在地点到 worldState.currentLocation。
@@ -1893,7 +2024,10 @@ $kNarrativeWritingRules
       // 如果标签没匹配到已知别名，但标签里提到了具体位置，
       // 检查是否属于"家中"大类（卧室/花园/书房/密室/起居室 都算家中）
       if (detected == null) {
-        if (RegExp(r'(家中|家里|住宅|庄园|别墅|卧室|书房|花园|密室|走廊|客厅|门厅)', caseSensitive: false).hasMatch(tag)) {
+        if (RegExp(
+          r'(家中|家里|住宅|庄园|别墅|卧室|书房|花园|密室|走廊|客厅|门厅)',
+          caseSensitive: false,
+        ).hasMatch(tag)) {
           detected = '家中·卧室';
         }
       }
@@ -1905,7 +2039,11 @@ $kNarrativeWritingRules
     // 已在校内换房间永远不被这道门拦——学年 1–6 月玩家每天在城堡里走动，
     // 无年份 MMDD 无脑拦会把整个学年的校内同步全堵死（第三次审查 N2）。
     final dateInt = worldState.time.month * 100 + worldState.time.day;
-    if (blockedBySeasonGate(detected: detected, current: cur, dateInt: dateInt)) {
+    if (blockedBySeasonGate(
+      detected: detected,
+      current: cur,
+      dateInt: dateInt,
+    )) {
       worldState.addNarrativeEvent(
         '⏱ 地点同步被时间门拦截：$detected（需 9月1日，'
         '当前 ${worldState.time.month}月${worldState.time.day}日）',
@@ -1927,7 +2065,8 @@ $kNarrativeWritingRules
     // B 类漂移防护（软一致性）：detected 与当前不同，但叙事正文并未佐证该地点
     // （既无移动动词、也未复现地点名/别名，且已排除【地点】标签自身）→ 疑似标签笔误，
     // 保留上一地点，避免"叙述说在家、标签写大礼堂"这类漂移型硬切。
-    if (detected != cur && !narrativeCorroboratesLocation(detected, cur, narrative)) {
+    if (detected != cur &&
+        !narrativeCorroboratesLocation(detected, cur, narrative)) {
       worldState.addNarrativeEvent(
         '⚠ 地点漂移被拦截：$detected（正文未提及该地点，疑似标签笔误）',
         turn: turnCount,
@@ -1963,7 +2102,10 @@ $kNarrativeWritingRules
 
   /// 锚点去重时剥掉事件前缀图标。原先在两个 for 循环里各写一份，
   /// 每个事件都重新编译一次。
-  static final RegExp _anchorIconPrefix = RegExp(r'^([\u{1F4CA}\u{1F464}\u{1F4AC}\u{1F4C5}\u{1F3C6}\u{1F31F}\u{1F4F0}])', unicode: true);
+  static final RegExp _anchorIconPrefix = RegExp(
+    r'^([\u{1F4CA}\u{1F464}\u{1F4AC}\u{1F4C5}\u{1F3C6}\u{1F31F}\u{1F4F0}])',
+    unicode: true,
+  );
 
   List<GameChoice> _generateLocalSuggestions() {
     final location = worldState.currentLocation ?? '霍格沃茨';
@@ -2053,26 +2195,29 @@ $kNarrativeWritingRules
 
     String key = 'default';
     final loc = location.toLowerCase();
-    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('讲堂')) key = 'classroom';
+    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('讲堂'))
+      key = 'classroom';
     if (loc.contains('大礼堂') || loc.contains('great hall')) key = 'great_hall';
     if (loc.contains('图书馆') || loc.contains('library')) key = 'library';
     if (loc.contains('走廊') || loc.contains('corridor')) key = 'corridor';
-    if (loc.contains('城堡外') || loc.contains('outside') || loc.contains('草坪')) key = 'outside';
+    if (loc.contains('城堡外') || loc.contains('outside') || loc.contains('草坪'))
+      key = 'outside';
     if (loc.contains('公共休息室') || loc.contains('common')) key = 'common_room';
-    if (loc.contains('禁林') || loc.contains('forbidden')) key = 'forbidden_forest';
+    if (loc.contains('禁林') || loc.contains('forbidden'))
+      key = 'forbidden_forest';
     if (loc.contains('对角巷') || loc.contains('diagon')) key = 'diagon_alley';
     if (loc.contains('医疗翼') || loc.contains('hospital')) key = 'hospital';
     if (loc.contains('决斗') || loc.contains('duel')) key = 'duel_club';
 
     // 情境追加：根据叙事关键词添加专属建议
     final extra = <String>[];
-    if (narrativeLower.contains('魁地奇') || narrativeLower.contains('quidditch')) {
-      extra.addAll([
-        '前往魁地奇球场观看或加入训练',
-        '与球队队员交谈获取赛事信息',
-      ]);
+    if (narrativeLower.contains('魁地奇') ||
+        narrativeLower.contains('quidditch')) {
+      extra.addAll(['前往魁地奇球场观看或加入训练', '与球队队员交谈获取赛事信息']);
     }
-    if (narrativeLower.contains('食堂') || narrativeLower.contains('餐') || narrativeLower.contains('food')) {
+    if (narrativeLower.contains('食堂') ||
+        narrativeLower.contains('餐') ||
+        narrativeLower.contains('food')) {
       extra.addAll(['前往厨房准备一些食物', '请家养小精灵帮忙准备餐点']);
     }
     if (narrativeLower.contains('黑魔法') || narrativeLower.contains('dark')) {
@@ -2130,7 +2275,5 @@ $kNarrativeWritingRules
 /// 离线模式整回合崩溃（BUG-FIX）。提取成纯函数便于回归测试。
 String narrativeEventProbe(String latestEvent) {
   if (latestEvent.isEmpty) return '';
-  return latestEvent.length <= 40
-      ? latestEvent
-      : latestEvent.substring(0, 40);
+  return latestEvent.length <= 40 ? latestEvent : latestEvent.substring(0, 40);
 }

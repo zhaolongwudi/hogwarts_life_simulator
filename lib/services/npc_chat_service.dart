@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
@@ -24,16 +25,16 @@ class ChatMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'role': role,
-        'content': content,
-        'timestamp': timestamp.toIso8601String(),
-      };
+    'role': role,
+    'content': content,
+    'timestamp': timestamp.toIso8601String(),
+  };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        role: json['role'] as String,
-        content: json['content'] as String,
-        timestamp: DateTime.parse(json['timestamp'] as String),
-      );
+    role: json['role'] as String,
+    content: json['content'] as String,
+    timestamp: DateTime.parse(json['timestamp'] as String),
+  );
 }
 
 class NpcChatService {
@@ -101,7 +102,9 @@ class NpcChatService {
 
     if (history != null && history.isNotEmpty) {
       // 双维度裁剪：条数上限 20 条 + 总字符上限 3000，防止长会话撑爆上下文
-      final recent = history.length > 20 ? history.sublist(history.length - 20) : history;
+      final recent = history.length > 20
+          ? history.sublist(history.length - 20)
+          : history;
       final buffer = StringBuffer();
       int totalChars = 0;
       final kept = <ChatMessage>[];
@@ -113,7 +116,8 @@ class NpcChatService {
       for (final msg in kept) {
         // 历史消息回放前重净化：当次消息的 sanitize 覆盖不了历史里的注入内容
         buffer.writeln(
-            '${msg.role.toUpperCase()}: ${PromptSanitizer.sanitize(msg.content)}');
+          '${msg.role.toUpperCase()}: ${PromptSanitizer.sanitize(msg.content)}',
+        );
       }
       promptBuffer.write(buffer);
     }
@@ -129,7 +133,9 @@ class NpcChatService {
         maxTokens: 500,
       );
 
-      var responseText = response.content.replaceFirst(RegExp(r'^[\*\[]'), '').trim();
+      var responseText = response.content
+          .replaceFirst(RegExp(r'^[\*\[]'), '')
+          .trim();
       if (responseText.isEmpty) {
         return (_generateLocalResponse(npc, safeMessage), true);
       }
@@ -141,21 +147,26 @@ class NpcChatService {
 
   String _buildNpcSystemPrompt(NPC npc, Player player, WorldState worldState) {
     final personalityStr = npc.personality.join('、');
-    final houseName = {
-      'Gryffindor': '格兰芬多',
-      'Slytherin': '斯莱特林',
-      'Ravenclaw': '拉文克劳',
-      'Hufflepuff': '赫奇帕奇',
-    }[npc.house] ?? '';
+    final houseName =
+        {
+          'Gryffindor': '格兰芬多',
+          'Slytherin': '斯莱特林',
+          'Ravenclaw': '拉文克劳',
+          'Hufflepuff': '赫奇帕奇',
+        }[npc.house] ??
+        '';
 
-    final eraName = {
-      'dumbledore': '邓布利多时代',
-      'marauders': '亲世代',
-      'harry_same': '子世代',
-      'post_war': '现代',
-    }[worldState.era] ?? '霍格沃茨';
+    final eraName =
+        {
+          'dumbledore': '邓布利多时代',
+          'marauders': '亲世代',
+          'harry_same': '子世代',
+          'post_war': '现代',
+        }[worldState.era] ??
+        '霍格沃茨';
 
-    final timeStr = '${worldState.time.month}月${worldState.time.day}日 ${worldState.time.hour}:${worldState.time.minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${worldState.time.month}月${worldState.time.day}日 ${worldState.time.hour}:${worldState.time.minute.toString().padLeft(2, '0')}';
 
     return '''你现在扮演霍格沃茨的学生/教职工「${npc.name}」。
 
@@ -183,33 +194,13 @@ class NpcChatService {
 
   String _generateLocalResponse(NPC npc, String message) {
     final responses = <String, List<String>>{
-      'Gryffindor': [
-        '嘿！${npc.name}？我在呢！',
-        '哇，你说的真有意思！',
-        '我觉得我们应该去冒险！',
-      ],
-      'Slytherin': [
-        '（挑眉）你想做什么？',
-        '……有事吗？',
-        '别浪费我的时间。',
-      ],
-      'Ravenclaw': [
-        '嗯，这是个有趣的话题。',
-        '让我想想……你说的有道理。',
-        '知识就是力量，不是吗？',
-      ],
-      'Hufflepuff': [
-        '你好呀！今天过得怎么样？',
-        '我觉得大家都很好相处。',
-        '要一起去厨房做点东西吃吗？',
-      ],
+      'Gryffindor': ['嘿！${npc.name}？我在呢！', '哇，你说的真有意思！', '我觉得我们应该去冒险！'],
+      'Slytherin': ['（挑眉）你想做什么？', '……有事吗？', '别浪费我的时间。'],
+      'Ravenclaw': ['嗯，这是个有趣的话题。', '让我想想……你说的有道理。', '知识就是力量，不是吗？'],
+      'Hufflepuff': ['你好呀！今天过得怎么样？', '我觉得大家都很好相处。', '要一起去厨房做点东西吃吗？'],
     };
 
-    final staffResponses = [
-      '来我办公室一趟。',
-      '我对你的表现很关注。',
-      '记得按时完成作业。',
-    ];
+    final staffResponses = ['来我办公室一趟。', '我对你的表现很关注。', '记得按时完成作业。'];
 
     final list = responses[npc.house] ?? staffResponses;
     final idx = (message.hashCode & 0x7fffffff) % list.length;
@@ -223,8 +214,16 @@ class NpcChatService {
     return '${dir.path}/npc_conversations.json';
   }
 
-  Future<void> saveConversation(String npcId, List<ChatMessage> messages) async {
-    _conversationCache[npcId] = messages;
+  Future<void> saveConversation(
+    String npcId,
+    List<ChatMessage> messages,
+  ) async {
+    // 历史上限：单 NPC 会话裁剪到最近 50 条（约 3000 字），
+    // 防止「读-改-写整个文件」随消息量无限膨胀（审查发现的历史只增不减）
+    final trimmed = messages.length > 50
+        ? messages.sublist(messages.length - 50)
+        : messages;
+    _conversationCache[npcId] = trimmed;
     try {
       await _serialized(() async {
         final path = await _getSavePath();
@@ -234,10 +233,13 @@ class NpcChatService {
           final content = await file.readAsString();
           data.addAll(jsonDecode(content) as Map<String, dynamic>);
         }
-        data[npcId] = messages.map((m) => m.toJson()).toList();
+        data[npcId] = trimmed.map((m) => m.toJson()).toList();
         await file.writeAsString(jsonEncode(data));
       });
-    } catch (_) {}
+    } catch (e) {
+      // 聊天记录写盘失败必须留痕（此前静默吞掉，坏了无法排查）
+      debugPrint('❌ saveConversation($npcId) 写盘失败: $e');
+    }
   }
 
   Future<List<ChatMessage>> loadConversation(String npcId) async {
@@ -251,12 +253,16 @@ class NpcChatService {
         final content = await file.readAsString();
         final data = jsonDecode(content) as Map<String, dynamic>;
         if (data.containsKey(npcId)) {
-          final messages = (data[npcId] as List).map((e) => ChatMessage.fromJson(e as Map<String, dynamic>)).toList();
+          final messages = (data[npcId] as List)
+              .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+              .toList();
           _conversationCache[npcId] = messages;
           return messages;
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ loadConversation($npcId) 读取失败: $e');
+    }
     return [];
   }
 
@@ -273,6 +279,8 @@ class NpcChatService {
           await file.writeAsString(jsonEncode(data));
         }
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ clearConversation($npcId) 失败: $e');
+    }
   }
 }

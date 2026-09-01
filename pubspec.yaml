@@ -4,8 +4,10 @@ publish_to: 'none'
 version: 3.6.7+367
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
-  flutter: '>=3.33.0'
+  # 约束必须与实际解析一致：pubspec.lock 中 dart >=3.12.0 / flutter >=3.44.0
+  # （flutter_secure_storage 9.x 等传递依赖抬高），写低了会让用户 pub get 直接失败
+  sdk: '>=3.12.0 <4.0.0'
+  flutter: '>=3.44.0'
 
 dependencies:
   flutter:
@@ -18,9 +20,6 @@ dependencies:
   flutter_slidable: ^3.1.0
   path_provider: ^2.1.4
   flutter_secure_storage: ^9.0.0
-
-dependency_overrides:
-  win32: ^5.3.0
 
 dev_dependencies:
   flutter_test:

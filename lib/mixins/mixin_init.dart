@@ -28,7 +28,9 @@ import '../data/npc_schedule_rules.dart';
 mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
     final p = player;
-    final effectiveEra = worldState.era.isNotEmpty ? worldState.era : appProvider.era.name;
+    final effectiveEra = worldState.era.isNotEmpty
+        ? worldState.era
+        : appProvider.era.name;
     final eraName = _eraLabelShort(_parseEra(effectiveEra));
 
     final profile = p != null
@@ -39,46 +41,76 @@ mixin GameInitMixin on GameProviderBase {
     final characterLines = <String>[];
     if (p != null) {
       if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) {
-        characterLines.add('【出生身份】${p.birthIdentity}（必须体现在叙事中：经济条件、家族状态、对血统观念的态度都由此决定）');
+        characterLines.add(
+          '【出生身份】${p.birthIdentity}（必须体现在叙事中：经济条件、家族状态、对血统观念的态度都由此决定）',
+        );
       }
       if (p.personalityTraits.isNotEmpty) {
-        characterLines.add('【性格】${p.personalityTraits.join('、')}（AI 描写主角心理和言行时必须贴合此性格，严禁写成冷酷控制欲型）');
+        characterLines.add(
+          '【性格】${p.personalityTraits.join('、')}（AI 描写主角心理和言行时必须贴合此性格，严禁写成冷酷控制欲型）',
+        );
       }
       if (p.appearance != null && p.appearance!.isNotEmpty) {
-        characterLines.add('【外貌】${p.appearance}（叙事中当其他 NPC 第一次看到主角或主角照镜子/被观察时，必须描写外貌）');
+        characterLines.add(
+          '【外貌】${p.appearance}（叙事中当其他 NPC 第一次看到主角或主角照镜子/被观察时，必须描写外貌）',
+        );
       }
       if (p.childhoodExperiences.isNotEmpty) {
-        characterLines.add('【童年奇迹】${p.childhoodExperiences.join('；')}（这些是主角的神秘伏笔，可在特殊场景或梦境中暗示，但不宜过多直白提及）');
+        characterLines.add(
+          '【童年奇迹】${p.childhoodExperiences.join('；')}（这些是主角的神秘伏笔，可在特殊场景或梦境中暗示，但不宜过多直白提及）',
+        );
       }
       if (p.beliefs != null && p.beliefs!.isNotEmpty) {
-        characterLines.add('【信念】${p.beliefs}（主角的道德底线和行为准则，严重违背的选项不允许出现在 ABCD 中）');
+        characterLines.add(
+          '【信念】${p.beliefs}（主角的道德底线和行为准则，严重违背的选项不允许出现在 ABCD 中）',
+        );
       }
       if (p.politicalTendency != null && p.politicalTendency!.isNotEmpty) {
-        characterLines.add('【政治立场】${p.politicalTendency}（主角对纯血论、麻瓜、混血的态度，NPC 互动和选项需贴合）');
+        characterLines.add(
+          '【政治立场】${p.politicalTendency}（主角对纯血论、麻瓜、混血的态度，NPC 互动和选项需贴合）',
+        );
       }
       if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
-        characterLines.add('【初始天赋专精】${p.initialTalent}（相关魔法成功率和理解更高，叙事中可体现主角的擅长领域）');
+        characterLines.add(
+          '【初始天赋专精】${p.initialTalent}（相关魔法成功率和理解更高，叙事中可体现主角的擅长领域）',
+        );
       }
       final aptitude = resolveMagicAptitude(p);
       if (aptitude.isNotEmpty) {
-        characterLines.add('【魔法资质】$aptitude（主角学习新魔法的速度、掌握深度、施法威力和稳定性都依此浮动，严禁在叙事中把"资质平平/普通"写成"天才"，也严禁把"天才级"写成"资质普通"）');
+        characterLines.add(
+          '【魔法资质】$aptitude（主角学习新魔法的速度、掌握深度、施法威力和稳定性都依此浮动，严禁在叙事中把"资质平平/普通"写成"天才"，也严禁把"天才级"写成"资质普通"）',
+        );
       }
       if (p.familyBackground != null && p.familyBackground!.isNotEmpty) {
-        characterLines.add('【家族背景】${p.familyBackground}（经济条件、在家中的地位、父母亲人对主角的态度、家族在魔法界的名声和人脉——必须体现在 NPC 互动和场景描述里）');
+        characterLines.add(
+          '【家族背景】${p.familyBackground}（经济条件、在家中的地位、父母亲人对主角的态度、家族在魔法界的名声和人脉——必须体现在 NPC 互动和场景描述里）',
+        );
       }
-      if (p.housePreference != null && p.housePreference!.isNotEmpty && p.house == null) {
-        characterLines.add('【学院倾向】${p.housePreference}（分院前分院帽会优先倾听此意愿；分院后如实际学院不同，主角内心的落差感要体现在心理描写里）');
+      if (p.housePreference != null &&
+          p.housePreference!.isNotEmpty &&
+          p.house == null) {
+        characterLines.add(
+          '【学院倾向】${p.housePreference}（分院前分院帽会优先倾听此意愿；分院后如实际学院不同，主角内心的落差感要体现在心理描写里）',
+        );
       }
       if (p.simulationStyle != null && p.simulationStyle!.isNotEmpty) {
-        characterLines.add('【模拟风格】${p.simulationStyle}（叙事整体走向、冲突密度、感情线推进速度、政治剧情比重都需贴合此风格）');
+        characterLines.add(
+          '【模拟风格】${p.simulationStyle}（叙事整体走向、冲突密度、感情线推进速度、政治剧情比重都需贴合此风格）',
+        );
       }
       if (p.petId != null && p.petId!.isNotEmpty) {
         final pd = petById(p.petId!);
-        final petName = (p.petName != null && p.petName!.isNotEmpty) ? p.petName : (pd?.name ?? '宠物');
+        final petName = (p.petName != null && p.petName!.isNotEmpty)
+            ? p.petName
+            : (pd?.name ?? '宠物');
         if (pd != null) {
-          final abilityDesc = pd.abilities.isNotEmpty ? '；能力：${pd.abilities.join('、')}' : '';
+          final abilityDesc = pd.abilities.isNotEmpty
+              ? '；能力：${pd.abilities.join('、')}'
+              : '';
           final transformDesc = pd.canTransform ? '；可化人形' : '';
-          characterLines.add('【宠物】$petName（${pd.species}${pd.species == pd.name ? '' : '·' + pd.name}）。${pd.description.trim()}$abilityDesc$transformDesc。当宠物出现在场景中时，必须符合这些设定，不能凭空添加/删除能力或改性格。');
+          characterLines.add(
+            '【宠物】$petName（${pd.species}${pd.species == pd.name ? '' : '·' + pd.name}）。${pd.description.trim()}$abilityDesc$transformDesc。当宠物出现在场景中时，必须符合这些设定，不能凭空添加/删除能力或改性格。',
+          );
         } else {
           characterLines.add('【宠物】$petName（契约伙伴，宠物出现在场景中时必须体现它的存在）');
         }
@@ -89,7 +121,9 @@ mixin GameInitMixin on GameProviderBase {
           final woodClean = wd.wood.endsWith('木') ? wd.wood : '${wd.wood}木';
           // R10：wandSources 数据化，去掉多处「奥利凡德魔杖店选中」硬编码
           final src = wandSources[kDefaultWandSourceId]?.narrativeLine ?? '';
-          characterLines.add('【魔杖】$woodClean·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他木材；$src）');
+          characterLines.add(
+            '【魔杖】$woodClean·${wd.core}·${wd.length}（主角施法时请描写这根魔杖的触感和反应，绝对不要写成柳木或其他木材；$src）',
+          );
         }
       }
       if (p.animagus != null) {
@@ -98,23 +132,31 @@ mixin GameInitMixin on GameProviderBase {
         if (aStatus == 'transformed') {
           final form = av['form'] as String? ?? '';
           final reg = av['registered'] == true;
-          characterLines.add('【阿尼马格斯】主角已掌握阿尼马格斯，动物形态为「$form」'
-              '${reg ? '，已在魔法部登记' : '，尚未登记（存在法律风险，叙事中应体现这份隐忧）'}。'
-              '变形是困难且有限制的力量：变身后有暴露风险，不得随意滥用，且魔力消耗巨大。');
+          characterLines.add(
+            '【阿尼马格斯】主角已掌握阿尼马格斯，动物形态为「$form」'
+            '${reg ? '，已在魔法部登记' : '，尚未登记（存在法律风险，叙事中应体现这份隐忧）'}。'
+            '变形是困难且有限制的力量：变身后有暴露风险，不得随意滥用，且魔力消耗巨大。',
+          );
         } else if (aStatus == 'studying' || aStatus == 'potionReady') {
-          characterLines.add('【阿尼马格斯研习中】主角正在研习阿尼马格斯'
-              '（训练进度 ${av['progress'] ?? 0}）——这是漫长而危险的变形之路，'
-              '可在叙事中体现主角的投入与进展，但尚未掌握变形，不得写其成功变形。');
+          characterLines.add(
+            '【阿尼马格斯研习中】主角正在研习阿尼马格斯'
+            '（训练进度 ${av['progress'] ?? 0}）——这是漫长而危险的变形之路，'
+            '可在叙事中体现主角的投入与进展，但尚未掌握变形，不得写其成功变形。',
+          );
         } else if (aStatus == 'failed') {
-          characterLines.add('【阿尼马格斯受挫】主角的阿尼马格斯尝试曾失败'
-              '（${av['failedReason'] ?? '变形溃散'}），身体与意志都受到了打击，'
-              '叙事中可体现这份余悸，但不要写成永久性残废。');
+          characterLines.add(
+            '【阿尼马格斯受挫】主角的阿尼马格斯尝试曾失败'
+            '（${av['failedReason'] ?? '变形溃散'}），身体与意志都受到了打击，'
+            '叙事中可体现这份余悸，但不要写成永久性残废。',
+          );
         }
       }
       if (p.patronus != null && p.patronus!.isNotEmpty) {
-        characterLines.add('【守护神】主角的守护神形态是「${p.patronus}」。'
-            '守护神是灵魂的映照，叙事中召唤时应描写它的姿态与性情，'
-            '不得随意改变形态。');
+        characterLines.add(
+          '【守护神】主角的守护神形态是「${p.patronus}」。'
+          '守护神是灵魂的映照，叙事中召唤时应描写它的姿态与性情，'
+          '不得随意改变形态。',
+        );
       }
     }
 
@@ -124,11 +166,14 @@ mixin GameInitMixin on GameProviderBase {
         : '【身份模式】原住民：你对命运走向一无所知，只凭自己的判断与本能行事。';
 
     // 人生目标：若已设定，注入为剧情牵引方向（非强制任务）
-    final goalLine = (p != null && p.currentGoal != null && p.currentGoal!.isNotEmpty)
+    final goalLine =
+        (p != null && p.currentGoal != null && p.currentGoal!.isNotEmpty)
         ? '【人生目标】${goalSteeringLine(p.currentGoal)}（仅作剧情牵引方向，玩家仍可自由行动，切勿变成每回合的任务推送）'
         : '';
 
-    final worldRules = kUseFusedCompact ? kWorldRulesFusedCompact : kWorldRulesFused;
+    final worldRules = kUseFusedCompact
+        ? kWorldRulesFusedCompact
+        : kWorldRulesFused;
 
     final buffer = StringBuffer()
       ..write(worldRules)
@@ -176,6 +221,8 @@ mixin GameInitMixin on GameProviderBase {
   /// 旧剧情缓冲、旧回合计数器影响，导致 AI"接着之前的剧情写"。
 
   void resetAllState() {
+    // 世代号失效：在飞 AI 请求的响应必须在返回后被丢弃，不能写进新局
+    invalidateSessionEpoch();
     player = null;
     worldState = WorldState();
     npcRegistry.clear();
@@ -299,7 +346,7 @@ mixin GameInitMixin on GameProviderBase {
       final birthYear = _calculateBirthYear();
       // 传承局：孩子在他自己那一年的九月入学，不是上一代那一年的九月
       final startYear = legacy?.startYear ?? _startYearForEra(appProvider.era);
-      // letter 起点（收到录取通知书）按原著为 7 月 31 日前后；其它 3 个起点才是 9 月 1 日特快出发日
+      // letter 起点（收到录取通知书）按原著为 7 月 31 日前后；其他 3 个起点才是 9 月 1 日特快出发日
       // 防止 letter 开局刚收到信，下一回合场景直接跳到 9 月 1 日已在站台导致整个暑假剧情丢失。
       // R2：开场场景配置数据化（1 处查表替代 3 处 switch）
       final scene = openingSceneById(openingScene);
@@ -314,16 +361,18 @@ mixin GameInitMixin on GameProviderBase {
       var fb = familyBackground ?? '';
       final familyLower = fb.toLowerCase();
       final idLower = (birthIdentity ?? '').toLowerCase();
-      if (birthIdentity != null &&
-          birthIdentity.isNotEmpty &&
-          fb.isNotEmpty) {
+      if (birthIdentity != null && birthIdentity.isNotEmpty && fb.isNotEmpty) {
         const pureBloodKeywords = ['纯血', '豪门', '神圣二十八族', 'pureblood'];
         const muggleKeywords = ['麻瓜', '普通', '无魔法', 'muggle'];
         final hasPure = pureBloodKeywords.any((k) => idLower.contains(k));
-        final hasMuggleFamily = muggleKeywords.any((k) => familyLower.contains(k));
+        final hasMuggleFamily = muggleKeywords.any(
+          (k) => familyLower.contains(k),
+        );
         if (hasPure && hasMuggleFamily) {
           // 允许"神圣二十八族没落支系+麻瓜养父母"这种设定，但不能写成"普通麻瓜家庭出身"
-          final sanitized = fb.replaceAll(RegExp(r'[麻普通无魔法]', caseSensitive: false), '').trim();
+          final sanitized = fb
+              .replaceAll(RegExp(r'[麻普通无魔法]', caseSensitive: false), '')
+              .trim();
           if (sanitized.isEmpty) {
             fb = '麻瓜养父母家庭';
           } else {
@@ -422,16 +471,24 @@ mixin GameInitMixin on GameProviderBase {
       // 开局身份事实在长线存档里一样会被日常琐事挤掉。
       // 写入顺序要在 _generateOpeningScene 之前，确保第一回合 prompt 已经含有这些纯事实。
       final ts0 = worldState.time.format();
-      void addT0(String id, String fact, {String? category, Set<String> npcIds = const {}}) {
-        memory = memory.addKeyFact(KeyFactRecord(
-          id: id,
-          fact: fact,
-          importance: kPersistentFactImportance,
-          timestamp: ts0,
-          category: category,
-          npcIds: npcIds,
-        ));
+      void addT0(
+        String id,
+        String fact, {
+        String? category,
+        Set<String> npcIds = const {},
+      }) {
+        memory = memory.addKeyFact(
+          KeyFactRecord(
+            id: id,
+            fact: fact,
+            importance: kPersistentFactImportance,
+            timestamp: ts0,
+            category: category,
+            npcIds: npcIds,
+          ),
+        );
       }
+
       final p0 = player!;
       // 1. 基础身份：姓名 + 时代出生年份（避免AI记混）
       addT0(
@@ -446,13 +503,17 @@ mixin GameInitMixin on GameProviderBase {
           ..write('你是${legacy.parentName}的孩子，姓${legacy.surname}。')
           ..write(legacy.parentSummary);
         if (legacy.hasRivals) {
-          buf.write('父辈的仇人（${legacy.rivals.take(3).join('、')}'
-              '${legacy.rivals.length > 3 ? '等' : ''}）'
-              '在你入学之前就已经记恨你了——这笔账是记在这个姓上的。');
+          buf.write(
+            '父辈的仇人（${legacy.rivals.take(3).join('、')}'
+            '${legacy.rivals.length > 3 ? '等' : ''}）'
+            '在你入学之前就已经记恨你了——这笔账是记在这个姓上的。',
+          );
         }
         if (legacy.hasAllies) {
-          buf.write('${legacy.allies.keys.take(3).join('、')}'
-              '是你家的旧识，你从小就认识他们。');
+          buf.write(
+            '${legacy.allies.keys.take(3).join('、')}'
+            '是你家的旧识，你从小就认识他们。',
+          );
         }
         addT0('identity:legacy', buf.toString(), category: 'identity');
       }
@@ -471,21 +532,25 @@ mixin GameInitMixin on GameProviderBase {
       // 3. 宠物：普通宠物写5分，绯月九尾狐写9分+明确能力和忠诚（东方神话属性对整个叙事走向影响大）
       if (p0.petId != null && p0.petId!.isNotEmpty) {
         final pd = petById(p0.petId!);
-        final petName = (p0.petName != null && p0.petName!.isNotEmpty) ? p0.petName! : (pd?.name ?? '宠物');
+        final petName = (p0.petName != null && p0.petName!.isNotEmpty)
+            ? p0.petName!
+            : (pd?.name ?? '宠物');
         // R8：使用 PetNarrativeConfig 统一决定 importance + 文案（去掉多处 kyuubi 硬编码特判）
         final cfg = petNarrativeConfig(p0.petId!);
         final factText = pd != null
             ? (cfg.bondGatedTransform
-                ? '主角的契约宠物是${pd.species}"$petName"（${pd.description.split('\n').first}），能力：${pd.abilities.join('、')}；${cfg.specialInteractionHint ?? ''}对主角完全忠诚、绝对听命。'
-                : '主角饲养的宠物是${pd.species}"$petName"${pd.abilities.isNotEmpty ? '，擅长' + pd.abilities.take(2).join('、') : ''}，是重要的陪伴和伙伴。')
+                  ? '主角的契约宠物是${pd.species}"$petName"（${pd.description.split('\n').first}），能力：${pd.abilities.join('、')}；${cfg.specialInteractionHint ?? ''}对主角完全忠诚、绝对听命。'
+                  : '主角饲养的宠物是${pd.species}"$petName"${pd.abilities.isNotEmpty ? '，擅长' + pd.abilities.take(2).join('、') : ''}，是重要的陪伴和伙伴。')
             : '主角的契约伙伴：$petName。';
-        memory = memory.addKeyFact(KeyFactRecord(
-          id: 'pet:${p0.petId}',
-          fact: factText,
-          importance: cfg.memoryImportance,
-          timestamp: ts0,
-          category: 'pet',
-        ));
+        memory = memory.addKeyFact(
+          KeyFactRecord(
+            id: 'pet:${p0.petId}',
+            fact: factText,
+            importance: cfg.memoryImportance,
+            timestamp: ts0,
+            category: 'pet',
+          ),
+        );
       }
       // 4. 初始天赋专精：AI容易忽略并写成"天赋平平"，提前写死
       if (p0.initialTalent != null && p0.initialTalent!.isNotEmpty) {
@@ -520,7 +585,9 @@ mixin GameInitMixin on GameProviderBase {
       // 先在初始化后立刻跑一次本地逻辑分院（不消耗 token），把 house 提前写好；
       // 叙事合并进开场叙事并解锁 'sorted' 成就，后续 AI prompt 中的学院就正确了。
       // 如果玩家已经通过 AI 叙事解析得到 house（如 station 起点写了很多回合后分院），这里会被跳过。
-      if (player != null && player!.house == null && (openingScene == 'hall' || openingScene == 'eve')) {
+      if (player != null &&
+          player!.house == null &&
+          (openingScene == 'hall' || openingScene == 'eve')) {
         try {
           final house = computeHouseLocal();
           final sortingNarrative = generateSortingNarrative(house);
@@ -531,9 +598,11 @@ mixin GameInitMixin on GameProviderBase {
           unlockCG(this.cgById('CG-002')); // 分院帽下的对视
           // 合并：本地分院叙事拼接在开场叙事后面
           if (sortingNarrative.trim().isNotEmpty) {
-            currentNarrative = (currentNarrative.trim() +
-                '\n\n—— 分院仪式 ——\n\n' +
-                sortingNarrative.trim()).trim();
+            currentNarrative =
+                (currentNarrative.trim() +
+                        '\n\n—— 分院仪式 ——\n\n' +
+                        sortingNarrative.trim())
+                    .trim();
           }
           debugPrint('⚡ 开局本地分院：${player!.house} (起点=$openingScene)');
         } catch (e) {
@@ -547,12 +616,15 @@ mixin GameInitMixin on GameProviderBase {
       // （/收藏 以前永远空着：全项目没有任何地方往 collection 里写过东西）
       addCollectible('souvenir_platform');
       if (player!.letters.isEmpty) {
-        player!.letters.add(Letter(
-          id: 'L_admission',
-          sender: '霍格沃茨魔法学校',
-          date: '${player!.birthYear}年7月',
-          content: '亲爱的${player!.name}小姐/先生：\n\n我们愉快地通知您，您已获准在霍格沃茨魔法学校就读。随信附上所需书籍与装备一览表。\n学期定于九月一日开始，我们将于七月三十一日前静候您的猫头鹰带来回音。\n\n您忠诚的\n副校长（女）\n米勒娃·麦格 谨上',
-        ));
+        player!.letters.add(
+          Letter(
+            id: 'L_admission',
+            sender: '霍格沃茨魔法学校',
+            date: '${player!.birthYear}年7月',
+            content:
+                '亲爱的${player!.name}小姐/先生：\n\n我们愉快地通知您，您已获准在霍格沃茨魔法学校就读。随信附上所需书籍与装备一览表。\n学期定于九月一日开始，我们将于七月三十一日前静候您的猫头鹰带来回音。\n\n您忠诚的\n副校长（女）\n米勒娃·麦格 谨上',
+          ),
+        );
       }
       isLoading = false;
       notifyListeners();
@@ -561,12 +633,14 @@ mixin GameInitMixin on GameProviderBase {
       error = e.toString();
       isLoading = false;
       notifyListeners();
-      unawaited(CrashLogger.instance.record(
-        e,
-        StackTrace.current,
-        screen: 'openingInit',
-        extra: 'name=$name, era=${appProvider.era.name}',
-      ));
+      unawaited(
+        CrashLogger.instance.record(
+          e,
+          StackTrace.current,
+          screen: 'openingInit',
+          extra: 'name=$name, era=${appProvider.era.name}',
+        ),
+      );
     }
   }
 
@@ -614,8 +688,11 @@ mixin GameInitMixin on GameProviderBase {
 
     // 开局就给每个人安排位置，否则要等第一次时间推进才有人「在」某处，
     // 而开场第一回合的 prompt 里【在场】就已经是空的了。
-    refreshNpcLocations(npcRegistry.values, worldState.time.hour,
-        worldState.time.weekday);
+    refreshNpcLocations(
+      npcRegistry.values,
+      worldState.time.hour,
+      worldState.time.weekday,
+    );
   }
 
   String _eraKey(Era era) => eraDefByEra(era).eraKey;
@@ -654,8 +731,9 @@ mixin GameInitMixin on GameProviderBase {
   /// 现在改成做一件这个页面真正需要的事：从还没打过照面的人里挑一位结识。
   /// 返回被结识的人名，没得挑时返回 null。
   String? meetRandomNpc() {
-    final candidates =
-        npcRegistry.values.where((n) => n.isAlive && !n.introduced).toList();
+    final candidates = npcRegistry.values
+        .where((n) => n.isAlive && !n.introduced)
+        .toList();
     if (candidates.isEmpty) return null;
     final npc = candidates[random.nextInt(candidates.length)];
     markNpcIntroduced(npc);
@@ -678,21 +756,25 @@ mixin GameInitMixin on GameProviderBase {
     // 这是记忆管线的关键入口——NPC 登场时写入结构化关系锚点，
     // 确保数百回合后 AI 仍然知道玩家认识谁、关系如何。
     final ts = worldState.time.format();
-    memory = memory.upsertRelationshipAnchor(NpcRelationshipAnchor(
-      npcId: npc.id,
-      firstMeeting: '$ts 初次见面',
-      currentStage: '认识',
-      lastUpdatedTurn: turnCount,
-    ));
-    memory = memory.addWorldEvent(WorldEventRecord(
-      id: 'meet_${npc.id}_$turnCount',
-      timestamp: ts,
-      title: '结识${npc.name}',
-      description: '主角初次结识了${npc.name}',
-      importance: 5,
-      category: 'personal',
-      npcIds: {npc.id},
-    ));
+    memory = memory.upsertRelationshipAnchor(
+      NpcRelationshipAnchor(
+        npcId: npc.id,
+        firstMeeting: '$ts 初次见面',
+        currentStage: '认识',
+        lastUpdatedTurn: turnCount,
+      ),
+    );
+    memory = memory.addWorldEvent(
+      WorldEventRecord(
+        id: 'meet_${npc.id}_$turnCount',
+        timestamp: ts,
+        title: '结识${npc.name}',
+        description: '主角初次结识了${npc.name}',
+        importance: 5,
+        category: 'personal',
+        npcIds: {npc.id},
+      ),
+    );
 
     // 初次相遇 → CG-003（对角巷的偶然回眸）。
     // 这张 2 星卡此前没有任何解锁路径：cgUnlockConditions 里没登记，
@@ -701,14 +783,52 @@ mixin GameInitMixin on GameProviderBase {
   }
 
   static const List<String> _signoffKeywords = [
-    '敬启', '谨启', '谨致', '此致', '敬礼', '敬意', '顺颂', '顺颂时祺',
-    '顺颂安祺', '祝好', '祝安好', '谨上', '敬上', '顿首', '拜上',
-    '签名', '落款', '联系人', '联系电话', '地址：', '邮编：',
-    '校长：', '副校长：', '院长：', '教授：', '老师：',
-    '魔法部部长：', '傲罗办公室主任：', '司长：', '厅长：',
-    'Headmaster ', 'Deputy Head', 'Professor ', 'Mr.', 'Mrs.', 'Miss', 'Ms.',
-    'Sincerely', 'Yours truly', 'Best regards', 'Kind regards', 'Warm regards',
-    'From,', 'With love,', 'Cheers,', 'Regards,',
+    '敬启',
+    '谨启',
+    '谨致',
+    '此致',
+    '敬礼',
+    '敬意',
+    '顺颂',
+    '顺颂时祺',
+    '顺颂安祺',
+    '祝好',
+    '祝安好',
+    '谨上',
+    '敬上',
+    '顿首',
+    '拜上',
+    '签名',
+    '落款',
+    '联系人',
+    '联系电话',
+    '地址：',
+    '邮编：',
+    '校长：',
+    '副校长：',
+    '院长：',
+    '教授：',
+    '老师：',
+    '魔法部部长：',
+    '傲罗办公室主任：',
+    '司长：',
+    '厅长：',
+    'Headmaster ',
+    'Deputy Head',
+    'Professor ',
+    'Mr.',
+    'Mrs.',
+    'Miss',
+    'Ms.',
+    'Sincerely',
+    'Yours truly',
+    'Best regards',
+    'Kind regards',
+    'Warm regards',
+    'From,',
+    'With love,',
+    'Cheers,',
+    'Regards,',
   ];
 
   List<(int, int)> _signatureRanges(String text) {
@@ -763,7 +883,8 @@ mixin GameInitMixin on GameProviderBase {
         if (consecutiveHits > 2) break;
       }
 
-      if (signatureStartLine != -1 && (signatureStartLine - i) >= maxSignatureLines) {
+      if (signatureStartLine != -1 &&
+          (signatureStartLine - i) >= maxSignatureLines) {
         break;
       }
     }
@@ -790,7 +911,9 @@ mixin GameInitMixin on GameProviderBase {
     for (final range in ranges) {
       final overlapStart = start > range.$1 ? start : range.$1;
       final overlapEnd = end < range.$2 ? end : range.$2;
-      final overlapLen = overlapEnd > overlapStart ? overlapEnd - overlapStart : 0;
+      final overlapLen = overlapEnd > overlapStart
+          ? overlapEnd - overlapStart
+          : 0;
       final sliceLen = end - start;
       if (sliceLen > 0 && overlapLen * 2 >= sliceLen) {
         return true;
@@ -807,17 +930,57 @@ mixin GameInitMixin on GameProviderBase {
     final signatureRanges = _signatureRanges(text);
 
     const interactionVerbs = [
-      '见面', '握手', '介绍', '对视', '打招呼', '对话', '交谈', '自我介绍',
-      '走进', '进来', '敲门', '推开', '开门', '向你走', '看到你', '来到',
-      '回应你', '你唤', '你叫', '你问', '问你', '对你说', '告诉你',
-      '递给你', '你接过', '你握', '拥抱', '拍肩', '微笑着', '点头',
-      '行礼', '鞠躬', '一起坐', '坐下', '上楼', '下楼', '同行', '并肩',
-      '相遇', '遇见', '碰上', '撞见', '结识', '认识', '熟悉'
+      '见面',
+      '握手',
+      '介绍',
+      '对视',
+      '打招呼',
+      '对话',
+      '交谈',
+      '自我介绍',
+      '走进',
+      '进来',
+      '敲门',
+      '推开',
+      '开门',
+      '向你走',
+      '看到你',
+      '来到',
+      '回应你',
+      '你唤',
+      '你叫',
+      '你问',
+      '问你',
+      '对你说',
+      '告诉你',
+      '递给你',
+      '你接过',
+      '你握',
+      '拥抱',
+      '拍肩',
+      '微笑着',
+      '点头',
+      '行礼',
+      '鞠躬',
+      '一起坐',
+      '坐下',
+      '上楼',
+      '下楼',
+      '同行',
+      '并肩',
+      '相遇',
+      '遇见',
+      '碰上',
+      '撞见',
+      '结识',
+      '认识',
+      '熟悉',
     ];
 
     // 获取当前位置，判断玩家是否已经在霍格沃茨
     final currentLocation = worldState.currentLocation ?? '';
-    final isAtHogwarts = currentLocation.contains('霍格沃茨') ||
+    final isAtHogwarts =
+        currentLocation.contains('霍格沃茨') ||
         currentLocation.contains('Hogwarts') ||
         (player?.house != null && player!.house!.isNotEmpty);
 
@@ -930,15 +1093,20 @@ mixin GameInitMixin on GameProviderBase {
     bool isBoundary(int charCode) {
       if (charCode == 0) return true;
       if ((charCode >= 0x4E00 && charCode <= 0x9FFF) ||
-          (charCode >= 0x3400 && charCode <= 0x4DBF)) return true; // CJK 对英文名字天然视作分隔
+          (charCode >= 0x3400 && charCode <= 0x4DBF))
+        return true; // CJK 对英文名字天然视作分隔
       if ((charCode >= 0x41 && charCode <= 0x5A) ||
           (charCode >= 0x61 && charCode <= 0x7A) ||
           (charCode >= 0xFF21 && charCode <= 0xFF3A) ||
           (charCode >= 0xFF41 && charCode <= 0xFF5A) ||
           (charCode >= 0x30 && charCode <= 0x39) ||
-          (charCode >= 0xFF10 && charCode <= 0xFF19)) return false;
-      if (charCode == 0x00B7 || charCode == 0x2022 ||
-          charCode == 0x2D || charCode == 0x5F) return false;
+          (charCode >= 0xFF10 && charCode <= 0xFF19))
+        return false;
+      if (charCode == 0x00B7 ||
+          charCode == 0x2022 ||
+          charCode == 0x2D ||
+          charCode == 0x5F)
+        return false;
       return true;
     }
 
@@ -980,7 +1148,9 @@ mixin GameInitMixin on GameProviderBase {
 
     while (picked.length < 3) {
       // 软保底：连续未出高稀有度时提升概率
-      final pityBoost = (pity ~/ TraitRarityWeights.pityThreshold) * TraitRarityWeights.pityBonus;
+      final pityBoost =
+          (pity ~/ TraitRarityWeights.pityThreshold) *
+          TraitRarityWeights.pityBonus;
       final legendaryP = TraitRarityWeights.legendaryBase + pityBoost * 0.5;
       final rareP = TraitRarityWeights.rareBase + pityBoost;
 
@@ -1045,10 +1215,14 @@ mixin GameInitMixin on GameProviderBase {
             break;
           case 'social':
             // social 既是属性也是声望，这里加到属性
-            p.attributes['social'] = ((p.attributes['social'] ?? 50) + bonus).clamp(0, 100);
+            p.attributes['social'] = ((p.attributes['social'] ?? 50) + bonus)
+                .clamp(0, 100);
             break;
           default:
-            p.attributes[key] = ((p.attributes[key] ?? 50) + bonus).clamp(0, 100);
+            p.attributes[key] = ((p.attributes[key] ?? 50) + bonus).clamp(
+              0,
+              100,
+            );
         }
       });
       // 节俭特质：初始加隆略多
@@ -1075,7 +1249,6 @@ mixin GameInitMixin on GameProviderBase {
     return '【出身特质】${hints.join('；')}';
   }
 
-
   // ==================== 生成开场场景 ====================
 
   Future<void> _generateOpeningScene() async {
@@ -1092,19 +1265,29 @@ mixin GameInitMixin on GameProviderBase {
 
     // 只收集已设定字段，减少 token 噪声
     final profile = <String>[];
-    profile.add('姓名：${p.name}｜11岁｜${bloodStatusLabel(p.bloodType)}｜${p.birthLocation}');
-    if (p.personalityTraits.isNotEmpty) profile.add('性格：${p.personalityTraits.join('、')}');
-    if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) profile.add('出身：${p.birthIdentity}');
-    if (p.appearance != null && p.appearance!.isNotEmpty) profile.add('外貌：${p.appearance}');
-    if (p.familyBackground != null && p.familyBackground!.isNotEmpty) profile.add('家族：${p.familyBackground}');
-    if (p.childhoodExperiences.isNotEmpty) profile.add('童年：${p.childhoodExperiences.join('；')}');
-    if (p.beliefs != null && p.beliefs!.isNotEmpty) profile.add('信念：${p.beliefs}');
+    profile.add(
+      '姓名：${p.name}｜11岁｜${bloodStatusLabel(p.bloodType)}｜${p.birthLocation}',
+    );
+    if (p.personalityTraits.isNotEmpty)
+      profile.add('性格：${p.personalityTraits.join('、')}');
+    if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty)
+      profile.add('出身：${p.birthIdentity}');
+    if (p.appearance != null && p.appearance!.isNotEmpty)
+      profile.add('外貌：${p.appearance}');
+    if (p.familyBackground != null && p.familyBackground!.isNotEmpty)
+      profile.add('家族：${p.familyBackground}');
+    if (p.childhoodExperiences.isNotEmpty)
+      profile.add('童年：${p.childhoodExperiences.join('；')}');
+    if (p.beliefs != null && p.beliefs!.isNotEmpty)
+      profile.add('信念：${p.beliefs}');
     final resolvedAptitude = resolveMagicAptitude(p);
     if (resolvedAptitude.isNotEmpty) {
       profile.add('资质：$resolvedAptitude');
     }
-    if (p.initialTalent != null && p.initialTalent!.isNotEmpty) profile.add('天赋：${p.initialTalent}');
-    if (p.housePreference != null && p.housePreference!.isNotEmpty) profile.add('学院倾向：${p.housePreference}');
+    if (p.initialTalent != null && p.initialTalent!.isNotEmpty)
+      profile.add('天赋：${p.initialTalent}');
+    if (p.housePreference != null && p.housePreference!.isNotEmpty)
+      profile.add('学院倾向：${p.housePreference}');
     if (p.traits.isNotEmpty) {
       final traitNames = p.traits
           .map((id) => traitById(id)?.name)
@@ -1116,7 +1299,9 @@ mixin GameInitMixin on GameProviderBase {
     profile.add('魔杖：$wandInfo');
     profile.add('宠物：$petInfo');
 
-    final wandSourceLine = wandSources[kDefaultWandSourceId]?.narrativeLine ?? '玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。';
+    final wandSourceLine =
+        wandSources[kDefaultWandSourceId]?.narrativeLine ??
+        '玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。';
     final wandDetail = wandData != null
         ? '${wandData.wood}木·${wandData.core}·${wandData.length}'
         : '指定魔杖';
@@ -1147,7 +1332,9 @@ mixin GameInitMixin on GameProviderBase {
       // （以前是 system 要选项、user 说别写，于是 BUG-H 时有时无）。
       // 独立生成失败时保留 parseResponse 兜底出来的那几个。
       try {
-        final openingChoices = await generateChoicesSeparately(currentNarrative);
+        final openingChoices = await generateChoicesSeparately(
+          currentNarrative,
+        );
         if (openingChoices.isNotEmpty) choices = openingChoices;
       } catch (e) {
         debugPrint('⚠️ 开场选项独立生成失败，沿用解析/兜底选项: $e');
@@ -1158,18 +1345,19 @@ mixin GameInitMixin on GameProviderBase {
       unawaited(autoSave());
     } catch (e) {
       error = e.toString();
-      currentNarrative =
-          '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
+      currentNarrative = '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
       choices = [GameChoice(text: '继续', action: '继续')];
       appendRecentTurn(currentNarrative);
       notifyListeners();
       unawaited(autoSave());
-      unawaited(CrashLogger.instance.record(
-        e,
-        StackTrace.current,
-        screen: 'generateOpeningScene',
-        extra: 'player=${p.name}, era=${appProvider.era.name}',
-      ));
+      unawaited(
+        CrashLogger.instance.record(
+          e,
+          StackTrace.current,
+          screen: 'generateOpeningScene',
+          extra: 'player=${p.name}, era=${appProvider.era.name}',
+        ),
+      );
     }
   }
 
@@ -1255,7 +1443,9 @@ mixin GameInitMixin on GameProviderBase {
     }
 
     // 最高分校，但加入少量随机扰动（防止同质化）
-    final candidates = scores.entries.where((e) => e.value == maxScore).toList();
+    final candidates = scores.entries
+        .where((e) => e.value == maxScore)
+        .toList();
     candidates.shuffle(random);
     return candidates.first.key;
   }

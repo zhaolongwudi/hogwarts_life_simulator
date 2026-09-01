@@ -204,7 +204,10 @@ void main() {
 
         final body = _checkBodyFor(row.$1);
         expect(body, isNotNull, reason: '找不到 unlockAchievement(${row.$1}) 所在的函数');
-        expect(body!.contains(row.$3), isTrue,
+        // 格式容忍：dart format 会把 `>= 3` 拆成 `>=\n 3`，把判定字符串的
+        // 空格替换成 `\s*` 再匹配（契约是"判定数值与描述一致"，不是字面格式）
+        final pattern = row.$3.replaceAll(' ', r'\s*');
+        expect(RegExp(pattern).hasMatch(body!), isTrue,
             reason: '「${ach.name}」的判定里找不到「${row.$3}」：\n$body');
       });
     }

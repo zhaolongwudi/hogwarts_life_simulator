@@ -143,7 +143,9 @@ class AiDebugLogger {
         buf.writeln(error);
         buf.writeln('---');
       }
-      if (promptTokens != null || completionTokens != null || totalTokens != null) {
+      if (promptTokens != null ||
+          completionTokens != null ||
+          totalTokens != null) {
         buf.writeln('【Token 统计】');
         buf.writeln('---');
         buf.writeln('输入: ${promptTokens ?? '-'} tokens');
@@ -160,6 +162,7 @@ class AiDebugLogger {
       debugPrint('AiDebugLogger logComplete 失败: $e');
     }
   }
+
   static const int _maxFileBytes = 4 * 1024 * 1024; // 单日日志文件上限 4MB，防止无限膨胀
 
   Future<void> _writeToFile(String content) async {
@@ -204,9 +207,13 @@ class AiDebugLogger {
       for (final p in pairs.skip(7)) {
         try {
           await p.$1.delete();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('❌ 清理旧调试日志失败: $e');
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ 调试日志目录清理失败: $e');
+    }
   }
 
   String _pad(int n) => n.toString().padLeft(2, '0');
@@ -233,6 +240,7 @@ class AiDebugLogger {
     pairs.sort((a, b) => b.value.compareTo(a.value));
     return pairs.map((e) => e.key.path).toList();
   }
+
   /// 读取指定路径的日志文件文本（用于设置页 LogViewerDialog）
   Future<String?> readLogFile(String path) async {
     try {

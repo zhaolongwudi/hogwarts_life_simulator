@@ -49,7 +49,7 @@ class ReputationDelta {
 /// 从完整的 AI 输出里提取所有声望变化。
 ///
 /// 会拼接**所有**【声望变化】区块（见 [allSectionText] 的说明），
-/// 并对每行做一次结构解析；认不出维度的行直接跳过，不影响其它行。
+/// 并对每行做一次结构解析；认不出维度的行直接跳过，不影响其他行。
 List<ReputationDelta> extractReputationDeltas(String text) {
   final section = allSectionText(text, kReputationSectionRe);
   if (section == null) return const [];

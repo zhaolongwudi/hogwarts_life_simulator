@@ -741,7 +741,7 @@ class LongTermMemory {
     }
   }
 
-  /// 逐条反序列化：单条损坏只丢那一条，不影响同批次的其它记录。
+  /// 逐条反序列化：单条损坏只丢那一条，不影响同批次的其他记录。
   static List<T> _decodeList<T>(
     Object? raw,
     T Function(Map<String, dynamic>) decode,

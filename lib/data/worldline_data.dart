@@ -188,7 +188,7 @@ double? gapToNextStage(double deviation) {
 
 /// 一个因果锚点的选项
 class CausalOption {
-  /// 'intervene' / 'standAside' / 其它自定义 id
+  /// 'intervene' / 'standAside' / 其他自定义 id
   final String id;
 
   /// 按钮文字

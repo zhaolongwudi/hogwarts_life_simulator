@@ -20,20 +20,20 @@ class CrashEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'time': time.toIso8601String(),
-        'error': error,
-        'stackTrace': stackTrace,
-        'screen': screen,
-        'extra': extra,
-      };
+    'time': time.toIso8601String(),
+    'error': error,
+    'stackTrace': stackTrace,
+    'screen': screen,
+    'extra': extra,
+  };
 
   factory CrashEntry.fromJson(Map<String, dynamic> j) => CrashEntry(
-        time: DateTime.tryParse(j['time'] ?? '') ?? DateTime.now(),
-        error: (j['error'] ?? '').toString(),
-        stackTrace: (j['stackTrace'] ?? '').toString(),
-        screen: (j['screen'] ?? '').toString(),
-        extra: (j['extra'] ?? '').toString(),
-      );
+    time: DateTime.tryParse(j['time'] ?? '') ?? DateTime.now(),
+    error: (j['error'] ?? '').toString(),
+    stackTrace: (j['stackTrace'] ?? '').toString(),
+    screen: (j['screen'] ?? '').toString(),
+    extra: (j['extra'] ?? '').toString(),
+  );
 }
 
 class CrashLogger {
@@ -120,9 +120,12 @@ class CrashLogger {
     }
     _lastHeartbeatWrite = now;
     try {
-      File('$dir/heartbeat.json')
-          .writeAsStringSync(jsonEncode(_heartbeat), flush: true);
-    } catch (_) {}
+      File(
+        '$dir/heartbeat.json',
+      ).writeAsStringSync(jsonEncode(_heartbeat), flush: true);
+    } catch (e) {
+      debugPrint('❌ 心跳写盘失败: $e');
+    }
   }
 
   /// 启动时读取上次崩溃/卡死前的心跳（供设置页诊断展示）。
@@ -132,10 +135,13 @@ class CrashLogger {
     try {
       final f = File('$dir/heartbeat.json');
       if (f.existsSync()) {
-        _heartbeat =
-            Map<String, String>.from(jsonDecode(f.readAsStringSync()) as Map);
+        _heartbeat = Map<String, String>.from(
+          jsonDecode(f.readAsStringSync()) as Map,
+        );
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ 心跳读取失败: $e');
+    }
   }
 
   Future<void> load() async {
@@ -183,6 +189,8 @@ class CrashLogger {
     try {
       final f = await _ensureFile();
       await f.writeAsString(jsonEncode([]), flush: true);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ 日志清空失败: $e');
+    }
   }
 }

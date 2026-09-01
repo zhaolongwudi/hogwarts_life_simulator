@@ -419,7 +419,9 @@ void main() {
       final body = src.substring(i, i + 3200);
       final iHeader = body.indexOf('《终章报告》');
       final iReview = body.indexOf('buildEndingReview');
-      final iCompose = body.indexOf('ending = header +');
+      // 格式容忍：dart format 会把 `ending = header +` 拆成跨行，
+      // 用空白符可变的正则匹配（契约是"拼装发生在回望之后"，不是字面格式）
+      final iCompose = body.indexOf(RegExp(r'ending\s*=\s*header\s*\+'));
       expect(iHeader, greaterThan(-1));
       expect(iHeader, lessThan(iReview));
       // 拼装那一句要排在回望之后：先算出回望，再把它拼进终章

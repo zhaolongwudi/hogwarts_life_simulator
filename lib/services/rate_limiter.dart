@@ -76,7 +76,7 @@ class AgnesRateLimiter {
 /// 商汤平台不同模型配额不同（参考 https://platform.sensenova.cn/docs，2026-08）：
 ///   - sensenova-6.8-flash-lite / sensenova-6.7-flash-lite / sensenova-u1-fast：1500次/5h
 ///   - deepseek-v4-flash / glm-5.2：500次/5h（RPM 极低，约1.67次/分钟）
-/// 配额按模型独立计量，一个模型用完不影响其它模型。
+/// 配额按模型独立计量，一个模型用完不影响其他模型。
 class SenseNovaQuotaManager {
   static const Duration _windowDuration = Duration(hours: 5);
 

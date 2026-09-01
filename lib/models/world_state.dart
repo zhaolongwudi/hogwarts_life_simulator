@@ -109,7 +109,7 @@ class WorldState {
   int continuityBridgeMisses;
 
   // ====== 学院杯 · 年度榜 ======
-  // 学年榜不是学年末掷一次骰子：四院各从基准分起步，其它三院在学期内按
+  // 学年榜不是学年末掷一次骰子：四院各从基准分起步，其他三院在学期内按
   // 上学日逐日自然增长（世界不因玩家而停转），玩家的学院行 = 基准 + 玩家
   // 本学年贡献。学年结算时揭晓并写入 houseCupYearHistory，随后清空开始新学年。
   final Map<String, int> houseCupYearly;

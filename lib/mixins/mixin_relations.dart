@@ -29,7 +29,9 @@ mixin GameRelationsMixin on GameProviderBase {
     if (p == null) return;
 
     // 学年制上限：每学年最多生成6位新NPC（原4位，加速填充社交圈），跨学年自动重置计数
-    final sy = worldState.time.month >= 9 ? worldState.time.year : worldState.time.year - 1;
+    final sy = worldState.time.month >= 9
+        ? worldState.time.year
+        : worldState.time.year - 1;
     if (npcGenerationSchoolYear != sy) {
       npcGenerationSchoolYear = sy;
       npcGeneratedThisSchoolYear = 0;
@@ -41,17 +43,52 @@ mixin GameRelationsMixin on GameProviderBase {
     }
 
     final surnames = [
-      '布莱克', '隆巴顿', '洛夫古德', '迪戈里', '波特', '马尔福',
-      '沙比尼', '韦斯莱', '克鲁姆', '安德森', '塞尔温', '罗斯',
-      '阿什福德', '格雷', '芬尼甘', '博恩斯', '艾博', '普莱斯',
+      '布莱克',
+      '隆巴顿',
+      '洛夫古德',
+      '迪戈里',
+      '波特',
+      '马尔福',
+      '沙比尼',
+      '韦斯莱',
+      '克鲁姆',
+      '安德森',
+      '塞尔温',
+      '罗斯',
+      '阿什福德',
+      '格雷',
+      '芬尼甘',
+      '博恩斯',
+      '艾博',
+      '普莱斯',
     ];
     final givenMale = [
-      '西奥多', '塞巴斯蒂安', '艾德里安', '卡斯珀', '伊万', '诺亚',
-      '奥利弗', '利奥', '马库斯', '朱利安', '塞缪尔', '内森',
+      '西奥多',
+      '塞巴斯蒂安',
+      '艾德里安',
+      '卡斯珀',
+      '伊万',
+      '诺亚',
+      '奥利弗',
+      '利奥',
+      '马库斯',
+      '朱利安',
+      '塞缪尔',
+      '内森',
     ];
     final givenFemale = [
-      '塞西莉亚', '艾拉', '薇奥拉', '罗莎琳', '埃洛伊斯', '伊莎贝拉',
-      '莉莉安', '海伦娜', '卡珊德拉', '奥利维亚', '克洛伊', '斯嘉丽',
+      '塞西莉亚',
+      '艾拉',
+      '薇奥拉',
+      '罗莎琳',
+      '埃洛伊斯',
+      '伊莎贝拉',
+      '莉莉安',
+      '海伦娜',
+      '卡珊德拉',
+      '奥利维亚',
+      '克洛伊',
+      '斯嘉丽',
     ];
 
     final houseNames = {
@@ -88,11 +125,7 @@ mixin GameRelationsMixin on GameProviderBase {
         '目光锐利而充满好奇，总是在观察着周围的一切',
         '纤细的身影，眼神中带着几分聪慧的狡黠',
       ],
-      'Hufflepuff': [
-        '棕色的直发垂到肩际，笑容温暖而真诚',
-        '体格健壮，给人踏实可靠的感觉',
-        '圆圆的脸蛋，金色的眼睛里满是善意',
-      ],
+      'Hufflepuff': ['棕色的直发垂到肩际，笑容温暖而真诚', '体格健壮，给人踏实可靠的感觉', '圆圆的脸蛋，金色的眼睛里满是善意'],
     };
 
     // NPC 性别：匹配玩家取向所偏好的性别，保证玩家有可能喜欢上 TA。
@@ -110,7 +143,8 @@ mixin GameRelationsMixin on GameProviderBase {
     }
     final isMale = npcGender == '男';
     final givenNames = isMale ? givenMale : givenFemale;
-    final name = '${givenNames[random.nextInt(givenNames.length)]}·${surnames[random.nextInt(surnames.length)]}';
+    final name =
+        '${givenNames[random.nextInt(givenNames.length)]}·${surnames[random.nextInt(surnames.length)]}';
     final houses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
     final house = houses[random.nextInt(houses.length)];
     // BUG-FIX: id 只用毫秒时间戳时，同毫秒内连续生成（批量 /新NPC 生成 N、
@@ -122,8 +156,13 @@ mixin GameRelationsMixin on GameProviderBase {
 
     final archetypes = personalityTemplates.keys.toList();
     final archetype = archetypes[random.nextInt(archetypes.length)];
-    final personality = List<String>.from(personalityTemplates[archetype] ?? ['友善', '独立']);
-    final appearanceDesc = (appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇'])[random.nextInt((appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇']).length)];
+    final personality = List<String>.from(
+      personalityTemplates[archetype] ?? ['友善', '独立'],
+    );
+    final appearanceDesc =
+        (appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇'])[random.nextInt(
+          (appearanceTemplates[house] ?? ['面容清秀，眼神里带着好奇']).length,
+        )];
     final houseLabel = houseNames[house] ?? house;
 
     // NPC 取向：必须包含玩家性别（NPC 喜欢玩家），否则永远无法向玩家表白。
@@ -140,8 +179,9 @@ mixin GameRelationsMixin on GameProviderBase {
     final backstory = _generateNpcBackstoryFlavor(archetype, isMale, house);
     final goal = _generatePersonalGoal(archetype, house);
     final schedule = _generateNpcSchedule(house, grade);
-    final scheduleLine =
-        schedule.entries.map((e) => '${e.key} ${e.value}').join('；');
+    final scheduleLine = schedule.entries
+        .map((e) => '${e.key} ${e.value}')
+        .join('；');
 
     /// 新 NPC 的完整档案文本（背景故事 + 日常日程 + 目标）。
     String _buildGeneratedProfile({
@@ -173,7 +213,8 @@ mixin GameRelationsMixin on GameProviderBase {
       grade: grade,
       bloodStatus: 'unknown',
       personality: personality,
-      appearance: '$appearanceDesc。这位$houseLabel的${isMale ? '男生' : '女生'}，属于$archetype气质。',
+      appearance:
+          '$appearanceDesc。这位$houseLabel的${isMale ? '男生' : '女生'}，属于$archetype气质。',
       gender: npcGender,
       sexOrientation: sexOrientation,
       mood: roll(40, 70),
@@ -275,12 +316,8 @@ mixin GameRelationsMixin on GameProviderBase {
         '晚上': '在厨房帮家养小精灵',
       },
     };
-    return schedules[house] ?? {
-      '早晨': '在教室',
-      '上午': '在上课',
-      '下午': '在公共休息室',
-      '晚上': '在图书馆',
-    };
+    return schedules[house] ??
+        {'早晨': '在教室', '上午': '在上课', '下午': '在公共休息室', '晚上': '在图书馆'};
   }
 
   List<String> _generateKnownFacts(String archetype) {
@@ -337,7 +374,11 @@ mixin GameRelationsMixin on GameProviderBase {
     return rep;
   }
 
-  String _generateNpcBackstoryFlavor(String archetype, bool isMale, String house) {
+  String _generateNpcBackstoryFlavor(
+    String archetype,
+    bool isMale,
+    String house,
+  ) {
     final prefix = isMale ? '他' : '她';
     final flavors = <String, List<String>>{
       '勇敢型': [
@@ -402,17 +443,24 @@ mixin GameRelationsMixin on GameProviderBase {
     return p.galleons + p.bankGalleons;
   }
 
-  bool purchaseItem(String itemName, int price, {String type = 'item', String description = ''}) {
+  bool purchaseItem(
+    String itemName,
+    int price, {
+    String type = 'item',
+    String description = '',
+  }) {
     final p = player;
     if (p == null) return false;
     if (p.galleons < price) return false;
     p.galleons -= price;
-    p.inventory.add(InventoryItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: itemName,
-      type: type,
-      description: description.isEmpty ? '购买的$itemName' : description,
-    ));
+    p.inventory.add(
+      InventoryItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: itemName,
+        type: type,
+        description: description.isEmpty ? '购买的$itemName' : description,
+      ),
+    );
     // 买了就收进册子（如魁地奇徽章）。/收藏 以前永远是空的——没有任何
     // 地方往 collection 里写过东西。
     final collectibleId = collectibleForPurchase[itemName];
@@ -508,7 +556,13 @@ mixin GameRelationsMixin on GameProviderBase {
       if (needAttr != null) {
         final cur = p.attributes[needAttr] ?? 0;
         if (cur < needVal) {
-          notifications.add('💼 「${job.title}」需要${needVal}点${needAttr == 'social' ? '社交' : needAttr == 'theory' ? '魔法知识' : '观察力'}（当前 $cur）。');
+          notifications.add(
+            '💼 「${job.title}」需要${needVal}点${needAttr == 'social'
+                ? '社交'
+                : needAttr == 'theory'
+                ? '魔法知识'
+                : '观察力'}（当前 $cur）。',
+          );
           return 0;
         }
       }
@@ -519,7 +573,9 @@ mixin GameRelationsMixin on GameProviderBase {
     final minutes = job?.minutes ?? 120;
     final title = job?.title ?? jobId;
     p.galleons += pay;
-    p.jobHistory.add('$title: +$pay加隆 (${worldState.time.month}月${worldState.time.day}日)');
+    p.jobHistory.add(
+      '$title: +$pay加隆 (${worldState.time.month}月${worldState.time.day}日)',
+    );
     // 记下最近一次岗位：毕业后 /状态 的「职业」用它，否则那一行会去显示
     // initialTalent（天赋），和「主修天赋」重复。
     p.currentJobTitle = title;
@@ -559,7 +615,8 @@ mixin GameRelationsMixin on GameProviderBase {
     final repSummary =
         '学术${rep.academic} 社交${rep.social} 战斗${rep.combat} 道德${rep.moral} 领导${rep.leadership} 黑魔法${rep.dark}';
 
-    final header = '╔══════════════════════════════════════╗\n'
+    final header =
+        '╔══════════════════════════════════════╗\n'
         '  《终章报告》· ${p.name}的魔法人生\n'
         '╚══════════════════════════════════════╝\n\n'
         '【时代】${eraLabel(appProvider.era)}\n'
@@ -578,21 +635,24 @@ mixin GameRelationsMixin on GameProviderBase {
     // 上面那个 header 是一堆数字，AI 写的是一段评语，
     // 中间缺的正是**发生过的事**。没配 AI 的玩家只有本地回退，
     // 那恰恰是最需要这篇骨架的时候——否则终章就只剩一张成绩单。
-    final retrospective =
-        formatEndingReview(buildEndingReview(endingFactsOf(p)));
+    final retrospective = formatEndingReview(
+      buildEndingReview(endingFactsOf(p)),
+    );
 
     // 本地回退（无 AI 或调用失败时使用）
-    final localFallback = header +
+    final localFallback =
+        header +
         (retrospective.isEmpty ? '' : '\n$retrospective\n\n') +
         '这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
-        '也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，'
-        '在无数平行世界里继续生长。\n\n'
-        '—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';
+            '也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，'
+            '在无数平行世界里继续生长。\n\n'
+            '—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';
 
     var ending = localFallback;
     try {
       if (router != null && router!.hasNarrativeService) {
-        final prompt = '''请为玩家撰写一份《终章报告》的评语部分，作为这段魔法人生的结局回顾。用第二人称"你"，小说化文笔，情感克制而有温度，600字以内。
+        final prompt =
+            '''请为玩家撰写一份《终章报告》的评语部分，作为这段魔法人生的结局回顾。用第二人称"你"，小说化文笔，情感克制而有温度，600字以内。
 
   【玩家档案】
   姓名：${p.name}｜${p.gender}｜${bloodStatusLabel(p.bloodType)}｜${p.house ?? '未分院'}｜时代：${eraLabel(appProvider.era)}
@@ -615,15 +675,13 @@ mixin GameRelationsMixin on GameProviderBase {
   三、人生目标达成
   四、终章评语''';
 
-        final result = await callDeepSeek(
-          prompt,
-          scene: AiScene.summary,
-        );
+        final result = await callDeepSeek(prompt, scene: AiScene.summary);
         final content = result.content.trim();
         if (content.isNotEmpty) {
           // 顺序是：统计 → 回望（发生过什么）→ 评语（那意味着什么）。
           // 回望提供骨架，AI 的评语提供血肉，两件事不重复。
-          ending = header +
+          ending =
+              header +
               (retrospective.isEmpty ? '' : '\n$retrospective\n\n') +
               content;
         }
@@ -644,10 +702,9 @@ mixin GameRelationsMixin on GameProviderBase {
     // 只显示本局正式见过面/有过互动的人（introduced）：
     // 注册表开局会预注册整个时代的原典角色，不过滤的话新开局
     // 也会列出全员，看起来像上一局的残留
-    final met = npcRegistry.values
-        .where((n) => n.isAlive && n.introduced)
-        .toList()
-      ..sort((a, b) => b.affection.compareTo(a.affection));
+    final met =
+        npcRegistry.values.where((n) => n.isAlive && n.introduced).toList()
+          ..sort((a, b) => b.affection.compareTo(a.affection));
     // P2#13：已故 NPC 不再从列表里消失——法则五（NPC 会死）要能被看见，
     // 玩家才能知道谁不在了，而不是某天突然发现少了一个人。
     final dead = npcRegistry.values
@@ -663,16 +720,23 @@ mixin GameRelationsMixin on GameProviderBase {
       // 同样 -22，芥蒂和死对头是两回事。
       final tag = n.formerRival
           ? '🤝旧怨已了'
-          : (n.hasGrudge ? '${rivalryBadgeFor(n.rivalryTier(today))}${tierDefFor(n.rivalryTier(today)).label}' : '');
-      buf.writeln('· ${n.name}：好感 ${n.affection}（${n.affectionStage}）'
-          '${tag.isEmpty ? '' : ' $tag'}');
+          : (n.hasGrudge
+                ? '${rivalryBadgeFor(n.rivalryTier(today))}${tierDefFor(n.rivalryTier(today)).label}'
+                : '');
+      buf.writeln(
+        '· ${n.name}：好感 ${n.affection}（${n.affectionStage}）'
+        '${tag.isEmpty ? '' : ' $tag'}',
+      );
     }
     if (dead.isNotEmpty) {
       buf.writeln('\n☠️ 已故（${dead.length}）');
       for (final n in dead) {
-        final cause =
-            (n.deathCause == null || n.deathCause!.isEmpty) ? '' : '（${n.deathCause}）';
-        final on = (n.diedOn == null || n.diedOn!.isEmpty) ? '' : ' ${n.diedOn}';
+        final cause = (n.deathCause == null || n.deathCause!.isEmpty)
+            ? ''
+            : '（${n.deathCause}）';
+        final on = (n.diedOn == null || n.diedOn!.isEmpty)
+            ? ''
+            : ' ${n.diedOn}';
         buf.writeln('· ${n.name}$cause$on');
       }
     }
@@ -693,7 +757,10 @@ mixin GameRelationsMixin on GameProviderBase {
   String _formatHighAffectionHints() {
     final hints = npcRegistry.values
         .where((n) => n.affection >= 70 && n.isAlive && !n.confessed)
-        .map((n) => '· ${n.name}（好感 ${n.affection}）${n.isConsideringConfession ? '—— 似乎正在酝酿着什么……' : ''}')
+        .map(
+          (n) =>
+              '· ${n.name}（好感 ${n.affection}）${n.isConsideringConfession ? '—— 似乎正在酝酿着什么……' : ''}',
+        )
         .toList();
     if (hints.isEmpty) return '还没有人对你表现出特别的好感。';
     return '对你有较高好感的NPC：\n${hints.join('\n')}';
@@ -724,7 +791,18 @@ mixin GameRelationsMixin on GameProviderBase {
         buf.writeln('· ${love.marriedDate}：结婚');
       }
     }
-    const loveKws = ['💗', '心动', '告白', '表白', '约会', '恋人', '接吻', 'kiss', '拥抱', '情书'];
+    const loveKws = [
+      '💗',
+      '心动',
+      '告白',
+      '表白',
+      '约会',
+      '恋人',
+      '接吻',
+      'kiss',
+      '拥抱',
+      '情书',
+    ];
     final related = worldState.recentNarrativeEvents
         .where((e) => loveKws.any((k) => e.text.contains(k)))
         .take(8)
@@ -780,11 +858,13 @@ mixin GameRelationsMixin on GameProviderBase {
       stages.add('· ${entry.key}：${entry.value}（浪漫事件 $events 次）');
     }
     final highAffection = npcRegistry.values
-        .where((n) =>
-            n.affection >= 60 &&
-            n.isAlive &&
-            !love.relationshipStages.containsKey(n.name) &&
-            n.name != love.partnerName)
+        .where(
+          (n) =>
+              n.affection >= 60 &&
+              n.isAlive &&
+              !love.relationshipStages.containsKey(n.name) &&
+              n.name != love.partnerName,
+        )
         .take(5)
         .map((n) => '· ${n.name}：${n.affectionStage}（好感 ${n.affection}）')
         .toList();
@@ -832,8 +912,14 @@ mixin GameRelationsMixin on GameProviderBase {
     tags.add('你对 $closeness 更亲近（好感差 $diff）');
     // 血缘亲属检查
     final bloodRel = player!.bloodRelatives;
-    final aIsBlood = bloodRel.any((name) => name == a.name || a.name.contains(name) || name.contains(a.name));
-    final bIsBlood = bloodRel.any((name) => name == b.name || b.name.contains(name) || name.contains(b.name));
+    final aIsBlood = bloodRel.any(
+      (name) =>
+          name == a.name || a.name.contains(name) || name.contains(a.name),
+    );
+    final bIsBlood = bloodRel.any(
+      (name) =>
+          name == b.name || b.name.contains(name) || name.contains(b.name),
+    );
     if (aIsBlood && bIsBlood) tags.add('两人都是你的血缘亲属');
     return '【${a.name} 与 ${b.name} 的关系】\n'
         '标签：${tags.isEmpty ? '无特殊关联' : tags.join(' · ')}\n'
@@ -847,16 +933,19 @@ mixin GameRelationsMixin on GameProviderBase {
   String formatBoneMode() {
     if (player == null) return '【骨科模式】\n尚未创建角色。';
     final bloodRel = player!.bloodRelatives;
-    final buf = StringBuffer(player!.boneMode
-        ? '【骨科模式】已开启\n允许与血缘亲属发展浪漫关系。\n\n'
-        : '【骨科模式】已关闭\n无法与血缘亲属发展浪漫关系。\n\n');
+    final buf = StringBuffer(
+      player!.boneMode
+          ? '【骨科模式】已开启\n允许与血缘亲属发展浪漫关系。\n\n'
+          : '【骨科模式】已关闭\n无法与血缘亲属发展浪漫关系。\n\n',
+    );
     if (bloodRel.isEmpty) {
       buf.writeln('当前血缘亲属列表：（暂无记录）');
     } else {
       buf.writeln('当前血缘亲属列表：');
       for (final name in bloodRel.take(10)) {
         final npc = npcRegistry.values.firstWhere(
-          (n) => n.name == name || name.contains(n.name) || n.name.contains(name),
+          (n) =>
+              n.name == name || name.contains(n.name) || n.name.contains(name),
           orElse: () => NPC(id: '', name: name, house: ''),
         );
         final extra = npc.house.isNotEmpty ? ' · ${npc.house}' : '';
@@ -945,13 +1034,15 @@ mixin GameRelationsMixin on GameProviderBase {
     // 每日上限 + 成本：课堂互动有实打实的收益（声望/熟练度/好感），
     // 不限次数就能一天刷满——和决斗/禁林一样按天封顶。
     if (!canDoDaily('classroom')) {
-      currentNarrative = '今天的课已经上得够多了。你的笔记写满了三页羊皮纸，'
+      currentNarrative =
+          '今天的课已经上得够多了。你的笔记写满了三页羊皮纸，'
           '再待在教室里也只是让墨水瓶空得更快。\n\n（课堂互动每日上限 3 次，明天再来）';
       choices = [GameChoice(text: '返回', action: '继续')];
       return;
     }
     if (p.energy < 10) {
-      currentNarrative = '你太累了，连魔杖都快握不稳——这种状态上课只会被教授点名批评。'
+      currentNarrative =
+          '你太累了，连魔杖都快握不稳——这种状态上课只会被教授点名批评。'
           '先休息恢复精力吧。\n\n（精力不足 10）';
       choices = [GameChoice(text: '返回', action: '继续')];
       return;
@@ -967,12 +1058,14 @@ mixin GameRelationsMixin on GameProviderBase {
       final correct = random.nextBool();
       if (correct) {
         p.playerReputation.add('academic', 2);
-        result = '【课堂互动 · 教授提问】\n'
+        result =
+            '【课堂互动 · 教授提问】\n'
             '教授的目光扫过教室，最后停在你身上，抛出一个刁钻的问题。\n'
             '你略一思索，给出了答案。教室里响起几声低低的惊叹，教授罕见地点了点头。\n'
             '\n学术声望 +2';
       } else {
-        result = '【课堂互动 · 教授提问】\n'
+        result =
+            '【课堂互动 · 教授提问】\n'
             '教授突然点你的名。你心头一跳，答案卡在喉咙里，最后只好摇了摇头。\n'
             '几个同学投来同情的目光，你决定下次好好预习。\n'
             '\n（本次无变化）';
@@ -989,7 +1082,8 @@ mixin GameRelationsMixin on GameProviderBase {
       final skill = skills[random.nextInt(skills.length)];
       final attr = skillAttrs[skill]!;
       p.attributes[attr] = ((p.attributes[attr] ?? 50) + 1).clamp(0, 100);
-      result = '【课堂互动 · 实践操作】\n'
+      result =
+          '【课堂互动 · 实践操作】\n'
           '你握紧魔杖，全神贯注地练习$skill。魔杖尖端的光芒稳定而流畅，眼前的材料随着你的咒语乖巧地变化。\n'
           '\n$skill 熟练度 +1';
     } else if (roll < 90) {
@@ -999,7 +1093,8 @@ mixin GameRelationsMixin on GameProviderBase {
         final npc = alive[random.nextInt(alive.length)];
         final delta = 1 + random.nextInt(2); // +1 ~ +2
         this.updateNpcAffection(npc.id, delta, reason: '课堂同桌');
-        result = '【课堂互动 · 同桌】\n'
+        result =
+            '【课堂互动 · 同桌】\n'
             '趁教授转身，${npc.name}悄悄递来一张纸条，上面写着刚才没听懂的笔记要点。\n'
             '你冲对方感激地笑了笑。\n'
             '\n与 ${npc.name} 的好感 +$delta';
@@ -1030,8 +1125,10 @@ mixin GameRelationsMixin on GameProviderBase {
   String formatCollection() {
     final p = player;
     if (p == null) return '你还没有开始收集。';
-    final buf = StringBuffer('【收藏】'
-        '（${p.collection.length}/${kCollectibleCatalog.length}）\n');
+    final buf = StringBuffer(
+      '【收藏】'
+      '（${p.collection.length}/${kCollectibleCatalog.length}）\n',
+    );
     if (p.collection.isEmpty) {
       // 以前的空态文案许诺了两件根本拿不到的东西：「巧克力蛙画片」（当时
       // 没有掉落逻辑）和「日记本」（这个东西在任何地方都不存在）。改成写
@@ -1049,12 +1146,15 @@ mixin GameRelationsMixin on GameProviderBase {
       buf.writeln('【$series】${owned.length}/${all.length}');
       for (final c in all) {
         final has = p.collection.contains(c.id);
-        buf.writeln('${has ? '✅' : '🔒'} ${has ? c.name : '？？？'}'
-            '${has ? '　${c.starText}' : ''}');
+        buf.writeln(
+          '${has ? '✅' : '🔒'} ${has ? c.name : '？？？'}'
+          '${has ? '　${c.starText}' : ''}',
+        );
       }
     }
-    final unknown =
-        p.collection.where((id) => collectibleById(id) == null).toList();
+    final unknown = p.collection
+        .where((id) => collectibleById(id) == null)
+        .toList();
     if (unknown.isNotEmpty) {
       buf.writeln();
       buf.writeln('（有 ${unknown.length} 件旧存档里的收藏品已不在目录中）');
@@ -1119,7 +1219,9 @@ mixin GameRelationsMixin on GameProviderBase {
       final l = letters[i];
       final mark = l.read ? '　' : '✉';
       buf.writeln('[$mark ${i + 1}] ${l.sender}（${l.date}）');
-      final preview = l.content.length > 26 ? '${l.content.substring(0, 26)}…' : l.content;
+      final preview = l.content.length > 26
+          ? '${l.content.substring(0, 26)}…'
+          : l.content;
       buf.writeln('      $preview');
       buf.writeln();
     }
@@ -1194,12 +1296,14 @@ mixin GameRelationsMixin on GameProviderBase {
   /// 添加一封来信
   /// 上限保护：最多保留 50 封信，超出时优先删除最旧的已读信件
   void _addLetter({required String sender, required String content}) {
-    player!.letters.add(Letter(
-      id: 'L${DateTime.now().microsecondsSinceEpoch}',
-      sender: sender,
-      content: content,
-      date: worldState.time.formatDate(),
-    ));
+    player!.letters.add(
+      Letter(
+        id: 'L${DateTime.now().microsecondsSinceEpoch}',
+        sender: sender,
+        content: content,
+        date: worldState.time.formatDate(),
+      ),
+    );
     if (player!.letters.length > 50) {
       // 优先删除最旧的已读信件；若全部未读则删除最旧的
       final readIdx = player!.letters.indexWhere((l) => l.read);
@@ -1284,7 +1388,11 @@ mixin GameRelationsMixin on GameProviderBase {
       ..writeln('【天气】${w.weather ?? '晴朗'}')
       ..writeln()
       ..writeln('【近期世界事件】')
-      ..writeln(w.recentEvents.isEmpty ? '暂无记录' : w.recentEvents.map((e) => '· ${e.text}').join('\n'))
+      ..writeln(
+        w.recentEvents.isEmpty
+            ? '暂无记录'
+            : w.recentEvents.map((e) => '· ${e.text}').join('\n'),
+      )
       ..writeln()
       ..writeln('【世界线变动率】${(player?.worldLineDeviation ?? 0) * 100}%')
       ..writeln()
@@ -1296,14 +1404,23 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   String formatAffections({int maxEntries = 8}) {
-    final list = player == null
-        ? const <NPC>[]
-        : npcRegistry.values
-            .where((n) => n.introduced && (n.affection.abs() >= 30 || player!.relationships.containsKey(n.id)))
-            .toList()
+    final list =
+        player == null
+              ? const <NPC>[]
+              : npcRegistry.values
+                    .where(
+                      (n) =>
+                          n.introduced &&
+                          (n.affection.abs() >= 30 ||
+                              player!.relationships.containsKey(n.id)),
+                    )
+                    .toList()
           ..sort((a, b) => b.affection.compareTo(a.affection));
     if (list.isEmpty) return '暂无深入关系';
-    final entries = list.take(maxEntries).map((n) => '${n.name}(${n.affection})').join('、');
+    final entries = list
+        .take(maxEntries)
+        .map((n) => '${n.name}(${n.affection})')
+        .join('、');
     if (list.length > maxEntries) return '$entries 等${list.length}人';
     return entries;
   }
@@ -1323,7 +1440,10 @@ mixin GameRelationsMixin on GameProviderBase {
     }
     if (stage == '暧昧' || stage == '亲密') {
       love.recordRomanticEvent(npc.name);
-      worldState.addNarrativeEvent('💗 你和${npc.name}之间多了一段心动回忆。', turn: turnCount);
+      worldState.addNarrativeEvent(
+        '💗 你和${npc.name}之间多了一段心动回忆。',
+        turn: turnCount,
+      );
     }
   }
 
@@ -1340,7 +1460,10 @@ mixin GameRelationsMixin on GameProviderBase {
     // 使用 absoluteDayIndex（跨年单调递增），避免 dayOfYear 跨年相减为负
     final currentDay = worldState.time.absoluteDayIndex;
     final candidates = npcRegistry.values.where((n) {
-      if (!n.isAlive || n.affection < Balance.confessionMinAffection || n.confessed) return false;
+      if (!n.isAlive ||
+          n.affection < Balance.confessionMinAffection ||
+          n.confessed)
+        return false;
       // 取向双向校验：NPC 喜欢玩家性别 且 玩家喜欢 NPC 性别（详见 NPC.orientationMatches）
       if (!NPC.orientationMatches(
         npcGender: n.gender,
@@ -1354,9 +1477,12 @@ mixin GameRelationsMixin on GameProviderBase {
       final stage = p.loveState.stageFor(n.name);
       if (stage != '暧昧' && stage != '亲密') return false;
       // 检查浪漫事件计数
-      if (p.loveState.romanticEventsFor(n.name) < Balance.confessionMinRomanticEvents) return false;
+      if (p.loveState.romanticEventsFor(n.name) <
+          Balance.confessionMinRomanticEvents)
+        return false;
       // 检查暧昧持续时间
-      if (p.loveState.currentCrushName == n.name && !p.loveState.isCrushMature(currentDay)) {
+      if (p.loveState.currentCrushName == n.name &&
+          !p.loveState.isCrushMature(currentDay)) {
         return false;
       }
       return true;
@@ -1393,7 +1519,7 @@ mixin GameRelationsMixin on GameProviderBase {
     final originalNarrative = currentNarrative;
     currentNarrative =
         (originalNarrative.isEmpty ? '' : '$originalNarrative\n\n') +
-            _buildConfessionNarrative(npc, p);
+        _buildConfessionNarrative(npc, p);
     choices = [
       GameChoice(text: '接受这份心意', action: '接受${npc.name}的表白'),
       GameChoice(text: '婉拒，但保持朋友关系', action: '婉拒${npc.name}，希望保持朋友关系'),
@@ -1468,13 +1594,19 @@ mixin GameRelationsMixin on GameProviderBase {
     // 最极端的情况（跨学院的纯血至上老师 + 血统不纯 + 立场对立）能叠到 -55，
     // 而声望量程是 0~100，一次打到底就没法玩了。封个顶。
     delta = delta.clamp(-30, 10);
-    p.playerReputation.add('social', delta);
+    // 框架1 §13.3 表头是「学院声望变化」：恋爱对声望的代价应落在学院声望上。
+    // 历史问题：这里写的是 social（社交声望），而 UI 的「学院声望」只被学院杯
+    // 结算改动——玩家跨学院恋爱后学院声望纹丝不动，文档与执行两套口径。
+    p.houseReputation = (p.houseReputation + delta).clamp(0, 100);
     final sign = delta > 0 ? '+' : '';
-    notifications.add('💬 你和${npc.name}在一起的消息传开了：社交声望 $sign$delta'
-        '（${detail.join('、')}）');
+    notifications.add(
+      '💬 你和${npc.name}在一起的消息传开了：学院声望 $sign$delta'
+      '（${detail.join('、')}）',
+    );
     worldState.addNarrativeEvent(
-        '💬 关于你和${npc.name}的传闻改变了旁人的看法（社交声望 $sign$delta）',
-        turn: turnCount);
+      '💬 关于你和${npc.name}的传闻改变了旁人的看法（学院声望 $sign$delta）',
+      turn: turnCount,
+    );
   }
 
   void resolveConfession(bool accepted, String npcName) {
@@ -1513,7 +1645,10 @@ mixin GameRelationsMixin on GameProviderBase {
       notifications.add('💕 你与${npc.name}开始了恋爱！');
       worldState.addNarrativeEvent('💕 你与${npc.name}开始了恋爱！', turn: turnCount);
       addRumor('你与${npc.name}正在交往的消息，像野火一样传遍了霍格沃茨。');
-      bumpImpactScore(npc.isCanon ? 0.08 : 0.04, debugReason: '接受${npc.name}表白${npc.isCanon?'(原著NPC)':''}');
+      bumpImpactScore(
+        npc.isCanon ? 0.08 : 0.04,
+        debugReason: '接受${npc.name}表白${npc.isCanon ? '(原著NPC)' : ''}',
+      );
       _applyLoveReputation(npc);
       currentNarrative =
           '你点了点头，${npc.name}的眼睛瞬间亮了起来，像被月光点亮。\n\n'
@@ -1523,7 +1658,10 @@ mixin GameRelationsMixin on GameProviderBase {
       this.updateNpcAffection(npc.id, -5, reason: '婉拒表白');
       unlockCG(cgById('CG-CF-002'));
       addRumor('听说${npc.name}向你表白，却被你拒绝了。');
-      bumpImpactScore(npc.isCanon ? 0.03 : 0.015, debugReason: '婉拒${npc.name}表白');
+      bumpImpactScore(
+        npc.isCanon ? 0.03 : 0.015,
+        debugReason: '婉拒${npc.name}表白',
+      );
       currentNarrative =
           '你温和地摇了摇头。${npc.name}的眼神黯淡了一下，但很快挤出一个微笑。\n\n'
           '"我明白了……那我们，还是朋友吧？"\n\n'
@@ -1536,15 +1674,29 @@ mixin GameRelationsMixin on GameProviderBase {
   String _formatDate() {
     final t = worldState.time;
     final year = t.year;
-    final months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    final month = (t.month >= 1 && t.month <= 12) ? months[t.month - 1] : '${t.month}月';
+    final months = [
+      '1月',
+      '2月',
+      '3月',
+      '4月',
+      '5月',
+      '6月',
+      '7月',
+      '8月',
+      '9月',
+      '10月',
+      '11月',
+      '12月',
+    ];
+    final month = (t.month >= 1 && t.month <= 12)
+        ? months[t.month - 1]
+        : '${t.month}月';
     final day = worldState.dayOfMonth;
     final weekday = worldState.dayOfWeek;
     final hour = t.hour.toString().padLeft(2, '0');
     final minute = t.minute.toString().padLeft(2, '0');
     return '📅 $year年$month$day日，$weekday，[$hour:$minute]';
   }
-
 
   // ==================== 婚姻与家庭 ====================
   //
@@ -1589,8 +1741,10 @@ mixin GameRelationsMixin on GameProviderBase {
     });
     notifications.add('💍 你向${npc.name}求婚，对方红着脸答应了');
     worldState.addNarrativeEvent('💍 与${npc.name}订婚', turn: turnCount);
-    bumpImpactScore(npc.isCanon ? 0.06 : 0.03,
-        debugReason: '与${npc.name}订婚${npc.isCanon ? '(原著NPC)' : ''}');
+    bumpImpactScore(
+      npc.isCanon ? 0.06 : 0.03,
+      debugReason: '与${npc.name}订婚${npc.isCanon ? '(原著NPC)' : ''}',
+    );
     notifyListeners();
     return null;
   }
@@ -1615,8 +1769,9 @@ mixin GameRelationsMixin on GameProviderBase {
     notifications.add('💒 你与$partnerName 在亲友的祝福中举行了婚礼');
     worldState.addNarrativeEvent('💒 与$partnerName 结婚', turn: turnCount);
     worldState.addTimelineBranch(
-        '与$partnerName 成婚：一条原作里不存在的家族线从这里开始',
-        snapshot: worldSnapshot());
+      '与$partnerName 成婚：一条原作里不存在的家族线从这里开始',
+      snapshot: worldSnapshot(),
+    );
     addRumor('$partnerName 和你在霍格沃茨举行了婚礼，这件事被念叨了整整一个学期。');
     bumpImpactScore(0.08, debugReason: '结婚：$partnerName');
     notifyListeners();
@@ -1682,9 +1837,25 @@ mixin GameRelationsMixin on GameProviderBase {
 
   String _generateChildName(String partnerName) {
     final givenPools = <String>[
-      '星河', '砚清', '知微', '云舒', '南枝', '照野', '闻笛', '疏桐',
-      '衔烛', '琅玕', '拾光', '望舒', '予安', '岁禾', '向晚',
-      '斯年', '清和', '砚舟', '拂衣',
+      '星河',
+      '砚清',
+      '知微',
+      '云舒',
+      '南枝',
+      '照野',
+      '闻笛',
+      '疏桐',
+      '衔烛',
+      '琅玕',
+      '拾光',
+      '望舒',
+      '予安',
+      '岁禾',
+      '向晚',
+      '斯年',
+      '清和',
+      '砚舟',
+      '拂衣',
     ];
     final given = givenPools[random.nextInt(givenPools.length)];
     // 姓氏取玩家的姓（取名字首字），避免生成出与双方都无关的第三姓
@@ -1694,8 +1865,18 @@ mixin GameRelationsMixin on GameProviderBase {
 
   List<String> _rollChildTraits() {
     final pool = <String>[
-      '好奇', '安静', '倔强', '体贴', '胆大', '细心', '爱笑', '内向',
-      '早慧', '黏人', '固执', '温和',
+      '好奇',
+      '安静',
+      '倔强',
+      '体贴',
+      '胆大',
+      '细心',
+      '爱笑',
+      '内向',
+      '早慧',
+      '黏人',
+      '固执',
+      '温和',
     ];
     final picked = <String>[];
     final count = 1 + random.nextInt(2);
@@ -1741,8 +1922,10 @@ mixin GameRelationsMixin on GameProviderBase {
       buf.writeln('\n👶 子女 ${p.children.length} 人：');
       for (final c in p.children) {
         buf.writeln('· ${c.name}（${c.gender}）· 生于 ${c.bornOn}');
-        buf.writeln('  另一半：${c.otherParentName}'
-            '${c.traits.isNotEmpty ? ' · 性情：${c.traits.join('、')}' : ''}');
+        buf.writeln(
+          '  另一半：${c.otherParentName}'
+          '${c.traits.isNotEmpty ? ' · 性情：${c.traits.join('、')}' : ''}',
+        );
       }
     }
 
@@ -1830,9 +2013,11 @@ mixin GameRelationsMixin on GameProviderBase {
     final p = player;
     final buf = StringBuffer('【拉郎配】\n');
     if (p == null || p.shippings.isEmpty) {
-      buf.writeln('你还没有撮合任何人。\n'
-          '输入 /拉郎配 [甲] [乙] 开始留意两个人的关系，'
-          '当他们在同一段剧情里同时出现时，羁绊会逐步加深并解锁专属CG。');
+      buf.writeln(
+        '你还没有撮合任何人。\n'
+        '输入 /拉郎配 [甲] [乙] 开始留意两个人的关系，'
+        '当他们在同一段剧情里同时出现时，羁绊会逐步加深并解锁专属CG。',
+      );
       return buf.toString();
     }
     for (var i = 0; i < p.shippings.length; i++) {
@@ -1983,7 +2168,9 @@ mixin GameRelationsMixin on GameProviderBase {
     if (p == null) return;
     // 社交蝴蝶=真正结识过的NPC ≥ 10 位（introduced=true，必须剧情中正式见面/产生过互动）
     // 不再用"NPC总数≥10"——NPC注册表初始化就有几十个，开局秒解锁是bug。
-    final friendCount = npcRegistry.values.where((n) => n.isAlive && n.introduced).length;
+    final friendCount = npcRegistry.values
+        .where((n) => n.isAlive && n.introduced)
+        .length;
     if (friendCount >= 10) unlockAchievement('social_butterfly');
   }
 
@@ -2006,7 +2193,10 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   void _checkMonthlyEvolutionAchievement() {
-    if (worldState.recentEvents.where((e) => e.text.contains('月度世界演化')).length >= 3) {
+    if (worldState.recentEvents
+            .where((e) => e.text.contains('月度世界演化'))
+            .length >=
+        3) {
       unlockAchievement('monthly_evolution');
     }
   }
@@ -2112,8 +2302,11 @@ mixin GameRelationsMixin on GameProviderBase {
     // 只写名字：给个提示，不消耗任何东西
     if (!hasItem(p.inventory, gift)) {
       final owned = p.inventory
-          .where((e) => itemDefByName(e.name)?.type == '礼物' ||
-              itemDefByName(e.name)?.type == '材料')
+          .where(
+            (e) =>
+                itemDefByName(e.name)?.type == '礼物' ||
+                itemDefByName(e.name)?.type == '材料',
+          )
           .map((e) => e.name)
           .toSet()
           .toList();
@@ -2141,20 +2334,28 @@ mixin GameRelationsMixin on GameProviderBase {
     final buf = StringBuffer('【送礼 · ${npc.name}】\n');
     switch (verdict.reaction) {
       case GiftReaction.beloved:
-        buf.writeln('你把$gift递过去。${npc.name}愣了一下，随即笑得很亮：'
-            '「你怎么知道我想要这个？」');
+        buf.writeln(
+          '你把$gift递过去。${npc.name}愣了一下，随即笑得很亮：'
+          '「你怎么知道我想要这个？」',
+        );
         buf.writeln('（${verdict.ruleName}，好感 +$delta → ${npc.affection}）');
       case GiftReaction.liked:
-        buf.writeln('${npc.name}把$gift翻来覆去看了两遍，收进袍子口袋：'
-            '「挺合我心意的，谢了。」');
+        buf.writeln(
+          '${npc.name}把$gift翻来覆去看了两遍，收进袍子口袋：'
+          '「挺合我心意的，谢了。」',
+        );
         buf.writeln('（${verdict.ruleName}，好感 +$delta → ${npc.affection}）');
       case GiftReaction.neutral:
-        buf.writeln('${npc.name}道了谢，把$gift随手搁在一边——'
-            '不算讨厌，也说不上喜欢。');
+        buf.writeln(
+          '${npc.name}道了谢，把$gift随手搁在一边——'
+          '不算讨厌，也说不上喜欢。',
+        );
         buf.writeln('（${verdict.ruleName}，好感 +$delta → ${npc.affection}）');
       case GiftReaction.unknown:
-        buf.writeln('${npc.name}礼貌地收下$gift，但你没看出他有多高兴。'
-            '也许该换一样试试。');
+        buf.writeln(
+          '${npc.name}礼貌地收下$gift，但你没看出他有多高兴。'
+          '也许该换一样试试。',
+        );
         buf.writeln('（好感 +$delta → ${npc.affection}）');
         final wishes = topWishes(npc.giftPrefs, limit: 2);
         if (wishes.isNotEmpty) {

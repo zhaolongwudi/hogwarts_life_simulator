@@ -36,27 +36,26 @@ class _IntroScreenState extends State<IntroScreen> {
     '第十三轮 · 最终确认',
   ];
 
-  // 1. 时代（第75章启动界面 · 8个时代选项）
-  int _eraIndex = 4;
+  // 1. 时代（8选项 → 框架1 四大时代 + 框架2 §12 五时代对齐，消除同名映射）
+  // 历史问题：'霍格沃茨建校早期/中世纪猎巫时期/格林德沃崛起时代' 三项
+  // 全部映射 Era.dumbledore，玩家选哪个体验都一样；亲世代（Era.marauders）
+  // 反而在问卷里没有入口，只能去设置页选。
+  int _eraIndex = 3;
   static const List<String> _eraOptions = [
-    '霍格沃茨建校早期',
-    '中世纪猎巫时期',
-    '格林德沃崛起时代',
+    '邓布利多时代',
+    '亲世代（掠夺者时代）',
     '第一次巫师战争',
-    '第二次巫师战争',
-    '战后重建时代',
-    '现代巫师社会',
-    '自定义时代',
+    '哈利同期（子世代）',
+    '战后时代',
+    '随机时代',
   ];
   static const List<String> _eraDescriptions = [
-    '约990年 · 四位创始人建校时代',
-    '1692年前后 · 《国际保密法》实施',
-    '1920s-1945 · 格林德沃席卷欧洲',
+    '1892-1899 · 与年轻的邓布利多同窗（含建校/中世纪/格林德沃等更早背景）',
+    '1971-1978 · 詹姆、小天狼星、卢平、斯内普仍在霍格沃茨',
     '1970s · 伏地魔崛起，社会紧张',
-    '1995-1998 · 伏地魔复活，全面战争',
+    '1991-1998 · 与哈利·波特同届或相邻年级',
     '1998-2010s · 战后重建，新秩序建立',
-    '2020+ · 阿不思·波特时代',
-    '由玩家自定义时代背景',
+    '由系统随机决定时代',
   ];
 
   // 2. 姓名与身份
@@ -87,9 +86,17 @@ class _IntroScreenState extends State<IntroScreen> {
   // 出生身份（第75章）
   String _birthIdentity = '普通巫师家庭';
   static const List<String> _birthIdentityOptions = [
-    '普通巫师家庭', '麻瓜家庭', '孤儿', '纯血没落家族',
-    '纯血豪门', '魔法部官员家庭', '傲罗家庭', '教授家庭',
-    '古灵阁妖精契约相关', '圣芒戈治疗师家庭', '自定义',
+    '普通巫师家庭',
+    '麻瓜家庭',
+    '孤儿',
+    '纯血没落家族',
+    '纯血豪门',
+    '魔法部官员家庭',
+    '傲罗家庭',
+    '教授家庭',
+    '古灵阁妖精契约相关',
+    '圣芒戈治疗师家庭',
+    '自定义',
   ];
 
   // 5. 童年经历（选3项）
@@ -108,9 +115,21 @@ class _IntroScreenState extends State<IntroScreen> {
 
   // 6. 性格特质（选3-5个）
   static const List<String> _traits = [
-    '勇敢', '聪明', '善良', '野心', '谨慎',
-    '幽默', '内向', '叛逆', '温柔', '倔强',
-    '好奇', '忠诚', '独立', '乐观', '敏感',
+    '勇敢',
+    '聪明',
+    '善良',
+    '野心',
+    '谨慎',
+    '幽默',
+    '内向',
+    '叛逆',
+    '温柔',
+    '倔强',
+    '好奇',
+    '忠诚',
+    '独立',
+    '乐观',
+    '敏感',
   ];
   final List<String> _selectedTraits = [];
 
@@ -193,7 +212,12 @@ class _IntroScreenState extends State<IntroScreen> {
 
   // 11. 好友关系（初始好感度最高的NPC）
   String _friendChoice = '随机';
-  static const List<String> _friendOptions = ['随机', '同学院同学', '跨学院朋友', '高年级学长/学姐'];
+  static const List<String> _friendOptions = [
+    '随机',
+    '同学院同学',
+    '跨学院朋友',
+    '高年级学长/学姐',
+  ];
 
   // 12. 剧情起点
   String _startPoint = '收到录取通知书的那一刻';
@@ -240,33 +264,33 @@ class _IntroScreenState extends State<IntroScreen> {
     switch (_step) {
       case 1:
         if (_nameController.text.trim().isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('请输入你的名字')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('请输入你的名字')));
           return false;
         }
         return true;
       case 5:
         if (_selectedChildhood.length < 3) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('请选择3项童年经历')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('请选择3项童年经历')));
           return false;
         }
         return true;
       case 6:
         if (_selectedTraits.length < 3) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('请选择3-5个性格特质')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('请选择3-5个性格特质')));
           return false;
         }
         return true;
       case 8:
         if (_selectedWandId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('请选择一根魔杖')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('请选择一根魔杖')));
           return false;
         }
         return true;
@@ -278,16 +302,14 @@ class _IntroScreenState extends State<IntroScreen> {
     final gameProvider = context.read<GameProvider>();
     final appProvider = context.read<AppProvider>();
 
-    // 时代映射（第75章8选项 → Era枚举）
+    // 时代映射（6选项 → Era枚举，一选项一时代，不再同名）
     const eraMap = [
-      Era.dumbledore,       // 霍格沃茨建校早期 → 映射到最早的可用时代
-      Era.dumbledore,       // 中世纪猎巫时期
-      Era.dumbledore,       // 格林德沃崛起时代
-      Era.first_war,        // 第一次巫师战争
-      Era.harry_same,       // 第二次巫师战争
-      Era.post_war,         // 战后重建时代
-      Era.post_war,         // 现代巫师社会
-      Era.random,           // 自定义时代
+      Era.dumbledore, // 邓布利多时代
+      Era.marauders, // 亲世代（掠夺者时代）
+      Era.first_war, // 第一次巫师战争
+      Era.harry_same, // 哈利同期（子世代）
+      Era.post_war, // 战后时代
+      Era.random, // 随机时代
     ];
     appProvider.setEra(eraMap[_eraIndex]);
 
@@ -433,13 +455,17 @@ class _IntroScreenState extends State<IntroScreen> {
               child: ElevatedButton(
                 onPressed: canProceed ? _next : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: canProceed ? const Color(0xFF740001) : const Color(0xFF484f58),
+                  backgroundColor: canProceed
+                      ? const Color(0xFF740001)
+                      : const Color(0xFF484f58),
                   disabledBackgroundColor: const Color(0xFF484f58),
                   minimumSize: const Size.fromHeight(48),
                 ),
                 child: Text(
                   _step == 12 ? '🪄 开启魔法人生' : '下一步',
-                  style: TextStyle(color: canProceed ? Colors.white : Colors.white38),
+                  style: TextStyle(
+                    color: canProceed ? Colors.white : Colors.white38,
+                  ),
                 ),
               ),
             ),
@@ -502,14 +528,22 @@ class _IntroScreenState extends State<IntroScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text('性别', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '性别',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: _genderOptions.map((g) {
               final selected = _gender == g;
               return FilterChip(
-                label: Text(g, style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                label: Text(
+                  g,
+                  style: TextStyle(
+                    color: selected ? Colors.white : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() {
                   _gender = g;
@@ -517,26 +551,46 @@ class _IntroScreenState extends State<IntroScreen> {
                 }),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFF740001),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
           const SizedBox(height: 16),
-          const Text('性取向（默认异性）', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '性取向（默认异性）',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: ['女', '男', '双性'].map((s) {
               final selected = _sexOrientation == s;
               return FilterChip(
-                label: Text(s, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                label: Text(
+                  s,
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _sexOrientation = s),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -572,7 +626,10 @@ class _IntroScreenState extends State<IntroScreen> {
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('血统/出身', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '血统/出身',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -580,13 +637,24 @@ class _IntroScreenState extends State<IntroScreen> {
             children: kBloodStatusOptions.map((val) {
               final selected = _bloodStatus == val;
               return FilterChip(
-                label: Text(bloodStatusOptionLabel(val), style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                label: Text(
+                  bloodStatusOptionLabel(val),
+                  style: TextStyle(
+                    color: selected ? Colors.white : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _bloodStatus = val),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFF740001),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -597,16 +665,25 @@ class _IntroScreenState extends State<IntroScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFD3A625).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: const Color(0xFFD3A625).withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, size: 16, color: Color(0xFFD3A625)),
+                  const Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Color(0xFFD3A625),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       kBloodStatusDescriptions[_bloodStatus]!,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFFD3A625)),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFD3A625),
+                      ),
                     ),
                   ),
                 ],
@@ -614,7 +691,10 @@ class _IntroScreenState extends State<IntroScreen> {
             ),
           ],
           const SizedBox(height: 24),
-          const Text('出生身份', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '出生身份',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -622,13 +702,24 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _birthIdentityOptions.map((val) {
               final selected = _birthIdentity == val;
               return FilterChip(
-                label: Text(val, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                label: Text(
+                  val,
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _birthIdentity = val),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -653,13 +744,16 @@ class _IntroScreenState extends State<IntroScreen> {
               return FilterChip(
                 label: Text(
                   c,
-                  style: TextStyle(color: selected ? Colors.black : Colors.white70),
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                  ),
                 ),
                 selected: selected,
                 onSelected: (v) {
                   setState(() {
                     if (v) {
-                      if (_selectedChildhood.length < 3) _selectedChildhood.add(c);
+                      if (_selectedChildhood.length < 3)
+                        _selectedChildhood.add(c);
                     } else {
                       _selectedChildhood.remove(c);
                     }
@@ -667,8 +761,14 @@ class _IntroScreenState extends State<IntroScreen> {
                 },
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -705,7 +805,9 @@ class _IntroScreenState extends State<IntroScreen> {
                     ],
                     Text(
                       trait,
-                      style: TextStyle(color: selected ? Colors.black : Colors.white70),
+                      style: TextStyle(
+                        color: selected ? Colors.black : Colors.white70,
+                      ),
                     ),
                   ],
                 ),
@@ -713,7 +815,8 @@ class _IntroScreenState extends State<IntroScreen> {
                 onSelected: (v) {
                   setState(() {
                     if (v) {
-                      if (_selectedTraits.length < 5) _selectedTraits.add(trait);
+                      if (_selectedTraits.length < 5)
+                        _selectedTraits.add(trait);
                     } else {
                       _selectedTraits.remove(trait);
                     }
@@ -721,8 +824,14 @@ class _IntroScreenState extends State<IntroScreen> {
                 },
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -783,7 +892,10 @@ class _IntroScreenState extends State<IntroScreen> {
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('天赋专精', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '天赋专精',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -791,18 +903,32 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _talentOptions.map((t) {
               final selected = _talent == t;
               return FilterChip(
-                label: Text(t, style: TextStyle(color: selected ? Colors.white : Colors.white70)),
+                label: Text(
+                  t,
+                  style: TextStyle(
+                    color: selected ? Colors.white : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _talent = t),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFF740001),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
           const SizedBox(height: 20),
-          const Text('魔法资质', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '魔法资质',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -810,18 +936,33 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _magicAptitudeOptions.map((a) {
               final selected = _magicAptitude == a;
               return FilterChip(
-                label: Text(a, style: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 12)),
+                label: Text(
+                  a,
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _magicAptitude = a),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
           const SizedBox(height: 20),
-          const Text('学院倾向', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '学院倾向',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -829,18 +970,33 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _housePreferenceOptions.map((h) {
               final selected = _housePreference == h;
               return FilterChip(
-                label: Text(h, style: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 12)),
+                label: Text(
+                  h,
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _housePreference = h),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
           const SizedBox(height: 20),
-          const Text('初始政治倾向', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '初始政治倾向',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -848,18 +1004,32 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _politicalOptions.map((p) {
               final selected = _politicalTendency == p;
               return FilterChip(
-                label: Text(p, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                label: Text(
+                  p,
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _politicalTendency = p),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
           const SizedBox(height: 20),
-          const Text('模拟风格', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            '模拟风格',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -867,13 +1037,24 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _simulationStyleOptions.map((s) {
               final selected = _simulationStyle == s;
               return FilterChip(
-                label: Text(s, style: TextStyle(color: selected ? Colors.black : Colors.white70)),
+                label: Text(
+                  s,
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white70,
+                  ),
+                ),
                 selected: selected,
                 onSelected: (_) => setState(() => _simulationStyle = s),
                 backgroundColor: const Color(0xFF21262d),
                 selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF30363d),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -904,7 +1085,14 @@ class _IntroScreenState extends State<IntroScreen> {
     );
   }
 
-  static const List<String?> _petOptionIds = ['owl', 'cat', 'toad', 'rat', 'kyuubi', null];
+  static const List<String?> _petOptionIds = [
+    'owl',
+    'cat',
+    'toad',
+    'rat',
+    'kyuubi',
+    null,
+  ];
 
   // ==================== 第十一轮 · 好友关系 ====================
   Widget _buildFriendStep() {
@@ -1036,15 +1224,21 @@ class _IntroScreenState extends State<IntroScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: selected ? const Color(0xFFD3A625) : const Color(0xFF30363d),
+                color: selected
+                    ? const Color(0xFFD3A625)
+                    : const Color(0xFF30363d),
                 width: selected ? 1.5 : 1,
               ),
             ),
             child: Row(
               children: [
                 Icon(
-                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                  color: selected ? const Color(0xFFD3A625) : const Color(0xFF8B949E),
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: selected
+                      ? const Color(0xFFD3A625)
+                      : const Color(0xFF8B949E),
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -1056,14 +1250,19 @@ class _IntroScreenState extends State<IntroScreen> {
                         title,
                         style: TextStyle(
                           fontSize: 14,
-                          color: selected ? Colors.white : const Color(0xFFE6EDF3),
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFFE6EDF3),
                         ),
                       ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF8B949E),
+                          ),
                         ),
                       ],
                     ],

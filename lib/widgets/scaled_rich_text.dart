@@ -26,7 +26,7 @@ class ScaledRichText extends StatelessWidget {
     this.overflow = TextOverflow.clip,
   });
 
-  /// 当前上下文实际生效的缩放系数（供其它组件复用同一套夹取策略）
+  /// 当前上下文实际生效的缩放系数（供其他组件复用同一套夹取策略）
   static TextScaler scalerOf(BuildContext context) {
     final system = MediaQuery.textScalerOf(context);
     final scale = system.scale(1.0).clamp(1.0, maxScale);

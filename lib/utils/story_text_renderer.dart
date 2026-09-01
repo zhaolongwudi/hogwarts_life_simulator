@@ -18,10 +18,13 @@ import '../data/npc_data.dart';
 enum ParagraphKind {
   /// 普通叙述：首行缩进两全角空格。
   narration,
+
   /// 对话段（含引号台词或「说话人：」开头）：顶格 + 左侧色条衬底。
   dialogue,
+
   /// 内心独白（括号包裹/心想/暗自）：斜体 + 浅紫。
   innerVoice,
+
   /// 时间戳 / 标记段（【时间戳】/📅/⏳ 开头）：金色胶囊。
   timestamp,
 }
@@ -54,66 +57,216 @@ class StoryTextRenderer {
 
   /// NPC 名录之外的人物：有剧情但没进 NPC 表的角色，以及 AI 常用的简称。
   static const List<String> _extraCharacterWords = [
-    '哈利·波特', '赫敏·格兰杰', '罗恩·韦斯莱', '纳威·隆巴顿',
+    '哈利·波特',
+    '赫敏·格兰杰',
+    '罗恩·韦斯莱',
+    '纳威·隆巴顿',
     '查理·韦斯莱',
-    '拉文德·布朗', '西莫·斐尼甘', '帕瓦蒂·帕蒂尔', '迪安·托马斯',
-    '金妮·韦斯莱', '科林·克里维', '珀西·韦斯莱', '奥利弗·伍德',
-    '弗雷德·韦斯莱', '乔治·韦斯莱', '李·乔丹', '安吉丽娜·约翰逊',
-    '德拉科·马尔福', '文森特·克拉布', '格雷戈里·高尔', '潘西·帕金森',
-    '阿斯托利亚·格林格拉斯', '西奥多·诺特', '布拉德利·扎比尼',
-    '阿不思·邓布利多', '米勒娃·麦格', '西弗勒斯·斯内普', '鲁伯·海格',
-    '菲利乌斯·弗立维', '波莫娜·斯普劳特', '罗兰达·霍琦', '西比尔·特里劳妮',
-    '阿格斯·费尔奇', '伊尔玛·平斯', '波比·庞弗雷', '宾斯教授',
-    '霍拉斯·斯拉格霍恩', '吉德罗·洛哈特', '多洛雷斯·乌姆里奇',
-    '奥罗·布莱克', '贝拉特里克斯·莱斯特兰奇', '卢修斯·马尔福',
-    '纳西莎·马尔福', '彼得·佩迪鲁', '小矮星彼得',
-    '莱姆斯·卢平', '尼法朵拉·唐克斯', '天狼星·布莱克', '小天狼星',
-    '詹姆·波特', '莉莉·波特', '莉莉·伊万斯', '西吉·格林', '弗农·德思礼',
-    '佩妮·德思礼', '达力·德思礼', '莫丽·韦斯莱', '亚瑟·韦斯莱',
-    '莉娜·斯特兰奇', '塞德里克·迪戈里', '卢娜·洛夫古德',
-    '马克·麦克拉根', '罗米达·万尼', '克丽奥娜·张伯伦',
-    '哈利', '赫敏', '罗恩', '纳威', '金妮', '弗雷德', '乔治',
-    '马尔福', '斯内普', '邓布利多', '麦格', '海格', '弗立维',
-    '斯普劳特', '特里劳妮', '费尔奇', '庞弗雷', '洛哈特',
-    '卢平', '唐克斯', '布莱克', '波特', '韦斯莱', '迪戈里', '洛夫古德',
-    '德拉科', '珀西', '克拉布', '高尔', '莉莉', '詹姆', '塞德里克',
-    '卢娜', '霍琦', '斯拉格霍恩', '平斯', '费尔奇',
+    '拉文德·布朗',
+    '西莫·斐尼甘',
+    '帕瓦蒂·帕蒂尔',
+    '迪安·托马斯',
+    '金妮·韦斯莱',
+    '科林·克里维',
+    '珀西·韦斯莱',
+    '奥利弗·伍德',
+    '弗雷德·韦斯莱',
+    '乔治·韦斯莱',
+    '李·乔丹',
+    '安吉丽娜·约翰逊',
+    '德拉科·马尔福',
+    '文森特·克拉布',
+    '格雷戈里·高尔',
+    '潘西·帕金森',
+    '阿斯托利亚·格林格拉斯',
+    '西奥多·诺特',
+    '布拉德利·扎比尼',
+    '阿不思·邓布利多',
+    '米勒娃·麦格',
+    '西弗勒斯·斯内普',
+    '鲁伯·海格',
+    '菲利乌斯·弗立维',
+    '波莫娜·斯普劳特',
+    '罗兰达·霍琦',
+    '西比尔·特里劳妮',
+    '阿格斯·费尔奇',
+    '伊尔玛·平斯',
+    '波比·庞弗雷',
+    '宾斯教授',
+    '霍拉斯·斯拉格霍恩',
+    '吉德罗·洛哈特',
+    '多洛雷斯·乌姆里奇',
+    '奥罗·布莱克',
+    '贝拉特里克斯·莱斯特兰奇',
+    '卢修斯·马尔福',
+    '纳西莎·马尔福',
+    '彼得·佩迪鲁',
+    '小矮星彼得',
+    '莱姆斯·卢平',
+    '尼法朵拉·唐克斯',
+    '天狼星·布莱克',
+    '小天狼星',
+    '詹姆·波特',
+    '莉莉·波特',
+    '莉莉·伊万斯',
+    '西吉·格林',
+    '弗农·德思礼',
+    '佩妮·德思礼',
+    '达力·德思礼',
+    '莫丽·韦斯莱',
+    '亚瑟·韦斯莱',
+    '莉娜·斯特兰奇',
+    '塞德里克·迪戈里',
+    '卢娜·洛夫古德',
+    '马克·麦克拉根',
+    '罗米达·万尼',
+    '克丽奥娜·张伯伦',
+    '哈利',
+    '赫敏',
+    '罗恩',
+    '纳威',
+    '金妮',
+    '弗雷德',
+    '乔治',
+    '马尔福',
+    '斯内普',
+    '邓布利多',
+    '麦格',
+    '海格',
+    '弗立维',
+    '斯普劳特',
+    '特里劳妮',
+    '费尔奇',
+    '庞弗雷',
+    '洛哈特',
+    '卢平',
+    '唐克斯',
+    '布莱克',
+    '波特',
+    '韦斯莱',
+    '迪戈里',
+    '洛夫古德',
+    '德拉科',
+    '珀西',
+    '克拉布',
+    '高尔',
+    '莉莉',
+    '詹姆',
+    '塞德里克',
+    '卢娜',
+    '霍琦',
+    '斯拉格霍恩',
+    '平斯',
+    '费尔奇',
     '查理',
   ];
 
   /// 地点表（lib/data/locations.dart）之外的地名。
   static const List<String> _extraLocationWords = [
-    '霍格沃茨', '霍格沃茨城堡', '霍格莫德', '霍格莫德村',
-    '对角巷', '翻倒巷', '伦敦', '魔法部',
-    '大礼堂', '天文塔', '拉文克劳塔', '格兰芬多塔', '斯莱特林地牢',
-    '赫奇帕奇地下室', '黑湖', '禁林', '图书馆', '温室',
-    '魔药课教室', '魔咒教室', '变形课教室', '黑魔法防御术教室',
-    '决斗俱乐部', '训练场', '海格的小屋', '魁地奇球场',
-    '国王十字车站', '格里莫广场12号', '圣芒戈魔法伤病医院',
-    '破釜酒吧', '古灵阁', '古灵阁巫师银行',
-    '蜂蜜公爵糖果店', '帕笛芙夫人茶馆', '佐科笑话店',
-    '三把扫帚酒吧', '猪头酒吧', '霍格莫德车站', '霍格莫德邮局',
-    '尖叫棚屋', '风雅牌巫师服装店', '德维斯和班斯商店',
-    '奥利凡德魔杖店', '丽痕书店', '韦斯莱魔法把戏坊',
-    '神奇动物商店', '药店', '博金·博克古董店',
-    '陋居', '马尔福庄园', '女贞路4号', '诺特庄园',
-    '霍格沃茨特快', '霍格沃茨特快列车',
+    '霍格沃茨',
+    '霍格沃茨城堡',
+    '霍格莫德',
+    '霍格莫德村',
+    '对角巷',
+    '翻倒巷',
+    '伦敦',
+    '魔法部',
+    '大礼堂',
+    '天文塔',
+    '拉文克劳塔',
+    '格兰芬多塔',
+    '斯莱特林地牢',
+    '赫奇帕奇地下室',
+    '黑湖',
+    '禁林',
+    '图书馆',
+    '温室',
+    '魔药课教室',
+    '魔咒教室',
+    '变形课教室',
+    '黑魔法防御术教室',
+    '决斗俱乐部',
+    '训练场',
+    '海格的小屋',
+    '魁地奇球场',
+    '国王十字车站',
+    '格里莫广场12号',
+    '圣芒戈魔法伤病医院',
+    '破釜酒吧',
+    '古灵阁',
+    '古灵阁巫师银行',
+    '蜂蜜公爵糖果店',
+    '帕笛芙夫人茶馆',
+    '佐科笑话店',
+    '三把扫帚酒吧',
+    '猪头酒吧',
+    '霍格莫德车站',
+    '霍格莫德邮局',
+    '尖叫棚屋',
+    '风雅牌巫师服装店',
+    '德维斯和班斯商店',
+    '奥利凡德魔杖店',
+    '丽痕书店',
+    '韦斯莱魔法把戏坊',
+    '神奇动物商店',
+    '药店',
+    '博金·博克古董店',
+    '陋居',
+    '马尔福庄园',
+    '女贞路4号',
+    '诺特庄园',
+    '霍格沃茨特快',
+    '霍格沃茨特快列车',
   ];
 
   /// 物品表（lib/data/item_data.dart）之外的道具：传说器物、货币、刊物等。
   static const List<String> _extraItemWords = [
-    '魔杖', '飞天扫帚', '光轮2000', '光轮2001', '火弩箭',
-    '魂器', '死亡圣器', '魔法石', '贤者之石',
-    '分院帽', '冥想盆', '厄里斯魔镜', '时间转换器',
-    '比比多味豆', '巧克力蛙', '黄油啤酒', '南瓜汁',
-    '复方汤剂', '福灵剂', '幸运水', '吐真剂',
-    '隐形斗篷', '复活石', '接骨木魔杖', '凤凰尾羽',
-    '猫狸子', '猫头鹰', '蟾蜍', '火龙', '鹰头马身有翼兽',
-    '《预言家日报》', '《唱唱反调》', '《纯血统家族通览》',
-    '加隆', '西可', '纳特',
-    '魔法部徽章', '凤凰社徽章', '黑魔法防御术徽章',
-    '活点地图', '真正的魔杖', '魂器碎片',
-    '老魔杖', '接骨木魔杖', '紫杉木魔杖', '冬青木魔杖',
+    '魔杖',
+    '飞天扫帚',
+    '光轮2000',
+    '光轮2001',
+    '火弩箭',
+    '魂器',
+    '死亡圣器',
+    '魔法石',
+    '贤者之石',
+    '分院帽',
+    '冥想盆',
+    '厄里斯魔镜',
+    '时间转换器',
+    '比比多味豆',
+    '巧克力蛙',
+    '黄油啤酒',
+    '南瓜汁',
+    '复方汤剂',
+    '福灵剂',
+    '幸运水',
+    '吐真剂',
+    '隐形斗篷',
+    '复活石',
+    '接骨木魔杖',
+    '凤凰尾羽',
+    '猫狸子',
+    '猫头鹰',
+    '蟾蜍',
+    '火龙',
+    '鹰头马身有翼兽',
+    '《预言家日报》',
+    '《唱唱反调》',
+    '《纯血统家族通览》',
+    '加隆',
+    '西可',
+    '纳特',
+    '魔法部徽章',
+    '凤凰社徽章',
+    '黑魔法防御术徽章',
+    '活点地图',
+    '真正的魔杖',
+    '魂器碎片',
+    '老魔杖',
+    '接骨木魔杖',
+    '紫杉木魔杖',
+    '冬青木魔杖',
   ];
 
   /// 别名里的通用称谓/名词，不进高亮表。
@@ -125,9 +278,18 @@ class StoryTextRenderer {
   /// 这里显式排除。每个词都必须真的出现在某个 NPC 的别名里——有测试盯着，
   /// 免得这份清单以后变成一堆没人认领的字符串。
   static const Set<String> _aliasesTooGeneric = {
-    '双胞胎', '叛徒', '妹妹', '护士长',
-    '校医', '教父', '看门人', '管理员',
-    '级长', '追球手', '解说员', '蝎子',
+    '双胞胎',
+    '叛徒',
+    '妹妹',
+    '护士长',
+    '校医',
+    '教父',
+    '看门人',
+    '管理员',
+    '级长',
+    '追球手',
+    '解说员',
+    '蝎子',
   };
 
   /// 角色名 = 补充词 + NPC 全名 + NPC 别名（去掉通用称谓）。
@@ -135,21 +297,20 @@ class StoryTextRenderer {
     ..._extraCharacterWords,
     for (final npc in kAllNpcSeeds) npc.name,
     for (final npc in kAllNpcSeeds)
-      ...npc.aliases.where((a) => a.isNotEmpty && !_aliasesTooGeneric.contains(a)),
+      ...npc.aliases.where(
+        (a) => a.isNotEmpty && !_aliasesTooGeneric.contains(a),
+      ),
   };
 
   static final List<String> _characterNames = _characterNameSet.toList();
 
   /// 物品名 = 补充词 + 物品目录 + 采集材料，去掉已被角色名占掉的。
-  static final List<String> _items = _unclaimed(
-    <String>[
-      ..._extraItemWords,
-      ...kItemCatalog.map((i) => i.name),
-      ...kCommonLootMaterials,
-      ...kRareLootMaterials,
-    ],
-    _characterNameSet,
-  );
+  static final List<String> _items = _unclaimed(<String>[
+    ..._extraItemWords,
+    ...kItemCatalog.map((i) => i.name),
+    ...kCommonLootMaterials,
+    ...kRareLootMaterials,
+  ], _characterNameSet);
 
   /// 地点名 = 补充词 + 地点表的主名与别名，去掉已被角色名/物品名占掉的。
   ///
@@ -180,15 +341,14 @@ class StoryTextRenderer {
   // 预排序（长词在前）：实体高亮优先命中长词（如「霍格莫德车站」优先于
   // 「霍格莫德」、「古灵阁巫师银行」优先于「古灵阁」），且只排序一次，
   // 避免每次解析时对列表重新排序。
-  static final List<String> _characterNamesByLengthDesc =
-      List<String>.from(_characterNames)
-        ..sort((a, b) => b.length.compareTo(a.length));
-  static final List<String> _locationsByLengthDesc =
-      List<String>.from(_locations)
-        ..sort((a, b) => b.length.compareTo(a.length));
-  static final List<String> _itemsByLengthDesc =
-      List<String>.from(_items)
-        ..sort((a, b) => b.length.compareTo(a.length));
+  static final List<String> _characterNamesByLengthDesc = List<String>.from(
+    _characterNames,
+  )..sort((a, b) => b.length.compareTo(a.length));
+  static final List<String> _locationsByLengthDesc = List<String>.from(
+    _locations,
+  )..sort((a, b) => b.length.compareTo(a.length));
+  static final List<String> _itemsByLengthDesc = List<String>.from(_items)
+    ..sort((a, b) => b.length.compareTo(a.length));
 
   // ====== 语义化颜色体系（深色主题·柔和调色板） ======
   //
@@ -209,42 +369,59 @@ class StoryTextRenderer {
   static const double _bodyLineHeight = 1.6;
 
   static TextStyle _narrationStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _narrationColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _narrationColor,
   );
 
   static TextStyle _dialogueStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _dialogueColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _dialogueColor,
     fontWeight: FontWeight.w500,
   );
 
   static TextStyle _dialogueSpeakerStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _dialogueSpeakerColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _dialogueSpeakerColor,
     fontWeight: FontWeight.w700,
   );
 
   static TextStyle _characterStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _characterColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _characterColor,
     fontWeight: FontWeight.w600,
   );
 
   static TextStyle _locationStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _locationColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _locationColor,
     fontWeight: FontWeight.w500,
   );
 
   static TextStyle _itemStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _itemColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _itemColor,
     fontWeight: FontWeight.w500,
   );
 
   static const Color _affectionColor = Color(0xFF8B949E);
   static TextStyle _affectionStyle = const TextStyle(
-    fontSize: 12, height: _bodyLineHeight, color: _affectionColor,
+    fontSize: 12,
+    height: _bodyLineHeight,
+    color: _affectionColor,
     fontStyle: FontStyle.italic,
   );
   static TextStyle _affectionCharacterStyle = const TextStyle(
-    fontSize: 12, height: _bodyLineHeight, color: _affectionColor,
-    fontStyle: FontStyle.italic, fontWeight: FontWeight.w600,
+    fontSize: 12,
+    height: _bodyLineHeight,
+    color: _affectionColor,
+    fontStyle: FontStyle.italic,
+    fontWeight: FontWeight.w600,
   );
 
   /// 使用说明：解析文本并将【好感度变化】标记后的段落以柔和样式渲染。
@@ -301,13 +478,26 @@ class StoryTextRenderer {
   /// "玩家的心理活动：""重要物品/事件的细节描写："等）。
   /// 原先是 _stripOutlineLabels 里的局部非 const 列表（每次调用重建一次）。
   static const List<String> _outlineLabels = [
-    '环境氛围', '场景氛围',
-    'NPC的言行举止', 'NPC 言行举止', 'NPC言行举止', '人物言行',
-    '玩家的心理活动', '玩家心理活动', '心理活动',
-    '重要物品/事件的细节描写', '重要物品与事件细节',
-    '重要物品', '事件细节', '细节描写',
-    '一、命运回响', '二、命运回响', '三、命运回响',
-    '命运回响', '世界回响', '回响',
+    '环境氛围',
+    '场景氛围',
+    'NPC的言行举止',
+    'NPC 言行举止',
+    'NPC言行举止',
+    '人物言行',
+    '玩家的心理活动',
+    '玩家心理活动',
+    '心理活动',
+    '重要物品/事件的细节描写',
+    '重要物品与事件细节',
+    '重要物品',
+    '事件细节',
+    '细节描写',
+    '一、命运回响',
+    '二、命运回响',
+    '三、命运回响',
+    '命运回响',
+    '世界回响',
+    '回响',
   ];
 
   /// 提纲标签的剥离正则，按标签预编译。_stripOutlineLabels 每次渲染都跑，
@@ -321,8 +511,7 @@ class StoryTextRenderer {
   };
 
   /// 整行只有一对括号说明（"……（低声）"的下一行），要跟上一行一起包进引用块。
-  static final RegExp _parenOnlyLineRe =
-      RegExp(r'^\s*[（(][^）)\n]*[）)]\s*$');
+  static final RegExp _parenOnlyLineRe = RegExp(r'^\s*[（(][^）)\n]*[）)]\s*$');
 
   /// 单字叙述动词（说/道/问…）必须左右都不是中文才算独立动词，
   /// 否则"冷笑"里的"笑"会被当成动词命中。按动词预编译——
@@ -330,9 +519,11 @@ class StoryTextRenderer {
   static final Map<String, RegExp> _singleCharVerbPatterns = <String, RegExp>{
     for (final v in _speechVerbs)
       if (v.length == 1)
-        v: RegExp(r'(?:^|[^\u4e00-\u9fa5])' +
-            RegExp.escape(v) +
-            r'(?:$|[^\u4e00-\u9fa5])'),
+        v: RegExp(
+          r'(?:^|[^\u4e00-\u9fa5])' +
+              RegExp.escape(v) +
+              r'(?:$|[^\u4e00-\u9fa5])',
+        ),
   };
 
   /// 预处理：把 AI 偶尔失控写出的结构化提纲标签（"环境氛围：""NPC的言行举止："
@@ -434,23 +625,25 @@ class StoryTextRenderer {
   /// 字符串、重新编译一次。名字表是静态的，正则也应该是静态的。
   static final RegExp _lineAffection = RegExp(
     r'^(?<prefix>.*?)'
-    r'(?:'
-      r'(?<name>' + _affectionNameUnion + r')\s*[：:]?\s*'
-      r'(?<delta>[+-]\d{1,3})'
-      r'\s*(?<note>[（(][^）)\n]*[）)])?'
-    r'|'
-      r'(?:好感度?变化?|声望变化?)\s*[：:]\s*.+'
-    r')'
-    r'\s*$',
+            r'(?:'
+            r'(?<name>' +
+        _affectionNameUnion +
+        r')\s*[：:]?\s*'
+            r'(?<delta>[+-]\d{1,3})'
+            r'\s*(?<note>[（(][^）)\n]*[）)])?'
+            r'|'
+            r'(?:好感度?变化?|声望变化?)\s*[：:]\s*.+'
+            r')'
+            r'\s*$',
     multiLine: true,
     unicode: true,
   );
 
   /// 名字分支（长名在前，保证「哈利·波特」优先于「哈利」）。
-  static final String _affectionNameUnion = (_characterNames.toList()
-        ..sort((a, b) => b.length.compareTo(a.length)))
-      .map(RegExp.escape)
-      .join('|');
+  static final String _affectionNameUnion =
+      (_characterNames.toList()..sort((a, b) => b.length.compareTo(a.length)))
+          .map(RegExp.escape)
+          .join('|');
 
   static String _promoteAffectionLines(String text) {
     // 按行扫描，找：角色名 + 冒号? + [+-]数字 + 可选括号说明
@@ -486,7 +679,16 @@ class StoryTextRenderer {
             isAffectionStandalone = true;
           } else {
             final last = trimmedPrefix.runes.last;
-            const separators = [0x3002, 0xFF0C, 0x3001, 0xFF1B, 0x2026, 0x002E, 0x002C, 0x003B]; // 。，、；….,;
+            const separators = [
+              0x3002,
+              0xFF0C,
+              0x3001,
+              0xFF1B,
+              0x2026,
+              0x002E,
+              0x002C,
+              0x003B,
+            ]; // 。，、；….,;
             if (separators.contains(last)) {
               isAffectionStandalone = true;
             }
@@ -550,7 +752,10 @@ class StoryTextRenderer {
           TextSpan(text: characterName, style: _affectionCharacterStyle),
         );
         spans.add(
-          TextSpan(text: line.substring(characterName.length), style: _affectionStyle),
+          TextSpan(
+            text: line.substring(characterName.length),
+            style: _affectionStyle,
+          ),
         );
       } else {
         spans.add(TextSpan(text: line, style: _affectionStyle));
@@ -575,7 +780,8 @@ class StoryTextRenderer {
   /// 保留人名/说话人/对话/内心独白的颜色——核心信息（是谁、说了什么、心里想）。
   /// 设计意图：上一版所有实体词都上色导致正文"花里胡哨"，阅读疲劳；
   /// 现在只有语义关键的颜色存在，地点/物品与正文融为一体。
-  static List<TextSpan> parseNarrative(String text) => _parse(text, quiet: true);
+  static List<TextSpan> parseNarrative(String text) =>
+      _parse(text, quiet: true);
 
   static List<TextSpan> _parse(String text, {required bool quiet}) {
     if (text.isEmpty) return [];
@@ -602,13 +808,19 @@ class StoryTextRenderer {
         spans.add(TextSpan(text: token.text, style: _characterStyle));
       } else if (token is _LocationToken) {
         // quiet 模式：地点融入正文，不上色；full 模式保持原色（其他模块可能用）
-        spans.add(TextSpan(
+        spans.add(
+          TextSpan(
             text: token.text,
-            style: quiet ? _narrationStyle : _locationStyle));
+            style: quiet ? _narrationStyle : _locationStyle,
+          ),
+        );
       } else if (token is _ItemToken) {
-        spans.add(TextSpan(
+        spans.add(
+          TextSpan(
             text: token.text,
-            style: quiet ? _narrationStyle : _itemStyle));
+            style: quiet ? _narrationStyle : _itemStyle,
+          ),
+        );
       } else {
         spans.add(TextSpan(text: token.text, style: _narrationStyle));
       }
@@ -625,7 +837,8 @@ class StoryTextRenderer {
   static List<_Token> _tokenize(String text) {
     final tokens = <_Token>[];
     int i = 0;
-    final int textLen = text.length; // BUG-CRASH: text 可能在子串操作后被改变？这里固定一份长度缓存，全程用 textLen 校验
+    final int textLen =
+        text.length; // BUG-CRASH: text 可能在子串操作后被改变？这里固定一份长度缓存，全程用 textLen 校验
 
     final dialoguePatterns = [
       RegExp(r'「[^」]*」'),
@@ -657,7 +870,8 @@ class StoryTextRenderer {
         if (k >= lineStart && k < lineEnd) {
           final speakerStartIdx = _speakerStart(text, lineStart, k);
           // BUG-CRASH 修复：speakerStartIdx 必须在 [lineStart, k] 内，否则 substring 越界
-          final safeSpeakerStart = (speakerStartIdx < lineStart || speakerStartIdx > k)
+          final safeSpeakerStart =
+              (speakerStartIdx < lineStart || speakerStartIdx > k)
               ? lineStart
               : speakerStartIdx;
           final raw = text.substring(safeSpeakerStart, k).trim();
@@ -671,13 +885,15 @@ class StoryTextRenderer {
           if (colonEnd > safeMax) continue;
           // lineEnd（contentEnd）不能超 safeMax
           final contentEnd = lineEnd;
-          colonSegments.add(_ColonSegment(
-            speakerStart: safeSpeakerStart,
-            nameEnd: safeNameEnd,
-            speakerEnd: k,
-            colonEnd: colonEnd,
-            contentEnd: contentEnd > safeMax ? safeMax : contentEnd,
-          ));
+          colonSegments.add(
+            _ColonSegment(
+              speakerStart: safeSpeakerStart,
+              nameEnd: safeNameEnd,
+              speakerEnd: k,
+              colonEnd: colonEnd,
+              contentEnd: contentEnd > safeMax ? safeMax : contentEnd,
+            ),
+          );
         }
         if (newlineIdx == -1) break;
         lineStart = newlineIdx + 1;
@@ -714,7 +930,8 @@ class StoryTextRenderer {
         cPointer++;
       }
       // 优先判断冒号对话（通常比引号台词更准地定位说话人）
-      if (cPointer < colonSegments.length && i == colonSegments[cPointer].speakerStart) {
+      if (cPointer < colonSegments.length &&
+          i == colonSegments[cPointer].speakerStart) {
         flushNarration();
         final seg = colonSegments[cPointer];
         // BUG-CRASH 终极安全门：所有 substring 边界都用 RangeError.checkValidRange 前的显式钳制
@@ -749,7 +966,8 @@ class StoryTextRenderer {
         cPointer++;
         continue;
       }
-      if (dPointer < matchedDialogue.length && i == matchedDialogue[dPointer].start) {
+      if (dPointer < matchedDialogue.length &&
+          i == matchedDialogue[dPointer].start) {
         flushNarration();
         int dStart = matchedDialogue[dPointer].start;
         int dEnd = matchedDialogue[dPointer].end;
@@ -795,14 +1013,15 @@ class StoryTextRenderer {
       final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
 
       final speakerStartIdx = _speakerStart(text, lineStart, i);
-      final safeSpeakerStart = (speakerStartIdx < lineStart || speakerStartIdx > i)
+      final safeSpeakerStart =
+          (speakerStartIdx < lineStart || speakerStartIdx > i)
           ? lineStart
           : speakerStartIdx;
       if (safeSpeakerStart > i) continue;
       final raw = text.substring(safeSpeakerStart, i).trim();
       final nameEndInRaw = quoteFollow
           ? _validSpeakerNameEndRelaxed(raw) // 后跟引号→宽松规则
-          : _validSpeakerNameEnd(raw);      // 默认严格规则
+          : _validSpeakerNameEnd(raw); // 默认严格规则
       if (nameEndInRaw >= 0 && nameEndInRaw <= raw.length) return i;
     }
     return -1;
@@ -824,8 +1043,16 @@ class StoryTextRenderer {
     int lastSentenceBreak = lineStart - 1;
     for (int i = lineStart; i < colonIdx; i++) {
       final c = text[i];
-      if (c == '。' || c == '！' || c == '？' || c == '；' || c == '…' ||
-          c == '.' || c == '!' || c == '?' || c == ';' || c == '~') {
+      if (c == '。' ||
+          c == '！' ||
+          c == '？' ||
+          c == '；' ||
+          c == '…' ||
+          c == '.' ||
+          c == '!' ||
+          c == '?' ||
+          c == ';' ||
+          c == '~') {
         lastSentenceBreak = i;
       }
     }
@@ -846,31 +1073,113 @@ class StoryTextRenderer {
   /// "情绪/表情修饰 + 冒号 + 引号台词"的模式，之前会被整体当成叙述短语漏掉，
   /// 现在把高频情绪短语也纳入"尾部叙述修饰"，剥掉后再找纯角色名。
   static const List<String> _speechVerbs = [
-    '轻声说道', '低声说道', '大声喊道', '笑着说道', '淡淡地说',
-    '玩味地笑', '玩味一笑', '微微一笑', '淡淡一笑', '冷笑一声',
-    '皱起眉头', '挑了挑眉', '挑挑眉梢', '眉头一挑', '眉头微皱',
-    '语气一冷', '语气平淡', '语气不善', '压低声音', '放缓语气',
-    '带着笑意', '收敛笑容', '忽然开口', '率先打破沉默',
-    '说道', '问道', '喊道', '笑道', '答道', '叫道', '叹道', '低语', '回答',
-    '说', '道', '问', '喊', '答', '叫', '笑', '叹',
+    '轻声说道',
+    '低声说道',
+    '大声喊道',
+    '笑着说道',
+    '淡淡地说',
+    '玩味地笑',
+    '玩味一笑',
+    '微微一笑',
+    '淡淡一笑',
+    '冷笑一声',
+    '皱起眉头',
+    '挑了挑眉',
+    '挑挑眉梢',
+    '眉头一挑',
+    '眉头微皱',
+    '语气一冷',
+    '语气平淡',
+    '语气不善',
+    '压低声音',
+    '放缓语气',
+    '带着笑意',
+    '收敛笑容',
+    '忽然开口',
+    '率先打破沉默',
+    '说道',
+    '问道',
+    '喊道',
+    '笑道',
+    '答道',
+    '叫道',
+    '叹道',
+    '低语',
+    '回答',
+    '说',
+    '道',
+    '问',
+    '喊',
+    '答',
+    '叫',
+    '笑',
+    '叹',
   ];
 
   /// 情绪/神态/动作修饰短语（剥掉后再找纯角色名，2~8字常见）
   static const List<String> _moodModifiers = [
-    '玩味的笑容', '玩味的笑意', '一丝玩味的笑容', '一丝玩味的笑意',
-    '淡淡的笑容', '浅浅的笑意', '一抹微笑', '一脸冷笑', '戏谑的表情',
-    '挑了挑眉', '挑挑眉梢', '眉头一挑', '眉头微皱', '皱起眉头',
-    '语气一冷', '语气平淡', '语气不善', '压着声音', '压低声音',
-    '带着笑意', '收敛笑容', '轻轻摇头', '摇了摇头', '点了点头',
-    '轻声', '低声', '大声', '冷冷', '淡淡', '笑眯眯', '笑吟吟', '苦笑',
-    '（冷笑）', '（挑眉）', '（皱眉）', '（摇头）', '（叹气）',
-    '（试探）', '（审视）', '（微笑）', '（警惕）', '（平静）',
-    '（傲慢）', '（玩味）', '（严肃）', '（温柔）', '（好奇）',
+    '玩味的笑容',
+    '玩味的笑意',
+    '一丝玩味的笑容',
+    '一丝玩味的笑意',
+    '淡淡的笑容',
+    '浅浅的笑意',
+    '一抹微笑',
+    '一脸冷笑',
+    '戏谑的表情',
+    '挑了挑眉',
+    '挑挑眉梢',
+    '眉头一挑',
+    '眉头微皱',
+    '皱起眉头',
+    '语气一冷',
+    '语气平淡',
+    '语气不善',
+    '压着声音',
+    '压低声音',
+    '带着笑意',
+    '收敛笑容',
+    '轻轻摇头',
+    '摇了摇头',
+    '点了点头',
+    '轻声',
+    '低声',
+    '大声',
+    '冷冷',
+    '淡淡',
+    '笑眯眯',
+    '笑吟吟',
+    '苦笑',
+    '（冷笑）',
+    '（挑眉）',
+    '（皱眉）',
+    '（摇头）',
+    '（叹气）',
+    '（试探）',
+    '（审视）',
+    '（微笑）',
+    '（警惕）',
+    '（平静）',
+    '（傲慢）',
+    '（玩味）',
+    '（严肃）',
+    '（温柔）',
+    '（好奇）',
   ];
+
+  /// 按长度降序的静态排序表（_validSpeakerNameEnd 的热路径用，避免每行重建）。
+  /// 复刻 `List.from(_moodModifiers)..sort(...)` 的结果；排序只依赖长度，
+  /// 两张表都是 const，长度顺序恒定，静态缓存是安全的。
+  static final List<String> _sortedMoodByLength = List<String>.of(
+    _moodModifiers,
+  )..sort((a, b) => b.length.compareTo(a.length));
+  static final List<String> _sortedSpeechByLength = List<String>.of(
+    _speechVerbs,
+  )..sort((a, b) => b.length.compareTo(a.length));
 
   /// 判断 [raw]（冒号前的整段文本）是否为合理说话人。
   /// 返回「纯名字」在 raw 中的结束位置（用于把尾部叙述动词切给叙述色）；不合法返回 -1。
-  /// 
+  ///
   /// 关键返回规则：
   ///  - 返回 raw.length → 整段 raw（直到冒号前）都是说话人色，冒号按对话蓝（例如"赫敏：""德拉科（冷笑）："）
   ///  - 返回 < raw.length → 0..返回值=说话人橙，返回值..raw.length+1（冒号）=叙述灰 + 冒号叙述灰（例如"罗恩说：""莉娜问道："）
@@ -889,8 +1198,7 @@ class StoryTextRenderer {
     if (_startsWithEmoji(raw)) return -1;
 
     // 第一步：去掉「（情绪）」「(动作)」「好感+1」，提取候选前缀 name（始终是 raw 的前缀，从 0 开始）
-    final hasModifier =
-        RegExp(r'[（(]').hasMatch(raw) || raw.contains('好感');
+    final hasModifier = RegExp(r'[（(]').hasMatch(raw) || raw.contains('好感');
     String name = raw;
     int bracketIdx = name.indexOf(RegExp(r'[（(]'));
     if (bracketIdx < 0) bracketIdx = name.indexOf('好感');
@@ -905,7 +1213,9 @@ class StoryTextRenderer {
     // 快速通道：如果 afterNameTrim 只是一堆（神态）/ (动作) 括号对，中间没有叙述动词的文字
     // → 说明这是"（冷笑）（审视）"纯神态，绝无可能是"说/道/问道"等叙述动词！
     //    挡住 _speechVerbs 中"笑"单字 contains 命中"冷笑"的 BUG。
-    final onlyBrackets = RegExp(r'^(\s*[（(][^（）()]{1,10}[）)]\s*)+$').hasMatch(afterNameTrim);
+    final onlyBrackets = RegExp(
+      r'^(\s*[（(][^（）()]{1,10}[）)]\s*)+$',
+    ).hasMatch(afterNameTrim);
     if (!onlyBrackets && afterNameTrim.isNotEmpty) {
       for (final v in _speechVerbs) {
         if (v.length == 1) {
@@ -918,17 +1228,19 @@ class StoryTextRenderer {
           }
         } else {
           // 多字词（说道/问道/冷笑一声）→ 直接 contains（足够精确）
-          if (afterNameTrim.contains(v)) { hasTrueSpeechVerb = true; break; }
+          if (afterNameTrim.contains(v)) {
+            hasTrueSpeechVerb = true;
+            break;
+          }
         }
       }
     }
 
     // 第三步：逐步剥掉 情绪短语 / 叙述动词 / 情绪 / 叙述 ... 最多6轮，得最终 base（仍是前缀）
     String base = name;
-    final sortedMood = List<String>.from(_moodModifiers)
-      ..sort((a, b) => b.length.compareTo(a.length));
-    final sortedSpeech = List<String>.from(_speechVerbs)
-      ..sort((a, b) => b.length.compareTo(a.length));
+    // 静态排序表（此前每行每次调用都 List.from+sort 重建两份，O(行×词) 的热点）
+    final sortedMood = _sortedMoodByLength;
+    final sortedSpeech = _sortedSpeechByLength;
     bool changed = true;
     int safety = 0;
     while (changed && safety++ < 6) {
@@ -1003,7 +1315,9 @@ class StoryTextRenderer {
 
     // 在 raw 的"后半段"（最后 20 个字符或 1/3 长度，取较大者）找最后一个角色命中
     final lookBack = raw.length > 20 ? 20 : (raw.length ~/ 3).clamp(8, 20);
-    final searchZoneStart = raw.length - lookBack < 0 ? 0 : raw.length - lookBack;
+    final searchZoneStart = raw.length - lookBack < 0
+        ? 0
+        : raw.length - lookBack;
     final rawLen = raw.length;
 
     String? foundName;
@@ -1014,7 +1328,8 @@ class StoryTextRenderer {
       if (idx < 0) continue;
       final end = idx + name.length;
       if (end > rawLen) continue; // 超界安全
-      if ((idx >= searchZoneStart || raw.endsWith(name)) && end > foundNameEnd) {
+      if ((idx >= searchZoneStart || raw.endsWith(name)) &&
+          end > foundNameEnd) {
         foundName = name;
         foundNameEnd = end;
       }
@@ -1026,7 +1341,9 @@ class StoryTextRenderer {
     // Fallback：在最后 12 个字里找"2-4 个汉字、像人名"的片段（标点/虚词结尾不算）
     if (searchZoneStart >= rawLen) return -1;
     final tail = raw.substring(searchZoneStart, rawLen);
-    final nameLike = RegExp(r'([\u4e00-\u9fa5]{2,4})(?=[，、。！？\s]*$)').firstMatch(tail);
+    final nameLike = RegExp(
+      r'([\u4e00-\u9fa5]{2,4})(?=[，、。！？\s]*$)',
+    ).firstMatch(tail);
     if (nameLike != null) {
       final candidate = nameLike.group(1);
       if (candidate != null && !_looksLikeNarrationPhrase(candidate)) {
@@ -1043,15 +1360,43 @@ class StoryTextRenderer {
     // 常见叙述虚词：人名几乎不会包含这些字
     // 注意：代词（你我他她它）、常见叙述动词（抬低扫盯闻感）、
     // 指示代词（这那哪）都绝不可能是说话人名字的一部分。
-    if (RegExp(r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个你我他她它抬低扫盯闻感这那哪]').hasMatch(s)) {
+    if (RegExp(
+      r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个你我他她它抬低扫盯闻感这那哪]',
+    ).hasMatch(s)) {
       return true;
     }
     // 时间词开头（清晨的霍格沃茨：… / 下午三点：…）
     const timePrefixes = [
-      '清晨', '早晨', '早上', '上午', '中午', '午后', '下午', '傍晚',
-      '晚上', '夜晚', '深夜', '午夜', '凌晨', '黄昏', '夜里', '当夜',
-      '今天', '明天', '昨天', '后天', '前天', '次日', '翌日',
-      '此刻', '此时', '这时', '那时', '瞬间', '突然', '忽然',
+      '清晨',
+      '早晨',
+      '早上',
+      '上午',
+      '中午',
+      '午后',
+      '下午',
+      '傍晚',
+      '晚上',
+      '夜晚',
+      '深夜',
+      '午夜',
+      '凌晨',
+      '黄昏',
+      '夜里',
+      '当夜',
+      '今天',
+      '明天',
+      '昨天',
+      '后天',
+      '前天',
+      '次日',
+      '翌日',
+      '此刻',
+      '此时',
+      '这时',
+      '那时',
+      '瞬间',
+      '突然',
+      '忽然',
     ];
     for (final t in timePrefixes) {
       if (s.startsWith(t)) return true;
@@ -1061,15 +1406,46 @@ class StoryTextRenderer {
       if (s.contains(loc)) return true;
     }
     // 章节序号
-    if (s.startsWith('第') || s.contains('章') || s.contains('卷') || s.contains('回')) {
+    if (s.startsWith('第') ||
+        s.contains('章') ||
+        s.contains('卷') ||
+        s.contains('回')) {
       return true;
     }
     // 状态/结构标签
     const labels = [
-      '时间', '日期', '星期', '月份', '地点', '位置', '状态', '身份',
-      '模式', '目标', '学年', '学期', '年级', '天气', '场景', '当前',
-      '剩余', '选项', '行动', '提示', '备注', '说明', '编号', '总结',
-      '建议', '效果', '结果', '影响', '关系', '评价', '反馈', '概括',
+      '时间',
+      '日期',
+      '星期',
+      '月份',
+      '地点',
+      '位置',
+      '状态',
+      '身份',
+      '模式',
+      '目标',
+      '学年',
+      '学期',
+      '年级',
+      '天气',
+      '场景',
+      '当前',
+      '剩余',
+      '选项',
+      '行动',
+      '提示',
+      '备注',
+      '说明',
+      '编号',
+      '总结',
+      '建议',
+      '效果',
+      '结果',
+      '影响',
+      '关系',
+      '评价',
+      '反馈',
+      '概括',
     ];
     for (final l in labels) {
       if (s.contains(l)) return true;
@@ -1119,7 +1495,11 @@ class StoryTextRenderer {
 
     // 4) 清理 SceneGraph/Anchor 这类 debug 文本行（整行）
     s = s.replaceAllMapped(
-      RegExp(r'^\s*(🧭)?\s*SceneGraph[:：].*$\n?', caseSensitive: false, multiLine: true),
+      RegExp(
+        r'^\s*(🧭)?\s*SceneGraph[:：].*$\n?',
+        caseSensitive: false,
+        multiLine: true,
+      ),
       (m) => '',
     );
 
@@ -1142,13 +1522,13 @@ class StoryTextRenderer {
     var s = text;
     // 注意：Dart 的 replaceAll 对 RegExp 的替换串按字面量处理（不支持 $1），
     // 反向引用必须用 replaceAllMapped
-    s = s.replaceAllMapped(
-        RegExp(r'\*\*([^*\n]+)\*\*'), (m) => m.group(1)!);
-    s = s.replaceAllMapped(
-        RegExp(r'__([^_\n]+)__'), (m) => m.group(1)!);
+    s = s.replaceAllMapped(RegExp(r'\*\*([^*\n]+)\*\*'), (m) => m.group(1)!);
+    s = s.replaceAllMapped(RegExp(r'__([^_\n]+)__'), (m) => m.group(1)!);
     // 单星号包裹：仅当内容是中文（避免误伤 3*4=12 这类算式）
     s = s.replaceAllMapped(
-        RegExp(r'\*([\u4e00-\u9fa5][^*\n]{0,40})\*'), (m) => m.group(1)!);
+      RegExp(r'\*([\u4e00-\u9fa5][^*\n]{0,40})\*'),
+      (m) => m.group(1)!,
+    );
     // 行首标题符（Dart RegExp 不支持 (?m) 内联标志，用 multiLine 参数）
     s = s.replaceAll(RegExp(r'^\s*#+\s*', multiLine: true), '');
     // 行首列表符（- * • 数字. 数字、）→ 去符号留文本
@@ -1180,35 +1560,40 @@ class StoryTextRenderer {
 
     // 先剥离内部 meta 标记（承接/SceneGraph 等内部衔接说明）—— 保证 UI 永远不渲染这些调度信息
     text = stripInternalMetaMarkers(text);
-    
+
     final buffer = StringBuffer();
     int sentenceCount = 0;
     int paragraphLength = 0;
-    
+
     for (int i = 0; i < text.length; i++) {
       final ch = text[i];
       buffer.write(ch);
       paragraphLength++;
-      
+
       // 检测段落结束：句末标点 + 长度达标
-      if (ch == '。' || ch == '！' || ch == '？' || ch == '.' || ch == '!' || ch == '?') {
+      if (ch == '。' ||
+          ch == '！' ||
+          ch == '？' ||
+          ch == '.' ||
+          ch == '!' ||
+          ch == '?') {
         sentenceCount++;
         // 每 2-3 句话 或 段落长度达到 100-150 字符时分段
-        if ((sentenceCount >= 3 && paragraphLength >= 80) || 
+        if ((sentenceCount >= 3 && paragraphLength >= 80) ||
             paragraphLength >= 150) {
           buffer.write('\n\n');
           sentenceCount = 0;
           paragraphLength = 0;
         }
       }
-      
+
       // 保留原有的双换行（AI 主动分段）
       if (ch == '\n' && i + 1 < text.length && text[i + 1] == '\n') {
         sentenceCount = 0;
         paragraphLength = 0;
       }
     }
-    
+
     // 清理多余空行
     var result = buffer.toString();
     result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
@@ -1219,10 +1604,10 @@ class StoryTextRenderer {
   static Map<String, dynamic> extractAffectionSections(String text) {
     final affectionPattern = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
     final reputationPattern = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
-    
+
     final affectionMatches = affectionPattern.allMatches(text);
     final reputationMatches = reputationPattern.allMatches(text);
-    
+
     final affectionSections = <String>[];
     for (final m in affectionMatches) {
       final section = text.substring(m.start, m.end).trim();
@@ -1232,18 +1617,15 @@ class StoryTextRenderer {
       final section = text.substring(m.start, m.end).trim();
       if (section.isNotEmpty) affectionSections.add(section);
     }
-    
+
     // 从原文本中移除好感/声望区块，返回纯叙事
     var narrative = text;
     narrative = narrative.replaceAllMapped(affectionPattern, (m) => '');
     narrative = narrative.replaceAllMapped(reputationPattern, (m) => '');
     narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n');
     narrative = narrative.trim();
-    
-    return {
-      'narrative': narrative,
-      'affectionSections': affectionSections,
-    };
+
+    return {'narrative': narrative, 'affectionSections': affectionSections};
   }
 
   // ==================== 小说式段落排版支持 ====================
@@ -1270,10 +1652,7 @@ class StoryTextRenderer {
   static List<TextSpan> parseParagraph(String paragraph, {bool indent = true}) {
     final spans = parse(paragraph);
     if (!indent || spans.isEmpty) return spans;
-    return [
-      TextSpan(text: '　　', style: _narrationStyle),
-      ...spans,
-    ];
+    return [TextSpan(text: '　　', style: _narrationStyle), ...spans];
   }
 
   // ==================== 小说式段落分类：段落级样式与分类逻辑 ====================
@@ -1281,20 +1660,24 @@ class StoryTextRenderer {
   // 内心独白：比正文淡一档的紫，斜体制造"声音在脑内"的层次
   static const Color _innerVoiceColor = Color(0xFFB8A6E3);
   static TextStyle _innerVoiceStyle = const TextStyle(
-    fontSize: 15, height: _bodyLineHeight, color: _innerVoiceColor,
+    fontSize: 15,
+    height: _bodyLineHeight,
+    color: _innerVoiceColor,
     fontStyle: FontStyle.italic,
   );
 
   // 时间戳：与金色主题同族的深金，胶囊内展示
   static const Color _timestampColor = Color(0xFFE3B341);
   static TextStyle _timestampStyle = const TextStyle(
-    fontSize: 12.5, height: 1.4, color: _timestampColor,
-    fontWeight: FontWeight.w700, letterSpacing: 0.3,
+    fontSize: 12.5,
+    height: 1.4,
+    color: _timestampColor,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.3,
   );
 
   /// 整段括号包裹（（内心独白））的判定。
-  static final RegExp _parenWrappedRe =
-      RegExp(r'^\s*[（(][^（(]*[）)]\s*$');
+  static final RegExp _parenWrappedRe = RegExp(r'^\s*[（(][^（(]*[）)]\s*$');
 
   /// 内心独白关键词：出现即把整段当作内心活动。
   static final RegExp _innerVoiceHintRe = RegExp(
@@ -1302,9 +1685,7 @@ class StoryTextRenderer {
   );
 
   /// 时间戳/标记段：以这些标记开头。
-  static final RegExp _timestampStartRe = RegExp(
-    r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)',
-  );
+  static final RegExp _timestampStartRe = RegExp(r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)');
 
   /// 按空行拆段 + 逐段分类，供段落式 UI 渲染。
   ///
@@ -1345,8 +1726,12 @@ class StoryTextRenderer {
       return ParagraphKind.innerVoice;
     }
     // 4) 含引号台词 → 对话段
-    if (para.contains('"') || para.contains('「') || para.contains('『') ||
-        para.contains('”') || para.contains('』') || para.contains('“')) {
+    if (para.contains('"') ||
+        para.contains('「') ||
+        para.contains('『') ||
+        para.contains('”') ||
+        para.contains('』') ||
+        para.contains('“')) {
       return ParagraphKind.dialogue;
     }
     // 5) 行首「说话人：」+ 台词（复用冒号检测口径）
@@ -1354,8 +1739,10 @@ class StoryTextRenderer {
       final colon = _findDialogueColon(line, 0, line.length);
       if (colon > 0) {
         final rest = line.substring(colon + 1).trimLeft();
-        if (rest.startsWith('"') || rest.startsWith('「') ||
-            rest.startsWith('“') || rest.startsWith('『')) {
+        if (rest.startsWith('"') ||
+            rest.startsWith('「') ||
+            rest.startsWith('“') ||
+            rest.startsWith('『')) {
           return ParagraphKind.dialogue;
         }
       }
@@ -1366,9 +1753,7 @@ class StoryTextRenderer {
 
   /// 去掉段落前的时间戳标记词（【时间戳】/📅/⏳…），留下时间正文。
   static String stripTimestampPrefix(String para) {
-    return para
-        .replaceFirst(RegExp(r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)\s*'), '')
-        .trim();
+    return para.replaceFirst(RegExp(r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)\s*'), '').trim();
   }
 
   /// 按段落类型渲染：叙述带首行缩进、对话顶格（内部高亮已染说话人/台词）、
@@ -1411,18 +1796,22 @@ class StoryTextRenderer {
       var last = 0;
       for (final m in re.allMatches(text)) {
         if (m.start > last) {
-          out.add(TextSpan(text: text.substring(last, m.start), style: s.style));
+          out.add(
+            TextSpan(text: text.substring(last, m.start), style: s.style),
+          );
         }
         final v = int.tryParse(m.group(1)!);
-        out.add(TextSpan(
-          text: m.group(1),
-          style: TextStyle(
-            color: (v ?? 0) >= 0
-                ? const Color(0xFF7EE787)
-                : const Color(0xFFFF7B72),
-            fontWeight: FontWeight.w700,
+        out.add(
+          TextSpan(
+            text: m.group(1),
+            style: TextStyle(
+              color: (v ?? 0) >= 0
+                  ? const Color(0xFF7EE787)
+                  : const Color(0xFFFF7B72),
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ));
+        );
         last = m.end;
       }
       if (last < text.length) {
@@ -1456,11 +1845,13 @@ class StoryTextRenderer {
       final dialogue = _extractLineDialogue(line);
       if (dialogue != null) {
         flushNarration();
-        segments.add(NarrativeSegment.dialogue(
-          speaker: dialogue.speaker,
-          mood: dialogue.mood,
-          text: dialogue.content,
-        ));
+        segments.add(
+          NarrativeSegment.dialogue(
+            speaker: dialogue.speaker,
+            mood: dialogue.mood,
+            text: dialogue.content,
+          ),
+        );
       } else {
         narrationBuffer.writeln(line);
       }
@@ -1470,7 +1861,9 @@ class StoryTextRenderer {
   }
 
   /// 单行对话提取：命中「说话人：台词」返回 (干净名字, 神态, 台词内容)，否则 null。
-  static ({String speaker, String mood, String content})? _extractLineDialogue(String line) {
+  static ({String speaker, String mood, String content})? _extractLineDialogue(
+    String line,
+  ) {
     final trimmed = line.trim();
     if (trimmed.isEmpty) return null;
     // 结构化标签行（【好感度变化】等）不当对话
@@ -1479,14 +1872,18 @@ class StoryTextRenderer {
     final k = _findDialogueColon(line, 0, line.length);
     if (k < 0) return null;
 
-    final afterColon = (k + 1 <= line.length) ? line.substring(k + 1).trim() : '';
+    final afterColon = (k + 1 <= line.length)
+        ? line.substring(k + 1).trim()
+        : '';
     if (afterColon.isEmpty) return null;
     // 好感度裸行（莉莉：+5）不是对话
     if (RegExp(r'^[+-]\d').hasMatch(afterColon)) return null;
 
     final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
     final speakerStartIdx = _speakerStart(line, 0, k);
-    final safeStart = (speakerStartIdx < 0 || speakerStartIdx > k) ? 0 : speakerStartIdx;
+    final safeStart = (speakerStartIdx < 0 || speakerStartIdx > k)
+        ? 0
+        : speakerStartIdx;
     final raw = line.substring(safeStart, k).trim();
     final nameEnd = quoteFollow
         ? _validSpeakerNameEndRelaxed(raw)
@@ -1501,15 +1898,18 @@ class StoryTextRenderer {
     // 拆出尾部括号神态：德拉科（冷笑） → 德拉科 + （冷笑）
     final moodMatch = RegExp(r'([（(][^（）()]*[）)])\s*$').firstMatch(fullSpeaker);
     final mood = moodMatch?.group(1) ?? '';
-    final speaker = (moodMatch != null
-            ? fullSpeaker.substring(0, moodMatch.start)
-            : fullSpeaker)
-        .trim();
+    final speaker =
+        (moodMatch != null
+                ? fullSpeaker.substring(0, moodMatch.start)
+                : fullSpeaker)
+            .trim();
     if (speaker.isEmpty) return null;
 
     // 未知说话人（不在已知角色表中）且 3 字以上 → 必须冒号后跟引号才算对话
     // 防止「环顾四周：」「清晨的霍格沃茨：」等叙述被误判为对话
-    if (!_characterNames.contains(speaker) && speaker.length > 3 && !quoteFollow) {
+    if (!_characterNames.contains(speaker) &&
+        speaker.length > 3 &&
+        !quoteFollow) {
       return null;
     }
 
@@ -1539,8 +1939,9 @@ class StoryTextRenderer {
 
     void addReplacement(int start, String word, _TokenType type) {
       final range = _Range(start, start + word.length, word);
-      final overlap = coveredRanges.any((r) =>
-          range.start < r.end && range.end > r.start);
+      final overlap = coveredRanges.any(
+        (r) => range.start < r.end && range.end > r.start,
+      );
       if (!overlap) {
         coveredRanges.add(range);
         replacements.add(_Replacement(start, word, type));
@@ -1700,9 +2101,9 @@ class NarrativeSegment {
   final String text;
 
   const NarrativeSegment.narration(this.text)
-      : isDialogue = false,
-        speaker = '',
-        mood = '';
+    : isDialogue = false,
+      speaker = '',
+      mood = '';
 
   const NarrativeSegment.dialogue({
     required this.speaker,

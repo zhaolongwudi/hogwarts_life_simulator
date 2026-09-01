@@ -25,6 +25,7 @@ import '../providers/game_provider_base.dart';
 mixin GamePlayMixin on GameProviderBase {
   /// 最近一次伤害结算可能致死的候选死因；_finishLocal 统一检查。
   String _pendingDeathCause = '';
+
   /// 已被击败过的 NPC id（打赢只加一次好感，避免反复刷同一个对手）
   final Set<String> _duelBeatenNpcIds = {};
 
@@ -55,12 +56,14 @@ mixin GamePlayMixin on GameProviderBase {
 
   void _addItem(String name, {String? type, String? desc}) {
     final def = itemDefByName(name);
-    player!.inventory.add(InventoryItem(
-      id: def?.id ?? name,
-      name: name,
-      type: type ?? def?.type ?? 'item',
-      description: desc ?? def?.desc ?? '',
-    ));
+    player!.inventory.add(
+      InventoryItem(
+        id: def?.id ?? name,
+        name: name,
+        type: type ?? def?.type ?? 'item',
+        description: desc ?? def?.desc ?? '',
+      ),
+    );
   }
 
   /// 获得一件物品并自动推进 gather 类委托
@@ -84,7 +87,9 @@ mixin GamePlayMixin on GameProviderBase {
   /// 决斗战力：技能熟练度均值 + 装备加成 + 宠物助战（羁绊≥40）+ 杖芯倾向
   double _playerPower() {
     final p = player!;
-    final base = (_attr('dda') + _attr('spell_understanding') + _attr('magic_control')) / 3;
+    final base =
+        (_attr('dda') + _attr('spell_understanding') + _attr('magic_control')) /
+        3;
     var power = base + _equipmentCombatBonus();
     if (p.petBond >= 40) power += 3;
     // 龙心脏腱索打中更疼，凤凰羽毛略微加成，独角兽毛不加威力
@@ -97,7 +102,8 @@ mixin GamePlayMixin on GameProviderBase {
     final qs = player?.quests;
     if (qs == null) return;
     for (final q in qs) {
-      if (q.status != 'active' || q.type != type || q.target != target) continue;
+      if (q.status != 'active' || q.type != type || q.target != target)
+        continue;
       q.progress = (q.progress + amount).clamp(0, q.targetCount);
       if (q.isDone) {
         q.status = 'completed';
@@ -171,7 +177,11 @@ mixin GamePlayMixin on GameProviderBase {
     // 标准咒语书：提升魔咒理解，未学咒时自动学会漂浮咒
     if (effects.containsKey('learn_spell')) {
       if (p.learnedSpells.isEmpty) {
-        p.learnedSpells['漂浮咒'] = SpellLevel(spellName: '漂浮咒', level: 1, practiceCount: 1);
+        p.learnedSpells['漂浮咒'] = SpellLevel(
+          spellName: '漂浮咒',
+          level: 1,
+          practiceCount: 1,
+        );
         buf.writeln('你翻开《标准咒语书》，第一次学会了「漂浮咒」！');
         buf.writeln('（以后学新咒语用 /咒语 学习，练熟用 /咒语 练习）');
       } else {
@@ -237,8 +247,10 @@ mixin GamePlayMixin on GameProviderBase {
   /// 禁林里偶然撞见的纪念品（独角兽尾毛）。
   void _addCollectibleSighting(StringBuffer buf) {
     if (!addCollectible('souvenir_forest')) return;
-    buf.writeln('正要走，林子深处闪过一道银白。你追过去只看見几丛被压弯的草，'
-        '草叶上挂着一根独角兽的尾毛——泛着很淡的光。');
+    buf.writeln(
+      '正要走，林子深处闪过一道银白。你追过去只看見几丛被压弯的草，'
+      '草叶上挂着一根独角兽的尾毛——泛着很淡的光。',
+    );
   }
 
   /// 直接入册一件收藏品（开局、分院、禁林这类一次性来源）。
@@ -246,7 +258,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 返回 true 表示这是第一次拿到，false 表示已经有了——调用方据此决定要不
   /// 要播报，免得读档或重复触发时刷屏。
   ///
-  /// 声明在基类上是给其它 mixin（购买入册在 mixin_relations）用的：私有方法
+  /// 声明在基类上是给其他 mixin（购买入册在 mixin_relations）用的：私有方法
   /// 跨文件访问不到，而 collection 的写入点分散在几个 mixin 里。
   @override
   bool addCollectible(String id) {
@@ -336,7 +348,9 @@ mixin GamePlayMixin on GameProviderBase {
     final p = player;
     if (p == null) return '你还没有开始学业。';
     final grade = p.grade ?? 1;
-    final buf = StringBuffer('【魔咒】（已学 ${p.learnedSpells.length}/${spellCatalog.length}）\n');
+    final buf = StringBuffer(
+      '【魔咒】（已学 ${p.learnedSpells.length}/${spellCatalog.length}）\n',
+    );
 
     if (p.learnedSpells.isEmpty) {
       buf.writeln('你还一个咒语都没学会。/咒语 学习 咒语名 可以开始。');
@@ -347,15 +361,17 @@ mixin GamePlayMixin on GameProviderBase {
         final def = spellByName(s.spellName);
         final cap = def == null ? 100 : def.levelCapFor(_attr(def.attribute));
         final full = s.level >= cap;
-        buf.writeln('· ${s.spellName}　Lv.${s.level}'
-            '${full ? '（已达当前上限 $cap，先提高${def == null ? '熟练度' : _attrLabelZh(def.attribute)}）' : '（上限 $cap）'}'
-            '　练过 ${s.practiceCount} 次');
+        buf.writeln(
+          '· ${s.spellName}　Lv.${s.level}'
+          '${full ? '（已达当前上限 $cap，先提高${def == null ? '熟练度' : _attrLabelZh(def.attribute)}）' : '（上限 $cap）'}'
+          '　练过 ${s.practiceCount} 次',
+        );
       }
     }
 
-    final locked = spellsLearnableAt(grade)
-        .where((s) => !p.learnedSpells.containsKey(s.name))
-        .toList();
+    final locked = spellsLearnableAt(
+      grade,
+    ).where((s) => !p.learnedSpells.containsKey(s.name)).toList();
     buf.writeln();
     if (locked.isEmpty) {
       buf.writeln('$grade 年级能学的咒语你都学过了。');
@@ -364,14 +380,18 @@ mixin GamePlayMixin on GameProviderBase {
       for (final s in locked) {
         final attr = _attr(s.attribute);
         final ok = attr >= s.requiredAttribute;
-        buf.writeln('· ${s.name}（${s.incantation}）'
-            '　${_attrLabelZh(s.attribute)} ${attr}/${s.requiredAttribute}${ok ? '' : '（不够）'}'
-            '　${s.effect}');
+        buf.writeln(
+          '· ${s.name}（${s.incantation}）'
+          '　${_attrLabelZh(s.attribute)} ${attr}/${s.requiredAttribute}${ok ? '' : '（不够）'}'
+          '　${s.effect}',
+        );
       }
     }
     buf.writeln();
-    buf.write('用法：/咒语 学习 咒语名 ｜ /咒语 练习 咒语名 ｜ /咒语 详情 咒语名\n'
-        '每天学 1 个新咒、练 ${dailyLimitOf('spell')} 次。');
+    buf.write(
+      '用法：/咒语 学习 咒语名 ｜ /咒语 练习 咒语名 ｜ /咒语 详情 咒语名\n'
+      '每天学 1 个新咒、练 ${dailyLimitOf('spell')} 次。',
+    );
     return buf.toString();
   }
 
@@ -384,10 +404,14 @@ mixin GamePlayMixin on GameProviderBase {
       ..writeln('咒文：${s.incantation}')
       ..writeln('类别：${s.category.label}　难度：${'★' * s.difficulty}')
       ..writeln('最低年级：${s.minGrade} 年级')
-      ..writeln('关联熟练度：${_attrLabelZh(s.attribute)}（需 ${s.requiredAttribute} 才能学，也决定等级上限）')
+      ..writeln(
+        '关联熟练度：${_attrLabelZh(s.attribute)}（需 ${s.requiredAttribute} 才能学，也决定等级上限）',
+      )
       ..writeln('效果：${s.effect}');
     if (learned != null) {
-      buf.writeln('你的进度：Lv.${learned.level}（上限 ${s.levelCapFor(_attr(s.attribute))}），练过 ${learned.practiceCount} 次');
+      buf.writeln(
+        '你的进度：Lv.${learned.level}（上限 ${s.levelCapFor(_attr(s.attribute))}），练过 ${learned.practiceCount} 次',
+      );
     } else {
       buf.writeln('你还没有学会这个咒语。');
     }
@@ -413,20 +437,26 @@ mixin GamePlayMixin on GameProviderBase {
     }
     final grade = p.grade ?? 1;
     if (grade < def.minGrade) {
-      _finishLocal('「${def.name}」是 $grade 年级还够不着的内容（需 ${def.minGrade} 年级）。\n'
-          '现在练好手上这几个咒，比硬啃难的更有用。');
+      _finishLocal(
+        '「${def.name}」是 $grade 年级还够不着的内容（需 ${def.minGrade} 年级）。\n'
+        '现在练好手上这几个咒，比硬啃难的更有用。',
+      );
       return;
     }
     final attr = _attr(def.attribute);
     if (attr < def.requiredAttribute) {
-      _finishLocal('你试了几次，杖尖只是冒了点烟。\n\n'
-          '「${def.name}」需要${_attrLabelZh(def.attribute)}达到 ${def.requiredAttribute}'
-          '（当前 $attr）。先去 /课堂 互动 练练基本功。');
+      _finishLocal(
+        '你试了几次，杖尖只是冒了点烟。\n\n'
+        '「${def.name}」需要${_attrLabelZh(def.attribute)}达到 ${def.requiredAttribute}'
+        '（当前 $attr）。先去 /课堂 互动 练练基本功。',
+      );
       return;
     }
     if (!canDoDaily('learn_spell')) {
-      _finishLocal('一天啃一个新咒已经够呛了，明天再学吧。\n\n'
-          '（每天只能学 1 个新咒语；已学会的可以练 ${dailyLimitOf('spell')} 次）');
+      _finishLocal(
+        '一天啃一个新咒已经够呛了，明天再学吧。\n\n'
+        '（每天只能学 1 个新咒语；已学会的可以练 ${dailyLimitOf('spell')} 次）',
+      );
       return;
     }
     if (p.energy < 10) {
@@ -434,11 +464,37 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
 
+    // 学习失败态（框架2 §44：第一次学一个咒语，失败很正常）：
+    // 门槛刚好达标时失败率 30%，熟练度远超门槛时降到 5%——不是必成功。
+    // 失败同样消耗每日学习次数与精力，防止「反复试到成功」刷掉失败设定；
+    // 但只扣一半精力，鼓励明天再来。
+    final gap = attr - def.requiredAttribute;
+    final failRate = gap >= 15 ? 0.05 : (gap >= 5 ? 0.15 : 0.30);
+    if (random.nextDouble() < failRate) {
+      recordDailyActivity('learn_spell');
+      advanceTimeForAction('学习魔咒');
+      p.energy = (p.energy - 5).clamp(0, 100);
+      final buf = StringBuffer('【学咒失败】\n')
+        ..writeln('你对着垫子反复念出「${def.incantation}」，杖尖却始终只有零星的火花。')
+        ..writeln('发音、挥杖、意念——总差着那么一口气。')
+        ..writeln()
+        ..writeln(
+          '「${def.name}」还没学会。休息一下，明天再试；'
+          '或者先去 /课堂 互动 把${_attrLabelZh(def.attribute)}练上去。',
+        )
+        ..writeln('精力 -5（失败的尝试同样消耗精力）');
+      _finishLocal(buf.toString());
+      return;
+    }
+
     recordDailyActivity('learn_spell');
     advanceTimeForAction('学习魔咒');
     p.energy = (p.energy - 10).clamp(0, 100);
-    p.learnedSpells[def.name] =
-        SpellLevel(spellName: def.name, level: 1, practiceCount: 1);
+    p.learnedSpells[def.name] = SpellLevel(
+      spellName: def.name,
+      level: 1,
+      practiceCount: 1,
+    );
 
     final buf = StringBuffer('【学会新咒语】\n')
       ..writeln('你对着垫子念出「${def.incantation}」，杖尖终于给了回应。')
@@ -471,8 +527,10 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     if (!canDoDaily('spell')) {
-      _finishLocal('今天已经练了 ${dailyLimitOf('spell')} 次，手腕酸得抬不起来。\n\n'
-          '（练习次数每天重置；学新咒另有 1 次）');
+      _finishLocal(
+        '今天已经练了 ${dailyLimitOf('spell')} 次，手腕酸得抬不起来。\n\n'
+        '（练习次数每天重置；学新咒另有 1 次）',
+      );
       return;
     }
     if (p.energy < 8) {
@@ -508,13 +566,17 @@ mixin GamePlayMixin on GameProviderBase {
     );
 
     final buf = StringBuffer('【练习 · ${def.name}】\n')
-      ..writeln(grown
-          ? '你一遍遍念着「${def.incantation}」，第 ${cur.practiceCount + 1} 次总算稳住了。'
-          : '你又练了一遍「${def.incantation}」，手感还在，可等级已经顶到当前上限了。')
+      ..writeln(
+        grown
+            ? '你一遍遍念着「${def.incantation}」，第 ${cur.practiceCount + 1} 次总算稳住了。'
+            : '你又练了一遍「${def.incantation}」，手感还在，可等级已经顶到当前上限了。',
+      )
       ..writeln()
       ..writeln(grown ? '等级 ${cur.level} → $level' : '等级 $level（已达上限 $cap）');
     if (attrGain > 0) {
-      buf.writeln('${_attrLabelZh(def.attribute)} +$attrGain（当前 ${_attr(def.attribute)}）');
+      buf.writeln(
+        '${_attrLabelZh(def.attribute)} +$attrGain（当前 ${_attr(def.attribute)}）',
+      );
     } else if (!grown) {
       buf.writeln('想继续提高，得先把${_attrLabelZh(def.attribute)}练上去（/课堂 互动）。');
     }
@@ -535,7 +597,9 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     final def = p.petId != null ? petById(p.petId!) : null;
-    final petName = (p.petName != null && p.petName!.isNotEmpty) ? p.petName! : (def?.name ?? '宠物');
+    final petName = (p.petName != null && p.petName!.isNotEmpty)
+        ? p.petName!
+        : (def?.name ?? '宠物');
     final day = worldState.time.absoluteDayIndex;
     final buf = StringBuffer('【宠物互动 · $petName】\n');
 
@@ -574,14 +638,18 @@ mixin GamePlayMixin on GameProviderBase {
         final skill = pool[random.nextInt(pool.length)];
         p.attributes[skill] = ((p.attributes[skill] ?? 50) + 1).clamp(0, 100);
         buf.writeln('你引导$petName 完成了几组指令，它领悟得飞快，尾巴都得意地翘了起来。');
-        buf.writeln('\n羁绊 +$gain（当前 ${p.petBond}/100），${_attrLabelZh(skill)} +1');
+        buf.writeln(
+          '\n羁绊 +$gain（当前 ${p.petBond}/100），${_attrLabelZh(skill)} +1',
+        );
       } else {
         buf.writeln('今天的训练不太顺利，$petName 总是被旁边的动静分心。不过关系也算拉近了一些。');
         buf.writeln('\n羁绊 +$gain（当前 ${p.petBond}/100）');
       }
     } else {
-      _finishLocal('宠物互动指令：/宠物 喂食 ｜ /宠物 玩耍 ｜ /宠物 训练\n\n'
-          '喂食每日一次，玩耍/训练每日共一次。羁绊提升后宠物能提供更多帮助。');
+      _finishLocal(
+        '宠物互动指令：/宠物 喂食 ｜ /宠物 玩耍 ｜ /宠物 训练\n\n'
+        '喂食每日一次，玩耍/训练每日共一次。羁绊提升后宠物能提供更多帮助。',
+      );
       return;
     }
 
@@ -595,9 +663,11 @@ mixin GamePlayMixin on GameProviderBase {
       p.petTransformDone = true;
       final species = petById(p.petId ?? '')?.species ?? '神奇生物';
       final hint = petCfg.specialInteractionHint ?? '化为与主角同龄的人形陪伴左右。';
-      buf.writeln('\n—— 一道柔和的光晕忽然从$petName 身上漾开，它的身影在光芒中缓缓拔高，'
-          '幻化作一个与你年纪相仿的少男/少女。绯色光晕笼罩周身，它/他静静看着你，轻声唤出你的名字。\n\n'
-          '【羁绊已达】${species}$petName：$hint');
+      buf.writeln(
+        '\n—— 一道柔和的光晕忽然从$petName 身上漾开，它的身影在光芒中缓缓拔高，'
+        '幻化作一个与你年纪相仿的少男/少女。绯色光晕笼罩周身，它/他静静看着你，轻声唤出你的名字。\n\n'
+        '【羁绊已达】${species}$petName：$hint',
+      );
       // 修复：化形只是为宠物新增一条关系，绝不能清空玩家与所有 NPC 的既有关系
       final petRelId = p.petId ?? petName;
       p.relationships[petRelId] = Relationship(
@@ -708,19 +778,21 @@ mixin GamePlayMixin on GameProviderBase {
     buf.writeln('\n【可穿戴装备】');
     for (final it in items) {
       final owned = _hasItem(it.name) ? '✅' : ' ';
-      buf.writeln('$owned ${it.name}（$priceLabel(it.price) 加隆，${slotLabel(it.equipSlot!)}）— ${it.desc}');
+      buf.writeln(
+        '$owned ${it.name}（$priceLabel(it.price) 加隆，${slotLabel(it.equipSlot!)}）— ${it.desc}',
+      );
     }
     buf.writeln('\n装备在 /决斗 提供战力加成，施法成功率的提升来自装备的 castBonus。');
     return buf.toString();
   }
 
   String slotLabel(String slot) => switch (slot) {
-        'robe' => '袍子',
-        'hat' => '帽子',
-        'broom' => '扫帚',
-        'amulet' => '饰品',
-        _ => '装备',
-      };
+    'robe' => '袍子',
+    'hat' => '帽子',
+    'broom' => '扫帚',
+    'amulet' => '饰品',
+    _ => '装备',
+  };
 
   String priceLabel(int p) => p >= 0 ? p.toString() : '';
 
@@ -753,7 +825,9 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('你装备上了「$name」（${slotLabel(slot)}）。');
     }
     if (def.statBonus.isNotEmpty) {
-      buf.writeln('\n属性加成：${def.statBonus.entries.map((e) => '${_attrLabelZh(e.key)} +${e.value}').join(' · ')}');
+      buf.writeln(
+        '\n属性加成：${def.statBonus.entries.map((e) => '${_attrLabelZh(e.key)} +${e.value}').join(' · ')}',
+      );
     }
     if (def.combatBonus > 0) {
       buf.writeln('战斗加成：+${def.combatBonus}');
@@ -847,7 +921,8 @@ mixin GamePlayMixin on GameProviderBase {
     p.qMatches++;
 
     // 双方实力
-    final skill = p.qSkill +
+    final skill =
+        p.qSkill +
         ((_attr('flying') - 50) ~/ 3) +
         ((_attr('reaction_time') - 50) ~/ 5) +
         (itemDefByName(broom)?.statBonus['flying'] ?? 0);
@@ -862,8 +937,10 @@ mixin GamePlayMixin on GameProviderBase {
 
     p.qSkill = (p.qSkill + 1 + random.nextInt(2)).clamp(0, 100);
     final buf = StringBuffer('【魁地奇比赛 · $myHouseCn 对 $opp】\n');
-    buf.writeln('哨声响起，$myHouseCn 队的${p.qPosition}——你，骑着$broom 冲上云霄。'
-        '雨后的空气带着草屑和松脂味，金色飞贼在不远处闪烁。');
+    buf.writeln(
+      '哨声响起，$myHouseCn 队的${p.qPosition}——你，骑着$broom 冲上云霄。'
+      '雨后的空气带着草屑和松脂味，金色飞贼在不远处闪烁。',
+    );
     final posDetail = switch (p.qPosition) {
       '找球手' => '你在球场上盘旋，目光锁定那颗疾驰的金色飞贼，一个俯冲……',
       '追球手' => '鬼飞球在你腋下稳稳夹住，你闪开两名对方击球手的防守，奋力掷向球门。',
@@ -903,9 +980,10 @@ mixin GamePlayMixin on GameProviderBase {
     // 加隆花不完，学院杯与声望系统全部失去意义。
     if (!this.canDoDaily('duel')) {
       _finishLocal(
-          '你今天已经比了 ${this.dailyLimitOf('duel')} 场决斗，手臂酸得连魔杖都快握不住了。'
-          '麦格教授远远瞥了你一眼——再打下去就要被请去喝茶了。\n\n'
-          '明天再来吧。');
+        '你今天已经比了 ${this.dailyLimitOf('duel')} 场决斗，手臂酸得连魔杖都快握不住了。'
+        '麦格教授远远瞥了你一眼——再打下去就要被请去喝茶了。\n\n'
+        '明天再来吧。',
+      );
       return;
     }
     // 修复：决斗对象仅限在校生（grade >= 1），排除教职/成人（grade == 0）。
@@ -935,7 +1013,8 @@ mixin GamePlayMixin on GameProviderBase {
       opponent = alive[random.nextInt(alive.length)];
     }
 
-    final oppPower = 30 +
+    final oppPower =
+        30 +
         opponent.reputation.combat +
         opponent.grade * 3 +
         random.nextInt(25);
@@ -943,9 +1022,10 @@ mixin GamePlayMixin on GameProviderBase {
     // 防崩坏：一年级无法正面对抗明显强大的对手
     if ((p.grade ?? 1) <= 1 && oppPower >= 75) {
       _finishLocal(
-          '你握着魔杖的手有些发冷——${opponent.name}的气场远远压过了你。'
-          '一年级的新生正面对上这样的对手只有送人头的份。\n\n'
-          '你决定把逃跑当成最明智的咒语。');
+        '你握着魔杖的手有些发冷——${opponent.name}的气场远远压过了你。'
+        '一年级的新生正面对上这样的对手只有送人头的份。\n\n'
+        '你决定把逃跑当成最明智的咒语。',
+      );
       return;
     }
     if (p.energy < 10) {
@@ -955,8 +1035,9 @@ mixin GamePlayMixin on GameProviderBase {
     // 同一天里连续找同一个人决斗，对方也会烦（也防止刷好感）
     if (lastDuelOpponentId == opponent.id) {
       _finishLocal(
-          '${opponent.name} 摆了摆手：「今天已经比过一场了，改天吧。」\n\n'
-          '你收拾魔杖，决定换个对手，或者等明天。');
+        '${opponent.name} 摆了摆手：「今天已经比过一场了，改天吧。」\n\n'
+        '你收拾魔杖，决定换个对手，或者等明天。',
+      );
       return;
     }
 
@@ -992,11 +1073,15 @@ mixin GamePlayMixin on GameProviderBase {
     final win = myScore >= oppScore;
 
     final buf = StringBuffer('【巫师决斗 · ${opponent.name}】\n');
-    buf.writeln('你们在场地中央互相致礼，${opponent.name}的眼神带着一丝跃跃欲试。'
-        '你握紧魔杖，心跳与咒语几乎同时升起。');
+    buf.writeln(
+      '你们在场地中央互相致礼，${opponent.name}的眼神带着一丝跃跃欲试。'
+      '你握紧魔杖，心跳与咒语几乎同时升起。',
+    );
     if (phoenixSave) {
-      buf.writeln('就在你手心发滑的那一瞬，杖尖自己窜出一串你不曾念过的火花——'
-          '凤凰羽毛的杖芯替你把这一咒补完了。');
+      buf.writeln(
+        '就在你手心发滑的那一瞬，杖尖自己窜出一串你不曾念过的火花——'
+        '凤凰羽毛的杖芯替你把这一咒补完了。',
+      );
     }
     if (castChance < 0.4) {
       buf.writeln('你的前两记咒语都偏得离谱——紧张让魔杖尖的光晕抖得像风里的烛火。');
@@ -1025,7 +1110,9 @@ mixin GamePlayMixin on GameProviderBase {
         _maybeRivalFromDuel(opponent, margin: myScore - oppScore);
       }
       buf.writeln('\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
-      buf.writeln('胜利：战斗声望 +$repGain · 道德声望 +2 · 学院杯 +${(10 * decay).round().clamp(1, 10)} · 赌注 $reward 加隆');
+      buf.writeln(
+        '胜利：战斗声望 +$repGain · 道德声望 +2 · 学院杯 +${(10 * decay).round().clamp(1, 10)} · 赌注 $reward 加隆',
+      );
       if (nth > 1) {
         buf.writeln('（今日第 $nth 场，对手已有准备，收获比第一场少）');
       }
@@ -1055,8 +1142,7 @@ mixin GamePlayMixin on GameProviderBase {
     if (margin > 25) chance += 0.15;
     if (random.nextDouble() > chance) return;
 
-    opponent.addGrudge(
-        causeKeyFor(RivalryCause.outshone), '你在决斗里当众赢了他', day);
+    opponent.addGrudge(causeKeyFor(RivalryCause.outshone), '你在决斗里当众赢了他', day);
     opponent.tickRivalry(day);
     final line = '🙄 ${opponent.name}输得不太好看，这事儿他记住了';
     notifications.add(line);
@@ -1080,8 +1166,9 @@ mixin GamePlayMixin on GameProviderBase {
     // 一个下午就能把图鉴刷满、材料堆成山，后期采集玩法直接失去意义。
     if (!this.canDoDaily('forest')) {
       _finishLocal(
-          '海格远远朝你摆手：「今天进去 ${this.dailyLimitOf('forest')} 趟啦，林子也得喘口气。」\n\n'
-          '天色确实不早了，明天再来吧。');
+        '海格远远朝你摆手：「今天进去 ${this.dailyLimitOf('forest')} 趟啦，林子也得喘口气。」\n\n'
+        '天色确实不早了，明天再来吧。',
+      );
       return;
     }
 
@@ -1098,13 +1185,11 @@ mixin GamePlayMixin on GameProviderBase {
     final maxDanger = grade >= 5
         ? 5
         : grade >= 3
-            ? 4
-            : grade >= 2
-                ? 3
-                : 2;
-    final pool = kCreatureCatalog
-        .where((c) => c.danger <= maxDanger)
-        .toList();
+        ? 4
+        : grade >= 2
+        ? 3
+        : 2;
+    final pool = kCreatureCatalog.where((c) => c.danger <= maxDanger).toList();
 
     if (rollValue < 30 && pool.isNotEmpty) {
       // 遭遇生物
@@ -1120,8 +1205,8 @@ mixin GamePlayMixin on GameProviderBase {
       final weighted = <CreatureDef>[];
       for (final c in pool) {
         var w = (6 - c.danger).clamp(1, 4);
-        final isWanted = c.loot.any(wantedLoot.contains) ||
-            wantedCreatures.contains(c.name);
+        final isWanted =
+            c.loot.any(wantedLoot.contains) || wantedCreatures.contains(c.name);
         if (isWanted) w += 3; // 委托目标显著加权
         for (var i = 0; i < w; i++) {
           weighted.add(c);
@@ -1131,29 +1216,38 @@ mixin GamePlayMixin on GameProviderBase {
       _recordCreature(creature);
       buf.writeln('密林深处传来窸窣声。你屏住呼吸，看到了——${creature.name}。');
       buf.writeln('${creature.desc}');
-      buf.writeln('\n【图鉴更新】${creature.name}（${dangerLabel(creature.danger)}）已收录');
+      buf.writeln(
+        '\n【图鉴更新】${creature.name}（${dangerLabel(creature.danger)}）已收录',
+      );
 
       if (creature.danger >= 3) {
         // 对抗判定
-        final escapeP = (0.35 +
-                (_attr('reaction_time') - 50) / 500 +
-                (_attr('observation') - 50) / 500 +
-                (p.petBond >= 40 ? 0.1 : 0) +
-                _equipmentCastBonus() / 1000)
-            .clamp(0.15, 0.85);
+        final escapeP =
+            (0.35 +
+                    (_attr('reaction_time') - 50) / 500 +
+                    (_attr('observation') - 50) / 500 +
+                    (p.petBond >= 40 ? 0.1 : 0) +
+                    _equipmentCastBonus() / 1000)
+                .clamp(0.15, 0.85);
         if (random.nextDouble() < escapeP) {
-          buf.writeln('\n${creature.name} 向你逼近，你抓住它停顿的一瞬，闪身躲进树根后，'
-              '贴着地面退了回去。心跳如擂鼓，但你没受伤。');
+          buf.writeln(
+            '\n${creature.name} 向你逼近，你抓住它停顿的一瞬，闪身躲进树根后，'
+            '贴着地面退了回去。心跳如擂鼓，但你没受伤。',
+          );
         } else {
           final creaturePower = creature.danger * 18 + 10;
           final myPower = _playerPower();
-          final win = (myPower + random.nextInt(21)) >= (creaturePower + random.nextInt(16));
+          final win =
+              (myPower + random.nextInt(21)) >=
+              (creaturePower + random.nextInt(16));
           if (win) {
             p.health = (p.health - 5 * creature.danger).clamp(1, 100);
             p.playerReputation.add('combat', 4 + creature.danger * 2);
             addHouseCupPoints(5, '禁林战胜危险生物');
-            buf.writeln('\n你抽出魔杖迎战。经过几个来回，${creature.name} 终于哀鸣着退入黑暗。'
-                '战斗声望 +${4 + creature.danger * 2} · 学院杯 +5');
+            buf.writeln(
+              '\n你抽出魔杖迎战。经过几个来回，${creature.name} 终于哀鸣着退入黑暗。'
+              '战斗声望 +${4 + creature.danger * 2} · 学院杯 +5',
+            );
             if (creature.loot.isNotEmpty) {
               final drop = creature.loot[random.nextInt(creature.loot.length)];
               _gainItem(drop);
@@ -1163,9 +1257,11 @@ mixin GamePlayMixin on GameProviderBase {
           } else {
             p.health = (p.health - 15 - 5 * creature.danger).clamp(0, 100);
             _pendingDeathCause = '禁林中${creature.name}的致命袭击';
-            buf.writeln('\n你没能拦住${creature.name}的冲击，被重重撞飞。'
-                '好在它没有追杀，你拖着受伤的身体逃回了城堡。'
-                '（生命 ${p.health}/100，可去校医院用白鲜香精治疗）');
+            buf.writeln(
+              '\n你没能拦住${creature.name}的冲击，被重重撞飞。'
+              '好在它没有追杀，你拖着受伤的身体逃回了城堡。'
+              '（生命 ${p.health}/100，可去校医院用白鲜香精治疗）',
+            );
           }
         }
       } else {
@@ -1182,8 +1278,10 @@ mixin GamePlayMixin on GameProviderBase {
       final rare = kRareLootMaterials.contains(material);
       _gainItem(material);
       if (rare) {
-        buf.writeln('你拨开一丛暗色的苔藓，底下的东西让你屏住了呼吸——「$material」。'
-            '这种东西可不是随便就能碰上的，你小心翼翼地收好。');
+        buf.writeln(
+          '你拨开一丛暗色的苔藓，底下的东西让你屏住了呼吸——「$material」。'
+          '这种东西可不是随便就能碰上的，你小心翼翼地收好。',
+        );
       } else {
         buf.writeln('你在树根与岩石之间仔细翻找，收获了一份「$material」，塞进背包。');
       }
@@ -1191,19 +1289,25 @@ mixin GamePlayMixin on GameProviderBase {
       // 金币
       final coins = 5 + random.nextInt(16);
       p.galleons += coins;
-      buf.writeln('你在一条干涸的溪流边捡到一个小皮袋，里面装着 $coins 加隆。'
-          '大概是哪个倒霉鬼掉的。');
+      buf.writeln(
+        '你在一条干涸的溪流边捡到一个小皮袋，里面装着 $coins 加隆。'
+        '大概是哪个倒霉鬼掉的。',
+      );
     } else if (rollValue < 85) {
-      buf.writeln('这一趟有惊无险——除了几只不咬人的护树罗锅远远望着你，禁林安静得不像话。'
-          '你几乎空手而归，但至少熟悉了这片林子。');
+      buf.writeln(
+        '这一趟有惊无险——除了几只不咬人的护树罗锅远远望着你，禁林安静得不像话。'
+        '你几乎空手而归，但至少熟悉了这片林子。',
+      );
       // 空手而归的这一档给一次收藏品机会：独角兽尾毛是禁林里唯一拿得到的
       // 纪念品，不给个明确来源的话它就永远是「看得见拿不到」。
       if (random.nextInt(100) < 12) _addCollectibleSighting(buf);
     } else {
       p.health = (p.health - 8 - random.nextInt(8)).clamp(1, 100);
       if (!p.injuries.contains('禁林擦伤')) p.injuries.add('禁林擦伤');
-      buf.writeln('你在湿滑的苔藓上滑了一跤，撞上裸露的树根，额头擦破了皮。'
-          '（生命 ${p.health}/100，注意包扎）');
+      buf.writeln(
+        '你在湿滑的苔藓上滑了一跤，撞上裸露的树根，额头擦破了皮。'
+        '（生命 ${p.health}/100，注意包扎）',
+      );
     }
 
     buf.writeln('\n禁林入口的风从你身后吹来，你决定先返回城堡。');
@@ -1222,10 +1326,14 @@ mixin GamePlayMixin on GameProviderBase {
 
   String formatBestiary() {
     final p = player;
-    final buf = StringBuffer('【魔法生物图鉴】（${p?.bestiary.length ?? 0}/${kCreatureCatalog.length}）\n');
+    final buf = StringBuffer(
+      '【魔法生物图鉴】（${p?.bestiary.length ?? 0}/${kCreatureCatalog.length}）\n',
+    );
     if (p == null || p.bestiary.isEmpty) {
-      buf.writeln('\n尚未发现任何生物。去 /禁林 探险，或观察身边的花园与城堡，'
-          '与神奇生物相遇吧。');
+      buf.writeln(
+        '\n尚未发现任何生物。去 /禁林 探险，或观察身边的花园与城堡，'
+        '与神奇生物相遇吧。',
+      );
       return buf.toString();
     }
     for (final c in kCreatureCatalog) {
@@ -1271,10 +1379,11 @@ mixin GamePlayMixin on GameProviderBase {
       if (cached.isNotEmpty) return cached;
     }
 
-    final available = kQuestTemplates
-        .where((t) => !taken.contains(t.id) && (t.minGrade <= grade))
-        .toList()
-      ..shuffle(random);
+    final available =
+        kQuestTemplates
+            .where((t) => !taken.contains(t.id) && (t.minGrade <= grade))
+            .toList()
+          ..shuffle(random);
     final picked = available.take(3).toList();
     questBoardIds = picked.map((t) => t.id).toList();
     return picked;
@@ -1291,7 +1400,9 @@ mixin GamePlayMixin on GameProviderBase {
         final q = board[i];
         buf.writeln('\n${i + 1}. ${q.title}（${_questTypeLabel(q.type)}）');
         buf.writeln('   ${q.desc}');
-        buf.writeln('   目标：${q.target} ×${q.targetCount} ｜ 奖励：${q.rewardGalleons}加隆 + ${q.rewardHousePoints}分');
+        buf.writeln(
+          '   目标：${q.target} ×${q.targetCount} ｜ 奖励：${q.rewardGalleons}加隆 + ${q.rewardHousePoints}分',
+        );
       }
       buf.writeln('\n输入 /委托 接受 [编号] 接下委托。');
     }
@@ -1311,7 +1422,13 @@ mixin GamePlayMixin on GameProviderBase {
         final q = p.quests[i];
         final done = q.isDone;
         final claimed = q.status == 'claimed';
-        buf.writeln('\n${i + 1}. [${claimed ? '已领取' : done ? '可交付' : '进行中'}] ${q.title}');
+        buf.writeln(
+          '\n${i + 1}. [${claimed
+              ? '已领取'
+              : done
+              ? '可交付'
+              : '进行中'}] ${q.title}',
+        );
         buf.writeln('   ${q.desc}');
         buf.writeln('   进度：${q.progress}/${q.targetCount}（${q.target}）');
         if (claimed) {
@@ -1345,7 +1462,9 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     if ((p.grade ?? 1) < t.minGrade) {
-      _finishLocal('「${t.title}」的难度超出了你现在的年级（要求 ${t.minGrade} 年级以上）。先成长一阵子再来吧。');
+      _finishLocal(
+        '「${t.title}」的难度超出了你现在的年级（要求 ${t.minGrade} 年级以上）。先成长一阵子再来吧。',
+      );
       return;
     }
     final taken = <String>{};
@@ -1360,18 +1479,23 @@ mixin GamePlayMixin on GameProviderBase {
     // ====== 长线记忆写入：T1 未完结事项（委托接取） ======
     // 委托是"承诺/约定"类未完结事项，必须写入 T1 防止 AI 数百回合后遗忘。
     final ts = worldState.time.format();
-    memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
-      id: 'quest_${t.id}',
-      description: '接取委托「${t.title}」：需收集${t.target}×${t.targetCount}，奖励${t.rewardGalleons}加隆+${t.rewardHousePoints}分',
-      status: 'open',
-      importance: 5,
-      openedAt: ts,
-      loopType: 'quest',
-      openedTurn: turnCount,
-    ));
-    _finishLocal('【已接取委托】\n${t.title}\n\n${t.desc}\n\n'
-        '目标：${t.target} ×${t.targetCount} ｜ 奖励：${t.rewardGalleons}加隆 + ${t.rewardHousePoints}分\n\n'
-        '完成后输入 /委托 交付 领取奖励。');
+    memory = memory.addOrUpdateOpenLoop(
+      OpenLoopRecord(
+        id: 'quest_${t.id}',
+        description:
+            '接取委托「${t.title}」：需收集${t.target}×${t.targetCount}，奖励${t.rewardGalleons}加隆+${t.rewardHousePoints}分',
+        status: 'open',
+        importance: 5,
+        openedAt: ts,
+        loopType: 'quest',
+        openedTurn: turnCount,
+      ),
+    );
+    _finishLocal(
+      '【已接取委托】\n${t.title}\n\n${t.desc}\n\n'
+      '目标：${t.target} ×${t.targetCount} ｜ 奖励：${t.rewardGalleons}加隆 + ${t.rewardHousePoints}分\n\n'
+      '完成后输入 /委托 交付 领取奖励。',
+    );
   }
 
   void deliverQuest(int index) {
@@ -1388,7 +1512,9 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     if (!q.isDone) {
-      _finishLocal('「${q.title}」还未完成：${q.progress}/${q.targetCount}（${q.target}）。继续加油。');
+      _finishLocal(
+        '「${q.title}」还未完成：${q.progress}/${q.targetCount}（${q.target}）。继续加油。',
+      );
       return;
     }
     q.status = 'claimed';
@@ -1397,27 +1523,37 @@ mixin GamePlayMixin on GameProviderBase {
     p.playerReputation.add('academic', 2);
     p.playerReputation.add('moral', 3);
     // ====== 长线记忆写入：关闭 T1 委托事项 + T3 世界事件 ======
-    memory = memory.addOrUpdateOpenLoop(OpenLoopRecord(
-      id: 'quest_${q.templateId}',
-      description: '完成委托「${q.title}」：收集${q.target}×${q.targetCount}，获得${q.rewardGalleons}加隆+${q.rewardHousePoints}分',
-      status: 'done',
-      importance: 5,
-      openedAt: worldState.time.format(),
-      closedAt: worldState.time.format(),
-      loopType: 'quest',
-      openedTurn: turnCount,
-    ));
-    memory = memory.addWorldEvent(WorldEventRecord(
-      id: 'quest_done_${q.templateId}_$turnCount',
-      timestamp: worldState.time.format(),
-      title: '完成委托',
-      description: '主角完成委托「${q.title}」，获得${q.rewardGalleons}加隆与${q.rewardHousePoints}学院分',
-      importance: 4,
-      category: 'personal',
-    ));
+    memory = memory.addOrUpdateOpenLoop(
+      OpenLoopRecord(
+        id: 'quest_${q.templateId}',
+        description:
+            '完成委托「${q.title}」：收集${q.target}×${q.targetCount}，获得${q.rewardGalleons}加隆+${q.rewardHousePoints}分',
+        status: 'done',
+        importance: 5,
+        openedAt: worldState.time.format(),
+        closedAt: worldState.time.format(),
+        loopType: 'quest',
+        openedTurn: turnCount,
+      ),
+    );
+    memory = memory.addWorldEvent(
+      WorldEventRecord(
+        id: 'quest_done_${q.templateId}_$turnCount',
+        timestamp: worldState.time.format(),
+        title: '完成委托',
+        description:
+            '主角完成委托「${q.title}」，获得${q.rewardGalleons}加隆与${q.rewardHousePoints}学院分',
+        importance: 4,
+        category: 'personal',
+      ),
+    );
     final buf = StringBuffer('【委托交付 · ${q.title}】\n');
-    buf.writeln('你带着${q.target}（${q.progress}/${q.targetCount}）交回委托板，负责的老巫师仔细清点后露出赞许的笑容。');
-    buf.writeln('\n奖励：${q.rewardGalleons} 加隆 · 学院杯 +${q.rewardHousePoints} 分 · 学术声望 +2 · 道德声望 +3');
+    buf.writeln(
+      '你带着${q.target}（${q.progress}/${q.targetCount}）交回委托板，负责的老巫师仔细清点后露出赞许的笑容。',
+    );
+    buf.writeln(
+      '\n奖励：${q.rewardGalleons} 加隆 · 学院杯 +${q.rewardHousePoints} 分 · 学术声望 +2 · 道德声望 +3',
+    );
     unlockAchievement('first_quest');
     _finishLocal(buf.toString());
   }
@@ -1511,14 +1647,22 @@ mixin GamePlayMixin on GameProviderBase {
     buf.writeln('\n你的本学年贡献：${p.houseCupPoints} 分');
     if (p.houseCupSources.isEmpty) {
       buf.writeln('可加分的途径：');
-      buf.writeln('· 魁地奇取胜 +${Balance.houseCupActivityPoints['quidditch_win']}，惜败 +5');
+      buf.writeln(
+        '· 魁地奇取胜 +${Balance.houseCupActivityPoints['quidditch_win']}，惜败 +5',
+      );
       buf.writeln('· 巫师决斗获胜 +${Balance.houseCupActivityPoints['duel_win']}');
-      buf.writeln('· 禁林战胜危险生物 +${Balance.houseCupActivityPoints['forbidden_forest']}');
-      buf.writeln('· 完成支线委托 +${Balance.houseCupActivityPoints['quest_complete']}');
+      buf.writeln(
+        '· 禁林战胜危险生物 +${Balance.houseCupActivityPoints['forbidden_forest']}',
+      );
+      buf.writeln(
+        '· 完成支线委托 +${Balance.houseCupActivityPoints['quest_complete']}',
+      );
       buf.writeln('· 课堂表现优异 +${Balance.houseCupActivityPoints['classroom']}');
       buf.writeln('· 期末考试年级前十 +${Balance.houseCupActivityPoints['exam_top']}');
-      buf.writeln('· 日常：课堂上答对的问题、替同学解的围、'
-          '还有你夜游被抓时扣掉的那些分（每天最多 +${kHouseNarrativeGainDailyCap}）');
+      buf.writeln(
+        '· 日常：课堂上答对的问题、替同学解的围、'
+        '还有你夜游被抓时扣掉的那些分（每天最多 +${kHouseNarrativeGainDailyCap}）',
+      );
     } else {
       final sources = p.houseCupSources.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
@@ -1530,8 +1674,10 @@ mixin GamePlayMixin on GameProviderBase {
       }
     }
     buf.writeln('\n学年结束时将结算排名，榜首学院获得学院杯。');
-    buf.writeln('其他学院也在暗自较劲——格兰芬多的勇气、斯莱特林的算计、'
-        '拉文克劳的智慧、赫奇帕奇的踏实，各有各的赢法。');
+    buf.writeln(
+      '其他学院也在暗自较劲——格兰芬多的勇气、斯莱特林的算计、'
+      '拉文克劳的智慧、赫奇帕奇的踏实，各有各的赢法。',
+    );
     return buf.toString();
   }
 
@@ -1569,8 +1715,10 @@ mixin GamePlayMixin on GameProviderBase {
     if (p.houseCupPoints > 0) {
       buf.writeln('\n你在本学年为$myCn 赢得了 ${p.houseCupPoints} 分。');
     } else if (p.houseCupPoints < 0) {
-      buf.writeln('\n你在本学年给$myCn 净扣掉了 ${-p.houseCupPoints} 分。'
-          '没有人当众说起这件事，但账是记着的。');
+      buf.writeln(
+        '\n你在本学年给$myCn 净扣掉了 ${-p.houseCupPoints} 分。'
+        '没有人当众说起这件事，但账是记着的。',
+      );
     } else {
       buf.writeln('\n你在本学年没有为$myCn 挣到分，但榜单还是照常揭晓了。');
     }

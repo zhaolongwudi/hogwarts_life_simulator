@@ -39,7 +39,9 @@ abstract class GameProviderBase extends ChangeNotifier
     r'^\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s*',
   );
   static final RegExp reMultiNewline = RegExp(r'\n{3,}');
-  static final RegExp reAffectionSection = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+  static final RegExp reAffectionSection = RegExp(
+    r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)',
+  );
   static final RegExp reReputationSection = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
   static final RegExp reChoiceMultiLine = RegExp(
     r'(?:^|\n)\s*(?:[A-Ea-e]|[Ａ-Ｅａ-ｅ]|[\d]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:[\.\．、\)）:：])\s+\S',
@@ -51,10 +53,13 @@ abstract class GameProviderBase extends ChangeNotifier
   static final RegExp reAptitudeFact = RegExp(r'资质为([^，,。\s]+)');
 
   /// narrative / summary buffer 清洗公共函数（mixin_narrative / mixin_response 共用）
-  /// 
+  ///
   /// 剥离：📅 状态栏整行 / 【时间戳】【地点】整行 / -----分隔线 /
   /// 可选：好感度/声望变化结构化区块（summary不需要，但解析好感的地方要保留）
-  static String sanitizeNarrativeForArchive(String text, {bool keepStructuredBlocks = true}) {
+  static String sanitizeNarrativeForArchive(
+    String text, {
+    bool keepStructuredBlocks = true,
+  }) {
     var cleaned = text;
     // 1) 📅 状态栏整行（AI写的：📅 1991年X月X日｜XX｜XX｜学院：XX）
     cleaned = cleaned.replaceAllMapped(
@@ -63,7 +68,11 @@ abstract class GameProviderBase extends ChangeNotifier
     );
     // 2) 【时间戳】【地点】整行（AI narrative 输出时写的这些标签，不该进存档/摘要）
     cleaned = cleaned.replaceAllMapped(
-      RegExp(r'^\s*【(时间戳|地点|时间|当前时间|当前地点)】[^\n]*\n', multiLine: true, caseSensitive: false),
+      RegExp(
+        r'^\s*【(时间戳|地点|时间|当前时间|当前地点)】[^\n]*\n',
+        multiLine: true,
+        caseSensitive: false,
+      ),
       (m) => '\n',
     );
     // 3) 大段 --- / ─── 分隔线（summary / narrative 输入输出的装饰线）
@@ -95,6 +104,18 @@ abstract class GameProviderBase extends ChangeNotifier
   WorldState worldState = WorldState();
   final Map<String, NPC> npcRegistry = {};
   LongTermMemory memory = LongTermMemory();
+
+  /// 会话世代号：每次「重置游戏 / 读档」自增。AI 请求在飞时若发生重置，
+  /// 返回的旧局响应必须按世代号丢弃（防旧局副作用写入新局 / 空指针）。
+  int _sessionEpoch = 0;
+
+  /// 读取当前会话世代号（mixin_narrative 在 await 前后比对用）。
+  int get sessionEpoch => _sessionEpoch;
+
+  /// 使会话世代号失效（resetAllState / applySaveData 里调用）。
+  void invalidateSessionEpoch() {
+    _sessionEpoch++;
+  }
 
   String currentNarrative = '';
   String narrativeSummary = '';
@@ -135,7 +156,7 @@ abstract class GameProviderBase extends ChangeNotifier
   String? lastDuelOpponentId;
 
   /// 场景停滞检测：记录玩家当前地点已停留的回合数
-  /// （public 化以供 mixin_narrative 跨文件访问，与其它核心字段一致）
+  /// （public 化以供 mixin_narrative 跨文件访问，与其他核心字段一致）
   String? lastTrackedLocation;
   int turnsAtSameLocation = 0;
 
@@ -146,15 +167,19 @@ abstract class GameProviderBase extends ChangeNotifier
   int apiCalls = 0;
   int gameWeek = 1;
   int lastSchoolYearStart = 0;
+
   /// 用于判断跨周：上一状态对应的绝对天数除以 7 的桶编号。
   /// 与 gameWeek 一同在 new game/load game 时初始化，避免开局几天就跨周。
   int lastWeekBucket = 0;
+
   /// 导演节拍器：距上次「转折」节拍的回合数。
   /// 99 = 开局即视为"很久没转折"，不挡第一次转折抽取。
   /// 不进存档：读档后从 99 重新开始计，影响只是一次转折可能来得早一点。
   int turnsSinceLastTurnBeat = 99;
+
   /// 学年制新NPC上限追踪：当前学年已生成的数量
   int npcGeneratedThisSchoolYear = 0;
+
   /// 记录 npcGeneratedThisSchoolYear 所属学年的起始年份
   int npcGenerationSchoolYear = 0;
   String? pendingAnchorDirective;
@@ -225,7 +250,10 @@ abstract class GameProviderBase extends ChangeNotifier
   String buildSystemPrompt();
   void bumpImpactScore(double delta, {String? debugReason});
   int calculateAge();
-  Future<ChatResult> callDeepSeek(String prompt, {AiScene scene = AiScene.narrative});
+  Future<ChatResult> callDeepSeek(
+    String prompt, {
+    AiScene scene = AiScene.narrative,
+  });
   void checkAffectionAchievements(NPC npc);
   CgDef? cgById(String id);
   bool addCollectible(String id);
@@ -277,14 +305,23 @@ abstract class GameProviderBase extends ChangeNotifier
   // 避免一个走老的简易关键词池、一个走新的末尾800字承接池，造成断链。
   List<GameChoice> buildFallbackChoices(String narrative);
   void generateNewNPC();
+
   /// 处理 /阿尼马格斯 子命令（实现在 GameAnimagusMixin）。
   void handleAnimagusCommand(List<String> parts);
+
   /// 玩家死亡判定（实现在 GameDeathMixin）：health ≤ 0 时触发死亡终章。
   void checkPlayerDeath(String cause);
+
+  /// 囚禁判定（实现在 GameDeathMixin）：黑魔法声望压过道德底线时触发
+  /// 坏结局二「自由尽失」（阿兹卡班），每回合结算调用一次。
+  void checkImprisonment();
+
   /// 处理 /职业 子命令（实现在 GameCareerMixin）。
   void handleCareerCommand(List<String> parts);
+
   /// 职业年结（实现在 GameCareerMixin）：每年九月发薪+晋升。
   void settleCareerYear(int yearsPassed);
+
   /// 死亡后拦截普通行动（实现在 GameDeathMixin），返回 true 表示已拦截。
   bool blockActionIfDead();
   String generateSortingNarrative(String house);
@@ -332,7 +369,32 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 把散在各处的状态收拢成一份「这七年」的事实。实现在 GameSystemsMixin。
   EndingFacts endingFactsOf(Player p);
 
-  Future<void> initializeGame({    required String name,    required String bloodStatus,    required String birthLocation,    required List<String> personalityTraits,    String? gender,    String? appearance,    String? familyBackground,    List<String>? childhoodExperiences,    String? beliefs,    String? wandId,    String? petName,    String? petId,    String? sexOrientation,    String? birthday,    Map<String, int>? attributes,    Map<String, int>? houseDimensions,    String? initialTalent,    String? magicAptitude,    String? housePreference,    String? politicalTendency,    String? simulationStyle,    String? birthIdentity,    String openingScene = 'station',    LegacyCarryover? legacy,  });
+  Future<void> initializeGame({
+    required String name,
+    required String bloodStatus,
+    required String birthLocation,
+    required List<String> personalityTraits,
+    String? gender,
+    String? appearance,
+    String? familyBackground,
+    List<String>? childhoodExperiences,
+    String? beliefs,
+    String? wandId,
+    String? petName,
+    String? petId,
+    String? sexOrientation,
+    String? birthday,
+    Map<String, int>? attributes,
+    Map<String, int>? houseDimensions,
+    String? initialTalent,
+    String? magicAptitude,
+    String? housePreference,
+    String? politicalTendency,
+    String? simulationStyle,
+    String? birthIdentity,
+    String openingScene = 'station',
+    LegacyCarryover? legacy,
+  });
   bool isNearby(String npcId);
   Future<String?> importSave(String jsonString);
   Future<List<Map<String, dynamic>>> listSaves();
@@ -367,7 +429,12 @@ abstract class GameProviderBase extends ChangeNotifier
 
   /// 记录一次活动
   void recordDailyActivity(String activity);
-  bool purchaseItem(String itemName, int price, {String type, String description});
+  bool purchaseItem(
+    String itemName,
+    int price, {
+    String type,
+    String description,
+  });
   Future<void> quickSave();
   Future<void> saveGameNamed(String slotName);
 
@@ -410,12 +477,18 @@ abstract class GameProviderBase extends ChangeNotifier
   Future<void> updateApiKey(String key);
   void updateClient();
   void updateNPCsFromAction(String action);
+
   /// [quiet] = true 时本次调用不触发 notifyListeners/autoSave。
   ///
   /// 批量更新（日常好感微调、一次解析出多行好感变化）必须传 true 并在循环
   /// 结束后统一通知一次：否则 N 个人就是 N 次全量 rebuild + N 次全量写档。
-  void updateNpcAffection(String npcId, int change,
-      {String? reason, int? severity, bool quiet = false});
+  void updateNpcAffection(
+    String npcId,
+    int change, {
+    String? reason,
+    int? severity,
+    bool quiet = false,
+  });
   void updatePlayerImpactScore(String action);
   bool withdrawFromBank(int amount);
 

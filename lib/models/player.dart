@@ -53,7 +53,8 @@ class Player {
   int spirit; // SP 精神力
   int satiety; // 饱食度
   int energy; // 精力值
-  final Map<String, int> houseDimensions; // 学院四维: courage/wisdom/loyalty/ambition
+  final Map<String, int>
+  houseDimensions; // 学院四维: courage/wisdom/loyalty/ambition
   String gender;
   String signature; // 个性签名（可编辑，展示于通讯/地图等界面）
   String? birthDay; // 具体生日
@@ -123,11 +124,13 @@ class Player {
   // ====== 作弊模式开关（框架1 第八部分 · 完整作弊指令系统） ======
   /// /cheat 无敌：开启后不会因伤害/事故死亡，属性不跌穿下限。
   bool cheatInvincible;
+
   /// /cheat 全知：开启后 /查看、选项生成等环节可展示隐藏信息。
   bool cheatOmniscient;
 
   /// /cheat 配对 性取向 修改前的备份：NPC名 → 原始取向（用于重置）。
   final Map<String, String> cheatOrientationBackup;
+
   /// /cheat 配对 修改过的配对键列表（'甲|乙'，用于 /cheat 配对 列表）。
   final List<String> cheatModifiedPairs;
 
@@ -153,18 +156,29 @@ class Player {
   // ====== 玩家死亡与结局（框架2 §74/§118 三类坏结局） ======
   /// 是否已死亡。死亡后游戏进入终章流程（不可复活）。
   bool isDead;
+
   /// 死亡原因（叙事友好文案）。
   String? deathCause;
+
   /// 死亡时的游戏内日期文本。
   String? deadOn;
+
+  /// 是否已被囚禁/放逐（坏结局二·自由尽失）。囚禁后游戏进入终章流程（不可逃脱）。
+  bool isImprisoned;
+
+  /// 被捕入狱时的游戏内日期文本。
+  String? imprisonedOn;
+
   /// 结局类型：'normal'（正常终章）/ 'death'（死亡）/ 'imprisoned'（自由尽失）/ 'corrupted'（黑化）。
   String endingType;
 
   // ====== 毕业后正式职业（lib/data/career_data.dart） ======
   /// 当前职业线 id（null = 未入职，仍可打工）。
   String? careerId;
+
   /// 职级下标（0 = 最低级）。
   int careerRankIndex;
+
   /// 入职以来的服务年数。
   int careerYears;
 
@@ -233,7 +247,7 @@ class Player {
     this.petBond = 0,
     LoveState? loveState,
     Reputation? playerReputation,
-    this.houseReputation = 0,
+    this.houseReputation = 50, // 学院声望起点 50（校园内正常声誉），0 会让负向变化被 clamp 吞掉
     List<DiaryEntry>? diary,
     List<ParallelScenario>? parallelScenarios,
     List<ShipRecord>? shippings,
@@ -271,6 +285,8 @@ class Player {
     this.isDead = false,
     this.deathCause,
     this.deadOn,
+    this.isImprisoned = false,
+    this.imprisonedOn,
     this.endingType = 'normal',
     this.careerId,
     this.careerRankIndex = 0,
@@ -278,46 +294,54 @@ class Player {
     Map<String, String>? cheatOrientationBackup,
     List<String>? cheatModifiedPairs,
     Map<String, Map<String, String>>? examRecords,
-  })  : id = id ?? _uuid.v4(),
-        personalityTraits = List<String>.from(personalityTraits ?? const []),
-        attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
-        initialAttributes = Map<String, int>.from(
-            initialAttributes ?? attributes ?? _defaultAttributes),
-        learnedSpells = Map<String, SpellLevel>.from(learnedSpells ?? const {}),
-        inventory = List<InventoryItem>.from(inventory ?? const []),
-        relationships = Map<String, Relationship>.from(relationships ?? const {}),
-        injuries = List<String>.from(injuries ?? const []),
-        scars = List<Scar>.from(scars ?? const []),
-        childhoodExperiences = List<String>.from(childhoodExperiences ?? const []),
-        houseDimensions = Map<String, int>.from(houseDimensions ?? _defaultHouseDimensions),
-        loveState = loveState ?? LoveState(),
-        playerReputation = playerReputation ?? Reputation(),
-        diary = List<DiaryEntry>.from(diary ?? const []),
-        parallelScenarios =
-            List<ParallelScenario>.from(parallelScenarios ?? const []),
-        shippings = List<ShipRecord>.from(shippings ?? const []),
-        children = List<ChildRecord>.from(children ?? const []),
-        collection = List<String>.from(collection ?? const []),
-        cgRecords = Map<String, CgRecord>.from(cgRecords ?? const {}),
-        achievements = List<String>.from(achievements ?? const []),
-        bloodRelatives = List<String>.from(bloodRelatives ?? const []),
-        letters = List<Letter>.from(letters ?? const []),
-        rumors = List<String>.from(rumors ?? const []),
-        rumorDates = Map<String, int>.from(rumorDates ?? const {}),
-        forumPosts = List<ForumPost>.from(forumPosts ?? const []),
-        traits = List<String>.from(traits ?? const []),
-        jobHistory = List<String>.from(jobHistory ?? const []),
-        equipped = Map<String, String>.from(equipped ?? const {}),
-        bestiary = List<String>.from(bestiary ?? const []),
-        quests = List<QuestRecord>.from(quests ?? const []),
-        houseCupSources = Map<String, int>.from(houseCupSources ?? const {}),
-        cheatOrientationBackup =
-            Map<String, String>.from(cheatOrientationBackup ?? const {}),
-        cheatModifiedPairs =
-            List<String>.from(cheatModifiedPairs ?? const []),
-        examRecords = (examRecords ?? const {}).map(
-          (k, v) => MapEntry(k, Map<String, String>.from(v)),
-        );
+  }) : id = id ?? _uuid.v4(),
+       personalityTraits = List<String>.from(personalityTraits ?? const []),
+       attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
+       initialAttributes = Map<String, int>.from(
+         initialAttributes ?? attributes ?? _defaultAttributes,
+       ),
+       learnedSpells = Map<String, SpellLevel>.from(learnedSpells ?? const {}),
+       inventory = List<InventoryItem>.from(inventory ?? const []),
+       relationships = Map<String, Relationship>.from(
+         relationships ?? const {},
+       ),
+       injuries = List<String>.from(injuries ?? const []),
+       scars = List<Scar>.from(scars ?? const []),
+       childhoodExperiences = List<String>.from(
+         childhoodExperiences ?? const [],
+       ),
+       houseDimensions = Map<String, int>.from(
+         houseDimensions ?? _defaultHouseDimensions,
+       ),
+       loveState = loveState ?? LoveState(),
+       playerReputation = playerReputation ?? Reputation(),
+       diary = List<DiaryEntry>.from(diary ?? const []),
+       parallelScenarios = List<ParallelScenario>.from(
+         parallelScenarios ?? const [],
+       ),
+       shippings = List<ShipRecord>.from(shippings ?? const []),
+       children = List<ChildRecord>.from(children ?? const []),
+       collection = List<String>.from(collection ?? const []),
+       cgRecords = Map<String, CgRecord>.from(cgRecords ?? const {}),
+       achievements = List<String>.from(achievements ?? const []),
+       bloodRelatives = List<String>.from(bloodRelatives ?? const []),
+       letters = List<Letter>.from(letters ?? const []),
+       rumors = List<String>.from(rumors ?? const []),
+       rumorDates = Map<String, int>.from(rumorDates ?? const {}),
+       forumPosts = List<ForumPost>.from(forumPosts ?? const []),
+       traits = List<String>.from(traits ?? const []),
+       jobHistory = List<String>.from(jobHistory ?? const []),
+       equipped = Map<String, String>.from(equipped ?? const {}),
+       bestiary = List<String>.from(bestiary ?? const []),
+       quests = List<QuestRecord>.from(quests ?? const []),
+       houseCupSources = Map<String, int>.from(houseCupSources ?? const {}),
+       cheatOrientationBackup = Map<String, String>.from(
+         cheatOrientationBackup ?? const {},
+       ),
+       cheatModifiedPairs = List<String>.from(cheatModifiedPairs ?? const []),
+       examRecords = (examRecords ?? const {}).map(
+         (k, v) => MapEntry(k, Map<String, String>.from(v)),
+       );
 
   /// 是否为合法属性键。
   ///
@@ -361,240 +385,270 @@ class Player {
   // 留着两个口径不一致的分院结论只会误导后来的人，已删。
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'birth_year': birthYear,
-        'blood_status': bloodType,
-        'birth_location': birthLocation,
-        'personality_traits': personalityTraits,
-        'attributes': attributes,
-        'initial_attributes': initialAttributes,
-        'learned_spells': learnedSpells.map((k, v) => MapEntry(k, v.toJson())),
-        'inventory': inventory.map((e) => e.toJson()).toList(),
-        'relationships': relationships.map((k, v) => MapEntry(k, v.toJson())),
-        'current_goal': currentGoal,
-        'world_line_deviation': worldLineDeviation,
-        'faculty_rank_id': facultyRankId,
-        'faculty_subject': facultySubject,
-        'faculty_service_years': facultyServiceYears,
-        'faculty_offer_declined': facultyOfferDeclined,
-        'health': health,
-        'injuries': injuries,
-        'scars': scars.map((s) => s.toJson()).toList(),
-        'wand_id': wandId,
-        'pet_id': petId,
-        'house': house,
-        'grade': grade,
-        'magic': magic,
-        'spirit': spirit,
-        'satiety': satiety,
-        'energy': energy,
-        'house_dimensions': houseDimensions,
-        'gender': gender,
-        'signature': signature,
-        'birth_day': birthDay,
-        'sex_orientation': sexOrientation,
-        'appearance': appearance,
-        'family_background': familyBackground,
-        'childhood_experiences': childhoodExperiences,
-        'beliefs': beliefs,
-        'initial_talent': initialTalent,
-        'current_job_title': currentJobTitle,
-        'magic_aptitude': magicAptitude,
-        'generation': generation,
-        'house_preference': housePreference,
-        'simulation_style': simulationStyle,
-        'birth_identity': birthIdentity,
-        'pet_name': petName,
-        'pet_bond': petBond,
-        'love_state': loveState.toJson(),
-        'player_reputation': playerReputation.toJson(),
-        'house_reputation': houseReputation,
-        'diary': diary.map((e) => e.toJson()).toList(),
-        'parallel_scenarios': parallelScenarios.map((e) => e.toJson()).toList(),
-        'shippings': shippings.map((e) => e.toJson()).toList(),
-        'children': children.map((e) => e.toJson()).toList(),
-        'collection': collection,
-        'cg_records': cgRecords.map((k, v) => MapEntry(k, v.toJson())),
-        'achievements': achievements,
-        'bone_mode': boneMode,
-        'galleons': galleons,
-        'bank_galleons': bankGalleons,
-        'job_history': jobHistory,
-        'blood_relatives': bloodRelatives,
-        'letters': letters.map((e) => e.toJson()).toList(),
-        'rumors': rumors,
-        'rumor_dates': rumorDates,
-        'forum_posts': forumPosts.map((e) => e.toJson()).toList(),
-        'traits': traits,
-        'political_tendency': politicalTendency,
-        'equipped': equipped,
-        'bestiary': bestiary,
-        'quests': quests.map((e) => e.toJson()).toList(),
-        'house_cup_points': houseCupPoints,
-        'house_cup_sources': houseCupSources,
-        'pet_last_fed_day': petLastFedDay,
-        'pet_interact_day': petInteractDay,
-        'pet_transform_done': petTransformDone,
-        'q_skill': qSkill,
-        'q_position': qPosition,
-        'q_matches': qMatches,
-        'q_wins': qWins,
-        'q_last_week': qLastWeek,
-        'cheat_invincible': cheatInvincible,
-        'cheat_omniscient': cheatOmniscient,
-        'animagus': animagus,
-        'patronus': patronus,
-        'is_dead': isDead,
-        'death_cause': deathCause,
-        'dead_on': deadOn,
-        'ending_type': endingType,
-        'career_id': careerId,
-        'career_rank_index': careerRankIndex,
-        'career_years': careerYears,
-        'cheat_orientation_backup': cheatOrientationBackup,
-        'cheat_modified_pairs': cheatModifiedPairs,
-        'exam_records': examRecords,
-      };
+    'id': id,
+    'name': name,
+    'birth_year': birthYear,
+    'blood_status': bloodType,
+    'birth_location': birthLocation,
+    'personality_traits': personalityTraits,
+    'attributes': attributes,
+    'initial_attributes': initialAttributes,
+    'learned_spells': learnedSpells.map((k, v) => MapEntry(k, v.toJson())),
+    'inventory': inventory.map((e) => e.toJson()).toList(),
+    'relationships': relationships.map((k, v) => MapEntry(k, v.toJson())),
+    'current_goal': currentGoal,
+    'world_line_deviation': worldLineDeviation,
+    'faculty_rank_id': facultyRankId,
+    'faculty_subject': facultySubject,
+    'faculty_service_years': facultyServiceYears,
+    'faculty_offer_declined': facultyOfferDeclined,
+    'health': health,
+    'injuries': injuries,
+    'scars': scars.map((s) => s.toJson()).toList(),
+    'wand_id': wandId,
+    'pet_id': petId,
+    'house': house,
+    'grade': grade,
+    'magic': magic,
+    'spirit': spirit,
+    'satiety': satiety,
+    'energy': energy,
+    'house_dimensions': houseDimensions,
+    'gender': gender,
+    'signature': signature,
+    'birth_day': birthDay,
+    'sex_orientation': sexOrientation,
+    'appearance': appearance,
+    'family_background': familyBackground,
+    'childhood_experiences': childhoodExperiences,
+    'beliefs': beliefs,
+    'initial_talent': initialTalent,
+    'current_job_title': currentJobTitle,
+    'magic_aptitude': magicAptitude,
+    'generation': generation,
+    'house_preference': housePreference,
+    'simulation_style': simulationStyle,
+    'birth_identity': birthIdentity,
+    'pet_name': petName,
+    'pet_bond': petBond,
+    'love_state': loveState.toJson(),
+    'player_reputation': playerReputation.toJson(),
+    'house_reputation': houseReputation,
+    'diary': diary.map((e) => e.toJson()).toList(),
+    'parallel_scenarios': parallelScenarios.map((e) => e.toJson()).toList(),
+    'shippings': shippings.map((e) => e.toJson()).toList(),
+    'children': children.map((e) => e.toJson()).toList(),
+    'collection': collection,
+    'cg_records': cgRecords.map((k, v) => MapEntry(k, v.toJson())),
+    'achievements': achievements,
+    'bone_mode': boneMode,
+    'galleons': galleons,
+    'bank_galleons': bankGalleons,
+    'job_history': jobHistory,
+    'blood_relatives': bloodRelatives,
+    'letters': letters.map((e) => e.toJson()).toList(),
+    'rumors': rumors,
+    'rumor_dates': rumorDates,
+    'forum_posts': forumPosts.map((e) => e.toJson()).toList(),
+    'traits': traits,
+    'political_tendency': politicalTendency,
+    'equipped': equipped,
+    'bestiary': bestiary,
+    'quests': quests.map((e) => e.toJson()).toList(),
+    'house_cup_points': houseCupPoints,
+    'house_cup_sources': houseCupSources,
+    'pet_last_fed_day': petLastFedDay,
+    'pet_interact_day': petInteractDay,
+    'pet_transform_done': petTransformDone,
+    'q_skill': qSkill,
+    'q_position': qPosition,
+    'q_matches': qMatches,
+    'q_wins': qWins,
+    'q_last_week': qLastWeek,
+    'cheat_invincible': cheatInvincible,
+    'cheat_omniscient': cheatOmniscient,
+    'animagus': animagus,
+    'patronus': patronus,
+    'is_dead': isDead,
+    'death_cause': deathCause,
+    'dead_on': deadOn,
+    'is_imprisoned': isImprisoned,
+    'imprisoned_on': imprisonedOn,
+    'ending_type': endingType,
+    'career_id': careerId,
+    'career_rank_index': careerRankIndex,
+    'career_years': careerYears,
+    'cheat_orientation_backup': cheatOrientationBackup,
+    'cheat_modified_pairs': cheatModifiedPairs,
+    'exam_records': examRecords,
+  };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
-        id: json['id'],
-        name: json['name'],
-        birthYear: json['birth_year'],
-        bloodType: json['blood_status'] ?? '',
-        birthLocation: json['birth_location'],
-        personalityTraits: List<String>.from(json['personality_traits'] ?? []),
-        attributes: Map<String, int>.from(json['attributes'] ?? _defaultAttributes),
-        initialAttributes: Map<String, int>.from(
-            json['initial_attributes'] ??
-                json['attributes'] ??
-                _defaultAttributes),
-        learnedSpells: (json['learned_spells'] as Map<String, dynamic>?)
-                ?.map((k, v) => MapEntry(k, SpellLevel.fromJson(v))) ??
-            {},
-        inventory: (json['inventory'] as List<dynamic>?)
-                ?.map((e) => InventoryItem.fromJson(e))
-                .toList() ??
-            [],
-        relationships: (json['relationships'] as Map<String, dynamic>?)
-                ?.map((k, v) => MapEntry(k, Relationship.fromJson(v))) ??
-            {},
-        currentGoal: json['current_goal'],
-        worldLineDeviation: (json['world_line_deviation'] ?? 0.0).toDouble(),
-        facultyRankId: json['faculty_rank_id'] as String?,
-        facultySubject: json['faculty_subject'] as String?,
-        facultyServiceYears: (json['faculty_service_years'] ?? 0) as int,
-        facultyOfferDeclined: (json['faculty_offer_declined'] ?? false) as bool,
-        health: json['health'] ?? 100,
-        injuries: List<String>.from(json['injuries'] ?? []),
-        scars: (json['scars'] as List<dynamic>? ?? const [])
-            .map((e) => Scar.fromJson(Map<String, dynamic>.from(e as Map)))
-            .whereType<Scar>()
-            .toList(),
-        wandId: json['wand_id'],
-        petId: json['pet_id'],
-        house: json['house'],
-        grade: json['grade'],
-        magic: json['magic'] ?? 100,
-        spirit: json['spirit'] ?? 100,
-        satiety: json['satiety'] ?? 100,
-        energy: json['energy'] ?? 100,
-        houseDimensions:
-            Map<String, int>.from(json['house_dimensions'] ?? _defaultHouseDimensions),
-        gender: json['gender'] ?? '',
-        signature: json['signature'] ?? '',
-        birthDay: json['birth_day'],
-        sexOrientation: json['sex_orientation'],
-        appearance: json['appearance'],
-        familyBackground: json['family_background'],
-        childhoodExperiences:
-            List<String>.from(json['childhood_experiences'] ?? []),
-        beliefs: json['beliefs'],
-        initialTalent: json['initial_talent'],
-        currentJobTitle: json['current_job_title'],
-        magicAptitude: json['magic_aptitude'],
-        generation: (json['generation'] as num?)?.toInt() ?? 1,
-        housePreference: json['house_preference'],
-        simulationStyle: json['simulation_style'],
-        birthIdentity: json['birth_identity'],
-        petName: json['pet_name'],
-        petBond: json['pet_bond'] ?? 0,
-        loveState: LoveState.fromJson(
-            Map<String, dynamic>.from(json['love_state'] ?? {})),
-        playerReputation: Reputation.fromJson(
-            Map<String, dynamic>.from(json['player_reputation'] ?? {})),
-        houseReputation: json['house_reputation'] ?? 0,
-        diary: (json['diary'] as List<dynamic>? ?? [])
-            .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
-            // 读档也截一刀：老存档里已经堆了几百条的，读进来就地收敛。
-            .take(kMaxDiaryEntries)
-            .toList(),
-        parallelScenarios: (json['parallel_scenarios'] as List<dynamic>? ?? [])
-            .map((e) => ParallelScenario.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
-        shippings: (json['shippings'] as List<dynamic>? ?? [])
-            .map((e) => ShipRecord.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
-        children: (json['children'] as List<dynamic>? ?? [])
-            .map((e) => ChildRecord.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
-        collection: List<String>.from(json['collection'] ?? []),
-        cgRecords: (json['cg_records'] as Map<String, dynamic>?)
-                ?.map((k, v) => MapEntry(k, CgRecord.fromJson(v))) ??
-            {},
-        achievements: List<String>.from(json['achievements'] ?? []),
-        boneMode: json['bone_mode'] ?? false,
-        galleons: json['galleons'] ?? 500,
-        bankGalleons: json['bank_galleons'] ?? 0,
-        jobHistory: List<String>.from(json['job_history'] ?? []),
-        bloodRelatives: List<String>.from(json['blood_relatives'] ?? []),
-        letters: (json['letters'] as List<dynamic>?)
-                ?.map((e) => Letter.fromJson(e))
-                .toList() ??
-            [],
-        rumors: List<String>.from(json['rumors'] ?? []),
-        rumorDates: Map<String, int>.from(
-            (json['rumor_dates'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, (v as num).toInt())) ?? const {}),
-        forumPosts: (json['forum_posts'] as List<dynamic>? ?? [])
-            .whereType<Map<String, dynamic>>()
-            .map(ForumPost.fromJson)
-            .toList(),
-        traits: List<String>.from(json['traits'] ?? []),
-        politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
-        equipped: Map<String, String>.from(json['equipped'] ?? {}),
-        bestiary: List<String>.from(json['bestiary'] ?? []),
-        quests: (json['quests'] as List<dynamic>?)
-                ?.map((e) => QuestRecord.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [],
-        houseCupPoints: json['house_cup_points'] ?? 0,
-        houseCupSources: Map<String, int>.from(json['house_cup_sources'] ?? const {}),
-        petLastFedDay: json['pet_last_fed_day'] ?? -1,
-        petInteractDay: json['pet_interact_day'] ?? -1,
-        petTransformDone: json['pet_transform_done'] ?? false,
-        qSkill: json['q_skill'] ?? 50,
-        qPosition: json['q_position'] ?? '找球手',
-        qMatches: json['q_matches'] ?? 0,
-        qWins: json['q_wins'] ?? 0,
-        qLastWeek: json['q_last_week'] ?? 0,
-        cheatInvincible: json['cheat_invincible'] ?? false,
-        cheatOmniscient: json['cheat_omniscient'] ?? false,
-        animagus: (json['animagus'] as Map<String, dynamic>?)?.cast<String, dynamic>(),
-        patronus: json['patronus'] as String?,
-        isDead: json['is_dead'] ?? false,
-        deathCause: json['death_cause'] as String?,
-        deadOn: json['dead_on'] as String?,
-        endingType: json['ending_type'] ?? 'normal',
-        careerId: json['career_id'] as String?,
-        careerRankIndex: json['career_rank_index'] ?? 0,
-        careerYears: json['career_years'] ?? 0,
-        cheatOrientationBackup: Map<String, String>.from(
-            (json['cheat_orientation_backup'] as Map<String, dynamic>?) ?? const {}),
-        cheatModifiedPairs: List<String>.from(json['cheat_modified_pairs'] ?? const []),
-        examRecords: (json['exam_records'] as Map<String, dynamic>? ?? const {})
-            .map((k, v) => MapEntry(
-                k, Map<String, String>.from((v as Map).cast<String, dynamic>()))),
-      );
+    id: json['id'],
+    name: json['name'],
+    birthYear: json['birth_year'],
+    bloodType: json['blood_status'] ?? '',
+    birthLocation: json['birth_location'],
+    personalityTraits: List<String>.from(json['personality_traits'] ?? []),
+    attributes: Map<String, int>.from(json['attributes'] ?? _defaultAttributes),
+    initialAttributes: Map<String, int>.from(
+      json['initial_attributes'] ?? json['attributes'] ?? _defaultAttributes,
+    ),
+    learnedSpells:
+        (json['learned_spells'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, SpellLevel.fromJson(v)),
+        ) ??
+        {},
+    inventory:
+        (json['inventory'] as List<dynamic>?)
+            ?.map((e) => InventoryItem.fromJson(e))
+            .toList() ??
+        [],
+    relationships:
+        (json['relationships'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, Relationship.fromJson(v)),
+        ) ??
+        {},
+    currentGoal: json['current_goal'],
+    worldLineDeviation: (json['world_line_deviation'] ?? 0.0).toDouble(),
+    facultyRankId: json['faculty_rank_id'] as String?,
+    facultySubject: json['faculty_subject'] as String?,
+    facultyServiceYears: (json['faculty_service_years'] ?? 0) as int,
+    facultyOfferDeclined: (json['faculty_offer_declined'] ?? false) as bool,
+    health: json['health'] ?? 100,
+    injuries: List<String>.from(json['injuries'] ?? []),
+    scars: (json['scars'] as List<dynamic>? ?? const [])
+        .map((e) => Scar.fromJson(Map<String, dynamic>.from(e as Map)))
+        .whereType<Scar>()
+        .toList(),
+    wandId: json['wand_id'],
+    petId: json['pet_id'],
+    house: json['house'],
+    grade: json['grade'],
+    magic: json['magic'] ?? 100,
+    spirit: json['spirit'] ?? 100,
+    satiety: json['satiety'] ?? 100,
+    energy: json['energy'] ?? 100,
+    houseDimensions: Map<String, int>.from(
+      json['house_dimensions'] ?? _defaultHouseDimensions,
+    ),
+    gender: json['gender'] ?? '',
+    signature: json['signature'] ?? '',
+    birthDay: json['birth_day'],
+    sexOrientation: json['sex_orientation'],
+    appearance: json['appearance'],
+    familyBackground: json['family_background'],
+    childhoodExperiences: List<String>.from(
+      json['childhood_experiences'] ?? [],
+    ),
+    beliefs: json['beliefs'],
+    initialTalent: json['initial_talent'],
+    currentJobTitle: json['current_job_title'],
+    magicAptitude: json['magic_aptitude'],
+    generation: (json['generation'] as num?)?.toInt() ?? 1,
+    housePreference: json['house_preference'],
+    simulationStyle: json['simulation_style'],
+    birthIdentity: json['birth_identity'],
+    petName: json['pet_name'],
+    petBond: json['pet_bond'] ?? 0,
+    loveState: LoveState.fromJson(
+      Map<String, dynamic>.from(json['love_state'] ?? {}),
+    ),
+    playerReputation: Reputation.fromJson(
+      Map<String, dynamic>.from(json['player_reputation'] ?? {}),
+    ),
+    houseReputation: json['house_reputation'] ?? 50,
+    diary: (json['diary'] as List<dynamic>? ?? [])
+        .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
+        // 读档也截一刀：老存档里已经堆了几百条的，读进来就地收敛。
+        .take(kMaxDiaryEntries)
+        .toList(),
+    parallelScenarios: (json['parallel_scenarios'] as List<dynamic>? ?? [])
+        .map((e) => ParallelScenario.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+    shippings: (json['shippings'] as List<dynamic>? ?? [])
+        .map((e) => ShipRecord.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+    children: (json['children'] as List<dynamic>? ?? [])
+        .map((e) => ChildRecord.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+    collection: List<String>.from(json['collection'] ?? []),
+    cgRecords:
+        (json['cg_records'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, CgRecord.fromJson(v)),
+        ) ??
+        {},
+    achievements: List<String>.from(json['achievements'] ?? []),
+    boneMode: json['bone_mode'] ?? false,
+    galleons: json['galleons'] ?? 500,
+    bankGalleons: json['bank_galleons'] ?? 0,
+    jobHistory: List<String>.from(json['job_history'] ?? []),
+    bloodRelatives: List<String>.from(json['blood_relatives'] ?? []),
+    letters:
+        (json['letters'] as List<dynamic>?)
+            ?.map((e) => Letter.fromJson(e))
+            .toList() ??
+        [],
+    rumors: List<String>.from(json['rumors'] ?? []),
+    rumorDates: Map<String, int>.from(
+      (json['rumor_dates'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as num).toInt()),
+          ) ??
+          const {},
+    ),
+    forumPosts: (json['forum_posts'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(ForumPost.fromJson)
+        .toList(),
+    traits: List<String>.from(json['traits'] ?? []),
+    politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
+    equipped: Map<String, String>.from(json['equipped'] ?? {}),
+    bestiary: List<String>.from(json['bestiary'] ?? []),
+    quests:
+        (json['quests'] as List<dynamic>?)
+            ?.map((e) => QuestRecord.fromJson(Map<String, dynamic>.from(e)))
+            .toList() ??
+        [],
+    houseCupPoints: json['house_cup_points'] ?? 0,
+    houseCupSources: Map<String, int>.from(
+      json['house_cup_sources'] ?? const {},
+    ),
+    petLastFedDay: json['pet_last_fed_day'] ?? -1,
+    petInteractDay: json['pet_interact_day'] ?? -1,
+    petTransformDone: json['pet_transform_done'] ?? false,
+    qSkill: json['q_skill'] ?? 50,
+    qPosition: json['q_position'] ?? '找球手',
+    qMatches: json['q_matches'] ?? 0,
+    qWins: json['q_wins'] ?? 0,
+    qLastWeek: json['q_last_week'] ?? 0,
+    cheatInvincible: json['cheat_invincible'] ?? false,
+    cheatOmniscient: json['cheat_omniscient'] ?? false,
+    animagus: (json['animagus'] as Map<String, dynamic>?)
+        ?.cast<String, dynamic>(),
+    patronus: json['patronus'] as String?,
+    isDead: json['is_dead'] ?? false,
+    deathCause: json['death_cause'] as String?,
+    deadOn: json['dead_on'] as String?,
+    isImprisoned: json['is_imprisoned'] ?? false,
+    imprisonedOn: json['imprisoned_on'] as String?,
+    endingType: json['ending_type'] ?? 'normal',
+    careerId: json['career_id'] as String?,
+    careerRankIndex: json['career_rank_index'] ?? 0,
+    careerYears: json['career_years'] ?? 0,
+    cheatOrientationBackup: Map<String, String>.from(
+      (json['cheat_orientation_backup'] as Map<String, dynamic>?) ?? const {},
+    ),
+    cheatModifiedPairs: List<String>.from(
+      json['cheat_modified_pairs'] ?? const [],
+    ),
+    examRecords: (json['exam_records'] as Map<String, dynamic>? ?? const {})
+        .map(
+          (k, v) => MapEntry(
+            k,
+            Map<String, String>.from((v as Map).cast<String, dynamic>()),
+          ),
+        ),
+  );
 }
 
 /// 子女记录。
@@ -620,22 +674,22 @@ class ChildRecord {
   }) : traits = List<String>.from(traits ?? const <String>[]);
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'gender': gender,
-        'born_on': bornOn,
-        'born_abs_day': bornAbsDay,
-        'other_parent': otherParentName,
-        'traits': traits,
-      };
+    'name': name,
+    'gender': gender,
+    'born_on': bornOn,
+    'born_abs_day': bornAbsDay,
+    'other_parent': otherParentName,
+    'traits': traits,
+  };
 
   factory ChildRecord.fromJson(Map<String, dynamic> json) => ChildRecord(
-        name: json['name'] ?? '',
-        gender: json['gender'] ?? '女',
-        bornOn: json['born_on'] ?? '',
-        bornAbsDay: json['born_abs_day'] ?? 0,
-        otherParentName: json['other_parent'] ?? '',
-        traits: List<String>.from(json['traits'] ?? const []),
-      );
+    name: json['name'] ?? '',
+    gender: json['gender'] ?? '女',
+    bornOn: json['born_on'] ?? '',
+    bornAbsDay: json['born_abs_day'] ?? 0,
+    otherParentName: json['other_parent'] ?? '',
+    traits: List<String>.from(json['traits'] ?? const []),
+  );
 }
 
 /// 拉郎配（玩家撮合的一对 NPC）记录。
@@ -670,25 +724,25 @@ class ShipRecord {
   String get pairLabel => '$npcA × $npcB';
 
   ShipRecord copyWith({int? bond, int? stage}) => ShipRecord(
-        npcA: npcA,
-        npcB: npcB,
-        bond: bond ?? this.bond,
-        stage: stage ?? this.stage,
-      );
+    npcA: npcA,
+    npcB: npcB,
+    bond: bond ?? this.bond,
+    stage: stage ?? this.stage,
+  );
 
   Map<String, dynamic> toJson() => {
-        'npc_a': npcA,
-        'npc_b': npcB,
-        'bond': bond,
-        'stage': stage,
-      };
+    'npc_a': npcA,
+    'npc_b': npcB,
+    'bond': bond,
+    'stage': stage,
+  };
 
   factory ShipRecord.fromJson(Map<String, dynamic> json) => ShipRecord(
-        npcA: json['npc_a'] ?? '',
-        npcB: json['npc_b'] ?? '',
-        bond: json['bond'] ?? 0,
-        stage: json['stage'] ?? 0,
-      );
+    npcA: json['npc_a'] ?? '',
+    npcB: json['npc_b'] ?? '',
+    bond: json['bond'] ?? 0,
+    stage: json['stage'] ?? 0,
+  );
 }
 
 /// 玩家手记条目。
@@ -718,20 +772,20 @@ class DiaryEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'date': date,
-        'time': time,
-        'title': title,
-        'content': content,
-        'mood': mood,
-      };
+    'date': date,
+    'time': time,
+    'title': title,
+    'content': content,
+    'mood': mood,
+  };
 
   factory DiaryEntry.fromJson(Map<String, dynamic> json) => DiaryEntry(
-        date: json['date'] ?? '',
-        time: json['time'] ?? '',
-        title: json['title'] ?? '',
-        content: json['content'] ?? '',
-        mood: json['mood'] ?? '📖',
-      );
+    date: json['date'] ?? '',
+    time: json['time'] ?? '',
+    title: json['title'] ?? '',
+    content: json['content'] ?? '',
+    mood: json['mood'] ?? '📖',
+  );
 }
 
 /// CG 记录
@@ -749,18 +803,18 @@ class CgRecord {
   });
 
   Map<String, dynamic> toJson() => {
-        'cg_id': cgId,
-        'name': name,
-        'unlocked_date': unlockedDate,
-        'chapter': chapter,
-      };
+    'cg_id': cgId,
+    'name': name,
+    'unlocked_date': unlockedDate,
+    'chapter': chapter,
+  };
 
   factory CgRecord.fromJson(Map<String, dynamic> json) => CgRecord(
-        cgId: json['cg_id'],
-        name: json['name'],
-        unlockedDate: json['unlocked_date'],
-        chapter: json['chapter'] ?? '',
-      );
+    cgId: json['cg_id'],
+    name: json['name'],
+    unlockedDate: json['unlocked_date'],
+    chapter: json['chapter'] ?? '',
+  );
 }
 
 class SpellLevel {
@@ -771,16 +825,16 @@ class SpellLevel {
   SpellLevel({required this.spellName, this.level = 0, this.practiceCount = 0});
 
   Map<String, dynamic> toJson() => {
-        'spell_name': spellName,
-        'level': level,
-        'practice_count': practiceCount,
-      };
+    'spell_name': spellName,
+    'level': level,
+    'practice_count': practiceCount,
+  };
 
   factory SpellLevel.fromJson(Map<String, dynamic> json) => SpellLevel(
-        spellName: json['spell_name'],
-        level: json['level'] ?? 0,
-        practiceCount: json['practice_count'] ?? 0,
-      );
+    spellName: json['spell_name'],
+    level: json['level'] ?? 0,
+    practiceCount: json['practice_count'] ?? 0,
+  );
 }
 
 /// 玩家在「平行世界·小剧场」里自己写的一条脑洞。
@@ -809,7 +863,8 @@ class ParallelScenario {
     this.icon = '🎭',
     String? createdAt,
     this.adopted = false,
-  }) : createdAt = createdAt ?? DateTime.now().toIso8601String().substring(0, 10);
+  }) : createdAt =
+           createdAt ?? DateTime.now().toIso8601String().substring(0, 10);
 
   ParallelScenario copyWith({
     String? title,
@@ -817,22 +872,21 @@ class ParallelScenario {
     String? icon,
     String? createdAt,
     bool? adopted,
-  }) =>
-      ParallelScenario(
-        title: title ?? this.title,
-        description: description ?? this.description,
-        icon: icon ?? this.icon,
-        createdAt: createdAt ?? this.createdAt,
-        adopted: adopted ?? this.adopted,
-      );
+  }) => ParallelScenario(
+    title: title ?? this.title,
+    description: description ?? this.description,
+    icon: icon ?? this.icon,
+    createdAt: createdAt ?? this.createdAt,
+    adopted: adopted ?? this.adopted,
+  );
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'description': description,
-        'icon': icon,
-        'created_at': createdAt,
-        'adopted': adopted,
-      };
+    'title': title,
+    'description': description,
+    'icon': icon,
+    'created_at': createdAt,
+    'adopted': adopted,
+  };
 
   factory ParallelScenario.fromJson(Map<String, dynamic> json) =>
       ParallelScenario(
@@ -855,6 +909,7 @@ class ForumPost {
   final String category;
   final String content;
   final String author;
+
   /// 发帖时刻的游戏内时间戳文案（如"1991年9月3日 傍晚"）。
   final String timeLabel;
   int likes;
@@ -873,26 +928,26 @@ class ForumPost {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'category': category,
-        'content': content,
-        'author': author,
-        'time_label': timeLabel,
-        'likes': likes,
-        'comments': comments,
-        'liked': liked,
-      };
+    'id': id,
+    'category': category,
+    'content': content,
+    'author': author,
+    'time_label': timeLabel,
+    'likes': likes,
+    'comments': comments,
+    'liked': liked,
+  };
 
   factory ForumPost.fromJson(Map<String, dynamic> json) => ForumPost(
-        id: json['id'] as String? ?? '',
-        category: json['category'] as String? ?? '校园八卦',
-        content: json['content'] as String? ?? '',
-        author: json['author'] as String? ?? '匿名巫师',
-        timeLabel: json['time_label'] as String? ?? '',
-        likes: json['likes'] as int? ?? 0,
-        comments: json['comments'] as int? ?? 0,
-        liked: json['liked'] as bool? ?? false,
-      );
+    id: json['id'] as String? ?? '',
+    category: json['category'] as String? ?? '校园八卦',
+    content: json['content'] as String? ?? '',
+    author: json['author'] as String? ?? '匿名巫师',
+    timeLabel: json['time_label'] as String? ?? '',
+    likes: json['likes'] as int? ?? 0,
+    comments: json['comments'] as int? ?? 0,
+    liked: json['liked'] as bool? ?? false,
+  );
 }
 
 class InventoryItem {
@@ -909,18 +964,18 @@ class InventoryItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'description': description,
-        'type': type,
-      };
+    'id': id,
+    'name': name,
+    'description': description,
+    'type': type,
+  };
 
   factory InventoryItem.fromJson(Map<String, dynamic> json) => InventoryItem(
-        id: json['id'],
-        name: json['name'],
-        description: json['description'] ?? '',
-        type: json['type'] ?? 'item',
-      );
+    id: json['id'],
+    name: json['name'],
+    description: json['description'] ?? '',
+    type: json['type'] ?? 'item',
+  );
 }
 
 class Relationship {
@@ -939,18 +994,18 @@ class Relationship {
   }) : history = List<String>.from(history ?? const []);
 
   Map<String, dynamic> toJson() => {
-        'target_id': targetId,
-        'target_name': targetName,
-        'relation_type': relationType,
-        'level': level,
-        'history': history,
-      };
+    'target_id': targetId,
+    'target_name': targetName,
+    'relation_type': relationType,
+    'level': level,
+    'history': history,
+  };
 
   factory Relationship.fromJson(Map<String, dynamic> json) => Relationship(
-        targetId: json['target_id'],
-        targetName: json['target_name'],
-        relationType: json['relation_type'] ?? 'acquaintance',
-        level: json['level'] ?? 10,
-        history: List<String>.from(json['history'] ?? []),
-      );
+    targetId: json['target_id'],
+    targetName: json['target_name'],
+    relationType: json['relation_type'] ?? 'acquaintance',
+    level: json['level'] ?? 10,
+    history: List<String>.from(json['history'] ?? []),
+  );
 }
