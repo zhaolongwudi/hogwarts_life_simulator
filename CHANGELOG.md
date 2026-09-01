@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.6.9 — 2026-09-01
+
+**📋 变更说明**
+fix: 第15轮审查修复 P1×5 + P2×11——坏结局二囚禁/读档回滚/在飞世代守卫/信息分级/恋爱声望落点
+
+P1：
+- 坏结局二「自由尽失」落地：checkImprisonment 回合结算（黑魔法声望≥75且道德<40且六年级+），
+  阿兹卡班终章 + blockActionIfDead 拦截扩展；player 新增 isImprisoned/imprisonedOn（老档兼容）
+- 读档失败整体回滚：applySaveData 快照+catch 恢复，杜绝新旧混合状态被 autoSave 固化
+- AI 在飞世代守卫：resetAllState/applySaveData 自增 sessionEpoch，await 后比对丢弃旧局响应
+
 ### v3.6.8 — 2026-09-01
 
 **📋 变更说明**
