@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
+import '../data/command_registry.dart';
 // 只取 kDebugMode：给 _closeLoopIfMatched 的热路径日志加 `if (kDebugMode)`
 // 保护时漏了这个 import，整包 analyze 直接红——典型的「改了 A 没改它的
 // 对称面 B」（第八次审查 §4）。
@@ -95,20 +96,24 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       final prevChoices = List<GameChoice>.from(choices);
       final handled = handleLocalCommand(action);
       if (handled) {
-        // 查看类指令（/状态 /关系 /信 /课堂 互动 等，特征是结尾选项为
-        // 「返回/继续」）：输出进独立面板，不覆盖当前回合剧情。
-        // 此前指令直接改写剧情，而「返回」的 action 又是「继续」，
-        // 会作为玩家行动发给 AI 重新生成，导致当前回合剧情丢失。
-        final isPanelOutput = currentNarrative != prevNarrative &&
-            choices.length == 1 &&
-            choices[0].action == '继续' &&
-            (choices[0].text == '返回' || choices[0].text == '继续');
+        // 查看类指令（/状态 /关系 /收藏 等，注册时 CommandDef.panel=true）：
+        // 输出进独立面板，不覆盖当前回合剧情。
+        // 此前用「choices 是否为单个『返回/继续』」的启发式判断面板型，
+        // /计划、/新NPC 生成 这类事件指令也设置了「返回」选项 → 被误判为
+        // 面板型、执行结果剧情被还原成上一段（玩家看不到任何结果）。
+        // 改为注册时显式声明 panel，判定不再猜（BUG-FIX）。
+        final slashless =
+            action.startsWith('/') ? action.substring(1) : action;
+        final cmdHead = slashless.split(RegExp(r'\s+')).first;
+        final def = CommandRegistry.instance.find(cmdHead);
+        final isPanelOutput =
+            def?.panel == true && currentNarrative != prevNarrative;
         if (isPanelOutput) {
           commandResult = currentNarrative;
           currentNarrative = prevNarrative;
           choices = prevChoices;
         } else {
-          // 事件类指令（/新NPC /结局 等）正常替换剧情，同时关闭旧面板
+          // 事件类指令（/计划 /快进 /新NPC 生成 等）正常替换剧情，同时关闭旧面板
           commandResult = null;
         }
         notifyListeners();

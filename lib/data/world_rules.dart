@@ -74,7 +74,7 @@ ${castleBriefForPrompt()}
 - ${Balance.trustLockThreshold}级解锁"共享秘密"，${Balance.romanceLockThreshold}级解锁"浪漫事件"
 - NPC记住背叛/欺骗/伤害，不会清零
 - 关系需要维系：一个月以上不互动会自然转淡（信任锁以上的老朋友与恋人不受影响）
-- 好感变化有明确归因（帮助+4~+8，救命+10~+20，背叛-15~-30）
+- 好感变化有明确归因（帮助${Balance.affectionLandingFor('中等事件（帮助/共同冒险）')}，救命${Balance.affectionLandingFor('重大事件（救命之恩）')}，生死与共${Balance.affectionLandingFor('极端事件（生死与共）')}，背叛${Balance.affectionLandingFor('背叛/欺骗')}）——请按剧情真实强度写原始幅度，系统会做平衡校准，玩家最终看到的是此落地范围
 
 【表白系统】NPC主动发起
 - 触发条件：好感≥${Balance.confessionMinAffection} + 关系暧昧≥${Balance.confessionCrushMatureDays ~/ 7}周 + 共同经历≥${Balance.confessionMinRomanticEvents}次浪漫事件

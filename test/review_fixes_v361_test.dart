@@ -6,6 +6,7 @@
 ///     `substring(0, length.clamp(10,40))` 在事件文本短于 10 字时抛 RangeError。
 ///  2. 分院识别主语锚点（M6）改为动态 player.name 后，正则改为运行时拼接，
 ///     此文件不直接覆盖（需要完整 GameProvider 实例），详见 mixin_response.dart。
+library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
 
@@ -22,7 +23,7 @@ void main() {
     });
 
     test('10~40 字文本原样返回', () {
-      final s = '十二个字的事件文本内容';
+      const s = '十二个字的事件文本内容';
       expect(narrativeEventProbe(s), s);
     });
 

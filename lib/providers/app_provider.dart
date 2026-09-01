@@ -181,6 +181,9 @@ class AppProvider extends ChangeNotifier {
   /// 指定提供商是否有至少一个 API Key
   bool hasKey(AiProvider provider) => keysForProvider(provider).isNotEmpty;
 
+  /// 任一提供商配了 Key（P0-4 新手引导用：一个 Key 都没有时提示配置）
+  bool get hasAnyKey => AiProvider.values.any(hasKey);
+
   /// 指定提供商的 API Key 数量
   int keyCount(AiProvider provider) => keysForProvider(provider).length;
 

@@ -42,6 +42,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '状态',
         group: '基础信息',
         helpText: '查看角色完整状态',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatStatus();
@@ -53,6 +54,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '时间',
         group: '基础信息',
         helpText: '查看当前时间与特殊标记',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatTime();
@@ -122,6 +124,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '城堡',
         aliases: ['秘密通道', '幽灵', '休息室'],
         group: '基础信息',
+        panel: true,
         helpText: '城堡设定：/城堡 通道 [名字]｜/城堡 幽灵 [名字]｜/城堡 学院 [院名]',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -185,6 +188,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '地图',
         group: '基础信息',
         helpText: '查看霍格沃茨地图与NPC位置',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatMap();
@@ -196,6 +200,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '通知',
         group: '基础信息',
         helpText: '查看未读通知',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatNotifications();
@@ -207,6 +212,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '帮助',
         group: '基础信息',
         helpText: '查看指令说明',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = CommandRegistry.instance.buildHelpText();
@@ -222,6 +228,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '关系',
         group: '关系&情感',
         helpText: '查看所有NPC好感度与关系',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatRelationships();
@@ -233,6 +240,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '查看',
         aliases: ['看', '打量', '观察', '打听'],
         group: '关系&情感',
+        panel: true,
         helpText: '查看某位NPC的档案：/查看 [名字]（不带名字则列出可查看的人）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -262,6 +270,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '恋爱',
         group: '关系&情感',
         helpText: '查看恋爱状态',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatLove();
@@ -273,6 +282,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '声望',
         group: '关系&情感',
         helpText: '查看声望（/声望 恋爱·/声望 NPC [名字]·/声望 NPC 列表·/声望 NPC 排名 [维度]）',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.isNotEmpty && ctx.arg(0) == '恋爱') {
@@ -301,6 +311,7 @@ mixin GameCommandsMixin on GameProviderBase {
         // 「谣言」以前只出现在 helpText 里，玩家照着输会得到一个「未知指令」
         aliases: ['传闻', '谣言'],
         group: '关系&情感',
+        panel: true,
         helpText: '查看校园里的传闻/谣言',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -313,6 +324,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '血缘',
         group: '关系&情感',
         helpText: '查看血缘亲属',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatBloodRelatives();
@@ -324,6 +336,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '恋爱等待',
         group: '关系&情感',
         helpText: '查看等待中的恋爱事件',
+        panel: true,
         // 别加带空格的别名：调度只拿 parts[0] 去 find，永远匹配不上
         aliases: const [],
         handler: (ctx) {
@@ -337,6 +350,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '恋爱阶段',
         group: '关系&情感',
         helpText: '查看恋爱阶段说明',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatLoveStages();
@@ -349,6 +363,7 @@ mixin GameCommandsMixin on GameProviderBase {
         // 同上：带空格的别名匹配不上。真正能用的是 /关系网络
         aliases: const [],
         group: '关系&情感',
+        panel: true,
         helpText: '查询两位NPC间的关系（/关系网络 [NPC1] [NPC2]）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -365,6 +380,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '骨科',
         aliases: ['骨科状态'],
         group: '关系&情感',
+        panel: true,
         helpText: '查看骨科模式状态',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -377,6 +393,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '家庭',
         aliases: ['婚姻', '配偶', '孩子', '子女'],
         group: '关系&情感',
+        panel: true,
         helpText: '查看婚姻/怀孕/子女状态',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -474,6 +491,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '课程',
         group: '学业&成长',
         helpText: '查看课程表与进度（/课程 成绩 查看考试成绩单）',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.isNotEmpty && (ctx.arg(0) == '成绩' || ctx.arg(0) == '考试')) {
@@ -509,6 +527,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '咒语',
         group: '学业&成长',
         helpText: '魔咒一览（/咒语 学习 漂浮咒 ｜ /咒语 练习 漂浮咒 ｜ /咒语 详情 漂浮咒）',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           final verb = ctx.arg(0) ?? '';
@@ -554,6 +573,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '收藏',
         group: '学业&成长',
         helpText: '查看收藏品',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatCollection();
@@ -565,6 +585,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '日记',
         group: '学业&成长',
         helpText: 'CG图鉴：统计/详情/重播（/日记 统计·/日记 [编号]·/日记 重播 [编号]）',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '统计') {
@@ -584,6 +605,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '档案',
         group: '学业&成长',
         helpText: '查看角色完整档案',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatArchive();
@@ -595,6 +617,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '成就',
         group: '学业&成长',
         helpText: '查看成就列表',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m._formatAchievements();
@@ -610,6 +633,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '宠物',
         group: '物品&宠物',
         helpText: '宠物：查看 / 喂食 / 玩耍 / 训练 / 购买',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           final sub = ctx.arg(0);
@@ -727,6 +751,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '图鉴',
         group: '玩法&活动',
         helpText: '查看已发现的魔法生物图鉴',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatBestiary();
@@ -738,6 +763,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '委托',
         group: '玩法&活动',
         helpText: '支线委托板：/委托 刷新·接受 [编号]·交付 [编号]',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '刷新') {
@@ -757,6 +783,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '学院杯',
         group: '玩法&活动',
         helpText: '查看学院杯积分与排名',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatHouseCup();
@@ -768,6 +795,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '新NPC',
         group: '玩法&活动',
         helpText: '生成/查看新NPC：/新NPC（列表）｜/新NPC [全名]（档案）｜/新NPC 生成 [数量]',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           // 框架 7.7：/新NPC 查看所有已生成新NPC列表；/新NPC [全名] 查看指定档案；
@@ -797,7 +825,8 @@ mixin GameCommandsMixin on GameProviderBase {
               }
               m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
                   '他们或许会成为你故事里的一部分。';
-              m.choices = [GameChoice(text: '返回', action: '继续')];
+              // 事件类指令：清空选项，输出即剧情（面板标记只适用于列表/档案查看）
+              m.choices = [];
               return true;
             }
             final asNumber = int.tryParse(ctx.arg(0) ?? '');
@@ -813,7 +842,7 @@ mixin GameCommandsMixin on GameProviderBase {
               }
               m.currentNarrative = '📬 一次性生成 $count 位新NPC：\n${names.join('\n')}\n\n'
                   '他们或许会成为你故事里的一部分。';
-              m.choices = [GameChoice(text: '返回', action: '继续')];
+              m.choices = [];
               return true;
             }
           }
@@ -874,6 +903,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '联动',
         group: '世界&结局',
         helpText: '查看时代联动痕迹',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           // 文案以前许诺的是"与其他时代剧情产生关联（遇到亲世代留下的物品或
@@ -893,6 +923,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '世界线',
         aliases: ['变动率', '分歧点'],
         group: '世界&结局',
+        panel: true,
         helpText: '查看世界线变动率、已被你改写的事、还差多少能动下一段原著',
         handler: (ctx) {
           final m = ctx.provider;
@@ -909,6 +940,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '抉择',
         group: '世界&结局',
         helpText: '查看当前是否有一个悬而未决的分歧点',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider;
           final id = m.pendingCausalAnchorId;
@@ -928,9 +960,23 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '伤痕',
         group: '个人',
         helpText: '查看身上永远不会好的那些伤，以及它们留下了什么',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider;
           m.currentNarrative = m.formatScars();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '成长',
+        aliases: ['成长总账'],
+        group: '个人',
+        helpText: '查看属性成长总账：开局定型值 vs 现在（P1-9）',
+        panel: true,
+        handler: (ctx) {
+          final m = ctx.provider;
+          m.currentNarrative = m.formatGrowth();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -941,6 +987,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '传承',
         group: '世界&结局',
         helpText: '把这一生交棒给下一代；/传承 名字 正式开始新的一局',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider;
           final name = ctx.tailFrom(0).trim();
@@ -972,6 +1019,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '教职',
         group: '世界&结局',
         helpText: '查看留校任教的资格与晋升进度；/教职 接受 或 /教职 婉拒 答复邀请',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider;
           m.currentNarrative = m.formatFaculty();
@@ -983,6 +1031,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '世界演化',
         group: '世界&结局',
         helpText: '查看世界演化情况',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatWorldEvolution();
@@ -994,6 +1043,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '守护神',
         aliases: ['呼神护卫'],
         group: '学业&成长',
+        panel: true,
         helpText: '守护神之路：/守护神 状态 ｜ /守护神 尝试（框架2 第66条）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1006,6 +1056,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '阿尼马格斯',
         aliases: ['阿尼玛格斯', '变身'],
         group: '学业&成长',
+        panel: true,
         helpText: '阿尼马格斯之路：/阿尼马格斯 状态｜学习｜训练｜尝试｜登记（框架2 第67条）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1018,6 +1069,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '职业',
         aliases: ['工作', '就职'],
         group: '世界&结局',
+        panel: true,
         helpText: '毕业后正式职业（/职业 列表｜选择 <职业名>｜状态｜辞职）',
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
@@ -1042,6 +1094,7 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '目标',
         group: '信件&目标',
         helpText: '查看/设定人生目标（/目标 [编号]·/目标 进度）',
+        panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 &&

@@ -366,6 +366,8 @@ mixin GameInitMixin on GameProviderBase {
       final rolledTraits = _rollStartingTraits();
       player!.traits.addAll(rolledTraits.map((t) => t.id));
       _applyTraitBonuses(rolledTraits);
+      // P1-9 成长总账：记录天赋加成后的「开局定型值」作为成长基线
+      player!.initialAttributes = Map<String, int>.from(player!.attributes);
 
       // 「魔杖的选择」成就此前没有任何解锁路径：唯一的 unlockAchievement
       // 写在一个零调用的 selectWand() 里，而玩家实际是在开局问卷里选魔杖

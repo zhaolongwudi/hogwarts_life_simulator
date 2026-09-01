@@ -2,6 +2,7 @@
 ///
 /// 集中管理原先散落在 game_provider.dart / npc.dart 中的魔法数字，
 /// 便于调参与回归测试。所有好感度、表白、好感锁等关键阈值统一在此维护。
+import '../models/game_systems.dart';
 
 /// 好感度与关系平衡
 abstract final class Balance {
@@ -84,6 +85,19 @@ abstract final class Balance {
       mapped = 10;
     }
     return raw < 0 ? -mapped : mapped;
+  }
+
+  /// 写进 prompt 的「事件类好感落地区间」——AI 原始输出经
+  /// [compressAffectionDelta] 平衡校准后的实际落地值。
+  ///
+  /// P0-2 根治：prompt 原来教 AI「救命 +10~+20、背叛 -15~-30」，落地却只有
+  /// +7~+9 / -8~-10，割裂导致「AI 写 25 只涨 10」的体验落差。
+  /// prompt 侧直接引用本函数生成的落地区间，改压缩函数时提示词自动跟随。
+  static String affectionLandingFor(String ruleType) {
+    final rule = affectionChangeRules.firstWhere((e) => e.type == ruleType);
+    final min = compressAffectionDelta(rule.min);
+    final max = compressAffectionDelta(rule.max);
+    return '$min~$max';
   }
 
   // ===== 社交成本：连续互动递减 =====

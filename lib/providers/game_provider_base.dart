@@ -298,6 +298,9 @@ abstract class GameProviderBase extends ChangeNotifier
   /// /世界线 的输出。实现在 GameSystemsMixin。
   String formatWorldLine();
 
+  /// /成长 的输出（属性成长总账）。实现在 GameSystemsMixin。
+  String formatGrowth();
+
   /// 毕业时是否有一份留校邀请正等着答复。
   bool get pendingFacultyOffer;
 

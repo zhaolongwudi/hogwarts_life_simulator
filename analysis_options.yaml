@@ -1,0 +1,16 @@
+# P1-8：恢复 lint 门禁。
+# 此前 analysis_options.yaml 被 .gitignore 排除，flutter analyze 只报编译错误，
+# flutter_lints 是死依赖，AI 迭代产生的 unused import / dead code 全部放行。
+# 先启用 flutter_lints 默认规则（error 级），后续可逐步收紧。
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: false
+    strict-inference: false
+  errors:
+    # 已知历史问题：mixin_narrative/continuity 存在未使用变量等 warning，
+    # CI 用 --no-fatal-warnings，不阻塞；error 级必须为 0。
+    invalid_use_of_protected_member: error
+    unused_import: warning

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../services/deepseek_service.dart';
@@ -1191,6 +1192,40 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 不给出通往下一个分歧点的距离，玩家永远不知道自己该做什么、
   /// 也不知道这套系统到底在不在跑。
   @override
+  /// 世界线变动率的文本进度条（20 格），让「0.3 黑箱」一眼可见（P1-9）。
+  String _worldLineBar(double dev) {
+    final filled = (dev.clamp(0.0, 1.0) * 20).round();
+    return '[' +
+        ('█' * filled) +
+        ('░' * (20 - filled)) +
+        ']';
+  }
+
+  /// 属性成长总账：开局定型值 vs 现在（P1-9）。
+  String formatGrowth() {
+    final p = player;
+    if (p == null) return '尚未创建角色。';
+    final keys = {...p.attributes.keys, ...p.initialAttributes.keys};
+    if (keys.isEmpty) return '【成长总账】\n暂无属性数据。';
+    final buf = StringBuffer('【成长总账】\n');
+    var totalGain = 0;
+    var totalAttrs = 0;
+    for (final k in keys) {
+      final cur = p.attributes[k] ?? 0;
+      final init = p.initialAttributes[k] ?? cur;
+      final diff = cur - init;
+      totalGain += diff;
+      totalAttrs += cur;
+      buf.writeln('· ${attributeLabel(k)}：$init → $cur'
+          '${diff == 0 ? '' : (diff > 0 ? '  ▲+$diff' : '  ▼$diff')}');
+    }
+    buf.writeln();
+    buf.writeln('属性总值 $totalAttrs｜累计成长 '
+        '${totalGain >= 0 ? '+' : ''}$totalGain');
+    buf.writeln('（初始值记录于开局定型时，老存档显示差值 0）');
+    return buf.toString();
+  }
+
   String formatWorldLine() {
     final p = player;
     if (p == null) return '尚未创建角色。';
@@ -1202,6 +1237,7 @@ mixin GameSystemsMixin on GameProviderBase {
       ..writeln('【世界线】${def.badge} ${def.label}')
       ..writeln('变动率 ${(dev * 100).toStringAsFixed(1)}%　'
           '（世界影响力 ${(worldState.playerImpactScore * 100).toStringAsFixed(0)}%）')
+      ..writeln(_worldLineBar(dev))
       ..writeln()
       ..writeln(def.aiDirective)
       ..writeln();
@@ -1747,6 +1783,13 @@ mixin GameSystemsMixin on GameProviderBase {
       if (npc.affection != before) {
         syncRelationshipLevel(npc);
         drifted.add(npc.name);
+        // P1-10 观测日志：衰减体感/好感通胀速度留待真实数据调参，
+        // 记录每次衰减的 NPC/天数/幅度，供后续根据实际档位校准
+        // affectionDriftPerWeekMin/Max。
+        if (kDebugMode) {
+          debugPrint('[好感衰减] ${npc.name}: $before → ${npc.affection}'
+              '（闲置 $idleDays 天，结算 $weeks 周，合计 -$total）');
+        }
       }
     }
 
@@ -2022,30 +2065,14 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   void fastForwardTime(int days) {
-    final oldMonth = worldState.time.month;
-    final oldYear = worldState.time.year;
-    for (int i = 0; i < days; i++) {
-      worldState.time.advanceMinutes(24 * 60);
-    }
-    worldState.dayOfMonth = worldState.time.day;
-    worldState.dayOfWeek = GameTime.weekdays[worldState.time.weekday];
-    worldState.month = GameTime.months[worldState.time.month - 1];
-    // 快进也要接入学年推进、月度演化与事件锚点，避免跳过年份/月份
-    _checkSchoolYearTransition(oldMonth, oldYear);
-    _checkMonthlyEvolution(oldMonth, oldYear);
-    _checkEventAnchors();
-    _runConsistencyChecks();
-    // 同步游戏周：绝对天数跨过整周边界时推进。
-    // 以前是 `gameWeek++`：快进 30 天（4 周）只加 1 周，而
-    // getAffectionGainLimit（npc.dart）在 gameWeek<=1 用周上限、<=4 用月上限
-    // → 实际已过数月仍受首月 +50 约束，好感被长期压死。与上方 advanceTime
-    // 对齐：按 newBucket - lastWeekBucket 补齐跨过的所有整周。
-    final newBucket = worldState.time.absoluteDayIndex ~/ 7;
-    if (newBucket > lastWeekBucket) {
-      gameWeek += newBucket - lastWeekBucket;
-      lastWeekBucket = newBucket;
-      _resetWeeklyAffectionCaps();
-    }
+    // P0-3 收敛：统一委托 fastForwardDays（内部走 _advanceWorldClock 全量结算：
+    // 游戏周/学院杯/NPC位置/学年推进/事件锚点/孕期/月度演化/传闻）。
+    // 旧的独立实现按天循环，漏了 NPC 位置刷新、孕期推进、学院杯对手分、
+    // 传闻生成，且 _checkEventAnchors() 用默认 hourFrom/dayDelta 匹配，
+    // 快进跨过的事件窗口会整体错位——两套实现因此不等价。
+    // 注意：fastForwardDays 对超大天数有 guard 上限（200 步内每月推进），
+    // 因此这里的超大值（如 /cheat 时间 999999）不会冻结主线程。
+    fastForwardDays(days);
   }
 
   // ==================== NPC 状态更新 ====================

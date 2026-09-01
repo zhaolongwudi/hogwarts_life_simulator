@@ -1,0 +1,34 @@
+name: PR Check
+
+# P1-6：PR 阶段就跑 analyze + test，合入 main 前先验证。
+# 此前三个 workflow 都只监听 push，代码合入 main 才第一次验证——
+# 问题只能在 main 上被发现。此 workflow 不做 bump/push/release。
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-warnings
+
+      - name: Run tests
+        run: flutter test

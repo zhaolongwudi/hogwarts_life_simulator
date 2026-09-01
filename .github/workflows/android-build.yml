@@ -68,25 +68,6 @@ jobs:
           echo "VERSION_NAME=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
           echo "Version bumped: $CURRENT -> $NEW"
 
-      - name: Sync changelog to CHANGELOG.md
-        id: sync
-        run: |
-          chmod +x scripts/sync_changelog.sh
-          bash scripts/sync_changelog.sh
-          git add CHANGELOG.md pubspec.yaml
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            echo "SYNCED=false" >> "$GITHUB_OUTPUT"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "docs: sync changelog for v${{ steps.bump.outputs.VERSION_NAME }} [skip ci]"
-            git fetch origin main && git rebase origin/main
-            git push origin main
-            echo "✅ Changelog synced and pushed"
-            echo "SYNCED=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Install Dependencies
         run: flutter pub get
 
@@ -171,6 +152,32 @@ jobs:
           name: HogwartLige-nightly
           path: ${{ env.RENAMED_APK }}
           retention-days: 7
+
+      # ================================================================
+      # P1-5：版本 bump + CHANGELOG sync + push 移到全部验证之后。
+      # 旧顺序是先发版后验证：analyze/test/build 任一失败时版本号已经
+      # bump 并推到 main（版本膨胀根因）。现在只有全部成功才发版。
+      # ================================================================
+
+      - name: Sync changelog to CHANGELOG.md（验证通过后）
+        id: sync
+        if: success()
+        run: |
+          chmod +x scripts/sync_changelog.sh
+          bash scripts/sync_changelog.sh
+          git add CHANGELOG.md pubspec.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            echo "SYNCED=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "docs: sync changelog for v${{ steps.bump.outputs.VERSION_NAME }} [skip ci]"
+            git fetch origin main && git rebase origin/main
+            git push origin main
+            echo "✅ Changelog synced and pushed"
+            echo "SYNCED=true" >> "$GITHUB_OUTPUT"
+          fi
 
       # ================================================================
       # 自动发布 Release + 清理老版本

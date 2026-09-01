@@ -113,7 +113,11 @@ mixin GameRelationsMixin on GameProviderBase {
     final name = '${givenNames[random.nextInt(givenNames.length)]}·${surnames[random.nextInt(surnames.length)]}';
     final houses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
     final house = houses[random.nextInt(houses.length)];
-    final id = 'generated_${DateTime.now().millisecondsSinceEpoch}';
+    // BUG-FIX: id 只用毫秒时间戳时，同毫秒内连续生成（批量 /新NPC 生成 N、
+    // 快速连点）会产生重复 id，后一次覆盖前一次 → 实际生成数少于请求数。
+    // 追加随机后缀保证唯一。
+    final id =
+        'generated_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(100000)}';
     final grade = p.grade ?? 1;
 
     final archetypes = personalityTemplates.keys.toList();

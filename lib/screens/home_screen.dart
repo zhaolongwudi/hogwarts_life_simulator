@@ -35,6 +35,8 @@ class HomePage extends StatelessWidget {
                 const SizedBox(height: 30),
                 if (appProvider.isGameStarted && gameProvider.player != null)
                   _buildGameStatus(gameProvider, theme),
+                if (!appProvider.hasAnyKey && !appProvider.offlineQuickMode)
+                  _buildAiSetupHint(context, theme),
                 const SizedBox(height: 20),
                 const Spacer(),
                 _buildActions(context, theme),
@@ -180,6 +182,55 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 4),
         Text(value, style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
       ],
+    );
+  }
+
+  /// P0-4 新手引导：还没配 AI Key 时给一条醒目的提示（第一道断崖的工程侧缓解）。
+  Widget _buildAiSetupHint(BuildContext context, ThemeData theme) {
+    final appProvider = context.read<AppProvider>();
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Material(
+        color: const Color(0xFF7A2E0E).withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => Navigator.pushNamed(context, '/settings'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                const Text('🎯', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '还没配置 AI Key',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: const Color(0xFFD3A625),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '剧情由 AI 生成，需要先在设置里填入 API Key；'
+                        '也可以开启「无 AI 快速模式」完全离线游玩。',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFFC9D1D9),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Color(0xFF8B949E)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

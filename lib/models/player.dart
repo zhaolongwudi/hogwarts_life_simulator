@@ -13,6 +13,11 @@ class Player {
   final String birthLocation;
   final List<String> personalityTraits;
   final Map<String, int> attributes;
+
+  /// 开局定型时的属性快照（P1-9 成长总账用）。
+  /// 在 initializeGame 完成天赋加成后记录；老存档缺省回退到当前 attributes
+  /// （差值恒 0，不会显示虚假成长）。
+  Map<String, int> initialAttributes;
   final Map<String, SpellLevel> learnedSpells;
   final List<InventoryItem> inventory;
   final Map<String, Relationship> relationships;
@@ -182,6 +187,7 @@ class Player {
     required this.birthLocation,
     List<String>? personalityTraits,
     Map<String, int>? attributes,
+    Map<String, int>? initialAttributes,
     Map<String, SpellLevel>? learnedSpells,
     List<InventoryItem>? inventory,
     Map<String, Relationship>? relationships,
@@ -270,6 +276,8 @@ class Player {
   })  : id = id ?? _uuid.v4(),
         personalityTraits = List<String>.from(personalityTraits ?? const []),
         attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
+        initialAttributes = Map<String, int>.from(
+            initialAttributes ?? attributes ?? _defaultAttributes),
         learnedSpells = Map<String, SpellLevel>.from(learnedSpells ?? const {}),
         inventory = List<InventoryItem>.from(inventory ?? const []),
         relationships = Map<String, Relationship>.from(relationships ?? const {}),
@@ -355,6 +363,7 @@ class Player {
         'birth_location': birthLocation,
         'personality_traits': personalityTraits,
         'attributes': attributes,
+        'initial_attributes': initialAttributes,
         'learned_spells': learnedSpells.map((k, v) => MapEntry(k, v.toJson())),
         'inventory': inventory.map((e) => e.toJson()).toList(),
         'relationships': relationships.map((k, v) => MapEntry(k, v.toJson())),
@@ -450,6 +459,10 @@ class Player {
         birthLocation: json['birth_location'],
         personalityTraits: List<String>.from(json['personality_traits'] ?? []),
         attributes: Map<String, int>.from(json['attributes'] ?? _defaultAttributes),
+        initialAttributes: Map<String, int>.from(
+            json['initial_attributes'] ??
+                json['attributes'] ??
+                _defaultAttributes),
         learnedSpells: (json['learned_spells'] as Map<String, dynamic>?)
                 ?.map((k, v) => MapEntry(k, SpellLevel.fromJson(v))) ??
             {},

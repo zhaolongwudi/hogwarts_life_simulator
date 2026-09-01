@@ -53,6 +53,16 @@ class CommandDef {
   /// 权限标签：'player' / 'cheat' / 'admin'
   final String permission;
 
+  /// 是否「面板型指令」（查看/列表类，如 /状态 /关系 /收藏）：
+  /// 面板型指令的输出进独立面板、不覆盖当前回合剧情；事件型指令
+  /// （如 /计划 /快进 /决斗）的输出就是新剧情、必须覆盖。
+  ///
+  /// BUG-FIX: processChoice 原先用「choices 是否为单个『返回/继续』」的
+  /// 启发式判断面板型，导致 /计划、/新NPC 生成 这类事件指令设置了
+  /// 「返回」选项后被误判为面板型、剧情被还原成上一段——玩家执行完
+  /// 指令看不到任何结果。改为注册时显式声明，判定不再猜。
+  final bool panel;
+
   const CommandDef({
     required this.primary,
     this.aliases = const [],
@@ -60,6 +70,7 @@ class CommandDef {
     required this.handler,
     this.group = '基础',
     this.permission = 'player',
+    this.panel = false,
   });
 
   bool matches(String cmd) {
