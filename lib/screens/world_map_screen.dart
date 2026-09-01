@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/ui_helpers.dart';
+import '../data/locations.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 
@@ -661,9 +662,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
         final raw = <MarkerBox>[
           for (final loc in locations)
+            // 第16轮E：x/y 带缺省——子地图数据若缺字段，不再 as double 硬 cast
+            // 崩溃成灰屏，回退到合理默认位置
             MarkerBox(
-              mapWidth * (loc['x'] as double) - boxW / 2,
-              headerOffset + ((loc['y'] as double) * canvasHeight) -
+              mapWidth * ((loc['x'] as num?)?.toDouble() ?? 0.15) - boxW / 2,
+              headerOffset +
+                      ((loc['y'] as num?)?.toDouble() ?? 0.5) * canvasHeight -
                   (compact ? 0 : 36),
             ),
         ];
@@ -1090,7 +1094,41 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           if (isBranch) {
                             _enterSubArea(loc['name'] as String);
                           } else {
-                            gp.travelTo(loc['name'] as String);
+                            // 第16轮E：预检时间门/年级门——原 travelTo 拦截是
+                            // 静默的（只记系统事件），玩家点「前往」毫无反馈，
+                            // 像地图"灰屏没反应"。拦截时给可见 SnackBar 提示。
+                            final targetName = loc['name'] as String;
+                            final normalized =
+                                resolveLocationName(targetName) ?? targetName;
+                            final curLoc = gp.worldState.currentLocation ?? '';
+                            final dateInt = gp.worldState.time.month * 100 +
+                                gp.worldState.time.day;
+                            if (blockedBySeasonGate(
+                              detected: normalized,
+                              current: curLoc,
+                              dateInt: dateInt,
+                            )) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('该地点开学后才能前往（9月1日起）'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            if (blockedByGradeGate(
+                              detected: normalized,
+                              grade: gp.player?.grade ?? 1,
+                            )) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('该地点需三年级以上才能前往'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            gp.travelTo(targetName);
                             Navigator.pop(context);
                           }
                         },
