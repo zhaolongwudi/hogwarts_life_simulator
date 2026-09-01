@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.7.5 — 2026-09-01
+
+**📋 变更说明**
+fix: 地图地点详情卡 firstWhere orElse 类型崩溃（灰屏+返回崩溃根因）
+
+用户崩溃日志：type '() => Map<String, dynamic>' is not a subtype of
+'(() => Map<String, Object>)?' of 'orElse'，堆栈指向 _buildLocationCard。
+根因：const 地图数据在旧版推断为 Map<String, Object>，firstWhere 的
+orElse: () => {} 推断 Map<String, dynamic> → 运行时类型断言失败。
+点小地图地点 → 详情卡 build 崩溃 → 整棵 widget 树标记错误 → 灰屏；
+
 ### v3.7.4 — 2026-09-01
 
 **📋 变更说明**
