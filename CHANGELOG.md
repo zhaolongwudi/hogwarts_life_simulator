@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.7.2 — 2026-09-01
+
+**📋 变更说明**
+fix: round16e setUpAll 条件降级——CI 无用户存档 fixture 时用硬编码叙事
+
+CI 失败（1311 passed, 1 failed）：round16e setUpAll 无条件读
+test/fixtures_auto_save.json（含隐私未提交仓库），CI 上文件不存在抛异常。
+改为：fixture 存在用真实叙事，否则用等长硬编码叙事（含「声音沙哑：”阁楼。」）
+——回归目标一致（不卡死）。本地+无fixture 双场景验证 10 项全过。
+
 ### v3.7.1 — 2026-09-01
 
 **📋 变更说明**
