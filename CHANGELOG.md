@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.7.3 — 2026-09-01
+
+**📋 变更说明**
+fix: 日志分析第16轮D 6项优化 + 地图UI可读性/快速切换
+
+基于真实 AI 日志（10 请求）的输入输出质量修复（纠错不砍量）：
+P0-1 摘要注入主角既定事实（buildCoreFactsForSummary 取 Player 权威字段，
+buildSummaryPrompt 新增 coreFacts 段）——杜绝「闪电疤/猫头鹰绯月」张冠李戴
+P0-2 违规反馈时效+去重：recordConsistencyViolation 记 turn，
+prevWarnFeedbackLines 只反馈上一回合且按 message 去重
+
 ### v3.7.2 — 2026-09-01
 
 **📋 变更说明**
