@@ -134,7 +134,14 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     }
 
     // 用户自由文本在进入 Prompt 前做注入防御净化
-    final safeAction = PromptSanitizer.sanitizeAction(action);
+    // 第16轮G：未识别的 / 开头输入（如选项带 "/强忍不安..." 或玩家误加 /）
+    // 已由 handleLocalCommand 降级为自由行动，这里去掉 / 前缀再交给 AI，
+    // 避免叙事/选项把 / 原样带回来形成循环。
+    var effectiveAction = action;
+    if (effectiveAction.startsWith('/')) {
+      effectiveAction = effectiveAction.substring(1).trim();
+    }
+    final safeAction = PromptSanitizer.sanitizeAction(effectiveAction);
 
     // 恋爱链路接线：玩家在选择「接受/婉拒表白」选项时直接结算，
     // 避免表白剧情永远悬置（此前 resolveConfession 无任何调用方）。
@@ -260,6 +267,11 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
           if (c != 0) return c;
           return b.absoluteDay.compareTo(a.absoluteDay);
         });
+      // 第16轮G：过滤与 Player 权威事实冲突的历史污染条目。
+      // P0-1 修复后新摘要不会写错，但更早版本的错误摘要已写进 keyFacts
+      // （如"宠物猫头鹰绯月"——绯月是九尾灵狐；"闪电形伤疤"——主角非哈利）。
+      // 这里在注入侧拦截，不改存档数据，AI 不再读到冲突事实。
+      t0.removeWhere((f) => _factConflictsWithAuthority(f.fact));
       if (t0.isNotEmpty) {
         contextBuffer.writeln('【T0 核心事实（永不遗忘；纯事实，不得更改或遗忘）】');
         for (int i = 0; i < t0.length && i < 60; i++) {
@@ -1291,6 +1303,29 @@ $kNarrativeWritingRules
     if (narrative.length <= maxChars) return narrative;
     final cut = snapCutToBoundary(narrative, narrative.length - maxChars);
     return '…（前情略）${narrative.substring(cut)}';
+  }
+
+  /// 第16轮G：T0 核心事实与 Player 权威设定冲突检测（过滤历史错误摘要污染）。
+  /// 保守匹配，只拦已知的硬冲突，避免误伤其他事实：
+  ///  - 宠物物种错：玩家契约宠物是九尾灵狐，事实却写"猫头鹰绯月"
+  ///  - 哈利特征张冠李戴：主角非哈利，事实却写"闪电形伤疤"
+  bool _factConflictsWithAuthority(String fact) {
+    final p = player;
+    if (p == null || fact.isEmpty) return false;
+    final isHarry = p.name.toLowerCase() == '哈利' || p.name.contains('波特');
+    // 宠物冲突：权威宠物是狐类，事实却写猫头鹰（绯月不是猫头鹰）
+    if (p.petId != null && p.petId!.isNotEmpty) {
+      final pd = petById(p.petId!);
+      final species = pd?.species ?? '';
+      if (species.contains('狐') && fact.contains('猫头鹰')) {
+        return true;
+      }
+    }
+    // 闪电形伤疤：哈利专属（主角的疤不是闪电形，家庭设定红线）
+    if (!isHarry && fact.contains('闪电形') && fact.contains('伤疤')) {
+      return true;
+    }
+    return false;
   }
 
   /// 把一回合剧情加入近期缓冲，裁剪到最近 N 回合

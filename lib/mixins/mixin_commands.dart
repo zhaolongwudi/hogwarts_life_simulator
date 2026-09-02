@@ -1406,6 +1406,11 @@ mixin GameCommandsMixin on GameProviderBase {
     // 而玩家点任何一条候选都会继续触发新指令 —— 输错指令就等于丢掉当前一整段剧情。
     // 候选指令仍写在提示正文里（_formatUnknownCommand 已逐条列出），信息没丢。
     if (cmd.startsWith('/')) {
+      // 第16轮G：较长的「指令」大概率是玩家误加 / 的自由行动文本
+      // （如 "/握紧魔杖起身准备出发"），降级为自由行动（返回 false 走
+      // processChoice 叙事路径，那里会去掉 / 前缀）。
+      // 短命令名（如 /状态统 拼错）保留候选提示。
+      if (slashless.length >= 6) return false;
       // 第16轮E：清空 lastPlayerAction，避免下次 AI 把"/握紧魔杖..."原样
       // 当选项返回（A./握紧魔杖...）——玩家点选项又触发新一轮 → 死循环。
       lastPlayerAction = '';

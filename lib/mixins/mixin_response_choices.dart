@@ -6,6 +6,13 @@ mixin GameResponseChoiceMixin on GameProviderBase {
   static String sanitizeChoiceText(String raw) {
     var s = raw.trim();
 
+    // === 第16轮G：剥选项内容开头的 /（Agnes 等模型常输出 "A./xxx"）===
+    // 若保留 /，点选选项会被 command 系统当未注册指令 → 卡死循环。
+    // 玩家输入侧同理（误加 / 的自由行动）。
+    while (s.startsWith('/') || s.startsWith('／')) {
+      s = s.substring(1).trimLeft();
+    }
+
     // === 第一遍：清除结构化 Markdown ===
     // 删markdown图片 ![alt](url) 或 ![alt][ref]
     s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
