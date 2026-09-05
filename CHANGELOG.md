@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.7.9 — 2026-09-05
+
+**📋 变更说明**
+feat(ui): 剧情历史页 HyperOS 化 —— MiuiCard + 透明 AppBar + 辉光背景
+
+- token 化：D3A625→primary, 252C36→surfaceContainer, 1C232D→
+  surfaceContainerHigh, 8B949E→onSurfaceVariantSummary, 6B7280→
+  onSurfaceVariantActions, C9D1D9→onSurface
+- build 空状态：Stack 魔法辉光背景 + 居中提示
+- build 主 scaffold：透明 AppBar + Stack 辉光背景 + bottom 分页
+
 ### v3.7.8 — 2026-09-05
 
 **📋 变更说明**
