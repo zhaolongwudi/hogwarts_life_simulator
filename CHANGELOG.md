@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.8.2 — 2026-09-05
+
+**📋 变更说明**
+feat(ui): 游戏主屏按 Miuix 架构重构 —— 事件/面板顶栏 Segmented
+
+- _buildPanelEventTabs 自绘胶囊(90 行重复代码) → MiuiSegmented<int>
+  二段导航(事件/面板, height 34 紧凑胶囊) + 右侧两个圆形图标动作
+  (回放入口 history / 阅读模式 fullscreen)
+- MiuiSegmented 组件新增可选 height(默认 42, 用于紧凑场景)
+- 新增 _PanelIconAction: 34dp 圆钮(surfaceContainerHigh 底 +
+
 ### v3.8.1 — 2026-09-05
 
 **📋 变更说明**
