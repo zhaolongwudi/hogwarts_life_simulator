@@ -29,7 +29,8 @@ class _GameScreenState extends State<GameScreen> {
   String? _lastCommandPanel;
 
   /// 悬浮导航栏占据的底部空间（bottomPadding + 高度 + 与内容的间隙）。
-  static const double _navSpace = 26 + MiuiSpace.floatingNavMinHeight + 8;
+  /// 注：输入栏与玻璃导航相接（无间隙），构成「连续 Dock」。
+  static const double _navSpace = 26 + MiuiSpace.floatingNavMinHeight;
 
   @override
   void dispose() {
