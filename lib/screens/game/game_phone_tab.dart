@@ -80,14 +80,26 @@ class PhoneTab extends StatelessWidget {
               Center(
                 child: Column(
                   children: [
-                    Text(
-                      '${time.month}月${time.day}日 ${weekdayNames[time.weekday]}',
-                      style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.85)),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$hourStr:$minStr',
-                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w300, color: Colors.white, height: 1.1),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.5), width: MiuiSpace.dividerThickness),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '${time.month}月${time.day}日 ${weekdayNames[time.weekday]}',
+                            style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary, letterSpacing: 0.5),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$hourStr:$minStr',
+                            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w300, color: MiuiColors.onSurface, height: 1.1, letterSpacing: 1),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

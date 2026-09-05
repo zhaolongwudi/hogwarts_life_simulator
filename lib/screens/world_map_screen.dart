@@ -424,7 +424,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       return LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFFC4A574), Color(0xFFA08C5A), Color(0xFF6B5B3A)],
+        colors: [Color(0xFF2E2615), Color(0xFF221D11), Color(0xFF18150D)],
       );
     }
     if (_currentSubArea == '翻倒巷') {
@@ -439,25 +439,25 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         return LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFC4A882), Color(0xFFA0825A), Color(0xFF6B5B3A)],
+          colors: [Color(0xFF2C2935), Color(0xFF1F1C28), Color(0xFF16141C)],
         );
       case '住宅区':
         return LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFD4C5A9), Color(0xFFB8A88A), Color(0xFF8A9A7B)],
+          colors: [Color(0xFF2A2D33), Color(0xFF1E2025), Color(0xFF15171B)],
         );
       case '霍格莫德村':
         return LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFB8C5A0), Color(0xFF8FA07A), Color(0xFF5A6B50)],
+          colors: [Color(0xFF1F2E33), Color(0xFF162126), Color(0xFF0E171C)],
         );
       default:
         return LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF9EB5C9), Color(0xFF6B8E7A), Color(0xFF3E5B4A)],
+          colors: [Color(0xFF2A3540), Color(0xFF1F2A35), Color(0xFF151D26)],
         );
     }
   }
@@ -482,12 +482,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: MiuiColors.outline.withValues(alpha: 0.6),
+                  width: MiuiSpace.dividerThickness,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
                 ],

@@ -121,52 +121,51 @@ class GameTopBar extends StatelessWidget {
 
   /// 顶部 HUD：5 条细长状态条（生命/魔力/精神力/饱食/精力），低值变红提醒
   Widget _buildResourceBars(Player player) {
-    final resources = <({String label, int value, Color color})>[
-      (label: '生命', value: player.health, color: AppColors.danger),
-      (label: '魔力', value: player.magic, color: const Color(0xFF2563EB)),
-      (label: '精神', value: player.spirit, color: const Color(0xFF7C3AED)),
-      (label: '饱食', value: player.satiety, color: const Color(0xFFD97706)),
-      (label: '精力', value: player.energy, color: AppColors.success),
+    final resources = <({String label, IconData icon, int value, Color color})>[
+      (label: '生命', icon: Icons.favorite, value: player.health, color: AppColors.danger),
+      (label: '魔力', icon: Icons.auto_awesome, value: player.magic, color: const Color(0xFF60A5FA)),
+      (label: '精神', icon: Icons.psychology, value: player.spirit, color: const Color(0xFFA78BFA)),
+      (label: '饱食', icon: Icons.restaurant, value: player.satiety, color: const Color(0xFFD97706)),
+      (label: '精力', icon: Icons.flash_on, value: player.energy, color: AppColors.success),
     ];
-    return Row(
-      children: List.generate(resources.length, (i) {
-        final r = resources[i];
-        final low = r.value < 30;
-        final barColor = low ? MiuiColors.error : r.color;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i < resources.length - 1 ? 6 : 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SizedBox(
+      height: 34,
+      child: Row(
+        children: List.generate(resources.length, (i) {
+          final r = resources[i];
+          final low = r.value < 30;
+          final barColor = low ? MiuiColors.error : r.color;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < resources.length - 1 ? 5 : 0),
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: barColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: barColor.withValues(alpha: 0.35),
+                    width: MiuiSpace.dividerThickness,
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(r.label,
-                        style: const TextStyle(fontSize: 9, color: MiuiColors.onSurfaceVariantSummary)),
+                    Icon(r.icon, size: 12, color: barColor),
+                    const SizedBox(width: 3),
                     Text('${r.value}',
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: low ? MiuiColors.error : MiuiColors.onSurface,
+                          color: low ? MiuiColors.error : barColor,
                         )),
                   ],
                 ),
-                const SizedBox(height: 2),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: (r.value / 100).clamp(0.0, 1.0),
-                    minHeight: 3,
-                    backgroundColor: barColor.withValues(alpha: 0.15),
-                    valueColor: AlwaysStoppedAnimation(barColor),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }

@@ -958,10 +958,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final value = attr['value'] as int;
     final color = attr['color'] as Color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.32)),
       ),
       child: Column(
@@ -984,8 +984,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Text(
                 '$value',
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                   color: color,
                 ),
               ),
@@ -1010,7 +1010,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final value = attr['value'] as int;
     final color = attr['color'] as Color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(12),
@@ -1027,7 +1027,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 child: Text(
                   attr['label'] as String,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: color.withValues(alpha: 0.92),
                   ),
@@ -1036,8 +1036,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Text(
                 '$value',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: color,
                 ),
               ),
@@ -1060,7 +1060,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildMapMiniTag(String label, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
