@@ -490,6 +490,7 @@ class MiuiSegmented<T extends Object> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.height = 42,
+    this.fixedWidth,
   });
 
   final Map<T, String> segments;
@@ -499,9 +500,13 @@ class MiuiSegmented<T extends Object> extends StatelessWidget {
   /// 胶囊总高度。剧情页顶部需要更矮的导航条时可传 34。
   final double height;
 
+  /// 显式宽度：传入时胶囊不再拉通父级宽度（用于顶部居中导航等场景）。
+  final double? fixedWidth;
+
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: fixedWidth,
       height: height,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(

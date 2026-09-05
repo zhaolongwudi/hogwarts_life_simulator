@@ -175,18 +175,18 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
   Widget _buildPanelEventTabs() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 10, 28, 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: MiuiSegmented<int>(
-              segments: const {0: '事件', 1: '面板'},
-              selected: widget.subTab <= 1 ? widget.subTab : 0,
-              height: 34,
-              onChanged: (v) => widget.onSubTabChanged(v),
-            ),
+          MiuiSegmented<int>(
+            segments: const {0: '事件', 1: '面板'},
+            selected: widget.subTab <= 1 ? widget.subTab : 0,
+            height: 34,
+            fixedWidth: 168,
+            onChanged: (v) => widget.onSubTabChanged(v),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 14),
           // 剧情回放入口
           _PanelIconAction(
             icon: Icons.history,
@@ -610,7 +610,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
   /// 决策 Dock：选项常驻屏底（正文在滚动区滚动，选项永远不用滑）。
   Widget _buildChoiceDock(GameProvider gp) {
     final screenH = MediaQuery.sizeOf(context).height;
-    final maxH = (screenH * 0.42).clamp(220.0, 460.0);
+    // 正文优先：Dock 只给 34% 上限（210..320），保证正文有充足滚动区。
+    // 选项多时可以点「收起」把 Dock 收回 44px 阅读条。
+    final maxH = (screenH * 0.34).clamp(210.0, 320.0);
     return _buildChoiceList(gp, maxHeight: maxH);
   }
 
@@ -1240,9 +1242,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
 
     // 悬浮横幅实际高度（SceneIllustrationBanner 固定 96，短屏收窄到 72）。
     // 向下滚动时收成 36px 紧凑条——插图在"看一眼"时值钱，读正文时它只是租金。
-    final fullBannerH = constraints.maxHeight < 520 ? 72.0 : 96.0;
-    final bannerH = bannerCollapsedByScroll ? 36.0 : fullBannerH;
-    final headerReserve = hasHeader ? bannerH + 12 : 16.0;
+    // v3.8.8 正文优先：横幅压缩到 80（紧凑 28），省下的高度还给正文滚动区。
+    final fullBannerH = constraints.maxHeight < 520 ? 56.0 : 80.0;
+    final bannerH = bannerCollapsedByScroll ? 28.0 : fullBannerH;
+    final headerReserve = hasHeader ? bannerH + 8 : 12.0;
 
     return Stack(
       clipBehavior: Clip.none,

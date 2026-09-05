@@ -70,8 +70,8 @@ void main() {
           reason: '选项应常驻屏底（_buildChoiceDock）而不是埋在长正文末尾');
       expect(src.contains('constraints.maxHeight * 0.32'), isFalse,
           reason: '选项已移出正文滚动体，不得再按正文约束限高');
-      expect(src.contains('screenH * 0.42'), isTrue,
-          reason: '屏底决策 Dock 按屏高比例给足 42% 上限，保证选项完整可见');
+      expect(src.contains('screenH * 0.34'), isTrue,
+          reason: '正文优先：决策 Dock 只占屏高 34% 上限，正文保持充足滚动区');
       expect(src.contains('正文区不再承载'), isTrue,
           reason: '正文滚动体剥离选项的注释标记应存在（选项只出现在屏底 Dock）');
     });
