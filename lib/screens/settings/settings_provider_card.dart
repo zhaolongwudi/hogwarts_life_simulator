@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/ui_helpers.dart';
 import '../../data/provider_defaults.dart';
 import '../../providers/app_provider.dart';
+import '../../theme/miuix_tokens.dart';
 
 /// AI 提供商配置卡片（可折叠）。
 /// 收起态：提供商名称 + 一句话定位 + 当前模型 + 配置状态，一眼总览。
@@ -129,7 +130,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
       case AiProvider.deepseek:
         return const Color(0xFF4D6BFE);
       case AiProvider.agnes:
-        return const Color(0xFF10B981);
+        return MiuiColors.success;
       case AiProvider.sensenova:
         return const Color(0xFFFF8A3D);
     }
@@ -155,10 +156,10 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (freeModels.isNotEmpty)
-          _buildModelChipRow(p, '🎁 免费额度', freeModels, current, const Color(0xFF10B981)),
+          _buildModelChipRow(p, '🎁 免费额度', freeModels, current, MiuiColors.success),
         if (freeModels.isNotEmpty && paidModels.isNotEmpty) const SizedBox(height: 6),
         if (paidModels.isNotEmpty)
-          _buildModelChipRow(p, '⭐ 推荐付费', paidModels, current, const Color(0xFFD3A625)),
+          _buildModelChipRow(p, '⭐ 推荐付费', paidModels, current, MiuiColors.primary),
       ],
     );
   }
@@ -194,10 +195,10 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 decoration: BoxDecoration(
                   color: selected
                       ? accent.withValues(alpha: 0.18)
-                      : const Color(0xFF21262D),
+                      : MiuiColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: selected ? accent : const Color(0xFF30363D),
+                    color: selected ? accent : MiuiColors.outline,
                     width: selected ? 1.5 : 1,
                   ),
                 ),
@@ -205,7 +206,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                   model,
                   style: TextStyle(
                     fontSize: 11.5,
-                    color: selected ? accent : const Color(0xFFC9D1D9),
+                    color: selected ? accent : MiuiColors.onSurface,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
@@ -259,7 +260,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                         child: Text(
                           _tagline(p),
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11),
+                          style: const TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 11),
                         ),
                       ),
                     ],
@@ -268,7 +269,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                   // 当前使用的模型
                   Row(
                     children: [
-                      const Icon(Icons.memory_outlined, size: 12, color: Color(0xFF6B7280)),
+                      const Icon(Icons.memory_outlined, size: 12, color: MiuiColors.onSurfaceVariantActions),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -276,12 +277,12 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11.5,
-                            color: isDefaultModel ? const Color(0xFF6B7280) : accent,
+                            color: isDefaultModel ? MiuiColors.onSurfaceVariantActions : accent,
                           ),
                         ),
                       ),
                       if (isDefaultModel)
-                        const Text('默认', style: TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                        const Text('默认', style: TextStyle(fontSize: 10, color: MiuiColors.onSurfaceVariantActions)),
                     ],
                   ),
                 ],
@@ -293,12 +294,12 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: hasKey
-                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    ? MiuiColors.success.withValues(alpha: 0.15)
                     : Colors.orange.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: hasKey
-                      ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                      ? MiuiColors.success.withValues(alpha: 0.5)
                       : Colors.orange.withValues(alpha: 0.5),
                 ),
               ),
@@ -307,7 +308,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
-                  color: hasKey ? const Color(0xFF10B981) : Colors.orange,
+                  color: hasKey ? MiuiColors.success : Colors.orange,
                 ),
               ),
             ),
@@ -315,7 +316,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
             Icon(
               _expanded ? Icons.expand_less : Icons.expand_more,
               size: 20,
-              color: const Color(0xFF8B949E),
+              color: MiuiColors.onSurfaceVariantSummary,
             ),
           ],
         ),
@@ -341,27 +342,27 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF1C232D),
+              color: MiuiColors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(desc,
-                style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11.5, height: 1.45)),
+                style: const TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 11.5, height: 1.45)),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              const Text('API Key', style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              const Text('API Key', style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
               if (keyCount > 0) ...[
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    color: MiuiColors.success.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '$keyCount 个 Key',
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 10, color: MiuiColors.success, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -408,8 +409,8 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               icon: const Icon(Icons.add, size: 16),
               label: const Text('添加 API Key', style: TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
-                foregroundColor: const Color(0xFF10B981),
+                side: BorderSide(color: MiuiColors.success.withValues(alpha: 0.5)),
+                foregroundColor: MiuiColors.success,
                 padding: const EdgeInsets.symmetric(vertical: 8),
               ),
             ),
@@ -417,7 +418,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
 
           const SizedBox(height: 10),
           const Text('模型（可选覆盖默认）',
-              style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
           const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,8 +440,8 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 child: OutlinedButton(
                   onPressed: widget.testing ? null : widget.onTest,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFD3A625)),
-                    foregroundColor: const Color(0xFFD3A625),
+                    side: const BorderSide(color: MiuiColors.primary),
+                    foregroundColor: MiuiColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     minimumSize: const Size(0, 40),
                   ),
@@ -448,7 +449,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                       ? const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD3A625)),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: MiuiColors.primary),
                         )
                       : const Text('测试', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
@@ -463,7 +464,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: (testSuccess ?? false)
-                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    ? MiuiColors.success.withValues(alpha: 0.15)
                     : Colors.red.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
@@ -472,7 +473,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                   Icon(
                     (testSuccess ?? false) ? Icons.check_circle : Icons.error,
                     size: 14,
-                    color: (testSuccess ?? false) ? const Color(0xFF10B981) : Colors.red,
+                    color: (testSuccess ?? false) ? MiuiColors.success : Colors.red,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -480,7 +481,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                       testResult,
                       style: TextStyle(
                         fontSize: 11,
-                        color: (testSuccess ?? false) ? const Color(0xFF10B981) : Colors.red,
+                        color: (testSuccess ?? false) ? MiuiColors.success : Colors.red,
                       ),
                     ),
                   ),
@@ -492,12 +493,12 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
             const SizedBox(height: 8),
             const Row(
               children: [
-                Icon(Icons.tips_and_updates_outlined, size: 13, color: Color(0xFFD3A625)),
+                Icon(Icons.tips_and_updates_outlined, size: 13, color: MiuiColors.primary),
                 SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     '填入 API Key 并点击「保存」后，该提供商才会出现在场景路由的可选列表中。多个 Key 可提升并发上限（每个 Key 独立 20 RPM）',
-                    style: TextStyle(fontSize: 10.5, color: Color(0xFFD3A625)),
+                    style: TextStyle(fontSize: 10.5, color: MiuiColors.primary),
                   ),
                 ),
               ],
@@ -527,14 +528,14 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               isDense: true,
               hintText: 'sk-...',
               helperText: helperText,
-              helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              helperStyle: const TextStyle(fontSize: 10, color: MiuiColors.onSurfaceVariantActions),
               border: const OutlineInputBorder(),
               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               suffixIcon: IconButton(
                 icon: Icon(
                   obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                   size: 18,
-                  color: const Color(0xFF8B949E),
+                  color: MiuiColors.onSurfaceVariantSummary,
                 ),
                 onPressed: onToggleVisibility,
               ),
@@ -561,8 +562,8 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               widget.onSave?.call();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD3A625),
-              foregroundColor: const Color(0xFF1C232D),
+              backgroundColor: MiuiColors.primary,
+              foregroundColor: MiuiColors.surfaceContainerHigh,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               minimumSize: const Size(0, 40),
             ),
@@ -615,11 +616,11 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: hasKey
-              ? const Color(0xFF10B981).withValues(alpha: 0.55)
+              ? MiuiColors.success.withValues(alpha: 0.55)
               : const Color(0xFF374151),
           width: hasKey ? 1.3 : 1,
         ),
@@ -629,7 +630,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
         children: [
           _buildHeader(hasKey, keyCount: keyCount),
           if (_expanded) ...[
-            const Divider(height: 1, color: Color(0xFF30363D)),
+            const Divider(height: 1, color: MiuiColors.outline),
             _buildExpandedBody(hasKey),
           ],
         ],

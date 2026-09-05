@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../providers/app_provider.dart';
 import '../../services/ai_router.dart';
 import '../../data/provider_defaults.dart';
+import '../../theme/miuix_tokens.dart';
 
 class SettingsSceneRouting extends StatelessWidget {
   final AppProvider appProvider;
@@ -34,16 +35,16 @@ class SettingsSceneRouting extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C232D),
+        color: MiuiColors.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: MiuiColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.hub, color: Color(0xFFD3A625), size: 20),
+              const Icon(Icons.hub, color: MiuiColors.primary, size: 20),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text('🔀 多模型路由配置',
@@ -53,29 +54,29 @@ class SettingsSceneRouting extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text('为不同场景分配 AI 提供商，实现最优成本与效果',
-              style: TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+              style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
           const SizedBox(height: 10),
           ...AiScene.values.map((scene) => _buildSceneRow(scene, appProvider, context)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
+              color: MiuiColors.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF30363D)),
+              border: Border.all(color: MiuiColors.outline),
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('📊 场景预估',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MiuiColors.primary)),
                 SizedBox(height: 6),
                 Text('• 主剧情: 1500-3000 token/回合 | 约8次/游戏小时',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4)),
+                    style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary, height: 1.4)),
                 Text('• 摘要压缩: 800-1200 token/次 | 每10回合触发1次',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4)),
+                    style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary, height: 1.4)),
                 Text('• NPC聊天: 300-800 token/次 | 按需调用',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4)),
+                    style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary, height: 1.4)),
               ],
             ),
           ),
@@ -95,7 +96,7 @@ class SettingsSceneRouting extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF374151)),
       ),
@@ -122,11 +123,11 @@ class SettingsSceneRouting extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(description,
                         style: const TextStyle(
-                            color: Color(0xFF8B949E), fontSize: 11, height: 1.3)),
+                            color: MiuiColors.onSurfaceVariantSummary, fontSize: 11, height: 1.3)),
                     const SizedBox(height: 2),
                     Text(info,
                         style: const TextStyle(
-                            color: Color(0xFFD3A625), fontSize: 10.5, height: 1.3)),
+                            color: MiuiColors.primary, fontSize: 10.5, height: 1.3)),
                   ],
                 ),
               ),
@@ -146,12 +147,12 @@ class SettingsSceneRouting extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFFD3A625).withValues(alpha: 0.2)
+                        ? MiuiColors.primary.withValues(alpha: 0.2)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: selected
-                          ? const Color(0xFFD3A625)
+                          ? MiuiColors.primary
                           : (hasP
                               ? const Color(0xFF4B5563)
                               : const Color(0xFF374151)),
@@ -165,14 +166,14 @@ class SettingsSceneRouting extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color: selected
-                              ? const Color(0xFFD3A625)
-                              : (hasP ? Colors.white : const Color(0xFF6B7280)),
+                              ? MiuiColors.primary
+                              : (hasP ? Colors.white : MiuiColors.onSurfaceVariantActions),
                           fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
                       if (!hasP) ...[
                         const SizedBox(width: 4),
-                        const Icon(Icons.lock, size: 11, color: Color(0xFF6B7280)),
+                        const Icon(Icons.lock, size: 11, color: MiuiColors.onSurfaceVariantActions),
                       ],
                     ],
                   ),

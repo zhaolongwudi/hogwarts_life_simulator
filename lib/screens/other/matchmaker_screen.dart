@@ -4,6 +4,7 @@ import '../../models/npc.dart';
 import '../../models/player.dart';
 import '../../providers/game_provider.dart';
 import '../../utils/ui_helpers.dart';
+import '../../theme/miuix_tokens.dart';
 
 // ==================== 姻缘一线牵红娘 ====================
 class MatchmakerScreen extends StatefulWidget {
@@ -242,7 +243,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
                     const Spacer(),
                     Text('${ships.length}/5',
                         style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF8B949E))),
+                            fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
                     const SizedBox(width: 8),
                   ],
                 ),
@@ -288,7 +289,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
                     const SizedBox(width: 8),
                     Text('${s.bond}/100 阶段${s.stage}',
                         style: const TextStyle(
-                            fontSize: 11, color: Color(0xFF8B949E))),
+                            fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
                   ],
                 ),
               ],
@@ -367,7 +368,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(Icons.auto_awesome,
-                                size: 14, color: Color(0xFFD3A625)),
+                                size: 14, color: MiuiColors.primary),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
@@ -438,7 +439,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
               'Ravenclaw': '拉文克劳',
               'Hufflepuff': '赫奇帕奇',
             }[npc.house] ?? '',
-            style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+            style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary),
           ),
       ],
     );

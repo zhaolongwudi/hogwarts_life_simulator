@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
+import '../../theme/miuix_tokens.dart';
 
 // ==================== 平行世界小剧场 ====================
 //
@@ -104,13 +105,13 @@ class ParallelWorldScreen extends StatelessWidget {
                       fontSize: 15, fontWeight: FontWeight.w700)),
               const SizedBox(width: 8),
               Text(count,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
           if (hint != null) ...[
             const SizedBox(height: 4),
             Text(hint,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
           ],
         ],
       ),
@@ -158,13 +159,13 @@ class ParallelWorldScreen extends StatelessWidget {
                 '采纳之后，它不会真的发生——'
                 '它会变成你认真想过的另一种可能，'
                 '在往后某些时刻自己想起来。收不回来。',
-                style: TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
               ),
             ],
             if (s.adopted) ...[
               const SizedBox(height: 14),
               const Text('已经留在心里了。',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                  style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ],
         ),
@@ -353,7 +354,7 @@ class _ScenarioCard extends StatelessWidget {
                             GestureDetector(
                               onTap: onDelete,
                               child: const Icon(Icons.delete_outline,
-                                  size: 18, color: Color(0xFF8B949E)),
+                                  size: 18, color: MiuiColors.onSurfaceVariantSummary),
                             ),
                         ],
                       ),
@@ -371,7 +372,7 @@ class _ScenarioCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text('写于 ${scenario.createdAt}',
                             style: const TextStyle(
-                                fontSize: 11, color: Color(0xFF8B949E))),
+                                fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
                       ],
                       // 采纳过的留个记号：它不是"完成了"，
                       // 是"你决定把它留在心里"，而且收不回来。
@@ -380,7 +381,7 @@ class _ScenarioCard extends StatelessWidget {
                         Row(
                           children: [
                             const Icon(Icons.dark_mode_outlined,
-                                size: 12, color: Color(0xFF8B949E)),
+                                size: 12, color: MiuiColors.onSurfaceVariantSummary),
                             const SizedBox(width: 4),
                             Text(
                               '已留在心里',

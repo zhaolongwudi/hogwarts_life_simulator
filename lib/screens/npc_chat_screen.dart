@@ -4,6 +4,7 @@ import '../models/npc.dart';
 import '../providers/game_provider.dart';
 import '../services/npc_chat_service.dart';
 import '../utils/ui_helpers.dart';
+import '../theme/miuix_tokens.dart';
 
 class NpcChatScreen extends StatefulWidget {
   final NPC npc;
@@ -313,7 +314,7 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
                   child: Text(
                     message.content,
                     style: TextStyle(
-                      color: isUser ? const Color(0xFF0d1117) : const Color(0xFFE6EDF3),
+                      color: isUser ? MiuiColors.background : MiuiColors.onSurface,
                       fontSize: 14,
                     ),
                   ),
@@ -329,10 +330,10 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
                         const Text('（连接不稳定，已离线回复）',
                             style: TextStyle(
                                 fontSize: 10,
-                                color: Color(0xFF8B949E),
+                                color: MiuiColors.onSurfaceVariantSummary,
                                 fontStyle: FontStyle.italic)),
                         const SizedBox(width: 6),
-                        const Icon(Icons.refresh, size: 12, color: Color(0xFFD3A625)),
+                        const Icon(Icons.refresh, size: 12, color: MiuiColors.primary),
                         Text('重试',
                             style: TextStyle(
                                 fontSize: 10,
@@ -402,7 +403,7 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
               child: IconButton(
                 icon: _isLoading
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send, color: Color(0xFF0d1117)),
+                    : const Icon(Icons.send, color: MiuiColors.background),
                 onPressed: _isLoading ? null : _sendMessage,
               ),
             ),

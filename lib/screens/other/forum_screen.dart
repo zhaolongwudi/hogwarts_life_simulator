@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
+import '../../theme/miuix_tokens.dart';
 
 // ==================== 魔法论坛 ====================
 //
@@ -426,7 +427,7 @@ class _PostCard extends StatelessWidget {
                 const Spacer(),
                 Text(
                   post.timeLabel,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                 ),
               ],
             ),
@@ -448,12 +449,12 @@ class _PostCard extends StatelessWidget {
                       Icon(
                         post.liked ? Icons.favorite : Icons.favorite_border,
                         size: 18,
-                        color: post.liked ? Colors.red : const Color(0xFF8B949E),
+                        color: post.liked ? Colors.red : MiuiColors.onSurfaceVariantSummary,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${post.likes}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                        style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                       ),
                     ],
                   ),
@@ -464,11 +465,11 @@ class _PostCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.comment, size: 18, color: Color(0xFF8B949E)),
+                      const Icon(Icons.comment, size: 18, color: MiuiColors.onSurfaceVariantSummary),
                       const SizedBox(width: 4),
                       Text(
                         '${post.comments} 回复',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                        style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                       ),
                     ],
                   ),
@@ -483,7 +484,7 @@ class _PostCard extends StatelessWidget {
                       );
                     }
                   },
-                  child: const Icon(Icons.share, size: 18, color: Color(0xFF8B949E)),
+                  child: const Icon(Icons.share, size: 18, color: MiuiColors.onSurfaceVariantSummary),
                 ),
                 const SizedBox(width: 18),
                 GestureDetector(
@@ -497,7 +498,7 @@ class _PostCard extends StatelessWidget {
                     if (ok) gp.removeForumPost(post.id);
                   },
                   child: const Icon(Icons.delete_outline,
-                      size: 18, color: Color(0xFF8B949E)),
+                      size: 18, color: MiuiColors.onSurfaceVariantSummary),
                 ),
               ],
             ),

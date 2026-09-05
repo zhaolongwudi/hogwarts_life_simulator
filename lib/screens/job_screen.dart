@@ -5,6 +5,7 @@ import '../models/game_systems.dart';
 import '../services/ai_router.dart';
 import '../data/job_data.dart';
 import '../data/locations.dart';
+import '../theme/miuix_tokens.dart';
 
 class JobScreen extends StatefulWidget {
   const JobScreen({super.key});
@@ -207,7 +208,7 @@ class _JobScreenState extends State<JobScreen> {
                   _searchController.clear();
                   setState(() => _keyword = '');
                 },
-                child: const Icon(Icons.close, size: 18, color: Color(0xFF8B949E)),
+                child: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
               ),
           ],
         ),

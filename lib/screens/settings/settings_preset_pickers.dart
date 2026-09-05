@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
+import '../../theme/miuix_tokens.dart';
 
 class ModeOption {
   final String value;
@@ -34,13 +35,13 @@ class SettingsPresetPickers {
       children: items.map((m) {
         final isDisabled = disabled?.contains(m.value) ?? false;
         final isSelected = current == m.value;
-        final itemColor = m.color ?? (isSelected ? const Color(0xFFD3A625) : const Color(0xFF8B949E));
+        final itemColor = m.color ?? (isSelected ? MiuiColors.primary : MiuiColors.onSurfaceVariantSummary);
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Material(
             color: isSelected
                 ? (m.color?.withValues(alpha: 0.2) ?? const Color(0xFF740001).withValues(alpha: 0.2))
-                : const Color(0xFF21262d),
+                : MiuiColors.surfaceContainer,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -50,7 +51,7 @@ class SettingsPresetPickers {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? (m.color ?? const Color(0xFFD3A625)) : const Color(0xFF30363d),
+                    color: isSelected ? (m.color ?? MiuiColors.primary) : MiuiColors.outline,
                     width: isSelected ? 1.5 : 1,
                   ),
                 ),
@@ -69,7 +70,7 @@ class SettingsPresetPickers {
                     ] else
                       Icon(
                         isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                        color: isSelected ? (m.color ?? const Color(0xFFD3A625)) : const Color(0xFF8B949E),
+                        color: isSelected ? (m.color ?? MiuiColors.primary) : MiuiColors.onSurfaceVariantSummary,
                         size: 20,
                       ),
                     if (m.icon == null) const SizedBox(width: 12),
@@ -82,13 +83,13 @@ class SettingsPresetPickers {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: isDisabled ? const Color(0xFF484f58) : Colors.white,
+                              color: isDisabled ? MiuiColors.disabledOnSurface : Colors.white,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             m.desc,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                            style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                           ),
                         ],
                       ),
@@ -122,7 +123,7 @@ class SettingsPresetPickers {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Material(
-            color: isSelected ? const Color(0xFF740001).withValues(alpha: 0.2) : const Color(0xFF21262d),
+            color: isSelected ? const Color(0xFF740001).withValues(alpha: 0.2) : MiuiColors.surfaceContainer,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -150,7 +151,7 @@ class SettingsPresetPickers {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFFD3A625) : const Color(0xFF30363d),
+                    color: isSelected ? MiuiColors.primary : MiuiColors.outline,
                     width: isSelected ? 1.5 : 1,
                   ),
                 ),
@@ -158,7 +159,7 @@ class SettingsPresetPickers {
                   children: [
                     Icon(
                       isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: isSelected ? const Color(0xFFD3A625) : const Color(0xFF8B949E),
+                      color: isSelected ? MiuiColors.primary : MiuiColors.onSurfaceVariantSummary,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -171,13 +172,13 @@ class SettingsPresetPickers {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : const Color(0xFFE6EDF3),
+                              color: isSelected ? Colors.white : MiuiColors.onSurface,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             e.desc,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                            style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                           ),
                         ],
                       ),

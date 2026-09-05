@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/item_data.dart';
 import 'inventory_screen.dart';
+import '../../theme/miuix_tokens.dart';
 
 class _OwnedBadge extends StatelessWidget {
   final String itemName;
@@ -132,11 +133,11 @@ class _ShopTabState extends State<ShopTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.inventory_2_outlined, size: 40, color: Color(0xFF6B7280)),
+              Icon(Icons.inventory_2_outlined, size: 40, color: MiuiColors.onSurfaceVariantActions),
               SizedBox(height: 10),
               Text('背包里没有可出售的东西。\n去禁林采集点材料，或者上课得点奖励。',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+                  style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
         ),

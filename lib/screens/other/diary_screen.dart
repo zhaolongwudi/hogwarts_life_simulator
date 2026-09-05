@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/cg_data.dart';
 import '../../models/player.dart';
+import '../../theme/miuix_tokens.dart';
 
 // ==================== 日记 / CG 图鉴 ====================
 //
@@ -208,12 +209,12 @@ class CgGalleryTab extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFD3A625)),
+                      color: MiuiColors.primary),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '${entry.value.where((c) => recs.containsKey(c.id)).length}/${entry.value.length}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                 ),
               ],
             ),
@@ -261,7 +262,7 @@ class _CgCard extends StatelessWidget {
             Icon(
               unlocked ? Icons.photo : Icons.lock_outline,
               size: 28,
-              color: unlocked ? cs.primary : const Color(0xFF484F58),
+              color: unlocked ? cs.primary : MiuiColors.disabledOnSurface,
             ),
             const SizedBox(height: 6),
             Text(
@@ -281,8 +282,8 @@ class _CgCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 color: unlocked
-                    ? const Color(0xFFD3A625)
-                    : const Color(0xFF484F58),
+                    ? MiuiColors.primary
+                    : MiuiColors.disabledOnSurface,
               ),
             ),
           ],
@@ -401,7 +402,7 @@ class _JournalCard extends StatelessWidget {
                       Text(
                         '${entry.date} · ${entry.time}',
                         style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF8B949E)),
+                            fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                       ),
                       Text(
                         entry.title,
@@ -413,7 +414,7 @@ class _JournalCard extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline,
-                      size: 18, color: Color(0xFF8B949E)),
+                      size: 18, color: MiuiColors.onSurfaceVariantSummary),
                   onPressed: onDelete,
                   tooltip: '删除',
                 ),

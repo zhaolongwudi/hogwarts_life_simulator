@@ -5,6 +5,7 @@ import '../../providers/game_provider.dart';
 import '../npc_chat_screen.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
+import '../../theme/miuix_tokens.dart';
 
 // ==================== 魔法通讯 ====================
 class CommunicationScreen extends StatefulWidget {
@@ -215,10 +216,10 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                               margin: const EdgeInsets.only(right: 6),
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                                color: MiuiColors.error.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text('酝酿中', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444))),
+                              child: const Text('酝酿中', style: TextStyle(fontSize: 10, color: MiuiColors.error)),
                             ),
                           if (!isAlive)
                             Container(

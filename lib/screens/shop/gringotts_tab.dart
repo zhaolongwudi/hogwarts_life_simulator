@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../utils/ui_helpers.dart';
+import '../../theme/miuix_tokens.dart';
 
 class GringottsTab extends StatefulWidget {
   const GringottsTab({super.key});
@@ -30,9 +31,9 @@ class _GringottsTabState extends State<GringottsTab> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF21262D),
+              color: MiuiColors.surfaceContainer,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.5)),
+              border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.5)),
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,

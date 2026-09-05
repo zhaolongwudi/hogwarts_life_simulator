@@ -15,6 +15,7 @@ import 'settings_stance.dart';
 import 'settings_token_usage.dart';
 import 'settings_crash_section.dart';
 import '../../data/political_stance.dart';
+import '../../theme/miuix_tokens.dart';
 
 /// 设置页正文。
 ///
@@ -138,7 +139,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         const SizedBox(height: 4),
         const Text('选择并配置您的 AI 提供商',
-            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
         const SizedBox(height: 12),
         ...AiProvider.values.map((p) => SettingsProviderCard(
               provider: p,
@@ -179,7 +180,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         const SizedBox(height: 4),
         const Text('选择游戏界面的显示风格',
-            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
         const SizedBox(height: 12),
         SettingsPresetPickers.buildModePicker(
           appProvider.displayMode.name,
@@ -195,7 +196,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         const SizedBox(height: 4),
         const Text('穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
-            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
         const SizedBox(height: 12),
         Consumer<GameProvider>(builder: (ctx, _, __) => SettingsPresetPickers.buildModePicker(
               appProvider.identityMode.name,
@@ -224,7 +225,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         const SizedBox(height: 4),
         const Text('修改当前存档的主角政治立场（与开局第11轮的选项一致）；未开新游戏时不生效。',
-            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
         const SizedBox(height: 12),
         Consumer<GameProvider>(builder: (ctx, gp, _) {
           final p = gp.player;
@@ -253,7 +254,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         const SizedBox(height: 4),
         const Text('选择游戏开始的时代',
-            style: TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
         const SizedBox(height: 12),
         SettingsPresetPickers.buildEraPicker(context, appProvider.era.name),
         const SizedBox(height: 24),
@@ -272,25 +273,25 @@ class _SettingsBodyState extends State<SettingsBody> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
+        border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: const [
-              Icon(Icons.history, color: Color(0xFFD3A625)),
+              Icon(Icons.history, color: MiuiColors.primary),
               SizedBox(width: 8),
               Text('📜 剧情回放',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MiuiColors.primary)),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             '查看最近 ${GameProviderBase.maxRecentTurns} 回合的完整剧情记录，包含场景插图、对话气泡和详细叙事',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+            style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -305,8 +306,8 @@ class _SettingsBodyState extends State<SettingsBody> {
               icon: const Icon(Icons.menu_book_outlined, size: 18),
               label: const Text('打开剧情回放'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD3A625),
-                foregroundColor: const Color(0xFF1C232D),
+                backgroundColor: MiuiColors.primary,
+                foregroundColor: MiuiColors.surfaceContainerHigh,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -322,10 +323,10 @@ class _SettingsBodyState extends State<SettingsBody> {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: enabled ? const Color(0xFF10B981) : const Color(0xFF374151),
+          color: enabled ? MiuiColors.success : const Color(0xFF374151),
         ),
       ),
       child: Column(
@@ -333,7 +334,7 @@ class _SettingsBodyState extends State<SettingsBody> {
         children: [
           Row(
             children: const [
-              Icon(Icons.offline_bolt, color: Color(0xFF10B981)),
+              Icon(Icons.offline_bolt, color: MiuiColors.success),
               SizedBox(width: 8),
               Text('⚡ 无 AI 快速模式',
                   style: TextStyle(
@@ -352,7 +353,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                       '适合免费额度耗尽或未配置 Key 时保底游玩。'
                   : '未开启：正常使用 AI 生成剧情。AI 服务不可用或额度耗尽时，'
                       '仍会自动切换到本地兜底剧情保证不断链。',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+              style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
             ),
             value: enabled,
             onChanged: (v) => context.read<AppProvider>().setOfflineQuickMode(v),
@@ -367,7 +368,7 @@ class _SettingsBodyState extends State<SettingsBody> {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF374151)),
       ),
@@ -454,7 +455,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1F2B),
+                color: MiuiColors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
@@ -472,7 +473,7 @@ class _SettingsBodyState extends State<SettingsBody> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF374151)),
       ),

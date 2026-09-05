@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../utils/crash_logger.dart';
 import '../../utils/ai_debug_logger.dart';
 import '../../utils/ui_helpers.dart';
+import '../../theme/miuix_tokens.dart';
 
 class SettingsCrashSection extends StatefulWidget {
   final VoidCallback? onCleared;
@@ -33,7 +34,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
         children: [
           SizedBox(
             width: 60,
-            child: Text('$label:', style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+            child: Text('$label:', style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
           ),
           Expanded(
             child: Text(value, style: const TextStyle(fontSize: 12, color: Colors.white)),
@@ -47,7 +48,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF161B22),
+        backgroundColor: MiuiColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
@@ -57,7 +58,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
               child: Text('崩溃详情', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
             ),
             IconButton(
-              icon: const Icon(Icons.copy, size: 18, color: Color(0xFFD3A625)),
+              icon: const Icon(Icons.copy, size: 18, color: MiuiColors.primary),
               onPressed: () {
                 final text = '时间: ${e.time.toIso8601String()}\n'
                     '场景: ${e.screen}\n'
@@ -87,29 +88,29 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D1117),
+                  color: MiuiColors.background,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF30363D)),
+                  border: Border.all(color: MiuiColors.outline),
                 ),
                 child: Text(e.error, style: const TextStyle(fontSize: 12, color: Color(0xFFFFE4E4))),
               ),
               if (e.stackTrace.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('堆栈跟踪', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8B949E))),
+                const Text('堆栈跟踪', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MiuiColors.onSurfaceVariantSummary)),
                 const SizedBox(height: 4),
                 Container(
                   width: double.infinity,
                   constraints: const BoxConstraints(maxHeight: 200),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D1117),
+                    color: MiuiColors.background,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF30363D)),
+                    border: Border.all(color: MiuiColors.outline),
                   ),
                   child: SingleChildScrollView(
                     child: Text(
                       e.stackTrace,
-                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF8B949E), fontFamily: 'monospace'),
+                      style: const TextStyle(fontSize: 10.5, color: MiuiColors.onSurfaceVariantSummary, fontFamily: 'monospace'),
                     ),
                   ),
                 ),
@@ -132,7 +133,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF252C36),
+        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF374151)),
       ),
@@ -165,7 +166,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
             const SizedBox(height: 4),
             Text(
               '${_formatTime(e.time)}${e.screen.isNotEmpty ? ' · ${e.screen}' : ''}',
-              style: const TextStyle(fontSize: 10.5, color: Color(0xFF8B949E)),
+              style: const TextStyle(fontSize: 10.5, color: MiuiColors.onSurfaceVariantSummary),
             ),
           ],
         ),
@@ -178,10 +179,10 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          backgroundColor: const Color(0xFF0D1117),
+          backgroundColor: MiuiColors.background,
           appBar: AppBar(
             title: Text('全部崩溃日志 (${CrashLogger.instance.entries.length})'),
-            backgroundColor: const Color(0xFF161B22),
+            backgroundColor: MiuiColors.surface,
           ),
           body: ListView(
             padding: const EdgeInsets.all(12),
@@ -191,9 +192,9 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF161B22),
+                  color: MiuiColors.surface,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF30363D)),
+                  border: Border.all(color: MiuiColors.outline),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,7 +211,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                           : '${CrashLogger.instance.heartbeatSnapshot['time']}\n'
                               '最后在做：${CrashLogger.instance.heartbeatSnapshot['marker']}',
                       style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF8B949E), height: 1.5),
+                          fontSize: 12, color: MiuiColors.onSurfaceVariantSummary, height: 1.5),
                     ),
                   ],
                 ),
@@ -223,7 +224,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                         child: Center(
                           child: Text('暂无崩溃记录',
                               style: TextStyle(
-                                  color: Color(0xFF6B7280), fontSize: 13)),
+                                  color: MiuiColors.onSurfaceVariantActions, fontSize: 13)),
                         ),
                       ),
                     ]
@@ -245,9 +246,9 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: MiuiColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: MiuiColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,17 +281,17 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('清除', style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                child: const Text('清除', style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
               ),
             ],
           ),
           const SizedBox(height: 8),
           if (CrashLogger.instance.entries.isEmpty)
             const Text('暂无崩溃记录，游戏运行稳定 ✅',
-                style: TextStyle(fontSize: 12, color: Color(0xFF10B981)))
+                style: TextStyle(fontSize: 12, color: MiuiColors.success))
           else ...[
             Text('共记录 ${CrashLogger.instance.entries.length} 次崩溃',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
             const SizedBox(height: 10),
             ...CrashLogger.instance.entries.take(3).map((e) => _buildCrashItem(e)),
             if (CrashLogger.instance.entries.length > 3)
