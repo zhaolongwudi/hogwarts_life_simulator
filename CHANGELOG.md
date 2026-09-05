@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.7.8 — 2026-09-05
+
+**📋 变更说明**
+feat(ui): 存档/读档页 HyperOS 化 —— 分段胶囊 + 卡片化 + MiuiEmptyState
+
+- 重写 save_load_screen.dart（336→310 行），保留所有业务方法
+  (listSaves/saveGameNamed/loadFromSave/deleteSave/exportSave/importSave)
+- 顶部 Tab 切换从自绘 GestureDetector+Container 改为 MiuiSegmented<int>
+  (12dp 圆角胶囊, 选中 tertiaryContainer 金淡容器)
+- 创建新存档面板包进 MiuiCard, 22sp 标题 + 13sp 副标题 + 圆角输入 + MiuiButton
+
 ### v3.7.7 — 2026-09-02
 
 **📋 变更说明**
