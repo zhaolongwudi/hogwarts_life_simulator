@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.8.7 — 2026-09-05
+
+**📋 变更说明**
+feat(ui): 五连重构 —— intro 大标题 + 设置磁贴分组 + 弹簧弹窗 + SliverAppBar 折叠 + 整屏 golden
+
+A) 新玩家向导步骤壳升级 (intro_screen.dart)
+   - 步骤标题 28 → MiuiType.title1(32sp) w700 + 左侧 4dp 金色渐变小节条
+   - 副标题对齐正文 x44 + 行高 1.6（HyperOS 向导大标题版式）
+
+B) 设置页分组磁贴化 (settings_body.dart)
+
 ### v3.8.6 — 2026-09-05
 
 **📋 变更说明**
