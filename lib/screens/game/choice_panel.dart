@@ -41,15 +41,15 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
     final badge = String.fromCharCode(65 + widget.index);
     return MiuiPressFeedback(
       onTap: _handleTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(15),
       child: AnimatedOpacity(
         opacity: _locked ? 0.5 : 1,
         duration: const Duration(milliseconds: 120),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          padding: const EdgeInsets.fromLTRB(11, 8, 9, 8),
           decoration: BoxDecoration(
             color: MiuiColors.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(15),
             border: Border.all(
               color: MiuiColors.outline.withValues(alpha: 0.7),
               width: MiuiSpace.dividerThickness,
@@ -58,47 +58,40 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
           child: Row(
             children: [
               Container(
-                width: 26,
-                height: 26,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [MiuiColors.primaryVariant, MiuiColors.primary],
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: MiuiColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   badge,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     color: MiuiColors.onPrimary,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 9),
               Expanded(
                 child: Text(
                   widget.label,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 13.5,
                     color: MiuiColors.onSurface,
-                    height: 1.45,
+                    height: 1.3,
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                size: 12,
+                size: 10,
                 color: MiuiColors.primary.withValues(alpha: 0.7),
               ),
             ],
@@ -174,14 +167,14 @@ class ChoicePanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(16, 10, 16, collapsed ? 10 : 0),
+              padding: EdgeInsets.fromLTRB(16, 7, 16, collapsed ? 7 : 0),
               child: Row(
                 children: [
                   Text(
                     collapsed ? '可选行动 · ${choices.length} 项' : '可选行动',
                     style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
                         color: MiuiColors.primary),
                   ),
                   const Spacer(),
@@ -202,7 +195,7 @@ class ChoicePanel extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.shuffle,
-                                  size: 15,
+                                  size: 14,
                                   color: busy
                                       ? Colors.grey
                                       : MiuiColors.primary),
@@ -210,7 +203,7 @@ class ChoicePanel extends StatelessWidget {
                               Text(
                                 '换一批',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12.5,
                                   color: busy
                                       ? Colors.grey
                                       : MiuiColors.primary,
@@ -236,14 +229,14 @@ class ChoicePanel extends StatelessWidget {
                             Text(
                               collapsed ? '展开' : '收起',
                               style: const TextStyle(
-                                  fontSize: 13, color: MiuiColors.onSurfaceVariantSummary),
+                                  fontSize: 12.5, color: MiuiColors.onSurfaceVariantSummary),
                             ),
                             const SizedBox(width: 2),
                             Icon(
                               collapsed
                                   ? Icons.keyboard_arrow_up
                                   : Icons.keyboard_arrow_down,
-                              size: 16,
+                              size: 14,
                               color: MiuiColors.onSurfaceVariantSummary,
                             ),
                           ],
@@ -255,11 +248,11 @@ class ChoicePanel extends StatelessWidget {
               ),
             ),
             if (!collapsed) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: listMax),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: choices.asMap().entries.map((entry) {
@@ -268,7 +261,7 @@ class ChoicePanel extends StatelessWidget {
                           GameResponseChoiceMixin.sanitizeChoiceText(
                               entry.value.text);
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(bottom: 6),
                         child: _ChoiceButton(
                           label: displayText,
                           index: index,
