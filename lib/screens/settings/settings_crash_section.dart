@@ -4,6 +4,7 @@ import '../../utils/crash_logger.dart';
 import '../../utils/ai_debug_logger.dart';
 import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 class SettingsCrashSection extends StatefulWidget {
   final VoidCallback? onCleared;
@@ -45,7 +46,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
   }
 
   void _showCrashDetail(CrashEntry e) {
-    showDialog(
+    showMiuixDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: MiuiColors.surface,

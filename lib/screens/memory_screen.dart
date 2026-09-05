@@ -11,6 +11,7 @@ import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
 import '../widgets/miui_magic_backdrop.dart';
 import '../widgets/miuix_components.dart';
+import '../widgets/miuix_overlays.dart';
 
 /// 「你的回忆」：大事记 / 收藏 / CG 画廊。
 ///
@@ -338,7 +339,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   }
 
   void _showCollectibleDetail(CollectibleDef c) {
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(c.name),

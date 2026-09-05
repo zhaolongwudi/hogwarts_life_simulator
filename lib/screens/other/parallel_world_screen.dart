@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 // ==================== 平行世界小剧场 ====================
 //
@@ -137,7 +138,7 @@ class ParallelWorldScreen extends StatelessWidget {
   /// [index] 为该条在 Player.parallelScenarios 里的下标；预设脑洞不传，
   /// 于是它们没有「采纳」按钮——预设是只读的引子，不进存档。
   void _showDetail(BuildContext context, ParallelScenario s, {int? index}) {
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
@@ -199,7 +200,7 @@ class ParallelWorldScreen extends StatelessWidget {
     String selectedIcon = '🎭';
     const icons = ['🎭', '🎓', '🧹', '🍰', '🗳️', '⚡', '🔮', '🎨'];
 
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(

@@ -5,6 +5,7 @@ import '../providers/game_provider.dart';
 import '../services/npc_chat_service.dart';
 import '../utils/ui_helpers.dart';
 import '../theme/miuix_tokens.dart';
+import '../widgets/miuix_overlays.dart';
 
 class NpcChatScreen extends StatefulWidget {
   final NPC npc;
@@ -217,7 +218,7 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
             icon: const Icon(Icons.delete_outline),
             tooltip: '清空对话',
             onPressed: () {
-              showDialog(
+              showMiuixDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('清空对话'),

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 // ==================== 魔法论坛 ====================
 //
@@ -40,7 +41,7 @@ class _ForumScreenState extends State<ForumScreen> {
 
   void _showCommentDialog(ForumPost post) {
     final controller = TextEditingController();
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('回复帖子'),
@@ -154,7 +155,7 @@ class _ForumScreenState extends State<ForumScreen> {
     final contentController = TextEditingController();
     String selectedCategory = _postableCategories.first;
 
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(

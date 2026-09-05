@@ -16,6 +16,7 @@ import 'settings_token_usage.dart';
 import 'settings_crash_section.dart';
 import '../../data/political_stance.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 /// 设置页正文。
 ///
@@ -127,6 +128,68 @@ class _SettingsBodyState extends State<SettingsBody> {
     }
   }
 
+  /// HyperOS 设置分组标题：icon 徽块 + 大标题 + 副题（Miuix 生态页风格）。
+  Widget _buildGroupHeader({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    Color color = MiuiColors.primary,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withValues(alpha: 0.18),
+                    color.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.3),
+                  width: MiuiSpace.dividerThickness,
+                ),
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: MiuiColors.onSurface,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.only(left: 48),
+          child: Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 13,
+              color: MiuiColors.onSurfaceVariantSummary,
+              height: 1.6,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appProvider = context.watch<AppProvider>();
@@ -135,11 +198,11 @@ class _SettingsBodyState extends State<SettingsBody> {
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 8, 16, widget.bottomPadding),
       children: [
-        const Text('🤖 AI 服务配置',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
-        const SizedBox(height: 4),
-        const Text('选择并配置您的 AI 提供商',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
+        _buildGroupHeader(
+          icon: Icons.smart_toy_outlined,
+          title: '🤖 AI 服务配置',
+          subtitle: '选择并配置您的 AI 提供商',
+        ),
         const SizedBox(height: 12),
         ...AiProvider.values.map((p) => SettingsProviderCard(
               provider: p,
@@ -176,11 +239,12 @@ class _SettingsBodyState extends State<SettingsBody> {
         const SizedBox(height: 16),
         const SettingsCrashSection(),
         const SizedBox(height: 20),
-        const Text('📺 显示模式',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
-        const SizedBox(height: 4),
-        const Text('选择游戏界面的显示风格',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
+        _buildGroupHeader(
+          icon: Icons.desktop_windows_outlined,
+          title: '📺 显示模式',
+          subtitle: '选择游戏界面的显示风格',
+          color: const Color(0xFF60A5FA),
+        ),
         const SizedBox(height: 12),
         SettingsPresetPickers.buildModePicker(
           appProvider.displayMode.name,
@@ -192,11 +256,12 @@ class _SettingsBodyState extends State<SettingsBody> {
           },
         ),
         const SizedBox(height: 24),
-        const Text('🎭 身份模式',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
-        const SizedBox(height: 4),
-        const Text('穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
+        _buildGroupHeader(
+          icon: Icons.badge_outlined,
+          title: '🎭 身份模式',
+          subtitle: '穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
+          color: const Color(0xFFA78BFA),
+        ),
         const SizedBox(height: 12),
         Consumer<GameProvider>(builder: (ctx, _, __) => SettingsPresetPickers.buildModePicker(
               appProvider.identityMode.name,
@@ -411,7 +476,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                       );
                       return;
                     }
-                    showDialog(
+                    showMiuixDialog(
                       context: context,
                       builder: (_) => LogViewerDialog(logFiles: files),
                     );
@@ -421,7 +486,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    showDialog(
+                    showMiuixDialog(
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text('清空日志？'),
@@ -508,7 +573,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             subtitle: const Text('重置当前游戏进度'),
             trailing: const Icon(Icons.refresh, color: Colors.orange),
             onTap: () {
-              showDialog(
+              showMiuixDialog(
                 context: context,
                 builder: (_) => AlertDialog(
                   title: const Text('确认？'),

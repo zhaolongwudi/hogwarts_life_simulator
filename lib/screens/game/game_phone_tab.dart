@@ -8,11 +8,12 @@ import '../memory_screen.dart';
 import '../job_screen.dart';
 import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 void _editSignature(BuildContext context) {
   final gp = context.read<GameProvider>();
   final controller = TextEditingController(text: gp.player?.signature ?? '');
-  showDialog<void>(
+  showMiuixDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('编辑个性签名'),

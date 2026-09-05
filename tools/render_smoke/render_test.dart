@@ -3,6 +3,7 @@
 // 运行：flutter test tools/render_smoke/render_test.dart --update-goldens
 // 然后查看 tools/render_smoke/goldens/*.png
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -16,6 +17,7 @@ import 'package:hogwarts_life_simulator/screens/intro_screen.dart';
 import 'package:hogwarts_life_simulator/screens/save_load_screen.dart';
 import 'package:hogwarts_life_simulator/screens/memory_screen.dart';
 import 'package:hogwarts_life_simulator/screens/game/game_bottom_input.dart';
+import 'package:hogwarts_life_simulator/screens/game_screen.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
@@ -330,6 +332,62 @@ void main() {
     await expectLater(
       find.byType(GameBottomInput),
       matchesGoldenFile('goldens/game_dock_glass.png'),
+    );
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('game screen full shell', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    late AppProvider app;
+    late GameProvider gp;
+    await tester.runAsync(() async {
+      SharedPreferences.setMockInitialValues({});
+      app = AppProvider();
+      await app.loadSettings();
+      gp = GameProvider(app);
+      await gp.initializeGame(
+      name: '测试巫师',
+      bloodStatus: '混血',
+      birthLocation: '伦敦',
+      personalityTraits: const ['勇敢', '善良'],
+      gender: '男',
+      attributes: const {
+        'spell_understanding': 50,
+        'transfiguration': 50,
+        'potions': 50,
+        'herbology': 50,
+        'theory': 50,
+        'memory': 50,
+        'courage': 50,
+        'wisdom': 50,
+        'loyalty': 50,
+        'ambition': 50,
+        'social': 50,
+        'flying': 50,
+        'reaction_time': 50,
+      },
+      houseDimensions: const {
+        'courage': 50,
+        'wisdom': 50,
+        'loyalty': 50,
+        'ambition': 50,
+      },
+      openingScene: 'letter',
+      );
+    });
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppProvider>.value(value: app),
+          ChangeNotifierProvider<GameProvider>.value(value: gp),
+        ],
+        child: _wrap(const GameScreen()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 800));
+    await expectLater(
+      find.byType(GameScreen),
+      matchesGoldenFile('goldens/game_screen_full.png'),
     );
     await tester.binding.setSurfaceSize(null);
   });

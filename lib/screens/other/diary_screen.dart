@@ -5,6 +5,7 @@ import '../../providers/game_provider.dart';
 import '../../data/cg_data.dart';
 import '../../models/player.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 // ==================== 日记 / CG 图鉴 ====================
 //
@@ -77,7 +78,7 @@ class _DiaryScreenState extends State<DiaryScreen>
     final contentController = TextEditingController();
     String selectedMood = '😊';
 
-    showDialog(
+    showMiuixDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
@@ -293,7 +294,7 @@ class _CgCard extends StatelessWidget {
   }
 
   void _showDetail(BuildContext context) {
-    showDialog(
+    showMiuixDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(cg.name),

@@ -6,6 +6,7 @@ import '../services/ai_router.dart';
 import '../data/job_data.dart';
 import '../data/locations.dart';
 import '../theme/miuix_tokens.dart';
+import '../widgets/miuix_overlays.dart';
 
 class JobScreen extends StatefulWidget {
   const JobScreen({super.key});
@@ -101,7 +102,7 @@ class _JobScreenState extends State<JobScreen> {
   }
 
   void _showAiWorkDialog(String content) {
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('AI 给你想的活儿'),

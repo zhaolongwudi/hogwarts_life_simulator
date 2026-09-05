@@ -5,7 +5,6 @@ import '../utils/story_text_renderer.dart';
 import '../widgets/narrative_visuals.dart';
 import '../widgets/scaled_rich_text.dart';
 import '../theme/miuix_tokens.dart';
-import '../theme/miuix_typography.dart';
 import '../widgets/miui_magic_backdrop.dart';
 import '../widgets/miuix_components.dart';
 
@@ -65,46 +64,82 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
     final end = (start + _turnsPerPage).clamp(start, allTurns.length);
     final displayedTurns = allTurns.sublist(start, end);
 
+    // 折叠大标题（HyperOS SliverAppBar）：展开显示 27sp 大标题 + 计数，
+    // 上滑时自动收起为 56dp 固定玻璃条并吸附在顶（pinned）
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('剧情历史'),
-        centerTitle: false,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(36),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '共 ${allTurns.length} 回合',
-                  style: MiuiType.footnote1.copyWith(
-                    color: MiuiColors.onSurfaceVariantSummary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-                Text(
-                  '第 ${page + 1} / $totalPages 页',
-                  style: MiuiType.footnote1.copyWith(
-                    color: MiuiColors.onSurfaceVariantSummary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
           const Positioned.fill(child: MiuiMagicBackdrop(density: 0.45)),
-          Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                expandedHeight: 128,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                titleSpacing: 0,
+                flexibleSpace: FlexibleSpaceBar(
+                  collapseMode: CollapseMode.parallax,
+                  titlePadding: const EdgeInsetsDirectional.only(
+                    start: 28,
+                    end: 28,
+                    bottom: 10,
+                  ),
+                  title: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '剧情历史',
+                        style: TextStyle(
+                          fontSize: 26,
+                          height: 1.1,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: MiuiColors.onSurface.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '共 ${allTurns.length} 回合 · 第 ${page + 1} / $totalPages 页',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                          color: MiuiColors.primary.withValues(alpha: 0.9),
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  background: DecoratedBox(
+                    decoration: BoxDecoration(
+                      // 玻璃深卡：收起后吸附条与内容之间的可读隔离
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          MiuiColors.surfaceContainerHigh.withValues(alpha: 0.94),
+                          MiuiColors.surfaceContainerHigh.withValues(alpha: 0.88),
+                        ],
+                      ),
+                      border: const Border(
+                        bottom: BorderSide(
+                          color: MiuiColors.primary,
+                          width: MiuiSpace.dividerThickness,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                sliver: SliverList.builder(
                   itemCount: displayedTurns.length,
                   itemBuilder: (context, index) {
                     final turnIndex = start + index;
@@ -113,7 +148,10 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                   },
                 ),
               ),
-              if (totalPages > 1) _buildPageNavigation(totalPages, page),
+              if (totalPages > 1)
+                SliverToBoxAdapter(
+                  child: _buildPageNavigation(totalPages, page),
+                ),
             ],
           ),
         ],
@@ -141,9 +179,9 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
           // 回合标题栏
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: MiuiColors.surfaceContainerHigh,
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),

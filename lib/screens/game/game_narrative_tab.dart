@@ -14,6 +14,7 @@ import '../../widgets/narrative_visuals.dart';
 import '../story_history_screen.dart';
 import 'choice_panel.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 class NarrativeTab extends StatefulWidget {
   final Function(int) onNarrativeTapChoice;
@@ -350,7 +351,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final isWorldEvent = title.startsWith('【');
     return GestureDetector(
       onTap: () {
-        showDialog(
+        showMiuixDialog(
           context: context,
           builder: (ctx) => AlertDialog(
             title: Row(

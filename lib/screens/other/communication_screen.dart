@@ -6,6 +6,7 @@ import '../npc_chat_screen.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
 
 // ==================== 魔法通讯 ====================
 class CommunicationScreen extends StatefulWidget {
@@ -328,7 +329,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
       );
       return;
     }
-    showDialog(
+    showMiuixDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('选择联系人'),

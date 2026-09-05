@@ -1067,24 +1067,48 @@ class _IntroScreenState extends State<IntroScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(28, 16, 28, 4),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: MiuiColors.onSurface,
-            ),
+          padding: const EdgeInsets.fromLTRB(28, 18, 28, 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 金色章节指示条（HyperOS 详情页风格）
+              Container(
+                width: 4,
+                height: 32,
+                margin: const EdgeInsets.only(top: 3, right: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      MiuiColors.primary,
+                      MiuiColors.primary.withValues(alpha: 0.3),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  title,
+                  style: MiuiType.title1.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: MiuiColors.onSurface,
+                    height: 1.15,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(28, 4, 28, 12),
+          padding: const EdgeInsets.fromLTRB(44, 4, 28, 12),
           child: Text(
             subtitle,
-            style: const TextStyle(
+            style: MiuiType.footnote1.copyWith(
               fontSize: 14,
               color: MiuiColors.onSurfaceVariantSummary,
+              height: 1.6,
             ),
           ),
         ),

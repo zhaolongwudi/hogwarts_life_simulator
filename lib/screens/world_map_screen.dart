@@ -4,6 +4,7 @@ import '../data/locations.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../theme/miuix_tokens.dart';
+import '../widgets/miuix_overlays.dart';
 
 class WorldMapScreen extends StatefulWidget {
   const WorldMapScreen({super.key});
@@ -590,7 +591,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     final controller = TextEditingController(
       text: gp.worldState.currentLocationLabel ?? _displayAreaName,
     );
-    showDialog<void>(
+    showMiuixDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('自定义区域名称'),
