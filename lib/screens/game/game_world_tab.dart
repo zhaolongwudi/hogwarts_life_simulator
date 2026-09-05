@@ -41,8 +41,8 @@ class WorldTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerTheme.color!),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.6), width: MiuiSpace.dividerThickness),
       ),
       child: Row(
         children: [
@@ -51,7 +51,7 @@ class WorldTab extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(Icons.public, color: Theme.of(context).colorScheme.primary),
           ),
@@ -60,7 +60,7 @@ class WorldTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('世界', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('世界', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
                 const SizedBox(height: 4),
                 Text(
                   '第${_currentYear()}年·9月 · 已登场 $appeared 人 · 未登场 $unmet 人',
@@ -93,8 +93,8 @@ class WorldTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.6), width: MiuiSpace.dividerThickness),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -127,7 +127,7 @@ class WorldTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
               ),
               child: Row(
@@ -154,8 +154,8 @@ class WorldTab extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerTheme.color!),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.6), width: MiuiSpace.dividerThickness),
           ),
           child: Column(
             children: [
