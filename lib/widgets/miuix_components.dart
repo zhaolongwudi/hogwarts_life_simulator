@@ -529,11 +529,27 @@ class MiuiSegmented<T extends Object> extends StatelessWidget {
                     left: 4 + value * itemWidth,
                     top: 4,
                     width: itemWidth,
-                    height: 34,
+                    height: height - 8,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: MiuiColors.secondaryContainerVariant,
-                        borderRadius: BorderRadius.circular(MiuiRadius.small),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            MiuiColors.primaryVariant,
+                            MiuiColors.primary,
+                          ],
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(MiuiRadius.small),
+                        boxShadow: [
+                          BoxShadow(
+                            color: MiuiColors.primary
+                                .withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -556,10 +572,11 @@ class MiuiSegmented<T extends Object> extends StatelessWidget {
                           e.value,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: isSelected
-                                ? MiuiColors.onSurface
+                                ? MiuiColors.onPrimary
                                 : MiuiColors.onSurfaceVariantSummary,
                           ),
                           overflow: TextOverflow.ellipsis,

@@ -172,10 +172,15 @@ class _PlayerTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      '${house ?? '未分院'} · ${gameProvider.worldState.academicYear} · 第 ${gameProvider.turnCount} 回合',
-                      style: MiuiType.body2.copyWith(
-                        color: MiuiColors.onSurfaceVariantSummary,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${house ?? '未分院'} · ${gameProvider.worldState.academicYear} · 第 ${gameProvider.turnCount} 回合',
+                        maxLines: 1,
+                        style: MiuiType.body2.copyWith(
+                          color: MiuiColors.onSurfaceVariantSummary,
+                        ),
                       ),
                     ),
                   ],

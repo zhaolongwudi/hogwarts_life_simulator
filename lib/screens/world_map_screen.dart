@@ -851,97 +851,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   Widget _buildRegionNav() {
-    if (_isInSubArea) return const SizedBox.shrink();
-
-    final areas = _mapData.keys.toList();
-    final idx = areas.indexOf(_currentArea);
-    return Positioned(
-      bottom: 104,
-      left: 12,
-      right: 120,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: () {
-              if (idx > 0) setState(() => _currentArea = areas[idx - 1]);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFF3E5B4A).withValues(alpha: 0.5)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.chevron_left, size: 20, color: Color(0xFF3E5B4A)),
-                  const SizedBox(width: 6),
-                  Text(areas.isEmpty ? '' : areas[(idx - 1 + areas.length) % areas.length],
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.97),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: MiuiColors.primary, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Text(_currentArea,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.goldBright)),
-          ),
-          GestureDetector(
-            onTap: () {
-              if (idx < areas.length - 1) setState(() => _currentArea = areas[idx + 1]);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFF3E5B4A).withValues(alpha: 0.5)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(areas.isNotEmpty ? areas[(idx + 1) % areas.length] : '',
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right, size: 20, color: Color(0xFF3E5B4A)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    // 消重（v3.8.7）：区域左右切换已由底部 _buildQuickAreaSwitch 承担
+    // （‹ 上一区域 | 当前区域 | 下一区域 ›），这里不再重复绘制第二组导航胶囊。
+    return const SizedBox.shrink();
   }
-
   Widget _buildLocationCard(GameProvider gp) {
     // 崩溃修复（用户日志：v3.5.x `firstWhere orElse` 类型不匹配）：
     // `orElse: () => {}` 推断为 Map<String, dynamic>，而列表元素在旧版
