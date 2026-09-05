@@ -159,7 +159,7 @@ class _GameScreenState extends State<GameScreen> {
             fit: StackFit.expand,
             children: [
               // 背景层：魔法辉光（同时是液态玻璃的折射取景）
-              const Positioned.fill(child: MiuiMagicBackdrop()),
+              const Positioned.fill(child: MiuiMagicBackdrop(density: 0.85)),
               // 主内容列：顶部状态栏 + 页面内容 + （剧情页）输入栏
               Column(
                 children: [

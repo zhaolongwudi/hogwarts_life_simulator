@@ -54,8 +54,8 @@ class _MagicPainter extends CustomPainter {
       final paint = Paint()
         ..shader = RadialGradient(
           colors: [
-            const Color(0xFFD3A625).withValues(alpha: 0.05),
-            const Color(0xFFD3A625).withValues(alpha: 0.012),
+            const Color(0xFFD3A625).withValues(alpha: 0.075),
+            const Color(0xFFD3A625).withValues(alpha: 0.02),
             Colors.transparent,
           ],
           stops: const [0.0, 0.45, 1.0],
@@ -70,8 +70,8 @@ class _MagicPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           Colors.transparent,
-          const Color(0xFFD3A625).withValues(alpha: 0.028),
-          const Color(0xFFB8860B).withValues(alpha: 0.05),
+          const Color(0xFFD3A625).withValues(alpha: 0.05),
+          const Color(0xFFB8860B).withValues(alpha: 0.08),
         ],
         stops: const [0.0, 0.72, 1.0],
       ).createShader(Rect.fromLTWH(0, h * 0.7, w, h * 0.3));
@@ -89,7 +89,7 @@ class _MagicPainter extends CustomPainter {
       final y = rng.next() * h;
       // 星尘不要盖住顶部状态栏区域与正文密集区底部，稍微偏向两侧
       final r = 0.4 + rng.next() * 0.9;
-      final alpha = 0.10 + rng.next() * 0.22;
+      final alpha = 0.16 + rng.next() * 0.3;
       final paint = Paint()
         ..color = const Color(0xFFF3DFA0).withValues(alpha: alpha);
       canvas.drawCircle(Offset(x, y), r, paint);

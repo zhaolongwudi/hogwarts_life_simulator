@@ -960,9 +960,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: MiuiColors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -974,9 +974,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Expanded(
                 child: Text(
                   attr['label'] as String,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: MiuiColors.onSurfaceVariantSummary,
+                    fontWeight: FontWeight.w600,
+                    color: color.withValues(alpha: 0.9),
                   ),
                 ),
               ),
@@ -1011,9 +1012,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: MiuiColors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1025,9 +1026,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
               Expanded(
                 child: Text(
                   attr['label'] as String,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: MiuiColors.onSurfaceVariantSummary,
+                    fontWeight: FontWeight.w600,
+                    color: color.withValues(alpha: 0.92),
                   ),
                 ),
               ),
