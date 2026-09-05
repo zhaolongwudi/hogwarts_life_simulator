@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.8.6 — 2026-09-05
+
+**📋 变更说明**
+feat(ui): 游戏屏「玻璃壳」成型 —— 全局 Miuix 弹簧转场 + Dock v1 + 顶栏玻璃
+
+引用 Miuix / HyperOS 与 AndroidLiquidGlass 站点再次深度落地。
+
+1) 全局 Miuix 弹簧路由转场
+   - 新文件 theme/miuix_page_transitions.dart
+   - MiuixPageTransitionsBuilder：前进 = Folme 弹簧
+
 ### v3.8.5 — 2026-09-05
 
 **📋 变更说明**
