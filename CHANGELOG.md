@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.9.2 — 2026-09-05
+
+**📋 变更说明**
+fix(ui): 选项区整体瘦身 — UI 高度 + 文字尺寸收紧
+
+回应 06:16 真机反馈「把选项整体缩小 ui 高度与文字」。
+
+修改 lib/screens/game/choice_panel.dart：
+
+1) _ChoiceButton 选项卡
+
 ### v3.9.1 — 2026-09-05
 
 **📋 变更说明**
