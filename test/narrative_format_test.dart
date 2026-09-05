@@ -75,7 +75,8 @@ void main() {
 
     test('叙述段走小说式排版方法', () {
       // v3.3.6 起对话气泡被移除，叙事改为整段正文渲染
-      expect(src.contains('_buildBodyCard(bodyNarrative)'), isTrue);
+      // v3.8 好感段并入正文主卡：仍是同一渲染入口（带命名参数）
+      expect(src.contains('_buildBodyCard('), isTrue);
       expect(src.contains('StoryTextRenderer.parseWithAffectionStyle('), isTrue);
       // 拆段/缩进能力由渲染器提供（game_narrative_tab 只调用上层入口）
       expect(rendererSrc.contains('static List<String> splitParagraphs('), isTrue);
@@ -84,7 +85,7 @@ void main() {
 
     test('叙述段渲染路径完整（正文卡 → 整段渲染）', () {
       // 叙述段必须经过统一的正文渲染路径，而不是散落的多套排版
-      expect(src.contains('Widget _buildBodyCard(String body)'), isTrue);
+      expect(src.contains('Widget _buildBodyCard(String body'), isTrue);
       expect(src.contains('return _buildPlainBodyCard(body);'), isTrue);
     });
 

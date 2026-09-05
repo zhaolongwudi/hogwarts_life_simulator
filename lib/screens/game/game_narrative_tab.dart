@@ -1268,11 +1268,12 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       _buildLegendPanel(gp),
                       const SizedBox(height: 8),
                       if (bodyNarrative.isNotEmpty)
-                        _buildBodyCard(bodyNarrative),
-                      if (affectionSections.isNotEmpty && !immersive) ...[
-                        const SizedBox(height: 8),
-                        _buildAffectionCard(affectionSections),
-                      ],
+                        _buildBodyCard(
+                          bodyNarrative,
+                          affections: affectionSections.isNotEmpty && !immersive
+                              ? affectionSections
+                              : const [],
+                        ),
                       // 选项紧跟正文：滚到底即行动，不需要固定悬浮。
                       // 面板内限高 0.32（长选项自己内部滚动），不预支正文高度。
                       const SizedBox(height: 12),
@@ -1451,7 +1452,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
   /// 每段有独立的视觉形态：叙述首行缩进、对话段左侧色条衬底、内心独白
   /// 斜体浅紫、时间戳金色胶囊。段落间距 10px 替代双空行，阅读节奏更清晰。
   /// 单段短文本（指令结果/通知）保留原整段渲染，不给短内容搭段落舞台。
-  Widget _buildBodyCard(String body) {
+  Widget _buildBodyCard(String body, {List<String> affections = const []}) {
     final paragraphs = StoryTextRenderer.classifyParagraphs(body);
     if (paragraphs.isEmpty) return const SizedBox.shrink();
     if (paragraphs.length == 1 &&
@@ -1499,6 +1500,16 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 for (var i = 0; i < paragraphs.length; i++) ...[
                   if (i > 0) const SizedBox(height: 12),
                   _buildStoryParagraph(paragraphs[i]),
+                ],
+                if (affections.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: MiuiSpace.dividerThickness,
+                      color: MiuiColors.outline.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  _buildAffectionLines(affections),
                 ],
               ],
             ),
@@ -1581,44 +1592,35 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
-  Widget _buildAffectionCard(List<String> sections) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: MiuiColors.outline.withValues(alpha: 0.5),
-          width: MiuiSpace.dividerThickness,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '📊 本回合变化',
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).textTheme.bodyMedium!.color,
-              fontWeight: FontWeight.w600,
-            ),
+  /// 主卡内好感变化块：极简小节，正文卡一部分。
+  Widget _buildAffectionLines(List<String> sections) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '📊 本回合变化',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).textTheme.bodyMedium!.color,
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(height: 6),
-          ...sections.map(
-            (section) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: ScaledRichText(
-                text: TextSpan(
-                  children: StoryTextRenderer.parseAffectionLine(section),
-                ),
+        ),
+        const SizedBox(height: 6),
+        ...sections.map(
+          (section) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: ScaledRichText(
+              text: TextSpan(
+                children: StoryTextRenderer.parseAffectionLine(section),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
+
 }
 
 /// 数值变化浮层：监听玩家关键资源在两次构建间的差值，
