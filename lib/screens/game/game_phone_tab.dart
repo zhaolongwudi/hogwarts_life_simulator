@@ -173,7 +173,7 @@ class PhoneTab extends StatelessWidget {
             }),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -208,13 +208,13 @@ class PhoneTab extends StatelessWidget {
           button: true,
           label: label,
           child: SizedBox(
-            width: 76,
+            width: 70,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -276,8 +276,8 @@ class PhoneTab extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
