@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../utils/ui_helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/game_provider.dart';
+import '../theme/miuix_tokens.dart';
+import '../theme/miuix_typography.dart';
+import '../utils/ui_helpers.dart';
+import '../widgets/miui_magic_backdrop.dart';
+import '../widgets/miuix_components.dart';
 
 class SaveLoadScreen extends StatefulWidget {
   const SaveLoadScreen({super.key});
@@ -28,43 +33,29 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     try {
       _saves = await context.read<GameProvider>().listSaves();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载存档失败: $e')),
-        );
-      }
+      if (mounted) _showSnack('加载存档失败: $e');
     }
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _saveCurrentGame() async {
     if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入存档名称')),
-      );
+      _showSnack('请输入存档名称');
       return;
     }
-
     final gp = context.read<GameProvider>();
     setState(() => _isLoading = true);
     try {
       await gp.saveGameNamed(_nameController.text);
       await _loadSaves();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ 已保存为「${_nameController.text.trim()}」')),
-      );
+      _showSnack('✅ 已保存为「${_nameController.text.trim()}」');
+      _nameController.clear();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败: $e')),
-      );
+      _showSnack('保存失败: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -79,9 +70,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       Navigator.pushReplacementNamed(context, '/game');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('加载存档失败: $e')),
-      );
+      _showSnack('加载存档失败: $e');
     }
   }
 
@@ -91,9 +80,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       await _loadSaves();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除存档失败: $e')),
-      );
+      _showSnack('删除存档失败: $e');
     }
   }
 
@@ -128,11 +115,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       final slotId = await gp.importSave(text);
       await _loadSaves();
       if (!mounted) return;
-      if (slotId != null) {
-        _showSnack('✅ 存档导入成功');
-      } else {
-        _showSnack('❌ 导入失败：剪贴板内容不是有效存档');
-      }
+      _showSnack(slotId != null ? '✅ 存档导入成功' : '❌ 导入失败：剪贴板内容不是有效存档');
     } catch (e) {
       _showSnack('❌ 导入失败: $e');
     } finally {
@@ -155,132 +138,135 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('存档 / 读档')),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(child: _buildTab('📥 存档', _tab == 0)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTab('📤 读档', _tab == 1)),
-              ],
-            ),
-          ),
-          const Divider(),
-          Expanded(
-            child: _tab == 0 ? _buildSavePanel() : _buildLoadPanel(),
+          const Positioned.fill(child: MiuiMagicBackdrop(density: 0.55)),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 16, 28, 12),
+                child: MiuiSegmented<int>(
+                  segments: const {0: '📥 存档', 1: '📤 读档'},
+                  selected: _tab,
+                  onChanged: (v) => setState(() => _tab = v),
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: _tab == 0 ? _buildSavePanel() : _buildLoadPanel(),
+              ),
+            ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTab(String label, bool selected) {
-    return GestureDetector(
-      onTap: () => setState(() => _tab = label.contains('存档') ? 0 : 1),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? const Color(0xFFD3A625) : Colors.transparent,
-              width: 3,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xFFD3A625) : Colors.grey,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
       ),
     );
   }
 
   Widget _buildSavePanel() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('创建新存档',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              hintText: '输入存档名称...',
-              prefixIcon: Icon(Icons.bookmark),
-              border: OutlineInputBorder(),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      padding: const EdgeInsets.fromLTRB(28, 16, 28, 28),
+      child: MiuiCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '创建新存档',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: MiuiColors.onSurface,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
+            const SizedBox(height: 4),
+            const Text(
+              '给你的魔法人生加一个书签',
+              style: TextStyle(
+                fontSize: 13,
+                color: MiuiColors.onSurfaceVariantSummary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                hintText: '输入存档名称...',
+                prefixIcon: Icon(Icons.bookmark_outline),
+              ),
+            ),
+            const SizedBox(height: 20),
+            MiuiButton(
+              label: '💾 保存游戏',
               onPressed: _isLoading ? null : _saveCurrentGame,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('💾 保存游戏'),
+              primary: true,
+              expand: true,
             ),
-          ),
-        ],
+            if (_isLoading) ...[
+              const SizedBox(height: 12),
+              const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLoadPanel() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading && _saves.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (_saves.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.storage, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('暂无存档', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: _importSave,
-              icon: const Icon(Icons.paste),
-              label: const Text('从剪贴板导入存档'),
-            ),
-          ],
+      return MiuiEmptyState(
+        message: '暂无存档\n粘贴一份 JSON 即可恢复你的魔法人生',
+        icon: Icons.cloud_off_outlined,
+        action: MiuiButton(
+          label: '从剪贴板导入存档',
+          icon: Icons.paste,
+          primary: false,
+          onPressed: _importSave,
         ),
       );
     }
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.fromLTRB(28, 12, 28, 8),
           child: Row(
             children: [
               Expanded(
-                child: Text('共 ${_saves.length} 个存档',
-                    style: const TextStyle(color: Colors.grey)),
+                child: Text(
+                  '共 ${_saves.length} 个存档',
+                  style: MiuiType.body2.copyWith(
+                    color: MiuiColors.onSurfaceVariantSummary,
+                  ),
+                ),
               ),
-              OutlinedButton.icon(
+              MiuiButton(
+                label: '导入',
+                icon: Icons.paste,
+                primary: false,
                 onPressed: _importSave,
-                icon: const Icon(Icons.paste, size: 18),
-                label: const Text('导入'),
               ),
             ],
           ),
         ),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
             itemCount: _saves.length,
-            itemBuilder: (context, index) =>
-                _buildSaveCard(_saves[index]),
+            itemBuilder: (context, index) => _buildSaveCard(_saves[index]),
           ),
         ),
       ],
@@ -288,35 +274,63 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   }
 
   Widget _buildSaveCard(Map<String, dynamic> save) {
-    return Card(
-      color: const Color(0xFF21262d),
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFF740001),
-          child: Icon(Icons.save, color: Colors.white),
-        ),
-        title: Text(save['name'] ?? '未命名',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(
-          '${save['saved_at']?.toString().substring(0, 16) ?? ''}',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+    final timestamp = save['saved_at']?.toString().substring(0, 16) ?? '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: MiuiCard(
+        onTap: () => _loadSave(save['id']),
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+        child: Row(
           children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: MiuiColors.tertiaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.bookmark,
+                color: MiuiColors.primaryVariant,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    save['name'] ?? '未命名',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: MiuiColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    timestamp,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: MiuiColors.onSurfaceVariantSummary,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             IconButton(
-              icon: const Icon(Icons.copy, color: Colors.blueAccent),
+              icon: const Icon(Icons.copy_outlined),
               tooltip: '导出到剪贴板',
+              color: MiuiColors.info,
               onPressed: () => _exportSave(save),
             ),
             IconButton(
-              icon: const Icon(Icons.open_in_new, color: Color(0xFFD3A625)),
-              onPressed: () => _loadSave(save['id']),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(Icons.delete_outline),
+              tooltip: '删除',
+              color: MiuiColors.error,
               onPressed: () async {
                 final ok = await confirmDangerDialog(
                   context,
