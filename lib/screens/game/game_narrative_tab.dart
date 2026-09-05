@@ -8,6 +8,7 @@ import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/scaled_rich_text.dart';
+import '../../widgets/miuix_components.dart';
 import '../../widgets/narrative_visuals.dart';
 
 import '../story_history_screen.dart';
@@ -172,146 +173,44 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildPanelEventTabs() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 10, 28, 8),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => widget.onSubTabChanged(0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
-                    decoration: BoxDecoration(
-                      color: widget.subTab == 0
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: widget.subTab == 0
-                            ? Theme.of(context).colorScheme.primary
-                            : dividerColorOf(context),
-                      ),
-                    ),
-                    child: Text(
-                      '事件',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: widget.subTab == 0
-                            ? Colors.white
-                            : Theme.of(context).textTheme.bodyMedium!.color,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+          Expanded(
+            child: MiuiSegmented<int>(
+              segments: const {0: '事件', 1: '面板'},
+              selected: widget.subTab <= 1 ? widget.subTab : 0,
+              height: 34,
+              onChanged: (v) => widget.onSubTabChanged(v),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // 剧情回放入口
+          _PanelIconAction(
+            icon: Icons.history,
+            tooltip: '剧情回放',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StoryHistoryScreen(),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => widget.onSubTabChanged(1),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
-                    decoration: BoxDecoration(
-                      color: widget.subTab == 1
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: widget.subTab == 1
-                            ? Theme.of(context).colorScheme.primary
-                            : dividerColorOf(context),
-                      ),
-                    ),
-                    child: Text(
-                      '面板',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: widget.subTab == 1
-                            ? Colors.white
-                            : Theme.of(context).textTheme.bodyMedium!.color,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const StoryHistoryScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.subTab == 2
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: MiuiColors.primary.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.history,
-                        size: 14,
-                        color: MiuiColors.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        '回放',
-                        style: TextStyle(
-                          color: MiuiColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // 阅读模式：一键切沉浸显示（隐藏顶栏/输入栏/底部导航，
-              // 正文立省 ~230px）。入口原先只藏在设置页深处，
-              // 而需要它的人正在剧情页里嫌字挤——入口就该长在这里。
-              // 退出走沉浸模式自带的悬浮按钮/返回键（game_screen 已有闭环）。
-              Semantics(
-                button: true,
-                label: '进入阅读模式',
-                child: InkWell(
-                  onTap: () => context.read<AppProvider>().setDisplayMode(
-                    DisplayMode.immersive,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: dividerColorOf(context)),
-                    ),
-                    child: const Icon(
-                      Icons.fullscreen,
-                      size: 18,
-                      color: MiuiColors.onSurfaceVariantSummary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          // 阅读模式：一键沉浸（隐藏顶栏/输入栏/底部导航）
+          Semantics(
+            button: true,
+            label: '进入阅读模式',
+            child: _PanelIconAction(
+              icon: Icons.fullscreen,
+              tooltip: '阅读模式',
+              onTap: () => context
+                  .read<AppProvider>()
+                  .setDisplayMode(DisplayMode.immersive),
+            ),
           ),
         ],
       ),
@@ -1841,6 +1740,42 @@ class _AiErrorBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 剧情页顶部的圆形图标动作（回放/阅读模式）。
+class _PanelIconAction extends StatelessWidget {
+  const _PanelIconAction({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip ?? '',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: MiuiColors.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: MiuiColors.outline.withValues(alpha: 0.8),
+              width: MiuiSpace.dividerThickness,
+            ),
+          ),
+          child: Icon(icon, size: 17, color: MiuiColors.onSurfaceSecondary),
+        ),
       ),
     );
   }
