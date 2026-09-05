@@ -7,6 +7,10 @@ import '../providers/game_provider.dart';
 import '../data/collectible_data.dart';
 import '../data/cg_data.dart';
 import '../models/world_state.dart';
+import '../theme/miuix_tokens.dart';
+import '../theme/miuix_typography.dart';
+import '../widgets/miui_magic_backdrop.dart';
+import '../widgets/miuix_components.dart';
 
 /// 「你的回忆」：大事记 / 收藏 / CG 画廊。
 ///
@@ -46,52 +50,28 @@ class _MemoryScreenState extends State<MemoryScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          _buildTabs(),
-          Expanded(child: _buildTabContent()),
+          const Positioned.fill(child: MiuiMagicBackdrop(density: 0.5)),
+          Column(
+            children: [
+              _buildTabs(),
+              Expanded(child: _buildTabContent()),
+            ],
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTabs() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).dividerTheme.color!.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          _buildTabItem('大事记', 0),
-          _buildTabItem('收藏', 1),
-          _buildTabItem('CG画廊', 2),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabItem(String label, int index) {
-    final isActive = _tab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _tab = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? Theme.of(context).colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isActive ? Colors.white : Theme.of(context).textTheme.bodyMedium!.color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 16, 28, 12),
+      child: MiuiSegmented<int>(
+        segments: const {0: '大事记', 1: '收藏', 2: 'CG画廊'},
+        selected: _tab,
+        onChanged: (v) => setState(() => _tab = v),
       ),
     );
   }
@@ -121,8 +101,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
         children: [
           Row(
             children: [
-              const Text('大事记',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('大事记', style: MiuiType.title4),
               const Spacer(),
               _buildSortChip('按时间', 0),
               const SizedBox(width: 8),
@@ -267,8 +246,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
         children: [
           Row(
             children: [
-              const Text('收藏',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('收藏', style: MiuiType.title4),
               const Spacer(),
               Text('${owned.length}/${kCollectibleCatalog.length}',
                   style: const TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
@@ -302,7 +280,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                   style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFD3A625))),
+                      color: MiuiColors.primaryVariant)),
               const SizedBox(width: 8),
               Text('${got.length}/${all.length}',
                   style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
@@ -351,7 +329,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
             if (has) ...[
               const SizedBox(height: 2),
               Text(c.starText,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFFD3A625))),
+                  style: const TextStyle(fontSize: 11, color: MiuiColors.primaryVariant)),
             ],
           ],
         ),

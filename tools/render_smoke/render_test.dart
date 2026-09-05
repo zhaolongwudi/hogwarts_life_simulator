@@ -14,6 +14,7 @@ import 'package:hogwarts_life_simulator/widgets/miui_magic_backdrop.dart';
 import 'package:hogwarts_life_simulator/widgets/miuix_components.dart';
 import 'package:hogwarts_life_simulator/screens/intro_screen.dart';
 import 'package:hogwarts_life_simulator/screens/save_load_screen.dart';
+import 'package:hogwarts_life_simulator/screens/memory_screen.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
@@ -265,6 +266,28 @@ void main() {
     await expectLater(
       find.byType(SaveLoadScreen),
       matchesGoldenFile('goldens/save_load_empty.png'),
+    );
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('memory screen chronicle', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    final app = AppProvider();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppProvider>.value(value: app),
+          ChangeNotifierProvider<GameProvider>(
+            create: (_) => GameProvider(app),
+          ),
+        ],
+        child: _wrap(const MemoryScreen()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await expectLater(
+      find.byType(MemoryScreen),
+      matchesGoldenFile('goldens/memory_chronicle.png'),
     );
     await tester.binding.setSurfaceSize(null);
   });
