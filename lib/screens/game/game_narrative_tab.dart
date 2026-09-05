@@ -607,6 +607,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
+  /// 决策 Dock：选项常驻屏底（正文在滚动区滚动，选项永远不用滑）。
+  Widget _buildChoiceDock(GameProvider gp) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final maxH = (screenH * 0.42).clamp(220.0, 460.0);
+    return _buildChoiceList(gp, maxHeight: maxH);
+  }
+
   /// 选项区固定在正文下方（不随正文滚动），最多占 [maxHeight] 高度后内部滚动。
   /// 旧实现把选项放在长滚动列表末尾，600~800 字的叙事下玩家必须滑到底才能行动。
   ///
@@ -1202,6 +1209,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ),
           ),
         ),
+        // 决策 Dock：subTab==0 时选项常驻屏幕底部（ChoicePanel 自带 SafeArea/上阴影）
+        if (widget.subTab == 0) _buildChoiceDock(gp),
       ],
     );
   }
@@ -1275,13 +1284,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                               ? affectionSections
                               : const [],
                         ),
-                      // 选项紧跟正文：滚到底即行动，不需要固定悬浮。
-                      // 面板内限高 0.32（长选项自己内部滚动），不预支正文高度。
-                      const SizedBox(height: 12),
-                      _buildChoiceList(
-                        gp,
-                        maxHeight: constraints.maxHeight * 0.32,
-                      ),
+                      // 选项已抽到屏底决策 Dock（_buildChoiceDock），正文区不再承载。
                     ],
                   ),
                 ),
