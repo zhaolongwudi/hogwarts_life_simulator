@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.8.1 — 2026-09-05
+
+**📋 变更说明**
+fix(ui): 收紧布局尺寸回应布局/高度/图标过大反馈
+
+- MiuiSpace.floatingNavMinHeight 52→48, floatingNavIcon 28→24,
+  floatingNavOutside 36→22（全局生效，影响所有浮动导航）
+- LiquidGlassNavBar 默认值已引用 token，无需另改
+- game_bottom_input: quick actions 高度 40→30、圆角 20→15、
+  icon 16→14；输入栏 padding 14/10/14/12→12/8/12/10、text 14→13；
+
 ### v3.8.0 — 2026-09-05
 
 **📋 变更说明**
