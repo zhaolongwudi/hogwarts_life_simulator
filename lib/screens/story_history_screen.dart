@@ -4,6 +4,10 @@ import '../providers/game_provider.dart';
 import '../utils/story_text_renderer.dart';
 import '../widgets/narrative_visuals.dart';
 import '../widgets/scaled_rich_text.dart';
+import '../theme/miuix_tokens.dart';
+import '../theme/miuix_typography.dart';
+import '../widgets/miui_magic_backdrop.dart';
+import '../widgets/miuix_components.dart';
 
 /// 剧情历史回放界面：查看所有已保存的剧情记录，支持翻页和分享
 class StoryHistoryScreen extends StatefulWidget {
@@ -38,12 +42,12 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.menu_book_outlined, size: 64, color: Color(0xFF8B949E)),
+              Icon(Icons.menu_book_outlined, size: 64, color: MiuiColors.onSurfaceVariantSummary),
               SizedBox(height: 16),
               Text(
                 '暂无剧情记录\n开始游戏后会自动保存每回合剧情',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF8B949E), fontSize: 14),
+                style: TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 14),
               ),
             ],
           ),
@@ -64,43 +68,54 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('剧情历史'),
-        centerTitle: true,
+        centerTitle: false,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(32),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          preferredSize: const Size.fromHeight(36),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   '共 ${allTurns.length} 回合',
-                  style: const TextStyle(color: Color(0xFF8B949E), fontSize: 12),
+                  style: MiuiType.footnote1.copyWith(
+                    color: MiuiColors.onSurfaceVariantSummary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
                 Text(
                   '第 ${page + 1} / $totalPages 页',
-                  style: const TextStyle(color: Color(0xFF8B949E), fontSize: 12),
+                  style: MiuiType.footnote1.copyWith(
+                    color: MiuiColors.onSurfaceVariantSummary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-              itemCount: displayedTurns.length,
-              itemBuilder: (context, index) {
-                final turnIndex = start + index;
-                final narrative = displayedTurns[index];
-                return _buildTurnCard(context, turnIndex + 1, narrative);
-              },
-            ),
+          const Positioned.fill(child: MiuiMagicBackdrop(density: 0.45)),
+          Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  itemCount: displayedTurns.length,
+                  itemBuilder: (context, index) {
+                    final turnIndex = start + index;
+                    final narrative = displayedTurns[index];
+                    return _buildTurnCard(context, turnIndex + 1, narrative);
+                  },
+                ),
+              ),
+              if (totalPages > 1) _buildPageNavigation(totalPages, page),
+            ],
           ),
-          if (totalPages > 1)
-            _buildPageNavigation(totalPages, page),
         ],
       ),
     );
@@ -112,15 +127,13 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
     final location = header['location'];
     final body = header['body'] ?? narrative;
 
-    return Card(
+    return MiuiCard(
       margin: const EdgeInsets.only(bottom: 12),
-      color: const Color(0xFF252C36),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: const Color(0xFFD3A625).withValues(alpha: 0.4),
-          width: 1.5,
-        ),
+      radius: MiuiRadius.card,
+      padding: EdgeInsets.zero,
+      border: Border.all(
+        color: MiuiColors.primary.withValues(alpha: 0.4),
+        width: 1.5,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,7 +142,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF1C232D),
+              color: MiuiColors.surfaceContainerHigh,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -140,10 +153,10 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD3A625).withValues(alpha: 0.15),
+                    color: MiuiColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: const Color(0xFFD3A625).withValues(alpha: 0.5),
+                      color: MiuiColors.primary.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Text(
@@ -151,7 +164,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFFD3A625),
+                      color: MiuiColors.primary,
                     ),
                   ),
                 ),
@@ -161,13 +174,13 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: Row(
                       children: [
-                        const Icon(Icons.access_time, size: 12, color: Color(0xFF6B7280)),
+                        const Icon(Icons.access_time, size: 12, color: MiuiColors.onSurfaceVariantActions),
                         const SizedBox(width: 3),
                         Text(
                           timestamp,
                           style: const TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF6B7280),
+                            color: MiuiColors.onSurfaceVariantActions,
                           ),
                         ),
                       ],
@@ -176,14 +189,14 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                 if (location != null && location.isNotEmpty)
                   Row(
                     children: [
-                      const Icon(Icons.place_outlined, size: 12, color: Color(0xFF6B7280)),
+                      const Icon(Icons.place_outlined, size: 12, color: MiuiColors.onSurfaceVariantActions),
                       const SizedBox(width: 3),
                       Text(
                         location.length > 12 ? '${location.substring(0, 12)}…' : location,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF6B7280),
+                          color: MiuiColors.onSurfaceVariantActions,
                         ),
                       ),
                     ],
@@ -214,7 +227,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
     if (body.trim().isEmpty) {
       return const Text(
         '(空剧情)',
-        style: TextStyle(color: Color(0xFF6B7280), fontStyle: FontStyle.italic),
+        style: TextStyle(color: MiuiColors.onSurfaceVariantActions, fontStyle: FontStyle.italic),
       );
     }
 
@@ -231,7 +244,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
               mood: segments[i].mood,
               text: segments[i].text,
               npcId: null, // 历史回放中不查NPC注册表，只使用名字
-              houseColor: const Color(0xFFD3A625),
+              houseColor: MiuiColors.primary,
               animate: false, // 历史列表关闭动画，避免滚动卡顿
             )
           else
