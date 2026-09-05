@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.8.8 — 2026-09-05
+
+**📋 变更说明**
+fix(ui): 事件/面板分段滑块对比度 —— 金渐变滑块 + 角色卡断行 + 地图双层导航消重
+
+回应 02:30 真机反馈：事件/面板 MiuiSegmented 选中看不出 + 格格不入。
+
+1) MiuiSegmented 滑块对比度
+   - 指示器颜色 secondaryContainerVariant(#2D2D34, 与胶囊底几乎同色)
+     → 金渐变 primaryVariant→primary 滑块 + 金晕 BoxShadow
+
 ### v3.8.7 — 2026-09-05
 
 **📋 变更说明**
