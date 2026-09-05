@@ -133,13 +133,13 @@ class _SettingsBodyState extends State<SettingsBody> {
     final gp = context.watch<GameProvider>();
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(12, 12, 12, widget.bottomPadding),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, widget.bottomPadding),
       children: [
         const Text('🤖 AI 服务配置',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
         const SizedBox(height: 4),
         const Text('选择并配置您的 AI 提供商',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
         const SizedBox(height: 12),
         ...AiProvider.values.map((p) => SettingsProviderCard(
               provider: p,
@@ -177,10 +177,10 @@ class _SettingsBodyState extends State<SettingsBody> {
         const SettingsCrashSection(),
         const SizedBox(height: 20),
         const Text('📺 显示模式',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
         const SizedBox(height: 4),
         const Text('选择游戏界面的显示风格',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
         const SizedBox(height: 12),
         SettingsPresetPickers.buildModePicker(
           appProvider.displayMode.name,
@@ -193,10 +193,10 @@ class _SettingsBodyState extends State<SettingsBody> {
         ),
         const SizedBox(height: 24),
         const Text('🎭 身份模式',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
         const SizedBox(height: 4),
         const Text('穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
         const SizedBox(height: 12),
         Consumer<GameProvider>(builder: (ctx, _, __) => SettingsPresetPickers.buildModePicker(
               appProvider.identityMode.name,
@@ -222,10 +222,10 @@ class _SettingsBodyState extends State<SettingsBody> {
           ),
         const SizedBox(height: 24),
         const Text('🔱 当前角色政治立场（快捷改）',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
         const SizedBox(height: 4),
         const Text('修改当前存档的主角政治立场（与开局第11轮的选项一致）；未开新游戏时不生效。',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
         const SizedBox(height: 12),
         Consumer<GameProvider>(builder: (ctx, gp, _) {
           final p = gp.player;
@@ -251,10 +251,10 @@ class _SettingsBodyState extends State<SettingsBody> {
         }),
         const SizedBox(height: 24),
         const Text('⏳ 时代背景',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
         const SizedBox(height: 4),
         const Text('选择游戏开始的时代',
-            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
+            style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary, height: 1.5)),
         const SizedBox(height: 12),
         SettingsPresetPickers.buildEraPicker(context, appProvider.era.name),
         const SizedBox(height: 24),
