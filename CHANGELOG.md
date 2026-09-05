@@ -10,6 +10,13 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.8.0 — 2026-09-05
+
+**📋 变更说明**
+refactor(ui): 补漏映射老灰阶(374151/1f2937/2d333b/d0d7de/f2f2f2) → token（8 文件）
+
+验证: analyze 0 error(info 691 vs 基线 697 -6); flutter test 1326 全绿。
+
 ### v3.7.9 — 2026-09-05
 
 **📋 变更说明**
