@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'miuix_tokens.dart';
 import 'miuix_typography.dart';
 import 'miuix_motion.dart';
+import 'miuix_page_transitions.dart';
 
 /// HyperOS / Miuix 风格主题。
 ///
@@ -37,6 +38,9 @@ abstract final class MiuiTheme {
       colorScheme: _colorScheme(),
       textTheme: _miuiTextTheme,
       primaryTextTheme: _miuiTextTheme,
+
+      // 全局 HyperOS 弹簧转场（slide+fade+scale，Folme 临界阻尼）
+      pageTransitionsTheme: miuixPageTransitionsTheme,
 
       appBarTheme: _appBarTheme(),
       cardTheme: _cardTheme(),

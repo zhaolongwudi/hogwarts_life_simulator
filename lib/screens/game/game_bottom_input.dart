@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
@@ -24,24 +25,43 @@ class GameBottomInput extends StatelessWidget {
 
   Widget _buildBottomInput(BuildContext context) {
     final gp = context.watch<GameProvider>();
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 2, 20, 0),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
-        color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: MiuiColors.outline.withValues(alpha: 0.7),
-          width: MiuiSpace.dividerThickness,
-        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 18,
+            sigmaY: 18,
+            tileMode: TileMode.clamp,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  MiuiColors.surfaceContainer.withValues(alpha: 0.34),
+                  MiuiColors.surfaceContainer.withValues(alpha: 0.58),
+                ],
+              ),
+              border: Border.all(
+                color: MiuiColors.primary.withValues(alpha: 0.18),
+                width: MiuiSpace.dividerThickness,
+              ),
+            ),
       child: SafeArea(
         top: false,
         child: Column(
@@ -162,6 +182,9 @@ class GameBottomInput extends StatelessWidget {
           ],
             ),
           ],
+        ),
+      ),
+          ),
         ),
       ),
     );

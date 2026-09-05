@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
@@ -25,13 +26,38 @@ class GameTopBar extends StatelessWidget {
       'Hufflepuff': '赫奇帕奇',
     }[(houseSorted ? player.house : null) ?? ''] ?? '';
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 7, 16, 9),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
-      ),
-      child: Column(
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: 16,
+          sigmaY: 16,
+          tileMode: TileMode.clamp,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 7, 16, 9),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context)
+                    .colorScheme
+                    .surface
+                    .withValues(alpha: 0.55),
+                Theme.of(context)
+                    .colorScheme
+                    .surface
+                    .withValues(alpha: 0.40),
+              ],
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: MiuiColors.primary.withValues(alpha: 0.16),
+                width: MiuiSpace.dividerThickness,
+              ),
+            ),
+          ),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -115,6 +141,8 @@ class GameTopBar extends StatelessWidget {
           const SizedBox(height: 8),
           _buildResourceBars(player),
         ],
+          ),
+        ),
       ),
     );
   }

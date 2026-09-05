@@ -15,6 +15,7 @@ import 'package:hogwarts_life_simulator/widgets/miuix_components.dart';
 import 'package:hogwarts_life_simulator/screens/intro_screen.dart';
 import 'package:hogwarts_life_simulator/screens/save_load_screen.dart';
 import 'package:hogwarts_life_simulator/screens/memory_screen.dart';
+import 'package:hogwarts_life_simulator/screens/game/game_bottom_input.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
@@ -288,6 +289,47 @@ void main() {
     await expectLater(
       find.byType(MemoryScreen),
       matchesGoldenFile('goldens/memory_chronicle.png'),
+    );
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('game bottom dock liquid glass', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(430, 460));
+    final app = AppProvider();
+    final ctrl = TextEditingController();
+    addTearDown(ctrl.dispose);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppProvider>.value(value: app),
+          ChangeNotifierProvider<GameProvider>(
+            create: (_) => GameProvider(app),
+          ),
+        ],
+        child: _wrap(
+          Stack(
+            fit: StackFit.expand,
+            children: [
+              const Positioned.fill(child: MiuiMagicBackdrop(density: 0.85)),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 90),
+                  child: GameBottomInput(
+                    inputController: ctrl,
+                    onHandleFreeAction: () {},
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await expectLater(
+      find.byType(GameBottomInput),
+      matchesGoldenFile('goldens/game_dock_glass.png'),
     );
     await tester.binding.setSurfaceSize(null);
   });
