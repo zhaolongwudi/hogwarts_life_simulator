@@ -621,7 +621,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
         border: Border.all(
           color: hasKey
               ? MiuiColors.success.withValues(alpha: 0.55)
-              : const Color(0xFF374151),
+              : MiuiColors.disabledOnSurface,
           width: hasKey ? 1.3 : 1,
         ),
       ),

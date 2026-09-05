@@ -220,7 +220,7 @@ class DialogueBubble extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2D333B),
+                    color: MiuiColors.surfaceContainerHigh,
                     border: Border(
                       left: BorderSide(
                         color: houseColor.withValues(alpha: 0.7),

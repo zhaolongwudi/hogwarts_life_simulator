@@ -326,7 +326,7 @@ class _SettingsBodyState extends State<SettingsBody> {
         color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: enabled ? MiuiColors.success : const Color(0xFF374151),
+          color: enabled ? MiuiColors.success : MiuiColors.disabledOnSurface,
         ),
       ),
       child: Column(
@@ -370,7 +370,7 @@ class _SettingsBodyState extends State<SettingsBody> {
       decoration: BoxDecoration(
         color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF374151)),
+        border: Border.all(color: MiuiColors.disabledOnSurface),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,7 +475,7 @@ class _SettingsBodyState extends State<SettingsBody> {
       decoration: BoxDecoration(
         color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF374151)),
+        border: Border.all(color: MiuiColors.disabledOnSurface),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

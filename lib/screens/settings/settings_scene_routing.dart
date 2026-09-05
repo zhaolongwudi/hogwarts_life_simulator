@@ -98,7 +98,7 @@ class SettingsSceneRouting extends StatelessWidget {
       decoration: BoxDecoration(
         color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF374151)),
+        border: Border.all(color: MiuiColors.disabledOnSurface),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +155,7 @@ class SettingsSceneRouting extends StatelessWidget {
                           ? MiuiColors.primary
                           : (hasP
                               ? const Color(0xFF4B5563)
-                              : const Color(0xFF374151)),
+                              : MiuiColors.disabledOnSurface),
                     ),
                   ),
                   child: Row(

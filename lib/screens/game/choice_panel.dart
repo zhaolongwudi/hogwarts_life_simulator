@@ -38,7 +38,7 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF2D333B),
+            color: MiuiColors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(10),
             border: Border(
               left: BorderSide(

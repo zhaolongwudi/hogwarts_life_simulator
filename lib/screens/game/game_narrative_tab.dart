@@ -1061,7 +1061,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   attr['label'] as String,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: Color(0xFFD0D7DE),
+                    color: MiuiColors.onSurfaceVariantSummary,
                   ),
                 ),
               ),
@@ -1112,7 +1112,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   attr['label'] as String,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFFD0D7DE),
+                    color: MiuiColors.onSurfaceVariantSummary,
                   ),
                 ),
               ),
@@ -1227,7 +1227,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2D333B),
+                    color: MiuiColors.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: MiuiColors.primary.withValues(alpha: 0.3),
@@ -1252,7 +1252,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                               : '推进中...',
                           style: const TextStyle(
                             fontSize: 13,
-                            color: Color(0xFFD0D7DE),
+                            color: MiuiColors.onSurfaceVariantSummary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1265,7 +1265,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF374151),
+                            color: MiuiColors.disabledOnSurface,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -1400,7 +1400,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF2D333B),
+        color: MiuiColors.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12),
         border: Border(
           left: BorderSide(
@@ -1442,13 +1442,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF374151),
+                    color: MiuiColors.disabledOnSurface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.close,
                     size: 16,
-                    color: Color(0xFFD0D7DE),
+                    color: MiuiColors.onSurfaceVariantSummary,
                   ),
                 ),
               ),
@@ -1459,7 +1459,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             content,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFFD0D7DE),
+              color: MiuiColors.onSurfaceVariantSummary,
               height: 1.6,
             ),
           ),
@@ -1751,7 +1751,7 @@ class _ResourceFloatState extends State<_ResourceFloat>
               margin: const EdgeInsets.only(top: 6),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: const Color(0xFF2D333B).withValues(alpha: 0.95),
+                color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: MiuiColors.primary.withValues(alpha: 0.5),
@@ -1769,7 +1769,7 @@ class _ResourceFloatState extends State<_ResourceFloat>
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFD0D7DE),
+                  color: MiuiColors.onSurfaceVariantSummary,
                 ),
               ),
             ),

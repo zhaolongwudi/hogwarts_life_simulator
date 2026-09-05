@@ -135,7 +135,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
       decoration: BoxDecoration(
         color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF374151)),
+        border: Border.all(color: MiuiColors.disabledOnSurface),
       ),
       child: InkWell(
         onTap: () {

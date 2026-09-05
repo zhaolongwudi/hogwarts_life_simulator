@@ -528,7 +528,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1F2937),
+                                  color: MiuiColors.surfaceContainer,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -750,7 +750,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                                     ? AppColors.gold
                                     : isBranch
                                         ? AppColors.gold
-                                        : const Color(0xFF1F2937),
+                                        : MiuiColors.surfaceContainer,
                               ),
                             ),
                           ),
@@ -803,7 +803,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                             fontSize: 9,
                             height: 1.1,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2937),
+                            color: MiuiColors.surfaceContainer,
                             shadows: [
                               Shadow(color: Colors.white, blurRadius: 3),
                               Shadow(color: Colors.white, blurRadius: 6),
@@ -1015,7 +1015,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                             children: [
                               Expanded(
                                 child: Text(loc['name'] as String,
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: MiuiColors.surfaceContainer)),
                               ),
                               if (isBranch)
                                 Container(
@@ -1246,12 +1246,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
           color: isCurrent
-              ? const Color(0xFF1F2937)
+              ? MiuiColors.surfaceContainer
               : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isCurrent
-                ? const Color(0xFF1F2937)
+                ? MiuiColors.surfaceContainer
                 : MiuiColors.primary.withValues(alpha: 0.55),
             width: 1.5,
           ),
@@ -1268,7 +1268,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: isCurrent ? Colors.white : const Color(0xFF1F2937),
+            color: isCurrent ? Colors.white : MiuiColors.surfaceContainer,
           ),
         ),
       ),
