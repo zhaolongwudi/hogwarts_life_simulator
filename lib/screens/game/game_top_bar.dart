@@ -26,7 +26,7 @@ class GameTopBar extends StatelessWidget {
     }[(houseSorted ? player.house : null) ?? ''] ?? '';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(16, 7, 16, 9),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
@@ -37,14 +37,14 @@ class GameTopBar extends StatelessWidget {
           Row(
             children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               border: Border.all(color: Theme.of(context).colorScheme.primary),
             ),
-            child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 22),
+            child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -58,7 +58,7 @@ class GameTopBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: MiuiColors.onSurface, letterSpacing: 0.2)),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: MiuiColors.primaryVariant, letterSpacing: 0.3)),
                     ),
                     if (houseLabel.isNotEmpty) ...[
                       const SizedBox(width: 6),

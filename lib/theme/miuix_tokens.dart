@@ -42,14 +42,14 @@ class MiuiColors {
   // ==========================================================================
   static const secondary = Color(0xFF2E2E34);
   static const onSecondary = Color(0xFFF2F2F2);
-  static const secondaryVariant = Color(0xFF35353C);
+  static const secondaryVariant = Color(0xFF3D3D48);
   static const onSecondaryVariant = Color(0xFFF2F2F2);
   static const disabledSecondary = Color(0xFF24242A);
   static const disabledOnSecondary = Color(0xFF55555E);
   static const disabledSecondaryVariant = Color(0xFF2A2A31);
   static const disabledOnSecondaryVariant = Color(0xFF5A5A63);
-  static const secondaryContainer = Color(0xFF26262C);
-  static const onSecondaryContainer = Color(0xFFB8B8C0);
+  static const secondaryContainer = Color(0xFF30303A);
+  static const onSecondaryContainer = Color(0xFFC2C2CC);
   static const secondaryContainerVariant = Color(0xFF2D2D34);
   static const onSecondaryContainerVariant = Color(0xFFA8A8B0);
 
@@ -71,31 +71,31 @@ class MiuiColors {
   /// AppBar / NavigationBar 底色
   static const surface = Color(0xFF0A0A0C);
   static const onSurface = Color(0xFFF2F2F2);
-  static const surfaceVariant = Color(0xFF141418);
+  static const surfaceVariant = Color(0xFF191920);
   static const onSurfaceSecondary = Color(0xCCFFFFFF); // 80%
-  static const onSurfaceVariantSummary = Color(0x80FFFFFF); // 50%
+  static const onSurfaceVariantSummary = Color(0x8FFFFFFF); // 56%
   static const onSurfaceVariantActions = Color(0x66FFFFFF); // 40%
   static const disabledOnSurface = Color(0xFF5A5A63);
 
   /// 卡片 / 列表容器
-  static const surfaceContainer = Color(0xFF1E1E22);
-  static const onSurfaceContainer = Color(0xE6FFFFFF);
-  static const onSurfaceContainerVariant = Color(0xFF9A9AA4);
+  static const surfaceContainer = Color(0xFF26252C);
+  static const onSurfaceContainer = Color(0xEFFFFFFF);
+  static const onSurfaceContainerVariant = Color(0xFFA8A8B2);
 
   /// 抬升一级（输入框底、分段控件底、悬浮层）
-  static const surfaceContainerHigh = Color(0xFF26262C);
-  static const onSurfaceContainerHigh = Color(0xFF8A8A94);
+  static const surfaceContainerHigh = Color(0xFF30303A);
+  static const onSurfaceContainerHigh = Color(0xFF9C9CA8);
 
   /// 抬升两级（选中的 chip、按压态）
-  static const surfaceContainerHighest = Color(0xFF2E2E34);
+  static const surfaceContainerHighest = Color(0xFF3B3B47);
   static const onSurfaceContainerHighest = Color(0xFFF2F2F2);
 
   // ==========================================================================
   // 描边与分隔
   // ==========================================================================
-  static const outline = Color(0xFF33333A);
+  static const outline = Color(0xFF43434F);
   /// 分隔线：Miuix 是 0.75dp 的极细线，暗色 #393939
-  static const dividerLine = Color(0xFF2A2A31);
+  static const dividerLine = Color(0xFF373741);
 
   // ==========================================================================
   // 浮层
