@@ -216,7 +216,7 @@ class DialogueBubble extends StatelessWidget {
               ),
               // 气泡主体：圆角容器 + 左侧学院色强调条
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                   decoration: BoxDecoration(
