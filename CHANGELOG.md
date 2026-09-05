@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.9.0 — 2026-09-05
+
+**📋 变更说明**
+fix(ui): 决策 Dock 收紧 + 顶部胶囊居中 + 横幅压缩 — 还回正文空间
+
+回应 05:29 真机反馈：「剧情正文都没位置！面板/剧情按钮黄色位置也不居中」。
+
+1) 顶部「事件/面板」胶囊居中化（miuix_components.MiuiSegmented）
+   - 新增可选 fixedWidth 参数：传入时胶囊不再拉通父级宽度（用于顶部居中导航）
+   - _buildPanelEventTabs：删除 Expanded（拉通整宽），改 mainAxisAlignment: center，
+
 ### v3.8.9 — 2026-09-05
 
 **📋 变更说明**
