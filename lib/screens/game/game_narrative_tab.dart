@@ -1441,19 +1441,50 @@ class _NarrativeTabState extends State<NarrativeTab> {
       return _buildPlainBodyCard(body);
     }
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: dividerColorOf(context)),
+        color: MiuiColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: MiuiColors.outline.withValues(alpha: 0.55),
+          width: MiuiSpace.dividerThickness,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          for (var i = 0; i < paragraphs.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
-            _buildStoryParagraph(paragraphs[i]),
-          ],
+          // 顶部一抹金色微光：让大块暗面不透气时仍有一丝"魔法光"层次
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 88,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      MiuiColors.primary.withValues(alpha: 0.075),
+                      MiuiColors.primary.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < paragraphs.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 12),
+                  _buildStoryParagraph(paragraphs[i]),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1468,11 +1499,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
         return Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
-            color: MiuiColors.info.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(10),
+            color: MiuiColors.info.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
             border: Border(
               left: BorderSide(
-                color: MiuiColors.info.withValues(alpha: 0.45),
+                color: MiuiColors.info.withValues(alpha: 0.6),
                 width: 3,
               ),
             ),
@@ -1537,9 +1568,12 @@ class _NarrativeTabState extends State<NarrativeTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: dividerColorOf(context)),
+        color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: MiuiColors.outline.withValues(alpha: 0.5),
+          width: MiuiSpace.dividerThickness,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

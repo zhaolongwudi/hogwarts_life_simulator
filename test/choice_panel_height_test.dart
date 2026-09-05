@@ -142,7 +142,8 @@ void main() {
         ),
       ));
 
-      await tester.tap(find.textContaining('C. '));
+      // v2 选项改为「字母徽章 + 文本」布局：徽章是独立 Text('C')
+      await tester.tap(find.text('C'));
       expect(picked, [2]);
       // 选项按钮点完会锁 400ms 防连点，等它走完，
       // 否则测试结束时留下一个 pending timer。

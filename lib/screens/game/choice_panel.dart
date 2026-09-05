@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/game_systems.dart';
 import '../../mixins/mixin_response_choices.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_components.dart';
 
 /// 剧情选项按钮。
 ///
@@ -11,7 +12,14 @@ class _ChoiceButton extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _ChoiceButton({required this.label, required this.onTap});
+  /// 0 起编号：用于 A/B/C 徽章。
+  final int index;
+
+  const _ChoiceButton({
+    required this.label,
+    required this.onTap,
+    required this.index,
+  });
 
   @override
   State<_ChoiceButton> createState() => _ChoiceButtonState();
@@ -30,47 +38,68 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final badge = String.fromCharCode(65 + widget.index);
+    return MiuiPressFeedback(
       onTap: _handleTap,
+      borderRadius: BorderRadius.circular(18),
       child: AnimatedOpacity(
         opacity: _locked ? 0.5 : 1,
         duration: const Duration(milliseconds: 120),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           decoration: BoxDecoration(
             color: MiuiColors.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(10),
-            border: Border(
-              left: BorderSide(
-                color: MiuiColors.primary.withValues(alpha: 0.5),
-                width: 2.5,
-              ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: MiuiColors.outline.withValues(alpha: 0.7),
+              width: MiuiSpace.dividerThickness,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
           ),
           child: Row(
             children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [MiuiColors.primaryVariant, MiuiColors.primary],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: MiuiColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  badge,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: MiuiColors.onPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.label,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     color: MiuiColors.onSurface,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward_ios,
                 size: 12,
-                color: MiuiColors.primary.withValues(alpha: 0.6),
+                color: MiuiColors.primary.withValues(alpha: 0.7),
               ),
             ],
           ),
@@ -241,8 +270,8 @@ class ChoicePanel extends StatelessWidget {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: _ChoiceButton(
-                          label:
-                              '${String.fromCharCode(65 + index)}. $displayText',
+                          label: displayText,
+                          index: index,
                           onTap: () => onPick(index),
                         ),
                       );
