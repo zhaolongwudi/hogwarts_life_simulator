@@ -13,6 +13,7 @@ import 'package:hogwarts_life_simulator/theme/miuix_typography.dart';
 import 'package:hogwarts_life_simulator/widgets/liquid_glass_nav_bar.dart';
 import 'package:hogwarts_life_simulator/widgets/miui_magic_backdrop.dart';
 import 'package:hogwarts_life_simulator/widgets/miuix_components.dart';
+import 'package:hogwarts_life_simulator/screens/home_screen.dart';
 import 'package:hogwarts_life_simulator/screens/intro_screen.dart';
 import 'package:hogwarts_life_simulator/screens/save_load_screen.dart';
 import 'package:hogwarts_life_simulator/screens/memory_screen.dart';
@@ -388,6 +389,39 @@ void main() {
     await expectLater(
       find.byType(GameScreen),
       matchesGoldenFile('goldens/game_screen_full.png'),
+    );
+    // 滚动到正文最下方：验证选项只在剧情末尾自然展开
+    await tester.scrollUntilVisible(
+      find.text('收起'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byType(GameScreen),
+      matchesGoldenFile('goldens/game_screen_tail.png'),
+    );
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('home personal center (no save)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    final app = AppProvider();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppProvider>.value(value: app),
+          ChangeNotifierProvider<GameProvider>(
+            create: (_) => GameProvider(app),
+          ),
+        ],
+        child: _wrap(const HomePage()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    await expectLater(
+      find.byType(HomePage),
+      matchesGoldenFile('goldens/home_personal.png'),
     );
     await tester.binding.setSurfaceSize(null);
   });

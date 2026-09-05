@@ -64,16 +64,16 @@ void main() {
     });
   });
 
-  group('选项区限高', () {
-    test('选项抽到屏底决策 Dock，不再预支正文滚动高度', () {
-      expect(src.contains('_buildChoiceDock'), isTrue,
-          reason: '选项应常驻屏底（_buildChoiceDock）而不是埋在长正文末尾');
-      expect(src.contains('constraints.maxHeight * 0.32'), isFalse,
-          reason: '选项已移出正文滚动体，不得再按正文约束限高');
-      expect(src.contains('screenH * 0.34'), isTrue,
-          reason: '正文优先：决策 Dock 只占屏高 34% 上限，正文保持充足滚动区');
-      expect(src.contains('正文区不再承载'), isTrue,
-          reason: '正文滚动体剥离选项的注释标记应存在（选项只出现在屏底 Dock）');
+  group('选项区位置', () {
+    test('选项跟随正文出现在剧情最下方（不固定占屏、不做内滚）', () {
+      expect(src.contains('只出现在正文剧情最下方'), isTrue,
+          reason: '选项应处于正文滚动流末尾（滑到底即行动）');
+      expect(src.contains('_buildChoiceDock'), isFalse,
+          reason: '固定屏底 Dock 方案已移除（会挤压正文阅读区）');
+      expect(src.contains('screenH * 0.34'), isFalse,
+          reason: '不再按屏高比例给选项预留固定空间');
+      expect(src.contains('maxHeight: 1e6'), isTrue,
+          reason: '选项自然全展开，不需要「可选行动」面板内二次滚动');
     });
   });
 }

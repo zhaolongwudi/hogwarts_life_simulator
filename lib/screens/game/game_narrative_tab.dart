@@ -607,17 +607,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
-  /// 决策 Dock：选项常驻屏底（正文在滚动区滚动，选项永远不用滑）。
-  Widget _buildChoiceDock(GameProvider gp) {
-    final screenH = MediaQuery.sizeOf(context).height;
-    // 正文优先：Dock 只给 34% 上限（210..320），保证正文有充足滚动区。
-    // 选项多时可以点「收起」把 Dock 收回 44px 阅读条。
-    final maxH = (screenH * 0.34).clamp(210.0, 320.0);
-    return _buildChoiceList(gp, maxHeight: maxH);
-  }
-
-  /// 选项区固定在正文下方（不随正文滚动），最多占 [maxHeight] 高度后内部滚动。
-  /// 旧实现把选项放在长滚动列表末尾，600~800 字的叙事下玩家必须滑到底才能行动。
+  /// 选项跟随正文、只出现在剧情最下方：滚动到底即见全部选项。
+  /// [maxHeight] 用于限定面板内高度（正常传大值使选项自然全展开，
+  /// 不让「可选行动」面板内部再滚动）。
   ///
   /// 面板本身在 [ChoicePanel]——高度那两条规则写在那里。
   Widget _buildChoiceList(GameProvider gp, {double maxHeight = 300}) {
@@ -965,90 +957,69 @@ class _NarrativeTabState extends State<NarrativeTab> {
   }
 
   Widget _buildAttrChipFull(Map<String, dynamic> attr) {
-    final value = attr['value'] as int;
-    final color = attr['color'] as Color;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(attr['icon'] as IconData, size: 13, color: color),
-              const SizedBox(width: 3),
-              Expanded(
-                child: Text(
-                  attr['label'] as String,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: color.withValues(alpha: 0.9),
-                  ),
-                ),
-              ),
-              Text(
-                '$value',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: value / 100,
-              backgroundColor: color.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation(color),
-              minHeight: 3,
-            ),
-          ),
-        ],
-      ),
+    return _attrNeutralChip(
+      attr: attr,
+      iconSize: 13,
+      labelSize: 11,
+      valueSize: 12,
     );
   }
 
   Widget _buildAttrBarCompact(Map<String, dynamic> attr) {
+    return _attrNeutralChip(
+      attr: attr,
+      iconSize: 14,
+      labelSize: 11,
+      valueSize: 13,
+    );
+  }
+
+  /// 属性信息块（色彩降噪版）：中性底 + 金图标/进度 + 中性文字。
+  /// 去掉了每个属性各自的彩虹色底/描边/进度，辨识靠图标形状。
+  Widget _attrNeutralChip({
+    required Map<String, dynamic> attr,
+    required double iconSize,
+    required double labelSize,
+    required double valueSize,
+  }) {
     final value = attr['value'] as int;
-    final color = attr['color'] as Color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
+        color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: MiuiColors.outline.withValues(alpha: 0.35),
+          width: MiuiSpace.dividerThickness,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(attr['icon'] as IconData, size: 14, color: color),
+              Icon(
+                attr['icon'] as IconData,
+                size: iconSize,
+                color: MiuiColors.primaryVariant,
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   attr['label'] as String,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: labelSize,
                     fontWeight: FontWeight.w600,
-                    color: color.withValues(alpha: 0.92),
+                    color: MiuiColors.onSurfaceVariantSummary,
                   ),
                 ),
               ),
               Text(
                 '$value',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: valueSize,
                   fontWeight: FontWeight.w700,
-                  color: color,
+                  color: MiuiColors.onSurface,
                 ),
               ),
             ],
@@ -1058,8 +1029,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: value / 100,
-              backgroundColor: color.withValues(alpha: 0.2),
-              valueColor: AlwaysStoppedAnimation(color),
+              backgroundColor:
+                  MiuiColors.onSurface.withValues(alpha: 0.08),
+              valueColor: const AlwaysStoppedAnimation(MiuiColors.primary),
               minHeight: 3,
             ),
           ),
@@ -1211,8 +1183,6 @@ class _NarrativeTabState extends State<NarrativeTab> {
             ),
           ),
         ),
-        // 决策 Dock：subTab==0 时选项常驻屏幕底部（ChoicePanel 自带 SafeArea/上阴影）
-        if (widget.subTab == 0) _buildChoiceDock(gp),
       ],
     );
   }
@@ -1287,7 +1257,12 @@ class _NarrativeTabState extends State<NarrativeTab> {
                               ? affectionSections
                               : const [],
                         ),
-                      // 选项已抽到屏底决策 Dock（_buildChoiceDock），正文区不再承载。
+                      // 选项只出现在正文剧情最下方：跟随滚动自然展开、一次看全
+                      // （不固定占屏，也不做面板内二次滚动）。
+                      if (gp.choices.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildChoiceList(gp, maxHeight: 1e6),
+                      ],
                     ],
                   ),
                 ),

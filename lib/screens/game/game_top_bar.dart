@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
-import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
 
 class GameTopBar extends StatelessWidget {
@@ -147,45 +146,46 @@ class GameTopBar extends StatelessWidget {
     );
   }
 
-  /// 顶部 HUD：5 条细长状态条（生命/魔力/精神力/饱食/精力），低值变红提醒
+  /// 顶部 HUD：5 个资源胶囊（金+中性，低值转红）——v3.8.9 色彩降噪，
+  /// 去掉一屏五色的彩虹胶囊：统一中性底 + 金图标/数字，辨识靠图标形状。
   Widget _buildResourceBars(Player player) {
-    final resources = <({String label, IconData icon, int value, Color color})>[
-      (label: '生命', icon: Icons.favorite, value: player.health, color: AppColors.danger),
-      (label: '魔力', icon: Icons.auto_awesome, value: player.magic, color: const Color(0xFF60A5FA)),
-      (label: '精神', icon: Icons.psychology, value: player.spirit, color: const Color(0xFFA78BFA)),
-      (label: '饱食', icon: Icons.restaurant, value: player.satiety, color: const Color(0xFFD97706)),
-      (label: '精力', icon: Icons.flash_on, value: player.energy, color: AppColors.success),
+    final resources = <({IconData icon, int value})>[
+      (icon: Icons.favorite, value: player.health),
+      (icon: Icons.auto_awesome, value: player.magic),
+      (icon: Icons.psychology, value: player.spirit),
+      (icon: Icons.restaurant, value: player.satiety),
+      (icon: Icons.flash_on, value: player.energy),
     ];
     return SizedBox(
-      height: 34,
+      height: 32,
       child: Row(
         children: List.generate(resources.length, (i) {
           final r = resources[i];
           final low = r.value < 30;
-          final barColor = low ? MiuiColors.error : r.color;
+          final accent = low ? MiuiColors.error : MiuiColors.primaryVariant;
           return Expanded(
             child: Padding(
               padding: EdgeInsets.only(right: i < resources.length - 1 ? 5 : 0),
               child: Container(
-                height: 34,
+                height: 32,
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
-                  color: barColor.withValues(alpha: 0.10),
+                  color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: barColor.withValues(alpha: 0.35),
+                    color: accent.withValues(alpha: 0.28),
                     width: MiuiSpace.dividerThickness,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(r.icon, size: 12, color: barColor),
+                    Icon(r.icon, size: 12, color: accent),
                     const SizedBox(width: 3),
                     Text('${r.value}',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: low ? MiuiColors.error : barColor,
+                          color: accent,
                         )),
                   ],
                 ),
