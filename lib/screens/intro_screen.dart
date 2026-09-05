@@ -6,6 +6,10 @@ import '../data/wand_data.dart';
 import '../data/political_stance.dart';
 import '../data/blood_status.dart';
 import '../data/pet_data.dart';
+import '../theme/miuix_tokens.dart';
+import '../theme/miuix_typography.dart';
+import '../widgets/miui_magic_backdrop.dart';
+import '../widgets/miuix_components.dart';
 
 /// 十三轮初始设定流程
 class IntroScreen extends StatefulWidget {
@@ -366,39 +370,49 @@ class _IntroScreenState extends State<IntroScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('创建你的魔法人生'),
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
       ),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          _buildProgressIndicator(),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (i) => setState(() => _step = i),
-              children: [
-                _buildEraStep(),
-                _buildIdentityStep(),
-                _buildAppearanceStep(),
-                _buildFamilyStep(),
-                _buildChildhoodStep(),
-                _buildTraitsStep(),
-                _buildBeliefsStep(),
-                _buildWandStep(),
-                _buildTalentStep(),
-                _buildPetStep(),
-                _buildFriendStep(),
-                _buildStartStep(),
-                _buildConfirmStep(),
-              ],
-            ),
+          // 魔法辉光背景（与首页/设置同一层视觉语言）
+          const Positioned.fill(child: MiuiMagicBackdrop(density: 0.6)),
+          Column(
+            children: [
+              const SizedBox(height: kToolbarHeight),
+              _buildProgressIndicator(),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: (i) => setState(() => _step = i),
+                  children: [
+                    _buildEraStep(),
+                    _buildIdentityStep(),
+                    _buildAppearanceStep(),
+                    _buildFamilyStep(),
+                    _buildChildhoodStep(),
+                    _buildTraitsStep(),
+                    _buildBeliefsStep(),
+                    _buildWandStep(),
+                    _buildTalentStep(),
+                    _buildPetStep(),
+                    _buildFriendStep(),
+                    _buildStartStep(),
+                    _buildConfirmStep(),
+                  ],
+                ),
+              ),
+              _buildNavButtons(),
+            ],
           ),
-          _buildNavButtons(),
         ],
       ),
     );
@@ -406,25 +420,35 @@ class _IntroScreenState extends State<IntroScreen> {
 
   Widget _buildProgressIndicator() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
       child: Row(
         children: [
           Text(
             '${_step + 1}/13',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: MiuiType.footnote1.copyWith(
+              color: MiuiColors.onSurfaceVariantSummary,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: LinearProgressIndicator(
-              value: (_step + 1) / 13,
-              backgroundColor: const Color(0xFF21262d),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFFD3A625)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: (_step + 1) / 13,
+                minHeight: 4,
+                valueColor: const AlwaysStoppedAnimation(MiuiColors.primary),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Text(
             _stepTitles[_step],
-            style: const TextStyle(fontSize: 12, color: Color(0xFFD3A625)),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: MiuiColors.primaryVariant,
+            ),
           ),
         ],
       ),
@@ -433,9 +457,10 @@ class _IntroScreenState extends State<IntroScreen> {
 
   Widget _buildNavButtons() {
     final canProceed = _canProceed();
+    final isLast = _step == 12;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         child: Row(
           children: [
             if (_step > 0)
@@ -443,7 +468,6 @@ class _IntroScreenState extends State<IntroScreen> {
                 child: OutlinedButton(
                   onPressed: _back,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white54,
                     minimumSize: const Size.fromHeight(48),
                   ),
                   child: const Text('上一步'),
@@ -452,20 +476,13 @@ class _IntroScreenState extends State<IntroScreen> {
             if (_step > 0) const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: ElevatedButton(
-                onPressed: canProceed ? _next : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: canProceed
-                      ? const Color(0xFF740001)
-                      : const Color(0xFF484f58),
-                  disabledBackgroundColor: const Color(0xFF484f58),
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                child: Text(
-                  _step == 12 ? '🪄 开启魔法人生' : '下一步',
-                  style: TextStyle(
-                    color: canProceed ? Colors.white : Colors.white38,
-                  ),
+              child: SizedBox(
+                height: 48,
+                child: MiuiButton(
+                  label: isLast ? '🪄 开启魔法人生' : '下一步',
+                  onPressed: canProceed ? _next : null,
+                  primary: !isLast,
+                  danger: isLast,
                 ),
               ),
             ),
@@ -496,7 +513,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '选择你所在的时代',
       '时代的浪潮将塑造你的命运。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (int i = 0; i < _eraOptions.length; i++)
             _buildRadioCard(
@@ -516,7 +533,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '你的名字与身份',
       '名字将伴随你的整个魔法人生。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           TextField(
             controller: _nameController,
@@ -538,27 +555,12 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _genderOptions.map((g) {
               final selected = _gender == g;
               return FilterChip(
-                label: Text(
-                  g,
-                  style: TextStyle(
-                    color: selected ? Colors.white : Colors.white70,
-                  ),
-                ),
+                label: Text(g),
                 selected: selected,
                 onSelected: (_) => setState(() {
                   _gender = g;
                   _sexOrientation = g == '男' ? '女' : '男';
                 }),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFF740001),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -573,24 +575,9 @@ class _IntroScreenState extends State<IntroScreen> {
             children: ['女', '男', '双性'].map((s) {
               final selected = _sexOrientation == s;
               return FilterChip(
-                label: Text(
-                  s,
-                  style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
-                  ),
-                ),
+                label: Text(s),
                 selected: selected,
                 onSelected: (_) => setState(() => _sexOrientation = s),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -605,7 +592,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '外貌与体格',
       '第一印象往往很重要。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (final a in _appearanceOptions)
             _buildRadioCard(
@@ -624,7 +611,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '家族与血统',
       '血统决定你的起点，但决定不了你的终点。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           const Text(
             '血统/出身',
@@ -637,24 +624,9 @@ class _IntroScreenState extends State<IntroScreen> {
             children: kBloodStatusOptions.map((val) {
               final selected = _bloodStatus == val;
               return FilterChip(
-                label: Text(
-                  bloodStatusOptionLabel(val),
-                  style: TextStyle(
-                    color: selected ? Colors.white : Colors.white70,
-                  ),
-                ),
+                label: Text(bloodStatusOptionLabel(val)),
                 selected: selected,
                 onSelected: (_) => setState(() => _bloodStatus = val),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFF740001),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -663,10 +635,10 @@ class _IntroScreenState extends State<IntroScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFD3A625).withValues(alpha: 0.08),
+                color: MiuiColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const Color(0xFFD3A625).withValues(alpha: 0.2),
+                  color: MiuiColors.primary.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -674,7 +646,7 @@ class _IntroScreenState extends State<IntroScreen> {
                   const Icon(
                     Icons.info_outline,
                     size: 16,
-                    color: Color(0xFFD3A625),
+                    color: MiuiColors.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -682,7 +654,7 @@ class _IntroScreenState extends State<IntroScreen> {
                       kBloodStatusDescriptions[_bloodStatus]!,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFFD3A625),
+                        color: MiuiColors.primary,
                       ),
                     ),
                   ),
@@ -702,24 +674,9 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _birthIdentityOptions.map((val) {
               final selected = _birthIdentity == val;
               return FilterChip(
-                label: Text(
-                  val,
-                  style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
-                  ),
-                ),
+                label: Text(val),
                 selected: selected,
                 onSelected: (_) => setState(() => _birthIdentity = val),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -734,7 +691,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '童年经历（选3项）',
       '你童年中那些无法解释的瞬间，是魔法的第一次回响。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           Wrap(
             spacing: 8,
@@ -742,12 +699,7 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _childhoodOptions.map((c) {
               final selected = _selectedChildhood.contains(c);
               return FilterChip(
-                label: Text(
-                  c,
-                  style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
-                  ),
-                ),
+                label: Text(c),
                 selected: selected,
                 onSelected: (v) {
                   setState(() {
@@ -759,16 +711,6 @@ class _IntroScreenState extends State<IntroScreen> {
                     }
                   });
                 },
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -788,7 +730,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '性格特质（选3-5个）',
       '性格决定你如何面对命运。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           Wrap(
             spacing: 8,
@@ -806,7 +748,7 @@ class _IntroScreenState extends State<IntroScreen> {
                     Text(
                       trait,
                       style: TextStyle(
-                        color: selected ? Colors.black : Colors.white70,
+                        color: selected ? MiuiColors.primaryVariant : Colors.white70,
                       ),
                     ),
                   ],
@@ -822,16 +764,6 @@ class _IntroScreenState extends State<IntroScreen> {
                     }
                   });
                 },
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -851,7 +783,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '信仰与价值观',
       '在最黑暗的时刻，是什么指引着你？',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (final b in _beliefsOptions)
             _buildRadioCard(
@@ -870,7 +802,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '选择你的魔杖',
       '魔杖选择巫师，巫师亦选择魔杖。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (final w in wands)
             _buildRadioCard(
@@ -890,7 +822,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '天赋与资质',
       '你的天赋、魔法资质、学院倾向与政治立场。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           const Text(
             '天赋专精',
@@ -903,24 +835,9 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _talentOptions.map((t) {
               final selected = _talent == t;
               return FilterChip(
-                label: Text(
-                  t,
-                  style: TextStyle(
-                    color: selected ? Colors.white : Colors.white70,
-                  ),
-                ),
+                label: Text(t),
                 selected: selected,
                 onSelected: (_) => setState(() => _talent = t),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFF740001),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -939,22 +856,12 @@ class _IntroScreenState extends State<IntroScreen> {
                 label: Text(
                   a,
                   style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
+                    color: selected ? MiuiColors.primaryVariant : Colors.white70,
                     fontSize: 12,
                   ),
                 ),
                 selected: selected,
                 onSelected: (_) => setState(() => _magicAptitude = a),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -973,22 +880,12 @@ class _IntroScreenState extends State<IntroScreen> {
                 label: Text(
                   h,
                   style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
+                    color: selected ? MiuiColors.primaryVariant : Colors.white70,
                     fontSize: 12,
                   ),
                 ),
                 selected: selected,
                 onSelected: (_) => setState(() => _housePreference = h),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -1004,24 +901,9 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _politicalOptions.map((p) {
               final selected = _politicalTendency == p;
               return FilterChip(
-                label: Text(
-                  p,
-                  style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
-                  ),
-                ),
+                label: Text(p),
                 selected: selected,
                 onSelected: (_) => setState(() => _politicalTendency = p),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -1037,24 +919,9 @@ class _IntroScreenState extends State<IntroScreen> {
             children: _simulationStyleOptions.map((s) {
               final selected = _simulationStyle == s;
               return FilterChip(
-                label: Text(
-                  s,
-                  style: TextStyle(
-                    color: selected ? Colors.black : Colors.white70,
-                  ),
-                ),
+                label: Text(s),
                 selected: selected,
                 onSelected: (_) => setState(() => _simulationStyle = s),
-                backgroundColor: const Color(0xFF21262d),
-                selectedColor: const Color(0xFFD3A625),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF30363d),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               );
             }).toList(),
           ),
@@ -1069,7 +936,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '选择宠物',
       '一位忠实的伙伴。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (int i = 0; i < _petOptions.length; i++)
             _buildRadioCard(
@@ -1100,7 +967,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '初始好友',
       '在魔法世界，朋友是比魔杖更珍贵的财富。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (final f in _friendOptions)
             _buildRadioCard(
@@ -1119,7 +986,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '剧情起点',
       '你的故事从哪一刻开始？',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           for (final s in _startPointOptions)
             _buildRadioCard(
@@ -1139,7 +1006,7 @@ class _IntroScreenState extends State<IntroScreen> {
       '最终确认',
       '你的命运即将书写。',
       ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
         children: [
           _buildSummaryRow('时代', _eraOptions[_eraIndex]),
           _buildSummaryRow('姓名', _nameController.text.trim()),
@@ -1166,15 +1033,30 @@ class _IntroScreenState extends State<IntroScreen> {
 
   Widget _buildSummaryRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
-            child: Text(label, style: const TextStyle(color: Colors.grey)),
+            width: 84,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: MiuiColors.onSurfaceVariantSummary,
+              ),
+            ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.4,
+                color: MiuiColors.onSurface,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1185,17 +1067,25 @@ class _IntroScreenState extends State<IntroScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          padding: const EdgeInsets.fromLTRB(28, 16, 28, 4),
           child: Text(
             title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: MiuiColors.onSurface,
+            ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(28, 4, 28, 12),
           child: Text(
             subtitle,
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: const TextStyle(
+              fontSize: 14,
+              color: MiuiColors.onSurfaceVariantSummary,
+            ),
           ),
         ),
         Expanded(child: child),
@@ -1210,67 +1100,57 @@ class _IntroScreenState extends State<IntroScreen> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: MiuiCard(
+        onTap: onTap,
         color: selected
-            ? const Color(0xFF740001).withValues(alpha: 0.25)
-            : const Color(0xFF21262d),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFFD3A625)
-                    : const Color(0xFF30363d),
-                width: selected ? 1.5 : 1,
+            ? MiuiColors.tertiaryContainer
+            : MiuiColors.surfaceContainer,
+        radius: MiuiRadius.card,
+        border: Border.all(
+          color: selected ? MiuiColors.primary : MiuiColors.outline,
+          width: selected ? 1.5 : 0.75,
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected
+                  ? MiuiColors.primaryVariant
+                  : MiuiColors.onSurfaceVariantActions,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      color: selected
+                          ? MiuiColors.primaryVariant
+                          : MiuiColors.onSurface,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: MiuiColors.onSurfaceVariantSummary,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: selected
-                      ? const Color(0xFFD3A625)
-                      : const Color(0xFF8B949E),
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: selected
-                              ? Colors.white
-                              : const Color(0xFFE6EDF3),
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF8B949E),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );

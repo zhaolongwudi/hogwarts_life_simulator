@@ -4,6 +4,7 @@
 // 然后查看 tools/render_smoke/goldens/*.png
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:hogwarts_life_simulator/theme/miuix_theme.dart';
 import 'package:hogwarts_life_simulator/theme/miuix_tokens.dart';
@@ -11,6 +12,9 @@ import 'package:hogwarts_life_simulator/theme/miuix_typography.dart';
 import 'package:hogwarts_life_simulator/widgets/liquid_glass_nav_bar.dart';
 import 'package:hogwarts_life_simulator/widgets/miui_magic_backdrop.dart';
 import 'package:hogwarts_life_simulator/widgets/miuix_components.dart';
+import 'package:hogwarts_life_simulator/screens/intro_screen.dart';
+import 'package:hogwarts_life_simulator/providers/app_provider.dart';
+import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
 Widget _wrap(Widget child) {
   return MaterialApp(
@@ -216,6 +220,28 @@ void main() {
     await expectLater(
       find.byType(_GlassNavPage),
       matchesGoldenFile('goldens/liquid_glass_nav.png'),
+    );
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('intro wizard step 0 (era)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    final app = AppProvider();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppProvider>.value(value: app),
+          ChangeNotifierProvider<GameProvider>(
+            create: (_) => GameProvider(app),
+          ),
+        ],
+        child: _wrap(const IntroScreen()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await expectLater(
+      find.byType(IntroScreen),
+      matchesGoldenFile('goldens/intro_wizard.png'),
     );
     await tester.binding.setSurfaceSize(null);
   });
