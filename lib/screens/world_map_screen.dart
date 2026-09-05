@@ -3,6 +3,7 @@ import '../utils/ui_helpers.dart';
 import '../data/locations.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
+import '../theme/miuix_tokens.dart';
 
 class WorldMapScreen extends StatefulWidget {
   const WorldMapScreen({super.key});
@@ -282,9 +283,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF161B22).withValues(alpha: 0.96),
+                color: MiuiColors.surface.withValues(alpha: 0.96),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
+                border: Border.all(color: MiuiColors.primary, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.18),
@@ -381,7 +382,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     return ListTile(
       leading: Icon(
         isSub ? Icons.subdirectory_arrow_right : Icons.map,
-        color: isSub ? AppColors.warning : const Color(0xFFD3A625),
+        color: isSub ? AppColors.warning : MiuiColors.primary,
       ),
       title: Text(name,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -472,7 +473,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [const Color(0xFF0D1117).withValues(alpha: 0.95), const Color(0xFF0D1117).withValues(alpha: 0.0)],
+            colors: [MiuiColors.background.withValues(alpha: 0.95), MiuiColors.background.withValues(alpha: 0.0)],
           ),
         ),
         child: Column(
@@ -515,7 +516,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                                 child: Text(_parentArea ?? '',
                                     style: const TextStyle(fontSize: 16, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w500)),
                               ),
-                              const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8B949E)),
+                              const Icon(Icons.chevron_right, size: 18, color: MiuiColors.onSurfaceVariantSummary),
                             ],
                             Flexible(
                               child: Text(
@@ -557,7 +558,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.edit, size: 20, color: Color(0xFFD3A625)),
+                      child: const Icon(Icons.edit, size: 20, color: MiuiColors.primary),
                     ),
                   ),
                 ],
@@ -716,7 +717,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: isSelected
-                              ? const Color(0xFFD3A625)
+                              ? MiuiColors.primary
                               : isBranch
                                   ? AppColors.warning
                                   : const Color(0xFF3E5B4A),
@@ -762,7 +763,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       height: compact ? 30 : 36,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFD3A625)
+                            ? MiuiColors.primary
                             : isBranch
                                 ? AppColors.warning
                                 : Colors.white,
@@ -772,7 +773,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               ? AppColors.goldBright
                               : isBranch
                                   ? AppColors.gold
-                                  : const Color(0xFFD3A625),
+                                  : MiuiColors.primary,
                           width: 2.5,
                         ),
                         boxShadow: [
@@ -786,7 +787,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       child: Icon(
                         isBranch ? Icons.subdirectory_arrow_right : Icons.location_on,
                         size: compact ? 17 : 20,
-                        color: isSelected || isBranch ? Colors.white : const Color(0xFFD3A625),
+                        color: isSelected || isBranch ? Colors.white : MiuiColors.primary,
                       ),
                     ),
                     if (compact) ...[
@@ -890,7 +891,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.97),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: const Color(0xFFD3A625), width: 1.5),
+              border: Border.all(color: MiuiColors.primary, width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.18),
@@ -976,7 +977,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.98),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.3), width: 1.5),
+              border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.3), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.2),
@@ -1041,10 +1042,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF21262D),
+                          color: MiuiColors.surfaceContainer,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close, size: 18, color: Color(0xFF8B949E)),
+                        child: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
                       ),
                     ),
                   ],
@@ -1053,9 +1054,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161B22),
+                    color: MiuiColors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF30363D)),
+                    border: Border.all(color: MiuiColors.outline),
                   ),
                   child: Row(
                     children: [
@@ -1092,7 +1093,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       height: 46,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isBranch ? AppColors.warning : const Color(0xFFD3A625),
+                          backgroundColor: isBranch ? AppColors.warning : MiuiColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 22),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1251,7 +1252,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           border: Border.all(
             color: isCurrent
                 ? const Color(0xFF1F2937)
-                : const Color(0xFFD3A625).withValues(alpha: 0.55),
+                : MiuiColors.primary.withValues(alpha: 0.55),
             width: 1.5,
           ),
           boxShadow: [
@@ -1283,7 +1284,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.94),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
+          border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.4)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -1295,7 +1296,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 12, height: 12, decoration: const BoxDecoration(color: Color(0xFFD3A625), shape: BoxShape.circle)),
+            Container(width: 12, height: 12, decoration: const BoxDecoration(color: MiuiColors.primary, shape: BoxShape.circle)),
             const SizedBox(width: 5),
             const Text('当前', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
             const SizedBox(width: 12),
@@ -1303,7 +1304,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             const SizedBox(width: 5),
             const Text('子地图', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
             const SizedBox(width: 12),
-            Container(width: 12, height: 12, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Color(0xFFD3A625), width: 1.5))),
+            Container(width: 12, height: 12, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: MiuiColors.primary, width: 1.5))),
             const SizedBox(width: 5),
             const Text('地点', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
           ],

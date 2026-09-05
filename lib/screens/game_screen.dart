@@ -88,7 +88,7 @@ class _GameScreenState extends State<GameScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('正在加载存档...', style: TextStyle(color: Color(0xFF8B949E))),
+              Text('正在加载存档...', style: TextStyle(color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
         ),
@@ -101,9 +101,9 @@ class _GameScreenState extends State<GameScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Color(0xFF8B949E)),
+              const Icon(Icons.error_outline, size: 64, color: MiuiColors.onSurfaceVariantSummary),
               const SizedBox(height: 16),
-              Text(gp.error ?? '没有找到存档', style: const TextStyle(color: Color(0xFF8B949E))),
+              Text(gp.error ?? '没有找到存档', style: const TextStyle(color: MiuiColors.onSurfaceVariantSummary)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {

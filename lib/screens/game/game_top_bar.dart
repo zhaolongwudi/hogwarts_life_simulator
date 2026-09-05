@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../../utils/ui_helpers.dart';
+import '../../theme/miuix_tokens.dart';
 
 class GameTopBar extends StatelessWidget {
   const GameTopBar({super.key});
@@ -57,7 +58,7 @@ class GameTopBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3), letterSpacing: 0.2)),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: MiuiColors.onSurface, letterSpacing: 0.2)),
                     ),
                     if (houseLabel.isNotEmpty) ...[
                       const SizedBox(width: 6),
@@ -82,7 +83,7 @@ class GameTopBar extends StatelessWidget {
                     const SizedBox(width: 2),
                     Expanded(
                       child: Text(gp.worldState.timestamp,
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF8B949E), letterSpacing: 0.1),
+                          style: const TextStyle(fontSize: 10.5, color: MiuiColors.onSurfaceVariantSummary, letterSpacing: 0.1),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1),
                     ),
@@ -131,7 +132,7 @@ class GameTopBar extends StatelessWidget {
       children: List.generate(resources.length, (i) {
         final r = resources[i];
         final low = r.value < 30;
-        final barColor = low ? const Color(0xFFEF4444) : r.color;
+        final barColor = low ? MiuiColors.error : r.color;
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(right: i < resources.length - 1 ? 6 : 0),
@@ -142,12 +143,12 @@ class GameTopBar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(r.label,
-                        style: const TextStyle(fontSize: 9, color: Color(0xFF8B949E))),
+                        style: const TextStyle(fontSize: 9, color: MiuiColors.onSurfaceVariantSummary)),
                     Text('${r.value}',
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          color: low ? const Color(0xFFEF4444) : const Color(0xFFE6EDF3),
+                          color: low ? MiuiColors.error : MiuiColors.onSurface,
                         )),
                   ],
                 ),

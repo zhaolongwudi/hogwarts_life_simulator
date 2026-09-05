@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/quest_data.dart';
 import '../../data/item_data.dart';
+import '../../theme/miuix_tokens.dart';
 
 /// 新玩法独立页面（v1.11）：委托板 + 装备管理。
 /// 页面直接读写 GameProvider，所有操作复用本地判定 Mixin，零 token 消耗。
@@ -89,11 +90,11 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
         children: [
           Expanded(
             child: Text(title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MiuiColors.onSurface)),
           ),
           if (count != null)
             Text('$count 条',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
           if (trailing != null) trailing,
         ],
       ),
@@ -113,9 +114,9 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
         children: [
           Icon(Icons.inbox_outlined, size: 32, color: Theme.of(context).textTheme.bodyMedium!.color),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
+          Text(title, style: const TextStyle(fontSize: 13, color: MiuiColors.onSurface)),
           const SizedBox(height: 4),
-          Text(desc, style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)), textAlign: TextAlign.center),
+          Text(desc, style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -125,9 +126,9 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
     final claimed = q.status == 'claimed';
     final done = q.isDone && !claimed;
     final statusColor = claimed
-        ? const Color(0xFF6B7280)
+        ? MiuiColors.onSurfaceVariantActions
         : done
-            ? const Color(0xFFD3A625)
+            ? MiuiColors.primary
             : Theme.of(context).colorScheme.primary;
     final statusLabel = claimed ? '已领取' : done ? '可交付' : '进行中';
     final progress = (q.targetCount <= 0) ? 0.0 : (q.progress / q.targetCount).clamp(0.0, 1.0);
@@ -139,7 +140,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: done ? const Color(0xFFD3A625).withValues(alpha: 0.6) : Theme.of(context).dividerTheme.color!,
+          color: done ? MiuiColors.primary.withValues(alpha: 0.6) : Theme.of(context).dividerTheme.color!,
         ),
       ),
       child: Column(
@@ -159,12 +160,12 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(q.title,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(q.desc, style: const TextStyle(fontSize: 12, color: Color(0xFFC9D1D9))),
+          Text(q.desc, style: const TextStyle(fontSize: 12, color: MiuiColors.onSurface)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -173,7 +174,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('进度 ${q.progress}/${q.targetCount}（${q.target}）',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+                        style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
                     const SizedBox(height: 4),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
@@ -189,7 +190,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
               ),
               const SizedBox(width: 12),
               Text('${q.rewardGalleons}加隆 +${q.rewardHousePoints}分',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: MiuiColors.primary)),
             ],
           ),
           if (done) ...[
@@ -198,7 +199,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD3A625),
+                  backgroundColor: MiuiColors.primary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
@@ -246,21 +247,21 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(t.title,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(t.desc, style: const TextStyle(fontSize: 12, color: Color(0xFFC9D1D9))),
+          Text(t.desc, style: const TextStyle(fontSize: 12, color: MiuiColors.onSurface)),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: Text('目标：${t.target} ×${t.targetCount}',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+                    style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
               ),
               Text('${t.rewardGalleons}加隆 +${t.rewardHousePoints}分',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD3A625))),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: MiuiColors.primary)),
             ],
           ),
           const SizedBox(height: 10),
@@ -331,32 +332,32 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF1C232D),
+              color: MiuiColors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
+              border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.4)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.auto_awesome, size: 18, color: Color(0xFFD3A625)),
+                const Icon(Icons.auto_awesome, size: 18, color: MiuiColors.primary),
                 const SizedBox(width: 8),
                 Text(
                   '当前加成：战斗 +${_combatBonus(gp)} ｜ 施法成功率 +${(_castBonus(gp) / 10).toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3)),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: MiuiColors.onSurface),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          const Text('已穿戴', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+          const Text('已穿戴', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MiuiColors.onSurface)),
           const SizedBox(height: 8),
           ..._slots.map((s) => _buildSlotRow(gp, s.$1, s.$2)),
           const SizedBox(height: 20),
           Row(
             children: [
               const Expanded(
-                child: Text('背包中的装备', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
+                child: Text('背包中的装备', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MiuiColors.onSurface)),
               ),
-              Text('${equippable.length} 件', style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+              Text('${equippable.length} 件', style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
           const SizedBox(height: 8),
@@ -380,11 +381,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       ),
       child: const Column(
         children: [
-          Icon(Icons.shield_outlined, size: 32, color: Color(0xFF8B949E)),
+          Icon(Icons.shield_outlined, size: 32, color: MiuiColors.onSurfaceVariantSummary),
           SizedBox(height: 8),
-          Text('背包里还没有装备', style: TextStyle(fontSize: 13, color: Color(0xFFE6EDF3))),
+          Text('背包里还没有装备', style: TextStyle(fontSize: 13, color: MiuiColors.onSurface)),
           SizedBox(height: 4),
-          Text('去对角巷淘一件，买回来就能在这里穿戴', style: TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+          Text('去对角巷淘一件，买回来就能在这里穿戴', style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
         ],
       ),
     );
@@ -408,12 +409,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
+                Text(label, style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
                 Text(name ?? '（空）',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: name == null ? const Color(0xFF6B7280) : const Color(0xFFE6EDF3),
+                      color: name == null ? MiuiColors.onSurfaceVariantActions : MiuiColors.onSurface,
                     )),
               ],
             ),
@@ -477,13 +478,13 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(def.name,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text('${def.desc}${bonusParts.isNotEmpty ? '｜${bonusParts.join(' · ')}' : ''}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFFC9D1D9))),
+              style: const TextStyle(fontSize: 11, color: MiuiColors.onSurface)),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,

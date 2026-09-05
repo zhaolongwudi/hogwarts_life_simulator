@@ -3,6 +3,7 @@ import '../../providers/game_provider.dart';
 import '../../models/npc.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
+import '../../theme/miuix_tokens.dart';
 
 class WorldTab extends StatelessWidget {
   final GameProvider gp;
@@ -176,7 +177,7 @@ class WorldTab extends StatelessWidget {
                           Expanded(
                             child: Text(
                               title,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE6EDF3)),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: MiuiColors.onSurface),
                             ),
                           ),
                           Container(
@@ -202,7 +203,7 @@ class WorldTab extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.travel_explore, size: 32, color: Color(0xFF6B7280)),
+                      const Icon(Icons.travel_explore, size: 32, color: MiuiColors.onSurfaceVariantActions),
                       const SizedBox(height: 8),
                       Text(
                         '暂无内容\n多行动，世界会回应你',
@@ -300,7 +301,7 @@ class WorldTab extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(npc.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFE6EDF3))),
+                          child: Text(npc.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: MiuiColors.onSurface)),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
@@ -329,10 +330,10 @@ class WorldTab extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                              color: MiuiColors.error.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('酝酿中', style: TextStyle(fontSize: 10.5, color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
+                            child: const Text('酝酿中', style: TextStyle(fontSize: 10.5, color: MiuiColors.error, fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ],
@@ -354,14 +355,14 @@ class WorldTab extends StatelessWidget {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: isJob ? const Color(0xFFD3A625).withValues(alpha: 0.12) : houseColor.withValues(alpha: 0.1),
+                            color: isJob ? MiuiColors.primary.withValues(alpha: 0.12) : houseColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(tag,
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w500,
-                              color: isJob ? const Color(0xFFD3A625) : houseColor,
+                              color: isJob ? MiuiColors.primary : houseColor,
                             ),
                           ),
                         );
@@ -412,7 +413,7 @@ class WorldTab extends StatelessWidget {
       case 'Hufflepuff':
         return const Color(0xFFD97706);
       case 'staff':
-        return const Color(0xFF6B7280);
+        return MiuiColors.onSurfaceVariantActions;
       default:
         return const Color(0xFF5A6B4A);
     }

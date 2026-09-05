@@ -13,6 +13,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../../data/command_registry.dart';
+import '../../theme/miuix_tokens.dart';
 
 /// 分组图标与折叠默认状态
 class _GroupMeta {
@@ -46,7 +47,7 @@ void showCommandCenter(
 }) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: const Color(0xFF161B22),
+    backgroundColor: MiuiColors.surface,
     isScrollControlled: true,
     useSafeArea: true,
     shape: const RoundedRectangleBorder(
@@ -130,10 +131,10 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
                   style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFD3A625))),
+                      color: MiuiColors.primary)),
               const Spacer(),
               Text('共 ${all.length} 条指令',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
         ),
@@ -142,44 +143,44 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
           child: TextField(
             controller: _searchController,
             onChanged: (v) => setState(() => _query = v),
-            style: const TextStyle(color: Color(0xFFE6EDF3), fontSize: 14),
+            style: const TextStyle(color: MiuiColors.onSurface, fontSize: 14),
             decoration: InputDecoration(
               hintText: '搜索指令（名称 / 别名 / 功能）',
-              hintStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),
-              prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF8B949E)),
+              hintStyle: const TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 13),
+              prefixIcon: const Icon(Icons.search, size: 20, color: MiuiColors.onSurfaceVariantSummary),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.close, size: 18, color: Color(0xFF8B949E)),
+                      icon: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
                       onPressed: () {
                         _searchController.clear();
                         setState(() => _query = '');
                       },
                     ),
               filled: true,
-              fillColor: const Color(0xFF21262D),
+              fillColor: MiuiColors.surfaceContainer,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF30363D)),
+                borderSide: const BorderSide(color: MiuiColors.outline),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF30363D)),
+                borderSide: const BorderSide(color: MiuiColors.outline),
               ),
             ),
           ),
         ),
         // 快捷区（无搜索时显示）
         if (_query.isEmpty) _buildQuickRow(context),
-        const Divider(height: 1, color: Color(0xFF30363D)),
+        const Divider(height: 1, color: MiuiColors.outline),
         // 分组列表
         Expanded(
           child: orderedGroups.isEmpty
               ? const Center(
                   child: Text('没有匹配的指令',
-                      style: TextStyle(color: Color(0xFF8B949E), fontSize: 13)),
+                      style: TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 13)),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.only(bottom: 24),
@@ -220,21 +221,21 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFD3A625).withValues(alpha: 0.12),
+                color: MiuiColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                    color: const Color(0xFFD3A625).withValues(alpha: 0.4)),
+                    color: MiuiColors.primary.withValues(alpha: 0.4)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 15, color: const Color(0xFFD3A625)),
+                  Icon(icon, size: 15, color: MiuiColors.primary),
                   const SizedBox(width: 5),
                   Text(label,
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFFE6EDF3))),
+                          color: MiuiColors.onSurface)),
                 ],
               ),
             ),
@@ -269,24 +270,24 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
             child: Row(
               children: [
                 Icon(meta.icon, size: 16,
-                    color: isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625)),
+                    color: isCheat ? MiuiColors.error : MiuiColors.primary),
                 const SizedBox(width: 8),
                 Text(
                   isCheat ? '$group（${commands.length}）' : group,
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF8B949E),
+                      color: MiuiColors.onSurfaceVariantSummary,
                       letterSpacing: 0.4),
                 ),
                 if (commands.length > 0 && !isCheat)
                   Text(' ${commands.length}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                      style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantActions)),
                 const Spacer(),
                 Icon(
                   collapsed ? Icons.expand_more : Icons.expand_less,
                   size: 18,
-                  color: const Color(0xFF6B7280),
+                  color: MiuiColors.onSurfaceVariantActions,
                 ),
               ],
             ),
@@ -301,7 +302,7 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
   Widget _buildCommandTile(CommandDef c, bool isCheat) {
     final needsArgs = _needsArgs(c);
     final aliases = c.aliases.isNotEmpty ? '（/${c.aliases.join('、/')}）' : '';
-    final accent = isCheat ? const Color(0xFFEF4444) : const Color(0xFFD3A625);
+    final accent = isCheat ? MiuiColors.error : MiuiColors.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       child: Column(
@@ -331,13 +332,13 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
                         style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFFE6EDF3))),
+                            color: MiuiColors.onSurface)),
                     const SizedBox(height: 2),
                     Text(c.helpText,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 11.5, color: Color(0xFF8B949E))),
+                            fontSize: 11.5, color: MiuiColors.onSurfaceVariantSummary)),
                   ],
                 ),
               ),
@@ -425,7 +426,7 @@ class _CommandCenterPanelState extends State<CommandCenterPanel> {
               style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFFE6EDF3)),
+                  color: MiuiColors.onSurface),
             ),
           ],
         ),

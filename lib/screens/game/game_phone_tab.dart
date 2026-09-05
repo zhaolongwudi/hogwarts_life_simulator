@@ -7,6 +7,7 @@ import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';
 import '../../utils/ui_helpers.dart';
+import '../../theme/miuix_tokens.dart';
 
 void _editSignature(BuildContext context) {
   final gp = context.read<GameProvider>();
@@ -65,8 +66,8 @@ class PhoneTab extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                const Color(0xFF161b22).withValues(alpha: 0.8),
-                const Color(0xFF0d1117).withValues(alpha: 0.5),
+                MiuiColors.surface.withValues(alpha: 0.8),
+                MiuiColors.background.withValues(alpha: 0.5),
                 Theme.of(context).scaffoldBackgroundColor,
               ],
             ),
@@ -164,7 +165,7 @@ class PhoneTab extends StatelessWidget {
             _buildAppItem(context, Icons.phone_in_talk, '魔法通讯', Color(0xFF3B82F6), () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
             }),
-            _buildAppItem(context, Icons.forum, '魔法论坛', Color(0xFFEF4444), () {
+            _buildAppItem(context, Icons.forum, '魔法论坛', MiuiColors.error, () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ForumScreen()));
             }),
             _buildAppItem(context, Icons.edit_note, '查看日记', Color(0xFF8B5CF6), () {
@@ -247,7 +248,7 @@ class PhoneTab extends StatelessWidget {
           _buildQuickItem(context, Icons.photo_album, '你的回忆', Color(0xFF8B5CF6), () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
           }),
-          _buildQuickItem(context, Icons.work, '找点活干', Color(0xFF10B981), () {
+          _buildQuickItem(context, Icons.work, '找点活干', MiuiColors.success, () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
           }),
           // 好感排行榜：同样是从没人 import 的 phone_home_screen.dart 里救出来的

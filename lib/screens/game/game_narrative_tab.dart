@@ -12,6 +12,7 @@ import '../../widgets/narrative_visuals.dart';
 
 import '../story_history_screen.dart';
 import 'choice_panel.dart';
+import '../../theme/miuix_tokens.dart';
 
 class NarrativeTab extends StatefulWidget {
   final Function(int) onNarrativeTapChoice;
@@ -257,7 +258,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: const Color(0xFFD3A625).withValues(alpha: 0.5),
+                      color: MiuiColors.primary.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Row(
@@ -266,13 +267,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       Icon(
                         Icons.history,
                         size: 14,
-                        color: const Color(0xFFD3A625),
+                        color: MiuiColors.primary,
                       ),
                       const SizedBox(width: 4),
                       const Text(
                         '回放',
                         style: TextStyle(
-                          color: Color(0xFFD3A625),
+                          color: MiuiColors.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -305,7 +306,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     child: const Icon(
                       Icons.fullscreen,
                       size: 18,
-                      color: Color(0xFF8B949E),
+                      color: MiuiColors.onSurfaceVariantSummary,
                     ),
                   ),
                 ),
@@ -346,7 +347,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFE6EDF3),
+                color: MiuiColors.onSurface,
               ),
             ),
             const Spacer(),
@@ -383,13 +384,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   Icon(
                     Icons.auto_stories_outlined,
                     size: 36,
-                    color: Color(0xFF6B7280),
+                    color: MiuiColors.onSurfaceVariantActions,
                   ),
                   SizedBox(height: 8),
                   Text(
                     '暂无事件记录\n行动起来创建你的故事吧！',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: Color(0xFF8B949E)),
+                    style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary),
                   ),
                 ],
               ),
@@ -459,7 +460,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   isWorldEvent ? Icons.public : Icons.auto_awesome,
                   size: 20,
                   color: isRecent
-                      ? const Color(0xFFD3A625)
+                      ? MiuiColors.primary
                       : Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
@@ -484,7 +485,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isRecent
-                ? const Color(0xFFD3A625).withValues(alpha: 0.6)
+                ? MiuiColors.primary.withValues(alpha: 0.6)
                 : isWorldEvent
                 ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
                 : dividerColorOf(context),
@@ -498,7 +499,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               decoration: BoxDecoration(
                 color:
                     (isRecent
-                            ? const Color(0xFFD3A625)
+                            ? MiuiColors.primary
                             : isWorldEvent
                             ? const Color(0xFF3B82F6)
                             : Theme.of(context).colorScheme.primary)
@@ -509,7 +510,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                 isWorldEvent ? Icons.public : Icons.auto_awesome,
                 size: 16,
                 color: isRecent
-                    ? const Color(0xFFD3A625)
+                    ? MiuiColors.primary
                     : isWorldEvent
                     ? const Color(0xFF3B82F6)
                     : Theme.of(context).colorScheme.primary,
@@ -526,8 +527,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       fontSize: 13,
                       fontWeight: isRecent ? FontWeight.w700 : FontWeight.w500,
                       color: isRecent
-                          ? const Color(0xFFD3A625)
-                          : const Color(0xFFE6EDF3),
+                          ? MiuiColors.primary
+                          : MiuiColors.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -625,14 +626,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              const Icon(Icons.schedule, size: 13, color: Color(0xFF8B949E)),
+              const Icon(Icons.schedule, size: 13, color: MiuiColors.onSurfaceVariantSummary),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   timestamp ?? '',
                   style: const TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF8B949E),
+                    color: MiuiColors.onSurfaceVariantSummary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -684,7 +685,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+          style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary),
         ),
       ],
     );
@@ -797,7 +798,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       '💰 ${gp.player?.galleons ?? 0} 加隆 · 🏦 ${gp.player?.bankGalleons ?? 0} 存 · 🎯 第${_turnCount(gp)}回合',
                       style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF8B949E),
+                        color: MiuiColors.onSurfaceVariantSummary,
                       ),
                     ),
                   ],
@@ -908,7 +909,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           'label': '魔药',
           'value': player.attributes['potions'] ?? 50,
           'icon': Icons.science,
-          'color': const Color(0xFF10B981),
+          'color': MiuiColors.success,
         },
         {
           'label': '草药',
@@ -920,7 +921,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           'label': '黑防',
           'value': player.attributes['dda'] ?? 50,
           'icon': Icons.shield,
-          'color': const Color(0xFFEF4444),
+          'color': MiuiColors.error,
         },
         {
           'label': '飞行',
@@ -991,14 +992,14 @@ class _NarrativeTabState extends State<NarrativeTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFD3A625).withValues(alpha: 0.08),
+              color: MiuiColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
               '📚 课程属性',
               style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFFD3A625),
+                color: MiuiColors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1044,7 +1045,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C232D),
+        color: MiuiColors.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
@@ -1095,7 +1096,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C232D),
+        color: MiuiColors.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
@@ -1229,7 +1230,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     color: const Color(0xFF2D333B),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: const Color(0xFFD3A625).withValues(alpha: 0.3),
+                      color: MiuiColors.primary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -1240,7 +1241,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFFD3A625),
+                          color: MiuiColors.primary,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -1271,7 +1272,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                             '${gp.lastRoundTokens} tokens',
                             style: const TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF8B949E),
+                              color: MiuiColors.onSurfaceVariantSummary,
                             ),
                           ),
                         ),
@@ -1403,7 +1404,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         borderRadius: BorderRadius.circular(12),
         border: Border(
           left: BorderSide(
-            color: const Color(0xFFD3A625).withValues(alpha: 0.7),
+            color: MiuiColors.primary.withValues(alpha: 0.7),
             width: 3.0,
           ),
         ),
@@ -1422,7 +1423,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             children: [
               const Icon(
                 Icons.info_outline,
-                color: Color(0xFFD3A625),
+                color: MiuiColors.primary,
                 size: 18,
               ),
               const SizedBox(width: 6),
@@ -1432,7 +1433,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFD3A625),
+                    color: MiuiColors.primary,
                   ),
                 ),
               ),
@@ -1487,12 +1488,12 @@ class _NarrativeTabState extends State<NarrativeTab> {
               SizedBox(width: 4),
               Text(
                 '文本颜色图例',
-                style: TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+                style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary),
               ),
               Icon(
                 Icons.keyboard_arrow_down,
                 size: 14,
-                color: Color(0xFF8B949E),
+                color: MiuiColors.onSurfaceVariantSummary,
               ),
             ],
           ),
@@ -1517,7 +1518,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
           children: [
             _buildLegendItem(const Color(0xFFDDB54A), '人名'),
             _buildLegendItem(const Color(0xFFFFC87A), '说话人'),
-            _buildLegendItem(const Color(0xFF79C0FF), '对话'),
+            _buildLegendItem(MiuiColors.info, '对话'),
             _buildLegendItem(AppColors.success, '地点'),
             _buildLegendItem(const Color(0xFFD2A8FF), '物品'),
             _buildLegendItem(const Color(0xFFB8A6E3), '内心独白'),
@@ -1568,11 +1569,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
         return Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF79C0FF).withValues(alpha: 0.06),
+            color: MiuiColors.info.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(10),
             border: Border(
               left: BorderSide(
-                color: const Color(0xFF79C0FF).withValues(alpha: 0.45),
+                color: MiuiColors.info.withValues(alpha: 0.45),
                 width: 3,
               ),
             ),
@@ -1598,10 +1599,10 @@ class _NarrativeTabState extends State<NarrativeTab> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFFD3A625).withValues(alpha: 0.12),
+              color: MiuiColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: const Color(0xFFD3A625).withValues(alpha: 0.35),
+                color: MiuiColors.primary.withValues(alpha: 0.35),
               ),
             ),
             child: ScaledRichText(
@@ -1753,7 +1754,7 @@ class _ResourceFloatState extends State<_ResourceFloat>
                 color: const Color(0xFF2D333B).withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFD3A625).withValues(alpha: 0.5),
+                  color: MiuiColors.primary.withValues(alpha: 0.5),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -1829,7 +1830,7 @@ class _AiErrorBanner extends StatelessWidget {
               ),
               child: const Text(
                 '重试',
-                style: TextStyle(fontSize: 12, color: Color(0xFFD3A625)),
+                style: TextStyle(fontSize: 12, color: MiuiColors.primary),
               ),
             ),
           GestureDetector(

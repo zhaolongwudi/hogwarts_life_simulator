@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/game_systems.dart';
 import '../../mixins/mixin_response_choices.dart';
+import '../../theme/miuix_tokens.dart';
 
 /// 剧情选项按钮。
 ///
@@ -41,7 +42,7 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
             borderRadius: BorderRadius.circular(10),
             border: Border(
               left: BorderSide(
-                color: const Color(0xFFD3A625).withValues(alpha: 0.5),
+                color: MiuiColors.primary.withValues(alpha: 0.5),
                 width: 2.5,
               ),
             ),
@@ -60,7 +61,7 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
                   widget.label,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFFE6EDF3),
+                    color: MiuiColors.onSurface,
                     height: 1.4,
                   ),
                 ),
@@ -69,7 +70,7 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
               Icon(
                 Icons.arrow_forward_ios,
                 size: 12,
-                color: const Color(0xFFD3A625).withValues(alpha: 0.6),
+                color: MiuiColors.primary.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -152,7 +153,7 @@ class ChoicePanel extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFD3A625)),
+                        color: MiuiColors.primary),
                   ),
                   const Spacer(),
                   // 「换一批」走本地词库，不消耗 token。
@@ -175,7 +176,7 @@ class ChoicePanel extends StatelessWidget {
                                   size: 15,
                                   color: busy
                                       ? Colors.grey
-                                      : const Color(0xFFD3A625)),
+                                      : MiuiColors.primary),
                               const SizedBox(width: 4),
                               Text(
                                 '换一批',
@@ -183,7 +184,7 @@ class ChoicePanel extends StatelessWidget {
                                   fontSize: 13,
                                   color: busy
                                       ? Colors.grey
-                                      : const Color(0xFFD3A625),
+                                      : MiuiColors.primary,
                                 ),
                               ),
                             ],
@@ -206,7 +207,7 @@ class ChoicePanel extends StatelessWidget {
                             Text(
                               collapsed ? '展开' : '收起',
                               style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFF8B949E)),
+                                  fontSize: 13, color: MiuiColors.onSurfaceVariantSummary),
                             ),
                             const SizedBox(width: 2),
                             Icon(
@@ -214,7 +215,7 @@ class ChoicePanel extends StatelessWidget {
                                   ? Icons.keyboard_arrow_up
                                   : Icons.keyboard_arrow_down,
                               size: 16,
-                              color: const Color(0xFF8B949E),
+                              color: MiuiColors.onSurfaceVariantSummary,
                             ),
                           ],
                         ),

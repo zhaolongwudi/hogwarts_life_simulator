@@ -111,7 +111,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
           const SizedBox(height: 4),
           Text(
             '共 ${events.length} 条（只保留最近 20 条）',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+            style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
           ),
           const SizedBox(height: 12),
           if (ordered.isEmpty)
@@ -194,7 +194,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     padding: const EdgeInsets.only(bottom: 2),
                     child: Text('第 ${event.turn} 回合',
                         style: const TextStyle(
-                            fontSize: 11, color: Color(0xFF8B949E))),
+                            fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
                   ),
                 Text(event.text,
                     style: TextStyle(
@@ -249,7 +249,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
               const Text('收藏', style: MiuiType.title4),
               const Spacer(),
               Text('${owned.length}/${kCollectibleCatalog.length}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF8B949E))),
+                  style: const TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
           const SizedBox(height: 12),
@@ -283,7 +283,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                       color: MiuiColors.primaryVariant)),
               const SizedBox(width: 8),
               Text('${got.length}/${all.length}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
             ],
           ),
           const SizedBox(height: 8),
@@ -321,7 +321,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: has ? null : const Color(0xFF8B949E),
+                color: has ? null : MiuiColors.onSurfaceVariantSummary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -348,7 +348,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('${c.series}　${c.starText}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary)),
               const SizedBox(height: 10),
               Text(c.desc),
             ],

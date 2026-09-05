@@ -323,7 +323,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
           Text(
             '${currentPage + 1} / $totalPages',
             style: const TextStyle(
-              color: Color(0xFFC9D1D9),
+              color: MiuiColors.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),

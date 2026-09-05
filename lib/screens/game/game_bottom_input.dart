@@ -5,6 +5,7 @@ import '../../models/game_systems.dart';
 import 'game_play_screens.dart';
 import 'command_center_panel.dart';
 import '../../utils/ui_helpers.dart';
+import '../../theme/miuix_tokens.dart';
 
 class GameBottomInput extends StatelessWidget {
   final TextEditingController inputController;
@@ -24,19 +25,25 @@ class GameBottomInput extends StatelessWidget {
   Widget _buildBottomInput(BuildContext context) {
     final gp = context.watch<GameProvider>();
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      margin: const EdgeInsets.fromLTRB(20, 2, 20, 0),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
-        border: Border(top: BorderSide(color: const Color(0xFF30363D))),
+        color: MiuiColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: MiuiColors.outline.withValues(alpha: 0.7),
+          width: MiuiSpace.dividerThickness,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: SafeArea(
+        top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -53,15 +60,15 @@ class GameBottomInput extends StatelessWidget {
                       }
                     },
               child: Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: gp.isLoading ? const Color(0xFF374151) : const Color(0xFFD3A625),
-                  borderRadius: BorderRadius.circular(14),
+                  color: gp.isLoading ? MiuiColors.disabledSecondary : MiuiColors.primary,
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     if (!gp.isLoading)
                       BoxShadow(
-                        color: const Color(0xFFD3A625).withValues(alpha: 0.3),
+                        color: MiuiColors.primary.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -73,20 +80,20 @@ class GameBottomInput extends StatelessWidget {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFF8B949E),
+                          color: MiuiColors.onSurfaceVariantSummary,
                         ),
                       )
                     : const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.skip_next, size: 18, color: Color(0xFF1C232D)),
+                          Icon(Icons.skip_next, size: 18, color: MiuiColors.onPrimary),
                           SizedBox(height: 2),
                           Text(
                             '推进',
                             style: TextStyle(
                               fontSize: 9,
-                              color: Color(0xFF1C232D),
+                              color: MiuiColors.onPrimary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -98,9 +105,9 @@ class GameBottomInput extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF21262D),
+                  color: MiuiColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: const Color(0xFF30363D)),
+                  border: Border.all(color: MiuiColors.outline),
                 ),
                 child: Row(
                   children: [
@@ -108,10 +115,10 @@ class GameBottomInput extends StatelessWidget {
                       child: TextField(
                         controller: inputController,
                         maxLength: 500,
-                        style: const TextStyle(color: Color(0xFFE6EDF3), fontSize: 14),
+                        style: const TextStyle(color: MiuiColors.onSurface, fontSize: 14),
                         decoration: const InputDecoration(
                           hintText: '输入行动或 /命令（// 开头按普通内容发送）',
-                          hintStyle: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+                          hintStyle: TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 12),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           isDense: true,
@@ -126,10 +133,10 @@ class GameBottomInput extends StatelessWidget {
                         margin: const EdgeInsets.only(right: 6),
                         padding: const EdgeInsets.all(8),
                         decoration: const BoxDecoration(
-                          color: Color(0xFFD3A625),
+                          color: MiuiColors.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.send, size: 16, color: Color(0xFF1C232D)),
+                        child: const Icon(Icons.send, size: 16, color: MiuiColors.surfaceContainerHigh),
                       ),
                     ),
                   ],
@@ -145,11 +152,11 @@ class GameBottomInput extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF21262D),
+                  color: MiuiColors.surfaceContainer,
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF30363D)),
+                  border: Border.all(color: MiuiColors.outline),
                 ),
-                child: const Icon(Icons.terminal, size: 20, color: Color(0xFFD3A625)),
+                child: const Icon(Icons.terminal, size: 20, color: MiuiColors.primary),
               ),
             ),
           ],
@@ -164,11 +171,11 @@ class GameBottomInput extends StatelessWidget {
   Widget _buildQuickActions(GameProvider gp) {
     final ready = !gp.isLoading && gp.player != null;
     final actions = <({String label, IconData icon, Color color, String? command, Widget Function()? page})>[
-      (label: '委托板', icon: Icons.assignment_outlined, color: const Color(0xFFD3A625), command: null, page: () => const QuestBoardScreen()),
+      (label: '委托板', icon: Icons.assignment_outlined, color: MiuiColors.primary, command: null, page: () => const QuestBoardScreen()),
       (label: '装备', icon: Icons.shield_outlined, color: AppColors.success, command: null, page: () => const EquipmentScreen()),
       (label: '宠物', icon: Icons.pets, color: AppColors.warning, command: '/宠物', page: null),
       (label: '魁地奇', icon: Icons.sports_score, color: const Color(0xFF3B82F6), command: '/魁地奇', page: null),
-      (label: '决斗', icon: Icons.gavel, color: const Color(0xFFEF4444), command: '/决斗', page: null),
+      (label: '决斗', icon: Icons.gavel, color: MiuiColors.error, command: '/决斗', page: null),
       (label: '禁林', icon: Icons.forest_outlined, color: AppColors.success, command: '/禁林 探险', page: null),
       (label: '图鉴', icon: Icons.menu_book, color: const Color(0xFF8B5CF6), command: '/图鉴', page: null),
       (label: '学院杯', icon: Icons.emoji_events_outlined, color: AppColors.warning, command: '/学院杯', page: null),
@@ -213,7 +220,7 @@ class GameBottomInput extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: ready ? a.color : const Color(0xFF6B7280),
+                          color: ready ? a.color : MiuiColors.onSurfaceVariantActions,
                         )),
                   ],
                 ),

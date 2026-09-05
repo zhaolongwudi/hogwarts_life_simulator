@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/item_data.dart';
 import '../data/locations.dart';
 import '../data/npc_data.dart';
+import '../theme/miuix_tokens.dart';
 
 // ==================== 小说式段落分类（v3.7 正文段落层次） ====================
 //
@@ -358,7 +359,7 @@ class StoryTextRenderer {
   // 3. 蓝色只用于对话引用，金色只用于说话人，避免混淆
   // 4. 角色/地点/物品三类实体高亮使用柔和的低饱和色
   static const Color _narrationColor = Color(0xFFD0D7DE);
-  static const Color _dialogueColor = Color(0xFF79C0FF);
+  static const Color _dialogueColor = MiuiColors.info;
   static const Color _dialogueSpeakerColor = Color(0xFFFFC87A);
   static const Color _characterColor = Color(0xFFDDB54A);
   static const Color _locationColor = Color(0xFF7EE787);
@@ -409,7 +410,7 @@ class StoryTextRenderer {
     fontWeight: FontWeight.w500,
   );
 
-  static const Color _affectionColor = Color(0xFF8B949E);
+  static const Color _affectionColor = MiuiColors.onSurfaceVariantSummary;
   static TextStyle _affectionStyle = const TextStyle(
     fontSize: 12,
     height: _bodyLineHeight,

@@ -3,6 +3,7 @@ import '../data/scene_illustration_data.dart';
 import '../utils/story_text_renderer.dart';
 import 'npc_avatar.dart';
 import 'scaled_rich_text.dart';
+import '../theme/miuix_tokens.dart';
 
 /// 场景插图横幅：根据剧情地点渲染氛围渐变横幅。
 /// 无外部图片依赖，渐变+图标+地点标题营造沉浸感。
@@ -163,7 +164,7 @@ class DialogueBubble extends StatelessWidget {
     required this.text,
     this.mood = '',
     this.npcId,
-    this.houseColor = const Color(0xFFD3A625),
+    this.houseColor = MiuiColors.primary,
     this.animate = true,
   });
 
@@ -205,7 +206,7 @@ class DialogueBubble extends StatelessWidget {
                         mood,
                         style: const TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF8B949E),
+                          color: MiuiColors.onSurfaceVariantSummary,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
