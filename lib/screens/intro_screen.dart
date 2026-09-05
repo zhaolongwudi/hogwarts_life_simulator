@@ -477,7 +477,7 @@ class _IntroScreenState extends State<IntroScreen> {
             Expanded(
               flex: 2,
               child: SizedBox(
-                height: 48,
+                height: 44,
                 child: MiuiButton(
                   label: isLast ? '🪄 开启魔法人生' : '下一步',
                   onPressed: canProceed ? _next : null,

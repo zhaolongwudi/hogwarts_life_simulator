@@ -74,7 +74,7 @@ class PhoneTab extends StatelessWidget {
           ),
         ),
         SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
           child: Column(
             children: [
               Center(
@@ -87,7 +87,7 @@ class PhoneTab extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '$hourStr:$minStr',
-                      style: const TextStyle(fontSize: 52, fontWeight: FontWeight.w200, color: Colors.white, height: 1.1),
+                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w300, color: Colors.white, height: 1.1),
                     ),
                   ],
                 ),
@@ -98,7 +98,7 @@ class PhoneTab extends StatelessWidget {
               _buildPhoneAppGrid(context),
               const SizedBox(height: 16),
               _buildBottomQuickRow(context),
-              const SizedBox(height: 80),
+              const SizedBox(height: 60),
             ],
           ),
         ),
@@ -108,7 +108,7 @@ class PhoneTab extends StatelessWidget {
 
   Widget _buildCompactProfile(BuildContext context, Player? player) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(16),
@@ -117,8 +117,8 @@ class PhoneTab extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -128,16 +128,16 @@ class PhoneTab extends StatelessWidget {
             child: Center(
               child: Text(
                 player?.name.isNotEmpty == true ? player!.name[0] : '旅',
-                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(player?.name ?? '旅人', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                Text(player?.name ?? '旅人', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 GestureDetector(
                   onTap: () => _editSignature(context),
@@ -213,16 +213,16 @@ class PhoneTab extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 26),
+                  child: Icon(icon, color: color, size: 18),
                 ),
-                const SizedBox(height: 6),
-                Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text(label, style: const TextStyle(fontSize: 11, height: 1.1), textAlign: TextAlign.center),
               ],
             ),
           ),
@@ -276,13 +276,13 @@ class PhoneTab extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: color, size: 22),
+                  child: Icon(icon, color: color, size: 18),
                 ),
                 const SizedBox(height: 4),
                 Text(label, style: const TextStyle(fontSize: 10), textAlign: TextAlign.center),

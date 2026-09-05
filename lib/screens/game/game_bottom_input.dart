@@ -26,7 +26,7 @@ class GameBottomInput extends StatelessWidget {
     final gp = context.watch<GameProvider>();
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 2, 20, 0),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         color: MiuiColors.surfaceContainer,
         borderRadius: BorderRadius.circular(24),
@@ -60,8 +60,8 @@ class GameBottomInput extends StatelessWidget {
                       }
                     },
               child: Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: gp.isLoading ? MiuiColors.disabledSecondary : MiuiColors.primary,
                   borderRadius: BorderRadius.circular(16),
@@ -87,7 +87,7 @@ class GameBottomInput extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.skip_next, size: 18, color: MiuiColors.onPrimary),
+                          Icon(Icons.skip_next, size: 16, color: MiuiColors.onPrimary),
                           SizedBox(height: 2),
                           Text(
                             '推进',
@@ -115,10 +115,10 @@ class GameBottomInput extends StatelessWidget {
                       child: TextField(
                         controller: inputController,
                         maxLength: 500,
-                        style: const TextStyle(color: MiuiColors.onSurface, fontSize: 14),
+                        style: const TextStyle(color: MiuiColors.onSurface, fontSize: 13),
                         decoration: const InputDecoration(
                           hintText: '输入行动或 /命令（// 开头按普通内容发送）',
-                          hintStyle: TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 12),
+                          hintStyle: TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 11),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           isDense: true,
@@ -131,12 +131,12 @@ class GameBottomInput extends StatelessWidget {
                       onTap: gp.isLoading ? null : onHandleFreeAction,
                       child: Container(
                         margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(
                           color: MiuiColors.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.send, size: 16, color: MiuiColors.surfaceContainerHigh),
+                        child: const Icon(Icons.send, size: 14, color: MiuiColors.onPrimary),
                       ),
                     ),
                   ],
@@ -182,7 +182,7 @@ class GameBottomInput extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 40,
+      height: 30,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -192,7 +192,7 @@ class GameBottomInput extends StatelessWidget {
           final a = actions[index];
           return Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(15),
             child: InkWell(
               onTap: !ready
                   ? null
@@ -203,18 +203,18 @@ class GameBottomInput extends StatelessWidget {
                         gp.processChoice(GameChoice(text: a.command!, action: a.command!));
                       }
                     },
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(15),
               child: Ink(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: a.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(15),
                   border: Border.all(color: a.color.withValues(alpha: 0.35)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(a.icon, size: 16, color: a.color),
+                    Icon(a.icon, size: 14, color: a.color),
                     const SizedBox(width: 5),
                     Text(a.label,
                         style: TextStyle(

@@ -213,10 +213,10 @@ abstract final class MiuiSpace {
   static const double navBarIconTop = 8;
   static const double navBarBottom = 8;
 
-  /// 悬浮导航栏
-  static const double floatingNavMinHeight = 52;
-  static const double floatingNavOutside = 36;
-  static const double floatingNavIcon = 28;
+  /// 悬浮导航栏（紧凑）
+  static const double floatingNavMinHeight = 48;
+  static const double floatingNavOutside = 22;
+  static const double floatingNavIcon = 24;
 
   /// 分隔线厚度（Miuix 的 0.75 极细线）
   static const double dividerThickness = 0.75;
