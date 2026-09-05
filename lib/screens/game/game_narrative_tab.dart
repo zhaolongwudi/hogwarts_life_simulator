@@ -378,30 +378,45 @@ class _NarrativeTabState extends State<NarrativeTab> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(10),
+          color: MiuiColors.surfaceContainer.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isRecent
                 ? MiuiColors.primary.withValues(alpha: 0.6)
                 : isWorldEvent
                 ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
-                : dividerColorOf(context),
+                : MiuiColors.outline.withValues(alpha: 0.6),
+            width: MiuiSpace.dividerThickness,
           ),
         ),
         child: Row(
           children: [
+            // 语义色竖条（金=本回合 / 蓝=世界 / 中性=历史）
             Container(
-              width: 28,
-              height: 28,
+              width: 3,
+              height: 30,
+              decoration: BoxDecoration(
+                color: isRecent
+                    ? MiuiColors.primary
+                    : isWorldEvent
+                    ? const Color(0xFF3B82F6)
+                    : MiuiColors.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 color:
                     (isRecent
                             ? MiuiColors.primary
                             : isWorldEvent
                             ? const Color(0xFF3B82F6)
-                            : Theme.of(context).colorScheme.primary)
+                            : MiuiColors.primary)
                         .withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
@@ -412,7 +427,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                     ? MiuiColors.primary
                     : isWorldEvent
                     ? const Color(0xFF3B82F6)
-                    : Theme.of(context).colorScheme.primary,
+                    : MiuiColors.primary,
               ),
             ),
             const SizedBox(width: 10),
@@ -423,10 +438,11 @@ class _NarrativeTabState extends State<NarrativeTab> {
                   Text(
                     title.length > 40 ? '${title.substring(0, 38)}…' : title,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.5,
+                      height: 1.35,
                       fontWeight: isRecent ? FontWeight.w700 : FontWeight.w500,
                       color: isRecent
-                          ? MiuiColors.primary
+                          ? MiuiColors.primaryVariant
                           : MiuiColors.onSurface,
                     ),
                   ),
