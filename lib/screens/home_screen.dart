@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
 import '../screens/save_load_screen.dart';
+import '../theme/miuix_tokens.dart';
+import '../theme/miuix_typography.dart';
 import '../utils/ui_helpers.dart';
+import '../widgets/miui_magic_backdrop.dart';
+import '../widgets/miuix_components.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -20,34 +24,45 @@ class HomePage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0d1117), Color(0xFF161b22)],
+            colors: [Color(0xFF0A0A0C), Color(0xFF111216)],
           ),
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                _buildHeader(theme),
-                const SizedBox(height: 40),
-                _buildBadge(theme),
-                const SizedBox(height: 30),
-                if (appProvider.isGameStarted && gameProvider.player != null)
-                  _buildGameStatus(gameProvider, theme),
-                if (!appProvider.hasAnyKey && !appProvider.offlineQuickMode)
-                  _buildAiSetupHint(context, theme),
-                const SizedBox(height: 20),
-                const Spacer(),
-                _buildActions(context, theme),
-                const SizedBox(height: 30),
-                Text(
-                  'v1.0.0+100 | AI Powered',
-                  style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF8B949E)),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 魔法辉光背景
+            const MiuiMagicBackdrop(density: 0.7),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
                 ),
-              ],
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 28),
+                    _buildHeader(theme),
+                    const SizedBox(height: 36),
+                    _buildBadge(),
+                    const SizedBox(height: 36),
+                    if (appProvider.isGameStarted && gameProvider.player != null)
+                      _buildGameStatus(context, gameProvider, theme),
+                    if (!appProvider.hasAnyKey && !appProvider.offlineQuickMode)
+                      _buildAiSetupHint(context, theme),
+                    const SizedBox(height: 28),
+                    _buildActions(context, theme),
+                    const SizedBox(height: 32),
+                    Text(
+                      'v1.0.0+100 | AI Powered · HyperOS Edition',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: MiuiColors.onSurfaceVariantSummary),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -56,80 +71,142 @@ class HomePage extends StatelessWidget {
   Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
-        Text(
+        const Text(
           '魔法人生模拟器',
-          style: theme.textTheme.displayLarge?.copyWith(
-                fontSize: 32,
-                letterSpacing: 2,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text('Hogwarts Life Simulator',
-            style: theme.textTheme.bodySmall?.copyWith(fontSize: 14)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF740001).withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF740001)),
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w600,
+            color: MiuiColors.onBackground,
+            letterSpacing: 3,
           ),
-          child: Text(
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Hogwarts Life Simulator',
+          style: MiuiType.body2.copyWith(
+            color: MiuiColors.onSurfaceVariantSummary,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          decoration: BoxDecoration(
+            color: MiuiColors.tertiaryContainer,
+            borderRadius: BorderRadius.circular(MiuiRadius.pill),
+            border: Border.all(
+              color: MiuiColors.primary.withValues(alpha: 0.35),
+            ),
+          ),
+          child: const Text(
             '✨ 你的魔法人生 awaits',
-            style: theme.textTheme.labelMedium?.copyWith(
-                  color: const Color(0xFFD3A625),
-                  fontSize: 12,
-                ),
+            style: TextStyle(
+              color: MiuiColors.primaryVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBadge(ThemeData theme) {
+  /// 首页徽章：HyperOS 式大圆角质感 + 金色符文环。
+  Widget _buildBadge() {
     return Container(
-      width: 140,
-      height: 140,
+      width: 148,
+      height: 148,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const RadialGradient(colors: [Color(0xFF2a1f0e), Color(0xFF1a1508)]),
-        border: Border.all(color: const Color(0xFFD3A625), width: 3),
+        gradient: const RadialGradient(
+          colors: [Color(0xFF2A2110), Color(0xFF0D0C08)],
+          stops: [0.0, 1.0],
+        ),
+        border: Border.all(color: MiuiColors.primaryVariant, width: 2),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD3A625).withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: 5,
+            color: MiuiColors.primary.withValues(alpha: 0.28),
+            blurRadius: 34,
+            spreadRadius: 6,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: const Icon(Icons.auto_awesome, size: 70, color: Color(0xFFD3A625)),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 内侧细环
+          Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: MiuiColors.primary.withValues(alpha: 0.4),
+                width: 0.75,
+              ),
+            ),
+          ),
+          // 中心符文光
+          Container(
+            width: 86,
+            height: 86,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  MiuiColors.primary.withValues(alpha: 0.22),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            child: const Icon(
+              Icons.auto_awesome,
+              size: 42,
+              color: MiuiColors.primaryVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildGameStatus(GameProvider gp, ThemeData theme) {
+  Widget _buildGameStatus(
+    BuildContext context,
+    GameProvider gp,
+    ThemeData theme,
+  ) {
     final player = gp.player!;
     // BUG-2 分院前最终防线：只有成就 'sorted' 已解锁，player.house 才真正生效
-    // （即使AI文本OOC解析把 house 写错了，也不显示学院颜色/标签，避免分院前就挂错学院）
     final sortedUnlocked = player.achievements.contains('sorted');
     final effectiveHouse = sortedUnlocked ? player.house : null;
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: MiuiCard(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        onTap: () => Navigator.pushNamed(context, '/game'),
         child: Column(
           children: [
             Row(
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: UiHelpers.getHouseColor(effectiveHouse ?? ''),
+                  backgroundColor:
+                      UiHelpers.getHouseColorBright(effectiveHouse ?? ''),
                   child: Text(
-                    player.name.isNotEmpty ? player.name.substring(0, 1).toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                    player.name.isNotEmpty
+                        ? player.name.substring(0, 1).toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -137,36 +214,42 @@ class HomePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(player.name,
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD3A625))),
-                      Text('${effectiveHouse ?? '未分院'} · ${gp.worldState.academicYear}',
-                          style: theme.textTheme.bodySmall),
+                      Text(player.name, style: MiuiType.headline1),
+                      Text(
+                        '${effectiveHouse ?? '未分院'} · ${gp.worldState.academicYear}',
+                        style: MiuiType.body2,
+                      ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0d1117),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.dividerColor),
+                    color: MiuiColors.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(MiuiRadius.pill),
                   ),
-                  child: Text('第 ${gp.turnCount} 回合',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
+                  child: Text(
+                    '第 ${gp.turnCount} 回合',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: MiuiColors.primaryVariant,
+                    ),
+                  ),
                 ),
               ],
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Divider(height: 1),
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(height: MiuiSpace.dividerThickness),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem('📅', '${gp.worldState.month} ${gp.worldState.dayOfMonth}日', theme),
-                _buildStatItem('🏛️', effectiveHouse ?? '待分院', theme),
-                _buildStatItem('❤️', '${player.health}%', theme),
+                _buildStatItem('📅', '${gp.worldState.month} ${gp.worldState.dayOfMonth}日'),
+                _buildStatItem('🏛️', effectiveHouse ?? '待分院'),
+                _buildStatItem('❤️', '${player.health}%'),
               ],
             ),
           ],
@@ -175,59 +258,58 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String icon, String value, ThemeData theme) {
+  Widget _buildStatItem(String icon, String value) {
     return Column(
       children: [
         Text(icon, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
-        Text(value, style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
+        Text(
+          value,
+          style: MiuiType.footnote1.copyWith(color: MiuiColors.onSurface),
+        ),
       ],
     );
   }
 
-  /// P0-4 新手引导：还没配 AI Key 时给一条醒目的提示（第一道断崖的工程侧缓解）。
+  /// P0-4 新手引导：还没配 AI Key 时给一条醒目的提示。
   Widget _buildAiSetupHint(BuildContext context, ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Material(
-        color: const Color(0xFF7A2E0E).withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => Navigator.pushNamed(context, '/settings'),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                const Text('🎯', style: TextStyle(fontSize: 20)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '还没配置 AI Key',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: const Color(0xFFD3A625),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '剧情由 AI 生成，需要先在设置里填入 API Key；'
-                        '也可以开启「无 AI 快速模式」完全离线游玩。',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFFC9D1D9),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+      padding: const EdgeInsets.only(bottom: 8),
+      child: MiuiCard(
+        onTap: () => Navigator.pushNamed(context, '/settings'),
+        color: MiuiColors.warningContainer,
+        radius: 16,
+        child: const Row(
+          children: [
+            Text('🎯', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '还没配置 AI Key',
+                    style: TextStyle(
+                      color: MiuiColors.warning,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const Icon(Icons.chevron_right, color: Color(0xFF8B949E)),
-              ],
+                  SizedBox(height: 2),
+                  Text(
+                    '剧情由 AI 生成，需要先在设置里填入 API Key；'
+                    '也可以开启「无 AI 快速模式」完全离线游玩。',
+                    style: TextStyle(
+                      color: MiuiColors.onSurfaceSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            Icon(Icons.chevron_right, color: MiuiColors.onSurfaceVariantActions),
+          ],
         ),
       ),
     );
@@ -237,84 +319,65 @@ class HomePage extends StatelessWidget {
     final appProvider = context.read<AppProvider>();
     return Column(
       children: [
-        _buildActionButton(
-          context,
-          theme,
-          icon: '⚡',
-          title: appProvider.isGameStarted ? '继续冒险' : '开始新人生',
-          subtitle: appProvider.isGameStarted
-              ? '${context.read<GameProvider>().player?.name ?? ''} 的故事'
-              : '创建全新的巫师角色',
-          onTap: () => Navigator.pushNamed(
-            context,
-            appProvider.isGameStarted ? '/game' : '/intro',
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildActionButton(
-          context,
-          theme,
-          icon: '📚',
-          title: '存档 / 读档',
-          subtitle: '管理你的游戏进度',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SaveLoadScreen()),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildActionButton(
-          context,
-          theme,
-          icon: '⚙️',
-          title: '设置',
-          subtitle: 'API Key、显示模式、时代选择',
-          onTap: () => Navigator.pushNamed(context, '/settings'),
+        MiuiListSection(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          children: [
+            MiuiListItem(
+              title: appProvider.isGameStarted ? '继续冒险' : '开始新人生',
+              subtitle: appProvider.isGameStarted
+                  ? '${context.read<GameProvider>().player?.name ?? ''} 的故事'
+                  : '创建全新的巫师角色',
+              leading: const _ActionIcon(emoji: '⚡', color: MiuiColors.primaryVariant),
+              trailing: const Icon(Icons.chevron_right),
+              showDivider: true,
+              onTap: () => Navigator.pushNamed(
+                context,
+                appProvider.isGameStarted ? '/game' : '/intro',
+              ),
+            ),
+            MiuiListItem(
+              title: '存档 / 读档',
+              subtitle: '管理你的游戏进度',
+              leading: const _ActionIcon(emoji: '📚', color: MiuiColors.info),
+              trailing: const Icon(Icons.chevron_right),
+              showDivider: true,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SaveLoadScreen()),
+              ),
+            ),
+            MiuiListItem(
+              title: '设置',
+              subtitle: 'API Key、显示模式、时代选择',
+              leading: const _ActionIcon(emoji: '⚙️', color: MiuiColors.success),
+              trailing: const Icon(Icons.chevron_right),
+              showDivider: false,
+              onTap: () => Navigator.pushNamed(context, '/settings'),
+            ),
+          ],
         ),
       ],
     );
   }
+}
 
-  Widget _buildActionButton(
-    BuildContext context,
-    ThemeData theme, {
-    required String icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: theme.cardColor,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: theme.dividerColor),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 28)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE6EDF3))),
-                    Text(subtitle, style: theme.textTheme.bodySmall),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-            ],
-          ),
-        ),
+class _ActionIcon extends StatelessWidget {
+  const _ActionIcon({required this.emoji, required this.color});
+
+  final String emoji;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
       ),
+      alignment: Alignment.center,
+      child: Text(emoji, style: const TextStyle(fontSize: 20)),
     );
   }
 }

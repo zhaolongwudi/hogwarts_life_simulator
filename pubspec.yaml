@@ -30,3 +30,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/avatars/
+  shaders:
+    - shaders/liquid_glass.frag

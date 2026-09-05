@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../providers/app_provider.dart';
 import '../models/game_systems.dart';
+import '../theme/miuix_tokens.dart';
+import '../widgets/liquid_glass_nav_bar.dart';
+import '../widgets/miui_magic_backdrop.dart';
 import 'game/game_narrative_tab.dart';
 import 'game/game_phone_tab.dart';
 import 'game/game_world_tab.dart';
@@ -24,6 +27,9 @@ class _GameScreenState extends State<GameScreen> {
   final _scrollController = ScrollController();
   String? _lastNarrative;
   String? _lastCommandPanel;
+
+  /// 悬浮导航栏占据的底部空间（bottomPadding + 高度 + 与内容的间隙）。
+  static const double _navSpace = 26 + MiuiSpace.floatingNavMinHeight + 8;
 
   @override
   void dispose() {
@@ -149,19 +155,69 @@ class _GameScreenState extends State<GameScreen> {
       },
       child: Scaffold(
         body: SafeArea(
-          child: Column(
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              if (!immersive) const GameTopBar(),
-              Expanded(child: tabContent),
-              _currentTab == 0
-                  ? GameBottomInput(
-                      inputController: _inputController,
-                      onHandleFreeAction: _handleFreeAction)
-                  : const SizedBox.shrink(),
+              // 背景层：魔法辉光（同时是液态玻璃的折射取景）
+              const Positioned.fill(child: MiuiMagicBackdrop()),
+              // 主内容列：顶部状态栏 + 页面内容 + （剧情页）输入栏
+              Column(
+                children: [
+                  if (!immersive) const GameTopBar(),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        bottom: immersive || _currentTab == 0 ? 0 : _navSpace,
+                      ),
+                      child: tabContent,
+                    ),
+                  ),
+                  if (!immersive && _currentTab == 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: _navSpace),
+                      child: GameBottomInput(
+                        inputController: _inputController,
+                        onHandleFreeAction: _handleFreeAction),
+                    ),
+                ],
+              ),
+
+              // 悬浮液态玻璃导航栏：浮于内容之上，抓取正文做折射背景
+              if (!immersive)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: LiquidGlassNavBar(
+                    currentIndex: _currentTab,
+                    onTap: (index) {
+                      setState(() => _currentTab = index);
+                    },
+                    items: const [
+                      LiquidNavItem(
+                        icon: Icons.auto_stories_outlined,
+                        activeIcon: Icons.auto_stories,
+                        label: '剧情',
+                      ),
+                      LiquidNavItem(
+                        icon: Icons.smartphone_outlined,
+                        activeIcon: Icons.smartphone,
+                        label: '手机',
+                      ),
+                      LiquidNavItem(
+                        icon: Icons.public,
+                        label: '世界',
+                      ),
+                      LiquidNavItem(
+                        icon: Icons.tune,
+                        label: '设置',
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
-        bottomNavigationBar: immersive ? null : _buildBottomNav(),
         // 沉浸模式下没有顶栏也没有返回键，给一个可点出的悬浮退出按钮
         floatingActionButton: immersive
             ? FloatingActionButton.small(
@@ -183,20 +239,5 @@ class _GameScreenState extends State<GameScreen> {
     if (app.displayMode == DisplayMode.immersive) {
       app.setDisplayMode(DisplayMode.compact);
     }
-  }
-
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      currentIndex: _currentTab,
-      onTap: (index) {
-        setState(() => _currentTab = index);
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '剧情'),
-        BottomNavigationBarItem(icon: Icon(Icons.phone_android), label: '手机'),
-        BottomNavigationBarItem(icon: Icon(Icons.public), label: '世界'),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
-      ],
-    );
   }
 }

@@ -17,3 +17,5 @@ analyzer:
   exclude:
     - build/**
     - android/**
+    # 开发期 UI 渲染冒烟工具（golden 截图），不进 CI 也不参与 lint
+    - tools/render_smoke/**
