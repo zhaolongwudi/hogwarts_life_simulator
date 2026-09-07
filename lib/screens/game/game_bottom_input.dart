@@ -266,7 +266,7 @@ class GameBottomInput extends StatelessWidget {
                   ? null
                   : () {
                       if (a.page != null) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => a.page!()));
+                        pushRoute(context, a.page!());
                       } else if (a.command != null) {
                         gp.processChoice(GameChoice(text: a.command!, action: a.command!));
                       }

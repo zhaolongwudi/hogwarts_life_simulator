@@ -198,6 +198,17 @@ Color dividerColorOf(BuildContext context) =>
         ? const Color(0xFF30363D)
         : const Color(0xFFD0D7DE));
 
+/// 统一页面跳转（D2 收口）。
+///
+/// 全项目 `Navigator.push(context, MaterialPageRoute(builder: ...))` 一律改用
+/// 本函数：新建页面时的 Route 构造差异（全屏/动效/泛型）集中在一处维护，
+/// 调用方只表达「去哪」不表达「怎么去」。
+Future<T?> pushRoute<T extends Object?>(BuildContext context, Widget page) {
+  return Navigator.of(context).push<T>(
+    MaterialPageRoute<T>(builder: (_) => page),
+  );
+}
+
 /// 通用危险操作确认对话框。
 ///
 /// 删除存档/删帖/删日记/清空数据等不可恢复操作统一走这里，

@@ -401,10 +401,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const StoryHistoryScreen()),
-                    );
+                    pushRoute(context, const StoryHistoryScreen());
                   },
                   icon: const Icon(Icons.menu_book_outlined, size: 18),
                   label: const Text('打开剧情回放'),

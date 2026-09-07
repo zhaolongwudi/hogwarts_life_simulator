@@ -176,10 +176,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
         child: InkWell(
           onTap: canChat
               ? () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => NpcChatScreen(npc: npc)),
-                  );
+                  pushRoute(context, NpcChatScreen(npc: npc));
                 }
               : null,
           borderRadius: BorderRadius.circular(12),
@@ -345,10 +342,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                 subtitle: Text(UiHelpers.getAffectionLabel(npc.affection)),
                 onTap: () {
                   Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => NpcChatScreen(npc: npc)),
-                  );
+                  pushRoute(context, NpcChatScreen(npc: npc));
                 },
               );
             },

@@ -7,6 +7,7 @@ import '../providers/game_provider.dart';
 import '../screens/save_load_screen.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
+import '../utils/ui_helpers.dart';
 import '../widgets/miui_magic_backdrop.dart';
 
 /// 首页 = HyperOS「个人中心」式排版。
@@ -66,22 +67,12 @@ class HomePage extends StatelessWidget {
                             _WelcomeHero(
                               onStart: () =>
                                   Navigator.pushNamed(context, '/intro'),
-                              onSaves: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SaveLoadScreen(),
-                                ),
-                              ),
+                              onSaves: () => pushRoute(context, const SaveLoadScreen()),
                             ),
                           const SizedBox(height: 28),
                           _Dock(
                             started: started,
-                            onSaves: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SaveLoadScreen(),
-                              ),
-                            ),
+                            onSaves: () => pushRoute(context, const SaveLoadScreen()),
                             onSettings: () =>
                                 Navigator.pushNamed(context, '/settings'),
                             offlineOn: appProvider.offlineQuickMode,

@@ -316,17 +316,16 @@ class PhoneTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _buildAppItem(context, Icons.phone_in_talk, '魔法通讯', const Color(0xFF3B82F6), () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationScreen()));
+              pushRoute(context, const CommunicationScreen());
             }),
             _buildAppItem(context, Icons.forum, '魔法论坛', MiuiColors.error, () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ForumScreen()));
+              pushRoute(context, const ForumScreen());
             }),
             _buildAppItem(context, Icons.edit_note, '查看日记', const Color(0xFF8B5CF6), () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryScreen()));
+              pushRoute(context, const DiaryScreen());
             }),
             _buildAppItem(context, Icons.auto_awesome, '平行世界', const Color(0xFFEC4899), () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ParallelWorldScreen()));
+              pushRoute(context, const ParallelWorldScreen());
             }),
           ],
         ),
@@ -335,18 +334,16 @@ class PhoneTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _buildAppItem(context, Icons.store_mall_directory, '魔法商店', AppColors.warning, () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
+              pushRoute(context, const ShopScreen());
             }),
             _buildAppItem(context, Icons.favorite, '姻缘红娘', const Color(0xFFF43F5E), () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const MatchmakerScreen()));
+              pushRoute(context, const MatchmakerScreen());
             }),
             _buildAppItem(context, Icons.account_balance_wallet, '你的背包', const Color(0xFF10B981), () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen()));
+              pushRoute(context, const InventoryScreen());
             }),
             _buildAppItem(context, Icons.leaderboard, '好感排行', AppColors.warning, () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AffectionAggregateScreen()));
+              pushRoute(context, const AffectionAggregateScreen());
             }),
           ],
         ),
@@ -431,10 +428,10 @@ class PhoneTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildDockItem(context, Icons.photo_album, '回忆', const Color(0xFF8B5CF6), () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryScreen()));
+                pushRoute(context, const MemoryScreen());
               }),
               _buildDockItem(context, Icons.work, '找活干', MiuiColors.success, () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const JobScreen()));
+                pushRoute(context, const JobScreen());
               }),
               _buildDockItem(context, Icons.map_outlined, '地图', MiuiColors.primaryVariant, () {
                 Navigator.pushNamed(context, '/world_map');

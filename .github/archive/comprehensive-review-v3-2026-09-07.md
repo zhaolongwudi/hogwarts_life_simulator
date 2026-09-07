@@ -735,9 +735,25 @@ GameProvider 的多个 mixin 顺序调用 notifyListeners，单次用户操作�
 
 多个测试文件的 `setUp` 块重复创建相似的 `Player`、`WorldState`、`GameProvider` 对象，可提取为测试 fixture。
 
+> **✅ 已修复（批次 9）**
+> 新增 `test/helpers/test_fixtures.dart`：`makeGame({offlineQuickMode})` 成为唯一来源。
+> `provider_logic_test` / `round15_fixes_test` / `round16_fixes_test` / `round16c_repro_test`
+> 四份完全相同的 `Future<GameProvider> makeGame()` 定义全部删除，改为引用共享 fixture
+> （round16c 的离线快速模式差异收敛为参数 `offlineQuickMode: true`）。
+> 结构护栏见 `test/code_dedup_audit_test.dart`（test/ 下出现第二份 makeGame 定义即报错）。
+
 ### D2 — 重复的导航模式 `[Medium] [v3]`
 
 `Navigator.push(context, MaterialPageRoute(builder: ...))` 模式在 10+ 个文件中重复出现，可封装为辅助函数。
+
+> **✅ 已修复（批次 9）**
+> `lib/utils/ui_helpers.dart` 新增 `pushRoute<T>(context, page)`：Route 构造细节（全屏/动效/泛型）
+> 集中一处维护，调用方只表达「去哪」。8 个文件 20 处 `Navigator.push(MaterialPageRoute(...))`
+> 全部收口（`game_phone_tab` 10、`communication_screen` 2、`game_narrative_tab` 2、
+> `home_screen` 2、`shop_tab` / `settings_body` / `settings_crash_section` / `game_bottom_input` 各 1）。
+> `Navigator.pushNamed`（命名路由跳转）不在此列，按原样保留。
+> 结构护栏见 `test/code_dedup_audit_test.dart`（lib/ 下 MaterialPageRoute 只允许出现在
+> ui_helpers.dart，且不再出现 `Navigator.push(` 直连）。
 
 ### D3 — 重复的 try/catch 模式 `[Low] [v3]`
 
@@ -1055,8 +1071,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | P2 | story_text_renderer 渲染性能瓶颈 | 性能基准 | High | v3 | — |
 | P3 | 频繁的集合重建 | 性能基准 | Medium | v3 | — |
 | P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 | — |
-| D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 | — |
-| D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | — |
+| D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 | 🟢 批次9（`test/helpers/test_fixtures.dart` 唯一来源，4 处重复定义删除） |
+| D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | 🟢 批次9（`pushRoute` 收口 8 文件 20 处） |
 | D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | 🟢 批次6/7（`_showError` 统一错误处理，骨架差异属必要） |
 | D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 | ✅ 批次3 |
 | DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 | — |
@@ -1432,8 +1448,9 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 报告更正 | SI1 / F4 其实早已具备（版本号 + `_migrateSave` 都在），误判源于只搜了一个文件 | `108832c` |
 | 5 | 缓存与正则静态化（F31、F33、F35） | `934cc52` / `38f307d` |
 | 6 | 统一错误反馈与恢复原语（F6、F9 基础设施） | `62b5c24` |
-| 7 | UI 资源释放与重复消除（F11、D3） | 本次提交 |
-| 8 | AI 超时单一来源 + 核对四项（F48、F17、F30、F32、F34） | 本次提交 |
+| 7 | UI 资源释放与重复消除（F11、D3） | `fdbe5e7` |
+| 8 | AI 超时单一来源 + 核对四项（F48、F17、F30、F32、F34） | `5548c80` |
+| 9 | 代码重复收口（D1 测试 fixture 抽取、D2 导航封装 20 处） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
@@ -1450,8 +1467,9 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 4. **SI3（Medium）**：CrashLogger / AiDebugLogger 日志路径无统一管理，可收口到一个常量。
 
 **再往后的候选**（按性价比排）：F10/P4（notifyListeners 合并，挑明显级联做低风险部分）、
-D1/D2（测试 fixture 与导航封装，代码重复）、F28/F29（路由统一，需动 10+ 文件）、
+F28/F29（路由统一，需动 10+ 文件）、
 F12（setState 局部刷新，面大需基准）、F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
+（批次9 已完成 D1/D2 代码重复收口，结构护栏见 `test/code_dedup_audit_test.dart`。）
 
 **注意两件事**：
 

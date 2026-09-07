@@ -92,10 +92,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         const SizedBox(height: 12),
         GestureDetector(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const WorldMapScreen()),
-            );
+            pushRoute(context, const WorldMapScreen());
           },
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -192,12 +189,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             icon: Icons.history,
             tooltip: '剧情回放',
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const StoryHistoryScreen(),
-                ),
-              );
+              pushRoute(context, const StoryHistoryScreen());
             },
           ),
           const SizedBox(width: 8),

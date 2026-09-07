@@ -8,51 +8,12 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hogwarts_life_simulator/data/balance_constants.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
-import 'package:hogwarts_life_simulator/providers/app_provider.dart';
-import 'package:hogwarts_life_simulator/providers/game_provider.dart';
+
+import 'helpers/test_fixtures.dart';
 
 GameChoice cmd(String action) => GameChoice(text: action, action: action);
-
-Future<GameProvider> makeGame() async {
-  // AppProvider.loadSettings 读 SharedPreferences，测试环境需要 mock
-  SharedPreferences.setMockInitialValues({});
-  final app = AppProvider();
-  await app.loadSettings();
-  final gp = GameProvider(app);
-  await gp.initializeGame(
-    name: '测试巫师',
-    bloodStatus: '混血',
-    birthLocation: '伦敦',
-    personalityTraits: const ['勇敢', '善良'],
-    gender: '男',
-    attributes: const {
-      'spell_understanding': 50,
-      'transfiguration': 50,
-      'potions': 50,
-      'herbology': 50,
-      'theory': 50,
-      'memory': 50,
-      'courage': 50,
-      'wisdom': 50,
-      'loyalty': 50,
-      'ambition': 50,
-      'social': 50,
-      'flying': 50,
-      'reaction_time': 50,
-    },
-    houseDimensions: const {
-      'courage': 50,
-      'wisdom': 50,
-      'loyalty': 50,
-      'ambition': 50,
-    },
-    openingScene: 'letter',
-  );
-  return gp;
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

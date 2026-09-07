@@ -262,10 +262,7 @@ class _ShopTabState extends State<ShopTab> {
                           ? SnackBarAction(
                               label: '去使用',
                               onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const InventoryScreen()),
-                                );
+                                pushRoute(context, const InventoryScreen());
                               },
                             )
                           : null,
