@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/debug_log.dart';
 
@@ -24,12 +23,17 @@ class KeyStore {
 
   final FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  /// 写入指定提供商的 API Key
-  Future<void> writeKey(String provider, String key) async {
+  /// 写入指定提供商的 API Key；成功返回 true。
+  ///
+  /// Android 无锁屏设备上 flutter_secure_storage 可能降级或直接抛错，
+  /// 调用方据此感知「安全存储不可用」并提示用户（S1）。
+  Future<bool> writeKey(String provider, String key) async {
     try {
       await _storage.write(key: '$_prefix$provider', value: key);
+      return true;
     } catch (e) {
       debugLog('⚠️ KeyStore 写入失败($provider): $e');
+      return false;
     }
   }
 
@@ -51,6 +55,7 @@ class KeyStore {
       debugLog('⚠️ KeyStore 删除失败($provider): $e');
     }
   }
+
   /// 读取指定提供商的所有 API Key（返回列表，按索引排序）
   Future<List<String>> readKeys(String provider) async {
     final keys = <String>[];
@@ -62,15 +67,19 @@ class KeyStore {
     return keys;
   }
 
-  /// 写入指定提供商的所有 API Key（覆盖写入，会清理旧 key）
-  Future<void> writeKeys(String provider, List<String> keys) async {
+  /// 写入指定提供商的所有 API Key（覆盖写入，会清理旧 key）。
+  /// 任一 key 写入失败即返回 false（调用方可提示「安全存储不可用」）。
+  Future<bool> writeKeys(String provider, List<String> keys) async {
     // 先清理旧的多 key
     await _deleteAllForProvider(provider);
     // 写入新 key
+    var ok = true;
     for (int i = 0; i < keys.length; i++) {
-      await writeKey('${provider}_$i', keys[i]);
+      ok = await writeKey('${provider}_$i', keys[i]) && ok;
     }
+    return ok;
   }
+
   /// 删除指定提供商的所有 key：带索引的多 key **和**不带索引的旧单 key。
   ///
   /// 终止条件必须用 read 判空，不能靠 delete 抛异常：

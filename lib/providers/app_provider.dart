@@ -5,8 +5,19 @@ import '../services/key_store.dart';
 import '../services/prefs_store.dart';
 
 enum DisplayMode { magazine, compact, immersive }
-enum IdentityMode { pure, noble, order, dark, neutral, transmigration, bone_mode }
+
+enum IdentityMode {
+  pure,
+  noble,
+  order,
+  dark,
+  neutral,
+  transmigration,
+  bone_mode,
+}
+
 enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
+
 enum AiProvider { deepseek, agnes, sensenova }
 
 // 场景 → 提供商名 的默认路由
@@ -24,7 +35,8 @@ const Map<AiScene, String> kDefaultRoute = {
 const Map<AiScene, String> kSceneDescriptions = {
   AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。默认使用 SenseNova（商汤日日新，剧情质量最好）。',
   AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。默认使用 SenseNova（Token效率最高，省60%）。',
-  AiScene.npcChat: 'NPC聊天：与游戏中角色的独立对话。默认使用 Agnes（免费、响应最快），仅在需要更强长文本能力时手动改用 DeepSeek。',
+  AiScene.npcChat:
+      'NPC聊天：与游戏中角色的独立对话。默认使用 Agnes（免费、响应最快），仅在需要更强长文本能力时手动改用 DeepSeek。',
   AiScene.choice: '选项生成：独立于主剧情的选项生成，使用更强模型保证选项质量。默认使用 SenseNova。',
 };
 
@@ -56,6 +68,7 @@ const Map<AiScene, String> kSceneLabels = {
   AiScene.npcChat: 'NPC独立聊天',
   AiScene.choice: '选项独立生成',
 };
+
 class AiConfig {
   final AiProvider provider;
   final String model;
@@ -78,10 +91,8 @@ class AiConfig {
   /// 三家工厂统一从 kProviderDefaults 取值。
   /// 原先这里各自写死 model/baseUrl，与 AppProvider._defaultModel 和
   /// 设置页的三份副本取值不一致（Agnes 一边 turbo 一边 flash）。
-  factory AiConfig.deepseek(String apiKey) => AiConfig._fromDefaults(
-        provider: AiProvider.deepseek,
-        apiKey: apiKey,
-      );
+  factory AiConfig.deepseek(String apiKey) =>
+      AiConfig._fromDefaults(provider: AiProvider.deepseek, apiKey: apiKey);
 
   factory AiConfig.agnes(String apiKey) =>
       AiConfig._fromDefaults(provider: AiProvider.agnes, apiKey: apiKey);
@@ -115,14 +126,14 @@ class AiConfig {
     String? modelsPath,
     String? balancePath,
   }) => AiConfig(
-        provider: provider ?? this.provider,
-        model: model ?? this.model,
-        apiKey: apiKey ?? this.apiKey,
-        baseUrl: baseUrl ?? this.baseUrl,
-        chatPath: chatPath ?? this.chatPath,
-        modelsPath: modelsPath ?? this.modelsPath,
-        balancePath: balancePath ?? this.balancePath,
-      );
+    provider: provider ?? this.provider,
+    model: model ?? this.model,
+    apiKey: apiKey ?? this.apiKey,
+    baseUrl: baseUrl ?? this.baseUrl,
+    chatPath: chatPath ?? this.chatPath,
+    modelsPath: modelsPath ?? this.modelsPath,
+    balancePath: balancePath ?? this.balancePath,
+  );
 }
 
 class AppProvider extends ChangeNotifier {
@@ -139,15 +150,39 @@ class AppProvider extends ChangeNotifier {
   bool _aiDebugLogEnabled = false;
   bool _offlineQuickMode = false;
 
+  /// 安全存储降级标记（S1）：最后一次 KeyStore 写入失败时置位。
+  /// Android 无锁屏设备上 flutter_secure_storage 会抛错，key 只在内存中
+  /// 存活，重启即丢 —— 用户保存后必须收到明确提示。
+  bool _secureStorageDegraded = false;
+
   String? get apiKey => _apiKey;
   bool get isGameStarted => _isGameStarted;
   DisplayMode get displayMode => _displayMode;
   IdentityMode get identityMode => _identityMode;
   Era get era => _era;
   bool get aiDebugLogEnabled => _aiDebugLogEnabled;
+
   /// 无 AI 快速模式：整局用本地模板叙事 + 承接式选项，完全不调用 AI。
   /// 免费额度耗尽 / 未配 Key 时保底可玩，防「商业模式反噬」。
   bool get offlineQuickMode => _offlineQuickMode;
+
+  /// 安全存储是否降级（S1）：true = 上次 API Key 写入失败，密钥无法持久保存。
+  bool get secureStorageDegraded => _secureStorageDegraded;
+
+  /// 用户已看到降级提示后清除标记，避免同一会话反复弹窗。
+  void clearSecureStorageDegraded() {
+    if (!_secureStorageDegraded) return;
+    _secureStorageDegraded = false;
+    notifyListeners();
+  }
+
+  void _recordKeyWrite(bool ok) {
+    if (!ok && !_secureStorageDegraded) {
+      _secureStorageDegraded = true;
+      notifyListeners();
+    }
+  }
+
   Map<String, String> get models => Map.unmodifiable(_models);
   String providerModel(AiProvider p) => _models[p.name] ?? _defaultModel(p);
 
@@ -168,15 +203,20 @@ class AppProvider extends ChangeNotifier {
     return keys.map((key) {
       switch (provider) {
         case AiProvider.deepseek:
-          return AiConfig.deepseek(key).copyWith(model: model, baseUrl: customBaseUrl);
+          return AiConfig.deepseek(
+            key,
+          ).copyWith(model: model, baseUrl: customBaseUrl);
         case AiProvider.agnes:
-          return AiConfig.agnes(key).copyWith(model: model, baseUrl: customBaseUrl);
+          return AiConfig.agnes(
+            key,
+          ).copyWith(model: model, baseUrl: customBaseUrl);
         case AiProvider.sensenova:
-          return AiConfig.sensenova(key).copyWith(model: model, baseUrl: customBaseUrl);
+          return AiConfig.sensenova(
+            key,
+          ).copyWith(model: model, baseUrl: customBaseUrl);
       }
     }).toList();
   }
-
 
   /// 指定提供商是否有至少一个 API Key
   bool hasKey(AiProvider provider) => keysForProvider(provider).isNotEmpty;
@@ -194,24 +234,29 @@ class AppProvider extends ChangeNotifier {
   String _defaultModel(AiProvider provider) =>
       defaultsForProvider(provider.name).model;
 
-
   Future<void> loadSettings() async {
     final prefs = await PrefsStore.instance.init();
     _isGameStarted = prefs.getBool('game_started') ?? false;
     final savedDisplayIdx = prefs.getInt('display_mode') ?? 0;
-    _displayMode = (savedDisplayIdx >= 0 && savedDisplayIdx < DisplayMode.values.length)
+    _displayMode =
+        (savedDisplayIdx >= 0 && savedDisplayIdx < DisplayMode.values.length)
         ? DisplayMode.values[savedDisplayIdx]
         : DisplayMode.values.first;
     final savedIdentityIdx = prefs.getInt('identity_mode');
-    if (savedIdentityIdx == null || savedIdentityIdx < 0 || savedIdentityIdx >= IdentityMode.values.length) {
+    if (savedIdentityIdx == null ||
+        savedIdentityIdx < 0 ||
+        savedIdentityIdx >= IdentityMode.values.length) {
       _identityMode = IdentityMode.pure;
     } else {
       _identityMode = IdentityMode.values[savedIdentityIdx];
     }
     final savedEraIdx = prefs.getInt('era') ?? 2;
-    _era = (savedEraIdx >= 0 && savedEraIdx < Era.values.length) ? Era.values[savedEraIdx] : Era.harry_same;
+    _era = (savedEraIdx >= 0 && savedEraIdx < Era.values.length)
+        ? Era.values[savedEraIdx]
+        : Era.harry_same;
     final savedProviderIdx = prefs.getInt('ai_provider') ?? 0;
-    _aiProvider = (savedProviderIdx >= 0 && savedProviderIdx < AiProvider.values.length)
+    _aiProvider =
+        (savedProviderIdx >= 0 && savedProviderIdx < AiProvider.values.length)
         ? AiProvider.values[savedProviderIdx]
         : AiProvider.values.first;
 
@@ -236,17 +281,19 @@ class AppProvider extends ChangeNotifier {
       providers.map((p) => KeyStore.instance.readKeys(p)),
     );
     final multiByProvider = <String, List<String>>{
-      for (var i = 0; i < providers.length; i++)
-        providers[i]: multiResults[i],
+      for (var i = 0; i < providers.length; i++) providers[i]: multiResults[i],
     };
 
     // 需要回退到单 Key 模式的 provider
-    final needSingle = providers.where((p) => multiByProvider[p]!.isEmpty).toList();
+    final needSingle = providers
+        .where((p) => multiByProvider[p]!.isEmpty)
+        .toList();
     final singleResults = await Future.wait(
       needSingle.map((p) => KeyStore.instance.readKey(p)),
     );
     final singleByProvider = <String, String?>{
-      for (var i = 0; i < needSingle.length; i++) needSingle[i]: singleResults[i],
+      for (var i = 0; i < needSingle.length; i++)
+        needSingle[i]: singleResults[i],
     };
 
     for (final p in providers) {
@@ -274,7 +321,8 @@ class AppProvider extends ChangeNotifier {
     }
 
     final currentKeys = _apiKeys[_aiProvider.name];
-    if (currentKeys != null && currentKeys.isNotEmpty) _apiKey = currentKeys.first;
+    if (currentKeys != null && currentKeys.isNotEmpty)
+      _apiKey = currentKeys.first;
 
     // Load scene routes
     for (final scene in AiScene.values) {
@@ -300,10 +348,12 @@ class AppProvider extends ChangeNotifier {
       // 必须走 writeKeys([]) 而不是 deleteKey()：后者只删不带索引的旧单 key，
       // 带索引的 `api_key_<p>_0` 会整整齐齐留在安全存储里，下次启动
       // readKeys 一读又全回来了——「清空密钥」变成一次无效操作。
-      await KeyStore.instance.writeKeys(_aiProvider.name, []);
+      _recordKeyWrite(await KeyStore.instance.writeKeys(_aiProvider.name, []));
     } else {
       _apiKeys[_aiProvider.name] = [key];
-      await KeyStore.instance.writeKeys(_aiProvider.name, [key]);
+      _recordKeyWrite(
+        await KeyStore.instance.writeKeys(_aiProvider.name, [key]),
+      );
     }
     notifyListeners();
   }
@@ -316,16 +366,19 @@ class AppProvider extends ChangeNotifier {
     existing.removeAt(index);
     if (existing.isEmpty) {
       _apiKeys.remove(provider.name);
-      await KeyStore.instance.writeKeys(provider.name, []);
+      _recordKeyWrite(await KeyStore.instance.writeKeys(provider.name, []));
     } else {
       _apiKeys[provider.name] = existing;
-      await KeyStore.instance.writeKeys(provider.name, existing);
+      _recordKeyWrite(
+        await KeyStore.instance.writeKeys(provider.name, existing),
+      );
     }
     if (provider == _aiProvider) {
       _apiKey = existing.isEmpty ? null : existing.first;
     }
     notifyListeners();
   }
+
   void setGameStarted(bool started) {
     _isGameStarted = started;
     // F16/F36：原先是 .then() 不 await 不 catch，写失败完全无声。
@@ -337,7 +390,8 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setDisplayMode(DisplayMode mode) {
-    if (_identityMode == IdentityMode.transmigration && mode == DisplayMode.magazine) {
+    if (_identityMode == IdentityMode.transmigration &&
+        mode == DisplayMode.magazine) {
       return;
     }
     _displayMode = mode;
@@ -349,7 +403,8 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setIdentityMode(IdentityMode mode) {
-    if (_displayMode == DisplayMode.magazine && mode == IdentityMode.transmigration) {
+    if (_displayMode == DisplayMode.magazine &&
+        mode == IdentityMode.transmigration) {
       return;
     }
     _identityMode = mode;
@@ -400,6 +455,7 @@ class AppProvider extends ChangeNotifier {
     );
     notifyListeners();
   }
+
   /// 免费模型（官方提供免费额度 / 极低资费）
   List<String> freeModelsFor(AiProvider provider) {
     switch (provider) {
@@ -412,8 +468,8 @@ class AppProvider extends ChangeNotifier {
         return [
           'sensenova-6.8-flash-lite', // 1500次/5h，最新多模态智能体
           'sensenova-6.7-flash-lite', // 1500次/5h，稳定版
-          'deepseek-v4-flash',         // 500次/5h
-          'glm-5.2',                   // 500次/5h，1M上下文
+          'deepseek-v4-flash', // 500次/5h
+          'glm-5.2', // 500次/5h，1M上下文
         ];
     }
   }
@@ -430,6 +486,7 @@ class AppProvider extends ChangeNotifier {
         return ['sensenova-u1-fast'];
     }
   }
+
   void clearApiKeyFor(AiProvider p) {
     _apiKeys.remove(p.name);
     _baseUrls.remove(p.name);
@@ -445,13 +502,16 @@ class AppProvider extends ChangeNotifier {
 
   /// 切换 AI 调试日志开关，同步写入 SharedPreferences 持久化
   /// 批量设置指定提供商的所有 API Key（一次性写入，避免多次 notifyListeners）
-  Future<void> setAllKeysForProvider(AiProvider provider, List<String> keys) async {
+  Future<void> setAllKeysForProvider(
+    AiProvider provider,
+    List<String> keys,
+  ) async {
     if (keys.isEmpty) {
       clearApiKeyFor(provider);
       return;
     }
     _apiKeys[provider.name] = List<String>.from(keys);
-    await KeyStore.instance.writeKeys(provider.name, keys);
+    _recordKeyWrite(await KeyStore.instance.writeKeys(provider.name, keys));
     if (provider == _aiProvider) {
       _apiKey = keys.first;
     }

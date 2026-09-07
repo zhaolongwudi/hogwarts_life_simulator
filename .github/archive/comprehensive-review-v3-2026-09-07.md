@@ -659,6 +659,19 @@ Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约�
 
 **影响：** 用户在无锁屏设备上可能无法使用 AI 功能但不知原因。
 
+> **✅ 已修复（批次 12b）**
+> - `KeyStore.writeKey / writeKeys` 改为返回 `bool`：写入失败不再静默吞掉，
+>   通过 `debugLog` 留痕并向上传递（Android 无锁屏设备上
+>   `flutter_secure_storage` 会降级或抛错）。
+> - `AppProvider` 新增 `_secureStorageDegraded` 状态与
+>   `_recordKeyWrite(bool)`：任何一次 key 写入失败即置位并 `notifyListeners`。
+> - 设置页「保存」成功后若检测到降级，弹出对话框明确告知：
+>   「安全存储不可用（常见于未设置锁屏密码），Key 仅存内存、重启即丢」，
+>   并引导用户开启锁屏密码后重新保存。
+> - 覆盖路径：`saveApiKey` / `removeApiKeyAt` / `setAllKeysForProvider`
+>   三条写入路径全部接入；启动时的旧明文迁移写入保持静默（尽力而为，
+>   不打扰冷启动）。
+
 ### S2 — crash_logger 可能记录敏感信息 `[Medium] [v3]`
 
 `crash_logger.dart` 记录 `dynamic error` 和 `StackTrace`，如果 AI API 响应中包含用户对话内容或 API Key 片段，可能被写入日志文件。
@@ -1064,7 +1077,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F46 | 缺少依赖版本锁定检查 | 依赖管理 | Low | v2 | ✅ 批次1 |
 | F47 | 部分注释与代码不一致 | 注释健康度 | Medium | v2 | ✅ 批次1（核对已修复） |
 | F48 | AI 服务层缺少请求超时统一管理 | AI 架构 | Medium | v3 | 🟢 批次8（超时策略收口 `ai_timeouts.dart` 单一来源） |
-| S1 | API Key 缺少降级策略 | 安全审计 | High | v3 | — |
+| S1 | API Key 缺少降级策略 | 安全审计 | High | v3 | ✅ 批次12b（写入失败检测 + 降级提示弹窗） |
 | S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 | ✅ 批次2 |
 | S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 | ✅ 批次2 |
 | P1 | 缺少性能基准测试 | 性能基准 | High | v3 | — |
@@ -1539,6 +1552,21 @@ CustomPainter 三类职责。
 
 **验证**：`dart analyze` 0 error；地图/世界线/地点门禁等 108 项测试通过。
 
+### 批次 12b — S1 API Key 降级策略 `[High]`
+
+**问题**：Android 无锁屏设备上 `flutter_secure_storage` 降级或抛错，
+key 写入失败被 `writeKey` 静默吞掉 —— 玩家以为存好了，重启后 key 全丢。
+
+**改法**：
+
+- `KeyStore.writeKey / writeKeys` 返回 `bool`（失败记日志并向上传递）；
+- `AppProvider` 新增 `secureStorageDegraded` 状态，`saveApiKey` /
+  `removeApiKeyAt` / `setAllKeysForProvider` 三条写入路径统一经
+  `_recordKeyWrite` 上报；
+- 设置页「保存」后若降级，弹窗告知原因与解法（开锁屏密码后重存）。
+
+**验证**：`flutter analyze` 0 error；全量 1,381 项测试通过。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1560,7 +1588,8 @@ CustomPainter 三类职责。
 | 11a | F1 神方法拆分（`_ensureCommandsRegistered` → 7 个分组注册方法） | `a083683` |
 | 11b | F13 组件抽取（`narrative_widgets.dart`，1927 → 1667 行） | `a27fdcd` |
 | 11c | F2 mixin 未使用导入清理 ×6 + F40 mixin 组织评估（无需再拆） | `026fb31` |
-| 12a | F14 拆分（`world_map/` 目录，1,488 → 1,202 行） | 本次提交 |
+| 12a | F14 拆分（`world_map/` 目录，1,488 → 1,202 行） | `31365f7` |
+| 12b | S1 API Key 降级策略（写入失败检测 + 设置页降级提示） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

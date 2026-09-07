@@ -5,6 +5,7 @@ import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/data/archetype_data.dart';
 import 'package:hogwarts_life_simulator/screens/world_map_screen.dart';
+import 'package:hogwarts_life_simulator/screens/world_map/marker_layout.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/models/world_state.dart';
