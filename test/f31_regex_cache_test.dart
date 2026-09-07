@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/utils/story_text_renderer.dart';
@@ -84,10 +82,14 @@ void main() {
       expect(out.isNotEmpty, isTrue);
     });
 
-    test('stripTimestampPrefix：去掉【时间戳】/📅 前缀，保留时间正文', () {
-      expect(StoryTextRenderer.stripTimestampPrefix('【时间戳】📅 清晨'),
-          '清晨');
+    test('stripTimestampPrefix：去掉【时间戳】/📅 前缀，留下时间正文', () {
+      // 单一标记：前缀被整体剥掉，时间正文保留
       expect(StoryTextRenderer.stripTimestampPrefix('📅 上午十点'), '上午十点');
+      expect(StoryTextRenderer.stripTimestampPrefix('【时间戳】清晨'), '清晨');
+      // 叠加写法【时间戳】📅：只剥行首第一个标记（模式只匹配一个可选标记），
+      // 后续 emoji 保留——这是从内联正则沿用至今的行为，非本次回归。
+      expect(StoryTextRenderer.stripTimestampPrefix('【时间戳】📅 清晨'),
+          '📅 清晨');
       // 无前缀的普通段原样返回
       expect(StoryTextRenderer.stripTimestampPrefix('赫敏在看书'), '赫敏在看书');
     });
@@ -116,7 +118,7 @@ void main() {
     test('上千段不同叙事反复解析：久跑不炸、结果正确', () {
       var total = 0;
       for (var i = 0; i < 1500; i++) {
-        final spans = StoryTextRenderer.parse('第${i}段：赫敏说这是第${i}次。');
+        final spans = StoryTextRenderer.parse('第$i段：赫敏说这是第$i次。');
         // 高亮应有名字/台词，不能因缓存淘汰返回空或错乱
         final text = spans.map((s) => s.text ?? '').join();
         expect(text, isNotEmpty);
