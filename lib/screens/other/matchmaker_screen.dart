@@ -27,6 +27,9 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
   }
 
   void _analyzeMatches() {
+    // initState 的 post-frame 回调路径下页面可能已被快速 pop，
+    // 先守卫再 setState（函数末尾原有 mounted 守卫只覆盖收尾）。
+    if (!mounted) return;
     setState(() => _isAnalyzing = true);
     final gp = context.read<GameProvider>();
     final npcs = gp.npcRegistry.values.toList();

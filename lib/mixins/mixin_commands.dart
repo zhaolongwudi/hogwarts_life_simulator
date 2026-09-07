@@ -2851,9 +2851,13 @@ $knownRegions
       '（多档可叠加，实际结算封顶 -30 ~ +10；'
       '同学院恋爱是唯一正向项，师生恋代价最重）',
     );
-    // 当前关系的命中情况
-    if (love.partnerName != null || love.currentCrushName != null) {
-      final npcName = love.partnerName ?? love.currentCrushName!;
+    // 当前关系的命中情况（partnerName / currentCrushName 用局部变量提升，
+    // 避免「守卫与断言分离」——原来依赖 14 行外的 || 守卫给 ?? 兜底分支加 !）
+    final partnerName = love.partnerName;
+    final crushName = love.currentCrushName;
+    if (partnerName != null || crushName != null) {
+      final npcName = partnerName ?? crushName;
+      if (npcName == null) return buf.toString();
       final npc = _cheatFindNpc(npcName);
       if (npc != null) {
         final ctx = LovePairContext(

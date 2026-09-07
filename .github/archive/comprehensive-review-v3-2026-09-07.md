@@ -19,7 +19,20 @@
 | 2 | 错误处理与日志 | F7 / F8 / F19 / F26 / S2 / S3 | ✅ 已推送（CI 两次变红，见 2.1） |
 | **2.1** | **CI 热修复 — 脱敏正则的语法** | **F26 / S2 / S3** | **✅ 已推送（CI 全绿）** |
 | 3 | 存储与启动 | F16 / F36 / F37 / D4 / CS1 / CS2 | ✅ 已推送 |
-| **4** | **外来数据的健壮性** | **F3 / F5 / SI2 / SI3** | **✅ 已推送（CI 验证中）** |
+| 4 | 外来数据的健壮性 | F3 / F5 / SI2 / SI3 | ✅ 已推送 |
+| 5 | 缓存与正则静态化 | F31 / F33 / F35 | ✅ 已推送 |
+| 6 | 统一错误反馈与恢复原语 | F6 / F9 | ✅ 已推送 |
+| 7 | UI 资源释放与重复消除 | F11 / D3 | ✅ 已推送 |
+| 8 | AI 超时单一来源 + 核对关闭四项 | F48 / F17 / F30 / F32 / F34 | ✅ 已推送 |
+| 9 | 代码重复收口 | D1 / D2 | ✅ 已推送 |
+| 10 | 路由统一 + notifyListeners 剩余合并 | F28 / F29 / F10 / P4 | ✅ 已推送 |
+| 11a | F1 神方法拆分 | F1 | ✅ 已推送 |
+| 11b | F13 组件抽取 | F13 | ✅ 已推送 |
+| 11c | F2 导入清理 + F40 组织评估 | F2 / F40 | ✅ 已推送 |
+| 12a | F14 world_map_screen 拆分 | F14 | ✅ 已推送 |
+| 12b | S1 API Key 降级策略 | S1 | ✅ 已推送 |
+| 13 | F12 setState 热点局部刷新 | F12 | ✅ 已推送 |
+| **14** | **健壮性加固：回调生命周期 + 查表判空 + 语义标签** | **CL1 / F39（高危 4 处）/ F24（主界面）** | **✅ 已推送（CI 验证）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -1052,7 +1065,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | — |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | — |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
-| F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | — |
+| F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | 🟢 批次14（主游戏界面 5 处高频交互补语义标签：发送/指令中心/推进/快捷行动 chip/快速存档；地图点位与其余 IconButton 留作后续） |
 | F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | — |
 | F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | ✅ 批次2（84 处） |
 | F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 | ✅ 批次1 |
@@ -1067,7 +1080,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | ✅ 批次3 |
 | F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | ✅ 批次3 |
 | F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | — |
-| F39 | 大量非空断言（!） | 空安全 | Medium | v2 | — |
+| F39 | 大量非空断言（!） | 空安全 | Medium | v2 | 🟢 批次14（高危 4 处查表/兜底断言改判空回退：careerById×2 / rankDefById / currentCrushName；其余约 280 处核对为守卫/框架/正则组等安全惯用法，维持现状） |
 | F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | — |
 | F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 | — |
 | F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 | — |
@@ -1099,8 +1112,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | SI1 | 存档无版本号 | 状态持久化 | High | v3 | ✅ 批次4（整体误判，版本号+迁移都有） |
 | SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 | ✅ 批次4 |
 | SI3 | 部分状态可能未持久化 | 状态持久化 | Medium | v3 | ✅ 批次4 |
-| CL1 | 部分回调未在 dispose 中取消 | 回调生命周期 | Medium | v3 | — |
-| CL2 | 闭包捕获可能的内存泄漏 | 回调生命周期 | Low | v3 | — |
+| CL1 | 部分回调未在 dispose 中取消 | 回调生命周期 | Medium | v3 | 🟢 批次14（全库核对：唯一缺口 matchmaker_screen post-frame 回调补 mounted 守卫；addListener/AnimationController/TabController/Future.delayed 均已成对释放） |
+| CL2 | 闭包捕获可能的内存泄漏 | 回调生命周期 | Low | v3 | 🟢 批次14（核对：全库无 StreamSubscription/Timer 使用；3 处 Future.delayed 回调均带 mounted 守卫） |
 | L1 | 缺少延迟加载 | 延迟加载 | Medium | v3 | — |
 | L2 | 图片无懒加载 | 延迟加载 | Medium | v3 | — |
 | L3 | screen 级别无懒加载 | 延迟加载 | Low | v3 | — |
@@ -1594,6 +1607,38 @@ key 写入失败被 `writeKey` 静默吞掉 —— 玩家以为存好了，重�
 **验证**：`flutter analyze` 0 error；全量 1,381 项测试通过（含
 command_center_panel 7 项搜索/分组/执行测试）。
 
+### 批次 14 — 健壮性加固：回调生命周期 + 查表判空 + 语义标签（CL1 / CL2 / F39 / F24）
+
+**这一批的由来**：剩余未处理条目里挑「改动面小、风险低、可独立验证」的一组。
+先用只读调研把三个问题摸清底数（CL1/CL2 全库回调生命周期清单、F39 全部 349 处
+非空断言的分类、F24 语义标签缺口盘点），再动手——避免按报告原文盲目撒改。
+
+**改动清单**
+
+| 文件 | 条目 | 改动 |
+|---|---|---|
+| `lib/screens/other/matchmaker_screen.dart` | **CL1 唯一真缺口** | `_analyzeMatches()` 开头补 `if (!mounted) return;`。initState 的 post-frame 回调路径下页面可能被快速 pop，函数末尾原有 mounted 守卫只覆盖收尾、盖不住开头的 `setState` 与 `context.read` |
+| `lib/mixins/mixin_career.dart` | **F39-A1** | `_careerStatus` 与 `settleCareerYear` 的 `careerById(p.careerId!)!` 改为判空回退（前者提示「职业已下线」，后者跳过结算）——旧档残留已下线 careerId 时不再直接崩 |
+| `lib/mixins/mixin_systems.dart` | **F39-A1** | `formatFaculty` 的 `rankDefById(rankId)!` 改为判空回退提示——`rankId` 来自存档字段 `facultyRankId`，坏档不再崩 |
+| `lib/mixins/mixin_commands.dart` | **F39-A2** | `_formatLoveReputation` 的 `partnerName ?? currentCrushName!` 改局部变量提升 + 双判空——消除「守卫与断言分离 14 行」的经典崩点 |
+| `lib/screens/game/game_bottom_input.dart` | **F24** | 发送按钮 / 指令中心按钮 / 推进按钮 / 快捷行动 8 个 chip 补 `Semantics(button: true, label:)`——主界面每回合最高频交互，纯图标读屏完全无声纹 |
+| `lib/screens/game/game_top_bar.dart` | **F24** | 存档按钮补 `Semantics(button: true, label: '快速存档')` |
+
+**核对为已具备（无需改）**：CL1/CL2 其余全部——全库无 `StreamSubscription`/
+`Timer` 使用；`game_narrative_tab` 的 `addListener`/`removeListener` 成对；
+3 处 `AnimationController` + 1 处 `TabController` 均已在 `dispose` 释放；
+3 处 `Future.delayed` 回调全部带 `mounted` 守卫。F39 其余约 280 处属安全惯用法
+（命令分发入口守卫、正则捕获组、枚举完备常量表、应用主题保证、同作用域先判空后取用），
+逐一核对后维持现状——盲改反而制造噪音。
+
+**F24 的边界**：只补主游戏界面 5 处高频交互。地图 40+ 个可点位、开局定制选择卡、
+其余屏幕的纯图标 IconButton 留作后续批次（这批已经动了 3 个 UI 文件，再铺开
+回归面过大，不值得一次吃掉）。
+
+**验证**：本机无 Flutter SDK，照例本地做括号/结构静态核验 + 推送后 CI
+（`flutter analyze` + `flutter test`）确认。改动全为「加守卫/换回退/包语义节点」，
+无正则、无逻辑重排，风险面收敛。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1617,7 +1662,8 @@ command_center_panel 7 项搜索/分组/执行测试）。
 | 11c | F2 mixin 未使用导入清理 ×6 + F40 mixin 组织评估（无需再拆） | `026fb31` |
 | 12a | F14 拆分（`world_map/` 目录，1,488 → 1,202 行） | `31365f7` |
 | 12b | S1 API Key 降级策略（写入失败检测 + 设置页降级提示） | `2bfc249` |
-| 13 | F12 setState 热点局部刷新（job/指令中心/设置卡 ValueNotifier 化） | 本次提交 |
+| 13 | F12 setState 热点局部刷新（job/指令中心/设置卡 ValueNotifier 化） | `b1ba24c` |
+| 14 | 健壮性加固（CL1 mounted 守卫、F39 查表判空 ×4、F24 主界面语义标签 ×5） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

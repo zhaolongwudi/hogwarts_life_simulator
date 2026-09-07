@@ -132,29 +132,33 @@ class GameTopBar extends StatelessWidget {
                   _buildTimeCapsule(gp),
                   const SizedBox(width: 8),
                   // 存档按钮
-                  GestureDetector(
-                    onTap: () async {
-                      await gp.quickSave();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ 已存档'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: MiuiColors.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.save,
-                        size: 18,
-                        color: MiuiColors.primary,
+                  Semantics(
+                    button: true,
+                    label: '快速存档',
+                    child: GestureDetector(
+                      onTap: () async {
+                        await gp.quickSave();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('✅ 已存档'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: MiuiColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.save,
+                          size: 18,
+                          color: MiuiColors.primary,
+                        ),
                       ),
                     ),
                   ),

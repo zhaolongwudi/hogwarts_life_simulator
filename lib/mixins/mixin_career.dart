@@ -120,7 +120,8 @@ mixin GameCareerMixin on GameProviderBase {
       }
       return '你还在上学——毕业后（/职业 列表）可以挑选正式职业。';
     }
-    final c = careerById(p.careerId!)!;
+    final c = careerById(p.careerId!);
+    if (c == null) return '职业档案缺失（该职业已下线），请联系开发者或重新选择职业。';
     final rank = p.careerRankIndex.clamp(0, c.ranks.length - 1);
     final yearsInRank = p.careerYears % c.yearsPerRank;
     final pay = c.payAt(rank);
@@ -165,7 +166,8 @@ mixin GameCareerMixin on GameProviderBase {
   void settleCareerYear(int yearsPassed) {
     final p = player;
     if (p == null || p.careerId == null) return;
-    final c = careerById(p.careerId!)!;
+    final c = careerById(p.careerId!);
+    if (c == null) return; // 职业已下线：跳过结算，不把坏档写死
     final totalPay = c.payAt(p.careerRankIndex) * yearsPassed;
     p.galleons += totalPay;
     p.careerYears += yearsPassed;

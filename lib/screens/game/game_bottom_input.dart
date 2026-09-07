@@ -114,32 +114,37 @@ class GameBottomInput extends StatelessWidget {
                                 ),
                               ),
                               // 发送按钮（参考图风格：主题色填充圆角）
-                              GestureDetector(
-                                onTap: gp.isLoading ? null : onHandleFreeAction,
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 4),
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: gp.isLoading
-                                        ? MiuiColors.disabledSecondary
-                                        : MiuiColors.primary,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      if (!gp.isLoading)
-                                        BoxShadow(
-                                          color: MiuiColors.primary.withValues(alpha: 0.3),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.send,
-                                    size: 14,
-                                    color: MiuiColors.onPrimary,
+                              Semantics(
+                                button: true,
+                                label: '发送行动',
+                                child: GestureDetector(
+                                  onTap: gp.isLoading ? null : onHandleFreeAction,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 4),
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: gp.isLoading
+                                          ? MiuiColors.disabledSecondary
+                                          : MiuiColors.primary,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        if (!gp.isLoading)
+                                          BoxShadow(
+                                            color: MiuiColors.primary.withValues(alpha: 0.3),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.send,
+                                      size: 14,
+                                      color: MiuiColors.onPrimary,
+                                    ),
                                   ),
                                 ),
+                              ),
                               ),
                             ],
                           ),
@@ -147,24 +152,28 @@ class GameBottomInput extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       // 指令中心按钮
-                      GestureDetector(
-                        onTap: () => showCommandCenterFromGame(
-                            context, inputController, onHandleFreeAction),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: MiuiColors.surfaceContainer.withValues(alpha: 0.8),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: MiuiColors.outline.withValues(alpha: 0.5),
-                              width: MiuiSpace.dividerThickness,
+                      Semantics(
+                        button: true,
+                        label: '打开指令中心',
+                        child: GestureDetector(
+                          onTap: () => showCommandCenterFromGame(
+                              context, inputController, onHandleFreeAction),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: MiuiColors.surfaceContainer.withValues(alpha: 0.8),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: MiuiColors.outline.withValues(alpha: 0.5),
+                                width: MiuiSpace.dividerThickness,
+                              ),
                             ),
-                          ),
-                          child: Icon(
-                            Icons.terminal,
-                            size: 18,
-                            color: MiuiColors.primary.withValues(alpha: 0.8),
+                            child: Icon(
+                              Icons.terminal,
+                              size: 18,
+                              color: MiuiColors.primary.withValues(alpha: 0.8),
+                            ),
                           ),
                         ),
                       ),
@@ -181,56 +190,60 @@ class GameBottomInput extends StatelessWidget {
 
   /// 推进按钮（参考图风格：紧凑圆角胶囊）
   Widget _buildAdvanceButton(GameProvider gp) {
-    return GestureDetector(
-      onTap: gp.isLoading
-          ? null
-          : () {
-              if (gp.choices.isNotEmpty) {
-                gp.processAutoAdvanceChoice();
-              }
-            },
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: gp.isLoading
-              ? MiuiColors.disabledSecondary
-              : MiuiColors.primary.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            if (!gp.isLoading)
-              BoxShadow(
-                color: MiuiColors.primary.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-          ],
-        ),
-        child: gp.isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: MiuiColors.onSurfaceVariantSummary,
+    return Semantics(
+      button: true,
+      label: '推进剧情',
+      child: GestureDetector(
+        onTap: gp.isLoading
+            ? null
+            : () {
+                if (gp.choices.isNotEmpty) {
+                  gp.processAutoAdvanceChoice();
+                }
+              },
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: gp.isLoading
+                ? MiuiColors.disabledSecondary
+                : MiuiColors.primary.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              if (!gp.isLoading)
+                BoxShadow(
+                  color: MiuiColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-              )
-            : const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.skip_next, size: 16, color: MiuiColors.onPrimary),
-                  SizedBox(height: 1),
-                  Text(
-                    '推进',
-                    style: TextStyle(
-                      fontSize: 8,
-                      color: MiuiColors.onPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
+            ],
+          ),
+          child: gp.isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: MiuiColors.onSurfaceVariantSummary,
                   ),
-                ],
-              ),
+                )
+              : const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.skip_next, size: 16, color: MiuiColors.onPrimary),
+                    SizedBox(height: 1),
+                    Text(
+                      '推进',
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: MiuiColors.onPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -258,44 +271,48 @@ class GameBottomInput extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final a = actions[index];
-          return Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(15),
-            child: InkWell(
-              onTap: !ready
-                  ? null
-                  : () {
-                      if (a.page != null) {
-                        pushRoute(context, a.page!());
-                      } else if (a.command != null) {
-                        gp.processChoice(GameChoice(text: a.command!, action: a.command!));
-                      }
-                    },
+          return Semantics(
+            button: true,
+            label: a.label,
+            child: Material(
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(15),
-              child: Ink(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: a.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: a.color.withValues(alpha: 0.3),
-                    width: MiuiSpace.dividerThickness,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(a.icon, size: 14, color: a.color),
-                    const SizedBox(width: 5),
-                    Text(
-                      a.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: ready ? a.color : MiuiColors.onSurfaceVariantActions,
-                      ),
+              child: InkWell(
+                onTap: !ready
+                    ? null
+                    : () {
+                        if (a.page != null) {
+                          pushRoute(context, a.page!());
+                        } else if (a.command != null) {
+                          gp.processChoice(GameChoice(text: a.command!, action: a.command!));
+                        }
+                      },
+                borderRadius: BorderRadius.circular(15),
+                child: Ink(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: a.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: a.color.withValues(alpha: 0.3),
+                      width: MiuiSpace.dividerThickness,
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(a.icon, size: 14, color: a.color),
+                      const SizedBox(width: 5),
+                      Text(
+                        a.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: ready ? a.color : MiuiColors.onSurfaceVariantActions,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

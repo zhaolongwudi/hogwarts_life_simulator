@@ -1885,7 +1885,8 @@ mixin GameSystemsMixin on GameProviderBase {
       return buf.toString();
     }
 
-    final def = rankDefById(rankId)!;
+    final def = rankDefById(rankId);
+    if (def == null) return '教职数据缺失（职级已下线），请联系开发者。';
     final buf = StringBuffer()
       ..writeln('【教职】${p.facultySubject ?? ''}·${def.title}')
       ..writeln('任教年限：${p.facultyServiceYears} 年　年薪：${def.annualPay} 加隆')
