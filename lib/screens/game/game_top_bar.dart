@@ -14,9 +14,6 @@ class GameTopBar extends StatelessWidget {
     final player = gp.player;
     if (player == null) return const SizedBox.shrink();
 
-    // BUG-2 分院前人物简介提前显示学院：最终防线
-    // 只有当成就 'sorted' 已解锁（本地逻辑分院/骨架链分院/AI文本解析分院 都会解锁），
-    // 才认为 house 真的有效；即便 player.house 因 OOC 被意外赋值，也不渲染。
     final houseSorted = player.achievements.contains('sorted');
     final houseLabel = {
       'Gryffindor': '格兰芬多',
@@ -57,97 +54,159 @@ class GameTopBar extends StatelessWidget {
             ),
           ),
           child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-              border: Border.all(color: Theme.of(context).colorScheme.primary),
-            ),
-            child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(player.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: MiuiColors.primaryVariant, letterSpacing: 0.3)),
+              // 主行：头像 + 玩家信息 + 时间控制胶囊 + 存档
+              Row(
+                children: [
+                  // 头像（参考图风格：圆形头像带角色首字母）
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: MiuiColors.primary.withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: MiuiColors.primary.withValues(alpha: 0.5),
+                        width: 1.5,
+                      ),
                     ),
-                    if (houseLabel.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          houseLabel,
-                          style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                    child: Center(
+                      child: Text(
+                        player.name.isNotEmpty ? player.name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: MiuiColors.primaryVariant,
                         ),
                       ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Icon(Icons.schedule, size: 12, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: Text(gp.worldState.timestamp,
-                          style: const TextStyle(fontSize: 10.5, color: MiuiColors.onSurfaceVariantSummary, letterSpacing: 0.1),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1),
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () async {
-              await gp.quickSave();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('✅ 已存档'), duration: Duration(seconds: 1)),
-                );
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                  ),
+                  const SizedBox(width: 10),
+                  // 玩家名字 + 学院标签
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                player.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: false,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: MiuiColors.primaryVariant,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                            if (houseLabel.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: MiuiColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  houseLabel,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: MiuiColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 时间控制胶囊（参考图 Screenshot_00-09-17 风格）
+                  _buildTimeCapsule(gp),
+                  const SizedBox(width: 8),
+                  // 存档按钮
+                  GestureDetector(
+                    onTap: () async {
+                      await gp.quickSave();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ 已存档'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: MiuiColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.save,
+                        size: 18,
+                        color: MiuiColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              child: Icon(Icons.save, size: 20, color: Theme.of(context).colorScheme.primary),
-            ),
-          ),
-          ],
-          ),
-          const SizedBox(height: 8),
-          _buildResourceBars(player),
-        ],
+              const SizedBox(height: 8),
+              // 资源胶囊条
+              _buildResourceBars(player),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// 顶部 HUD：5 个资源胶囊（金+中性，低值转红）——v3.8.9 色彩降噪，
-  /// 去掉一屏五色的彩虹胶囊：统一中性底 + 金图标/数字，辨识靠图标形状。
+  /// 时间控制胶囊（参考图 Screenshot_00-09-17 风格）
+  Widget _buildTimeCapsule(GameProvider gp) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: MiuiColors.primary.withValues(alpha: 0.2),
+          width: MiuiSpace.dividerThickness,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 时间显示
+          Icon(
+            Icons.schedule,
+            size: 12,
+            color: MiuiColors.primaryVariant.withValues(alpha: 0.8),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            gp.worldState.timestamp,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: MiuiColors.primaryVariant.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 资源胶囊条（参考图风格：紧凑中性胶囊，低值转红）
   Widget _buildResourceBars(Player player) {
     final resources = <({IconData icon, int value})>[
       (icon: Icons.favorite, value: player.health),
@@ -157,7 +216,7 @@ class GameTopBar extends StatelessWidget {
       (icon: Icons.flash_on, value: player.energy),
     ];
     return SizedBox(
-      height: 32,
+      height: 28,
       child: Row(
         children: List.generate(resources.length, (i) {
           final r = resources[i];
@@ -165,28 +224,31 @@ class GameTopBar extends StatelessWidget {
           final accent = low ? MiuiColors.error : MiuiColors.primaryVariant;
           return Expanded(
             child: Padding(
-              padding: EdgeInsets.only(right: i < resources.length - 1 ? 5 : 0),
+              padding: EdgeInsets.only(right: i < resources.length - 1 ? 4 : 0),
               child: Container(
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                height: 28,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
-                  color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(10),
+                  color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: accent.withValues(alpha: 0.28),
+                    color: accent.withValues(alpha: 0.25),
                     width: MiuiSpace.dividerThickness,
                   ),
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(r.icon, size: 12, color: accent),
-                    const SizedBox(width: 3),
-                    Text('${r.value}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: accent,
-                        )),
+                    Icon(r.icon, size: 11, color: accent),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${r.value}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -197,3 +259,4 @@ class GameTopBar extends StatelessWidget {
     );
   }
 }
+

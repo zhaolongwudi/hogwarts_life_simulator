@@ -27,23 +27,23 @@ class GameBottomInput extends StatelessWidget {
     final gp = context.watch<GameProvider>();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 2, 20, 0),
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: 18,
-            sigmaY: 18,
+            sigmaX: 20,
+            sigmaY: 20,
             tileMode: TileMode.clamp,
           ),
           child: Container(
@@ -53,144 +53,189 @@ class GameBottomInput extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  MiuiColors.surfaceContainer.withValues(alpha: 0.34),
-                  MiuiColors.surfaceContainer.withValues(alpha: 0.58),
+                  MiuiColors.surfaceContainer.withValues(alpha: 0.35),
+                  MiuiColors.surfaceContainer.withValues(alpha: 0.55),
                 ],
               ),
               border: Border.all(
-                color: MiuiColors.primary.withValues(alpha: 0.18),
+                color: MiuiColors.primary.withValues(alpha: 0.15),
                 width: MiuiSpace.dividerThickness,
               ),
             ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildQuickActions(gp),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-            GestureDetector(
-              onTap: gp.isLoading
-                  ? null
-                  : () {
-                      if (gp.choices.isNotEmpty) {
-                        gp.processAutoAdvanceChoice();
-                      }
-                    },
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: gp.isLoading ? MiuiColors.disabledSecondary : MiuiColors.primary,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    if (!gp.isLoading)
-                      BoxShadow(
-                        color: MiuiColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                  ],
-                ),
-                child: gp.isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: MiuiColors.onSurfaceVariantSummary,
-                        ),
-                      )
-                    : const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.skip_next, size: 16, color: MiuiColors.onPrimary),
-                          SizedBox(height: 2),
-                          Text(
-                            '推进',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: MiuiColors.onPrimary,
-                              fontWeight: FontWeight.w700,
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 快捷行动栏（参考图风格：圆角胶囊芯片）
+                  _buildQuickActions(gp),
+                  const SizedBox(height: 8),
+                  // 主输入行
+                  Row(
+                    children: [
+                      // 推进按钮（参考图左侧快捷操作风格）
+                      _buildAdvanceButton(gp),
+                      const SizedBox(width: 10),
+                      // 输入框
+                      Expanded(
+                        child: Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: MiuiColors.surfaceContainer.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: MiuiColors.outline.withValues(alpha: 0.5),
+                              width: MiuiSpace.dividerThickness,
                             ),
                           ),
-                        ],
-                      ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: MiuiColors.surfaceContainer,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: MiuiColors.outline),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: inputController,
-                        maxLength: 500,
-                        style: const TextStyle(color: MiuiColors.onSurface, fontSize: 13),
-                        decoration: const InputDecoration(
-                          hintText: '输入行动或 /命令（// 开头按普通内容发送）',
-                          hintStyle: TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 11),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          isDense: true,
-                          counterText: '',
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: TextField(
+                                  controller: inputController,
+                                  maxLength: 500,
+                                  style: const TextStyle(
+                                    color: MiuiColors.onSurface,
+                                    fontSize: 14,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: '输入行动或 /命令',
+                                    hintStyle: TextStyle(
+                                      color: MiuiColors.onSurfaceVariantActions,
+                                      fontSize: 12,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                    isDense: true,
+                                    counterText: '',
+                                  ),
+                                  onSubmitted: gp.isLoading ? null : (_) => onHandleFreeAction(),
+                                ),
+                              ),
+                              // 发送按钮（参考图风格：主题色填充圆角）
+                              GestureDetector(
+                                onTap: gp.isLoading ? null : onHandleFreeAction,
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 4),
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: gp.isLoading
+                                        ? MiuiColors.disabledSecondary
+                                        : MiuiColors.primary,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      if (!gp.isLoading)
+                                        BoxShadow(
+                                          color: MiuiColors.primary.withValues(alpha: 0.3),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.send,
+                                    size: 14,
+                                    color: MiuiColors.onPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        onSubmitted: gp.isLoading ? null : (_) => onHandleFreeAction(),
                       ),
-                    ),
-                    GestureDetector(
-                      onTap: gp.isLoading ? null : onHandleFreeAction,
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: MiuiColors.primary,
-                          shape: BoxShape.circle,
+                      const SizedBox(width: 8),
+                      // 指令中心按钮
+                      GestureDetector(
+                        onTap: () => showCommandCenterFromGame(
+                            context, inputController, onHandleFreeAction),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: MiuiColors.surfaceContainer.withValues(alpha: 0.8),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: MiuiColors.outline.withValues(alpha: 0.5),
+                              width: MiuiSpace.dividerThickness,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.terminal,
+                            size: 18,
+                            color: MiuiColors.primary.withValues(alpha: 0.8),
+                          ),
                         ),
-                        child: const Icon(Icons.send, size: 14, color: MiuiColors.onPrimary),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            // 指令中心面板（CommandCenterPanel）：数据驱动、按注册表分组展示全部指令
-            GestureDetector(
-              onTap: () => showCommandCenterFromGame(
-                  context, inputController, onHandleFreeAction),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: MiuiColors.surfaceContainer,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: MiuiColors.outline),
-                ),
-                child: const Icon(Icons.terminal, size: 20, color: MiuiColors.primary),
-              ),
-            ),
-          ],
-            ),
-          ],
-        ),
-      ),
           ),
         ),
       ),
     );
   }
 
-  /// 玩法快捷栏：委托板/装备打开独立页面，其余直接运行本地命令（零 token）。
+  /// 推进按钮（参考图风格：紧凑圆角胶囊）
+  Widget _buildAdvanceButton(GameProvider gp) {
+    return GestureDetector(
+      onTap: gp.isLoading
+          ? null
+          : () {
+              if (gp.choices.isNotEmpty) {
+                gp.processAutoAdvanceChoice();
+              }
+            },
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: gp.isLoading
+              ? MiuiColors.disabledSecondary
+              : MiuiColors.primary.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            if (!gp.isLoading)
+              BoxShadow(
+                color: MiuiColors.primary.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: gp.isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: MiuiColors.onSurfaceVariantSummary,
+                ),
+              )
+            : const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.skip_next, size: 16, color: MiuiColors.onPrimary),
+                  SizedBox(height: 1),
+                  Text(
+                    '推进',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: MiuiColors.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  /// 快捷行动栏目（参考图 Screenshot_00-09-17 风格：圆角胶囊芯片排列）
   Widget _buildQuickActions(GameProvider gp) {
     final ready = !gp.isLoading && gp.player != null;
     final actions = <({String label, IconData icon, Color color, String? command, Widget Function()? page})>[
@@ -232,19 +277,24 @@ class GameBottomInput extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: a.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: a.color.withValues(alpha: 0.35)),
+                  border: Border.all(
+                    color: a.color.withValues(alpha: 0.3),
+                    width: MiuiSpace.dividerThickness,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(a.icon, size: 14, color: a.color),
                     const SizedBox(width: 5),
-                    Text(a.label,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: ready ? a.color : MiuiColors.onSurfaceVariantActions,
-                        )),
+                    Text(
+                      a.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: ready ? a.color : MiuiColors.onSurfaceVariantActions,
+                      ),
+                    ),
                   ],
                 ),
               ),

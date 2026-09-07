@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -91,14 +92,8 @@ class HomePage extends StatelessWidget {
                                 ),
                           ),
                           const SizedBox(height: 22),
-                          Text(
-                            'v1.0.0+100 · HyperOS Edition',
-                            textAlign: TextAlign.center,
-                            style: MiuiType.footnote2.copyWith(
-                              color: MiuiColors.onSurfaceVariantSummary
-                                  .withValues(alpha: 0.7),
-                            ),
-                          ),
+                          // 版本号
+                          _buildVersionBadge(),
                         ],
                       ),
                     ),
@@ -107,6 +102,27 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVersionBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: MiuiColors.surfaceContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: MiuiColors.outline.withValues(alpha: 0.2),
+          width: MiuiSpace.dividerThickness,
+        ),
+      ),
+      child: Text(
+        'v1.0.0+100 · HyperOS Edition',
+        textAlign: TextAlign.center,
+        style: MiuiType.footnote2.copyWith(
+          color: MiuiColors.onSurfaceVariantSummary.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -138,6 +154,13 @@ class _PrimaryButton extends StatelessWidget {
             colors: [MiuiColors.primaryVariant, MiuiColors.primary],
           ),
           borderRadius: BorderRadius.circular(MiuiRadius.button),
+          boxShadow: [
+            BoxShadow(
+              color: MiuiColors.primary.withValues(alpha: 0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -282,6 +305,10 @@ class _PlayerHero extends StatelessWidget {
       decoration: BoxDecoration(
         color: MiuiColors.surfaceContainer.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: MiuiColors.primary.withValues(alpha: 0.08),
+          width: MiuiSpace.dividerThickness,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -400,11 +427,29 @@ class _PlayerHero extends StatelessWidget {
           ),
           if (low) ...[
             const SizedBox(height: 10),
-            Text(
-              '你的状态不佳，建议先休息或进食',
-              textAlign: TextAlign.center,
-              style: MiuiType.footnote1.copyWith(
-                color: MiuiColors.error.withValues(alpha: 0.9),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: MiuiColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: MiuiColors.error.withValues(alpha: 0.25),
+                  width: MiuiSpace.dividerThickness,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 14, color: MiuiColors.error),
+                  const SizedBox(width: 6),
+                  Text(
+                    '你的状态不佳，建议先休息或进食',
+                    style: MiuiType.footnote1.copyWith(
+                      color: MiuiColors.error.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -423,6 +468,10 @@ class _PlayerHero extends StatelessWidget {
         decoration: BoxDecoration(
           color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.65),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withValues(alpha: 0.2),
+            width: MiuiSpace.dividerThickness,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

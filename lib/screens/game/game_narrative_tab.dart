@@ -1505,29 +1505,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
   Widget _buildStoryParagraph(StoryParagraph p) {
     switch (p.kind) {
       case ParagraphKind.dialogue:
-        // 对话段：浅蓝衬底 + 左侧色条（对话蓝的淡化版本），顶格不缩进——
-        // 与叙述段的缩进形成对比锚点，一眼认出"这里有人开口了"
-        return Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-          decoration: BoxDecoration(
-            color: MiuiColors.info.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(14),
-            border: Border(
-              left: BorderSide(
-                color: MiuiColors.info.withValues(alpha: 0.6),
-                width: 3,
-              ),
-            ),
-          ),
-          child: ScaledRichText(
-            text: TextSpan(
-              children: StoryTextRenderer.parseParagraphStyled(
-                p,
-                indent: false,
-              ),
-            ),
-          ),
-        );
+        // 对话段：聊天气泡风格（参考图 chat bubble 样式）
+        // 提取说话人名称显示在气泡上方
+        return _buildDialogueBubble(p);
       case ParagraphKind.innerVoice:
         // 内心独白：斜体浅紫，跟随系统缩放
         return ScaledRichText(
@@ -1559,6 +1539,94 @@ class _NarrativeTabState extends State<NarrativeTab> {
           text: TextSpan(children: StoryTextRenderer.parseParagraphStyled(p)),
         );
     }
+  }
+
+  /// 聊天气泡构建：提取说话人标签 + 气泡容器
+  Widget _buildDialogueBubble(StoryParagraph p) {
+    final speaker = _extractDialogueSpeaker(p.text);
+    final hasSpeaker = speaker != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasSpeaker)
+          Padding(
+            padding: const EdgeInsets.only(left: 6, bottom: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFC87A).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    speaker,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFFFC87A),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const _BubbleTail(),
+              ],
+            ),
+          ),
+        // 聊天气泡本体
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          decoration: BoxDecoration(
+            color: MiuiColors.info.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.only(
+              topLeft: hasSpeaker
+                  ? const Radius.circular(4)
+                  : const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: const Radius.circular(16),
+              bottomRight: const Radius.circular(16),
+            ),
+            border: Border.all(
+              color: MiuiColors.info.withValues(alpha: 0.25),
+              width: MiuiSpace.dividerThickness,
+            ),
+          ),
+          child: ScaledRichText(
+            text: TextSpan(
+              children: StoryTextRenderer.parseParagraphStyled(
+                p,
+                indent: false,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 从对话文本中提取说话人名称。
+  /// 匹配模式：`说话人："台词"` 或 `说话人：「台词」`
+  /// 返回说话人名称，若无法提取则返回 null。
+  String? _extractDialogueSpeaker(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+
+    // 找第一个冒号，且后面紧跟引号/括号
+    final colonIdx = trimmed.indexOf(RegExp(r'[：:]'));
+    if (colonIdx <= 0 || colonIdx >= trimmed.length - 1) return null;
+
+    final afterColon = trimmed.substring(colonIdx + 1).trim();
+    // 确认冒号后是引号开头
+    if (!RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon)) return null;
+
+    final candidate = trimmed.substring(0, colonIdx).trim();
+    if (candidate.isEmpty || candidate.length > 12) return null;
+
+    return candidate;
   }
 
   /// 原有整段渲染（单段短文本回退）
@@ -1815,4 +1883,45 @@ class _PanelIconAction extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 聊天气泡的"尾巴"装饰：指向气泡的小三角。
+///
+/// 使用 CustomPainter 绘制一个实心三角，颜色与气泡边框一致。
+class _BubbleTail extends StatelessWidget {
+  const _BubbleTail();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 8,
+      height: 10,
+      child: CustomPaint(
+        painter: _TrianglePainter(
+          color: MiuiColors.info.withValues(alpha: 0.25),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(0, size.height * 0.3)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, size.height * 0.6)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrianglePainter old) => old.color != color;
 }

@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import '../utils/ui_helpers.dart';
 import '../data/locations.dart';
@@ -648,19 +649,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         final bottomOffset = 420.0;
         final usableHeight = mapHeight - headerOffset - bottomOffset;
 
-        // 空间不够时切成紧凑标记（只留圆点，去掉文字气泡）：
-        // 完整标记盒 ~96x120，紧凑只有 ~44x50，同样高度能多排一倍以上。
+        // 空间不够时切成紧凑标记（只留圆点，去掉文字气泡）
         final perMarker = locations.isEmpty
             ? usableHeight
             : usableHeight / locations.length;
         final compact = perMarker < 78;
 
-        final boxW = compact ? 44.0 : 96.0;
-        final boxH = compact ? 50.0 : 118.0;
+        final boxW = compact ? 44.0 : 100.0;
+        final boxH = compact ? 50.0 : 120.0;
 
-        // 画布按需撑开：霍格沃茨一张图有 18 个地点，
-        // 而小屏上可用高度只有两三百像素——再怎么压缩也放不下。
-        // 与其让标记叠成一团，不如把画布拉高并允许上下滚动。
+        // 画布按需撑开
         const markerGap = 6.0;
         final needed = locations.length * (boxH + markerGap);
         final canvasHeight =
@@ -668,8 +666,6 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
         final raw = <MarkerBox>[
           for (final loc in locations)
-            // 第16轮E：x/y 带缺省——子地图数据若缺字段，不再 as double 硬 cast
-            // 崩溃成灰屏，回退到合理默认位置
             MarkerBox(
               mapWidth * ((loc['x'] as num?)?.toDouble() ?? 0.15) - boxW / 2,
               headerOffset +
@@ -691,137 +687,202 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           child: SizedBox(
             height: headerOffset + canvasHeight + boxH,
             child: Stack(
-          clipBehavior: Clip.none,
-          children: locations.asMap().entries.map((entry) {
-            final loc = entry.value;
-            final isSelected = _selectedLocation == loc['name'];
-            final isBranch = loc['branch'] == true;
+              clipBehavior: Clip.none,
+              children: locations.asMap().entries.map((entry) {
+                final loc = entry.value;
+                final isSelected = _selectedLocation == loc['name'];
+                final isBranch = loc['branch'] == true;
 
-            final pos = placed[entry.key];
+                final pos = placed[entry.key];
 
-            return Positioned(
-              left: pos.left,
-              top: pos.top,
-              child: GestureDetector(
-                onTap: () {
-                  if (isBranch) {
-                    _enterSubArea(loc['name'] as String);
-                  } else {
-                    setState(() => _selectedLocation = loc['name']);
-                  }
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!compact) Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      constraints: const BoxConstraints(minWidth: 70),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.97),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected
-                              ? MiuiColors.primary
-                              : isBranch
-                                  ? AppColors.warning
-                                  : const Color(0xFF3E5B4A),
-                          width: isSelected || isBranch ? 2 : 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.22),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                return Positioned(
+                  left: pos.left,
+                  top: pos.top,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (isBranch) {
+                        _enterSubArea(loc['name'] as String);
+                      } else {
+                        setState(() => _selectedLocation = loc['name']);
+                      }
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!compact) ...[
+                          // 暗色玻璃标签 — 匹配参考图的深色半透明风格
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                constraints: const BoxConstraints(
+                                  minWidth: 80,
+                                  maxWidth: 140,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A1A2E).withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.goldBright
+                                        : isBranch
+                                            ? AppColors.gold
+                                            : const Color(0xFF3A3A5C),
+                                    width: isSelected || isBranch ? 1.8 : 1.0,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                    if (isSelected)
+                                      BoxShadow(
+                                        color: AppColors.gold.withValues(alpha: 0.3),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 0),
+                                      ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isBranch) ...[
+                                      Icon(Icons.subdirectory_arrow_right,
+                                          size: 14, color: AppColors.gold),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Flexible(
+                                      child: Text(
+                                        loc['name'] as String,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: isSelected || isBranch
+                                              ? AppColors.goldBright
+                                              : Colors.white,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isBranch) ...[
-                            const Icon(Icons.subdirectory_arrow_right, size: 15, color: AppColors.gold),
-                            const SizedBox(width: 4),
-                          ],
-                          Flexible(
-                            child: Text(
-                              loc['name'] as String,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
+                          const SizedBox(height: 6),
+                          // 金色定位针
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: Alignment.topLeft,
+                                radius: 1.2,
+                                colors: isSelected
+                                    ? [AppColors.goldBright, AppColors.goldDeep]
+                                    : isBranch
+                                        ? [AppColors.gold, AppColors.goldDeep]
+                                        : [const Color(0xFF4A4A6A), const Color(0xFF2A2A4A)],
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(
                                 color: isSelected
-                                    ? AppColors.gold
+                                    ? AppColors.goldBright
                                     : isBranch
                                         ? AppColors.gold
-                                        : MiuiColors.surfaceContainer,
+                                        : const Color(0xFF5A5A7A),
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isSelected
+                                      ? AppColors.gold.withValues(alpha: 0.45)
+                                      : isBranch
+                                          ? AppColors.gold.withValues(alpha: 0.25)
+                                          : Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: isSelected ? 12 : 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              isBranch ? Icons.alt_route : Icons.location_on,
+                              size: 17,
+                              color: isSelected || isBranch
+                                  ? Colors.white
+                                  : const Color(0xFF8A8AAA),
+                            ),
+                          ),
+                        ],
+                        if (compact) ...[
+                          // 紧凑模式：金色小圆点 + 简短名称
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.goldBright
+                                  : isBranch
+                                      ? AppColors.gold
+                                      : const Color(0xFF2A2A4A).withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.goldBright
+                                    : isBranch
+                                        ? AppColors.gold
+                                        : const Color(0xFF5A5A7A),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.location_on,
+                              size: 14,
+                              color: isSelected || isBranch
+                                  ? Colors.white
+                                  : const Color(0xFF8A8AAA),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          SizedBox(
+                            width: 44,
+                            child: Text(
+                              loc['name'] as String,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                height: 1.1,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(color: Colors.black, blurRadius: 4),
+                                  Shadow(color: Colors.black, blurRadius: 8),
+                                ],
                               ),
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                    if (!compact) const SizedBox(height: 4),
-                    Container(
-                      width: compact ? 30 : 36,
-                      height: compact ? 30 : 36,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? MiuiColors.primary
-                            : isBranch
-                                ? AppColors.warning
-                                : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.goldBright
-                              : isBranch
-                                  ? AppColors.gold
-                                  : MiuiColors.primary,
-                          width: 2.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.28),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        isBranch ? Icons.subdirectory_arrow_right : Icons.location_on,
-                        size: compact ? 17 : 20,
-                        color: isSelected || isBranch ? Colors.white : MiuiColors.primary,
-                      ),
-                    ),
-                    if (compact) ...[
-                      const SizedBox(height: 2),
-                      SizedBox(
-                        width: 44,
-                        child: Text(
-                          loc['name'] as String,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            height: 1.1,
-                            fontWeight: FontWeight.w600,
-                            color: MiuiColors.surfaceContainer,
-                            shadows: [
-                              Shadow(color: Colors.white, blurRadius: 3),
-                              Shadow(color: Colors.white, blurRadius: 6),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         );
@@ -1197,35 +1258,38 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     return Positioned(
       left: 12,
       bottom: 280,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.94),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.4)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A2E).withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF3A3A5C).withValues(alpha: 0.6)),
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 12, height: 12, decoration: const BoxDecoration(color: MiuiColors.primary, shape: BoxShape.circle)),
-            const SizedBox(width: 5),
-            const Text('当前', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
-            const SizedBox(width: 12),
-            Container(width: 12, height: 12, decoration: const BoxDecoration(color: AppColors.warning, shape: BoxShape.circle)),
-            const SizedBox(width: 5),
-            const Text('子地图', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
-            const SizedBox(width: 12),
-            Container(width: 12, height: 12, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: MiuiColors.primary, width: 1.5))),
-            const SizedBox(width: 5),
-            const Text('地点', style: TextStyle(fontSize: 11, color: Color(0xFF5A6B4A), fontWeight: FontWeight.w500)),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.goldBright, shape: BoxShape.circle)),
+                const SizedBox(width: 5),
+                const Text('当前', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
+                const SizedBox(width: 10),
+                Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle)),
+                const SizedBox(width: 5),
+                const Text('子地图', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
+                const SizedBox(width: 10),
+                Container(width: 10, height: 10, decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A4A),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF5A5A7A), width: 1.5),
+                )),
+                const SizedBox(width: 5),
+                const Text('地点', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
         ),
       ),
     );

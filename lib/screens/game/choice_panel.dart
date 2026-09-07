@@ -4,7 +4,7 @@ import '../../mixins/mixin_response_choices.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../widgets/miuix_components.dart';
 
-/// 剧情选项按钮。
+/// 剧情选项按钮（参考图 Screenshot_00-09-17 风格）。
 ///
 /// 带 400ms 防抖：选项点击会触发一次 AI 请求，连点两下就会连发两条指令、
 /// 既烧 token 又会把剧情推进两次。防抖期间按钮同时置灰给出视觉反馈。
@@ -41,44 +41,52 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
     final badge = String.fromCharCode(65 + widget.index);
     return MiuiPressFeedback(
       onTap: _handleTap,
-      borderRadius: BorderRadius.circular(15),
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedOpacity(
         opacity: _locked ? 0.5 : 1,
         duration: const Duration(milliseconds: 120),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(11, 8, 9, 8),
+          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
           decoration: BoxDecoration(
-            color: MiuiColors.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(15),
+            color: MiuiColors.surfaceContainerHigh.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: MiuiColors.outline.withValues(alpha: 0.7),
+              color: MiuiColors.outline.withValues(alpha: 0.5),
               width: MiuiSpace.dividerThickness,
             ),
           ),
           child: Row(
             children: [
+              // A/B/C 金徽章（参考图风格：金色渐变底 + 白色字母）
               Container(
-                width: 20,
-                height: 20,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [MiuiColors.primaryVariant, MiuiColors.primary],
                   ),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(7),
+                  boxShadow: [
+                    BoxShadow(
+                      color: MiuiColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   badge,
                   style: const TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
                     color: MiuiColors.onPrimary,
                   ),
                 ),
               ),
-              const SizedBox(width: 9),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   widget.label,
@@ -89,10 +97,19 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
                   ),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 10,
-                color: MiuiColors.primary.withValues(alpha: 0.7),
+              // 右箭头（参考图风格：主题色小箭头）
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: MiuiColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 9,
+                  color: MiuiColors.primary.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ),
@@ -102,34 +119,13 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
   }
 }
 
-/// 剧情页底部的「可选行动」面板。
-///
-/// 这里唯一要紧的是**高度**。两条规则：
-///
-/// 1. **限高只夹列表，不夹整个面板。**
-///    以前是 ConstrainedBox 夹外层 Column、里面塞 Flexible，
-///    而 Flexible 在有界约束下会吃掉全部剩余空间——
-///    于是 2 个选项和 6 个选项一样顶满 maxHeight，
-///    正文白丢一截。现在外层 Column 是 mainAxisSize.min 且没有任何
-///    flexible 子项，面板高度 = 标题栏 + min(列表实际高度, listMax)。
-///
-/// 2. **可以收起。**
-///    正文才是这个页面的主角。收起后面板只剩一条标题栏（约 44px），
-///    六百字的正文能多出两百多像素，够多看十来行。
-///    默认展开——每回合结束都要先点一下才能行动反而更烦。
+/// 剧情页底部的「可选行动」面板（参考图 Screenshot_00-09-17 风格）。
 class ChoicePanel extends StatelessWidget {
-  /// 面板的固定开销：标题栏（上边距 10 + 文字 20 + 下间距 8）+ 列表底部 12。
-  ///
-  /// 拿它从 maxHeight 里减掉，剩下的才是列表能用的高度。
   static const double chromeHeight = 50.0;
 
   final List<GameChoice> choices;
   final double maxHeight;
-
-  /// 收起时只显示标题栏
   final bool collapsed;
-
-  /// AI 在跑：换一批不可用
   final bool busy;
   final VoidCallback onToggleCollapse;
   final VoidCallback onShuffle;
@@ -151,10 +147,17 @@ class ChoicePanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.0),
+            Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
+          ],
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, -3),
           ),
@@ -170,17 +173,30 @@ class ChoicePanel extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(16, 7, 16, collapsed ? 7 : 0),
               child: Row(
                 children: [
+                  // 灯泡图标 + 标题（参考图风格：💡 可选行动）
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: MiuiColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.lightbulb_outline,
+                      size: 13,
+                      color: MiuiColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     collapsed ? '可选行动 · ${choices.length} 项' : '可选行动',
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: MiuiColors.primary),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: MiuiColors.primary,
+                    ),
                   ),
                   const Spacer(),
-                  // 「换一批」走本地词库，不消耗 token。
-                  // 之前这套生成器写好了却没有任何入口，玩家被 AI 给的
-                  // 三个选项卡住时只能硬选一个。
                   if (!collapsed)
                     Semantics(
                       button: true,
@@ -197,7 +213,7 @@ class ChoicePanel extends StatelessWidget {
                               Icon(Icons.shuffle,
                                   size: 14,
                                   color: busy
-                                      ? Colors.grey
+                                      ? MiuiColors.onSurfaceVariantActions
                                       : MiuiColors.primary),
                               const SizedBox(width: 4),
                               Text(
@@ -205,7 +221,7 @@ class ChoicePanel extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 12.5,
                                   color: busy
-                                      ? Colors.grey
+                                      ? MiuiColors.onSurfaceVariantActions
                                       : MiuiColors.primary,
                                 ),
                               ),
@@ -229,7 +245,8 @@ class ChoicePanel extends StatelessWidget {
                             Text(
                               collapsed ? '展开' : '收起',
                               style: const TextStyle(
-                                  fontSize: 12.5, color: MiuiColors.onSurfaceVariantSummary),
+                                  fontSize: 12.5,
+                                  color: MiuiColors.onSurfaceVariantSummary),
                             ),
                             const SizedBox(width: 2),
                             Icon(
