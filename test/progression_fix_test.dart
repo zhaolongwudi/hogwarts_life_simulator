@@ -2522,7 +2522,8 @@ void _screenReachabilityGroup() {
 
     test('手机页里的每个图标入口都跳得出去', () {
       final src = _codeOnly('lib/screens/game/game_phone_tab.dart');
-      // 每个 _buildAppItem / _buildQuickItem 都应该带一个 Navigator.push。
+      // 每个 _buildAppItem / _buildQuickItem 都应该带一个跳转（批次9 起统一走
+      // pushRoute 收口；签名编辑是页内弹层，走 _editSignature）。
       // 用括号配平取整个调用，不用正则——入口有的是一行、有的跨两行，
       // 缩进也不一样（AppItem 在 Row 里多缩进一级）。
       final bodies = <String>[];
@@ -2551,7 +2552,9 @@ void _screenReachabilityGroup() {
           reason: '手机页入口数量异常，可能改坏了');
       for (final body in bodies) {
         expect(
-          body.contains('Navigator.push') || body.contains('_editSignature'),
+          body.contains('pushRoute') ||
+              body.contains('Navigator.pushNamed') ||
+              body.contains('_editSignature'),
           isTrue,
           reason: '有个手机入口点了没有任何跳转：${body.trim()}',
         );
