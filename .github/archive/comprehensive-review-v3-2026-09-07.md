@@ -1505,6 +1505,24 @@ AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）�
 
 **验证**：`dart analyze` 0 error；叙事/时间/选项面板等 68 项相关测试通过。
 
+### 批次 11c — F2 mixin 未使用导入清理 + F40 mixin 组织评估
+
+**F2 导入精简**：`flutter analyze lib/mixins` 发现 6 处未使用导入
+（`mixin_commands/init/narrative/relations/response` 的 `flutter/widgets.dart`、
+`mixin_play` 的 `flutter/foundation.dart`），全部删除。mixin 域只依赖
+dart:async + 数据/模型/服务层，不再依赖 flutter 库本身。
+
+**F40 mixin 组织评估结论**：14 个 mixin 已按职责域拆分完毕（每个 mixin
+单一主题：init / narrative / narrative_continuity / commands / response×3 /
+relations / systems / play / animagus / death / career），`GameProvider`
+本体仅剩 486 行调度层（构造 / autoSave / saveNow / 生命周期 / API key）。
+`GameProviderBase` 承载共享字段与静态正则，6 个 mixin 以
+`mixin X on GameProviderBase` 声明避免 recursive_interface_inheritance。
+**无需进一步合并/拆分**——继续拆会切断 mixin 间共享状态的自然访问，
+合并会重新制造神类；当前粒度即为接口隔离的落地形态。
+
+**验证**：`dart analyze lib/mixins` 0 error / 0 warning；全量 1381 测试通过。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1524,7 +1542,8 @@ AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）�
 | 9 | 代码重复收口（D1 测试 fixture 抽取、D2 导航封装 20 处） | `87b3570` → `9b178aa` |
 | 10 | 路由统一（F28/F29 `app_routes.dart` 收口）+ notifyListeners 剩余合并（F10/P4） | `c6d977b` |
 | 11a | F1 神方法拆分（`_ensureCommandsRegistered` → 7 个分组注册方法） | `a083683` |
-| 11b | F13 组件抽取（`narrative_widgets.dart`，1927 → 1667 行） | 本次提交 |
+| 11b | F13 组件抽取（`narrative_widgets.dart`，1927 → 1667 行） | `a27fdcd` |
+| 11c | F2 mixin 未使用导入清理 ×6 + F40 mixin 组织评估（无需再拆） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

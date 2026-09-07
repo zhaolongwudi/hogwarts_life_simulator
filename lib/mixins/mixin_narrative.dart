@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/widgets.dart';
 import '../data/command_registry.dart';
 // 只取 kDebugMode：给 _closeLoopIfMatched 的热路径日志加 `if (kDebugMode)`
 // 保护时漏了这个 import，整包 analyze 直接红——典型的「改了 A 没改它的
