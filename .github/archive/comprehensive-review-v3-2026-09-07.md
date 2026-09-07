@@ -1523,6 +1523,22 @@ relations / systems / play / animagus / death / career），`GameProvider`
 
 **验证**：`dart analyze lib/mixins` 0 error / 0 warning；全量 1381 测试通过。
 
+### 批次 12a — F14 `world_map_screen.dart` 拆分
+
+**问题**：`world_map_screen.dart` 1,488 行，混着纯算法、状态页与
+CustomPainter 三类职责。
+
+**改法（纯搬移）**：
+
+- 新建 `lib/screens/world_map/marker_layout.dart`：`MarkerBox` +
+  `resolveMarkerOverlaps`（标记防重叠布局，纯 Dart 无 Flutter 依赖，
+  天然可单测）；
+- 新建 `lib/screens/world_map/map_area_painter.dart`：`MapAreaPainter`
+  （区域地形 CustomPainter，对角巷/翻倒巷/通用三套画法）；
+- 主文件删除两段定义，仅保留页面状态与组装逻辑，1,488 → 1,202 行。
+
+**验证**：`dart analyze` 0 error；地图/世界线/地点门禁等 108 项测试通过。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1543,7 +1559,8 @@ relations / systems / play / animagus / death / career），`GameProvider`
 | 10 | 路由统一（F28/F29 `app_routes.dart` 收口）+ notifyListeners 剩余合并（F10/P4） | `c6d977b` |
 | 11a | F1 神方法拆分（`_ensureCommandsRegistered` → 7 个分组注册方法） | `a083683` |
 | 11b | F13 组件抽取（`narrative_widgets.dart`，1927 → 1667 行） | `a27fdcd` |
-| 11c | F2 mixin 未使用导入清理 ×6 + F40 mixin 组织评估（无需再拆） | 本次提交 |
+| 11c | F2 mixin 未使用导入清理 ×6 + F40 mixin 组织评估（无需再拆） | `026fb31` |
+| 12a | F14 拆分（`world_map/` 目录，1,488 → 1,202 行） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
