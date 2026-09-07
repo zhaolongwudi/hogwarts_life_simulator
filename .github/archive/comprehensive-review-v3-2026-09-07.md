@@ -1030,11 +1030,11 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | — |
 | F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 | — |
 | F30 | story_text_renderer 正则密集 | 正则/文本解析 | High | v2 | — |
-| F31 | 部分 RegExp 未使用静态缓存 | 正则/文本解析 | Low | v2 | — |
+| F31 | 部分 RegExp 未使用静态缓存 | 正则/文本解析 | Low | v2 | ✅ 批次5 |
 | F32 | 频繁的 List.from + sort 重建 | 集合/内存 | Medium | v2 | — |
-| F33 | 全局缓存缺乏清理策略 | 集合/内存 | Low | v2 | — |
+| F33 | 全局缓存缺乏清理策略 | 集合/内存 | Low | v2 | ✅ 批次5 |
 | F34 | 多个 AnimationController 未释放 | 动画/渲染 | Medium | v2 | — |
-| F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 | — |
+| F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 | ✅ 批次5 |
 | F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | ✅ 批次3 |
 | F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | ✅ 批次3 |
 | F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | — |
@@ -1347,9 +1347,25 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 2. **F6 / F9（错误反馈与恢复模式统一，需动 UI，单独一批）**：做到一半 UI 不易回归验证，
    放 F33/F31/F35 之后。
 
+### 批次 5 — 缓存与正则静态化（F31 / F33 / F35）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/utils/story_text_renderer.dart` | **F31 正则静态化**：热路径上一整批内联 `RegExp(...)` 收口为类级 `static final` 常量 —— 段落清洗（`_multiNewlineRe/_doubleNewlineRe`）、选择块/选项行剥离、Markdown 兜底（加粗/斜体/标题/列表）、好感/声望区块、时间戳剥离、说话人判定（引号/括号/纯神态/数字/句读/名字尾缀/叙述虚词）、内部 meta 标记（承接×3/SceneGraph）、好感/神态行（`_signedIntRe/_signedIntStartRe/_moodParenRe`）、对话引号成对（`_dialogueQuotePatterns`）。pattern 与编译标志逐条比对原字面量一致，纯行为无变化 |
+| `lib/utils/story_text_renderer.dart` | **F33 核对（已具备）**：全局解析缓存 `_cache` 本就带 `_maxCacheSize = 32`，写路径满时淘汰最旧条目（近似 LRU），不无限膨胀 |
+| `lib/widgets/liquid_glass.dart` | **F35 核对（已具备）**：`LiquidGlassShaderLoader` 静态缓存 `FragmentProgram`（`_program` + `_pending`，防并发重复加载）；`_LiquidGlassState` 的 `FragmentShader` 是 State 字段，`initState` 创建一次、build 复用同一实例，并非每次 build 重建。build 里 `ImageFilter.shader(shader)` 只是对同一 shader 实例的轻量包装 |
+| `test/f31_regex_cache_test.dart` | **新增**。行为回归护栏：8 组解析函数（`stripInternalMetaMarkers`/配 `stripMarkdownArtifacts`/`extractAffectionSections`/`dedupeRepeatedParagraphs`/`splitParagraphs`/`autoParagraph`/`stripTimestampPrefix`/`parseAffectionLine`/冒号对话）逐一钉住重构后输出不变；外加 F33 压测（1500 段不同叙事反复解析久跑不炸、结果正确） |
+
+**这一批的核心结论**：F31 是真实的小改进——把热路径上每方法调用都重复编译的正则收口成
+静态常量，低端机渲染更稳；F33、F35 经核对**原实现已满足**（缓存有上限淘汰 / 着色器本就
+静态缓存），只补了回归护栏确认不是假修复。改动面单纯靠在途改动（行为保持），
+本地无 Flutter SDK，照例推 `main` 用 CI（`flutter analyze` + `flutter test`）验证。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
-**已完成并全部推送、CI 全绿**（最后一次全绿 run：`34134710038`，commit `280e1bf`）：
+**已完成并全部推送、CI 全绿**（最后一次全绿 run：`34139062100`，批次4）：
 
 | 批次 | 内容 | 提交 |
 |---|---|---|
@@ -1357,8 +1373,9 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 2 | 错误处理与日志（F7、F8、F19、F26、S2、S3） | `5950b62` |
 | 2.1 | CI 热修复×2：`(?i)` 非法 → `caseSensitive`；字符类 `-` 只放头尾 | `7155538` → `280e1bf` |
 | 3 | 存储与启动（F16、F36、F37、D4、CS1 部分修复、CS2 误判） | `97079f6` |
-| 4 | 外来数据的健壮性（F3、F5、SI2、SI3） | 本次提交 |
+| 4 | 外来数据的健壮性（F3、F5、SI2、SI3） | `8dab7e3` |
 | 报告更正 | SI1 / F4 其实早已具备（版本号 + `_migrateSave` 都在），误判源于只搜了一个文件 | `108832c` |
+| 5 | 缓存与正则静态化（F31、F33、F35） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

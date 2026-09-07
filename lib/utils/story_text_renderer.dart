@@ -42,6 +42,81 @@ class StoryTextRenderer {
   static final Map<String, List<TextSpan>> _cache = {};
   static const int _maxCacheSize = 32;
 
+  // ====== 静态 RegExp（F31）======
+  //
+  // 这些正则在热路径（_parse / 段落清洗 / Markdown 兜底清洗）里被反复构造。
+  // 每 new 一个 RegExp 都会触发一次编译，收口成 static final 后只编译一次。
+  // 注意：全部是字面量 pattern，`multiLine` 等标志原样保留，行为与原先完全一致。
+  static final RegExp _multiNewlineRe = RegExp(r'\n{3,}');
+  static final RegExp _doubleNewlineRe = RegExp(r'\n{2,}');
+  static final RegExp _markerRe = RegExp(r'【[^】]*】');
+  static final RegExp _choiceLinePattern =
+      RegExp(r'^\s*(?:[A-Ea-e]|[Ａ-Ｅ])\s*(?:[\.\．、\)）])\s*');
+  static final RegExp _numberedLinePattern =
+      RegExp(r'^\s*(?:\d{1,2}\s*[\.\．、\)）]|[一二三四五六七八九十]{1,3}\s*[、\.．])\s*');
+  static final List<RegExp> _choiceBlockPatterns = [
+    RegExp(r'【可选行动】[\s\S]*$'),
+    RegExp(r'【自由行动】[\s\S]*$'),
+    RegExp(r'【行动建议】[\s\S]*$'),
+    RegExp(r'【备选行动】[\s\S]*$'),
+    RegExp(r'【剧情选项】[\s\S]*$'),
+    RegExp(r'【下回合选择】[\s\S]*$'),
+    RegExp(r'【选择建议】[\s\S]*$'),
+  ];
+  static final RegExp _quoteFollowRe = RegExp(r'^[\s]*["「『“‘]');
+  static final RegExp _hangulRe =
+      RegExp(r'[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]');
+  static final RegExp _boldMdRe = RegExp(r'\*\*([^*\n]+)\*\*');
+  static final RegExp _italicMdRe = RegExp(r'__([^_\n]+)__');
+  static final RegExp _singleStarMdRe =
+      RegExp(r'\*([\u4e00-\u9fa5][^*\n]{0,40})\*');
+  static final RegExp _headingMdRe = RegExp(r'^\s*#+\s*', multiLine: true);
+  static final RegExp _bulletMdRe =
+      RegExp(r'^\s*[-*•]\s+(?=\S)', multiLine: true);
+  static final RegExp _numberedListMdRe =
+      RegExp(r'^\s*\d{1,2}[.、]\s+(?=\S)', multiLine: true);
+  static final RegExp _affectionChangeRe =
+      RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+  static final RegExp _reputationChangeRe =
+      RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
+  static final RegExp _timestampStripRe =
+      RegExp(r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)\s*');
+  // 说话人/名字判定（每行对话都走 _validSpeakerNameEnd / _validSpeakerNameEndRelaxed）
+  static final RegExp _quoteCharsRe = RegExp(r'["「」『』“”‘’"]');
+  static final RegExp _bracketOpenRe = RegExp(r'[（(]');
+  static final RegExp _bracketsOnlyRe =
+      RegExp(r'^(\s*[（(][^（）()]{1,10}[）)]\s*)+$');
+  static final RegExp _digitRe = RegExp(r'[\d]');
+  static final RegExp _sentencePunctRe = RegExp(r'[，。！？、；：]');
+  static final RegExp _nameLikeTailRe =
+      RegExp(r'([\u4e00-\u9fa5]{2,4})(?=[，、。！？\s]*$)');
+  static final RegExp _narrationPhraseCharsRe = RegExp(
+      r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个你我他她它抬低扫盯闻感这那哪]');
+  // 好感/神态行解析
+  static final RegExp _signedIntRe = RegExp(r'([+-]\d+)');
+  static final RegExp _signedIntStartRe = RegExp(r'^[+-]\d');
+  static final RegExp _moodParenRe = RegExp(r'([（(][^（）()]*[）)])\s*$');
+  // 内部 meta 标记清洗（stripInternalMetaMarkers，每篇剧情都走）
+  static final RegExp _chengjieParenRe =
+      RegExp(r'^\s*[(（][^）)]*承接[^）)]*[）)]\s*[—\-]*\s*');
+  static final RegExp _chengjieLineRe = RegExp(
+      r'^\s*承接[^：:]*[:：][^\n—\-]{0,200}?([—\-]{1,3}|紧接着，?|然后，?)\s*');
+  static final RegExp _chengjieConnectRe = RegExp(
+      r'([—\-]{1,3}|紧接着，?|然后，?)\s*(?=【时间戳】|📅)');
+  static final RegExp _sceneGraphRe = RegExp(
+    r'^\s*(🧭)?\s*SceneGraph[:：].*$\n?',
+    caseSensitive: false,
+    multiLine: true,
+  );
+  // 对话内引号成对匹配（_tokenize 每段都走）
+  static final List<RegExp> _dialogueQuotePatterns = [
+    RegExp(r'「[^」]*」'),
+    RegExp(r'"[^"]*"'),
+    RegExp(r'『[^』]*』'),
+    RegExp(r'“[^”]*”'),
+    RegExp(r'‘[^’]*’'),
+  ];
+
   // ====== 实体词表 ======
   //
   // 三张表原先都是手抄的字面量，抄完就跟数据层脱钩了：
@@ -439,7 +514,7 @@ class StoryTextRenderer {
     cleaned = _promoteAffectionLines(cleaned);
 
     final spans = <TextSpan>[];
-    final markerPattern = RegExp(r'【[^】]*】');
+    final markerPattern = _markerRe;
     final matches = markerPattern.allMatches(cleaned).toList();
 
     if (matches.isEmpty) {
@@ -545,33 +620,21 @@ class StoryTextRenderer {
   }
 
   static String _stripChoiceBlocks(String text) {
-    final blockPatterns = [
-      RegExp(r'【可选行动】[\s\S]*$'),
-      RegExp(r'【自由行动】[\s\S]*$'),
-      RegExp(r'【行动建议】[\s\S]*$'),
-      RegExp(r'【备选行动】[\s\S]*$'),
-      RegExp(r'【剧情选项】[\s\S]*$'),
-      RegExp(r'【下回合选择】[\s\S]*$'),
-      RegExp(r'【选择建议】[\s\S]*$'),
-    ];
+    final blockPatterns = _choiceBlockPatterns;
     var result = text;
     for (final pat in blockPatterns) {
       result = result.replaceAllMapped(pat, (m) => '');
     }
-    return result.replaceAll(RegExp(r'\n{3,}'), '\n\n').trimRight();
+    return result.replaceAll(_multiNewlineRe, '\n\n').trimRight();
   }
 
   /// 预处理：从剧情文本中剥掉内嵌的 A./B./C./D./E. 选项行（这些在下方「可选行动」区块单独显示）
   /// 支持：半角字母、全角字母（Ａ-Ｅ）、半角/全角句号、右括号、中文顿号「、」
   static String _preStripChoices(String text) {
     final lines = text.split('\n');
-    final choiceLinePattern = RegExp(
-      r'^\s*(?:[A-Ea-e]|[Ａ-Ｅ])\s*(?:[\.\．、\)）])\s*',
-    );
+    final choiceLinePattern = _choiceLinePattern;
     // 兼容"1.""(1)"等数字编号，以及中文一、二、三、编号
-    final numberedPattern = RegExp(
-      r'^\s*(?:\d{1,2}\s*[\.\．、\)）]|[一二三四五六七八九十]{1,3}\s*[、\.．])\s*',
-    );
+    final numberedPattern = _numberedLinePattern;
 
     // 一行是否像选项：短祈使短语、不以句号/感叹号/省略号收尾
     bool isChoiceLike(String line) {
@@ -601,7 +664,7 @@ class StoryTextRenderer {
       }
       buffer.writeln(lines[i]);
     }
-    return buffer.toString().replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    return buffer.toString().replaceAll(_multiNewlineRe, '\n\n').trim();
   }
 
   static int _nextMarkerOrEnd(String text, int from) {
@@ -864,13 +927,7 @@ class StoryTextRenderer {
     final int textLen =
         text.length; // BUG-CRASH: text 可能在子串操作后被改变？这里固定一份长度缓存，全程用 textLen 校验
 
-    final dialoguePatterns = [
-      RegExp(r'「[^」]*」'),
-      RegExp(r'"[^"]*"'),
-      RegExp(r'『[^』]*』'),
-      RegExp(r'“[^”]*”'),
-      RegExp(r'‘[^’]*’'),
-    ];
+    final dialoguePatterns = _dialogueQuotePatterns;
 
     final dialogueRanges = <_Range>[];
     for (final pattern in dialoguePatterns) {
@@ -1056,7 +1113,7 @@ class StoryTextRenderer {
       final afterColon = (i + 1 <= lineEnd)
           ? text.substring(i + 1, lineEnd).trimLeft()
           : '';
-      final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
+      final quoteFollow = _quoteFollowRe.hasMatch(afterColon);
 
       final speakerStartIdx = _speakerStart(text, lineStart, i);
       final safeSpeakerStart =
@@ -1239,14 +1296,14 @@ class StoryTextRenderer {
       return -1;
     }
     // 含引号（如 他说："赫敏：你好"）：说话人名字不会带引号
-    if (RegExp(r'["「」『』“”‘’"]').hasMatch(raw)) return -1;
+    if (_quoteCharsRe.hasMatch(raw)) return -1;
     // emoji 前缀（时间戳 📅 等）
     if (_startsWithEmoji(raw)) return -1;
 
     // 第一步：去掉「（情绪）」「(动作)」「好感+1」，提取候选前缀 name（始终是 raw 的前缀，从 0 开始）
-    final hasModifier = RegExp(r'[（(]').hasMatch(raw) || raw.contains('好感');
+    final hasModifier = _bracketOpenRe.hasMatch(raw) || raw.contains('好感');
     String name = raw;
-    int bracketIdx = name.indexOf(RegExp(r'[（(]'));
+    int bracketIdx = name.indexOf(_bracketOpenRe);
     if (bracketIdx < 0) bracketIdx = name.indexOf('好感');
     if (bracketIdx < 0) bracketIdx = name.length;
     name = name.substring(0, bracketIdx).trim();
@@ -1259,9 +1316,7 @@ class StoryTextRenderer {
     // 快速通道：如果 afterNameTrim 只是一堆（神态）/ (动作) 括号对，中间没有叙述动词的文字
     // → 说明这是"（冷笑）（审视）"纯神态，绝无可能是"说/道/问道"等叙述动词！
     //    挡住 _speechVerbs 中"笑"单字 contains 命中"冷笑"的 BUG。
-    final onlyBrackets = RegExp(
-      r'^(\s*[（(][^（）()]{1,10}[）)]\s*)+$',
-    ).hasMatch(afterNameTrim);
+    final onlyBrackets = _bracketsOnlyRe.hasMatch(afterNameTrim);
     if (!onlyBrackets && afterNameTrim.isNotEmpty) {
       for (final v in _speechVerbs) {
         if (v.length == 1) {
@@ -1339,8 +1394,8 @@ class StoryTextRenderer {
     // ========== 分支 3：未知名字（AI 生成随机 NPC，2~8字，不含虚词/数字/标点）==========
     if (_looksLikeNarrationPhrase(base)) return -1;
     if (base.length < 2 || base.length > 8) return -1;
-    if (RegExp(r'[\d]').hasMatch(base)) return -1;
-    if (RegExp(r'[，。！？、；：]').hasMatch(base)) return -1;
+    if (_digitRe.hasMatch(base)) return -1;
+    if (_sentencePunctRe.hasMatch(base)) return -1;
     // 同已知角色：有没有叙述动词？有 → 只染 base.length（莉娜），后面"问道："叙述灰（测试4：莉娜问道：今晚要一起自习吗？）
     //            没 → 整段 raw.length 染橙（莉娜：今晚要一起自习吗？→ 模式）
     return hasTrueSpeechVerb ? base.length : raw.length;
@@ -1387,9 +1442,7 @@ class StoryTextRenderer {
     // Fallback：在最后 12 个字里找"2-4 个汉字、像人名"的片段（标点/虚词结尾不算）
     if (searchZoneStart >= rawLen) return -1;
     final tail = raw.substring(searchZoneStart, rawLen);
-    final nameLike = RegExp(
-      r'([\u4e00-\u9fa5]{2,4})(?=[，、。！？\s]*$)',
-    ).firstMatch(tail);
+    final nameLike = _nameLikeTailRe.firstMatch(tail);
     if (nameLike != null) {
       final candidate = nameLike.group(1);
       if (candidate != null && !_looksLikeNarrationPhrase(candidate)) {
@@ -1406,9 +1459,7 @@ class StoryTextRenderer {
     // 常见叙述虚词：人名几乎不会包含这些字
     // 注意：代词（你我他她它）、常见叙述动词（抬低扫盯闻感）、
     // 指示代词（这那哪）都绝不可能是说话人名字的一部分。
-    if (RegExp(
-      r'[的在地是着了很都也又便就已经仍和与或者把被让想看见听走进出来去边样个你我他她它抬低扫盯闻感这那哪]',
-    ).hasMatch(s)) {
+    if (_narrationPhraseCharsRe.hasMatch(s)) {
       return true;
     }
     // 时间词开头（清晨的霍格沃茨：… / 下午三点：…）
@@ -1522,32 +1573,16 @@ class StoryTextRenderer {
 
     // 1) 清理括号包裹的「承接：XXX」（中文括号/英文括号都要处理）
     //    贪婪匹配到最近的 【时间戳】或段落开头，避免误伤正文括号。
-    s = s.replaceAllMapped(
-      RegExp(r'^\s*[(（][^）)]*承接[^）)]*[）)]\s*[—\-]*\s*'),
-      (m) => '',
-    );
+    s = s.replaceAllMapped(_chengjieParenRe, (m) => '');
 
     // 2) 清理行首直接写的「承接：... ——」「承接上回合：... 紧接着」
-    s = s.replaceAllMapped(
-      RegExp(r'^\s*承接[^：:]*[:：][^\n—\-]{0,200}?([—\-]{1,3}|紧接着，?|然后，?)\s*'),
-      (m) => '',
-    );
+    s = s.replaceAllMapped(_chengjieLineRe, (m) => '');
 
     // 3) 清理「——紧接着，【时间戳】」这种把「紧接着」放在【时间戳】前面的冗余连接词
-    s = s.replaceAllMapped(
-      RegExp(r'([—\-]{1,3}|紧接着，?|然后，?)\s*(?=【时间戳】|📅)'),
-      (m) => '',
-    );
+    s = s.replaceAllMapped(_chengjieConnectRe, (m) => '');
 
     // 4) 清理 SceneGraph/Anchor 这类 debug 文本行（整行）
-    s = s.replaceAllMapped(
-      RegExp(
-        r'^\s*(🧭)?\s*SceneGraph[:：].*$\n?',
-        caseSensitive: false,
-        multiLine: true,
-      ),
-      (m) => '',
-    );
+    s = s.replaceAllMapped(_sceneGraphRe, (m) => '');
 
     return s.trimLeft();
   }
@@ -1569,21 +1604,18 @@ class StoryTextRenderer {
     // 韩文兜底（审查 F2）：Agnes 偶有韩文输出，主剧情/选项都走 Agnes。
     // 剔除韩文音节/谚文字母（가-힣 / ㄱ-ㅎㅏ-ㅣ / 兼容字母区），
     // 混排时只删韩文字符；纯韩文段落删后留空行由段落清理兜底。
-    s = s.replaceAll(RegExp(r'[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]'), '');
+    s = s.replaceAll(_hangulRe, '');
     // 注意：Dart 的 replaceAll 对 RegExp 的替换串按字面量处理（不支持 $1），
     // 反向引用必须用 replaceAllMapped
-    s = s.replaceAllMapped(RegExp(r'\*\*([^*\n]+)\*\*'), (m) => m.group(1)!);
-    s = s.replaceAllMapped(RegExp(r'__([^_\n]+)__'), (m) => m.group(1)!);
+    s = s.replaceAllMapped(_boldMdRe, (m) => m.group(1)!);
+    s = s.replaceAllMapped(_italicMdRe, (m) => m.group(1)!);
     // 单星号包裹：仅当内容是中文（避免误伤 3*4=12 这类算式）
-    s = s.replaceAllMapped(
-      RegExp(r'\*([\u4e00-\u9fa5][^*\n]{0,40})\*'),
-      (m) => m.group(1)!,
-    );
+    s = s.replaceAllMapped(_singleStarMdRe, (m) => m.group(1)!);
     // 行首标题符（Dart RegExp 不支持 (?m) 内联标志，用 multiLine 参数）
-    s = s.replaceAll(RegExp(r'^\s*#+\s*', multiLine: true), '');
+    s = s.replaceAll(_headingMdRe, '');
     // 行首列表符（- * • 数字. 数字、）→ 去符号留文本
-    s = s.replaceAll(RegExp(r'^\s*[-*•]\s+(?=\S)', multiLine: true), '');
-    s = s.replaceAll(RegExp(r'^\s*\d{1,2}[.、]\s+(?=\S)', multiLine: true), '');
+    s = s.replaceAll(_bulletMdRe, '');
+    s = s.replaceAll(_numberedListMdRe, '');
     return s.trim();
   }
 
@@ -1591,7 +1623,7 @@ class StoryTextRenderer {
   /// 只处理「与上一条完全相同的段落」，保留第一条。
   static String dedupeRepeatedParagraphs(String text) {
     if (text.isEmpty) return text;
-    final paras = text.split(RegExp(r'\n{2,}'));
+    final paras = text.split(_doubleNewlineRe);
     if (paras.length < 2) return text;
     final out = <String>[];
     String? prev;
@@ -1646,14 +1678,14 @@ class StoryTextRenderer {
 
     // 清理多余空行
     var result = buffer.toString();
-    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    result = result.replaceAll(_multiNewlineRe, '\n\n');
     return result.trim();
   }
 
   /// 从文本中提取好感变化区块（返回 Map：纯叙事文本 + 好感变化文本列表）
   static Map<String, dynamic> extractAffectionSections(String text) {
-    final affectionPattern = RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
-    final reputationPattern = RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
+    final affectionPattern = _affectionChangeRe;
+    final reputationPattern = _reputationChangeRe;
 
     final affectionMatches = affectionPattern.allMatches(text);
     final reputationMatches = reputationPattern.allMatches(text);
@@ -1672,7 +1704,7 @@ class StoryTextRenderer {
     var narrative = text;
     narrative = narrative.replaceAllMapped(affectionPattern, (m) => '');
     narrative = narrative.replaceAllMapped(reputationPattern, (m) => '');
-    narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    narrative = narrative.replaceAll(_multiNewlineRe, '\n\n');
     narrative = narrative.trim();
 
     return {'narrative': narrative, 'affectionSections': affectionSections};
@@ -1686,7 +1718,7 @@ class StoryTextRenderer {
   /// 与下一段没有空行隔开时不该自作主张拆成两段）。
   static List<String> splitParagraphs(String text) {
     return text
-        .split(RegExp(r'\n{2,}'))
+        .split(_doubleNewlineRe)
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
@@ -1803,7 +1835,7 @@ class StoryTextRenderer {
 
   /// 去掉段落前的时间戳标记词（【时间戳】/📅/⏳…），留下时间正文。
   static String stripTimestampPrefix(String para) {
-    return para.replaceFirst(RegExp(r'^\s*(【时间戳】|📅|⏰|⏳|🕐|🗓)\s*'), '').trim();
+    return para.replaceFirst(_timestampStripRe, '').trim();
   }
 
   /// 按段落类型渲染：叙述带首行缩进、对话顶格（内部高亮已染说话人/台词）、
@@ -1836,7 +1868,7 @@ class StoryTextRenderer {
   /// 数值按正负着色——正绿（#7EE787）负红（#FF7B72），一眼看清谁升温谁降温。
   static List<TextSpan> parseAffectionLine(String line) {
     final out = <TextSpan>[];
-    final re = RegExp(r'([+-]\d+)');
+    final re = _signedIntRe;
     for (final s in parse(line)) {
       final text = s.text;
       if (text == null) {
@@ -1927,9 +1959,9 @@ class StoryTextRenderer {
         : '';
     if (afterColon.isEmpty) return null;
     // 好感度裸行（莉莉：+5）不是对话
-    if (RegExp(r'^[+-]\d').hasMatch(afterColon)) return null;
+    if (_signedIntStartRe.hasMatch(afterColon)) return null;
 
-    final quoteFollow = RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon);
+    final quoteFollow = _quoteFollowRe.hasMatch(afterColon);
     final speakerStartIdx = _speakerStart(line, 0, k);
     final safeStart = (speakerStartIdx < 0 || speakerStartIdx > k)
         ? 0
@@ -1946,7 +1978,7 @@ class StoryTextRenderer {
     if (fullSpeaker.isEmpty) return null;
 
     // 拆出尾部括号神态：德拉科（冷笑） → 德拉科 + （冷笑）
-    final moodMatch = RegExp(r'([（(][^（）()]*[）)])\s*$').firstMatch(fullSpeaker);
+    final moodMatch = _moodParenRe.firstMatch(fullSpeaker);
     final mood = moodMatch?.group(1) ?? '';
     final speaker =
         (moodMatch != null
