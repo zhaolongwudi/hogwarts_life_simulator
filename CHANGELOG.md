@@ -10,6 +10,11 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.0.7 — 2026-09-07
+
+**📋 变更说明**
+批次11a：F1 拆分 _ensureCommandsRegistered 神方法为 7 个分组注册方法（Critical）
+
 ### v4.0.6 — 2026-09-07
 
 **📋 变更说明**
