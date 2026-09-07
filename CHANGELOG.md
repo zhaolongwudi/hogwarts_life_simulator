@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.9.6 — 2026-09-07
+
+**📋 变更说明**
+fix(log): 批次2.1b — 字符类里的 '-' 只放头尾，修 Range out of order
+
+上一轮修了 (?i)（Invalid group）之后，CI run 34133067076 又报
+FormatException: Range out of order in character class，指向第三条规则。
+
+第三条独有的写法是 [_-]：若 Dart 3 的字符类解析把 '-' 一律当 range 运算符，
+'_-]' 就成了 _(0x5F) 到 ](0x5D) 的倒序 range。规则 1、2 没这个写法所以先通过了。
+
 ### v3.9.5 — 2026-09-07
 
 **📋 变更说明**
