@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.9.9 — 2026-09-07
+
+**📋 变更说明**
+批次4：外来数据的健壮性（F3/F5/SI2/SI3）
+
+- 新增 lib/utils/json_read.dart 宽容读取工具（readString/readInt/readDouble/
+  readBool/readStringList 及 OrNull 变体），杜绝旧存档字段类型漂移整份读不出
+- Player.fromJson 标量字段与 String 列表改走宽容读取（F3）
+- NarrativeEvent.fromJson 改宽容读取，t/r/a 不再因类型异常抛错（F5）
+- SaveService.isStructurallyValid() 结构校验，loadGame/备份回滚/importSave
+
 ### v3.9.8 — 2026-09-07
 
 **📋 变更说明**
