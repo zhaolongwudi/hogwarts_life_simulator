@@ -1040,7 +1040,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | 🟢 批次6（统一错误提示原语，存量屏幕渐进接入） |
 | F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | 🟢 批次8/10（批量通知收口 + `processChoice` 分支双通知合并，余下均为单次/互斥/await 间隔） |
 | F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | 🟢 批次7（6 处对话框局部控制器统一 whenComplete 释放） |
-| F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | — |
+| F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | 🟢 批次13（高频击键热点 3 处 ValueNotifier 局部刷新；低频点击与滞回滚动维持现状） |
 | F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
 | F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
 | F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | — |
@@ -1567,6 +1567,33 @@ key 写入失败被 `writeKey` 静默吞掉 —— 玩家以为存好了，重�
 
 **验证**：`flutter analyze` 0 error；全量 1,381 项测试通过。
 
+### 批次 13 — F12 setState 热点局部刷新（Widget 性能）
+
+**问题**：F12 报告「23 个文件使用 setState 未优化」面太大，盲改反而引入风险。
+逐个核对后，真正的高频热点是「每次击键触发大子树重建」的 3 处输入框，
+以及滚动监听（后者已有滞回保护，见下）。
+
+**改法（ValueNotifier + ValueListenableBuilder 局部刷新）**：
+
+- `job_screen.dart`：搜索关键词 `String _keyword` → `ValueNotifier<String>`；
+  清除按钮与岗位列表包进 `ValueListenableBuilder`，每次击键只重建搜索栏
+  清除按钮和列表，状态卡 / AI 建议不再整页重建。
+- `command_center_panel.dart`：`_query` 同样改 ValueNotifier；搜索框 +
+  快捷区 + 分组列表局部刷新，面板标题 / 拖拽条不重建。外层包 `Expanded`
+  保证内层 Column 有界高度（初版漏包导致 RenderFlex unbounded 报错，已修）。
+- `settings_provider_card.dart`：模型输入监听 `_onModelTextChanged` 的
+  `setState` 整卡重建改为 `ValueListenableBuilder` 监听 `modelController`，
+  只刷新头部「当前模型」文本与预设高亮；选中预设的 `setState(() {})` 一并删除。
+
+**刻意没改**：`game_narrative_tab.dart` 滚动监听 —— 已有滞回阈值
+（下去 60px 才收、回到 20px 才放），只在越过阈值时触发一次重建而非每帧；
+且 banner 高度参与 Stack 整体布局（`headerReserve` 定位），用局部刷新包住
+会破坏滚动视图结构，收益风险比不划算，维持现状。其余 20 个文件的 setState
+多为低频点击（intro 选人、地图选点等），单次重建成本可忽略，不属于 F12 范畴。
+
+**验证**：`flutter analyze` 0 error；全量 1,381 项测试通过（含
+command_center_panel 7 项搜索/分组/执行测试）。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1589,7 +1616,8 @@ key 写入失败被 `writeKey` 静默吞掉 —— 玩家以为存好了，重�
 | 11b | F13 组件抽取（`narrative_widgets.dart`，1927 → 1667 行） | `a27fdcd` |
 | 11c | F2 mixin 未使用导入清理 ×6 + F40 mixin 组织评估（无需再拆） | `026fb31` |
 | 12a | F14 拆分（`world_map/` 目录，1,488 → 1,202 行） | `31365f7` |
-| 12b | S1 API Key 降级策略（写入失败检测 + 设置页降级提示） | 本次提交 |
+| 12b | S1 API Key 降级策略（写入失败检测 + 设置页降级提示） | `2bfc249` |
+| 13 | F12 setState 热点局部刷新（job/指令中心/设置卡 ValueNotifier 化） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

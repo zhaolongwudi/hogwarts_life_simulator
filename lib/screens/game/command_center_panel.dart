@@ -78,7 +78,9 @@ class _CommandCenterPanel extends StatefulWidget {
 }
 
 class _CommandCenterPanelState extends State<_CommandCenterPanel> {
-  String _query = '';
+  /// F12：搜索关键词用 ValueNotifier —— 每次击键只重建快捷区 / 分组列表，
+  /// 面板标题与搜索框本身不重建。
+  final ValueNotifier<String> _query = ValueNotifier('');
   final TextEditingController _searchController = TextEditingController();
   // 作弊组默认折叠：避免满屏指令里混入灰色地带入口
   final Set<String> _collapsedGroups = {'作弊'};
@@ -86,27 +88,13 @@ class _CommandCenterPanelState extends State<_CommandCenterPanel> {
   @override
   void dispose() {
     _searchController.dispose();
+    _query.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final all = CommandRegistry.instance.all;
-    final query = _query.trim().toLowerCase();
-
-    // 按 group 分组 + 过滤
-    final groups = <String, List<CommandDef>>{};
-    for (final c in all) {
-      if (query.isNotEmpty && !_matches(c, query)) continue;
-      groups.putIfAbsent(c.group, () => []).add(c);
-    }
-    // 分组排序：作弊永远最后
-    final orderedGroups = groups.entries.toList()
-      ..sort((a, b) {
-        if (a.key == '作弊') return 1;
-        if (b.key == '作弊') return -1;
-        return a.key.compareTo(b.key);
-      });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,58 +126,89 @@ class _CommandCenterPanelState extends State<_CommandCenterPanel> {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (v) => setState(() => _query = v),
-            style: const TextStyle(color: MiuiColors.onSurface, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: '搜索指令（名称 / 别名 / 功能）',
-              hintStyle: const TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 13),
-              prefixIcon: const Icon(Icons.search, size: 20, color: MiuiColors.onSurfaceVariantSummary),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _query = '');
-                      },
-                    ),
-              filled: true,
-              fillColor: MiuiColors.surfaceContainer,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: MiuiColors.outline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: MiuiColors.outline),
-              ),
-            ),
-          ),
-        ),
-        // 快捷区（无搜索时显示）
-        if (_query.isEmpty) _buildQuickRow(context),
-        const Divider(height: 1, color: MiuiColors.outline),
-        // 分组列表
+        // F12：搜索框 + 快捷区 + 分组列表跟随 ValueNotifier 局部刷新，
+        // 面板标题 / 拖拽条不随每次击键重建。
+        // 外层 Expanded 保证内层 Column 收到有界高度（列表区域继续占满剩余空间）。
         Expanded(
-          child: orderedGroups.isEmpty
-              ? const Center(
-                  child: Text('没有匹配的指令',
-                      style: TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 13)),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  itemCount: orderedGroups.length,
-                  itemBuilder: (context, i) {
-                    final entry = orderedGroups[i];
-                    return _buildGroupSection(context, entry.key, entry.value);
-                  },
+          child: ValueListenableBuilder<String>(
+            valueListenable: _query,
+            builder: (context, raw, _) {
+              final query = raw.trim().toLowerCase();
+
+            // 按 group 分组 + 过滤
+            final groups = <String, List<CommandDef>>{};
+            for (final c in all) {
+              if (query.isNotEmpty && !_matches(c, query)) continue;
+              groups.putIfAbsent(c.group, () => []).add(c);
+            }
+            // 分组排序：作弊永远最后
+            final orderedGroups = groups.entries.toList()
+              ..sort((a, b) {
+                if (a.key == '作弊') return 1;
+                if (b.key == '作弊') return -1;
+                return a.key.compareTo(b.key);
+              });
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (v) => _query.value = v,
+                    style: const TextStyle(color: MiuiColors.onSurface, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: '搜索指令（名称 / 别名 / 功能）',
+                      hintStyle: const TextStyle(color: MiuiColors.onSurfaceVariantActions, fontSize: 13),
+                      prefixIcon: const Icon(Icons.search, size: 20, color: MiuiColors.onSurfaceVariantSummary),
+                      suffixIcon: raw.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
+                              onPressed: () {
+                                _searchController.clear();
+                                _query.value = '';
+                              },
+                            ),
+                      filled: true,
+                      fillColor: MiuiColors.surfaceContainer,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: MiuiColors.outline),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: MiuiColors.outline),
+                      ),
+                    ),
+                  ),
                 ),
+                // 快捷区（无搜索时显示）
+                if (raw.isEmpty) _buildQuickRow(context),
+                const Divider(height: 1, color: MiuiColors.outline),
+                // 分组列表
+                Expanded(
+                  child: orderedGroups.isEmpty
+                      ? const Center(
+                          child: Text('没有匹配的指令',
+                              style: TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 13)),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          itemCount: orderedGroups.length,
+                          itemBuilder: (context, i) {
+                            final entry = orderedGroups[i];
+                            return _buildGroupSection(context, entry.key, entry.value);
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+          ),
         ),
       ],
     );

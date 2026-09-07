@@ -19,7 +19,10 @@ class JobScreen extends StatefulWidget {
 class _JobScreenState extends State<JobScreen> {
   List<JobDef> _jobs = [];
   final TextEditingController _searchController = TextEditingController();
-  String _keyword = '';
+
+  /// F12：搜索关键词用 ValueNotifier 而非 setState —— 每次击键只重建
+  /// 搜索栏清除按钮与岗位列表，状态卡 / AI 建议等无关区域不再整页重建。
+  final ValueNotifier<String> _keyword = ValueNotifier('');
 
   @override
   void initState() {
@@ -30,6 +33,7 @@ class _JobScreenState extends State<JobScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _keyword.dispose();
     super.dispose();
   }
 
@@ -126,8 +130,8 @@ class _JobScreenState extends State<JobScreen> {
 
   /// 搜索命中标题 / 地点 / 描述 / 要求。
   List<JobDef> get _visibleJobs {
-    if (_keyword.isEmpty) return _jobs;
-    final kw = _keyword.toLowerCase();
+    if (_keyword.value.isEmpty) return _jobs;
+    final kw = _keyword.value.toLowerCase();
     return _jobs
         .where((j) =>
             j.title.toLowerCase().contains(kw) ||
@@ -188,7 +192,7 @@ class _JobScreenState extends State<JobScreen> {
               // 以前这里是个 Text，看着像搜索框其实点不动、也绑了没有任何过滤逻辑。
               child: TextField(
                 controller: _searchController,
-                onChanged: (v) => setState(() => _keyword = v.trim()),
+                onChanged: (v) => _keyword.value = v.trim(),
                 decoration: const InputDecoration(
                   hintText: '搜岗位 / 地点 / 要求',
                   border: InputBorder.none,
@@ -201,14 +205,19 @@ class _JobScreenState extends State<JobScreen> {
                 ),
               ),
             ),
-            if (_keyword.isNotEmpty)
-              GestureDetector(
-                onTap: () {
-                  _searchController.clear();
-                  setState(() => _keyword = '');
-                },
-                child: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
-              ),
+            // F12：清除按钮跟随 ValueNotifier 局部刷新，不触发整页 setState
+            ValueListenableBuilder<String>(
+              valueListenable: _keyword,
+              builder: (context, kw, _) => kw.isEmpty
+                  ? const SizedBox.shrink()
+                  : GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        _keyword.value = '';
+                      },
+                      child: const Icon(Icons.close, size: 18, color: MiuiColors.onSurfaceVariantSummary),
+                    ),
+            ),
           ],
         ),
       ),
@@ -325,32 +334,38 @@ class _JobScreenState extends State<JobScreen> {
   }
 
   Widget _buildJobList() {
-    final visible = _visibleJobs;
-    if (visible.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(_keyword.isEmpty ? Icons.work_off : Icons.search_off,
-                size: 64, color: Theme.of(context).textTheme.bodyMedium!.color),
-            const SizedBox(height: 12),
-            Text(_keyword.isEmpty ? '暂无岗位' : '没有匹配「$_keyword」的岗位',
-                style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium!.color)),
-            const SizedBox(height: 8),
-            Text(_keyword.isEmpty
-                ? '让 AI 根据你现在的位置、属性和剧情生成工作机会'
-                : '换个关键词，或点右上角的 ✕ 清空',
-                style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
-                textAlign: TextAlign.center),
-          ],
-        ),
-      );
-    }
+    // F12：列表依赖关键词过滤，跟随 ValueNotifier 局部刷新
+    return ValueListenableBuilder<String>(
+      valueListenable: _keyword,
+      builder: (context, kw, _) {
+        final visible = _visibleJobs;
+        if (visible.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(kw.isEmpty ? Icons.work_off : Icons.search_off,
+                    size: 64, color: Theme.of(context).textTheme.bodyMedium!.color),
+                const SizedBox(height: 12),
+                Text(kw.isEmpty ? '暂无岗位' : '没有匹配「$kw」的岗位',
+                    style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium!.color)),
+                const SizedBox(height: 8),
+                Text(kw.isEmpty
+                    ? '让 AI 根据你现在的位置、属性和剧情生成工作机会'
+                    : '换个关键词，或点右上角的 ✕ 清空',
+                    style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
+                    textAlign: TextAlign.center),
+              ],
+            ),
+          );
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: visible.length,
-      itemBuilder: (context, index) => _buildJobCard(visible[index]),
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: visible.length,
+          itemBuilder: (context, index) => _buildJobCard(visible[index]),
+        );
+      },
     );
   }
 

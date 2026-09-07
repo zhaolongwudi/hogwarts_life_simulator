@@ -52,8 +52,6 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
     super.initState();
     // 未配置的提供商默认展开，引导填写；已配置的收起保持页面整洁
     _expanded = !widget.appProvider.hasKey(widget.provider);
-    // 模型输入变化时同步刷新收起态头部显示的"当前模型"
-    widget.modelController.addListener(_onModelTextChanged);
     // 同步已有额外 key
     _syncAdditionalKeyControllers();
   }
@@ -69,16 +67,14 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
 
   @override
   void dispose() {
-    widget.modelController.removeListener(_onModelTextChanged);
     for (final c in _additionalKeyControllers) {
       c.dispose();
     }
     super.dispose();
   }
 
-  void _onModelTextChanged() {
-    if (mounted) setState(() {});
-  }
+  // F12：模型输入变化不再 setState 整卡重建 —— 头部「当前模型」与
+  // 预设高亮改用 ValueListenableBuilder 监听 modelController 局部刷新。
 
   /// 将 AppProvider 中的额外 key 同步到本地控制器
   void _syncAdditionalKeyControllers() {
@@ -151,30 +147,36 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
   Widget _buildModelPresets(AiProvider p, AppProvider appProvider) {
     final freeModels = appProvider.freeModelsFor(p);
     final paidModels = appProvider.popularPaidModelsFor(p);
-    final current = widget.modelController.text.trim();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (freeModels.isNotEmpty)
-          _buildModelChipRow(
-            p,
-            '🎁 免费额度',
-            freeModels,
-            current,
-            MiuiColors.success,
-          ),
-        if (freeModels.isNotEmpty && paidModels.isNotEmpty)
-          const SizedBox(height: 6),
-        if (paidModels.isNotEmpty)
-          _buildModelChipRow(
-            p,
-            '⭐ 推荐付费',
-            paidModels,
-            current,
-            MiuiColors.primary,
-          ),
-      ],
+    // F12：预设高亮跟随 modelController 局部刷新，不触发整卡 setState
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: widget.modelController,
+      builder: (context, value, _) {
+        final current = value.text.trim();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (freeModels.isNotEmpty)
+              _buildModelChipRow(
+                p,
+                '🎁 免费额度',
+                freeModels,
+                current,
+                MiuiColors.success,
+              ),
+            if (freeModels.isNotEmpty && paidModels.isNotEmpty)
+              const SizedBox(height: 6),
+            if (paidModels.isNotEmpty)
+              _buildModelChipRow(
+                p,
+                '⭐ 推荐付费',
+                paidModels,
+                current,
+                MiuiColors.primary,
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -214,7 +216,8 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                   TextPosition(offset: widget.modelController.text.length),
                 );
                 widget.onModelPresetSelected?.call(model);
-                setState(() {});
+                // F12：modelController 变化已由 ValueListenableBuilder 接管，
+                // 无需再 setState 整卡重建。
               },
               borderRadius: BorderRadius.circular(8),
               child: Container(
@@ -252,9 +255,6 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
   Widget _buildHeader(bool hasKey, {int keyCount = 0}) {
     final p = widget.provider;
     final accent = _providerColor(p);
-    final customModel = widget.modelController.text.trim();
-    final displayModel = customModel.isEmpty ? defaultModel(p) : customModel;
-    final isDefaultModel = displayModel == defaultModel(p);
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -303,36 +303,46 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  // 当前使用的模型
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.memory_outlined,
-                        size: 12,
-                        color: MiuiColors.onSurfaceVariantActions,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          displayModel,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: isDefaultModel
-                                ? MiuiColors.onSurfaceVariantActions
-                                : accent,
-                          ),
-                        ),
-                      ),
-                      if (isDefaultModel)
-                        const Text(
-                          '默认',
-                          style: TextStyle(
-                            fontSize: 10,
+                  // F12：当前模型文本跟随 modelController 局部刷新，
+                  // 不在每次击键时重建整个头部与卡片。
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: widget.modelController,
+                    builder: (context, value, _) {
+                      final customModel = value.text.trim();
+                      final displayModel =
+                          customModel.isEmpty ? defaultModel(p) : customModel;
+                      final isDefaultModel = displayModel == defaultModel(p);
+                      return Row(
+                        children: [
+                          const Icon(
+                            Icons.memory_outlined,
+                            size: 12,
                             color: MiuiColors.onSurfaceVariantActions,
                           ),
-                        ),
-                    ],
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              displayModel,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDefaultModel
+                                    ? MiuiColors.onSurfaceVariantActions
+                                    : accent,
+                              ),
+                            ),
+                          ),
+                          if (isDefaultModel)
+                            const Text(
+                              '默认',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: MiuiColors.onSurfaceVariantActions,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
