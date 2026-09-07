@@ -1,0 +1,36 @@
+# F46：依赖版本定期更新检查
+#
+# 此前完全依赖"想起来才跑一次 dart pub outdated"，没有任何自动化，
+# 于是依赖悄悄落后也不知道。这里让 Dependabot 每周扫一次：
+#   - pub（Dart/Flutter 包）：minor/patch 直接提 PR，major 单独提并打标签，
+#     因为 major 往往伴随 breaking change，需要人读 changelog 再合；
+#   - github-actions：CI 里 pin 的 actions/checkout@v4 之类，过期会有安全告警。
+#
+# major 的 PR 会带 "dependencies-major" 标签，方便在 PR 列表里一眼筛出来。
+version: 2
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    # 与 pubspec.yaml 的显式上界（F45）配套：major 升级单独一个 PR
+    labels:
+      - "dependencies"
+      - "dependencies-major"
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"

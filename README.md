@@ -5,10 +5,10 @@
 在魔法世界里活一次：去霍格沃茨上学，结识朋友与恋人，从事你喜欢的职业，选择自己的立场。**没有强制主线，没有主角光环，世界自己在运转，你只需要做你自己。**
 
 <p align="center">
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.16%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
-  <img alt="Dart" src="https://img.shields.io/badge/Dart-3.2%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v3.5.5-E3B341?style=flat-square" />
-  <img alt="测试" src="https://img.shields.io/badge/tests-1254%20passed-10B981?style=flat-square" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
+  <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v3.9.3-E3B341?style=flat-square" />
+  <img alt="测试" src="https://img.shields.io/badge/tests-1314%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
 </p>
 
@@ -179,26 +179,36 @@ flutter run
 ## 👨‍💻 开发相关
 
 > 📘 想快速理解项目结构 / 上手维护？请看 **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)**（目录地图 + 架构约定 + 维修避坑清单）。
+> 🏛 想看架构全景图与架构决策记录（ADR）：**[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)**
+> 🔌 想接/改 AI 服务：[**docs/AI_SERVICE_API.md**](./docs/AI_SERVICE_API.md)
 
 ### 技术栈
-- **框架**：Flutter 3.16+ / Dart 3.2+
+- **框架**：Flutter 3.44+ / Dart 3.12+
 - **状态管理**：Provider
 - **本地存储**：JSON 文件 + flutter_secure_storage 加密
-- **AI 接入**：DeepSeek / 智谱 / Agnes / SenseNova，多 Key 负载均衡 + 熔断 + 限流
+- **AI 接入**：DeepSeek / Agnes / SenseNova，多 Key 负载均衡 + 熔断 + 限流
 
 ### 构建 APK
 ```bash
 flutter build apk --release
 ```
 
+Debug 签名即可出包。要发布**正式签名**包时，复制 `android/key.properties.example`
+为 `android/key.properties` 并填入自己的 keystore 四项信息（该文件已 gitignore）。
+没有这个文件会自动回退 debug 签名，所以 CI 不需要私钥也能构建。
+
 ### CI 自动构建
 推送到 `main` 分支后，GitHub Actions 自动执行：
 1. `flutter analyze` 代码检查（0 error 门禁）
-2. 全量测试套件回归（1254+ 项）
+2. 全量测试套件回归（1314+ 项）
 3. 构建 Release APK，上传至 nightly.link 和 GitHub Releases
 
+依赖更新由 Dependabot 每周一扫描（major 单独提 PR），见 `.github/dependabot.yml`。
+
 ### 存档兼容
-存档 JSON 含 `_saveVersion` 版本号字段，读取时自动跨版本迁移，保证旧档不丢。
+存档 JSON 含 `save_version` 版本号字段（常量 `kSaveVersion` 定义在
+`lib/services/save_service.dart`，全局唯一）。模型 `fromJson` 一律给老档缺省值，
+保证旧档不丢。
 
 ---
 

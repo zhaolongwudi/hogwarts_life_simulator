@@ -113,6 +113,11 @@
 *.pem
 *.key
 
+# Android 发布签名（F27）：模板 key.properties.example 入库，真身不入库
+**/android/key.properties
+**/android/**/*.jks
+**/android/**/*.keystore
+
 # Temporary files
 *.tmp
 *.temp

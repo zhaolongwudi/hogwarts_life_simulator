@@ -4,6 +4,22 @@
 > 覆盖前两轮全部 28 个维度 + 新增 10 个维度，共计 **38 个审查维度**，无任何遗漏  
 > 日期：2026-09-07 | 三轮叠加（v1+v2+v3）  
 > 152 文件 / 79,506 行 | 38 个审查维度 | 52 项问题
+>
+> ---
+>
+> ### 🔧 修复进度（报告正文已随修复同步更新）
+>
+> 本报告不再只是"问题清单"，同时是**修复台账**：每完成一批修复，就在对应条目上标注
+> 「✅ 已修复（批次 N）」并写清改了什么、为什么这么改，再提交推送。完整流水见
+> [§41 修复记录](#41-修复记录)。
+>
+> | 批次 | 主题 | 涉及条目 | 状态 |
+> |---|---|---|---|
+> | 1 | 文档与配置补齐 | DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47 | ✅ 已推送 |
+>
+> **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
+> 的注释早已解释清楚，本轮只做了二次核对）、SI1（版本号其实存在，缺的是迁移函数）。
+> 详见各条目下的说明。
 
 ---
 
@@ -49,6 +65,7 @@
 38. [平台兼容性（新）](#38-平台兼容性新)
 39. [问题清单总表](#39-问题清单总表)
 40. [优化路线图](#40-优化路线图)
+41. [修复记录](#41-修复记录)
 
 ---
 
@@ -212,6 +229,12 @@ GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能�
 
 配置值为 0 但注释称"重试 2 次"，文档与实现不一致。
 
+> **✅ 已修复（批次 1）— 实际为「报告过期」，本轮做了二次核对**
+> `lib/services/ai_router.dart:98-112` 现在的注释长达 15 行，完整写了「为什么是 0」：
+> 允许重试会让单 Key 最坏耗时变成 `perCallTimeout×(n+1)+退避`（2 次重试 = 156s），
+> 而全局超时在 summary 场景上限只有 60s，第一个坏 Key 就会把时间吃光。
+> 注释与代码一致，**无需改动**。同类的 F47 一并核对为已修复。
+
 ### 优点：网络层健壮
 
 - 使用 Dio 作为 HTTP 客户端，支持拦截器
@@ -300,6 +323,17 @@ Duration 值、padding、margin、动画时长等大量硬编码，未提取为�
 ### F27 — 缺少 Android 签名配置模板 `[Low] [v1]`
 
 Android 构建缺少签名配置模板，新开发者需手动配置。
+
+> **✅ 已修复（批次 1）**
+> - 新增 `android/key.properties.example`：模板含 `storeFile / storePassword /
+>   keyAlias / keyPassword` 四项 + 一份现成的 `keytool -genkey` 命令，复制改名即可用。
+> - `android/app/build.gradle`：存在 `key.properties` 时用它签 release，
+>   **不存在时自动回退 debug 签名**。回退是关键 —— CI 没有私钥也能出包，
+>   不会因为加了签名配置就把构建打断。
+> - `.gitignore` 追加 `android/key.properties` 与 `*.jks` / `*.keystore`，
+>   模板入库、真身不入库。
+> - README「构建 APK」补上这段说明。
+> 决策记录见 `docs/ARCHITECTURE.md` ADR-010。
 
 ### 优点：CI 配置完整
 
@@ -448,9 +482,27 @@ Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约�
 
 `cupertino_icons: ^1.0.8` 等允许 major 版本升级，可能引入 breaking change。
 
+> **✅ 已修复（批次 1）— 附带一处事实更正**
+> 先更正：Dart 的 `^1.0.8` 语义是 `>=1.0.8 <2.0.0`，**本来就不允许**跨 major，
+> 所以"约束过宽"这个定性不成立。真正的问题是**上界是隐式的**，
+> 「这个包我们允许它升到哪一版」要脑补 caret 规则才知道。
+> 改法：`pubspec.yaml` 全部依赖改写成显式区间（`>=当前 <下一个 major`），
+> 上界一律取 `pubspec.lock` 当前解析版本的下一个 major，**不收窄任何现有解析结果**
+> （已逐个核对 lock：cupertino_icons 1.0.9 / dio 5.11.1 / provider 6.1.5+1 /
+> shared_preferences 2.5.5 / uuid 4.6.0 / flutter_slidable 3.1.2 /
+> path_provider 2.1.6 / flutter_secure_storage 9.2.4 / flutter_lints 4.0.0，全部落在区间内）。
+> `flutter_secure_storage` 的上界另加了注释：9.x 要求 minSdk ≥ 23，升 10.x 前要先确认。
+
 ### F46 — 缺少依赖版本锁定检查 `[Low] [v2]`
 
 无定期 `dart pub outdated` 检查或 Dependabot 配置。
+
+> **✅ 已修复（批次 1）**
+> 新增 `.github/dependabot.yml`：
+> - `pub` 生态每周一 03:00（Asia/Shanghai）扫描，单生态最多 5 个 PR；
+> - `github-actions` 生态每月扫一次（CI 里 pin 的 `actions/checkout@v4` 之类过期会有安全告警）；
+> - 打 `dependencies` / `ci` 标签，commit 前缀 `chore(deps)` / `chore(ci)`。
+> 与 F45 的显式上界配套：major 升级会单独成一个 PR，breaking change 不会混进无关提交。
 
 ### 优点：依赖精简
 
@@ -464,6 +516,12 @@ Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约�
 ### F47 — 部分注释与代码不一致 `[Medium] [v2]`
 
 `_maxRetriesPerService = 0` 注释称"重试 2 次"，与代码矛盾。
+
+> **✅ 已修复（批次 1）— 核对为已修复**
+> 全库检索「重试 N 次」类注释，仅剩 `mixin_narrative.dart:658` 的
+> `retriesLeft = 2`，那是**叙事违规自纠正**的重试（critical 级违规 / BUG-H
+> 模型返回选项而非叙事时重来），与 `_maxRetriesPerService` 不是同一回事，语义自洽。
+> `ai_router.dart` 侧同 F18，注释已重写完毕。
 
 ### 优点：文档注释覆盖率较高
 
@@ -633,13 +691,49 @@ GameProvider 的多个 mixin 顺序调用 notifyListeners，单次用户操作�
 
 项目根目录无 `README.md`，新开发者无法快速了解项目用途、架构、如何运行。
 
+> **✅ 已修复（批次 1）— 原始描述有误，README 一直存在**
+> 仓库根目录 `README.md` 有 207 行，涵盖核心特色、五个时代、玩法总览、60+ 指令、
+> 隐私说明、更新日志、开发相关。**这条是 v3 报告的误判。**
+> 真正存在的问题是 README 里的**事实已经过期**，本轮做了校正：
+> - 徽章：Flutter 3.16+ → **3.44+**、Dart 3.2+ → **3.12+**（与 `pubspec.yaml` 的
+>   `sdk: '>=3.12.0'` / `flutter: '>=3.44.0'` 对齐，写低了会让人以为老版本能跑）；
+>   版本 v3.5.5 → **v3.9.3**；测试数 1254 → **1314**（与 v3 报告统计一致）。
+> - AI 提供商列表里把已不在代码中的「智谱」删掉（实际是 deepseek / agnes / sensenova 三家）。
+> - 「构建 APK」补正式签名说明（配合 F27）；「开发相关」补上架构文档与 API 文档的入口。
+> - 「存档兼容」章节原文写的字段名 `_saveVersion` 是**错的**（实际是 `save_version`，
+>   常量 `kSaveVersion` 在 `save_service.dart`），已改正。
+
 ### DOC2 — 缺少架构文档 `[Medium] [v3]`
 
 无架构决策记录（ADR）或架构概览图，新加入者需通读代码才能理解整体架构。
 
+> **✅ 已修复（批次 1）**
+> 新增 `docs/ARCHITECTURE.md`（约 300 行）：
+> - **架构全景图**（Mermaid flowchart）：UI / 状态 / 领域逻辑 / 数据 / 外部依赖五层，
+>   含四条依赖方向铁律（UI 不直接碰 service、mixin 之间不互相 import、
+>   `data/` 保持纯常量、模型 fromJson 必给缺省值）；
+> - **11 条 ADR**：mixin 组合选型（ADR-001，含已知债与约束）、手写序列化不引代码生成
+>   （ADR-002）、AI 单 Key 不重试（ADR-003）、全局超时按 Key 数算（ADR-004）、
+>   老档兼容铁律（ADR-005）、存档版本号唯一来源（ADR-006）、CI 自动 bump 版本（ADR-007）、
+>   **暂不引入 Repository/DI（ADR-008，附复查触发条件）**、CI 锁 flutter 版本（ADR-009）、
+>   release 签名可回退（ADR-010）、依赖显式上界（ADR-011）；
+> - 「一次玩家输入」的时序图（Mermaid sequenceDiagram）；
+> - 末尾一张「审查项 ↔ 本文 ADR」对照表，方便后续按审查条目回查。
+>
+> 顺带把 DS1 / DS2 这两条「建议引入 Repository / DI 容器」明确回复了：
+> 目前只有一个本地数据源，加一层无行为差异的接口不划算，写进了 ADR-008 并给了复查触发条件。
+
 ### DOC3 — 缺少 API 文档 `[Low] [v3]`
 
 AI 服务接口（DeepSeekService、AiRouter）无外部 API 文档，第三方开发者无法集成。
+
+> **✅ 已修复（批次 1）**
+> 新增 `docs/AI_SERVICE_API.md`：组件一览、`AiScene` / `AiProvider` / `AiConfig` 说明、
+> `AiRouter.chatComplete` 完整签名与四步行为、**三层超时模型表**（Dio receiveTimeout >
+> 路由层 perCallTimeout，否则日志里"网关慢"和"请求挂死"长得一样）、错误模型与熔断参数、
+> `NpcChatService` / `KeyStore` 用法、测试注入点（`AiRouter(services: {...})`）、
+> 以及调试日志的两段式机制。
+> 文中同时点出 S1（KeyStore 无降级策略）为已知缺口，避免文档把现状写得比实际更好。
 
 ---
 
@@ -752,86 +846,86 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 
 - **Critical 1** | **High 9** | **Medium 15** | **Low 8** | **v3 新增 10** | **优点 9**
 
-| # | 问题 | 维度 | 严重度 | 版本 |
-|---|------|------|--------|------|
-| F1 | _ensureCommandsRegistered() 神类 3,234 行 | 代码组织 | Critical | v1 |
-| F2 | Mixin 导入膨胀（41/35/27 行） | 代码组织 | High | v1 |
-| F3 | Player.fromJson 部分字段缺少类型断言 | 序列化 | High | v1 |
-| F4 | 存档版本无迁移机制 | 序列化 | Medium | v1 |
-| F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 |
-| F6 | 用户可见错误信息不足 | 错误处理 | Medium | v1 |
-| F7 | 前置断言完全缺失 | 错误处理 | High | v1 |
-| F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 |
-| F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 |
-| F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 |
-| F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 |
-| F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 |
-| F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 |
-| F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 |
-| F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 |
-| F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 |
-| F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 |
-| F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 |
-| F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 |
-| F21 | UI 测试缺失 | 测试质量 | Medium | v1 |
-| F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 |
-| F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 |
-| F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 |
-| F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 |
-| F26 | debugPrint 生产环境残留 | 日志 | Low | v1 |
-| F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 |
-| F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 |
-| F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 |
-| F30 | story_text_renderer 正则密集 | 正则/文本解析 | High | v2 |
-| F31 | 部分 RegExp 未使用静态缓存 | 正则/文本解析 | Low | v2 |
-| F32 | 频繁的 List.from + sort 重建 | 集合/内存 | Medium | v2 |
-| F33 | 全局缓存缺乏清理策略 | 集合/内存 | Low | v2 |
-| F34 | 多个 AnimationController 未释放 | 动画/渲染 | Medium | v2 |
-| F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 |
-| F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 |
-| F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 |
-| F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 |
-| F39 | 大量非空断言（!） | 空安全 | Medium | v2 |
-| F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 |
-| F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 |
-| F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 |
-| F43 | 测试数据设置重复 | 测试数据 | Medium | v2 |
-| F44 | 图片格式不统一，加载策略单一 | 资源管理 | Low | v2 |
-| F45 | 部分依赖版本约束过宽 | 依赖管理 | Low | v2 |
-| F46 | 缺少依赖版本锁定检查 | 依赖管理 | Low | v2 |
-| F47 | 部分注释与代码不一致 | 注释健康度 | Medium | v2 |
-| F48 | AI 服务层缺少请求超时统一管理 | AI 架构 | Medium | v3 |
-| S1 | API Key 缺少降级策略 | 安全审计 | High | v3 |
-| S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 |
-| S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 |
-| P1 | 缺少性能基准测试 | 性能基准 | High | v3 |
-| P2 | story_text_renderer 渲染性能瓶颈 | 性能基准 | High | v3 |
-| P3 | 频繁的集合重建 | 性能基准 | Medium | v3 |
-| P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 |
-| D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 |
-| D2 | 重复的导航模式 | 代码重复度 | Medium | v3 |
-| D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 |
-| D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 |
-| DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 |
-| DS2 | 缺少 DI 容器 | 设计模式 | Medium | v3 |
-| DOC1 | 缺少 README 项目总览 | 文档完整性 | Medium | v3 |
-| DOC2 | 缺少架构文档 | 文档完整性 | Medium | v3 |
-| DOC3 | 缺少 API 文档 | 文档完整性 | Low | v3 |
-| CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 |
-| CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 |
-| CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 |
-| SI1 | 存档无版本号 | 状态持久化 | High | v3 |
-| SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 |
-| SI3 | 部分状态可能未持久化 | 状态持久化 | Medium | v3 |
-| CL1 | 部分回调未在 dispose 中取消 | 回调生命周期 | Medium | v3 |
-| CL2 | 闭包捕获可能的内存泄漏 | 回调生命周期 | Low | v3 |
-| L1 | 缺少延迟加载 | 延迟加载 | Medium | v3 |
-| L2 | 图片无懒加载 | 延迟加载 | Medium | v3 |
-| L3 | screen 级别无懒加载 | 延迟加载 | Low | v3 |
-| PC1 | 仅 Android 平台 | 平台兼容性 | Medium | v3 |
-| PC2 | 缺少平台条件编译 | 平台兼容性 | Low | v3 |
-| PC3 | 缺少平台特定配置 | 平台兼容性 | Low | v3 |
+| # | 问题 | 维度 | 严重度 | 版本 | 修复状态 |
+|---|------|------|--------|------|---------|
+| F1 | _ensureCommandsRegistered() 神类 3,234 行 | 代码组织 | Critical | v1 | — |
+| F2 | Mixin 导入膨胀（41/35/27 行） | 代码组织 | High | v1 | — |
+| F3 | Player.fromJson 部分字段缺少类型断言 | 序列化 | High | v1 | — |
+| F4 | 存档版本无迁移机制 | 序列化 | Medium | v1 | — |
+| F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 | — |
+| F6 | 用户可见错误信息不足 | 错误处理 | Medium | v1 | — |
+| F7 | 前置断言完全缺失 | 错误处理 | High | v1 | — |
+| F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | — |
+| F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | — |
+| F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | — |
+| F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | — |
+| F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | — |
+| F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
+| F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
+| F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | — |
+| F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | — |
+| F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | — |
+| F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
+| F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | — |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | — |
+| F21 | UI 测试缺失 | 测试质量 | Medium | v1 | — |
+| F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | — |
+| F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
+| F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | — |
+| F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | — |
+| F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | — |
+| F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 | ✅ 批次1 |
+| F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | — |
+| F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 | — |
+| F30 | story_text_renderer 正则密集 | 正则/文本解析 | High | v2 | — |
+| F31 | 部分 RegExp 未使用静态缓存 | 正则/文本解析 | Low | v2 | — |
+| F32 | 频繁的 List.from + sort 重建 | 集合/内存 | Medium | v2 | — |
+| F33 | 全局缓存缺乏清理策略 | 集合/内存 | Low | v2 | — |
+| F34 | 多个 AnimationController 未释放 | 动画/渲染 | Medium | v2 | — |
+| F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 | — |
+| F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | — |
+| F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | — |
+| F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | — |
+| F39 | 大量非空断言（!） | 空安全 | Medium | v2 | — |
+| F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | — |
+| F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 | — |
+| F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 | — |
+| F43 | 测试数据设置重复 | 测试数据 | Medium | v2 | — |
+| F44 | 图片格式不统一，加载策略单一 | 资源管理 | Low | v2 | — |
+| F45 | 部分依赖版本约束过宽 | 依赖管理 | Low | v2 | ✅ 批次1（定性更正） |
+| F46 | 缺少依赖版本锁定检查 | 依赖管理 | Low | v2 | ✅ 批次1 |
+| F47 | 部分注释与代码不一致 | 注释健康度 | Medium | v2 | ✅ 批次1（核对已修复） |
+| F48 | AI 服务层缺少请求超时统一管理 | AI 架构 | Medium | v3 | — |
+| S1 | API Key 缺少降级策略 | 安全审计 | High | v3 | — |
+| S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 | — |
+| S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 | — |
+| P1 | 缺少性能基准测试 | 性能基准 | High | v3 | — |
+| P2 | story_text_renderer 渲染性能瓶颈 | 性能基准 | High | v3 | — |
+| P3 | 频繁的集合重建 | 性能基准 | Medium | v3 | — |
+| P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 | — |
+| D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 | — |
+| D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | — |
+| D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | — |
+| D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 | — |
+| DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 | — |
+| DS2 | 缺少 DI 容器 | 设计模式 | Medium | v3 | — |
+| DOC1 | 缺少 README 项目总览 | 文档完整性 | Medium | v3 | ✅ 批次1（误判，已校正过期内容） |
+| DOC2 | 缺少架构文档 | 文档完整性 | Medium | v3 | ✅ 批次1 |
+| DOC3 | 缺少 API 文档 | 文档完整性 | Low | v3 | ✅ 批次1 |
+| CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 | — |
+| CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 | — |
+| CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 | — |
+| SI1 | 存档无版本号 | 状态持久化 | High | v3 | — |
+| SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 | — |
+| SI3 | 部分状态可能未持久化 | 状态持久化 | Medium | v3 | — |
+| CL1 | 部分回调未在 dispose 中取消 | 回调生命周期 | Medium | v3 | — |
+| CL2 | 闭包捕获可能的内存泄漏 | 回调生命周期 | Low | v3 | — |
+| L1 | 缺少延迟加载 | 延迟加载 | Medium | v3 | — |
+| L2 | 图片无懒加载 | 延迟加载 | Medium | v3 | — |
+| L3 | screen 级别无懒加载 | 延迟加载 | Low | v3 | — |
+| PC1 | 仅 Android 平台 | 平台兼容性 | Medium | v3 | — |
+| PC2 | 缺少平台条件编译 | 平台兼容性 | Low | v3 | — |
+| PC3 | 缺少平台特定配置 | 平台兼容性 | Low | v3 | — |
 
 ---
 
@@ -931,3 +1025,51 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 > **全方位无遗漏审查报告 v3 — 终极版**  
 > Hogwarts Life Simulator &copy; 2026 | 三轮审查覆盖 38 个维度，发现 52 项问题  
 > 审查工具：Trae Work | 报告生成日期：2026-09-07
+---
+
+## 41. 修复记录
+
+> 本节按**批次**记录每一轮实际改了什么。规则：修一批、写一批、提交推送一批，
+> 保证报告永远反映仓库的真实状态，而不是一份写完就过期的快照。
+>
+> 验证方式：本仓库的 GitHub Actions（`android-build.yml`）在 push 到 `main` 时会跑
+> `flutter analyze --no-fatal-warnings --no-fatal-infos` + `flutter test --coverage`，
+> 每个批次推送后都会看 CI 结果；CI 红了就在下一批次之前先修掉。
+
+### 批次 1 — 文档与配置补齐（DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `docs/ARCHITECTURE.md` | **新增**。五层架构 Mermaid 全景图 + 四条依赖方向铁律 + 11 条 ADR + 一次输入的时序图 + 审查项对照表 |
+| `docs/AI_SERVICE_API.md` | **新增**。组件一览、配置说明、`chatComplete` 签名与行为、三层超时模型表、错误模型与熔断参数、测试注入点 |
+| `android/key.properties.example` | **新增**。签名配置模板 + `keytool` 生成命令 |
+| `android/app/build.gradle` | 有 `key.properties` 就签 release，没有就回退 debug 签名 |
+| `.gitignore` | 追加 `android/key.properties`、`*.jks`、`*.keystore` |
+| `.github/dependabot.yml` | **新增**。pub 每周一扫描、github-actions 每月扫描 |
+| `pubspec.yaml` | 9 个依赖全部改写成显式上界 `>=当前 <下一个 major` |
+| `README.md` | 校正徽章版本/测试数/SDK 下限、删掉已不存在的「智谱」、补签名说明与文档入口、修正存档字段名 |
+| `comprehensive-review-v3-2026-09-07.md` | 本报告：加修复进度表、给 8 个条目写修复说明、总表加「修复状态」列 |
+
+**为什么先做这一批**
+
+这一批全是**新增文件与配置**，不触碰任何 Dart 逻辑，回归风险接近于零。
+先把它做掉有两个目的：一是把「改 → 更新报告 → 提交推送 → 看 CI」这条链路先跑通并验证，
+后面涉及代码改动的批次才有可信的验证手段；二是 DOC2 的 ADR 里记录了后续几批的
+设计立场（比如 DS1/DS2 决定不引入 Repository 与 DI），先把决策定下来，
+后面动手时不会边写边改主意。
+
+**顺带更正的三处报告误判**
+
+1. **DOC1（缺少 README）**：README 一直存在（207 行），属误判。真正的问题是内容过期，已校正。
+2. **F45（依赖约束过宽）**：`^1.0.8` 在 Dart 里等价于 `>=1.0.8 <2.0.0`，本来就不允许跨 major，
+   "过宽"的定性不成立。改成显式区间的真实收益是让上界**变成看得见的事实**。
+3. **SI1（存档无版本号）**：版本号一直存在（`kSaveVersion = 2`，写入 `save_version` 字段）。
+   真正缺的是**迁移函数** —— `save_service.dart` 的注释里提到了 `_migrateSave`，
+   但全库检索不到它的实现。这条降级为「部分属实」，迁移函数在后续批次补。
+
+**未做的事**
+
+- F18 / F47 只做了核对、没有改代码 —— 注释本来就写得对，改它反而是制造噪音。
+- 没有因为加了签名配置就让 CI 依赖私钥（回退 debug 是刻意的，见 ADR-010）。

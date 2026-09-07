@@ -1,0 +1,18 @@
+# 发布签名配置模板（F27）
+#
+# 用法：
+#   1. 复制本文件为 android/key.properties（已在 .gitignore 中，不会入库）
+#      cp android/key.properties.example android/key.properties
+#   2. 生成签名密钥（只需一次）：
+#      keytool -genkey -v -keystore ~/hogwarts-release.jks \
+#        -keyalg RSA -keysize 2048 -validity 10000 -alias hogwarts
+#   3. 填入下面的四项值，然后 flutter build apk --release
+#
+# 注意：
+#   - 真实的 key.properties 与 .jks 都不要提交；
+#   - 没有 key.properties 时，构建会自动回退到 debug 签名（CI 即如此）。
+
+storeFile=/absolute/path/to/hogwarts-release.jks
+storePassword=changeit
+keyAlias=hogwarts
+keyPassword=changeit

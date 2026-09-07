@@ -22,6 +22,18 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+// 发布签名配置（F27）：仓库里只有模板 android/key.properties.example，
+// 真实签名文件与口令不入库。存在 android/key.properties 时用它签 release，
+// 不存在时回退到 debug 签名——CI 与刚 clone 的开发者都能正常构建。
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+def hasKeystore = keystorePropertiesFile.exists()
+if (hasKeystore) {
+    keystorePropertiesFile.withReader('UTF-8') { reader ->
+        keystoreProperties.load(reader)
+    }
+}
+
 android {
     namespace "com.hogwarts.life_simulator"
     compileSdkVersion flutter.compileSdkVersion
@@ -49,9 +61,21 @@ android {
         versionName flutterVersionName
     }
 
+    signingConfigs {
+        if (hasKeystore) {
+            release {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            // 有 keystore 就正式签名，没有就回退 debug（保证 CI / 新机器可构建）
+            signingConfig hasKeystore ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
