@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.1.1 — 2026-09-07
+
+**📋 变更说明**
+批次13：F12 setState 热点局部刷新（ValueNotifier 化 3 处高频击键）
+
+- job_screen：搜索关键词改 ValueNotifier，清除按钮+列表局部刷新
+- command_center_panel：_query 改 ValueNotifier，搜索/快捷区/分组列表局部刷新
+- settings_provider_card：模型输入监听改 ValueListenableBuilder，头部模型与预设高亮局部刷新
+- 修复 command_center_panel 内层 Column 缺 Expanded 导致的 RenderFlex unbounded 布局报错
+
 ### v4.1.0 — 2026-09-07
 
 **📋 变更说明**
