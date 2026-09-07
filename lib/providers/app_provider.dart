@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../data/provider_defaults.dart';
 import '../services/ai_router.dart';
 import '../services/key_store.dart';
+import '../services/prefs_store.dart';
 
 enum DisplayMode { magazine, compact, immersive }
 enum IdentityMode { pure, noble, order, dark, neutral, transmigration, bone_mode }
@@ -196,7 +196,7 @@ class AppProvider extends ChangeNotifier {
 
 
   Future<void> loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await PrefsStore.instance.init();
     _isGameStarted = prefs.getBool('game_started') ?? false;
     final savedDisplayIdx = prefs.getInt('display_mode') ?? 0;
     _displayMode = (savedDisplayIdx >= 0 && savedDisplayIdx < DisplayMode.values.length)
@@ -222,15 +222,40 @@ class AppProvider extends ChangeNotifier {
       await prefs.remove('api_key');
     }
 
+    // CS1：这段是冷启动路径上唯一真正慢的一段。
+    //
+    // 原先是 for 循环里逐个 await，三个 provider 各 1~2 次**加密存储读取**
+    // （Keystore / EncryptedSharedPreferences，比 SharedPreferences 慢一个量级），
+    // 全部串行 —— 最坏 6 次 platform 往返串成一条，直接加在首帧之前。
+    // 改成两轮 Future.wait：先并行读所有 provider 的多 Key，
+    // 再对"没读到多 Key"的那部分并行读单 Key。跨 provider 之间没有依赖，可以并行；
+    // 同一 provider 内的 readKeys → readKey 有依赖，只能分两轮。
     final providers = ['deepseek', 'agnes', 'sensenova'];
+
+    final multiResults = await Future.wait(
+      providers.map((p) => KeyStore.instance.readKeys(p)),
+    );
+    final multiByProvider = <String, List<String>>{
+      for (var i = 0; i < providers.length; i++)
+        providers[i]: multiResults[i],
+    };
+
+    // 需要回退到单 Key 模式的 provider
+    final needSingle = providers.where((p) => multiByProvider[p]!.isEmpty).toList();
+    final singleResults = await Future.wait(
+      needSingle.map((p) => KeyStore.instance.readKey(p)),
+    );
+    final singleByProvider = <String, String?>{
+      for (var i = 0; i < needSingle.length; i++) needSingle[i]: singleResults[i],
+    };
+
     for (final p in providers) {
-      // 先尝试加载多 key（带索引的 key）
-      final multiKeys = await KeyStore.instance.readKeys(p);
+      final multiKeys = multiByProvider[p]!;
       if (multiKeys.isNotEmpty) {
         _apiKeys[p] = multiKeys;
       } else {
         // 单 key 模式：优先从安全存储读取；旧版明文自动迁移并清除
-        var key = await KeyStore.instance.readKey(p);
+        var key = singleByProvider[p];
         if (key == null) {
           final legacyKey = prefs.getString('api_key_$p');
           if (legacyKey != null && legacyKey.isNotEmpty) {
@@ -303,7 +328,11 @@ class AppProvider extends ChangeNotifier {
   }
   void setGameStarted(bool started) {
     _isGameStarted = started;
-    SharedPreferences.getInstance().then((prefs) => prefs.setBool('game_started', started));
+    // F16/F36：原先是 .then() 不 await 不 catch，写失败完全无声。
+    PrefsStore.instance.writeAsync(
+      'game_started',
+      (prefs) => prefs.setBool('game_started', started),
+    );
     notifyListeners();
   }
 
@@ -312,7 +341,10 @@ class AppProvider extends ChangeNotifier {
       return;
     }
     _displayMode = mode;
-    SharedPreferences.getInstance().then((prefs) => prefs.setInt('display_mode', mode.index));
+    PrefsStore.instance.writeAsync(
+      'display_mode',
+      (prefs) => prefs.setInt('display_mode', mode.index),
+    );
     notifyListeners();
   }
 
@@ -321,13 +353,19 @@ class AppProvider extends ChangeNotifier {
       return;
     }
     _identityMode = mode;
-    SharedPreferences.getInstance().then((prefs) => prefs.setInt('identity_mode', mode.index));
+    PrefsStore.instance.writeAsync(
+      'identity_mode',
+      (prefs) => prefs.setInt('identity_mode', mode.index),
+    );
     notifyListeners();
   }
 
   void setEra(Era era) {
     _era = era;
-    SharedPreferences.getInstance().then((prefs) => prefs.setInt('era', era.index));
+    PrefsStore.instance.writeAsync(
+      'era',
+      (prefs) => prefs.setInt('era', era.index),
+    );
     notifyListeners();
   }
 
@@ -347,15 +385,19 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setSceneRoute(AiScene scene, AiProvider provider) async {
     _sceneRoute[scene] = provider.name;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('scene_route_${scene.name}', provider.name);
+    await PrefsStore.instance.write(
+      'scene_route_${scene.name}',
+      (prefs) => prefs.setString('scene_route_${scene.name}', provider.name),
+    );
     notifyListeners();
   }
 
   Future<void> setModelForProvider(AiProvider provider, String model) async {
     _models[provider.name] = model;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('model_${provider.name}', model);
+    await PrefsStore.instance.write(
+      'model_${provider.name}',
+      (prefs) => prefs.setString('model_${provider.name}', model),
+    );
     notifyListeners();
   }
   /// 免费模型（官方提供免费额度 / 极低资费）
@@ -393,7 +435,8 @@ class AppProvider extends ChangeNotifier {
     _baseUrls.remove(p.name);
     KeyStore.instance.deleteKey(p.name);
     KeyStore.instance.writeKeys(p.name, []);
-    SharedPreferences.getInstance().then((prefs) {
+    // F37：原先是两次独立 remove，各提交一次。合并进同一个闭包只提交一次。
+    PrefsStore.instance.writeAsync('clear_api_key_${p.name}', (prefs) {
       prefs.remove('api_key_${p.name}');
       prefs.remove('base_url_${p.name}');
     });
@@ -417,16 +460,20 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setAiDebugLogEnabled(bool value) async {
     _aiDebugLogEnabled = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('ai_debug_log_enabled', value);
+    await PrefsStore.instance.write(
+      'ai_debug_log_enabled',
+      (prefs) => prefs.setBool('ai_debug_log_enabled', value),
+    );
     notifyListeners();
   }
 
   /// 切换「无 AI 快速模式」，同步写入 SharedPreferences 持久化。
   Future<void> setOfflineQuickMode(bool value) async {
     _offlineQuickMode = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('offline_quick_mode', value);
+    await PrefsStore.instance.write(
+      'offline_quick_mode',
+      (prefs) => prefs.setBool('offline_quick_mode', value),
+    );
     notifyListeners();
   }
 }

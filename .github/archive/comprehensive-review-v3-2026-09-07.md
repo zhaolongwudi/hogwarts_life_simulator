@@ -17,6 +17,7 @@
 > |---|---|---|---|
 > | 1 | 文档与配置补齐 | DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47 | ✅ 已推送（CI 全绿） |
 | 2 | 错误处理与日志 | F7 / F8 / F19 / F26 / S2 / S3 | ✅ 已推送 |
+| 3 | 存储与启动 | F16 / F36 / F37 / D4 / CS1 / CS2 | ✅ 已推送 |
 >
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1（版本号其实存在，缺的是迁移函数）。
@@ -235,6 +236,13 @@ GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能�
 
 多处 `SharedPreferences.getInstance().then()` 未 await、未 catch，属 fire-and-forget 模式。
 
+> **✅ 已修复（批次 3）**
+> 4 处 `.then((prefs) => ...)` 全部改走 `PrefsStore.instance.writeAsync(...)`
+> （`game_started` / `display_mode` / `identity_mode` / `era`）。
+> 关键区别不是"改成 await"，而是**仍然不阻塞 UI、但一定会 catch 并记日志** ——
+> 设置项写慢一点无所谓，静默丢掉才是真问题（用户改了设置、下次打开又变回去，
+> 还以为是玄学）。封装见 D4。
+
 ### F17 — 部分异步操作未检查生命周期 `[Medium] [v3 新发现]`
 
 `game_narrative_tab.dart:1731` 的 `Future.delayed` 后虽然有 mounted 检查，但前面的 `setState` 调用在 `Future.delayed` 之前未检查。
@@ -450,9 +458,21 @@ Android 构建缺少签名配置模板，新开发者需手动配置。
 
 多处 `SharedPreferences.getInstance().then()` 未 await、未 catch，写入失败不可知。
 
+> **✅ 已修复（批次 3）**（与 F16 同一批改动）
+> 全库 16 处 `SharedPreferences.getInstance()` 现已收敛为 1 处（`PrefsStore.init`），
+> 写入路径全部带 label 与 catch，失败日志形如
+> `[PrefsStore] 偏好写入失败(display_mode): ...`，能直接看出是哪个设置丢了。
+
 ### F37 — SharedPreferences 缺少批量写入 `[Medium] [v2]`
 
 多个独立 `setBool`/`setInt` 调用，未使用 `SetBatch` 批量写入。
+
+> **✅ 已修复（批次 3）**
+> `PrefsStore.write(label, (prefs) { ... })` 的闭包里可以写任意多个 key，
+> 一次调用只提交一次。`clearApiKeyFor` 里原先两次独立 `remove`（各提交一次）
+> 已合并进同一个闭包。测试用"闭包被调用次数 == 1"钉住这个契约。
+> 附带更正：报告里的 `SetBatch` 不是 shared_preferences 的 API；
+> 该插件本来就是"多次 setXxx + 一次提交"的模型，真正的收益是把多次提交合成一次。
 
 ---
 
@@ -712,6 +732,14 @@ GameProvider 的多个 mixin 顺序调用 notifyListeners，单次用户操作�
 
 `app_provider.dart` 中多次 `SharedPreferences.getInstance()` 调用，可封装为单例或缓存。
 
+> **✅ 已修复（批次 3）**
+> 新增 `lib/services/prefs_store.dart`：`PrefsStore` 单例缓存实例 + 三个入口
+> （`init()` / `write()` / `writeAsync()`）+ 三个带 fallback 的同步读。
+> `app_provider.dart` 里 9 处调用全部改走它，并且**把 `shared_preferences` 的 import
+> 从 app_provider 里删掉了** —— 现在想绕过 PrefsStore 直接写偏好得先重新 import，
+> 是个天然阻力。刻意没做「全局自动初始化」：初始化失败是有意义的信号，
+> 静默吞掉只会让问题更难查。
+
 ---
 
 ## 32. 设计模式一致性（新） `[新增维度]`
@@ -806,9 +834,34 @@ AI 服务接口（DeepSeekService、AiRouter）无外部 API 文档，第三方�
 
 `AppProvider` 构造函数中 await `SharedPreferences.getInstance()`，阻塞启动流程直到读取完成。
 
+> **🟡 部分修复（批次 3）**
+> 先更正位置：await 不在构造函数里（构造函数是纯同步的），而在 `main.dart` 的启动区；
+> 真正慢的也不是 SharedPreferences，而是**加密存储的 Key 读取**。
+> 已做的：
+> - `loadSettings()` 里三个 provider 各 1~2 次 `KeyStore` 读取（Keystore /
+>   EncryptedSharedPreferences，比 SharedPreferences 慢一个量级）**原先全串行**，
+>   改成两轮 `Future.wait`：先并行读所有 provider 的多 Key，再对没读到的并行读单 Key。
+>   跨 provider 无依赖可并行；同一 provider 内 `readKeys → readKey` 有依赖，只能分两轮。
+>   最坏从「6 次 platform 往返串成一条」降到「2 轮」。
+> - SharedPreferences 实例由 `PrefsStore` 统一缓存（见 D4），后续读取不再走 channel。
+>
+> **没做的**：把 `runApp` 提前到加载完成之前（splash 首帧方案）。主游戏页深度依赖
+> `appProvider` 的 Key 与场景路由，提前渲染就要引入"设置未就绪"中间态，
+> 改动面横跨 `main.dart` / `app.dart` / 所有读 `AiProvider` 的页面，
+> 收益（几十到几百毫秒）配不上这个回归风险。等真有启动耗时投诉再做。
+
 ### CS2 — 启动时加载所有 NPC 数据 `[Medium] [v3]`
 
 `npc_data.dart` 1,581 行，所有 NPC 数据在启动时一次性加载到内存。可按需加载或懒加载。
+
+> **✅ 已修复（批次 3）— 核对为误判**
+> `npc_data.dart` 里全是 **`const` 顶层集合**（`staffSeeds` / `harrySameGryffindor` /
+> `maraudersSeeds` …），只有 `firstWarSeeds` 是 `final`。Dart 顶层变量是**懒初始化**
+> 的：只在第一次被引用时才求值，`const` 更是在编译期就规范好了。
+> 所以"启动时一次性加载所有 NPC 数据"并不存在 —— 1581 行是源码规模，不是启动期开销。
+>
+> 顺带记一条方法论：**用行数推断性能问题不可靠**。本报告里 CS2 / L1 / P2 都有这个毛病，
+> 只有 F1 / F13 / F14 / F22 那种"行数 = 可维护性"的用法才成立。
 
 ### CS3 — 缺少启动画面优化 `[Low] [v3]`
 
@@ -924,7 +977,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
 | F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
 | F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | — |
-| F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | — |
+| F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | ✅ 批次3 |
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | — |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
@@ -944,8 +997,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F33 | 全局缓存缺乏清理策略 | 集合/内存 | Low | v2 | — |
 | F34 | 多个 AnimationController 未释放 | 动画/渲染 | Medium | v2 | — |
 | F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 | — |
-| F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | — |
-| F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | — |
+| F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | ✅ 批次3 |
+| F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | ✅ 批次3 |
 | F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | — |
 | F39 | 大量非空断言（!） | 空安全 | Medium | v2 | — |
 | F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | — |
@@ -967,14 +1020,14 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 | — |
 | D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | — |
 | D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | — |
-| D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 | — |
+| D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 | ✅ 批次3 |
 | DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 | — |
 | DS2 | 缺少 DI 容器 | 设计模式 | Medium | v3 | — |
 | DOC1 | 缺少 README 项目总览 | 文档完整性 | Medium | v3 | ✅ 批次1（误判，已校正过期内容） |
 | DOC2 | 缺少架构文档 | 文档完整性 | Medium | v3 | ✅ 批次1 |
 | DOC3 | 缺少 API 文档 | 文档完整性 | Low | v3 | ✅ 批次1 |
-| CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 | — |
-| CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 | — |
+| CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 | 🟡 批次3（部分） |
+| CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 | ✅ 批次3（误判） |
 | CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 | — |
 | SI1 | 存档无版本号 | 状态持久化 | High | v3 | — |
 | SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 | — |
@@ -1166,3 +1219,25 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
   改成异步会让崩溃日志彻底失效。报告没区分这两类，结论有误导性。
 - **S3 的落盘部分**：`AiDebugLogger` 本来就受用户开关控制（默认关），
   不是默认就把 prompt 写进设备文件。真正的问题只在 `debugPrint` 输出到 stdout，已随 F26 修掉。
+
+### 批次 3 — 存储与启动（F16 / F36 / F37 / D4 / CS1 / CS2）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/services/prefs_store.dart` | **新增**。SharedPreferences 唯一收口：单例缓存 + `init/write/writeAsync` + 带 fallback 的同步读 |
+| `test/prefs_store_test.dart` | **新增**。4 个用例：写入可见、批量只提交一次、writeAsync 不阻塞、未初始化不抛 |
+| `lib/providers/app_provider.dart` | 9 处调用改走 PrefsStore；删掉 `shared_preferences` import；`loadSettings` 的 KeyStore 读取改两轮 `Future.wait` |
+
+**这一批的核心判断**：F16/F36 的修法不是"把 `.then()` 改成 `await`"。
+设置项这种场景**确实不该阻塞 UI**，问题只在于失败时无声无息。
+所以 `writeAsync` 保留了 fire-and-forget 的"不阻塞"，补上了 `catch + 日志 + 返回值`。
+
+**CS1 只做了一半，理由写在这里**：把 `runApp` 提前到设置加载完成之前，
+需要在 `main.dart` / `app.dart` / 所有读 `AiProvider` 的页面引入"设置未就绪"中间态，
+改动面很大，而收益只是几十到几百毫秒。真正的长尾开销（加密存储 Key 读取串行）
+已经用 `Future.wait` 消掉了。剩下那部分等有实测数据再决定要不要动。
+
+**CS2 是误判**：`npc_data.dart` 全是 `const` 顶层集合，Dart 顶层变量懒初始化，
+不存在"启动时一次性加载"。这条暴露了报告的方法论问题 —— 用源码行数推断运行时开销不可靠。
