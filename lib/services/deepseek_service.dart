@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../providers/app_provider.dart';
+import 'ai_timeouts.dart' as timeouts;
 import 'rate_limiter.dart';
 
 class TokenUsage {
@@ -59,22 +60,15 @@ class DeepSeekService {
   final AiConfig config;
   final Dio _dio;
 
-  /// Dio 的接收超时（按提供商区分：SenseNova 慢一些）。
+  /// Dio 的接收超时 = 路由层单次调用预算 + 10s 缓冲。
   ///
-  /// 必须**大于**路由层的单次调用预算 [AiRouter.perCallTimeoutFor]，让路由层
-  /// 先掐断、Dio 这条只做兜底。以前两边各写各的数字（路由 35 秒、
-  /// SenseNova 60 秒），关系反了也没人发现：SenseNova 一挂住，永远是路由层
-  /// 先超时，Dio 那条 receiveTimeout 日志一次都不会出现，「网关慢」和
-  /// 「请求挂死」在日志上长得一模一样（第八次审查 P1-B）。
-  static const Duration receiveTimeoutDefault = Duration(seconds: 45);
-  static const Duration receiveTimeoutSensenova = Duration(seconds: 60);
-
-  /// [provider] 对应的 Dio 接收超时。路由层的全局预算也按 provider 取值，
-  /// 两边必须成对改，所以收口成一个函数而不是在构造函数里散着写三元。
+  /// **单一来源（F48 收口）**：策略数字收口在 `ai_timeouts.dart`，这里与
+  /// `ai_router.dart` 一样只做转发。以前两处各维护一对超时常量，靠注释约定
+  /// 「必须成对改」——改漏一边，路由层先掐断、Dio 的 receiveTimeout 日志就
+  /// 一次都不会出现，「网关慢」和「请求挂死」在日志上长得一模一样
+  /// （第八次审查 P1-B）。现在结构性保证 Dio 永远晚于路由层掐断。
   static Duration receiveTimeoutFor(AiProvider provider) =>
-      provider == AiProvider.sensenova
-          ? receiveTimeoutSensenova
-          : receiveTimeoutDefault;
+      timeouts.receiveTimeoutFor(provider);
 
   /// 测试注入点。
   ///

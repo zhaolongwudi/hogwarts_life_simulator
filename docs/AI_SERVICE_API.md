@@ -127,9 +127,12 @@ Dio receiveTimeout  >  AiRouter.perCallTimeoutFor  →  由 AiRouter 先掐断�
 
 | 层 | 位置 | 默认 |
 |---|---|---|
-| 单次调用预算 | `AiRouter.perCallTimeoutFor` | 35s（sensenova 50s） |
-| Dio 接收超时 | `DeepSeekService.receiveTimeoutFor` | 45s（sensenova 60s） |
+| 单次调用预算 | `AiRouter.perCallTimeoutFor`（转发自 `ai_timeouts.dart`） | 35s（sensenova 50s） |
+| Dio 接收超时 | `DeepSeekService.receiveTimeoutFor`（转发自 `ai_timeouts.dart`） | `perCallTimeoutFor + 10s`（F48 单一来源，结构性保证大于上层） |
 | 全局超时 | `AiRouter.globalTimeoutFor` | `5s + perKeyBudget × keyCount`，按场景 clamp |
+
+超时策略数字统一维护在 `lib/services/ai_timeouts.dart`：`perCallTimeoutFor` /
+`receiveTimeoutFor` / `kDioTimeoutBuffer`。上下两层不再各写各的数字。
 
 clamp 区间：
 

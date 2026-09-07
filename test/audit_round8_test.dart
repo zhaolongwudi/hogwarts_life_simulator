@@ -22,6 +22,7 @@ import 'package:hogwarts_life_simulator/data/npc_schedule_rules.dart';
 import 'package:hogwarts_life_simulator/models/long_term_memory.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/services/ai_router.dart';
+import 'package:hogwarts_life_simulator/services/ai_timeouts.dart';
 import 'package:hogwarts_life_simulator/services/deepseek_service.dart';
 import 'package:hogwarts_life_simulator/services/rate_limiter.dart';
 
@@ -102,10 +103,7 @@ String _chatBody(String content) => jsonEncode({
     });
 
 /// 路由层给单个 provider 的 Dio 接收超时（与 DeepSeekService 保持同一份定义）。
-Duration _receiveTimeoutFor(AiProvider p) =>
-    p == AiProvider.sensenova
-        ? DeepSeekService.receiveTimeoutSensenova
-        : DeepSeekService.receiveTimeoutDefault;
+Duration _receiveTimeoutFor(AiProvider p) => DeepSeekService.receiveTimeoutFor(p);
 
 AiRouter _routerWith(List<DeepSeekService> services) => AiRouter(
       AiRouterConfig(
@@ -273,6 +271,20 @@ void main() {
         greaterThan(AiRouter.perCallTimeoutFor(AiProvider.deepseek)),
         reason: 'Dio 给 SenseNova 特化了更长超时，上层必须同步放宽',
       );
+    });
+
+    test('F48：Dio 接收超时 = 单次调用预算 + 固定缓冲（单一来源）', () {
+      // 以前上下两层各维护一对数字（路由 35/50s、Dio 45/60s），靠注释约定
+      // 「必须成对改」；收口后 receiveTimeoutFor 结构上恒为
+      // perCallTimeoutFor + kDioTimeoutBuffer。这条护栏钉住差值关系，
+      // 而不是某个具体秒数——调参时测试不会假红。
+      for (final p in AiProvider.values) {
+        expect(
+          DeepSeekService.receiveTimeoutFor(p),
+          AiRouter.perCallTimeoutFor(p) + kDioTimeoutBuffer,
+          reason: '$p：Dio 超时必须是路由层预算 + 固定缓冲，且恒大于路由层',
+        );
+      }
     });
   });
 

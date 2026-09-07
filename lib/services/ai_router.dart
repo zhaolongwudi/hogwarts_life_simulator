@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../utils/ai_debug_logger.dart';
 import '../data/provider_defaults.dart';
 import 'deepseek_service.dart';
+import 'ai_timeouts.dart' as timeouts;
 // rate_limiter 里除了两个限流闸门，还放了 ResponseCache（响应缓存）——
 // 本文件只用到后者。闸门统一由 DeepSeekService._acquireSlot() 负责，这里不要再调。
 import 'rate_limiter.dart';
@@ -61,40 +62,19 @@ class AiRouter {
   static Duration get circuitCooldown => _circuitCooldown;
   /// 单次 Key 调用的超时上限，**按提供商区分**。
   ///
-  /// 必须比该提供商的 Dio receiveTimeout 短——否则 Dio 永远等不到自己超时，
-  /// 坏 Key 的判定全落在这一层，"网关慢"和"请求挂死"在日志上长得一样。
-  ///
-  /// 以前这里是全局一刀切的 35 秒，而 Dio 层给 SenseNova 特化了 60 秒：
-  /// 35 < 60，那 60 秒**永远等不到**，「SenseNova 响应慢、需要更长超时」
-  /// 这个设计意图彻底落空（第八次审查 P1-B）。现在上下两层一起按 provider 取值。
-  static const Duration _perCallTimeoutDefault = Duration(seconds: 35);
-  static const Duration _perCallTimeoutSensenova = Duration(seconds: 50);
+  /// 实现已收口到 `ai_timeouts.dart`（F48 单一来源），这里保留转发入口：
+  /// 调用点与测试引用 `AiRouter.perCallTimeoutFor` / `perCallTimeoutOverride`
+  /// 不变，策略数字只在一处维护。
+  static Duration? get perCallTimeoutOverride => timeouts.perCallTimeoutOverride;
+  static set perCallTimeoutOverride(Duration? v) =>
+      timeouts.perCallTimeoutOverride = v;
 
-  /// 测试注入点：覆盖单次调用超时。生产路径恒为 null。
-  ///
-  /// 注入时**必须保持与生产一致的相对关系**：服务端 delay > perCallTimeout、
-  /// 且 Dio 的 receiveTimeout > perCallTimeout。只想让测试跑得快而把超时调小，
-  /// 会把被测路径从「Dart timeout」悄悄换成「Dio timeout」——这两条路径在生产
-  /// 配置下行为完全相反，第七轮那 24 条行为测试正是这样集体放过了 P0。
-  static Duration? perCallTimeoutOverride;
-
-  static Duration perCallTimeoutFor(AiProvider provider) {
-    final override = perCallTimeoutOverride;
-    if (override != null) return override;
-    return provider == AiProvider.sensenova
-        ? _perCallTimeoutSensenova
-        : _perCallTimeoutDefault;
-  }
+  static Duration perCallTimeoutFor(AiProvider provider) =>
+      timeouts.perCallTimeoutFor(provider);
 
   /// 所有 provider 里最长的单次调用超时。全局超时按它取上界，
   /// 保证算出来的预算对任何 provider 都成立。
-  static Duration get _maxPerCallTimeout {
-    final override = perCallTimeoutOverride;
-    if (override != null) return override;
-    return _perCallTimeoutDefault > _perCallTimeoutSensenova
-        ? _perCallTimeoutDefault
-        : _perCallTimeoutSensenova;
-  }
+  static Duration get _maxPerCallTimeout => timeouts.maxPerCallTimeout;
 
   /// 每个 Key 最多重试几次（0 = 只尝试 1 次）。
   ///

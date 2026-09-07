@@ -1016,7 +1016,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
 | F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | — |
 | F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | ✅ 批次3 |
-| F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | — |
+| F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
 | F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | — |
@@ -1029,11 +1029,11 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 | ✅ 批次1 |
 | F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | — |
 | F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 | — |
-| F30 | story_text_renderer 正则密集 | 正则/文本解析 | High | v2 | — |
+| F30 | story_text_renderer 正则密集 | 正则/文本解析 | High | v2 | 🟢 批次5/8（核对：全部静态化，含标签/动词预编译） |
 | F31 | 部分 RegExp 未使用静态缓存 | 正则/文本解析 | Low | v2 | ✅ 批次5 |
-| F32 | 频繁的 List.from + sort 重建 | 集合/内存 | Medium | v2 | — |
+| F32 | 频繁的 List.from + sort 重建 | 集合/内存 | Medium | v2 | 🟢 批次5/8（核对：热路径已静态缓存，其余一次性排序非热路径） |
 | F33 | 全局缓存缺乏清理策略 | 集合/内存 | Low | v2 | ✅ 批次5 |
-| F34 | 多个 AnimationController 未释放 | 动画/渲染 | Medium | v2 | — |
+| F34 | 多个 AnimationController 未释放 | 动画/渲染 | Medium | v2 | ✅ 批次8（误判：`liquid_glass_nav_bar` / `miuix_components` 均已 dispose） |
 | F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 | ✅ 批次5 |
 | F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | ✅ 批次3 |
 | F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | ✅ 批次3 |
@@ -1047,7 +1047,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F45 | 部分依赖版本约束过宽 | 依赖管理 | Low | v2 | ✅ 批次1（定性更正） |
 | F46 | 缺少依赖版本锁定检查 | 依赖管理 | Low | v2 | ✅ 批次1 |
 | F47 | 部分注释与代码不一致 | 注释健康度 | Medium | v2 | ✅ 批次1（核对已修复） |
-| F48 | AI 服务层缺少请求超时统一管理 | AI 架构 | Medium | v3 | — |
+| F48 | AI 服务层缺少请求超时统一管理 | AI 架构 | Medium | v3 | 🟢 批次8（超时策略收口 `ai_timeouts.dart` 单一来源） |
 | S1 | API Key 缺少降级策略 | 安全审计 | High | v3 | — |
 | S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 | ✅ 批次2 |
 | S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 | ✅ 批次2 |
@@ -1397,6 +1397,27 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 
 **为什么这批不写新单测**：泄漏点在对话框关闭路径，controller 是方法内局部变量，外部无法断言其状态；强行为了测试改造成可注入反而引入新复杂度。这批的护栏是 CI 的 `analyze`（`whenComplete` 类型检查、未使用 import 检查）+ 既有测试套件全绿。
 
+### 批次 8 — AI 超时策略单一来源 + 核对关闭四项（F48、F17、F30、F32、F34）
+
+**F48 收口**：AI 服务层的超时以前分两处维护——`ai_router.dart` 的单次调用预算（35s / sensenova 50s）与 `deepseek_service.dart` 的 Dio 接收超时（45s / 60s），靠注释约定「必须成对改」。第八轮 P1-B 已把两边改成按 provider 取值，但两套数字仍是手抄关系。本次新建 `lib/services/ai_timeouts.dart` 作为**唯一策略来源**：
+
+| 成员 | 语义 |
+|---|---|
+| `perCallTimeoutFor(provider)` | 路由层单次调用预算（默认 35s，sensenova 50s），`perCallTimeoutOverride` 测试注入点一并移入 |
+| `receiveTimeoutFor(provider)` | = `perCallTimeoutFor + kDioTimeoutBuffer(10s)`，结构性保证 Dio 永远晚于路由层掐断 |
+| `maxPerCallTimeout` | 全局预算上界 |
+
+`ai_router.dart` / `deepseek_service.dart` 只保留转发入口（`AiRouter.perCallTimeoutFor`、`DeepSeekService.receiveTimeoutFor`、`AiRouter.perCallTimeoutOverride` 签名不变），调用点与既有测试零改动；`audit_round8_test.dart` 的 `_receiveTimeoutFor` 改调 `DeepSeekService.receiveTimeoutFor`，并**新增一条护栏测试**：`receiveTimeoutFor(p) == perCallTimeoutFor(p) + kDioTimeoutBuffer` 对全部 provider 恒成立（钉差值关系而非具体秒数，调参不假红）。文档 `docs/AI_SERVICE_API.md` 超时表同步更新。
+
+**核对关闭四项**（均为 v1/v2 审查遗留，逐一复核代码现状）：
+
+| # | 结论 | 依据 |
+|---|---|---|
+| F17 | 🟢 已修复 | `game_narrative_tab.dart:1731` 是全文件唯一 `Future.delayed`，其前后（1730/1732）及外层 `addPostFrameCallback`（1724）均有 `if (!mounted) return;`，报告点名的缺口已不存在 |
+| F30 | 🟢 已解决 | `story_text_renderer.dart` 全部 `RegExp` 已是 `static final`（含 `_outlineLabelPatterns` / `_singleCharVerbPatterns` 按标签预编译），热路径不再现编译 |
+| F32 | 🟢 已解决 | 热路径的 `.toList()..sort()`（422-427 / 723 / 1278-1281）已静态缓存；其余散落的 sort 均为一次性数据准备，非热路径 |
+| F34 | ✅ 误判 | `liquid_glass_nav_bar.dart:226` 与 `miuix_components.dart:62` 的 `dispose()` 均已调用 `_pressCtrl.dispose()` / `_ctrl.dispose()` |
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1412,6 +1433,7 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 5 | 缓存与正则静态化（F31、F33、F35） | `934cc52` / `38f307d` |
 | 6 | 统一错误反馈与恢复原语（F6、F9 基础设施） | `62b5c24` |
 | 7 | UI 资源释放与重复消除（F11、D3） | 本次提交 |
+| 8 | AI 超时单一来源 + 核对四项（F48、F17、F30、F32、F34） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
@@ -1428,8 +1450,8 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 4. **SI3（Medium）**：CrashLogger / AiDebugLogger 日志路径无统一管理，可收口到一个常量。
 
 **再往后的候选**（按性价比排）：F10/P4（notifyListeners 合并，挑明显级联做低风险部分）、
-D1/D2（测试 fixture 与导航封装，代码重复）、F12（setState 局部刷新，面大需基准）、
-F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
+D1/D2（测试 fixture 与导航封装，代码重复）、F28/F29（路由统一，需动 10+ 文件）、
+F12（setState 局部刷新，面大需基准）、F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
 
 **注意两件事**：
 
