@@ -73,6 +73,22 @@ void miuixSnack(
     );
 }
 
+/// 错误提示（F6/F9 统一入口）：错误态图标 + 主红 + 稍长展示时长。
+///
+/// 相比通用 [miuixSnack]（成功/中性用），错误反馈固定走这一个变体，
+/// 让「哪里出错了」在视觉上一眼可辨，也杜绝各屏幕各写一套 SnackBar。
+/// 文案建议先用 `utils/user_feedback.dart` 的 `userFriendlyError` 转成
+/// 玩家能看懂的话，再传进来。
+void miuixErrorSnack(BuildContext context, String message) {
+  miuixSnack(
+    context,
+    message,
+    icon: Icons.error_outline,
+    color: MiuiColors.error,
+    duration: const Duration(milliseconds: 2600),
+  );
+}
+
 /// 便捷确认弹窗：标题 + 说明 + 「取消 / 确认」。
 Future<bool> miuixConfirm(
   BuildContext context, {

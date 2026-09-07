@@ -6,8 +6,10 @@ import '../providers/game_provider.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/user_feedback.dart';
 import '../widgets/miui_magic_backdrop.dart';
 import '../widgets/miuix_components.dart';
+import '../widgets/miuix_overlays.dart';
 
 class SaveLoadScreen extends StatefulWidget {
   const SaveLoadScreen({super.key});
@@ -33,7 +35,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     try {
       _saves = await context.read<GameProvider>().listSaves();
     } catch (e) {
-      if (mounted) _showSnack('加载存档失败: $e');
+      if (mounted) _showError(e, '加载存档失败');
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -53,7 +55,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       _nameController.clear();
     } catch (e) {
       if (!mounted) return;
-      _showSnack('保存失败: $e');
+      _showError(e, '保存失败');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -70,7 +72,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       Navigator.pushReplacementNamed(context, '/game');
     } catch (e) {
       if (!mounted) return;
-      _showSnack('加载存档失败: $e');
+      _showError(e, '加载存档失败');
     }
   }
 
@@ -80,7 +82,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       await _loadSaves();
     } catch (e) {
       if (!mounted) return;
-      _showSnack('删除存档失败: $e');
+      _showError(e, '删除存档失败');
     }
   }
 
@@ -95,7 +97,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       await Clipboard.setData(ClipboardData(text: json));
       _showSnack('✅ 存档已复制到剪贴板，请粘贴到备忘录/文件保存');
     } catch (e) {
-      _showSnack('❌ 导出失败: $e');
+      _showError(e, '导出失败');
     }
   }
 
@@ -117,7 +119,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       if (!mounted) return;
       _showSnack(slotId != null ? '✅ 存档导入成功' : '❌ 导入失败：剪贴板内容不是有效存档');
     } catch (e) {
-      _showSnack('❌ 导入失败: $e');
+      _showError(e, '导入失败');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -125,7 +127,14 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 
   void _showSnack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    // F9：统一走 miuixSnack（浮动玻璃 toast + 图标），不再各屏幕各写一套裸 SnackBar。
+    miuixSnack(context, msg);
+  }
+
+  /// 错误提示：F6 —— 把底层 `$e` 映射成玩家能看懂的话，再统一用错误态提示。
+  void _showError(Object? e, String fallback) {
+    if (!mounted) return;
+    miuixErrorSnack(context, userFriendlyError(e, fallback: fallback));
   }
 
   @override

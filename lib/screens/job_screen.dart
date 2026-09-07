@@ -6,6 +6,7 @@ import '../services/ai_router.dart';
 import '../data/job_data.dart';
 import '../data/locations.dart';
 import '../theme/miuix_tokens.dart';
+import '../utils/user_feedback.dart';
 import '../widgets/miuix_overlays.dart';
 
 class JobScreen extends StatefulWidget {
@@ -71,9 +72,7 @@ class _JobScreenState extends State<JobScreen> {
     if (p == null) return;
     if (gp.router == null || !(gp.router?.hasNarrativeService ?? false)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('先在设置里配置一个 AI 提供商')),
-      );
+      miuixSnack(context, '先在设置里配置一个 AI 提供商');
       return;
     }
 
@@ -93,9 +92,8 @@ class _JobScreenState extends State<JobScreen> {
       _showAiWorkDialog(result.content.trim());
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI 暂时没想出来：$e')),
-      );
+      // F6：AI 失败不再把原始 `$e` 怼给玩家，映射成友好文案 + 统一错误态提示
+      miuixErrorSnack(context, userFriendlyError(e, fallback: 'AI 暂时没想出来，请稍后再试'));
     } finally {
       if (mounted) setState(() => _aiLoading = false);
     }

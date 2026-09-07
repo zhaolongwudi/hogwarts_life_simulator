@@ -1005,10 +1005,10 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F3 | Player.fromJson 部分字段缺少类型断言 | 序列化 | High | v1 | ✅ 批次4 |
 | F4 | 存档版本无迁移机制 | 序列化 | Medium | v1 | ✅ 批次4（误判，同 SI1） |
 | F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 | ✅ 批次4 |
-| F6 | 用户可见错误信息不足 | 错误处理 | Medium | v1 | — |
+| F6 | 用户可见错误信息不足 | 错误处理 | Medium | v1 | 🟡 批次6（基础设施+示范屏，AI 主链路后续） |
 | F7 | 前置断言完全缺失 | 错误处理 | High | v1 | ✅ 批次2 |
 | F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | ✅ 批次2 |
-| F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | — |
+| F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | 🟡 批次6（统一错误提示原语，存量屏幕渐进接入） |
 | F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | — |
 | F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | — |
 | F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | — |
@@ -1363,6 +1363,20 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 静态缓存），只补了回归护栏确认不是假修复。改动面单纯靠在途改动（行为保持），
 本地无 Flutter SDK，照例推 `main` 用 CI（`flutter analyze` + `flutter test`）验证。
 
+### 批次 6 — 统一错误反馈与恢复原语（F6 / F9 基础设施）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/utils/user_feedback.dart` | **新增**。`userFriendlyError(error, fallback:)` —— 把底层异常映射成玩家能看懂的中文：`SocketException/HttpException→网络类`、`TimeoutException→请求超时`、`FormatException→数据无法解析`、`HandshakeException→安全连接失败`；**未知/空错误一律回退到 fallback，绝不把 `$e` 原始文本怼给玩家**。纯函数、无 Flutter 依赖，可在 service/provider 层复用 |
+| `lib/widgets/miuix_overlays.dart` | 新增 `miuixErrorSnack(context, message)` —— 错误态统一入口：`Icons.error_outline` + `MiuiColors.error` + 稍长展示时长（2.6s），复用既有 `miuixSnack` 的浮动玻璃样式，视觉上「哪里出错了」一眼可辨 |
+| `lib/screens/save_load_screen.dart` | **示范屏迁移**：新增 `_showError(e, fallback)`（调 `miuixErrorSnack`+`userFriendlyError`）；把 6 处 `_showSnack('xxx失败: $e')` 全部改成 `_showError(e, 'xxx失败')`——玩家不再看到 `Bad state: ...` 这类内部文本；`_showSnack` 本身改走 `miuixSnack`，与全局 toast 样式统一（F9） |
+| `lib/screens/job_screen.dart` | AI 打工推荐失败路径：裸 `SnackBar(content: Text('AI 暂时没想出来：$e'))` → `miuixErrorSnack(userFriendlyError(...))`；「未配置 AI」提示也改走 `miuixSnack` |
+| `test/user_feedback_test.dart` | **新增**。`userFriendlyError` 已知类型映射、未知/null 回退、以及「fallback 不泄露异常细节」三类断言，CI 可独立验证 |
+
+**这一批的边界**：报告给 F6/F9 的定性是「需动 UI，做到一半 UI 不易回归验证」。所以这一批不铺开改十几个屏幕，而是先落地**可被 atomic 单测钉死的基础设施**（`userFriendlyError` 纯映射 + `miuixErrorSnack` 统一原语），并迁移报告点名的**示范屏** `save_load_screen` 和高价值的**AI 失败路径** `job_screen`。AI 主叙事链路的完整 UI 反馈（`mixin_narrative` 深链路、无便捷 context）留作后续渐进接入——其余存量裸 SnackBar 屏幕可照 `miuixErrorSnack` + `userFriendlyError` 的模式逐个替换。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最后一次全绿 run：`34139062100`，批次4）：
@@ -1375,7 +1389,8 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 3 | 存储与启动（F16、F36、F37、D4、CS1 部分修复、CS2 误判） | `97079f6` |
 | 4 | 外来数据的健壮性（F3、F5、SI2、SI3） | `8dab7e3` |
 | 报告更正 | SI1 / F4 其实早已具备（版本号 + `_migrateSave` 都在），误判源于只搜了一个文件 | `108832c` |
-| 5 | 缓存与正则静态化（F31、F33、F35） | 本次提交 |
+| 5 | 缓存与正则静态化（F31、F33、F35） | `934cc52` / `38f307d` |
+| 6 | 统一错误反馈与恢复原语（F6、F9 基础设施） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
