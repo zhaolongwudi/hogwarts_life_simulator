@@ -34,6 +34,7 @@
 | 13 | F12 setState 热点局部刷新 | F12 | ✅ 已推送 |
 | **14** | **健壮性加固：回调生命周期 + 查表判空 + 语义标签** | **CL1 / F39（高危 4 处）/ F24（主界面）** | **✅ 已推送（CI 全绿，v4.1.2）** |
 | **15** | **魔法数字提取：UI 层 Duration 语义 token 化** | **F25（UI 层时长）** | **✅ 已推送（CI 全绿，v4.1.4）** |
+| **16** | **UI 测试补全：高频游戏组件冒烟 + Semantics 回归** | **F21** | **🟢 批次16（CI 验证中）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -1063,7 +1064,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
 | F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | — |
-| F21 | UI 测试缺失 | 测试质量 | Medium | v1 | — |
+| F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | — |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
 | F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | 🟢 批次14（主游戏界面 5 处高频交互补语义标签：发送/指令中心/推进/快捷行动 chip/快速存档；地图点位与其余 IconButton 留作后续） |
@@ -1690,6 +1691,31 @@ padding/margin 已基本在 `MiuiSpace` 覆盖，本轮不再铺开（改动面�
 批次 15 推送后 CI 通过 `flutter analyze`（0 error）+ 全量 `flutter test` +
 `flutter build apk`，版本自动升至 **v4.1.4**。
 
+### 批次 16 — UI 测试补全：高频游戏组件冒烟 + Semantics 回归（F21）
+
+**这一批的由来**：F21 原文说「无 Widget 测试，全是纯逻辑单测」。先核对现状——
+其实已有 `widget_test.dart`（首页冒烟）、`choice_panel_height_test.dart`、
+`command_center_panel_test.dart`、`scene_illustration_test.dart` 等组件测试，
+F21 的原话已过时。但主游戏界面的两个高频交互组件（顶栏、底部输入栏）确实没有
+任何一个 widget 测试覆盖，于是补一组无头冒烟，同时用 `bySemanticsLabel` 断言
+批次 14 给它们加的读屏标签——这批测试是 F24 语义工作的**回归护栏**，
+label 一旦被删立刻红。
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `test/ui_game_bar_test.dart`（新增） | 复用 `test_fixtures.dart` 的 `makeGame()`（D1 收口的 fixture，全属性 50 的「测试巫师」，不跑 AI 不走网络）。4 条用例：`GameTopBar` 渲染玩家姓名 + `快速存档` 语义标签；存档按钮点击后弹「✅ 已存档」SnackBar；`GameBottomInput` 渲染 `推进剧情`/`打开指令中心`/`发送行动` 三个语义标签与输入占位符；发送按钮点击触发行动回调（`fired == true`） |
+
+**为什么这样做**：直接给 `GameProvider` 依赖的组件写测试会引入大量 mock 噪音
+（SharedPreferences、AI 服务、命令注册都要初始化），而 `makeGame()` 已把这条链路
+收敛成一个函数（批次 9 的 D1 工作），测试体量因此很小、很聚焦——只断言组件本身的
+渲染契约与批次 14 补的语义标签，不碰玩法逻辑（那部分由既有纯逻辑单测负责）。
+
+**验证**：本机无 Flutter SDK，照例本地做结构核验 + 推送后 CI
+（`flutter analyze` + 全量 `flutter test`）确认。新增文件仅测试代码、不改任何源码，
+故 analyze 风险极低；风险集中在测试运行期（渲染/命中），红了则按 CI 报错热修。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1716,6 +1742,7 @@ padding/margin 已基本在 `MiuiSpace` 覆盖，本轮不再铺开（改动面�
 | 13 | F12 setState 热点局部刷新（job/指令中心/设置卡 ValueNotifier 化） | `b1ba24c` |
 | 14 | 健壮性加固（CL1 mounted 守卫、F39 查表判空 ×4、F24 主界面语义标签 ×5） | 本次提交 |
 | 15 | F25 魔法数字提取（`MiuiDuration` token + UI 层 17 文件 29 处 Duration 收敛） | 本次提交 |
+| 16 | F21 UI 测试补全（`ui_game_bar_test.dart` 高频组件冒烟 + 语义标签回归） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
