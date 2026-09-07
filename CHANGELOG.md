@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.1.0 — 2026-09-07
+
+**📋 变更说明**
+批次12b：S1 API Key 降级策略（写入失败检测 + 设置页降级提示）
+
+- KeyStore.writeKey/writeKeys 返回 bool，写入失败不再静默吞掉
+- AppProvider 新增 secureStorageDegraded 状态，三条写入路径统一上报
+- 设置页保存后若检测到降级，弹窗告知原因与解法（开锁屏密码）
+- 修复 progression_fix_test 缺失 marker_layout.dart 导入（批次12a 拆分遗留）
+
 ### v4.0.9 — 2026-09-07
 
 **📋 变更说明**
