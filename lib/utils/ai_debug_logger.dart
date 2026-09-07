@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'debug_log.dart';
+import 'log_paths.dart';
 
 /// AI 调用调试日志记录器
 /// 用于记录每回合的输入输出，排查上下文污染、路由错误等问题
@@ -30,7 +31,7 @@ class AiDebugLogger {
   Future<void> _ensureLogDir() async {
     if (_logDir != null) return;
     final dir = await getApplicationDocumentsDirectory();
-    _logDir = '${dir.path}/ai_debug_logs';
+    _logDir = '${dir.path}/$kAiDebugLogDirName';
     final logDir = Directory(_logDir!);
     if (!await logDir.exists()) {
       await logDir.create(recursive: true);

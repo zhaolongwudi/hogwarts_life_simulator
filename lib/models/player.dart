@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 import 'game_systems.dart';
 import '../data/quest_data.dart';
 import '../data/scar_data.dart';
+import '../utils/json_read.dart';
 
 const _uuid = Uuid();
 
@@ -489,12 +490,15 @@ class Player {
   };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
-    id: json['id'],
-    name: json['name'],
-    birthYear: json['birth_year'],
-    bloodType: json['blood_status'] ?? '',
-    birthLocation: json['birth_location'],
-    personalityTraits: List<String>.from(json['personality_traits'] ?? []),
+    // F3：字段读取全部走 json_read.dart 的宽容读取，杜绝「旧存档字段类型
+    // 漂移就在 fromJson 上崩、整份档读不出来」；数字字符串/小数等宽容形态
+    // 能算出值就取，取不到用 fallback。看类型推导不了的 edge 在上层兜底。
+    id: readString(json['id']),
+    name: readString(json['name']),
+    birthYear: readString(json['birth_year']),
+    bloodType: readString(json['blood_status'], fallback: ''),
+    birthLocation: readString(json['birth_location']),
+    personalityTraits: readStringList(json['personality_traits']),
     attributes: Map<String, int>.from(json['attributes'] ?? _defaultAttributes),
     initialAttributes: Map<String, int>.from(
       json['initial_attributes'] ?? json['attributes'] ?? _defaultAttributes,
@@ -514,55 +518,53 @@ class Player {
           (k, v) => MapEntry(k, Relationship.fromJson(v)),
         ) ??
         {},
-    currentGoal: json['current_goal'],
-    worldLineDeviation: (json['world_line_deviation'] ?? 0.0).toDouble(),
-    facultyRankId: json['faculty_rank_id'] as String?,
-    facultySubject: json['faculty_subject'] as String?,
-    facultyServiceYears: (json['faculty_service_years'] ?? 0) as int,
-    facultyOfferDeclined: (json['faculty_offer_declined'] ?? false) as bool,
-    health: json['health'] ?? 100,
-    injuries: List<String>.from(json['injuries'] ?? []),
+    currentGoal: readStringOrNull(json['current_goal']),
+    worldLineDeviation: readDouble(json['world_line_deviation'], fallback: 0.0),
+    facultyRankId: readStringOrNull(json['faculty_rank_id']),
+    facultySubject: readStringOrNull(json['faculty_subject']),
+    facultyServiceYears: readInt(json['faculty_service_years']),
+    facultyOfferDeclined: readBool(json['faculty_offer_declined']),
+    health: readInt(json['health'], fallback: 100),
+    injuries: readStringList(json['injuries']),
     scars: (json['scars'] as List<dynamic>? ?? const [])
         .map((e) => Scar.fromJson(Map<String, dynamic>.from(e as Map)))
         .whereType<Scar>()
         .toList(),
-    wandId: json['wand_id'],
-    petId: json['pet_id'],
-    house: json['house'],
-    grade: json['grade'],
-    magic: json['magic'] ?? 100,
-    spirit: json['spirit'] ?? 100,
-    satiety: json['satiety'] ?? 100,
-    energy: json['energy'] ?? 100,
+    wandId: readStringOrNull(json['wand_id']),
+    petId: readStringOrNull(json['pet_id']),
+    house: readStringOrNull(json['house']),
+    grade: readIntOrNull(json['grade']),
+    magic: readInt(json['magic'], fallback: 100),
+    spirit: readInt(json['spirit'], fallback: 100),
+    satiety: readInt(json['satiety'], fallback: 100),
+    energy: readInt(json['energy'], fallback: 100),
     houseDimensions: Map<String, int>.from(
       json['house_dimensions'] ?? _defaultHouseDimensions,
     ),
-    gender: json['gender'] ?? '',
-    signature: json['signature'] ?? '',
-    birthDay: json['birth_day'],
-    sexOrientation: json['sex_orientation'],
-    appearance: json['appearance'],
-    familyBackground: json['family_background'],
-    childhoodExperiences: List<String>.from(
-      json['childhood_experiences'] ?? [],
-    ),
-    beliefs: json['beliefs'],
-    initialTalent: json['initial_talent'],
-    currentJobTitle: json['current_job_title'],
-    magicAptitude: json['magic_aptitude'],
-    generation: (json['generation'] as num?)?.toInt() ?? 1,
-    housePreference: json['house_preference'],
-    simulationStyle: json['simulation_style'],
-    birthIdentity: json['birth_identity'],
-    petName: json['pet_name'],
-    petBond: json['pet_bond'] ?? 0,
+    gender: readString(json['gender'], fallback: ''),
+    signature: readString(json['signature'], fallback: ''),
+    birthDay: readStringOrNull(json['birth_day']),
+    sexOrientation: readStringOrNull(json['sex_orientation']),
+    appearance: readStringOrNull(json['appearance']),
+    familyBackground: readStringOrNull(json['family_background']),
+    childhoodExperiences: readStringList(json['childhood_experiences']),
+    beliefs: readStringOrNull(json['beliefs']),
+    initialTalent: readStringOrNull(json['initial_talent']),
+    currentJobTitle: readStringOrNull(json['current_job_title']),
+    magicAptitude: readStringOrNull(json['magic_aptitude']),
+    generation: readInt(json['generation'], fallback: 1),
+    housePreference: readStringOrNull(json['house_preference']),
+    simulationStyle: readStringOrNull(json['simulation_style']),
+    birthIdentity: readStringOrNull(json['birth_identity']),
+    petName: readStringOrNull(json['pet_name']),
+    petBond: readInt(json['pet_bond']),
     loveState: LoveState.fromJson(
       Map<String, dynamic>.from(json['love_state'] ?? {}),
     ),
     playerReputation: Reputation.fromJson(
       Map<String, dynamic>.from(json['player_reputation'] ?? {}),
     ),
-    houseReputation: json['house_reputation'] ?? 50,
+    houseReputation: readInt(json['house_reputation'], fallback: 50),
     diary: (json['diary'] as List<dynamic>? ?? [])
         .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
         // 读档也截一刀：老存档里已经堆了几百条的，读进来就地收敛。
@@ -577,24 +579,24 @@ class Player {
     children: (json['children'] as List<dynamic>? ?? [])
         .map((e) => ChildRecord.fromJson(Map<String, dynamic>.from(e)))
         .toList(),
-    collection: List<String>.from(json['collection'] ?? []),
+    collection: readStringList(json['collection']),
     cgRecords:
         (json['cg_records'] as Map<String, dynamic>?)?.map(
           (k, v) => MapEntry(k, CgRecord.fromJson(v)),
         ) ??
         {},
-    achievements: List<String>.from(json['achievements'] ?? []),
-    boneMode: json['bone_mode'] ?? false,
-    galleons: json['galleons'] ?? 500,
-    bankGalleons: json['bank_galleons'] ?? 0,
-    jobHistory: List<String>.from(json['job_history'] ?? []),
-    bloodRelatives: List<String>.from(json['blood_relatives'] ?? []),
+    achievements: readStringList(json['achievements']),
+    boneMode: readBool(json['bone_mode']),
+    galleons: readInt(json['galleons'], fallback: 500),
+    bankGalleons: readInt(json['bank_galleons']),
+    jobHistory: readStringList(json['job_history']),
+    bloodRelatives: readStringList(json['blood_relatives']),
     letters:
         (json['letters'] as List<dynamic>?)
             ?.map((e) => Letter.fromJson(e))
             .toList() ??
         [],
-    rumors: List<String>.from(json['rumors'] ?? []),
+    rumors: readStringList(json['rumors']),
     rumorDates: Map<String, int>.from(
       (json['rumor_dates'] as Map<String, dynamic>?)?.map(
             (k, v) => MapEntry(k, (v as num).toInt()),
@@ -605,47 +607,50 @@ class Player {
         .whereType<Map<String, dynamic>>()
         .map(ForumPost.fromJson)
         .toList(),
-    traits: List<String>.from(json['traits'] ?? []),
-    politicalTendency: json['political_tendency'] ?? json['politicalTendency'],
-    transmemoryLevel: json['transmemory_level'] as String?,
+    traits: readStringList(json['traits']),
+    politicalTendency:
+        readStringOrNull(json['political_tendency']) ??
+        readStringOrNull(json['politicalTendency']),
+    transmemoryLevel: readStringOrNull(json['transmemory_level']),
     equipped: Map<String, String>.from(json['equipped'] ?? {}),
-    bestiary: List<String>.from(json['bestiary'] ?? []),
+    bestiary: readStringList(json['bestiary']),
     quests:
         (json['quests'] as List<dynamic>?)
             ?.map((e) => QuestRecord.fromJson(Map<String, dynamic>.from(e)))
             .toList() ??
         [],
-    houseCupPoints: json['house_cup_points'] ?? 0,
+    houseCupPoints: readInt(json['house_cup_points']),
     houseCupSources: Map<String, int>.from(
       json['house_cup_sources'] ?? const {},
     ),
-    petLastFedDay: json['pet_last_fed_day'] ?? -1,
-    petInteractDay: json['pet_interact_day'] ?? -1,
-    petTransformDone: json['pet_transform_done'] ?? false,
-    qSkill: json['q_skill'] ?? 50,
-    qPosition: json['q_position'] ?? '找球手',
-    qMatches: json['q_matches'] ?? 0,
-    qWins: json['q_wins'] ?? 0,
-    qLastWeek: json['q_last_week'] ?? 0,
-    cheatInvincible: json['cheat_invincible'] ?? false,
-    cheatOmniscient: json['cheat_omniscient'] ?? false,
+    petLastFedDay: readInt(json['pet_last_fed_day'], fallback: -1),
+    petInteractDay: readInt(json['pet_interact_day'], fallback: -1),
+    petTransformDone: readBool(json['pet_transform_done']),
+    qSkill: readInt(json['q_skill'], fallback: 50),
+    qPosition: readString(json['q_position'], fallback: '找球手'),
+    qMatches: readInt(json['q_matches']),
+    qWins: readInt(json['q_wins']),
+    qLastWeek: readInt(json['q_last_week']),
+    cheatInvincible: readBool(json['cheat_invincible']),
+    cheatOmniscient: readBool(json['cheat_omniscient']),
     animagus: (json['animagus'] as Map<String, dynamic>?)
         ?.cast<String, dynamic>(),
-    patronus: json['patronus'] as String?,
-    isDead: json['is_dead'] ?? false,
-    deathCause: json['death_cause'] as String?,
-    deadOn: json['dead_on'] as String?,
-    isImprisoned: json['is_imprisoned'] ?? false,
-    imprisonedOn: json['imprisoned_on'] as String?,
-    endingType: json['ending_type'] ?? 'normal',
-    careerId: json['career_id'] as String?,
-    careerRankIndex: json['career_rank_index'] ?? 0,
-    careerYears: json['career_years'] ?? 0,
+    patronus: readStringOrNull(json['patronus']),
+    isDead: readBool(json['is_dead']),
+    deathCause: readStringOrNull(json['death_cause']),
+    deadOn: readStringOrNull(json['dead_on']),
+    isImprisoned: readBool(json['is_imprisoned']),
+    imprisonedOn: readStringOrNull(json['imprisoned_on']),
+    endingType: readString(json['ending_type'], fallback: 'normal'),
+    careerId: readStringOrNull(json['career_id']),
+    careerRankIndex: readInt(json['career_rank_index']),
+    careerYears: readInt(json['career_years']),
     cheatOrientationBackup: Map<String, String>.from(
       (json['cheat_orientation_backup'] as Map<String, dynamic>?) ?? const {},
     ),
-    cheatModifiedPairs: List<String>.from(
-      json['cheat_modified_pairs'] ?? const [],
+    cheatModifiedPairs: readStringList(
+      json['cheat_modified_pairs'],
+      fallback: const [],
     ),
     examRecords: (json['exam_records'] as Map<String, dynamic>? ?? const {})
         .map(

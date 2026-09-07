@@ -1,4 +1,5 @@
 import 'game_systems.dart';
+import '../utils/json_read.dart';
 
 class NarrativeEvent {
   final String text;
@@ -15,11 +16,20 @@ class NarrativeEvent {
 
   factory NarrativeEvent.fromJson(dynamic src) {
     if (src is String) return NarrativeEvent(src);
-    if (src is Map<String, dynamic>) {
+    if (src is Map) {
+      // F5：原实现 `src['t'] as String?` 在 t 为非字符串（如数值）时会抛
+      // 类型异常。改用宽容读取：主文本用 readString（数值也转成字符串，
+      // 尽量保住内容），取不到再用 fallback，绝不炸在读档上。
+      final t = src['t'];
+      final text = src['text'];
       return NarrativeEvent(
-        src['t'] as String? ?? src['text'] as String? ?? '',
-        turn: src['r'] as int? ?? src['turn'] as int?,
-        at: src['a'] != null ? DateTime.tryParse(src['a'] as String) : null,
+        (t != null ? readString(t) : null) ??
+            (text != null ? readString(text) : null) ??
+            '',
+        turn: readIntOrNull(src['r']) ?? readIntOrNull(src['turn']),
+        at: src['a'] != null
+            ? DateTime.tryParse(readString(src['a']))
+            : null,
       );
     }
     return const NarrativeEvent('');

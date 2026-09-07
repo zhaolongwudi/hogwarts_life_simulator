@@ -158,6 +158,37 @@ class SaveService {
     );
   }
 
+  /// 存档顶层结构校验（审查 SI2）。
+  ///
+  /// 过去只检查「player / world_state 两个 key 在不在」，一份 key 都在但
+  /// 结构全错的存档也能通过校验，读进来照样崩。这里再往下验一层：
+  /// - `player` / `world_state` 必须是对象（Map）；
+  /// - `turn_count` 缺失视为 0（老档），存在则须是非负数值（容忍数字字符串）；
+  /// - `save_version` 缺失视为 v1 老档，存在则须是能识别的数值。
+  /// 不合格时调用方走已有的备份回滚路径，而不是带着坏数据继续。
+  static bool isStructurallyValid(Map<String, dynamic> data) {
+    if (data['player'] is! Map) return false;
+    if (data['world_state'] is! Map) return false;
+    final tc = data['turn_count'];
+    if (tc != null) {
+      final n = _asNum(tc);
+      if (n == null || n < 0) return false;
+    }
+    final sv = data['save_version'];
+    if (sv != null && _asNum(sv) == null) return false;
+    return true;
+  }
+
+  /// 把数值或数字字符串解析成 [num]，非法返回 null。
+  static num? _asNum(Object? v) {
+    if (v is num) return v;
+    if (v is String) {
+      final n = num.tryParse(v.trim());
+      if (n != null) return n;
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> loadGame(String slotId) async {
     final path = await _getSavePath(slotId);
     final file = File(path);
@@ -165,9 +196,9 @@ class SaveService {
     try {
       final content = await file.readAsString(encoding: utf8);
       final data = jsonDecode(content) as Map<String, dynamic>;
-      // 基本完整性校验
-      if (!data.containsKey('player') || !data.containsKey('world_state')) {
-        throw const FormatException('存档缺少关键字段');
+      // 结构校验（SI2）：从「key 在不在」升级为「结构是否可用」
+      if (!isStructurallyValid(data)) {
+        throw const FormatException('存档结构校验失败');
       }
       return data;
     } catch (e) {
@@ -184,7 +215,7 @@ class SaveService {
       if (!await backupFile.exists()) return null;
       final content = await backupFile.readAsString(encoding: utf8);
       final data = jsonDecode(content) as Map<String, dynamic>;
-      if (!data.containsKey('player') || !data.containsKey('world_state')) {
+      if (!isStructurallyValid(data)) {
         return null;
       }
       debugLog('✅ 已从备份恢复存档 $slotId');
@@ -267,8 +298,8 @@ class SaveService {
   Future<String?> importSave(String jsonString) async {
     try {
       final data = jsonDecode(jsonString) as Map<String, dynamic>;
-      if (!data.containsKey('player') || !data.containsKey('world_state')) {
-        debugLog('❌ 导入失败：存档缺少关键字段');
+      if (!isStructurallyValid(data)) {
+        debugLog('❌ 导入失败：存档结构校验不通过（player/world_state 必须是对象）');
         return null;
       }
       final slotId = _uuid.v4().substring(0, 8);

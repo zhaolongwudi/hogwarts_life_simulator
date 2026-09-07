@@ -19,7 +19,7 @@
 | 2 | 错误处理与日志 | F7 / F8 / F19 / F26 / S2 / S3 | ✅ 已推送（CI 两次变红，见 2.1） |
 | **2.1** | **CI 热修复 — 脱敏正则的语法** | **F26 / S2 / S3** | **✅ 已推送（CI 全绿）** |
 | 3 | 存储与启动 | F16 / F36 / F37 / D4 / CS1 / CS2 | ✅ 已推送 |
->
+| **4** | **外来数据的健壮性** | **F3 / F5 / SI2 / SI3** | **✅ 已推送（CI 验证中）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -129,6 +129,12 @@
 
 `lib/models/player.dart` 中部分字段反序列化时未对 `Map<String, dynamic>` 做类型断言，旧存档升级可能静默失败。
 
+> **✅ 已修复（批次 4）。** 新增 `lib/utils/json_read.dart` 安全读取工具
+> （`readString/readStringOrNull/readInt/readIntOrNull/readDouble/readBool/readStringList`），
+> 把 `Player.fromJson` 全部标量字段与 String 列表字段改走宽容读取：
+> 数字、数字字符串等宽容形态能算出值就用，取不到走 fallback，
+> 不再「一个字段类型漂移就整份档读不出来」。见 [批次 4 记录](#41-修复记录)。
+
 ### F4 — 存档版本无迁移机制 `[Medium] [v1]`
 
 存档中无版本号字段，新旧格式变更时无法自动迁移，只能依赖手动清零。
@@ -139,6 +145,10 @@
 ### F5 — NarrativeEvent.fromJson(dynamic) 类型风险 `[Low] [v2]`
 
 `lib/models/world_state.dart:16` 参数类型为 `dynamic`，内部自动推导，但外来数据可能引发运行时异常。
+
+> **✅ 已修复（批次 4）。** `NarrativeEvent.fromJson` 的 `src['t'] as String?`
+> 在 t 为非字符串时会抛类型异常，已改走宽容读取（`readString` / `readIntOrNull`）：
+> 数值也转成字符串尽量保住内容，取不到用空串，绝不炸在读档上。
 
 ### 优点：JSON 序列化覆盖全面
 
@@ -905,9 +915,19 @@ AI 服务接口（DeepSeekService、AiRouter）无外部 API 文档，第三方�
 
 加载存档时无校验和或签名验证，损坏的存档文件可能导致静默数据丢失。
 
+> **✅ 已修复（批次 4）。** `SaveService` 新增公开方法 `isStructurallyValid()`：
+> 校验 `player` / `world_state` 必须是对象、`turn_count` 须非负数值（容忍数字
+> 字符串）、`save_version` 须可识别；`loadGame` / `_tryLoadBackup` / `importSave`
+> 三处统一改走该校验，不合格走已有的备份回滚路径，不再带着坏数据继续。
+
 ### SI3 — 部分状态可能未持久化 `[Medium] [v3]`
 
 `AppProvider` 中的 AI 调试日志开关、快速模式开关等用户偏好通过 SharedPreferences 持久化，但 `CrashLogger` 和 `AiDebugLogger` 的日志文件路径无统一管理。
+
+> **✅ 已修复（批次 4）。** 日志路径统一收口到 `lib/utils/log_paths.dart`
+> （`kCrashLogFileName` / `kHeartbeatFileName` / `kAiDebugLogDirName` 三个常量），
+> `CrashLogger` 与 `AiDebugLogger` 改用常量拼接，改名/搬目录只改一处。
+> 偏好持久化部分批次 3 已随 PrefsStore 处理。
 
 ---
 
@@ -982,9 +1002,9 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 |---|------|------|--------|------|---------|
 | F1 | _ensureCommandsRegistered() 神类 3,234 行 | 代码组织 | Critical | v1 | — |
 | F2 | Mixin 导入膨胀（41/35/27 行） | 代码组织 | High | v1 | — |
-| F3 | Player.fromJson 部分字段缺少类型断言 | 序列化 | High | v1 | — |
+| F3 | Player.fromJson 部分字段缺少类型断言 | 序列化 | High | v1 | ✅ 批次4 |
 | F4 | 存档版本无迁移机制 | 序列化 | Medium | v1 | ✅ 批次4（误判，同 SI1） |
-| F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 | — |
+| F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 | ✅ 批次4 |
 | F6 | 用户可见错误信息不足 | 错误处理 | Medium | v1 | — |
 | F7 | 前置断言完全缺失 | 错误处理 | High | v1 | ✅ 批次2 |
 | F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | ✅ 批次2 |
@@ -1048,8 +1068,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 | ✅ 批次3（误判） |
 | CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 | — |
 | SI1 | 存档无版本号 | 状态持久化 | High | v3 | ✅ 批次4（整体误判，版本号+迁移都有） |
-| SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 | — |
-| SI3 | 部分状态可能未持久化 | 状态持久化 | Medium | v3 | — |
+| SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 | ✅ 批次4 |
+| SI3 | 部分状态可能未持久化 | 状态持久化 | Medium | v3 | ✅ 批次4 |
 | CL1 | 部分回调未在 dispose 中取消 | 回调生命周期 | Medium | v3 | — |
 | CL2 | 闭包捕获可能的内存泄漏 | 回调生命周期 | Low | v3 | — |
 | L1 | 缺少延迟加载 | 延迟加载 | Medium | v3 | — |
@@ -1293,6 +1313,40 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 "编译得过、跑起来才炸"的错误。**没有完整 SDK 不等于没有验证手段，
 至少要把"能验的那部分"验掉。**
 
+### 批次 4 — 外来数据的健壮性（F3 / F5 / SI2 / SI3）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/utils/json_read.dart` | **新增**。宽容读取工具：`readString/readStringOrNull/readInt/readIntOrNull/readDouble/readBool/readStringList`，接受 num/数字字符串等宽容形态并带 fallback，绝不在对外部数据做类型转换时抛异常 |
+| `lib/models/player.dart` | `Player.fromJson` 全部标量字段与 String 列表字段改走 `json_read` 宽容读取（`id/health/generations/grade/currentGoal/injuries/personalityTraits/...` 等）；Map 型字段与嵌套对象保持原样（改动面收敛到"类型漂移高发区"） |
+| `lib/models/world_state.dart` | `NarrativeEvent.fromJson` 的 `src['t'] as String?` → `readString`（数值也转字符串保住内容）、`src['r'] as int?` → `readIntOrNull`、`a` 用 `readString` 再 `tryParse` |
+| `lib/services/save_service.dart` | 新增公开 `static isStructurallyValid(data)`（player/world_state 是 Map、turn_count 非负数值容忍数字字符串、save_version 可识别）；`loadGame` / `_tryLoadBackup` / `importSave` 三处改走该校验 |
+| `lib/utils/log_paths.dart` | **新增**。日志文件名统一收口：`kCrashLogFileName` / `kHeartbeatFileName` / `kAiDebugLogDirName` |
+| `lib/utils/crash_logger.dart` | 4 处硬编码 `crash_logs.json` / `heartbeat.json` 改用 `log_paths` 常量 |
+| `lib/utils/ai_debug_logger.dart` | 硬编码 `ai_debug_logs` 改用 `kAiDebugLogDirName` 常量 |
+| `test/foreign_data_robustness_test.dart` | **新增**。21 个用例钉住 json_read 各读取函数的边界、`Player.fromJson`/`NarrativeEvent.fromJson` 的类型漂移不再崩、`isStructurallyValid` 放行/拦截 |
+
+**这一批的核心判断**：外来数据（旧存档 / 导入存档）的类型漂移**不该成为读档的全局开关**。
+修复前 `Player.fromJson` 里 `id: json['id']`、`health: json['health'] ?? 100` 直接把 `dynamic`
+透传进 `String` / `int` 字段，一个字段不干净整份档就崩、只能清零。修法是「宽容但不纵容」：
+数值区分度保留（`int` 用 `readInt`、`double` 用 `readDouble`，不把小数静默读成整数），
+可选字段用 `*OrNull` 只认合法形态，String 列表里的嵌套结构过滤掉而不是炸掉。
+`log_paths` 只统一文件名、**不迁移已有文件位置**，避免在传统玩家设备上产生孤儿日志文件。
+
+**为什么敢不带 SDK 推送**：本机没有 3.44 的 Flutter，跑不了 `flutter test`（沿用批次 2.1 的约束）。
+这一批改动是**纯宽容化**——对所有合法存储格式的行为逐字段核对不变，只把「抛异常」换成
+「用 fallback」；新增测试全部走正常读入路径的期望值。改动面收敛、无新增可变状态，
+风险主要靠推送后的 CI（`flutter analyze` + `flutter test`）兜底确认。
+
+**下一批（批次 5）建议范围**（按性价比排）：
+1. **F33 / F31 / F35（缓存清理与正则静态缓存，小改动）**：全局缓存缺清理策略 / 部分
+   `RegExp` 未静态缓存 / `liquid_glass` 着色器每次 build 重建 —— 三处都是局部小改，
+   回归风险低，适合在没有完整 SDK 时继续推进。
+2. **F6 / F9（错误反馈与恢复模式统一，需动 UI，单独一批）**：做到一半 UI 不易回归验证，
+   放 F33/F31/F35 之后。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最后一次全绿 run：`34134710038`，commit `280e1bf`）：
@@ -1303,6 +1357,7 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 2 | 错误处理与日志（F7、F8、F19、F26、S2、S3） | `5950b62` |
 | 2.1 | CI 热修复×2：`(?i)` 非法 → `caseSensitive`；字符类 `-` 只放头尾 | `7155538` → `280e1bf` |
 | 3 | 存储与启动（F16、F36、F37、D4、CS1 部分修复、CS2 误判） | `97079f6` |
+| 4 | 外来数据的健壮性（F3、F5、SI2、SI3） | 本次提交 |
 | 报告更正 | SI1 / F4 其实早已具备（版本号 + `_migrateSave` 都在），误判源于只搜了一个文件 | `108832c` |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：

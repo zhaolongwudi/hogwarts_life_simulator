@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'debug_log.dart';
+import 'log_paths.dart';
 
 class CrashEntry {
   final DateTime time;
@@ -64,7 +65,7 @@ class CrashLogger {
     if (_logFile != null) return _logFile!;
     final dir = await getApplicationDocumentsDirectory();
     _cachedDir = dir.path;
-    _logFile = File('${dir.path}/crash_logs.json');
+    _logFile = File('${dir.path}/$kCrashLogFileName');
     if (!await _logFile!.exists()) {
       await _logFile!.writeAsString(jsonEncode([]));
     }
@@ -117,7 +118,7 @@ class CrashLogger {
     final dir = _cachedDir;
     if (dir == null) return;
     try {
-      final f = File('$dir/crash_logs.json');
+      final f = File('$dir/$kCrashLogFileName');
       f.writeAsStringSync(
         jsonEncode(_entries.map((e) => e.toJson()).toList()),
         flush: true,
@@ -145,7 +146,7 @@ class CrashLogger {
     _lastHeartbeatWrite = now;
     try {
       File(
-        '$dir/heartbeat.json',
+        '$dir/$kHeartbeatFileName',
       ).writeAsStringSync(jsonEncode(_heartbeat), flush: true);
     } catch (e) {
       debugLog('❌ 心跳写盘失败: $e');
@@ -157,7 +158,7 @@ class CrashLogger {
     final dir = _cachedDir;
     if (dir == null) return;
     try {
-      final f = File('$dir/heartbeat.json');
+      final f = File('$dir/$kHeartbeatFileName');
       if (f.existsSync()) {
         _heartbeat = Map<String, String>.from(
           jsonDecode(f.readAsStringSync()) as Map,
