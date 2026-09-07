@@ -27,7 +27,9 @@ abstract final class AppRoutes {
 }
 
 /// 命名路由表：main.dart 的 `routes:` 直接引用这里。
-const Map<String, WidgetBuilder> appRoutes = <String, WidgetBuilder>{
+/// 注意不能用 `const`：值里的 `WidgetBuilder` 是闭包，闭包不是常量表达式，
+/// `const` map 会报 `non_constant_map_value`（CI analyze 抓到的 error）。
+final Map<String, WidgetBuilder> appRoutes = <String, WidgetBuilder>{
   AppRoutes.home: (_) => const HomePage(),
   AppRoutes.intro: (_) => const IntroScreen(),
   AppRoutes.settings: (_) => const SettingsScreen(),
