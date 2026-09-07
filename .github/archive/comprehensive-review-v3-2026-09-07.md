@@ -1487,6 +1487,24 @@ AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）�
 **验证**：`flutter analyze` 0 error；`flutter test` 全量 1381 通过
 （含 command_registry / command_subs / command_center_panel 33 项命令相关用例）。
 
+### 批次 11b — F13 `game_narrative_tab.dart` 组件抽取
+
+**问题**：`game_narrative_tab.dart` 1,927 行，底部混着 5 个与
+`_NarrativeTabState` 完全无关的自包含 widget（可独立复用、无私有依赖）。
+
+**改法（纯搬移 + 公开化）**：
+
+- 新建 `lib/screens/game/widgets/narrative_widgets.dart`，集中 4 个公开组件：
+  `ResourceFloat`（数值变化浮层）、`AiErrorBanner`（AI 失败提示条）、
+  `PanelIconAction`（圆形图标动作）、`BubbleTail`（气泡尾巴）；
+- `TrianglePainter` 是 `BubbleTail` 的私有实现细节，留在同一文件内
+  保持 `_` 私有，不对外暴露；
+- 主文件删除原 5 个类定义（~260 行），4 处调用点改用公开类名；
+- 私有类跨文件不可见，故全部去掉 `_` 前缀并补 `super.key`
+  （公开 widget 构造器 lint 要求）。
+
+**验证**：`dart analyze` 0 error；叙事/时间/选项面板等 68 项相关测试通过。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1505,7 +1523,8 @@ AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）�
 | 8 | AI 超时单一来源 + 核对四项（F48、F17、F30、F32、F34） | `5548c80` |
 | 9 | 代码重复收口（D1 测试 fixture 抽取、D2 导航封装 20 处） | `87b3570` → `9b178aa` |
 | 10 | 路由统一（F28/F29 `app_routes.dart` 收口）+ notifyListeners 剩余合并（F10/P4） | `c6d977b` |
-| 11a | F1 神方法拆分（`_ensureCommandsRegistered` → 7 个分组注册方法） | 本次提交 |
+| 11a | F1 神方法拆分（`_ensureCommandsRegistered` → 7 个分组注册方法） | `a083683` |
+| 11b | F13 组件抽取（`narrative_widgets.dart`，1927 → 1667 行） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
