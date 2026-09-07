@@ -1010,7 +1010,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | ✅ 批次2 |
 | F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | 🟢 批次6（统一错误提示原语，存量屏幕渐进接入） |
 | F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | — |
-| F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | — |
+| F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | 🟢 批次7（6 处对话框局部控制器统一 whenComplete 释放） |
 | F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | — |
 | F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
 | F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
@@ -1057,7 +1057,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 | — |
 | D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 | — |
 | D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | — |
-| D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | — |
+| D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | 🟢 批次6/7（`_showError` 统一错误处理，骨架差异属必要） |
 | D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 | ✅ 批次3 |
 | DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 | — |
 | DS2 | 缺少 DI 容器 | 设计模式 | Medium | v3 | — |
@@ -1377,6 +1377,26 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 
 **这一批的边界**：报告给 F6/F9 的定性是「需动 UI，做到一半 UI 不易回归验证」。所以这一批不铺开改十几个屏幕，而是先落地**可被 atomic 单测钉死的基础设施**（`userFriendlyError` 纯映射 + `miuixErrorSnack` 统一原语），并迁移报告点名的**示范屏** `save_load_screen` 和高价值的**AI 失败路径** `job_screen`。AI 主叙事链路的完整 UI 反馈（`mixin_narrative` 深链路、无便捷 context）留作后续渐进接入——其余存量裸 SnackBar 屏幕可照 `miuixErrorSnack` + `userFriendlyError` 的模式逐个替换。
 
+### 批次 7 — UI 资源释放与重复消除（F11、D3）
+
+**F11 病灶定位**：初审 v1 只写了「部分 StatefulWidget 未在 dispose 清理」，复查后发现**字段级控制器（`_searchController` 等）在主要屏幕里其实都已释放**，真正漏掉的是**对话框内局部创建的 `TextEditingController`**：它们在方法里 new、传给 `AlertDialog` 的 `TextField`，对话框关闭后没有任何持有者会释放它——点遮罩（barrier）或返回键关闭时，按钮里的 `dispose()` 也不会执行，是确定的内存泄漏。
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/screens/game/game_phone_tab.dart` | `_editSignature`：局部 `controller` 原来**完全不释放**，改为 `showMiuixDialog(...).whenComplete(controller.dispose)` |
+| `lib/screens/world_map_screen.dart` | `_editAreaLabel`：同上，原来完全不释放 |
+| `lib/screens/other/forum_screen.dart` | `_showCommentDialog` / `_showCreatePostDialog`：原来只在按钮内 `dispose()`（点遮罩泄漏），改为 `whenComplete` 统一释放，按钮内的显式 `dispose()` 移除（防双重释放崩溃） |
+| `lib/screens/other/parallel_world_screen.dart` | `_showCreateDialog`：`titleController`+`descController` 改为 `whenComplete` 统一释放 |
+| `lib/screens/other/diary_screen.dart` | `_showAddEntryDialog`：同上，按钮内 dispose 移除，`whenComplete` 兜底 |
+
+**统一模式**：`showMiuixDialog` 返回的 `Future` 在对话框**无论以何种方式关闭**（按钮 / barrier / 返回键）后都会 complete，`whenComplete(controller.dispose)` 恰好覆盖全部关闭路径，且只执行一次；按钮内原有的 `dispose()` 全部移除，避免 `TextEditingController` 二次 dispose 抛错。
+
+**D3 结论**：`save_load_screen` 的 7 个 try/catch 在批次6 已通过 `_showError(e, fallback)` 统一了错误处理口径（这正是 D3 的实质诉求）；剩余骨架差异（await 的调用、fallback 文案、是否重置 loading）属于必要差异，强行抽成一个 `_runSafely` 反而让每个调用点都要传回调和标志，可读性不升反降。故 D3 随批次6/7 关闭。
+
+**为什么这批不写新单测**：泄漏点在对话框关闭路径，controller 是方法内局部变量，外部无法断言其状态；强行为了测试改造成可注入反而引入新复杂度。这批的护栏是 CI 的 `analyze`（`whenComplete` 类型检查、未使用 import 检查）+ 既有测试套件全绿。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1391,6 +1411,7 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 报告更正 | SI1 / F4 其实早已具备（版本号 + `_migrateSave` 都在），误判源于只搜了一个文件 | `108832c` |
 | 5 | 缓存与正则静态化（F31、F33、F35） | `934cc52` / `38f307d` |
 | 6 | 统一错误反馈与恢复原语（F6、F9 基础设施） | `62b5c24` |
+| 7 | UI 资源释放与重复消除（F11、D3） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
@@ -1406,9 +1427,9 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
    剩余风险是 `src['t'] as String?` 在 t 为非字符串时抛错，顺手换成宽容读取。
 4. **SI3（Medium）**：CrashLogger / AiDebugLogger 日志路径无统一管理，可收口到一个常量。
 
-**再往后的候选**（按性价比排）：F6/F9（错误反馈与恢复模式统一，需动 UI，单独一批）、
-F33/F31/F35（缓存清理与正则静态缓存，小改动）、F10/F12/P4（状态管理，需基准数据佐证）、
-F1/F40/F13（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
+**再往后的候选**（按性价比排）：F10/P4（notifyListeners 合并，挑明显级联做低风险部分）、
+D1/D2（测试 fixture 与导航封装，代码重复）、F12（setState 局部刷新，面大需基准）、
+F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
 
 **注意两件事**：
 

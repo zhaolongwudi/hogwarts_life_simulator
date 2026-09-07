@@ -622,7 +622,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           ),
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   String _getAreaSubtitle() {

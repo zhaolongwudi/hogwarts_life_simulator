@@ -145,11 +145,7 @@ class _DiaryScreenState extends State<DiaryScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                titleController.dispose();
-                contentController.dispose();
-                Navigator.pop(ctx);
-              },
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('取消'),
             ),
             ElevatedButton(
@@ -162,8 +158,6 @@ class _DiaryScreenState extends State<DiaryScreen>
                       content: content,
                       mood: selectedMood,
                     );
-                titleController.dispose();
-                contentController.dispose();
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('手记已保存到存档')),
@@ -174,7 +168,10 @@ class _DiaryScreenState extends State<DiaryScreen>
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      titleController.dispose();
+      contentController.dispose();
+    });
   }
 }
 

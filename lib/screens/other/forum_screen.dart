@@ -56,10 +56,7 @@ class _ForumScreenState extends State<ForumScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              controller.dispose();
-              Navigator.pop(dialogContext);
-            },
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           FilledButton(
@@ -73,14 +70,13 @@ class _ForumScreenState extends State<ForumScreen> {
                   );
                 }
               }
-              controller.dispose();
               Navigator.pop(dialogContext);
             },
             child: const Text('发布'),
           ),
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   @override
@@ -190,10 +186,7 @@ class _ForumScreenState extends State<ForumScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                contentController.dispose();
-                Navigator.pop(ctx);
-              },
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('取消'),
             ),
             ElevatedButton(
@@ -204,7 +197,6 @@ class _ForumScreenState extends State<ForumScreen> {
                       category: selectedCategory,
                       content: text,
                     );
-                contentController.dispose();
                 Navigator.pop(ctx);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -217,7 +209,7 @@ class _ForumScreenState extends State<ForumScreen> {
           ],
         ),
       ),
-    );
+    ).whenComplete(contentController.dispose);
   }
 }
 

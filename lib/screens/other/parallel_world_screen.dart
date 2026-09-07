@@ -288,7 +288,10 @@ class ParallelWorldScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      titleController.dispose();
+      descController.dispose();
+    });
   }
 }
 

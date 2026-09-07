@@ -45,7 +45,7 @@ void _editSignature(BuildContext context) {
         ),
       ],
     ),
-  );
+  ).whenComplete(controller.dispose);
 }
 
 class PhoneTab extends StatelessWidget {
