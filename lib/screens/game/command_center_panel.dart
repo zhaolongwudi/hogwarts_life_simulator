@@ -55,7 +55,7 @@ void showCommandCenter(
     ),
     builder: (context) => FractionallySizedBox(
       heightFactor: 0.88,
-      child: CommandCenterPanel(
+      child: _CommandCenterPanel(
         onExecute: onExecute,
         onFillInput: onFillInput,
       ),
@@ -63,21 +63,21 @@ void showCommandCenter(
   );
 }
 
-class CommandCenterPanel extends StatefulWidget {
+class _CommandCenterPanel extends StatefulWidget {
   final ValueChanged<String> onExecute;
   final ValueChanged<String> onFillInput;
 
-  const CommandCenterPanel({
+  const _CommandCenterPanel({
     super.key,
     required this.onExecute,
     required this.onFillInput,
   });
 
   @override
-  State<CommandCenterPanel> createState() => _CommandCenterPanelState();
+  State<_CommandCenterPanel> createState() => _CommandCenterPanelState();
 }
 
-class _CommandCenterPanelState extends State<CommandCenterPanel> {
+class _CommandCenterPanelState extends State<_CommandCenterPanel> {
   String _query = '';
   final TextEditingController _searchController = TextEditingController();
   // 作弊组默认折叠：避免满屏指令里混入灰色地带入口
