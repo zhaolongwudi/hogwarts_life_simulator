@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../router/app_routes.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
 import '../utils/ui_helpers.dart';
@@ -69,7 +70,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       // pop 后 element 已 deactivate，debug 下会触发
       // "Looking up a deactivated widget's ancestor is unsafe"。
       // 直接 pushReplacementNamed 即可替换当前页。
-      Navigator.pushReplacementNamed(context, '/game');
+      Navigator.pushReplacementNamed(context, AppRoutes.game);
     } catch (e) {
       if (!mounted) return;
       _showError(e, '加载存档失败');

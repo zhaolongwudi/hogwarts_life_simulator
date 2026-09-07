@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
+import 'router/app_routes.dart';
 import 'utils/crash_logger.dart';
 import 'utils/ai_debug_logger.dart';
 import 'theme/miuix_theme.dart';
@@ -92,13 +93,8 @@ class HogwartsLifeSimulator extends StatelessWidget {
       builder: (context, child) => MiuiScrollConfiguration(
         child: child ?? const SizedBox.shrink(),
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const HomePage(),
-        '/intro': (context) => const IntroScreen(),
-        '/settings': (context) => const SettingsScreen(),
-        '/game': (context) => const GameScreen(),
-      },
+      initialRoute: AppRoutes.home,
+      routes: appRoutes,
     );
   }
 }

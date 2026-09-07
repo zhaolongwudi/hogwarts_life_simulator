@@ -6,6 +6,7 @@ import '../data/wand_data.dart';
 import '../data/political_stance.dart';
 import '../data/blood_status.dart';
 import '../data/pet_data.dart';
+import '../router/app_routes.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
 import '../widgets/miui_magic_backdrop.dart';
@@ -364,7 +365,7 @@ class _IntroScreenState extends State<IntroScreen> {
     );
 
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/game');
+      Navigator.pushReplacementNamed(context, AppRoutes.game);
     }
   }
 

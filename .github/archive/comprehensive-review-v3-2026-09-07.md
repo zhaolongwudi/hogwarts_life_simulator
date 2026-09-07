@@ -1025,7 +1025,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F7 | 前置断言完全缺失 | 错误处理 | High | v1 | ✅ 批次2 |
 | F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | ✅ 批次2 |
 | F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | 🟢 批次6（统一错误提示原语，存量屏幕渐进接入） |
-| F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | — |
+| F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | 🟢 批次8/10（批量通知收口 + `processChoice` 分支双通知合并，余下均为单次/互斥/await 间隔） |
 | F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | 🟢 批次7（6 处对话框局部控制器统一 whenComplete 释放） |
 | F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | — |
 | F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
@@ -1043,8 +1043,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | — |
 | F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | ✅ 批次2（84 处） |
 | F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 | ✅ 批次1 |
-| F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | — |
-| F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 | — |
+| F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | 🟢 批次10（`router/app_routes.dart` 唯一路由源，`main.dart` 引用 `appRoutes` 表） |
+| F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 | 🟢 批次10（幽灵路由 `/world_map` `/save_load` 清除，低频页走 `pushRoute` 构造器） |
 | F30 | story_text_renderer 正则密集 | 正则/文本解析 | High | v2 | 🟢 批次5/8（核对：全部静态化，含标签/动词预编译） |
 | F31 | 部分 RegExp 未使用静态缓存 | 正则/文本解析 | Low | v2 | ✅ 批次5 |
 | F32 | 频繁的 List.from + sort 重建 | 集合/内存 | Medium | v2 | 🟢 批次5/8（核对：热路径已静态缓存，其余一次性排序非热路径） |
@@ -1070,7 +1070,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | P1 | 缺少性能基准测试 | 性能基准 | High | v3 | — |
 | P2 | story_text_renderer 渲染性能瓶颈 | 性能基准 | High | v3 | — |
 | P3 | 频繁的集合重建 | 性能基准 | Medium | v3 | — |
-| P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 | — |
+| P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 | 🟢 批次8/10（明显级联已合并，同帧重复 rebuild 清除） |
 | D1 | 测试数据设置重复 | 代码重复度 | Medium | v3 | 🟢 批次9（`test/helpers/test_fixtures.dart` 唯一来源，4 处重复定义删除） |
 | D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | 🟢 批次9（`pushRoute` 收口 8 文件 20 处） |
 | D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | 🟢 批次6/7（`_showError` 统一错误处理，骨架差异属必要） |
@@ -1434,6 +1434,35 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | F32 | 🟢 已解决 | 热路径的 `.toList()..sort()`（422-427 / 723 / 1278-1281）已静态缓存；其余散落的 sort 均为一次性数据准备，非热路径 |
 | F34 | ✅ 误判 | `liquid_glass_nav_bar.dart:226` 与 `miuix_components.dart:62` 的 `dispose()` 均已调用 `_pressCtrl.dispose()` / `_ctrl.dispose()` |
 
+### 批次 9 — 代码重复收口（D1 测试 fixture 抽取、D2 导航封装）
+
+**D1**：四个测试文件各自写了一份 `makeGame()`（160+ 行重复），抽取到
+`test/helpers/test_fixtures.dart` 成为唯一来源（可选 `offlineQuickMode` 参数），
+原四处删除。**D2**：`Navigator.push(MaterialPageRoute(...))` 全项目 8 文件 20 处
+收口到 `ui_helpers.dart` 的 `pushRoute`，新页面一律走它。护栏测试
+`test/code_dedup_audit_test.dart`：`lib/` 下 `MaterialPageRoute` 只允许出现在
+`ui_helpers.dart`，杜绝导航构造细节回流。CI 两处热修：`shop_tab.dart` 补
+`ui_helpers` import、`round16_fixes_test.dart` 恢复 `app_provider` import、
+`progression_fix_test.dart` 同步识别 `pushRoute`/`pushNamed` 分支。
+
+### 批次 10 — 路由统一（F28/F29）+ notifyListeners 剩余合并（F10/P4）
+
+**F28/F29 路由统一**：新建 `lib/router/app_routes.dart` 作为命名路由**唯一字符串源**：
+
+- `AppRoutes` 编译期常量（`home/intro/settings/game`），拼错直接编译失败；
+- `appRoutes` 表由 `main.dart` 的 `routes:` 直接引用，不再各自维护；
+- 8 个文件的 `pushNamed` 全部改用常量；
+- 幽灵路由清除：`game_phone_tab` 的 `/world_map`、`/save_load` 此前表里未定义
+  （真点进去会走 onUnknownRoute 抛错），改为 `pushRoute(WorldMapScreen()/SaveLoadScreen())`
+  直接推构造器；`home_screen` 的裸字符串路由同样改用 `AppRoutes` 常量。
+
+**F10/P4 剩余合并**：`processChoice`（AI 路径）中三个纯本地分支
+（表白就位 / 留校邀请 / 因果抉择）各自 `notifyListeners()` 后立即走到方法尾部的
+统一通知，中间无 await —— 同一帧重复 rebuild，每回合多 3 次全量刷新。删除
+分支内三处通知，统一由尾部一次通知覆盖（loading 分支的提前通知因后面跟着
+AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）。其余各文件
+`notifyListeners` 经逐点核对均为单次/互斥分支/await 间隔通知，无进一步合并空间。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1450,7 +1479,8 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 | 6 | 统一错误反馈与恢复原语（F6、F9 基础设施） | `62b5c24` |
 | 7 | UI 资源释放与重复消除（F11、D3） | `fdbe5e7` |
 | 8 | AI 超时单一来源 + 核对四项（F48、F17、F30、F32、F34） | `5548c80` |
-| 9 | 代码重复收口（D1 测试 fixture 抽取、D2 导航封装 20 处） | 本次提交 |
+| 9 | 代码重复收口（D1 测试 fixture 抽取、D2 导航封装 20 处） | `87b3570` → `9b178aa` |
+| 10 | 路由统一（F28/F29 `app_routes.dart` 收口）+ notifyListeners 剩余合并（F10/P4） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 
@@ -1466,10 +1496,10 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
    剩余风险是 `src['t'] as String?` 在 t 为非字符串时抛错，顺手换成宽容读取。
 4. **SI3（Medium）**：CrashLogger / AiDebugLogger 日志路径无统一管理，可收口到一个常量。
 
-**再往后的候选**（按性价比排）：F10/P4（notifyListeners 合并，挑明显级联做低风险部分）、
-F28/F29（路由统一，需动 10+ 文件）、
-F12（setState 局部刷新，面大需基准）、F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
-（批次9 已完成 D1/D2 代码重复收口，结构护栏见 `test/code_dedup_audit_test.dart`。）
+**再往后的候选**（按性价比排）：F12（setState 局部刷新，面大需基准）、
+F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
+（批次9/10 已完成 D1/D2 代码重复收口、F10/P4 notifyListeners 合并、F28/F29 路由统一，
+结构护栏见 `test/code_dedup_audit_test.dart`。）
 
 **注意两件事**：
 

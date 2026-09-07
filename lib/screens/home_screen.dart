@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../providers/game_provider.dart';
+import '../router/app_routes.dart';
 import '../screens/save_load_screen.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
@@ -61,12 +62,12 @@ class HomePage extends StatelessWidget {
                             _PlayerHero(
                               gameProvider: gameProvider,
                               onEnter: () =>
-                                  Navigator.pushNamed(context, '/game'),
+                                  Navigator.pushNamed(context, AppRoutes.game),
                             )
                           else
                             _WelcomeHero(
                               onStart: () =>
-                                  Navigator.pushNamed(context, '/intro'),
+                                  Navigator.pushNamed(context, AppRoutes.intro),
                               onSaves: () => pushRoute(context, const SaveLoadScreen()),
                             ),
                           const SizedBox(height: 28),
@@ -74,7 +75,7 @@ class HomePage extends StatelessWidget {
                             started: started,
                             onSaves: () => pushRoute(context, const SaveLoadScreen()),
                             onSettings: () =>
-                                Navigator.pushNamed(context, '/settings'),
+                                Navigator.pushNamed(context, AppRoutes.settings),
                             offlineOn: appProvider.offlineQuickMode,
                             onOfflineMode: () => context
                                 .read<AppProvider>()

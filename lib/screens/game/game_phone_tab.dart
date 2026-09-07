@@ -7,6 +7,8 @@ import '../other/other_screens.dart';
 import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';
+import '../save_load_screen.dart';
+import '../world_map_screen.dart';
 import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../models/game_systems.dart';
@@ -434,10 +436,10 @@ class PhoneTab extends StatelessWidget {
                 pushRoute(context, const JobScreen());
               }),
               _buildDockItem(context, Icons.map_outlined, '地图', MiuiColors.primaryVariant, () {
-                Navigator.pushNamed(context, '/world_map');
+                pushRoute(context, const WorldMapScreen());
               }),
               _buildDockItem(context, Icons.save_outlined, '存档', const Color(0xFF3B82F6), () {
-                Navigator.pushNamed(context, '/save_load');
+                pushRoute(context, const SaveLoadScreen());
               }),
             ],
           ),

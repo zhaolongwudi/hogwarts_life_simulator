@@ -888,8 +888,9 @@ $kNarrativeWritingRules
       if (confessedThisTurn) {
         // 表白已就位：checkNPCConfessions 内部写入了专属的「接受/婉拒」两个选项，
         // 此时再让 AI 生成 4 个通用选项会把这个抉择冲掉。
+        // 三个纯本地分支都不在这里 notify：下面 937 统一通知一次，
+        // 中间没有 await，分支内通知是同一帧的重复 rebuild（F10/P4）。
         loadingStage = '';
-        notifyListeners();
       } else if (pendingFacultyOffer) {
         // 留校邀请：毕业后唯一一个"接下来的人生往哪走"的分岔。
         // 同样不让 AI 的通用选项冲掉——这是七年攒出来的东西换来的一个问句。
@@ -898,7 +899,6 @@ $kNarrativeWritingRules
           GameChoice(text: '婉拒，离校', action: '/教职 婉拒'),
         ];
         loadingStage = '';
-        notifyListeners();
       } else if (pendingCausal != null && !causalDecided) {
         // 命运时刻：选项只给这几个分支，AI 生成的通用选项全部让路。
         // 七年里能改写原著的机会一只手数得过来，
@@ -912,7 +912,6 @@ $kNarrativeWritingRules
             )
             .toList(growable: false);
         loadingStage = '';
-        notifyListeners();
       } else {
         loadingStage = '正在生成选项...';
         notifyListeners();
