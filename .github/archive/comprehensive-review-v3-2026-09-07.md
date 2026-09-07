@@ -1463,6 +1463,30 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）。其余各文件
 `notifyListeners` 经逐点核对均为单次/互斥分支/await 间隔通知，无进一步合并空间。
 
+### 批次 11a — F1 `_ensureCommandsRegistered()` 神方法拆分 `[Critical]`
+
+**问题**：`mixin_commands.dart` 的 `_ensureCommandsRegistered()` 单方法 1,337 行
+（34..1370），7 个 `registerAll` 块混在一个函数体里，任何命令改动都要在千行
+函数中定位。
+
+**改法（纯机械搬移，内容零改动）**：
+
+- `_ensureCommandsRegistered()` 收缩为调度器：`if (_commandsRegistered) return;`
+  + `resetForTesting()` + 依次调用 7 个分组注册方法 + `registry.seal()`；
+- 7 个分组方法按命令域拆分，各自 `registry.registerAll([...])`：
+  - `_registerBasicInfoCommands`（基础信息类）
+  - `_registerRelationCommands`（关系/恋爱/声望类）
+  - `_registerStudyCommands`（学业&成就&收藏类）
+  - `_registerItemCommands`（物品&宠物）
+  - `_registerActivityCommands`（活动&玩法）
+  - `_registerWorldCommands`（信件&目标&世界&结局）
+  - `_registerCheatCommands`（作弊指令）
+- 每个 `registerAll` 块的内容逐字节保留，只在外层包方法签名；
+  用脚本按边界（注释行 + 4 空格缩进 `]);`）切割，避免手改漏行。
+
+**验证**：`flutter analyze` 0 error；`flutter test` 全量 1381 通过
+（含 command_registry / command_subs / command_center_panel 33 项命令相关用例）。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1480,7 +1504,8 @@ AI 请求而保留，那是「先渲染 loading 再 await」的必要节奏）�
 | 7 | UI 资源释放与重复消除（F11、D3） | `fdbe5e7` |
 | 8 | AI 超时单一来源 + 核对四项（F48、F17、F30、F32、F34） | `5548c80` |
 | 9 | 代码重复收口（D1 测试 fixture 抽取、D2 导航封装 20 处） | `87b3570` → `9b178aa` |
-| 10 | 路由统一（F28/F29 `app_routes.dart` 收口）+ notifyListeners 剩余合并（F10/P4） | 本次提交 |
+| 10 | 路由统一（F28/F29 `app_routes.dart` 收口）+ notifyListeners 剩余合并（F10/P4） | `c6d977b` |
+| 11a | F1 神方法拆分（`_ensureCommandsRegistered` → 7 个分组注册方法） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

@@ -37,7 +37,19 @@ mixin GameCommandsMixin on GameProviderBase {
     final registry = CommandRegistry.instance;
     registry.resetForTesting();
 
-    // —— 基础信息类 ——
+    _registerBasicInfoCommands(registry);
+    _registerRelationCommands(registry);
+    _registerStudyCommands(registry);
+    _registerItemCommands(registry);
+    _registerActivityCommands(registry);
+    _registerWorldCommands(registry);
+    _registerCheatCommands(registry);
+
+    registry.seal();
+  }
+
+  // —— 基础信息类 ——
+  void _registerBasicInfoCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: '状态',
@@ -284,8 +296,10 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
 
-    // —— 关系 / 恋爱 / 声望类 ——
+  // —— 关系 / 恋爱 / 声望类 ——
+  void _registerRelationCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: '关系',
@@ -569,8 +583,10 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
 
-    // —— 学业 & 成就 & 收藏类 ——
+  // —— 学业 & 成就 & 收藏类 ——
+  void _registerStudyCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: '课程',
@@ -764,8 +780,10 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
 
-    // —— 物品 & 宠物 ——
+  // —— 物品 & 宠物 ——
+  void _registerItemCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: '宠物',
@@ -841,8 +859,10 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
 
-    // —— 活动 & 玩法 ——
+  // —— 活动 & 玩法 ——
+  void _registerActivityCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: '魁地奇',
@@ -1052,8 +1072,10 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
 
-    // —— 信件 & 目标 & 世界 & 结局 ——
+  // —— 信件 & 目标 & 世界 & 结局 ——
+  void _registerWorldCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: '信',
@@ -1340,8 +1362,10 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
 
-    // —— 作弊指令 ——
+  // —— 作弊指令 ——
+  void _registerCheatCommands(CommandRegistry registry) {
     registry.registerAll([
       CommandDef(
         primary: 'cheat',
@@ -1365,8 +1389,6 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
-
-    registry.seal();
   }
 
   void closeCommandPanel() {
