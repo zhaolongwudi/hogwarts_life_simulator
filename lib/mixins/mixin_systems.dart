@@ -2697,8 +2697,9 @@ mixin GameSystemsMixin on GameProviderBase {
     } else {
       // 每次 narrative/npcChat 调用前刷新系统提示词，确保玩家动态状态实时注入
       if (player != null) {
+        final p = player!;
         // 构建玩家状态简单哈希，检测是否需要重建 systemPrompt
-        final currentHash = '${player.name}_${player.house}_${player.grade}_${player.spirit}_${player.energy}';
+        final currentHash = '${p.name}_${p.house}_${p.grade}_${p.spirit}_${p.energy}';
         if (currentHash != _lastPlayerStateHash || _lastSystemPrompt == null) {
           // 哈希变化或缓存为空，需要重建
           systemPrompt = buildSystemPrompt();

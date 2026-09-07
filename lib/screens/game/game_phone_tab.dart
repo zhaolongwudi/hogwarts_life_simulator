@@ -9,6 +9,7 @@ import '../memory_screen.dart';
 import '../job_screen.dart';
 import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../models/game_systems.dart';
 import '../../widgets/miuix_overlays.dart';
 
 void _editSignature(BuildContext context) {
@@ -107,7 +108,7 @@ class PhoneTab extends StatelessWidget {
   /// 玻璃拟态日期时间组件（匹配参考图 Screenshot_00-09-25 风格）
   Widget _buildDateTimeWidget(
     BuildContext context,
-    DateTime time,
+    GameTime time,
     String hourStr,
     String minStr,
     List<String> weekdayNames,
