@@ -145,7 +145,6 @@ class GameBottomInput extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              ),
                             ],
                           ),
                         ),
