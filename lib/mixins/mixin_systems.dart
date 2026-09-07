@@ -35,6 +35,10 @@ import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
+  /// 缓存：上次构建的 systemPrompt 和玩家状态哈希（用于检测是否需要重建）
+  String? _lastSystemPrompt;
+  String? _lastPlayerStateHash;
+
   /// 推进世界时钟，并统一执行所有周期性检查
   /// （游戏周、满月、学年切换、事件锚点、一致性、月度演化）。
   ///
@@ -2693,21 +2697,37 @@ mixin GameSystemsMixin on GameProviderBase {
     } else {
       // 每次 narrative/npcChat 调用前刷新系统提示词，确保玩家动态状态实时注入
       if (player != null) {
-        systemPrompt = buildSystemPrompt();
+        // 构建玩家状态简单哈希，检测是否需要重建 systemPrompt
+        final currentHash = '${player.name}_${player.house}_${player.grade}_${player.spirit}_${player.energy}';
+        if (currentHash != _lastPlayerStateHash || _lastSystemPrompt == null) {
+          // 哈希变化或缓存为空，需要重建
+          systemPrompt = buildSystemPrompt();
+          _lastSystemPrompt = systemPrompt;
+          _lastPlayerStateHash = currentHash;
+        } else {
+          // 哈希未变化，复用缓存
+          systemPrompt = _lastSystemPrompt;
+        }
       }
       effectiveSystemPrompt = systemPrompt ?? '';
     }
     // 2026-08-24：maxTokens 按场景精细化分配
-    //   narrative 主剧情：4000（配合 600-800 字精练叙事要求，总 token 约 2000-3000）
-    //   choice 选项：1000（只输出 4 行 ABCD ≈ 300 tokens，留余量给思考型模型的推理过程）
-    //   summary 摘要：4000（输出 800-2400 字摘要 + 结构化记忆块）
-    //   npcChat NPC聊天：4000（对话场景需要一定长度）
-    final maxTokens = switch (scene) {
-      AiScene.narrative => 4000,
-      AiScene.choice => 1000,
-      AiScene.summary => 4000,
-      AiScene.npcChat => 4000,
+    //   narrative 主剧情：2000（配合 600-800 字精练叙事要求，总 token 约 2000-3000）
+    //   choice 选项：500（只输出 4 行 ABCD ≈ 300 tokens，留余量给思考型模型的推理过程）
+    //   summary 摘要：3000（输出 800-2400 字摘要 + 结构化记忆块）
+    //   npcChat NPC聊天：500（对话场景不需要太长）
+    int maxTokens = switch (scene) {
+      AiScene.narrative => 2000,
+      AiScene.choice => 500,
+      AiScene.summary => 3000,
+      AiScene.npcChat => 500,
     };
+    // Token 自适应机制：游戏进入后期时自动降低 maxTokens 以节省 token
+    if (totalTokens > 100000) {
+      maxTokens = (maxTokens * 0.6).floor(); // 降低 40% (20% + 20%)
+    } else if (totalTokens > 50000) {
+      maxTokens = (maxTokens * 0.8).floor(); // 降低 20%
+    }
     final result = await r.chatComplete(
       scene: scene,
       prompt: prompt,

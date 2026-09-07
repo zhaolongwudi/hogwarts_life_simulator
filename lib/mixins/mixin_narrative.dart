@@ -51,6 +51,12 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 却永远没人读，analyzer 版本一升级就会被判成死代码。
   double get lastNarrativeDensity => _lastNarrativeDensity;
 
+  /// 上一次注入的政治立场值，用于检测变化（没变化时跳过重复注入）
+  String _lastPoliticalStance = '';
+
+  /// 每回合信息密度历史记录，用于调试与调优
+  final List<_NarrativeDensityRecord> _narrativeDensityHistory = [];
+
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
     CrashLogger.instance.logHeartbeat(
@@ -232,9 +238,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // 政治立场原先只在开局的 system prompt 里注入过一次。
       // LLM 记不住二十回合前的设定，中期立场会漂：开局定的「纯血至上」，
       // 二十回合后开始跟麻瓜出身的同学称兄道弟，玩家会觉得这人设是假的。
-      // 每回合重述一次，成本一行。
+      // 每回合重述一次，成本一行。只在变化时注入，避免重复。
       final stance = p.politicalTendency?.trim() ?? '';
-      if (stance.isNotEmpty) {
+      if (stance.isNotEmpty && stance != _lastPoliticalStance) {
+        _lastPoliticalStance = stance;
         contextBuffer.writeln(
           '【政治立场】$stance（主角对纯血论、麻瓜出身、混血的态度；'
           'NPC 的台词与玩家可选的做法都需贴合此立场，'
@@ -257,13 +264,13 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
       // 永远放在【世界上下文】最前面，防止后面截断看不到
       // 2026-08-23：模型能力升级，所有条数限制整体翻倍
-      // T0: 核心事实 (importance ≥ 4，重要性高到低，最多60条；
+      // T0: 核心事实 (importance ≥ 5，重要性高到低，最多40条；
       //     永不遗忘层 = importance ≥ kPersistentFactImportance，永远保留)
-      final t0 = memory.keyFacts.where((f) => f.importance >= 4).toList()
+      final t0 = memory.keyFacts.where((f) => f.importance >= 5).toList()
         ..sort((a, b) {
           final c = b.importance.compareTo(a.importance);
           // 同分按写入时间新的靠前：Dart 的 sort 不稳定，大量 9 分并列时
-          // 若不加次级键，前 60 条每回合可能换一批，AI 记住的旧事随机漂移。
+          // 若不加次级键，前 40 条每回合可能换一批，AI 记住的旧事随机漂移。
           if (c != 0) return c;
           return b.absoluteDay.compareTo(a.absoluteDay);
         });
@@ -274,7 +281,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       t0.removeWhere((f) => _factConflictsWithAuthority(f.fact));
       if (t0.isNotEmpty) {
         contextBuffer.writeln('【T0 核心事实（永不遗忘；纯事实，不得更改或遗忘）】');
-        for (int i = 0; i < t0.length && i < 60; i++) {
+        for (int i = 0; i < t0.length && i < 40; i++) {
           final f = t0[i];
           contextBuffer.writeln('• [${f.importance}] ${f.fact}');
         }
@@ -301,32 +308,37 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       if (loopsHint.isNotEmpty) {
         contextBuffer.write(loopsHint);
       }
-      // T2: NPC 关键关系（按 |好感| 取前 24 个 NPC 的结构化关系锚，仅展示已登场NPC）
-      final topNpcs =
-          npcRegistry.values.where((npc) => npc.introduced == true).toList()
-            ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
+      // T2: NPC 关键关系（场景感知裁剪，同场景全量+高好感摘要）
+      final currentLoc = worldState.currentLocation ?? '';
+      final allIntroduced = npcRegistry.values.where((npc) => npc.introduced == true).toList()
+        ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
+
+      // 同场景NPC（全量注入）
+      final sameLocationNpcs = allIntroduced.where((n) => n.currentLocation == currentLoc).take(5).toList();
+      // 高好感场景外NPC（摘要注入）
+      final otherHighAffection = allIntroduced
+        .where((n) => n.currentLocation != currentLoc && !sameLocationNpcs.contains(n))
+        .take(3)
+        .toList();
+
       final t2Lines = <String>[];
-      for (int i = 0; i < topNpcs.length && i < 24; i++) {
-        final npc = topNpcs[i];
+      for (final npc in sameLocationNpcs) {
         final anchor = memory.relationshipAnchors[npc.id];
         if (anchor == null) continue;
         final buf = StringBuffer();
-        buf.write(
-          '${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})',
-        );
-        if (anchor.firstMeeting.isNotEmpty)
-          buf.write('｜初见:${anchor.firstMeeting}');
+        buf.write('${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})');
+        if (anchor.firstMeeting.isNotEmpty) buf.write('｜初见:${anchor.firstMeeting}');
         if (anchor.keyMoments.isNotEmpty) {
-          // 注入最后 6 个关键转折点（3→6）
-          buf.write(
-            '｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 6)).join("；")}',
-          );
+          buf.write('｜关键:${anchor.keyMoments.skip(max(0, anchor.keyMoments.length - 3)).join("；")}');
         }
-        if (anchor.secretsShared.isNotEmpty)
-          buf.write('｜交换秘密:${anchor.secretsShared.take(6).join("；")}');
-        if (anchor.promisesExchanged.isNotEmpty)
-          buf.write('｜承诺:${anchor.promisesExchanged.take(6).join("；")}');
+        if (anchor.secretsShared.isNotEmpty) buf.write('｜交换秘密:${anchor.secretsShared.take(3).join("；")}');
+        if (anchor.promisesExchanged.isNotEmpty) buf.write('｜承诺:${anchor.promisesExchanged.take(3).join("；")}');
         t2Lines.add('• ${buf.toString()}');
+      }
+      for (final npc in otherHighAffection) {
+        final anchor = memory.relationshipAnchors[npc.id];
+        if (anchor == null) continue;
+        t2Lines.add('• ${npc.name}(好感${npc.affection >= 0 ? '+' : ''}${npc.affection}，${anchor.currentStage})');
       }
       if (t2Lines.isNotEmpty) {
         contextBuffer.writeln('【T2 NPC 关键关系（纯事实结构锚，永不压缩）】');
@@ -458,47 +470,52 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         return false;
       }
 
-      // 日志分析第16轮D：CG/成就类锚点对 AI 当前回合零信息量却刷屏
-      // （16 条里 14 条是「解锁CG」），挤掉真正的剧情事件 → 降权：
-      // 成就/CG 全局最多保留 2 条（且只取最新的），剧情事件优先占满。
-      bool isMetaEvent(String e) =>
-          e.contains('🏆') || e.contains('📸') || e.contains('解锁成就') ||
-          e.contains('解锁CG');
-      var metaKept = 0;
-      if (ws.recentEvents.isNotEmpty) {
-        for (final ev in ws.recentEvents.reversed) {
-          final e = ev.text;
-          if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
-          if (looksFake(e)) continue;
-          if (isMetaEvent(e)) {
-            if (metaKept >= 2) continue;
-            metaKept++;
+      // 近期事件锚点注入（如果 T3 已经注入足够近期事件，则跳过重复注入）
+      if (t3.isNotEmpty && t3.any((e) => ts - e.absoluteDay <= 3)) {
+        // T3 已包含近期事件，跳过重复注入
+      } else {
+        // 日志分析第16轮D：CG/成就类锚点对 AI 当前回合零信息量却刷屏
+        // （16 条里 14 条是「解锁CG」），挤掉真正的剧情事件 → 降权：
+        // 成就/CG 全局最多保留 2 条（且只取最新的），剧情事件优先占满。
+        bool isMetaEvent(String e) =>
+            e.contains('🏆') || e.contains('📸') || e.contains('解锁成就') ||
+            e.contains('解锁CG');
+        var metaKept = 0;
+        if (ws.recentEvents.isNotEmpty) {
+          for (final ev in ws.recentEvents.reversed) {
+            final e = ev.text;
+            if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
+            if (looksFake(e)) continue;
+            if (isMetaEvent(e)) {
+              if (metaKept >= 2) continue;
+              metaKept++;
+            }
+            final k = e.replaceAll(_anchorIconPrefix, '').trim();
+            if (!alreadyAnchors.add(k)) continue;
+            worldAnchors.add(e);
+            if (worldAnchors.length >= 12) break;
           }
-          final k = e.replaceAll(_anchorIconPrefix, '').trim();
-          if (!alreadyAnchors.add(k)) continue;
-          worldAnchors.add(e);
-          if (worldAnchors.length >= 12) break;
         }
-      }
-      if (ws.recentNarrativeEvents.isNotEmpty) {
-        for (final ev in ws.recentNarrativeEvents.reversed) {
-          final e = ev.text;
-          if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
-          if (looksFake(e)) continue;
-          if (isMetaEvent(e)) {
-            if (metaKept >= 2) continue;
-            metaKept++;
+        if (ws.recentNarrativeEvents.isNotEmpty) {
+          for (final ev in ws.recentNarrativeEvents.reversed) {
+            final e = ev.text;
+            if (e.contains('好感本周已达上限') || e.contains('周好感度已达上限')) continue;
+            if (looksFake(e)) continue;
+            if (isMetaEvent(e)) {
+              if (metaKept >= 2) continue;
+              metaKept++;
+            }
+            final k = e.replaceAll(_anchorIconPrefix, '').trim();
+            if (!alreadyAnchors.add(k)) continue;
+            worldAnchors.add('剧情锚：$e');
+            if (worldAnchors.length >= 16) break;
           }
-          final k = e.replaceAll(_anchorIconPrefix, '').trim();
-          if (!alreadyAnchors.add(k)) continue;
-          worldAnchors.add('剧情锚：$e');
-          if (worldAnchors.length >= 16) break;
         }
-      }
-      if (worldAnchors.isNotEmpty) {
-        contextBuffer.writeln('【世界近期重大事件（硬锚，不能丢）】');
-        contextBuffer.writeln(worldAnchors.join('\n'));
-        contextBuffer.writeln('');
+        if (worldAnchors.isNotEmpty) {
+          contextBuffer.writeln('【世界近期重大事件（硬锚，不能丢）】');
+          contextBuffer.writeln(worldAnchors.join('\n'));
+          contextBuffer.writeln('');
+        }
       }
 
       // 只注入最近 2 回合（而非3），避免历史叙事过多导致 AI 被旧场景文本"锚定"而原地打转
@@ -590,7 +607,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
                 '一直写到"要不要动手"的那一瞬间为止。'
                 '严禁替玩家做出选择——不要写他冲上去了，也不要写他转身走了；'
                 '不要给出倾向，不要预写后果，把决定权原样留在那一秒。\n\n'
-          : '';
+          : '';  // 保持原样，但确认没有额外开销（只在有实际锚点时生成字符串）
 
       // 安静期提示：检测最近几回合是否连续平淡，若连续3回合以上无转折，
       // 注入"本回合需要一点波澜"的指令，防止叙事陷入日常循环。
@@ -818,6 +835,12 @@ $kNarrativeWritingRules
       {
         final density = calculateInformationDensity(currentNarrative);
         _lastNarrativeDensity = density;
+        _narrativeDensityHistory.add(_NarrativeDensityRecord(
+          turn: turnCount,
+          density: density,
+          isLow: density > 0.0 && density < 0.02,
+          isOffline: false,
+        ));
         if (density < 0.02 && density > 0.0) {
           debugPrint('⚠️ 信息密度偏低: ${density.toStringAsFixed(4)}（阈值 0.02）');
           if (usedFallbackNarrative) {
@@ -1060,6 +1083,12 @@ $kNarrativeWritingRules
     {
       final density = calculateInformationDensity(currentNarrative);
       _lastNarrativeDensity = density;
+      _narrativeDensityHistory.add(_NarrativeDensityRecord(
+        turn: turnCount,
+        density: density,
+        isLow: density > 0.0 && density < 0.02,
+        isOffline: true,
+      ));
       if (density < 0.02 && density > 0.0) {
         debugPrint('⚠️ [离线] 信息密度偏低: ${density.toStringAsFixed(4)}，自动增强');
         final p = player;
@@ -2396,4 +2425,23 @@ $kNarrativeWritingRules
 String narrativeEventProbe(String latestEvent) {
   if (latestEvent.isEmpty) return '';
   return latestEvent.length <= 40 ? latestEvent : latestEvent.substring(0, 40);
+}
+
+/// 单回合信息密度记录，用于结构化存储与后续分析。
+class _NarrativeDensityRecord {
+  final int turn;
+  final double density;
+  final bool isLow;
+  final bool isOffline;
+
+  const _NarrativeDensityRecord({
+    required this.turn,
+    required this.density,
+    required this.isLow,
+    required this.isOffline,
+  });
+
+  @override
+  String toString() =>
+      '[turn=$turn] density=${density.toStringAsFixed(4)} isLow=$isLow offline=$isOffline';
 }

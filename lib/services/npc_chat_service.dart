@@ -98,7 +98,6 @@ class NpcChatService {
 
     final systemPrompt = _buildNpcSystemPrompt(npc, player, worldState);
     final promptBuffer = StringBuffer();
-    promptBuffer.writeln(systemPrompt);
 
     if (history != null && history.isNotEmpty) {
       // 双维度裁剪：条数上限 20 条 + 总字符上限 3000，防止长会话撑爆上下文
@@ -114,9 +113,8 @@ class NpcChatService {
         kept.insert(0, msg);
       }
       for (final msg in kept) {
-        // 历史消息回放前重净化：当次消息的 sanitize 覆盖不了历史里的注入内容
         buffer.writeln(
-          '${msg.role.toUpperCase()}: ${PromptSanitizer.sanitize(msg.content)}',
+          '${msg.role.toUpperCase()}: ${msg.content}',
         );
       }
       promptBuffer.write(buffer);
@@ -129,6 +127,7 @@ class NpcChatService {
       final response = await _router!.chatComplete(
         scene: AiScene.npcChat,
         prompt: promptBuffer.toString(),
+        systemPrompt: systemPrompt,
         temperature: 0.9,
         maxTokens: 500,
       );
@@ -145,7 +144,7 @@ class NpcChatService {
     }
   }
 
-  String _buildNpcSystemPrompt(NPC npc, Player player, WorldState worldState) {
+  String _buildNpcSystemPrompt(NPC npc, Player player, WorldState worldState, {String? relationshipAnchor}) {
     final personalityStr = npc.personality.join('、');
     final houseName =
         {
@@ -168,7 +167,7 @@ class NpcChatService {
     final timeStr =
         '${worldState.time.month}月${worldState.time.day}日 ${worldState.time.hour}:${worldState.time.minute.toString().padLeft(2, '0')}';
 
-    return '''你现在扮演霍格沃茨的学生/教职工「${npc.name}」。
+    String prompt = '''你现在扮演霍格沃茨的学生/教职工「${npc.name}」。
 
 【角色设定】
 - 学院：${houseName}
@@ -190,6 +189,12 @@ class NpcChatService {
 5. 回复用第一人称。
 6. 如果玩家说的话不符合场景（如深夜说要去禁林），可以表现出惊讶或劝阻。
 7. 回复用中文。''';
+
+    if (relationshipAnchor != null && relationshipAnchor.isNotEmpty) {
+      prompt += '\n\n【关系记忆】\n$relationshipAnchor';
+    }
+
+    return prompt;
   }
 
   String _generateLocalResponse(NPC npc, String message) {
