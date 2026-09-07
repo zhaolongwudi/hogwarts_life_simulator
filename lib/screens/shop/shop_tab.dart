@@ -53,7 +53,7 @@ class _ShopTabState extends State<ShopTab> {
     try {
       return await action();
     } finally {
-      await Future<void>.delayed(const Duration(milliseconds: 350));
+      await Future<void>.delayed(MiuiDuration.pulse);
       if (mounted) setState(() => _trading = false);
     }
   }
@@ -258,7 +258,7 @@ class _ShopTabState extends State<ShopTab> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(ok ? '已购买 ${item['name']} (花费 $price 加隆)' : '加隆不足！需要 $price 加隆'),
-                      duration: const Duration(seconds: 3),
+                      duration: MiuiDuration.snackbarLong,
                       action: ok && isUsable
                           ? SnackBarAction(
                               label: '去使用',

@@ -313,7 +313,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
                     content: Text('🔱 政治立场已切换为：$v（下回合 AI 起生效）'),
-                    duration: const Duration(seconds: 2),
+                    duration: MiuiDuration.snackbarMedium,
                   ));
                 }
               },

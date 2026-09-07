@@ -99,7 +99,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(err ?? '💞 开始留意 ${a.name} × ${b.name}'),
-        duration: const Duration(seconds: 2),
+        duration: MiuiDuration.snackbarMedium,
       ),
     );
   }
@@ -108,7 +108,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
     final gp = context.read<GameProvider>();
     gp.stopShipping(index);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已经放手了'), duration: Duration(seconds: 2)),
+      const SnackBar(content: Text('已经放手了'), duration: MiuiDuration.snackbarMedium),
     );
   }
 

@@ -180,7 +180,7 @@ class ParallelWorldScreen extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content: Text(ok ? '已留在心里' : '它已经在那儿了'),
-                      duration: const Duration(seconds: 2)),
+                      duration: MiuiDuration.snackbarMedium),
                 );
               },
               child: const Text('留在心里'),

@@ -1114,13 +1114,13 @@ class _NarrativeTabState extends State<NarrativeTab> {
         // 改成 AnimatedSize：平时收到 0，加载时平滑长到 44。
         // 有动画就不是"跳变"，正文区也不会一伸一缩地抖。
         AnimatedSize(
-          duration: const Duration(milliseconds: 160),
+          duration: MiuiDuration.fadeQuick,
           alignment: Alignment.topCenter,
           child: SizedBox(
             height: gp.isLoading ? 44 : 0,
             child: AnimatedOpacity(
               opacity: gp.isLoading ? 1 : 0,
-              duration: const Duration(milliseconds: 160),
+              duration: MiuiDuration.fadeQuick,
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -1233,7 +1233,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               // AnimatedContainer：滚动折叠横幅时留位跟着平滑缩，正文区不跳变。
               if (hasHeader)
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: MiuiDuration.fadeStandard,
                   curve: Curves.easeOut,
                   height: headerReserve,
                 ),
@@ -1278,7 +1278,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
             left: 0,
             right: 0,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: MiuiDuration.fadeStandard,
               // 时间戳只在 banner 卡内显示，避免与顶栏重复
               child: _buildHeaderCard(
                 null,

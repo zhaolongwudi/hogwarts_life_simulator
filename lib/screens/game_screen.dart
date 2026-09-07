@@ -44,7 +44,7 @@ class _GameScreenState extends State<GameScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0,
-          duration: const Duration(milliseconds: 300),
+          duration: MiuiDuration.fadeMedium,
           curve: Curves.easeOut,
         );
       }
@@ -150,7 +150,7 @@ class _GameScreenState extends State<GameScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('已退出沉浸模式，再按一次返回'),
-            duration: Duration(seconds: 1),
+            duration: MiuiDuration.snackbarShort,
           ),
         );
       },

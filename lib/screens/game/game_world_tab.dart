@@ -237,7 +237,7 @@ class WorldTab extends StatelessWidget {
                         children: [
                           AnimatedRotation(
                             turns: isCollapsed ? 0 : 0.25,
-                            duration: const Duration(milliseconds: 200),
+                            duration: MiuiDuration.fadeStandard,
                             child: Icon(Icons.keyboard_arrow_right, size: 20, color: MiuiColors.onSurfaceVariantSummary),
                           ),
                           const SizedBox(width: 8),

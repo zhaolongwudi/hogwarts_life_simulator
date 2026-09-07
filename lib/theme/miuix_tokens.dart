@@ -244,3 +244,42 @@ abstract final class MiuiSpace {
   static const double linearProgressHeight = 6;
   static const double circularProgressSize = 30;
 }
+
+// ============================================================================
+// 时长（UI 层语义时长）
+// ============================================================================
+
+/// UI 层通用时长语义 token —— 收敛散落的硬编码 `Duration(...)`。
+///
+/// 服务层超时/节流（`ai_router` / `ai_timeouts` / `rate_limiter` /
+/// `deepseek_service` 等）属于业务配置，不在此列；`MiuiMotion` 里已定义的
+/// 组件专属时长（导航/弹层/进度条等）也维持各自语义，不重复收编。
+abstract final class MiuiDuration {
+  // —— 淡入淡出 / 显隐 / 尺寸动画 ——
+  /// 极快反馈（choice 切换、按键涟漪）
+  static const fadeFast = Duration(milliseconds: 120);
+  /// 快捷动画（加载槽位伸缩、横幅折叠）
+  static const fadeQuick = Duration(milliseconds: 160);
+  /// 标准动画（AnimatedContainer / AnimatedSwitcher 默认档）
+  static const fadeStandard = Duration(milliseconds: 200);
+  /// 温和过渡（页面/面板切换）
+  static const fadeMedium = Duration(milliseconds: 300);
+  /// 慢速过渡（入场淡入等强调动画）
+  static const fadeSlow = Duration(milliseconds: 400);
+
+  // —— 打字机 / 逐字呈现 ——
+  /// 打字机逐段间隔
+  static const typewriterGap = Duration(milliseconds: 1400);
+  /// 短暂脉冲（特效词动画 / 操作反馈停留）
+  static const pulse = Duration(milliseconds: 350);
+
+  // —— 进度 / 完成反馈 ——
+  /// 进度条填充 / 完成动画
+  static const progressFill = Duration(milliseconds: 600);
+
+  // —— Snackbar / 临时提示展示时长 ——
+  static const snackbarShort = Duration(seconds: 1);
+  static const snackbarMedium = Duration(seconds: 2);
+  static const snackbarLong = Duration(seconds: 3);
+  static const snackbarXLong = Duration(seconds: 4);
+}

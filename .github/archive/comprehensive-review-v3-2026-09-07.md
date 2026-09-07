@@ -33,6 +33,7 @@
 | 12b | S1 API Key 降级策略 | S1 | ✅ 已推送 |
 | 13 | F12 setState 热点局部刷新 | F12 | ✅ 已推送 |
 | **14** | **健壮性加固：回调生命周期 + 查表判空 + 语义标签** | **CL1 / F39（高危 4 处）/ F24（主界面）** | **✅ 已推送（CI 全绿，v4.1.2）** |
+| **15** | **魔法数字提取：UI 层 Duration 语义 token 化** | **F25（UI 层时长）** | **🟢 批次15（CI 验证中）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -1066,7 +1067,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | — |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
 | F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | 🟢 批次14（主游戏界面 5 处高频交互补语义标签：发送/指令中心/推进/快捷行动 chip/快速存档；地图点位与其余 IconButton 留作后续） |
-| F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | — |
+| F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | 🟢 批次15（新增 `MiuiDuration` 语义时长 token，收敛 UI 层 17 个文件 29 处散落 Duration；服务层超时属业务配置、组件专属时长维持 `MiuiMotion` 语义，均注明边界） |
 | F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | ✅ 批次2（84 处） |
 | F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 | ✅ 批次1 |
 | F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | 🟢 批次10（`router/app_routes.dart` 唯一路由源，`main.dart` 引用 `appRoutes` 表） |
@@ -1647,6 +1648,46 @@ command_center_panel 7 项搜索/分组/执行测试）。
 `flutter analyze`（0 error）+ 全量 `flutter test` + `flutter build apk`，
 版本自动升至 **v4.1.2**。
 
+### 批次 15 — 魔法数字提取：UI 层 Duration 语义 token 化（F25）
+
+**这一批的由来**：F25 原文是「Duration 值、padding、margin、动画时长等大量硬编码」。
+先摸底：颜色/圆角/间距早已在 `miuix_tokens.dart`（`MiuiColors` / `MiuiRadius` /
+`MiuiSpace`）token 化，`miuix_motion.dart` 也已有导航/弹层/进度条等**组件专属**时长——
+真正的缺口是**游戏 UI 层散落的通用时长**（淡入淡出、打字机、Snackbar 等），
+散在 17 个文件里同一数值各写各的。于是只补这一层，不重复收编已语义化的组件时长。
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/theme/miuix_tokens.dart` | 新增 `MiuiDuration` 语义时长 token（fadeFast 120ms / fadeQuick 160ms / fadeStandard 200ms / fadeMedium 300ms / fadeSlow 400ms / pulse 350ms / typewriterGap 1400ms / progressFill 600ms / snackbarShort 1s / snackbarMedium 2s / snackbarLong 3s / snackbarXLong 4s），注释写明与服务层/组件专属时长的边界 |
+| `lib/screens/game/game_narrative_tab.dart` | AnimatedSize/AnimatedOpacity 160ms×2 → `fadeQuick`；AnimatedContainer/AnimatedSwitcher 200ms×2 → `fadeStandard` |
+| `lib/screens/game/game_top_bar.dart` | 存档 SnackBar 1s → `snackbarShort` |
+| `lib/screens/game/widgets/narrative_widgets.dart` | 打字机控制器 600ms → `progressFill`；逐段间隔 1400ms → `typewriterGap` |
+| `lib/screens/game/choice_panel.dart` | 选择锁定恢复延迟 400ms → `fadeSlow`；锁态透明度 120ms → `fadeFast` |
+| `lib/widgets/narrative_visuals.dart` | 特效词入场 400ms → `fadeSlow`；脉冲 350ms → `pulse` |
+| `lib/screens/npc_chat_screen.dart` | 滚动到底 300ms → `fadeMedium` |
+| `lib/widgets/miuix_overlays.dart` | 对话框转场 300ms → `fadeMedium` |
+| `lib/screens/intro_screen.dart` | 开篇分步页 next/back 300ms×2 → `fadeMedium` |
+| `lib/screens/story_history_screen.dart` | 翻页滚动 300ms×2 → `fadeMedium` |
+| `lib/screens/game_screen.dart` | 滚动回顶 300ms → `fadeMedium`；退出沉浸提示 1s → `snackbarShort` |
+| `lib/screens/game/game_world_tab.dart` | 折叠箭头旋转 200ms → `fadeStandard` |
+| `lib/screens/settings/settings_body.dart` | 政治立场提示 2s → `snackbarMedium` |
+| `lib/screens/other/parallel_world_screen.dart` | 「留在心里」提示 2s → `snackbarMedium` |
+| `lib/screens/other/matchmaker_screen.dart` | 撮合/放手提示 2s×2 → `snackbarMedium` |
+| `lib/screens/world_map_screen.dart` | 地点未解锁提示 2s×2 → `snackbarMedium` |
+| `lib/screens/shop/shop_tab.dart` | 交易反馈停留 350ms → `pulse`；购买结果 3s → `snackbarLong` |
+| `lib/screens/shop/pet_shop_tab.dart` | 宠物商店结果 4s → `snackbarXLong`（并补 `miuix_tokens` 导入） |
+
+**刻意保留的边界**：服务层超时/节流（`ai_router` / `ai_timeouts` / `rate_limiter` /
+`deepseek_service` / `crash_logger` 心跳）是业务配置而非 UI 语义，不并入；
+`miuix_motion.dart` 的组件专属时长维持各自语义，避免「一个 token 两个含义」；
+`game_provider`/`mixin_narrative` 的加载节奏延迟属游戏玩法节奏，留作后续单列。
+padding/margin 已基本在 `MiuiSpace` 覆盖，本轮不再铺开（改动面收益不匹配）。
+
+**验证**：改动全部为「常量表达式替换 + 一个 import 补丁」，无结构变化；
+本地照例做括号/结构静态核验，推送后走 CI（`flutter analyze` + `flutter test`）。
+
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
@@ -1672,6 +1713,7 @@ command_center_panel 7 项搜索/分组/执行测试）。
 | 12b | S1 API Key 降级策略（写入失败检测 + 设置页降级提示） | `2bfc249` |
 | 13 | F12 setState 热点局部刷新（job/指令中心/设置卡 ValueNotifier 化） | `b1ba24c` |
 | 14 | 健壮性加固（CL1 mounted 守卫、F39 查表判空 ×4、F24 主界面语义标签 ×5） | 本次提交 |
+| 15 | F25 魔法数字提取（`MiuiDuration` token + UI 层 17 文件 29 处 Duration 收敛） | 本次提交 |
 
 **下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
 

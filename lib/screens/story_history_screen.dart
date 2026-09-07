@@ -347,7 +347,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                       _currentPage--;
                       _scrollController.animateTo(
                         0,
-                        duration: const Duration(milliseconds: 300),
+                        duration: MiuiDuration.fadeMedium,
                         curve: Curves.easeOut,
                       );
                     });
@@ -372,7 +372,7 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
                       _currentPage++;
                       _scrollController.animateTo(
                         0,
-                        duration: const Duration(milliseconds: 300),
+                        duration: MiuiDuration.fadeMedium,
                         curve: Curves.easeOut,
                       );
                     });

@@ -17,7 +17,7 @@ class _ResourceFloatState extends State<ResourceFloat>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 600),
+    duration: MiuiDuration.progressFill,
   );
   Map<String, int> _prev = const {};
   String _text = '';
@@ -59,7 +59,7 @@ class _ResourceFloatState extends State<ResourceFloat>
         ..value = 0
         ..forward().then((_) async {
           if (!mounted) return;
-          await Future.delayed(const Duration(milliseconds: 1400));
+          await Future.delayed(MiuiDuration.typewriterGap);
           if (!mounted) return;
           _ctrl.reverse();
         });

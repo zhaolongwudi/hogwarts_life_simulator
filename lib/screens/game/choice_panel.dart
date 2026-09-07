@@ -32,7 +32,7 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
     if (_locked) return;
     setState(() => _locked = true);
     widget.onTap();
-    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await Future<void>.delayed(MiuiDuration.fadeSlow);
     if (mounted) setState(() => _locked = false);
   }
 
@@ -44,7 +44,7 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
       borderRadius: BorderRadius.circular(14),
       child: AnimatedOpacity(
         opacity: _locked ? 0.5 : 1,
-        duration: const Duration(milliseconds: 120),
+        duration: MiuiDuration.fadeFast,
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
           decoration: BoxDecoration(

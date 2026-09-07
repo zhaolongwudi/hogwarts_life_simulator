@@ -128,7 +128,7 @@ class SceneIllustrationBanner extends StatelessWidget {
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 400),
+      duration: MiuiDuration.fadeSlow,
       curve: Curves.easeOut,
       builder: (context, value, child) {
         return Opacity(
@@ -252,7 +252,7 @@ class DialogueBubble extends StatelessWidget {
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 350),
+      duration: MiuiDuration.pulse,
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Opacity(

@@ -247,7 +247,7 @@ class _IntroScreenState extends State<IntroScreen> {
     if (_step < 12) {
       setState(() => _step++);
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
+        duration: MiuiDuration.fadeMedium,
         curve: Curves.easeOut,
       );
     } else {
@@ -259,7 +259,7 @@ class _IntroScreenState extends State<IntroScreen> {
     if (_step > 0) {
       setState(() => _step--);
       _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
+        duration: MiuiDuration.fadeMedium,
         curve: Curves.easeOut,
       );
     }

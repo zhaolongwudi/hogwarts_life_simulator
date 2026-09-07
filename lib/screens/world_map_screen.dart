@@ -1004,7 +1004,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('该地点开学后才能前往（9月1日起）'),
-                                  duration: Duration(seconds: 2),
+                                  duration: MiuiDuration.snackbarMedium,
                                 ),
                               );
                               return;
@@ -1016,7 +1016,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('该地点需三年级以上才能前往'),
-                                  duration: Duration(seconds: 2),
+                                  duration: MiuiDuration.snackbarMedium,
                                 ),
                               );
                               return;

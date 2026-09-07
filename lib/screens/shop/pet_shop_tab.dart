@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/pet_data.dart';
+import '../../theme/miuix_tokens.dart';
 
 /// 「咿啦猫头鹰商店」的在售宠物。
 ///
@@ -147,7 +148,7 @@ class PetShopTab extends StatelessWidget {
                           final msg = gp.buyPet(pet.id);
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(msg), duration: const Duration(seconds: 4)),
+                            SnackBar(content: Text(msg), duration: MiuiDuration.snackbarXLong),
                           );
                         }
                       : null,

@@ -142,7 +142,7 @@ class GameTopBar extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('✅ 已存档'),
-                              duration: Duration(seconds: 1),
+                              duration: MiuiDuration.snackbarShort,
                             ),
                           );
                         }

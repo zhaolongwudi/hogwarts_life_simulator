@@ -22,7 +22,7 @@ Future<T?> showMiuixDialog<T>({
     barrierDismissible: barrierDismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: 0.6),
-    transitionDuration: const Duration(milliseconds: 300),
+    transitionDuration: MiuiDuration.fadeMedium,
     pageBuilder: (dialogContext, _, __) => builder(dialogContext),
     transitionBuilder: (_, animation, __, child) {
       final spring = CurvedAnimation(
