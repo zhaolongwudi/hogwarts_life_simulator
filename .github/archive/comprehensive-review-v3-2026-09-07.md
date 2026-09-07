@@ -1292,3 +1292,41 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 `RegExp` 的语义在 2.17 与 3.x 之间没有差异，足够在推送前抓出这类
 "编译得过、跑起来才炸"的错误。**没有完整 SDK 不等于没有验证手段，
 至少要把"能验的那部分"验掉。**
+
+### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
+
+**已完成并全部推送、CI 全绿**（最后一次全绿 run：`34134710038`，commit `280e1bf`）：
+
+| 批次 | 内容 | 提交 |
+|---|---|---|
+| 1 | 文档与配置补齐（DOC1/2/3、F27、F45、F46、F18、F47） | `b0ce53c` |
+| 2 | 错误处理与日志（F7、F8、F19、F26、S2、S3） | `5950b62` |
+| 2.1 | CI 热修复×2：`(?i)` 非法 → `caseSensitive`；字符类 `-` 只放头尾 | `7155538` → `280e1bf` |
+| 3 | 存储与启动（F16、F36、F37、D4、CS1 部分修复、CS2 误判） | `97079f6` |
+| 报告更正 | SI1 / F4 其实早已具备（版本号 + `_migrateSave` 都在），误判源于只搜了一个文件 | `108832c` |
+
+**下一批（批次 4）建议范围 —— 「外来数据的健壮性」，已定未动工**：
+
+1. **F3（High）**：`lib/models/player.dart:491` 的 `Player.fromJson` 大量字段无类型断言
+   （`id: json['id']`、`health: json['health'] ?? 100` 等直接透传 dynamic），
+   旧存档字段类型一变就崩在 fromJson 上。建议新增 `lib/utils/json_read.dart`
+   安全读取函数（`readString/readInt/readDouble/readBool/readStringList`，
+   接受 num/数字字符串等宽容形态并带 fallback），再改造 `fromJson`。
+2. **SI2（Medium）**：`save_service.dart` 的读档校验只有 `containsKey('player')`，
+   建议加结构校验（player/world_state 是 Map、turn_count 是非负 int、
+   save_version 可识别），不合格走已有的备份回滚路径。
+3. **F5（Low）**：`world_state.dart` 的 `NarrativeEvent.fromJson` 已按 String/Map 分流，
+   剩余风险是 `src['t'] as String?` 在 t 为非字符串时抛错，顺手换成宽容读取。
+4. **SI3（Medium）**：CrashLogger / AiDebugLogger 日志路径无统一管理，可收口到一个常量。
+
+**再往后的候选**（按性价比排）：F6/F9（错误反馈与恢复模式统一，需动 UI，单独一批）、
+F33/F31/F35（缓存清理与正则静态缓存，小改动）、F10/F12/P4（状态管理，需基准数据佐证）、
+F1/F40/F13（大拆分，放最后，等本地能跑 `flutter test` 时再动）。
+
+**注意两件事**：
+
+- 本仓库 CI 会自动 bump 版本 + sync CHANGELOG 并推送，**每次 push 前先
+  `git pull --rebase origin main`**，否则被拒。
+- 改正则前先读 `lib/utils/debug_log.dart` 的规则表注释 —— `(?i)` 与
+  字符类中间的 `-` 都是「编译得过、跑起来才炸」的坑，本机 Dart 2.17 比 CI 的 3.x
+  宽松，验不出来；推送后必须看 CI。
