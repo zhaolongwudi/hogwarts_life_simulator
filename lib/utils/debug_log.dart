@@ -44,12 +44,20 @@ String redactSecrets(String input) {
 }
 
 /// 脱敏规则表。写成数据而不是一串 if，是为了新增规则时只动这一处。
+///
+/// **大小写一律用 `caseSensitive: false`，不要写 `(?i)` 内联标志**：
+/// Dart 的 [RegExp] 走 ECMAScript 语义，不认 `(?i)`，构造时直接抛
+/// `FormatException: Invalid group`。而且这张表是顶层懒初始化，
+/// 错误要等到第一次调用 [redactSecrets] 才暴露 —— 曾经就因此让 7 个
+/// 用例在 CI 上集体变红，本地却毫无察觉（本机跑不了 flutter test）。
+/// 现在 [test/debug_log_test.dart] 里有专门的用例钉住"规则表能构造出来"。
 final List<_RedactRule> _rules = [
   // Bearer / Basic 认证头
   // 注意：replaceAllMapped 的返回值是普通字符串、不做 $1 展开，
   // 所以必须自己从 Match 里取分组，写 r'$1 ***' 会原样输出美元符号。
   _RedactRule(
-    RegExp(r'(?i)\b(bearer|basic)\s+[A-Za-z0-9._\-+/=]{8,}'),
+    RegExp(r'\b(bearer|basic)\s+[A-Za-z0-9._\-+/=]{8,}',
+        caseSensitive: false),
     (m) => '${m.group(1)} ***',
   ),
   // sk- 开头的 OpenAI 风格 Key
@@ -61,14 +69,16 @@ final List<_RedactRule> _rules = [
   // 保留键名与分隔符，方便日志里看出"这是哪种凭证被吃掉了"。
   _RedactRule(
     RegExp(
-      r'(?i)\b(api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|token|secret|password|passwd|authorization)\b'
+      r'\b(api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|token|secret|password|passwd|authorization)\b'
       r'(\s*[:=]\s*|\s+)["'']?([A-Za-z0-9._\-+/=]{8,})["'']?',
+      caseSensitive: false,
     ),
     (m) => '${m.group(1)}${m.group(2)}***',
   ),
   // URL query 里的 ?key=xxx / &token=xxx
   _RedactRule(
-    RegExp(r'(?i)([?&](?:key|token|api_key|apikey|access_token)=)[^&\s"''>]{4,}'),
+    RegExp(r'([?&](?:key|token|api_key|apikey|access_token)=)[^&\s"''>]{4,}',
+        caseSensitive: false),
     (m) => '${m.group(1)}***',
   ),
 ];

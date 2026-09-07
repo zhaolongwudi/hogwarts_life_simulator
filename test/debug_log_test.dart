@@ -43,6 +43,25 @@ void main() {
       expect(out, isNot(contains('SUPERSECRET1234')));
       expect(out, contains('model=x')); // 无关参数不能被误伤
     });
+
+    // 这条专门钉住「大小写不敏感」——Dart 的 RegExp 不认 (?i) 内联标志
+    // （构造时抛 FormatException: Invalid group），只能靠 caseSensitive: false。
+    // 曾经因为写了 (?i) 且规则表是懒初始化，7 个用例在 CI 上集体变红、
+    // 本地却毫无察觉。别再改回 (?i)。
+    test('大小写混写也要脱敏（钉住 (?i) 的等价实现）', () {
+      final cases = <String, String>{
+        'authorization: BEARER Zm9vYmFyYmF6cXV1eA': 'Zm9vYmFyYmF6cXV1eA',
+        'Authorization: basic dXNlcjpwYXNzd29yZA': 'dXNlcjpwYXNzd29yZA',
+        'APIKEY: A1b2C3d4E5f6G7h8': 'A1b2C3d4E5f6G7h8',
+        'Token=QwErTy1234567890': 'QwErTy1234567890',
+        'PASSWD: myPlainTextPass123': 'myPlainTextPass123',
+      };
+      for (final entry in cases.entries) {
+        final out = redactSecrets(entry.key);
+        expect(out, isNot(contains(entry.value)),
+            reason: '未脱敏（大小写不敏感失效）: ${entry.key}');
+      }
+    });
   });
 
   group('redactSecrets — 正常内容不能被误伤', () {
