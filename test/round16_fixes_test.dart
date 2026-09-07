@@ -14,6 +14,7 @@ import 'package:hogwarts_life_simulator/data/world_rules.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
+import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 
 import 'helpers/test_fixtures.dart';
 

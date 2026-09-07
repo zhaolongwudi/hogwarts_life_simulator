@@ -4,6 +4,7 @@ import '../../providers/game_provider.dart';
 import '../../data/item_data.dart';
 import 'inventory_screen.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../utils/ui_helpers.dart';
 
 class _OwnedBadge extends StatelessWidget {
   final String itemName;
