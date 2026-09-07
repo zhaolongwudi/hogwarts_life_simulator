@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v3.9.7 — 2026-09-07
+
+**📋 变更说明**
+docs(review): 更正 SI1 / F4 的误判，同步批次 2.1 的 CI 结果
+
+- SI1 / F4：存档版本号与 _migrateSave 早就都有。
+  批次 1 我只搜了 save_service.dart（它的注释提到 _migrateSave），
+  就写下『全库检索不到迁移函数的实现』；实际实现一直在
+  lib/mixins/mixin_systems.dart:3006，且 progression_fix_test 有测试钉住。
+  『没搜到』不等于『不存在』，记在报告里当教训。
+
 ### v3.9.6 — 2026-09-07
 
 **📋 变更说明**
