@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../utils/debug_log.dart';
 
 /// 「多少分算永不遗忘」的两个阈值 —— 全项目只允许这一处定义。
 ///
@@ -736,7 +737,7 @@ class LongTermMemory {
     } catch (e) {
       // 走到这里说明连外层结构都不是 Map<List>，确实读不了了。
       // 宁可返回空记忆也不要让读档崩溃。
-      debugPrint('LongTermMemory.fromJson 失败: $e');
+      debugLog('LongTermMemory.fromJson 失败: $e');
       return LongTermMemory();
     }
   }
@@ -754,7 +755,7 @@ class LongTermMemory {
       try {
         out.add(decode(Map<String, dynamic>.from(e)));
       } catch (err) {
-        debugPrint('LongTermMemory: 跳过一条损坏的 $field 记录: $err');
+        debugLog('LongTermMemory: 跳过一条损坏的 $field 记录: $err');
       }
     }
     return out;
@@ -770,7 +771,7 @@ class LongTermMemory {
         out[k.toString()] =
             NpcRelationshipAnchor.fromJson(Map<String, dynamic>.from(v));
       } catch (err) {
-        debugPrint('LongTermMemory: 跳过一条损坏的关系锚 ${k}: $err');
+        debugLog('LongTermMemory: 跳过一条损坏的关系锚 ${k}: $err');
       }
     });
     return out;

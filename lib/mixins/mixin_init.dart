@@ -25,6 +25,7 @@ import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
 import '../prompts/narrative_prompts.dart';
 import '../data/npc_schedule_rules.dart';
+import '../utils/debug_log.dart';
 
 mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
@@ -352,7 +353,7 @@ mixin GameInitMixin on GameProviderBase {
     final resolvedEra = resolveEra(appProvider.era, random.nextDouble());
     if (resolvedEra != appProvider.era) {
       appProvider.lockEra(resolvedEra);
-      debugPrint('🎲 随机时代落定为 ${resolvedEra.name}');
+      debugLog('🎲 随机时代落定为 ${resolvedEra.name}');
     }
 
     // 重新创建路由器（resetAllState 已将 router 置空）
@@ -361,7 +362,7 @@ mixin GameInitMixin on GameProviderBase {
     try {
       await saveService.clearAutoSave();
     } catch (e) {
-      debugPrint('清理旧存档失败(不影响游戏): $e');
+      debugLog('清理旧存档失败(不影响游戏): $e');
     }
     isLoading = true;
     notifyListeners();
@@ -628,9 +629,9 @@ mixin GameInitMixin on GameProviderBase {
                         sortingNarrative.trim())
                     .trim();
           }
-          debugPrint('⚡ 开局本地分院：${player!.house} (起点=$openingScene)');
+          debugLog('⚡ 开局本地分院：${player!.house} (起点=$openingScene)');
         } catch (e) {
-          debugPrint('开局本地分院失败(不影响游戏): $e');
+          debugLog('开局本地分院失败(不影响游戏): $e');
         }
       }
 
@@ -1361,7 +1362,7 @@ mixin GameInitMixin on GameProviderBase {
         );
         if (openingChoices.isNotEmpty) choices = openingChoices;
       } catch (e) {
-        debugPrint('⚠️ 开场选项独立生成失败，沿用解析/兜底选项: $e');
+        debugLog('⚠️ 开场选项独立生成失败，沿用解析/兜底选项: $e');
       }
       accumulateForSummary(currentNarrative);
       appendRecentTurn(currentNarrative);

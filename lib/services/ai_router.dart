@@ -7,6 +7,7 @@ import 'deepseek_service.dart';
 // rate_limiter 里除了两个限流闸门，还放了 ResponseCache（响应缓存）——
 // 本文件只用到后者。闸门统一由 DeepSeekService._acquireSlot() 负责，这里不要再调。
 import 'rate_limiter.dart';
+import '../utils/debug_log.dart';
 
 enum AiScene { narrative, summary, npcChat, choice }
 
@@ -249,6 +250,12 @@ class AiRouter {
     double temperature = 0.8,
     int maxTokens = 2500,
   }) async {
+    // F7：全库此前一处 assert 都没有。这里是最值得断言的入口 ——
+    // 这几个条件被破坏时不会立刻崩，而是变成"AI 返回空/半截内容"这种极难定位
+    // 的症状（排查成本以小时计）。开发期直接炸在调用点，比事后翻日志便宜得多。
+    assert(prompt.isNotEmpty, 'prompt 不能为空：空 prompt 只会白耗一个 Key 预算');
+    assert(maxTokens > 0, 'maxTokens 必须为正：收到 $maxTokens');
+    assert(temperature >= 0 && temperature <= 2, 'temperature 越界：$temperature');
     final primary = _config.providerFor(scene);
     final timestamp = DateTime.now().toIso8601String();
     final sceneLabel = scene.toString().split('.').last;
@@ -411,7 +418,7 @@ class AiRouter {
         for (var attempt = 0; attempt <= maxRetriesPerService; attempt++) {
           if (_circuitOpen(service)) {
             // 熔断中的 Key 直接跳过，不再点卯
-            debugPrint('⚠️ ${provider.name}[$keyHash] 熔断中，跳过');
+            debugLog('⚠️ ${provider.name}[$keyHash] 熔断中，跳过');
             break;
           }
           // 每次尝试用**自己的** CancelToken。以前整条 Key 链共用一个 token，
@@ -504,13 +511,13 @@ class AiRouter {
                 e is AiRetryableException &&
                 attempt < maxRetriesPerService) {
               final backoffMs = (attempt + 1) * _retryBackoffMsStep;
-              debugPrint('⚠️ ${provider.name}[$keyHash] 第${attempt + 1}次失败，${backoffMs}ms后重试: $e');
+              debugLog('⚠️ ${provider.name}[$keyHash] 第${attempt + 1}次失败，${backoffMs}ms后重试: $e');
               await Future.delayed(Duration(milliseconds: backoffMs));
               continue;
             }
 
             // 当前 key 所有重试耗尽，记录日志并尝试下一个 key
-            debugPrint('⚠️ ${provider.name}[$keyHash] 已耗尽，尝试下一个 Key: $e');
+            debugLog('⚠️ ${provider.name}[$keyHash] 已耗尽，尝试下一个 Key: $e');
             final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
             // ki 是相对轮询起点的偏移量，不是"第几个 key"；但循环覆盖了
             // 全部 serviceIdx，所以 ki 走到最后一轮时确实就是这条链的最后一次尝试。

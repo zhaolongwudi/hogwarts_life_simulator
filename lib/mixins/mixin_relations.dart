@@ -23,6 +23,7 @@ import '../data/collectible_data.dart';
 import '../data/rivalry_data.dart';
 import '../services/ai_router.dart';
 import '../providers/game_provider_base.dart';
+import '../utils/debug_log.dart';
 
 mixin GameRelationsMixin on GameProviderBase {
   void generateNewNPC() {
@@ -730,7 +731,7 @@ mixin GameRelationsMixin on GameProviderBase {
         }
       }
     } catch (e) {
-      debugPrint('终章生成失败，使用本地回退: $e');
+      debugLog('终章生成失败，使用本地回退: $e');
     }
 
     currentNarrative = ending;

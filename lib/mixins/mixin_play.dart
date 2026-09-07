@@ -18,6 +18,7 @@ import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../providers/game_provider_base.dart';
+import '../utils/debug_log.dart';
 
 /// 新玩法 Mixin（v1.10）：物品使用 / 宠物互动 / 装备穿戴 / 魁地奇 / 决斗 /
 /// 禁林探险 / 魔法生物图鉴 / 支线委托板 / 学院杯积分。
@@ -321,7 +322,7 @@ mixin GamePlayMixin on GameProviderBase {
           // 若落到这里会被当成属性写进存档，产生 attributes['learn_spell']=51
           // 这类垃圾键，还会被一致性检查当成合法属性钳制。
           if (!Player.isAttributeKey(key)) {
-            debugPrint('⚠️ 物品效果含非属性 key「$key」，已忽略（控制标记或拼写错误）');
+            debugLog('⚠️ 物品效果含非属性 key「$key」，已忽略（控制标记或拼写错误）');
             return;
           }
           p.attributes[key] = ((p.attributes[key] ?? 50) + value).clamp(0, 100);

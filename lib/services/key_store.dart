@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../utils/debug_log.dart';
 
 /// 安全存储服务：使用系统级加密存储保存 API Key。
 ///
@@ -28,7 +29,7 @@ class KeyStore {
     try {
       await _storage.write(key: '$_prefix$provider', value: key);
     } catch (e) {
-      debugPrint('⚠️ KeyStore 写入失败($provider): $e');
+      debugLog('⚠️ KeyStore 写入失败($provider): $e');
     }
   }
 
@@ -37,7 +38,7 @@ class KeyStore {
     try {
       return await _storage.read(key: '$_prefix$provider');
     } catch (e) {
-      debugPrint('⚠️ KeyStore 读取失败($provider): $e');
+      debugLog('⚠️ KeyStore 读取失败($provider): $e');
       return null;
     }
   }
@@ -47,7 +48,7 @@ class KeyStore {
     try {
       await _storage.delete(key: '$_prefix$provider');
     } catch (e) {
-      debugPrint('⚠️ KeyStore 删除失败($provider): $e');
+      debugLog('⚠️ KeyStore 删除失败($provider): $e');
     }
   }
   /// 读取指定提供商的所有 API Key（返回列表，按索引排序）

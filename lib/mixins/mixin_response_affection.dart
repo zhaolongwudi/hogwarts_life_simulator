@@ -8,6 +8,7 @@ import '../utils/affection_validator.dart';
 import '../utils/narrative_section_parser.dart';
 import '../utils/npc_lookup.dart';
 import 'mixin_response_choices.dart';
+import '../utils/debug_log.dart';
 
 mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
   /// 好感行必须带 +数字 / -数字。原先写在逐行扫描的循环里，每行都重新编译一次。
@@ -148,7 +149,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         if (npc == null) {
           // 热路径：每回合对每个好感行都跑一遍，release 版也往 stdout 写，
           // 长局下来是纯 I/O 浪费。调试日志一律收进 kDebugMode。
-          if (kDebugMode) debugPrint('[好感解析] 未找到匹配NPC: $npcName');
+          if (kDebugMode) debugLog('[好感解析] 未找到匹配NPC: $npcName');
           continue;
         }
         // 用匹配到的真名做校验（而不是 AI 写的混淆名）
@@ -180,7 +181,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
           // 往 stdout 打，长局下来是纯粹的 I/O 浪费。调试日志统一收进
           // kDebugMode（同文件其他 debug 日志同理）。
           if (kDebugMode) {
-            debugPrint('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta'
+            debugLog('[好感解析] ${npc.name} ${delta > 0 ? '+' : ''}$delta'
                 '${rawDelta == delta ? '' : '（原文 $rawDelta）'}');
           }
           final before = npc.affection;
@@ -192,18 +193,18 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
               quiet: true);
           final after = npc.affection;
           if (before != after) {
-            if (kDebugMode) debugPrint('[好感更新] ${npc.name}: $before → $after');
+            if (kDebugMode) debugLog('[好感更新] ${npc.name}: $before → $after');
             explicitChanged.add(npc.id);
           } else {
             if (kDebugMode) {
-              debugPrint('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
+              debugLog('[好感未变] ${npc.name}: 保持 $before (可能触达上限)');
             }
           }
           checkLocks(npc);
           syncRelationshipLevel(npc);
           checkAffectionAchievements(npc);
         } catch (e) {
-          if (kDebugMode) debugPrint('[好感解析错误] $npcName: $e');
+          if (kDebugMode) debugLog('[好感解析错误] $npcName: $e');
         }
       }
     }

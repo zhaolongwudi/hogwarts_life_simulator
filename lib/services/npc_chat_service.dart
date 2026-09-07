@@ -8,6 +8,7 @@ import '../models/world_state.dart';
 import '../providers/app_provider.dart';
 import '../utils/prompt_sanitizer.dart';
 import 'ai_router.dart';
+import '../utils/debug_log.dart';
 
 class ChatMessage {
   final String role;
@@ -243,7 +244,7 @@ class NpcChatService {
       });
     } catch (e) {
       // 聊天记录写盘失败必须留痕（此前静默吞掉，坏了无法排查）
-      debugPrint('❌ saveConversation($npcId) 写盘失败: $e');
+      debugLog('❌ saveConversation($npcId) 写盘失败: $e');
     }
   }
 
@@ -266,7 +267,7 @@ class NpcChatService {
         }
       }
     } catch (e) {
-      debugPrint('❌ loadConversation($npcId) 读取失败: $e');
+      debugLog('❌ loadConversation($npcId) 读取失败: $e');
     }
     return [];
   }
@@ -285,7 +286,7 @@ class NpcChatService {
         }
       });
     } catch (e) {
-      debugPrint('❌ clearConversation($npcId) 失败: $e');
+      debugLog('❌ clearConversation($npcId) 失败: $e');
     }
   }
 }

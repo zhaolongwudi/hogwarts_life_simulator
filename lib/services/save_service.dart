@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import '../utils/debug_log.dart';
 
 /// 当前存档格式版本号。
 ///
@@ -71,7 +72,7 @@ class SaveService {
       final backupPath = await _getBackupPath(slotId);
       await saveFile.copy(backupPath);
     } catch (e) {
-      debugPrint('⚠️ 存档备份失败(不影响写入): $e');
+      debugLog('⚠️ 存档备份失败(不影响写入): $e');
     }
   }
 
@@ -127,7 +128,16 @@ class SaveService {
     String? slotId,
     Map<String, dynamic>? extraData,
   }) async {
+    // F7：槽位 id 直接当文件名用（见 _getSavePath）。含路径分隔符或为空时，
+    // 写出去的是一个打不开的文件，而读档端只会报"存档不存在"——
+    // 症状和原因隔了十万八千里。开发期就拦在源头。
     final resolvedId = slotId ?? slotName ?? _uuid.v4().substring(0, 8);
+    assert(resolvedId.isNotEmpty, '存档槽位 id 不能为空（它会被直接当文件名）');
+    assert(
+      !resolvedId.contains('/') && !resolvedId.contains('\\'),
+      '存档槽位 id 不能含路径分隔符：$resolvedId',
+    );
+    assert(turnCount >= 0, 'turnCount 不能为负：$turnCount');
     final resolvedName = slotName ?? '自动存档';
     final saveData = {
       'save_version': kSaveVersion,
@@ -161,7 +171,7 @@ class SaveService {
       }
       return data;
     } catch (e) {
-      debugPrint('⚠️ 存档 $slotId 损坏，尝试读取备份: $e');
+      debugLog('⚠️ 存档 $slotId 损坏，尝试读取备份: $e');
       return _tryLoadBackup(slotId);
     }
   }
@@ -177,15 +187,19 @@ class SaveService {
       if (!data.containsKey('player') || !data.containsKey('world_state')) {
         return null;
       }
-      debugPrint('✅ 已从备份恢复存档 $slotId');
+      debugLog('✅ 已从备份恢复存档 $slotId');
       // 用备份修复主存档，避免下次仍然读到损坏文件
       try {
         final savePath = await _getSavePath(slotId);
         await _atomicWrite(savePath, content);
-      } catch (_) {}
+      } catch (e) {
+        // F8：原先是空 catch。备份回写失败不影响本次读档（数据已经拿到了），
+        // 但"主存档一直是坏的、每次都靠备份顶着"这件事必须留下痕迹。
+        debugLog('⚠️ 用备份修复主存档失败(不影响本次读取): $e');
+      }
       return data;
     } catch (e) {
-      debugPrint('❌ 备份存档也不可用: $e');
+      debugLog('❌ 备份存档也不可用: $e');
       return null;
     }
   }
@@ -254,7 +268,7 @@ class SaveService {
     try {
       final data = jsonDecode(jsonString) as Map<String, dynamic>;
       if (!data.containsKey('player') || !data.containsKey('world_state')) {
-        debugPrint('❌ 导入失败：存档缺少关键字段');
+        debugLog('❌ 导入失败：存档缺少关键字段');
         return null;
       }
       final slotId = _uuid.v4().substring(0, 8);
@@ -262,7 +276,7 @@ class SaveService {
       await _writeSave(slotId: slotId, slotName: slotName, saveData: data);
       return slotId;
     } catch (e) {
-      debugPrint('❌ 导入存档失败: $e');
+      debugLog('❌ 导入存档失败: $e');
       return null;
     }
   }

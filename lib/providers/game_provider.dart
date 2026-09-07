@@ -17,6 +17,7 @@ import '../models/long_term_memory.dart';
 // 不然会和下面的 cgById 方法名撞上。两个都需要。
 import '../data/cg_data.dart';
 import '../data/cg_data.dart' as cgData;
+import '../utils/debug_log.dart';
 
 /// GameProvider 本体：只保留 constructor / autoSave / saveNow / onApiKeyChange
 /// / updateClient / refreshClient / updateNpcAffection / updateApiKey 等调度入口。
@@ -116,14 +117,14 @@ class GameProvider extends GameProviderBase
       // 却是好的。_applySaveData 内部已复位 isLoading/isInitializing/error。
       applySaveData(data);
 
-      debugPrint(
+      debugLog(
         '✅ 自动存档加载成功: ${player?.name} 第$turnCount回合 (第$gameWeek周) 叙事${currentNarrative.length}字',
       );
       notifyListeners();
     } catch (e) {
       isLoading = false;
       isInitializing = false;
-      debugPrint('❌ 自动存档加载失败: $e');
+      debugLog('❌ 自动存档加载失败: $e');
       appProvider.setGameStarted(false);
       error = '存档加载失败: $e';
       notifyListeners();
@@ -161,7 +162,7 @@ class GameProvider extends GameProviderBase
     } while (_saveDirty && loops < 5);
     if (_saveDirty) {
       _saveDirty = false;
-      debugPrint('⚠️ autoSave 补存循环达到上限(5)，本次补存丢弃，下回合再存');
+      debugLog('⚠️ autoSave 补存循环达到上限(5)，本次补存丢弃，下回合再存');
     }
   }
 
@@ -191,7 +192,7 @@ class GameProvider extends GameProviderBase
       }
       await writeSave(slotId: SaveService.autoSaveSlotId, slotName: '自动存档');
     } catch (e) {
-      debugPrint('❌ 自动存档失败: $e');
+      debugLog('❌ 自动存档失败: $e');
     } finally {
       _saveScheduled = false;
     }

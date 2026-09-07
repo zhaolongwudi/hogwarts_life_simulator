@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'debug_log.dart';
 
 /// AI 调用调试日志记录器
 /// 用于记录每回合的输入输出，排查上下文污染、路由错误等问题
@@ -82,7 +83,7 @@ class AiDebugLogger {
       _pendingCalls[callId] = buf;
       return callId;
     } catch (e) {
-      debugPrint('AiDebugLogger logStart 失败: $e');
+      debugLog('AiDebugLogger logStart 失败: $e');
       return null;
     }
   }
@@ -159,7 +160,7 @@ class AiDebugLogger {
       _controller.add(logLine);
       await _writeToFile(logLine);
     } catch (e) {
-      debugPrint('AiDebugLogger logComplete 失败: $e');
+      debugLog('AiDebugLogger logComplete 失败: $e');
     }
   }
 
@@ -179,7 +180,7 @@ class AiDebugLogger {
         await file.writeAsString(content, mode: FileMode.append, flush: true);
       }
     } catch (e) {
-      debugPrint('AiDebugLogger 写入失败: $e');
+      debugLog('AiDebugLogger 写入失败: $e');
     }
 
     await _pruneOldLogs();
@@ -208,11 +209,11 @@ class AiDebugLogger {
         try {
           await p.$1.delete();
         } catch (e) {
-          debugPrint('❌ 清理旧调试日志失败: $e');
+          debugLog('❌ 清理旧调试日志失败: $e');
         }
       }
     } catch (e) {
-      debugPrint('❌ 调试日志目录清理失败: $e');
+      debugLog('❌ 调试日志目录清理失败: $e');
     }
   }
 
@@ -248,7 +249,7 @@ class AiDebugLogger {
       if (!await file.exists()) return null;
       return await file.readAsString();
     } catch (e) {
-      debugPrint('读取日志失败 $path: $e');
+      debugLog('读取日志失败 $path: $e');
       return '读取失败: $e';
     }
   }
@@ -259,7 +260,7 @@ class AiDebugLogger {
       try {
         await File(p).delete();
       } catch (e) {
-        debugPrint('删除日志失败: $p $e');
+        debugLog('删除日志失败: $p $e');
       }
     }
     _pendingCalls.clear();

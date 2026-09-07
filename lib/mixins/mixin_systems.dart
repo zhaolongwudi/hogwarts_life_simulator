@@ -33,6 +33,7 @@ import '../services/ai_router.dart';
 import '../models/world_state.dart';
 import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
+import '../utils/debug_log.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
   /// 缓存：上次构建的 systemPrompt 和玩家状态哈希（用于检测是否需要重建）
@@ -701,7 +702,7 @@ mixin GameSystemsMixin on GameProviderBase {
       // 子目标池为空/异常时静默降级，不影响学年推进
     }
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
-    debugPrint('🎓 学年推进：玩家升入${newGrade}年级');
+    debugLog('🎓 学年推进：玩家升入${newGrade}年级');
   }
 
   // ==================== 考试成绩结算（框架2 第60条） ====================
@@ -775,7 +776,7 @@ mixin GameSystemsMixin on GameProviderBase {
       '${worldState.time.year} 年从霍格沃茨毕业，人生轨迹自此不再跟着既定的学年走',
       snapshot: worldSnapshot(),
     );
-    debugPrint('🎓 玩家毕业（原${oldGrade}年级）');
+    debugLog('🎓 玩家毕业（原${oldGrade}年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
     _graduationSettlement();
     // 职业引导：毕业不是结局——用成绩与名声去叩开职业的大门
@@ -1131,7 +1132,7 @@ mixin GameSystemsMixin on GameProviderBase {
             .toSet();
         if (matchedIds.isEmpty) continue;
         for (final a in due.where((a) => matchedIds.contains(a.id)).toList()) {
-          debugPrint(
+          debugLog(
             '📜 跳过「${a.title}」锚点：${rule.description} '
             '(academicYear=${worldState.academicYear}, year=${t.year})',
           );
@@ -1150,7 +1151,7 @@ mixin GameSystemsMixin on GameProviderBase {
     pendingAnchorDirective = anchor.directive;
     notifications.add('📜 ${anchor.title}');
     worldState.addNarrativeEvent('📜 ${anchor.title}', turn: turnCount);
-    debugPrint('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
+    debugLog('📜 事件锚点触发: ${anchor.id} (${anchor.title})');
 
     // 因果锚点：如果这个节点是原著里写死的大事，而玩家的世界线已经偏得够远，
     // 就把「干预 / 旁观」的抉择挂上去。
@@ -1171,7 +1172,7 @@ mixin GameSystemsMixin on GameProviderBase {
         notifications.add('⏳ ${causal.title}');
       } else {
         final gap = deviationGapToUnlock(causal, dev);
-        debugPrint(
+        debugLog(
           '⏳ 因果锚点 ${causal.anchorId} 未解锁：'
           '还差 ${(gap * 100).toStringAsFixed(1)}% 变动率'
           '（当前 ${(dev * 100).toStringAsFixed(1)}%）',
@@ -1907,7 +1908,7 @@ mixin GameSystemsMixin on GameProviderBase {
     for (final npc in npcRegistry.values) {
       npc.affectionGainedThisWeek = 0;
     }
-    debugPrint('📊 新的一周开始：好感周增量已重置');
+    debugLog('📊 新的一周开始：好感周增量已重置');
     _applyAffectionDrift(weeksCrossed);
   }
 
@@ -1970,7 +1971,7 @@ mixin GameSystemsMixin on GameProviderBase {
         // 记录每次衰减的 NPC/天数/幅度，供后续根据实际档位校准
         // affectionDriftPerWeekMin/Max。
         if (kDebugMode) {
-          debugPrint(
+          debugLog(
             '[好感衰减] ${npc.name}: $before → ${npc.affection}'
             '（闲置 $idleDays 天，结算 $weeks 周，合计 -$total）',
           );
@@ -2004,7 +2005,7 @@ mixin GameSystemsMixin on GameProviderBase {
     });
     if (p.rumors.length != before) {
       p.rumorDates.removeWhere((k, _) => !p.rumors.contains(k));
-      debugPrint('📰 传闻衰减：${before - p.rumors.length} 条旧闻淡出');
+      debugLog('📰 传闻衰减：${before - p.rumors.length} 条旧闻淡出');
     }
   }
 
@@ -2212,7 +2213,7 @@ mixin GameSystemsMixin on GameProviderBase {
     final eraName = worldState.era;
     final appEra = appProvider.era.name;
     if (eraName.isNotEmpty && eraName != appEra) {
-      debugPrint('存档时代($eraName)与当前设置($appEra)不一致');
+      debugLog('存档时代($eraName)与当前设置($appEra)不一致');
     }
 
     // ====== 货币合理性 ======
@@ -2254,7 +2255,7 @@ mixin GameSystemsMixin on GameProviderBase {
 
     if (issues.isNotEmpty) {
       notifications.add('⚠️ 状态自修复：${issues.join('；')}');
-      debugPrint('🛡️ 防崩坏自检: 修复${issues.length}项状态异常');
+      debugLog('🛡️ 防崩坏自检: 修复${issues.length}项状态异常');
     }
   }
 
@@ -2661,7 +2662,7 @@ mixin GameSystemsMixin on GameProviderBase {
       1.0,
     );
     if (debugReason != null) {
-      debugPrint(
+      debugLog(
         '🌐 影响力+${delta.toStringAsFixed(3)} → ${worldState.playerImpactScore.toStringAsFixed(3)}（$debugReason）',
       );
     }
@@ -2745,7 +2746,7 @@ mixin GameSystemsMixin on GameProviderBase {
       apiCalls++;
       notifyListeners();
     } catch (e) {
-      debugPrint('[GameProvider] Token 统计异常(不影响游戏): $e');
+      debugLog('[GameProvider] Token 统计异常(不影响游戏): $e');
     }
     return result;
   }
@@ -2975,7 +2976,7 @@ mixin GameSystemsMixin on GameProviderBase {
       currentNarrative = snapNarrative;
       choices = snapChoices;
       turnCount = snapTurn;
-      debugPrint('❌ applySaveData 解析失败，已整体回滚: $e\n$st');
+      debugLog('❌ applySaveData 解析失败，已整体回滚: $e\n$st');
       rethrow;
     }
   }
@@ -2997,7 +2998,7 @@ mixin GameSystemsMixin on GameProviderBase {
     } catch (e, st) {
       // 解析中途抛异常会留下半截状态（player 已换、npc 已清），必须兜底
       error = '存档加载失败：$e';
-      debugPrint('❌ loadFromSave($slotId) failed: $e\n$st');
+      debugLog('❌ loadFromSave($slotId) failed: $e\n$st');
       notifyListeners();
     }
   }
@@ -3025,11 +3026,11 @@ mixin GameSystemsMixin on GameProviderBase {
           final idx = monthNames.indexOf(oldMonth);
           if (idx >= 0) {
             ws['month'] = GameTime.months[idx];
-            debugPrint('存档迁移: month "$oldMonth" -> "${ws['month']}"');
+            debugLog('存档迁移: month "$oldMonth" -> "${ws['month']}"');
           }
         }
         if (!ws.containsKey('time')) {
-          debugPrint('存档迁移: 从旧字段推导 time 字段');
+          debugLog('存档迁移: 从旧字段推导 time 字段');
           final yearStr = ws['academic_year'] ?? '1991-1992';
           final yearMatch = RegExp(r'^(\d{4})').firstMatch(yearStr.toString());
           final year = yearMatch != null

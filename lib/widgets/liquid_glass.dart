@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../theme/miuix_tokens.dart';
+import '../utils/debug_log.dart';
 
 /// 液态玻璃着色器的全局加载器。
 ///
@@ -35,8 +36,11 @@ class LiquidGlassShaderLoader {
           await FragmentProgram.fromAsset('shaders/liquid_glass.frag');
       _program = program;
       return program;
-    } catch (_) {
-      // Skia 后端 / 着色器编译失败 / 资源缺失 —— 一律降级
+    } catch (e, st) {
+      // Skia 后端 / 着色器编译失败 / 资源缺失 —— 一律降级。
+      // F8：这里原先是 catch (_) {}，完全静默。降级本身是对的，但"为什么降级"
+      // 一点痕迹都不留，真出了兼容性问题只能靠猜。保留降级行为，补一条日志。
+      debugLog('[liquid_glass] 着色器不可用，降级为无玻璃效果: $e\n$st');
       _unsupported = true;
       return null;
     }

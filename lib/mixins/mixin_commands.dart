@@ -25,6 +25,7 @@ import '../models/long_term_memory.dart';
 import '../models/player.dart';
 import '../providers/game_provider_base.dart';
 import 'mixin_systems.dart';
+import '../utils/debug_log.dart';
 
 mixin GameCommandsMixin on GameProviderBase {
   // ================ R1：注册命令到注册表（初始化时调用一次即可） ================
@@ -2686,7 +2687,7 @@ $knownRegions
     final before = worldState.time.format();
     fastForwardTime(7);
     final after = worldState.time.format();
-    debugPrint('📅 周计划[$focus]：$before → $after');
+    debugLog('📅 周计划[$focus]：$before → $after');
   }
 
   // ==================== 守护神（框架2 第66条） ====================

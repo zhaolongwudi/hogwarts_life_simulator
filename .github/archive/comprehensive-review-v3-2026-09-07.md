@@ -15,7 +15,8 @@
 >
 > | 批次 | 主题 | 涉及条目 | 状态 |
 > |---|---|---|---|
-> | 1 | 文档与配置补齐 | DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47 | ✅ 已推送 |
+> | 1 | 文档与配置补齐 | DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47 | ✅ 已推送（CI 全绿） |
+| 2 | 错误处理与日志 | F7 / F8 / F19 / F26 / S2 / S3 | ✅ 已推送 |
 >
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1（版本号其实存在，缺的是迁移函数）。
@@ -150,11 +151,33 @@
 
 全库未发现 `assert()` 调用，无法在开发阶段捕获前置条件违反。
 
+> **✅ 已修复（批次 2）— 按「症状与原因距离」挑了最值得断言的两个入口**
+> 不搞全员撒 assert（那会制造一堆无意义的噪音），只补了两类**症状与原因隔得最远**的入口：
+> - `AiRouter.chatComplete`（`ai_router.dart`）：断言 `prompt` 非空、`maxTokens > 0`、
+>   `temperature ∈ [0,2]`。这三条被破坏时不会崩，而是变成「AI 返回空/半截内容」，
+>   排查成本以小时计；断言让它在开发期直接炸在调用点。
+> - `SaveService.saveGame`（`save_service.dart`）：断言槽位 id 非空且不含路径分隔符、
+>   `turnCount >= 0`。槽位 id 是**直接当文件名用的**，含 `/` 时写出去一个打不开的文件，
+>   而读档端只报「存档不存在」—— 症状和原因隔了十万八千里。
+> 已核对三处生产调用点（`mixin_systems` / `npc_chat_service` / 测试）的入参均满足断言。
+
 ### F8 — 部分 catch 块为空或仅日志 `[Medium] [v3 新发现]`
 
 `liquid_glass.dart:38` 和 `game_world_tab.dart:552` 使用 `catch (_) {}` 完全静默吞异常。
 
 **影响：** 静默吞异常会隐藏潜在 bug，导致难以排查的问题。
+
+> **✅ 已修复（批次 2）**
+> 三处静默 catch 全部补上了日志，**兜底行为一个都没改**（这点很重要：
+> 这些 catch 的降级逻辑是对的，缺的只是痕迹）：
+> | 位置 | 原状 | 改后 |
+> |---|---|---|
+> | `widgets/liquid_glass.dart` | `catch (_) {}` 静默降级 | `catch (e, st)` + 记录着色器不可用的原因（Skia 后端 / 编译失败 / 资源缺失） |
+> | `screens/game/game_world_tab.dart` | `catch (_) { return 1; }` | 记录解析失败的 `yearStr` 与异常，仍回退 1 年级 |
+> | `services/save_service.dart:185` | `catch (_) {}` 空块 | 记录「用备份修复主存档失败」——不影响本次读档，但"主存档一直是坏的、每次都靠备份顶着"必须留下痕迹 |
+>
+> 另外全库扫了一遍：除这三处外没有其他 `catch (_) {}` / `catch (e) {}` 空块。
+> 报告里提到的 `game_world_tab.dart:552` 行号与当前代码对得上（现 556 行，因补了几行注释）。
 
 ### F9 — 错误恢复策略缺乏统一模式 `[Medium] [v3 新发现]`
 
@@ -250,6 +273,17 @@ GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能�
 
 CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 
+> **✅ 已修复（批次 2）— 核对为「剩余同步写是刻意的」**
+> `CrashLogger` 现在有两个入口，同步是**分场景的正确选择**，不是遗漏：
+> - `record()` —— 已经是**全异步**（`await f.writeAsString`），日常记录走这条；
+> - `recordSync()` —— 崩溃 handler 专用。进程随时会被系统杀掉，异步写根本来不及落盘，
+>   写完前进程一死崩溃就"没有记录"了。这里必须同步 + `flush: true`；
+> - `logHeartbeat()` —— ANR 定位专用，带 **300ms 节流**（同一瞬间爆发的心跳只落盘第一条，
+>   内存始终最新），把每回合 2~4 次同步写降到 1~2 次。
+>
+> 三者都在源码注释里写明了"为什么必须同步"。所以这条结论是：**不需要改**，
+> 强行改成异步反而会让崩溃日志彻底失效。
+
 ### 优点：文件操作隔离
 
 - 所有文件操作通过 `path_provider` 获取正确路径
@@ -309,6 +343,15 @@ Duration 值、padding、margin、动画时长等大量硬编码，未提取为�
 ### F26 — debugPrint 生产环境残留 `[Low] [v1]`
 
 20+ 处 `debugPrint` 在生产构建中仍然输出，部分日志包含敏感信息。
+
+> **✅ 已修复（批次 2）— 84 处，比报告估计的 20+ 多得多**
+> - 新增 `lib/utils/debug_log.dart`，导出 `debugLog(String?, {int? wrapWidth})`：
+>   签名与 `debugPrint` **完全一致**，`kDebugMode` 为 false 时直接返回。
+> - 全库 17 个文件、84 处 `debugPrint(` 一次性替换为 `debugLog(` 并补上 import
+>   （`debug_log.dart` 自身内部的 `debugPrint` 保留，否则会无限递归 —— 这个坑踩了一次，已修）。
+> - 为什么值得做：`debugPrint` 只做**节流**、不做**环境判断**，release 里照样往 stdout 写；
+>   AI 链路那批日志带着完整 prompt、response 与 Key 片段，等于把用户对话内容输出到系统日志。
+> - 新增 `test/debug_log_test.dart`（9 个用例）钉住脱敏边界。
 
 ### 优点：日志系统分层
 
@@ -587,9 +630,27 @@ Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约�
 
 **影响：** 敏感信息可能持久化到设备存储中。
 
+> **✅ 已修复（批次 2）**
+> - 新增 `redactSecrets()`（`lib/utils/debug_log.dart`），落盘前统一过一遍。
+> - `CrashLogger` 的 `error` / `stackTrace` / `extra` 三个字段全部脱敏，
+>   且**抽成一个 `_sanitizedEntry()` 工厂**供 `record()` 与 `recordSync()` 共用 ——
+>   两条路径行为必须一致，漏一条就等于没做。
+> - 匹配三类：`Bearer/Basic xxx`、`sk-xxx`、`apiKey/token/secret/password=xxx` 键值，
+>   以及 URL query 里的 `?key=` / `&token=`。
+> - **刻意没做**「长度 ≥32 的 hex/base64 长串一律打码」：实测会把堆栈里的文件路径、
+>   package 名、UUID 一起吃掉，日志直接失去定位能力。宁可漏掉一种罕见形态，
+>   也不能让日志没法用。测试里专门有一条断言钉住"堆栈必须原样保留"。
+
 ### S3 — debugPrint 中的 AI 调试日志可能泄露 `[Low] [v3]`
 
 `ai_debug_logger.dart` 和多个 mixin 使用 `debugPrint` 输出 AI 请求和响应内容，在调试模式下可能被系统日志捕获。
+
+> **✅ 已修复（批次 2）**
+> - `debugPrint` → `debugLog`（release 静默），见 F26。
+> - 核对了 `AiDebugLogger` 的落盘开关：它**本来就受 `_enabled` 控制**，
+>   而该值来自 `AppProvider.aiDebugLogEnabled`（默认 `false`，用户在设置页显式开启才写）。
+>   所以"完整 prompt/response 写进设备文件"只在用户主动开调试时发生，不是默认行为。
+> - `docs/AI_SERVICE_API.md` §8 明确写了：日志含用户对话内容，不要公开贴出完整日志。
 
 ### 优点：安全设计亮点
 
@@ -854,8 +915,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F4 | 存档版本无迁移机制 | 序列化 | Medium | v1 | — |
 | F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 | — |
 | F6 | 用户可见错误信息不足 | 错误处理 | Medium | v1 | — |
-| F7 | 前置断言完全缺失 | 错误处理 | High | v1 | — |
-| F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | — |
+| F7 | 前置断言完全缺失 | 错误处理 | High | v1 | ✅ 批次2 |
+| F8 | 部分 catch 块为空或仅日志 | 错误处理 | Medium | v3 | ✅ 批次2 |
 | F9 | 错误恢复策略缺乏统一模式 | 错误处理 | Medium | v3 | — |
 | F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | — |
 | F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | — |
@@ -866,14 +927,14 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | — |
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | — |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
-| F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | — |
+| F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
 | F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | — |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | — |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | — |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
 | F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | — |
 | F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | — |
-| F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | — |
+| F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | ✅ 批次2（84 处） |
 | F27 | 缺少 Android 签名配置模板 | 构建系统 | Low | v1 | ✅ 批次1 |
 | F28 | 路由模式混合不统一 | 导航/路由 | Medium | v2 | — |
 | F29 | 硬编码导航集中在 game_phone_tab | 导航/路由 | Medium | v2 | — |
@@ -897,8 +958,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F47 | 部分注释与代码不一致 | 注释健康度 | Medium | v2 | ✅ 批次1（核对已修复） |
 | F48 | AI 服务层缺少请求超时统一管理 | AI 架构 | Medium | v3 | — |
 | S1 | API Key 缺少降级策略 | 安全审计 | High | v3 | — |
-| S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 | — |
-| S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 | — |
+| S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 | ✅ 批次2 |
+| S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 | ✅ 批次2 |
 | P1 | 缺少性能基准测试 | 性能基准 | High | v3 | — |
 | P2 | story_text_renderer 渲染性能瓶颈 | 性能基准 | High | v3 | — |
 | P3 | 频繁的集合重建 | 性能基准 | Medium | v3 | — |
@@ -1073,3 +1134,35 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 
 - F18 / F47 只做了核对、没有改代码 —— 注释本来就写得对，改它反而是制造噪音。
 - 没有因为加了签名配置就让 CI 依赖私钥（回退 debug 是刻意的，见 ADR-010）。
+
+### 批次 2 — 错误处理与日志（F7 / F8 / F19 / F26 / S2 / S3）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/utils/debug_log.dart` | **新增**。`debugLog()`（release 静默，签名与 `debugPrint` 一致）+ `redactSecrets()` |
+| `test/debug_log_test.dart` | **新增**。9 个用例，钉住脱敏的「该吃的吃掉 / 不该吃的别碰」两端边界 |
+| 17 个 lib 文件 | 84 处 `debugPrint(` → `debugLog(`，并补 import |
+| `lib/utils/crash_logger.dart` | 新增 `_sanitizedEntry()`，`record` / `recordSync` 共用，三字段脱敏 |
+| `lib/services/ai_router.dart` | `chatComplete` 加 3 条前置断言（prompt / maxTokens / temperature） |
+| `lib/services/save_service.dart` | `saveGame` 加 3 条前置断言（槽位 id 非空、不含路径分隔符、turnCount ≥ 0）；空 catch 补日志 |
+| `lib/widgets/liquid_glass.dart` | 静默 catch 补日志（降级行为不变） |
+| `lib/screens/game/game_world_tab.dart` | 静默 catch 补日志（回退 1 年级不变） |
+
+**这一批的一个判断**：三处静默 catch 的**降级逻辑都是对的**，缺的只是痕迹。
+所以只补日志、没动兜底值 —— 把 `return 1` 改成"抛异常"看似更严谨，实际会让玩家在
+学年解析失败时直接白屏，比显示成一年级糟得多。**日志的作用是让问题可见，不是让程序更脆。**
+
+**踩到并修掉的坑**：批量替换时脚本把 `debug_log.dart` 自己也处理了 ——
+它内部实现要调 `debugPrint`，被替换成 `debugLog` 后成了无限递归，
+还给自己加了一条 import 自己。已还原。教训是"批量改之前先想清楚豁免条件"，
+不是"批量改有风险所以别做"。
+
+**两条核对为「不需要改」的条目**
+
+- **F19（crash_logger 同步写盘）**：`record()` 本来就是异步的；剩下两处同步写
+  （崩溃 handler 的 `recordSync`、带 300ms 节流的心跳）**必须**同步，
+  改成异步会让崩溃日志彻底失效。报告没区分这两类，结论有误导性。
+- **S3 的落盘部分**：`AiDebugLogger` 本来就受用户开关控制（默认关），
+  不是默认就把 prompt 写进设备文件。真正的问题只在 `debugPrint` 输出到 stdout，已随 F26 修掉。

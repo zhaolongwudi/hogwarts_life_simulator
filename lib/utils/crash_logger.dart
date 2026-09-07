@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'debug_log.dart';
 
 class CrashEntry {
   final DateTime time;
@@ -70,6 +71,30 @@ class CrashLogger {
     return _logFile!;
   }
 
+  /// 构造一条崩溃记录，并对文本字段做脱敏。
+  ///
+  /// 为什么要脱敏（审查 S2）：崩溃日志会**持久化到设备文件**，而 AI 链路抛出的
+  /// 异常 message 里经常带着请求体、Authorization 头或 Key 片段
+  /// （Dio 的 DioException 尤其爱把整个 requestOptions 塞进 message）。
+  /// 不处理的话等于把密钥写进用户存储，还会被设置页的日志展示/导出带出去。
+  ///
+  /// 脱敏放在这一个函数里、而不是 record / recordSync 各写一遍，是为了保证
+  /// 同步与异步两条路径行为完全一致 —— 漏一条就等于没做。
+  static CrashEntry _sanitizedEntry({
+    required dynamic error,
+    required StackTrace? stack,
+    required String screen,
+    required String extra,
+  }) {
+    return CrashEntry(
+      time: DateTime.now(),
+      error: redactSecrets(error?.toString() ?? 'unknown error'),
+      stackTrace: redactSecrets(stack?.toString() ?? ''),
+      screen: screen,
+      extra: redactSecrets(extra),
+    );
+  }
+
   /// 同步崩溃记录（崩溃 handler 专用）。
   ///
   /// 崩溃瞬间进程随时可能被系统杀掉——此前 record() 用异步写文件，
@@ -81,10 +106,9 @@ class CrashLogger {
     String screen = '',
     String extra = '',
   }) {
-    final entry = CrashEntry(
-      time: DateTime.now(),
-      error: error?.toString() ?? 'unknown error',
-      stackTrace: stack?.toString() ?? '',
+    final entry = _sanitizedEntry(
+      error: error,
+      stack: stack,
       screen: screen,
       extra: extra,
     );
@@ -99,7 +123,7 @@ class CrashLogger {
         flush: true,
       );
     } catch (e) {
-      debugPrint('[CrashLogger] 同步落盘失败: $e');
+      debugLog('[CrashLogger] 同步落盘失败: $e');
     }
   }
 
@@ -124,7 +148,7 @@ class CrashLogger {
         '$dir/heartbeat.json',
       ).writeAsStringSync(jsonEncode(_heartbeat), flush: true);
     } catch (e) {
-      debugPrint('❌ 心跳写盘失败: $e');
+      debugLog('❌ 心跳写盘失败: $e');
     }
   }
 
@@ -140,7 +164,7 @@ class CrashLogger {
         );
       }
     } catch (e) {
-      debugPrint('❌ 心跳读取失败: $e');
+      debugLog('❌ 心跳读取失败: $e');
     }
   }
 
@@ -154,7 +178,7 @@ class CrashLogger {
           .toList();
       loadHeartbeat();
     } catch (e) {
-      debugPrint('[CrashLogger] 读取日志失败: $e');
+      debugLog('[CrashLogger] 读取日志失败: $e');
       _entries = [];
     }
   }
@@ -165,10 +189,9 @@ class CrashLogger {
     String screen = '',
     String extra = '',
   }) async {
-    final entry = CrashEntry(
-      time: DateTime.now(),
-      error: error?.toString() ?? 'unknown error',
-      stackTrace: stack?.toString() ?? '',
+    final entry = _sanitizedEntry(
+      error: error,
+      stack: stack,
       screen: screen,
       extra: extra,
     );
@@ -180,7 +203,7 @@ class CrashLogger {
       final out = _entries.map((e) => e.toJson()).toList();
       await f.writeAsString(jsonEncode(out), flush: true);
     } catch (e) {
-      debugPrint('[CrashLogger] 落盘失败: $e');
+      debugLog('[CrashLogger] 落盘失败: $e');
     }
   }
 
@@ -190,7 +213,7 @@ class CrashLogger {
       final f = await _ensureFile();
       await f.writeAsString(jsonEncode([]), flush: true);
     } catch (e) {
-      debugPrint('❌ 日志清空失败: $e');
+      debugLog('❌ 日志清空失败: $e');
     }
   }
 }

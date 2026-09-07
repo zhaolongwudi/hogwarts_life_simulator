@@ -19,6 +19,7 @@ import '../data/worldline_data.dart';
 import '../prompts/choice_prompts.dart';
 import 'mixin_response_choices.dart';
 import 'mixin_response_affection.dart';
+import '../utils/debug_log.dart';
 
 /// 需要从正文中剥离的「结构化区块名」全集。
 /// AI 输出的选项块标题并不总是【可选行动】——不同 prompt 版本会写成
@@ -331,7 +332,7 @@ mixin GameResponseMixin
         (narrative.trim().length < 150 && rawChoiceLines >= 3) ||
         narrative.trim().isEmpty;
     if (invalid) {
-      debugPrint(
+      debugLog(
         '❌ [parseNarrativeOnly·BUG-H] 判定模型返回的是选项而非叙事！'
         '正文长度=${narrative.trim().length}，选项行数=$rawChoiceLines。标记为失败，'
         '调用方需走重试/兜底叙事。',
@@ -485,7 +486,7 @@ mixin GameResponseMixin
     );
     worldState.addNarrativeEvent('💀 ${dead.name} 死了', turn: turnCount);
     _rippleDeathTo(dead, ts);
-    debugPrint('💀 ${dead.name} 死了（${cause ?? '死因不明'}）@ turn=$turnCount');
+    debugLog('💀 ${dead.name} 死了（${cause ?? '死因不明'}）@ turn=$turnCount');
   }
 
   /// 一个人死后，活着的人会怎么样。
@@ -595,7 +596,7 @@ mixin GameResponseMixin
       ),
     );
     worldState.addNarrativeEvent('🩹 ${def.label}', turn: turnCount);
-    debugPrint('🩹 落疤 ${def.key} @ turn=$turnCount');
+    debugLog('🩹 落疤 ${def.key} @ turn=$turnCount');
   }
 
   void parseResponse(String text) {
@@ -1873,7 +1874,7 @@ $kChoicePromptSuffix''';
             .toList();
         if (badChoices.isNotEmpty)
           qualityReasons.add('${badChoices.length}条含markdown/图片/异常格式');
-        debugPrint('选项质量检测: ${qualityReasons.join("、")}，自动重试(带完整剧情上下文)...');
+        debugLog('选项质量检测: ${qualityReasons.join("、")}，自动重试(带完整剧情上下文)...');
 
         // BUG-L 关键修复：重试 prompt 必须包含剧情末尾+玩家状态，不能用极简 prompt！
         // 旧极简 prompt 只有 411 token 无任何上下文 → 生成通用战斗选项 → 与剧情脱节
@@ -1983,11 +1984,11 @@ $kChoicePromptSuffix''';
       // 历史事故（玩家只看到 2~3 个选项）。空 → 全量承接式兜底并通知玩家；
       // 1~3 条 → 用承接式兜底补齐缺口，不打扰玩家。
       if (choices.isEmpty) {
-        debugPrint('选项生成全部失败，使用承接式兜底选项');
+        debugLog('选项生成全部失败，使用承接式兜底选项');
         notifications.add('⏱️ 选项生成较慢，已为你基于当前剧情临时生成4个选项（可直接输入自由行动替代）。');
         choices.addAll(buildFallbackChoices(narrative));
       } else if (choices.length < 4) {
-        debugPrint('选项数量不足(${choices.length}/4)，用承接式兜底补齐到 4');
+        debugLog('选项数量不足(${choices.length}/4)，用承接式兜底补齐到 4');
         final pad = buildFallbackChoices(narrative);
         final existing = choices.map((c) => c.text).toSet();
         for (final c in pad) {
@@ -2014,7 +2015,7 @@ $kChoicePromptSuffix''';
       // 关键修复：以前这里 return [] → 外层走 generateContextualFallbackChoices → 生成不承接剧情末尾的"仔细查看"
       // → 玩家点了之后下一回合叙事就完全跳开上一段剧情结尾，造成"刚生成的剧情没操作就被另一个剧情替换"
       // 现在统一走 buildFallbackChoices，严格基于 narrative 末尾 800 字做承接式兜底，保证不断链；同时 UI 明确通知玩家。
-      debugPrint('独立选项生成异常/超时(使用承接式兜底): $e');
+      debugLog('独立选项生成异常/超时(使用承接式兜底): $e');
       final msg = e.toString().contains('超时')
           ? '⏱️ 选项生成超时（网络波动或服务商限流），已为你基于剧情末尾临时生成4个承接选项；稍后可通过输入框输入自由行动获得更新鲜选项。'
           : '⏱️ 选项生成异常，已为你基于当前剧情临时生成4个承接选项（不影响剧情，自由行动照常输入）。';

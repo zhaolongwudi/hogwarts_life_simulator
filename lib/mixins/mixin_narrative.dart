@@ -39,6 +39,7 @@ import '../data/parallel_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
+import '../utils/debug_log.dart';
 
 mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
@@ -695,7 +696,7 @@ $kNarrativeWritingRules
         if (!parseOk) {
           // BUG-H：模型把 narrative 场景当 choice 场景用了，全返回 A.B.C.D.
           narrativeParseInvalid = true;
-          debugPrint(
+          debugLog(
             '❌ [BUG-H] 当前 parseNarrativeOnly 返回 false，视为 critical 级异常触发重试',
           );
         }
@@ -768,7 +769,7 @@ $kNarrativeWritingRules
               (h) => '违和词(${h['category']}): ${h['word']}',
             ),
           ];
-          debugPrint(
+          debugLog(
             '⚠️ 叙事 critical 级异常，准备重试（剩余${retriesLeft}次）：${msgs.take(3).join(" | ")}',
           );
           // 给新 prompt 加一段"修正要求"，明确告诉 AI 错在哪
@@ -792,7 +793,7 @@ $kNarrativeWritingRules
 
         // ====== 重试全部用完还是 BUG-H？ → 直接走本地兜底叙事（保证不是选项） ======
         if (narrativeParseInvalid && retriesLeft == 0) {
-          debugPrint(
+          debugLog(
             '❌ [BUG-H] 2次重试后仍返回选项，切换为 generateFallbackNarrative() 本地兜底叙事',
           );
           currentNarrative = generateFallbackNarrative();
@@ -842,7 +843,7 @@ $kNarrativeWritingRules
           isOffline: false,
         ));
         if (density < 0.02 && density > 0.0) {
-          debugPrint('⚠️ 信息密度偏低: ${density.toStringAsFixed(4)}（阈值 0.02）');
+          debugLog('⚠️ 信息密度偏低: ${density.toStringAsFixed(4)}（阈值 0.02）');
           if (usedFallbackNarrative) {
             // 兜底叙事密度过低 → 自动增强：追加一段具体的环境/事件描述
             final p = player;
@@ -926,7 +927,7 @@ $kNarrativeWritingRules
           // 独立选项生成失败时：直接走与超时同一套「末尾800字承接型」兜底，
           // 彻底弃用 generateContextualFallbackChoices（它会按关键词匹配出"仔细查看"这种简易选项，
           // 玩家点击后AI拿到与剧情结尾无关的动作，造成"刚生成的剧情没操作就被另一个剧情替换"的断链）。
-          debugPrint('独立选项生成失败，切换到末尾承接型兜底选项');
+          debugLog('独立选项生成失败，切换到末尾承接型兜底选项');
           choices = buildFallbackChoices(currentNarrative);
         }
       }
@@ -953,7 +954,7 @@ $kNarrativeWritingRules
       unawaited(autoSave());
     } catch (e) {
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
-      debugPrint('❌ 剧情生成失败，启用本地兜底叙事: $e');
+      debugLog('❌ 剧情生成失败，启用本地兜底叙事: $e');
       CrashLogger.instance.logHeartbeat('narrative:fallback');
       currentNarrative = generateFallbackNarrative();
       // 2026-08-28：统一使用 buildFallbackChoices（基于剧情末尾800字做承接式兜底）
@@ -1044,7 +1045,7 @@ $kNarrativeWritingRules
           try {
             await _summarizeNarrative();
           } catch (e) {
-            debugPrint('摘要生成失败(不影响游戏): $e');
+            debugLog('摘要生成失败(不影响游戏): $e');
           }
         }),
       );
@@ -1090,7 +1091,7 @@ $kNarrativeWritingRules
         isOffline: true,
       ));
       if (density < 0.02 && density > 0.0) {
-        debugPrint('⚠️ [离线] 信息密度偏低: ${density.toStringAsFixed(4)}，自动增强');
+        debugLog('⚠️ [离线] 信息密度偏低: ${density.toStringAsFixed(4)}，自动增强');
         final p = player;
         if (p != null) {
           final location = worldState.currentLocation ?? '霍格沃茨';
@@ -1451,7 +1452,7 @@ $kNarrativeWritingRules
       // 注意：这里不再清空 pendingSummary —— 待摘要内容在请求发出前就已取走，
       // 请求在飞期间新积累的回合仍留在缓冲里，等待下一次摘要。
     } catch (e) {
-      debugPrint('❌ 摘要生成失败: $e');
+      debugLog('❌ 摘要生成失败: $e');
       // 失败则把内容还回缓冲头部，下回合重试，避免剧情永久丢失
       pendingSummary = chunk + pendingSummary;
     } finally {
@@ -1690,7 +1691,7 @@ $kNarrativeWritingRules
     // 热路径：每次了结一条伏笔就打一行，长局下来是纯 I/O 浪费，
     // 收进 kDebugMode（第八次审查 P2-4）。
     if (kDebugMode) {
-      debugPrint(
+      debugLog(
         '🔗 伏笔了结 id=${l.id} score=${match.score.toStringAsFixed(2)} 悬了$held回合',
       );
     }

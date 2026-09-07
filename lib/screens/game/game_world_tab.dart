@@ -5,6 +5,7 @@ import '../../models/npc.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../utils/debug_log.dart';
 
 /// 世界 Tab：NPC 管理（参考图 601b4b32 风格）
 ///
@@ -549,7 +550,10 @@ class WorldTab extends StatelessWidget {
         _ => 1991,
       };
       return startYear - baseYear + 1;
-    } catch (_) {
+    } catch (e) {
+      // F8：原先 catch (_) 里只有一个裸 return 1。学年算不出来时静默返回 1
+      // 会让 UI 显示成"一年级"而不报错，玩家以为存档坏了。兜底值保留，补日志。
+      debugLog('[world_tab] 学年解析失败，回退为 1 年级: yearStr=$yearStr, err=$e');
       return 1;
     }
   }

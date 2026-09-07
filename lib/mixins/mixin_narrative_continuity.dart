@@ -8,6 +8,7 @@ import '../data/narrative_time_rules.dart';
 import '../utils/stagnation_detector.dart';
 import '../utils/story_text_renderer.dart';
 import '../models/game_systems.dart';
+import '../utils/debug_log.dart';
 
 /// 场景过渡图里的匹配串（currentLocationPattern / requireVisited /
 /// requireNotVisited）是**运行时数据**，没法像字面量那样提到 static final
@@ -296,7 +297,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     // 热路径：每回合只要补了承接就会打一行。release 版照样往 stdout 写，
     // 长局下来是纯 I/O 浪费，因此收进 kDebugMode（第八次审查 P2-4）。
     if (kDebugMode) {
-      debugPrint(
+      debugLog(
           '🔗 ContinuityBridge 自动补承接: anchor=$a 插句长度=${bridgeSentence.length}');
     }
     return repaired;
@@ -533,7 +534,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
               // 一遍，命中否定词就打一行。release 版照样往 stdout 写日志，
               // 长局下来是纯 I/O 浪费，因此收进 kDebugMode。
               if (kDebugMode) {
-                debugPrint('[OOC 跳过·否定词前置] '
+                debugLog('[OOC 跳过·否定词前置] '
                     '${npc.name}|$nameVariant|$hitVerb 前置="$beforeHit"');
               }
               continue;
@@ -870,7 +871,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       worldState.addNarrativeEvent('🧭 SceneGraph: 触发节点 $chosenId（turn=$t loc=$loc）', turn: t);
       // 同样是每回合一次的热路径日志（同上，收进 kDebugMode）。
       if (kDebugMode) {
-        debugPrint('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
+        debugLog('🧭 SceneTransitionGraph 命中 id=$chosenId; 切Location=${allowNextUpdate ? chosenNextLocation : "(依赖剧情走完后自动同步)"}');
       }
     }
     if (chosenNextLocation != null && allowNextUpdate) {
