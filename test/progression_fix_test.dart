@@ -23,7 +23,10 @@ import 'package:hogwarts_life_simulator/services/save_service.dart';
 import 'package:hogwarts_life_simulator/data/cg_data.dart';
 import 'package:hogwarts_life_simulator/data/cg_unlock_conditions.dart';
 
+import 'helpers/test_fixtures.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('GameTime 整天快进', () {
     test('跨月：1991-09-01 快进 31 天 → 1991-10-02', () {
       final t = GameTime(year: 1991, month: 9, day: 1);
@@ -1343,18 +1346,26 @@ void _petReachabilityGroup() {
       expect(base, contains('String formatPetShop();'));
     });
 
-    test('/宠物 购买 的分支不会把人卡死', () {
-      // 空参数必须返回在售清单而不是报错，否则玩家敲了 /宠物 购买 就没下文了
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
-      final body = RegExp(
-        r'String buyPet\(String keyword\) \{(.*?)\n  \}',
-        dotAll: true,
-      ).firstMatch(src);
-      expect(body, isNotNull, reason: '没找到 buyPet，正则该更新了');
-      final text = body!.group(1)!;
-      expect(text, contains('kw.isEmpty'), reason: '空参数要返回清单');
-      expect(text, contains('galleons < price'), reason: '买不起要有提示');
-      expect(text, contains('p.petId != null'), reason: '已有宠物要挡住，别把羁绊清了');
+    test('/宠物 购买 的分支不会把人卡死', () async {
+      // 行为断言替代源码扫描：造真实 GameProvider，逐个分支真跑。
+      //  - 空参数要返回在售清单而不是报错
+      //  - 金币不足要有买不起提示
+      //  - 已有宠物要挡住，别把羁绊清了
+      final gp = await makeGame();
+      // 空参：直接返回在售清单（不报错、不卡死）
+      expect(gp.buyPet(''), contains('商店'),
+          reason: '空参数没有返回宠物商店清单');
+
+      // 已有宠物：买到之后二次购买被挡，别清羁绊
+      gp.player!.petId = 'owl';
+      final blocked = gp.buyPet('猫头鹰');
+      expect(blocked, contains('你已经有'), reason: '已有宠物没有挡住二次购买');
+      expect(blocked, isNot(contains('宠物店欢迎你')), reason: '不应继续走购买流程');
+      // 金币不足：身上没钱时要有买不起提示，而不是成交
+      gp.player!.galleons = 0;
+      final broke = gp.buyPet('猫头鹰');
+      expect(broke, contains('加隆'), reason: '金币不足没有提示价格');
+      expect(broke, isNot(contains('你花')), reason: '金币不足却成交了');
     });
   });
 }

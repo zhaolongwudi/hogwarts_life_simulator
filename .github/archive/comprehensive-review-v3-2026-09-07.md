@@ -385,6 +385,11 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 「读 `formatCollection()` 方法体源码、断言含/不含某词」的源码扫描断言改写为 1 条行为测试：
 > `makeGame()` 构造真实 `GameProvider`（收藏为空），实际调用 `formatCollection()`，断言空态
 > 输出含「巧克力蛙」「一件都没有」、绝不含「日记本」。源码扫描数 −1。
+>
+> **🟢 推进中（批次 23）。** 从 `progression_fix_test.dart` 宠物组把「/宠物 购买 的分支不会把
+> 人卡死」这条「正则切 `buyPet` 方法体、断言含 kw.isEmpty/galleons < price/p.petId != null」
+> 的源码扫描断言改写为 1 条行为测试：真实 `GameProvider` 上逐个分支真跑（空参返回在售清单、
+> 已有宠物挡住二次购买、金币不足提示价格不成交）。源码扫描数 −1。
 > F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
 
 ### F21 — UI 测试缺失 `[Medium] [v1]`
@@ -1129,7 +1134,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次22（scar/指令缺口/收藏空态文案 3 组持续推进，扫描 −5） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次23（scar/指令缺口/收藏空态/buyPet分支 4 组持续推进，扫描 −5） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -2026,4 +2031,38 @@ prompt 注入 / 跨 mixin 基类声明」等——前者是数据自洽，后者
 
 **验证**：不触碰 `lib/`；`Player.collection` 构造器兜底为空，`makeGame()` 产生的新存档收藏
 为空，`formatCollection()` 必然走空态分支，三条断言语义与原文案一致。
+本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
+
+### 批次 23 — F20 源码文本断言迁移：/宠物 购买分支组
+
+**这一批的由来**：`progression_fix_test.dart` 宠物组「/宠物 购买 的分支不会把人卡死」这条，
+用正则 `String buyPet\(String keyword\) \{(.*?)\n  \}` 切出方法体，再断言含 `kw.isEmpty`
+（空参数返清单）、`galleons < price`（买不起要提示）、`p.petId != null`（已有宠物要挡住）。
+这是典型的「读方法体源码猜行为」——方法体措辞一改断言就误报，且没验证「真跑出来后玩家
+到底看到什么」。`buyPet` 是纯逻辑方法（不触发 AI/随机/多系统副作用），三分支都能在真实
+`GameProvider` 上干净构造，正好沿 F20 范式迁移。
+
+**迁移原则（沿袭批次 20-22）**：只改写有干净行为等价物、能直接构造运行时的断言。
+同组「在售宠物都有售价」「默认名字表覆盖全部宠物」「玩家叫法命中 findPet」等要么是纯数据
+自洽、要么已经直接调用 `findPet`，本就行为测试，不动；「购买指令已注册且能走到实现」是
+命令注册 + 基类声明的接线守卫，保留。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 正则切 `buyPet` 方法体，断言含 `kw.isEmpty`/`galleons < price`/`p.petId != null` | `makeGame()` 真实 `GameProvider`，三个分支逐个真跑：空参 `buyPet('')` 返回在售清单（含「商店」）；设 `petId='owl'` 后 `buyPet('猫头鹰')` 被挡（含「你已经有」、不含「你花」）；设 `galleons=0` 后 `buyPet('猫头鹰')` 提示价格（含「加隆」、不含「你花」） |
+
+| 文件 | 改动 |
+|---|---|
+| `test/progression_fix_test.dart` | 宠物组「/宠物 购买 的分支不会把人卡死」改写为 1 条行为测试；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()` |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次23、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：宠物组「在售宠物都有售价」「默认名字表全覆盖」
+「玩家叫法命中 findPet」已是行为测试；「购买指令已注册且能走到实现」是命令注册 + 基类声明
+接线守卫，迁移需拉起完整 `/宠物 购买` 命令链，代价与收益不成比例。
+
+**验证**：不触碰 `lib/`；`buyPet` 为纯逻辑方法（无 AI/随机），三分支在真实 `GameProvider`
+上顺序构造。`findPet('猫头鹰')`（物种名）命中 `owl`，`kPetPrices['owl']=30`；
+`Player` 默认 `petId=null`、`galleons=500`（可注入为 0 制造「买不起」）。
 本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
