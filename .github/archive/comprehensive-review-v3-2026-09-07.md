@@ -395,6 +395,11 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 「读 `formatHouseCup()` 方法体、断言含 `e.value >= 0 ? '+' : ''`」的源码扫描断言改写为
 > 1 条行为测试：真实 `GameProvider` 注入分院与一正一负两条来源，真跑 `formatHouseCup()`，
 > 断言渲染是「日常扣分 -5」「魁地奇取胜 +30」、绝无「日常扣分 +-5」。源码扫描数 −1。
+>
+> **🟢 推进中（批次 25）。** 从 `progression_fix_test.dart` 查看组把「可见性判定仍然生效
+> （没见过的 NPC 不给看）」这条「读 `formatCharacterDossier()` 方法体、断言含 _isNPCVisible/素不相识」
+> 的源码扫描断言改写为 1 条行为测试：真实 `GameProvider` 显式分到 Gryffindor 后查西弗勒斯·斯内普
+> （教职、异院、impactScore=0，必然不可见），断言返回「素不相识」。源码扫描数 −1。
 > F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
 
 ### F21 — UI 测试缺失 `[Medium] [v1]`
@@ -1139,7 +1144,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次24（scar/指令缺口/收藏空态/buyPet分支/学院杯负号 5 组持续推进，扫描 −5） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次25（scar/指令缺口/收藏空态/buyPet分支/学院杯负号/档案可见性 6 组持续推进，扫描 −5） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -2103,3 +2108,40 @@ prompt 注入 / 跨 mixin 基类声明」等——前者是数据自洽，后者
 `normalizeHouseKey` 识别（`kHouseDisplayNames` 含该 key），分支切到「得分构成」；
 `_ensureHouseCupYearly` 自动补四院不崩。`Player.house/houseCupPoints/houseCupSources` 均
 可注入。本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
+
+### 批次 25 — F20 源码文本断言迁移：档案可见性组
+
+**这一批的由来**：`progression_fix_test.dart` 查看组「可见性判定仍然生效（没见过的 NPC 不给看）」
+这条，原本剥注释后对 `mixin_systems.dart` 做 `substring` 切出 `formatCharacterDossier()` 方法体，
+再断言含 `_isNPCVisible` 与「素不相识」——只证明"代码里这么写"，不证明玩家真跑时没见过的
+NPC 拿不到完整档案。`formatCharacterDossier(idOrName)` 是纯只读格式化（无 AI/随机/副作用），
+可见性分支完全由玩家状态决定，可干净行为化。
+
+**迁移原则（沿袭批次 20-24）**：只改写有干净行为等价物、能直接构造运行时的断言。
+同组「命令已注册且带别名」「基类有声明」「原著魔杖 canonWandFor 已接上」分别是命令注册、
+跨 mixin 基类契约、数据引用点接线守卫，保留。
+
+**行为断言构造关键**（查询前先做只读核验）：`makeGame()` 初始 `player.house=null`、
+`worldState.playerImpactScore=0.0`、`openingScene:'letter'` 不预填关系。要查一个「必然不可见」
+的 NPC，得满足三条 _isNPCVisible 条件全部不满足：无关系、异院、且非高影响 canon。选
+「西弗勒斯·斯内普」（grade 0 教职，无初始关系，Slytherin，且 impactScore=0 使 canon 分支不
+生效），并显式 `gp.player!.house='Gryffindor'` 制造异院，三者齐备必然走「素不相识」分支。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 切 `formatCharacterDossier()` 方法体，断言含 `_isNPCVisible`、`素不相识` | 真实 `GameProvider` 显式分到 Gryffindor 后查「西弗勒斯·斯内普」，断言返回含「素不相识」且点名到「斯内普」 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/progression_fix_test.dart` | 查看组「可见性判定仍然生效」改写为 1 条行为测试（批次 23 已补 fixture 导入与绑定初始化） |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次25、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：「命令已注册且带别名」是命令注册；「基类有声明」
+是跨 mixin 可见性编译契约；「原著魔杖 canonWandFor 已接上」查的是数据引用点。三类均锁接线，
+迁移需拉起完整 `/查看 命令解析 + NPC 注册 + 原著数据 链路，代价与收益不成比例。
+
+**验证**：不触碰 `lib/`；`makeGame()` 初始 impactScore=0.0 ≤ 0.5、house=null，显式设为
+Gryffindor 后查斯内普（无关系、Slytherin、非高影响 canon）必然不可见。本地无 `flutter` SDK，
+靠推送后 CI analyze + 全量 test 把关。

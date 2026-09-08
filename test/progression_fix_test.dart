@@ -747,12 +747,15 @@ void _unwiredFeatureGroup() {
       expect(base.contains('formatCharacterDossier('), isTrue);
     });
 
-    test('可见性判定仍然生效（没见过的 NPC 不给看）', () {
-      final i = sysSrc.indexOf('String formatCharacterDossier(');
-      expect(i, greaterThan(-1));
-      final body = sysSrc.substring(i, i + 1200);
-      expect(body.contains('_isNPCVisible'), isTrue);
-      expect(body.contains('素不相识'), isTrue);
+    test('可见性判定仍然生效（没见过的 NPC 不给看）', () async {
+      // 行为断言替代源码扫描：真实 GameProvider 上显式把玩家分到 Gryffindor，
+      // 查一个唯一必然不可见的 NPC（教职、异院、影响力=0）——要真看到「素不相识」。
+      final gp = await makeGame();
+      gp.player!.house = 'Gryffindor';
+      final dossier = gp.formatCharacterDossier('西弗勒斯·斯内普');
+      expect(dossier, contains('素不相识'),
+          reason: '没见过的 NPC 竟然给看了完整档案');
+      expect(dossier, contains('斯内普'), reason: '连名字都没指出来');
     });
 
     test('原著魔杖 canonWandFor 已接上', () {
