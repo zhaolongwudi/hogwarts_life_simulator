@@ -34,7 +34,8 @@
 | 13 | F12 setState 热点局部刷新 | F12 | ✅ 已推送 |
 | **14** | **健壮性加固：回调生命周期 + 查表判空 + 语义标签** | **CL1 / F39（高危 4 处）/ F24（主界面）** | **✅ 已推送（CI 全绿，v4.1.2）** |
 | **15** | **魔法数字提取：UI 层 Duration 语义 token 化** | **F25（UI 层时长）** | **✅ 已推送（CI 全绿，v4.1.4）** |
-| **16** | **UI 测试补全：高频游戏组件冒烟 + Semantics 回归** | **F21** | **🟢 批次16（CI 验证中）** |
+| **16** | **UI 测试补全：高频游戏组件冒烟 + Semantics 回归** | **F21** | **✅ 已推送（CI 全绿）** |
+| **17** | **异步安全审计：CancellationToken 核对（AI 层早已落地，误判更正）** | **F15** | **✅ 已推送（核对更正，无代码改动）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -261,6 +262,24 @@ GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能�
 ### F15 — 异步操作无 CancellationToken `[Medium] [v1]`
 
 全库未使用 `CancellationToken`、`CancelableOperation` 或 `Completer` 管理异步操作生命周期。
+
+> **✅ 已核对更正（批次 17，误判）**
+> 这条结论同样犯了「正式条目在 lib/ 里仅按关键词抽查、漏掉依赖链实现」的错——
+> AI 服务层（全库**最重要、最长的异步链路**）早在审查前就内置了完整的取消令牌机制：
+>
+> - `lib/services/ai_router.dart`：`CancelToken()`（整条调用链共用，仅全局超时取消，见
+>   [L254-282](#)）；每次尝试又单独建 `callToken`，让单次超时不炸掉整条 Key 链（L404-422），
+>   只有共享 token 被取消才 `rethrow`（L470-477）；配套 `CancelableBridge.attach/detach`（L542-558）。
+> - `lib/services/deepseek_service.dart`：`chatComplete` 透传 `CancelToken?`，底层 HTTP 一并取消。
+>
+> 这正是「想让异步可取消应该怎么写」的标准做法——审查时只搜了全局有没有 CancelToken 字样，
+> 没把它和"异步操作"的关系建立起来，又没看一眼服务层，于是得出"全库未使用"的错误结论。
+>
+> **剩余异步操作评估**：除 AI 链路外，全库其余异步均为 await-guarded 的短促操作——
+> `Future.delayed`（打字机/防抖/退避）全部带 `mounted` 守卫（批次 8 F17、批次 14 CL1/CL2 已核对）；
+> 存档防抖在途节流 + `saveNow` 先 await 在途再无条件写（`game_provider.dart`）；无 Stream/isolate/worker。
+> 为这些已正确收口的短促操作再套一层 `CancelableOperation` 是过度设计，收益为负。
+> **因此不引入全库取消框架**——这是有意的工程取舍，而非疏漏。
 
 ### F16 — SharedPreferences fire-and-forget `[High] [v2]`
 
@@ -1058,7 +1077,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | 🟢 批次13（高频击键热点 3 处 ValueNotifier 局部刷新；低频点击与滞回滚动维持现状） |
 | F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
 | F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
-| F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | — |
+| F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | ✅ 批次17（核对更正：「全库未使用」不成立——`ai_router.dart`/`deepseek_service.dart` 早已内置 `CancelToken` + `CancelableBridge`：整链共用 token + 每次尝试独立 token，超时/熔断/切 Key 语义完整；其余异步均为 await-guarded 的短促操作，不构成引入全库取消框架的依据） |
 | F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | ✅ 批次3 |
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
@@ -1159,7 +1178,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 - **F11** — 补充 dispose 清理
 - **F12** — 使用 Selector/ValueListenableBuilder
 - **F14** — 拆分 world_map_screen
-- **F15** — 引入 CancellationToken
+- **F15** — ~~引入 CancellationToken~~（批次 17 核对更正：AI 层早已用 `CancelToken`，不引入全库取消框架）
 - **F17** — 异步操作生命周期检查
 - **F21** — 添加 UI 测试
 - **F22/F42** — 平衡测试文件规模
@@ -1705,16 +1724,42 @@ label 一旦被删立刻红。
 
 | 文件 | 改动 |
 |---|---|
-| `test/ui_game_bar_test.dart`（新增） | 复用 `test_fixtures.dart` 的 `makeGame()`（D1 收口的 fixture，全属性 50 的「测试巫师」，不跑 AI 不走网络）。4 条用例：`GameTopBar` 渲染玩家姓名 + `快速存档` 语义标签；存档按钮点击后弹「✅ 已存档」SnackBar；`GameBottomInput` 渲染 `推进剧情`/`打开指令中心`/`发送行动` 三个语义标签与输入占位符；发送按钮点击触发行动回调（`fired == true`） |
+| `test/ui_game_bar_test.dart`（新增） | `GameTopBar`/`GameBottomInput` 高频组件无头冒烟 + 批次 14 语义标签回归。**不走 `makeGame()`/`initializeGame`**：其异步链（SharedPreferences/secure_storage 读取链）在 `testWidgets` 的 fake-async zone 不推进，先前 CI 实测卡满 10 分钟 `TimeoutException`。改为 `_buildGame()` 手动装配 `GameProvider` 并注入最小玩家，全部状态同步就绪。3 条用例：`GameTopBar` 渲染玩家姓名 + 快速存档语义标签；`GameBottomInput` 渲染推进/指令中心/发送三个语义标签 + 输入占位符；发送按钮触发行动回调（`fired == true`）。语义断言用「读显式 `Semantics` 组件的 `properties.label`」而非 `bySemanticsLabel`（后者依赖语义树启用，本项目自动化绑定下不稳定） |
 
-**为什么这样做**：直接给 `GameProvider` 依赖的组件写测试会引入大量 mock 噪音
-（SharedPreferences、AI 服务、命令注册都要初始化），而 `makeGame()` 已把这条链路
-收敛成一个函数（批次 9 的 D1 工作），测试体量因此很小、很聚焦——只断言组件本身的
-渲染契约与批次 14 补的语义标签，不碰玩法逻辑（那部分由既有纯逻辑单测负责）。
+**为什么这样做**：直接给 `GameProvider` 依赖的组件写测试会引入大量 mock 噪音（SharedPreferences、AI 服务、命令注册都要初始化），若走 `initializeGame` 还会在 fake-async 下挂死——故选「构造 provider → 手动注入最小玩家」的静态方案，渲染/交互所需状态全同步就绪，写盘由 `SharedPreferences.setMockInitialValues` 承接（内存微任务）。**取舍**：存档按钮的「写入成功 → SnackBar」交互未覆盖——`quickSave` 底层经 `path_provider` 读真实文档目录，测试环境无插件实现必然抛 `MissingPluginException`，属测试环境对真实文件系统的固有依赖而非 UI 逻辑问题；渲染、语义标签与核心回调已充分覆盖。
 
 **验证**：本机无 Flutter SDK，照例本地做结构核验 + 推送后 CI
 （`flutter analyze` + 全量 `flutter test`）确认。新增文件仅测试代码、不改任何源码，
 故 analyze 风险极低；风险集中在测试运行期（渲染/命中），红了则按 CI 报错热修。
+
+### 批次 17 — 异步安全审计：CancellationToken 核对（F15，误判更正）
+
+**这一批的由来**：F15 断言「全库未使用 `CancellationToken`/`CancelableOperation`/`Completer`
+管理异步操作生命周期」。核对时先想「哪些异步真正需要可取消」，再看实现——发现这条结论
+**不成立**：
+
+- `lib/services/ai_router.dart` 早已内置完整取消机制：整条调用链共用 `CancelToken()`
+  （仅全局超时取消，L254-282）、每次尝试独立 `callToken`（单次超时不炸整条 Key 链，
+  L404-422）、只有共享 token 取消才 `rethrow`（L470-477）、`CancelableBridge.attach/detach`
+  管理链上当前 token（L542-558）。
+- `lib/services/deepseek_service.dart` 的 `chatComplete` 透传 `CancelToken?`，底层 HTTP 一并取消。
+
+这正是 AI 调用这种**长生命周期异步**该有的可取消模式——审查时只按关键词全局搜了
+CancelToken，没把结论落到实现上，于是误判成「全库未使用」。
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | 修订 F15 条目（误判更正 + 证据）、总表与路线图对应条目，补本批次记录。**无任何 Dart 代码改动** |
+
+**其余异步评估（为何不再引入全库取消框架）**：除 AI 链路外，全库异步均为 await-guarded 的
+短促操作——`Future.delayed`（打字机/防抖/退避）全部带 `mounted` 守卫（批次 8 F17、批次 14
+CL1/CL2 已核对）；存档防抖在途节流 + `saveNow` 先 await 在途再无条件写（`game_provider.dart`）；
+无 Stream/isolate/worker。为这些已正确收口的短促操作再套一层 `CancelableOperation` 是
+过度设计，收益为负——**不引入**是有意取舍，而非疏漏。此判断写入文档，防止后人「补框架」走弯路。
+
+**验证**：纯文档修订，不触碰 Dart 逻辑；推送后 CI 照常跑 analyze + 全量 test 应保持全绿。
 
 ### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
 
