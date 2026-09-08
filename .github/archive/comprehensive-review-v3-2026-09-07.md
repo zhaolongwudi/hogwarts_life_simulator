@@ -380,6 +380,11 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 1 条行为测试：`makeGame()` 构造真实 `GameProvider`，实际调用 `formatDailySchedule()`
 > `/formatMemories()` `/formatLoveHistory()`，断言输出带对应标题。源码扫描数 −3。
 > 该文件的分派器接线守卫（`sub == '快进'` 等）与指令面板按钮渲染等结构性契约保留。
+>
+> **🟢 推进中（批次 22）。** 从 `spell_system_test.dart` 收藏品组把「/收藏 空态文案」这条
+> 「读 `formatCollection()` 方法体源码、断言含/不含某词」的源码扫描断言改写为 1 条行为测试：
+> `makeGame()` 构造真实 `GameProvider`（收藏为空），实际调用 `formatCollection()`，断言空态
+> 输出含「巧克力蛙」「一件都没有」、绝不含「日记本」。源码扫描数 −1。
 > F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
 
 ### F21 — UI 测试缺失 `[Medium] [v1]`
@@ -1124,7 +1129,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次21（batch20 scar 组、batch21 指令缺口格式化方法组持续推进，扫描 −3） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次22（scar/指令缺口/收藏空态文案 3 组持续推进，扫描 −5） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -1981,4 +1986,38 @@ CI 失败定位靠 grep 定位 group。批次的**唯一目标是把这块巨石
 
 **验证**：不触碰 `lib/`；新增行为测试走既有 `makeGame()` fixture 的真实路径
 （`worldState`/`player`/`time` 均由 `initializeGame` 初始化，格式化方法可安全调用）。
+本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
+
+### 批次 22 — F20 源码文本断言迁移：/收藏 空态文案组
+
+**这一批的由来**：批次 20/21 已确立「源码扫描 → 真跑」的迁移范式，且都落在
+「有干净行为等价物」的格式化方法上。继续沿语义域推进：`spell_system_test.dart` 收藏品组里
+「/收藏 空态文案不再许诺拿不到的东西」这条，原本扫 `mixin_relations.dart` 里
+`formatCollection()` 的方法体源码，手动 `substring` 截到 `return buf.toString()`，再断言
+方法体内含「巧克力蛙」、不含「日记本」。方法体有很长一段注释反复解释「以前许诺了两件拿
+不到的东西」——源码扫描把实现细节写死，文案改一版注释就误报；而「真跑出输出」的写法既
+验证了行为，又不锁实现文本。
+
+**迁移原则（沿袭批次 20/21）**：只改写有干净行为等价物、能直接构造运行时的断言。
+同组其余断言（收藏品 id 不重复、目录无孤儿、来源分散在 5 处、画片系列非空、物品表买得到）
+要么是纯数据自洽，要么数的是跨文件调用点（接线守卫），保留。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 扫 `formatCollection()` 方法体，断言含「巧克力蛙」、不含「日记本」 | `makeGame()` 真实 `GameProvider`（收藏为空），调用 `gp.formatCollection()`，断言空态输出含「巧克力蛙」「一件都没有」、绝不含「日记本」 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/spell_system_test.dart` | 收藏品组「/收藏 空态文案」条改写为 1 条行为测试；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()` |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次22、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：收藏品 id 不重复、目录无「拿不到」的孤儿、
+`addCollectible` 调用点 ≥5、画片系列非空、会掉收藏品的物品在商店买得到、「命令已注册 /
+prompt 注入 / 跨 mixin 基类声明」等——前者是数据自洽，后者锁接线，改写行为测试需拉起完整
+采集/掉落链路（开局 + 分院 + 购买 + 掉落），代价与收益不成比例。
+
+**验证**：不触碰 `lib/`；`Player.collection` 构造器兜底为空，`makeGame()` 产生的新存档收藏
+为空，`formatCollection()` 必然走空态分支，三条断言语义与原文案一致。
 本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。

@@ -9,7 +9,10 @@ import 'package:hogwarts_life_simulator/data/time_cost_rules.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 
+import 'helpers/test_fixtures.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('咒语表自洽', () {
     test('咒语名不重复', () {
       final names = spellCatalog.map((s) => s.name).toList();
@@ -375,14 +378,20 @@ void main() {
       }
     });
 
-    test('/收藏 的空态文案不再许诺拿不到的东西', () {
-      final src = _codeOnly('lib/mixins/mixin_relations.dart');
-      final body = src.substring(src.indexOf('String formatCollection()'));
-      final empty = body.substring(0, body.indexOf('return buf.toString();'));
-      expect(empty.contains('日记本'), isFalse,
-          reason: '「日记本」在任何地方都不存在，不该再出现在提示里');
-      expect(empty.contains('巧克力蛙'), isTrue,
-          reason: '巧克力蛙是唯一稳定的收藏品来源，得告诉玩家');
+    test('/收藏 的空态文案不再许诺拿不到的东西', () async {
+      // 行为断言替代源码扫描：格式方法挂在真实 GameProvider 上，玩家开局
+      // 收藏为空，直接跑 formatCollection() 看空态文案。只测「真发生的输出」，
+      // 不再逐行读方法体猜它写了什么。
+      final gp = await makeGame();
+      final text = gp.formatCollection();
+      // 「日记本」在项目任何地方都不存在，不该再出现在提示里
+      expect(text, isNot(contains('日记本')),
+          reason: '空态文案还在许诺根本不存在的「日记本」');
+      // 巧克力蛙画片是唯一稳定的收藏品来源，得告诉玩家怎么开始
+      expect(text, contains('巧克力蛙'));
+      // 空态得说明「现在什么都没有」，不能只夸攒到的东西
+      expect(text, contains('一件都没有'),
+          reason: '空态文案没有说明「现在一件收藏都没有」');
     });
 
     test('收藏品的来源分散在开局/分院/购买/掉落，不是只有一处', () {
