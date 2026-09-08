@@ -378,6 +378,12 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 
 `progression_fix_test.dart` 3,038 行，占全部测试的 19%，而部分测试文件仅 200+ 行。
 
+> **✅ 已修复（批次 19）。** 把「数据一致性 / 送礼实物 / 材料产出」8 个 `_xxxGroup()`
+> （送礼判定、送礼数据对账、装备槽、送礼命令、材料产出分档、事件锚点、已知地点、
+> 学院名、血统标签、属性标签、委托类型标签、/状态职业）下沉到独立文件
+> `test/data_consistency_test.dart`，并对原文件清理了据此失效的 9 处导入。
+> 单体文件从 3,034 行降到 2,321 行（约 −23%），聚焦更清晰。批次 19 详情见文末。
+
 ### 优点：测试覆盖率高
 
 - 51 个测试文件，15,803 行测试代码
@@ -589,6 +595,9 @@ Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约�
 ### F42 — 测试文件规模分布不均 `[Medium] [v2]`
 
 `progression_fix_test.dart` 3,038 行，占总测试 19%，而部分文件仅 200+ 行。
+
+> **✅ 已修复（批次 19）。** 同上文 F22：数据一致性 / 送礼 / 材料 / 学院 / 血统 / 属性 /
+> 委托 / 职业 共 8 组下沉到 `data_consistency_test.dart`，原文件缩减约 23%、死导入清理。
 
 ### F43 — 测试数据设置重复 `[Medium] [v2]`
 
@@ -1105,7 +1114,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
 | F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | — |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
-| F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | — |
+| F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
 | F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | 🟢 批次14（主游戏界面 5 处高频交互补语义标签：发送/指令中心/推进/快捷行动 chip/快速存档；地图点位与其余 IconButton 留作后续） |
 | F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | 🟢 批次15（新增 `MiuiDuration` 语义时长 token，收敛 UI 层 17 个文件 29 处散落 Duration；服务层超时属业务配置、组件专属时长维持 `MiuiMotion` 语义，均注明边界） |
@@ -1125,7 +1134,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F39 | 大量非空断言（!） | 空安全 | Medium | v2 | 🟢 批次14（高危 4 处查表/兜底断言改判空回退：careerById×2 / rankDefById / currentCrushName；其余约 280 处核对为守卫/框架/正则组等安全惯用法，维持现状） |
 | F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | ✅ 批次11c（组织评估：混合式组合对单例状态容器利大于弊，无需再拆；混入职责已在 mixin 命名域内分组清晰） |
 | F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 | — |
-| F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 | — |
+| F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 | ✅ 批次19（与 F22 同批：数据/送礼/材料/标签组下沉，死导入清理） |
 | F43 | 测试数据设置重复 | 测试数据 | Medium | v2 | — |
 | F44 | 图片格式不统一，加载策略单一 | 资源管理 | Low | v2 | — |
 | F45 | 部分依赖版本约束过宽 | 依赖管理 | Low | v2 | ✅ 批次1（定性更正） |
@@ -1859,3 +1868,38 @@ F1/F40/F13/F14（大拆分，放最后，等本地能跑 `flutter test` 时再�
 - 改正则前先读 `lib/utils/debug_log.dart` 的规则表注释 —— `(?i)` 与
   字符类中间的 `-` 都是「编译得过、跑起来才炸」的坑，本机 Dart 2.17 比 CI 的 3.x
   宽松，验不出来；推送后必须看 CI。
+
+---
+
+### 批次 19 — 测试规模再平衡：拆分「数据一致性 / 送礼 / 材料」cluster（F22 / F42）
+
+**这一批的由来**：F22 / F42 都点出 `progression_fix_test.dart` 独占全项目测试 19%
+（3,038 行），而其余文件多在两三百行。单文件行数 = 排查心智负担：改动要扫 3 千行、
+CI 失败定位靠 grep 定位 group。批次的**唯一目标是把这块巨石按语义域切开**，不改任何
+产品逻辑、不增删任何断言——纯搬移 + 清死导入。
+
+**拆分边界**：挑出语义内聚、且只依赖「数据表 + 纯逻辑函数」、不触碰玩法 / UI / 叙事链路的
+8 个 `_xxxGroup()`，下沉为新文件 `test/data_consistency_test.dart`：
+
+| 下沉 group | 语义域 |
+|---|---|
+| `_eventAnchorGroup` / `_houseNameGroup` | 事件锚点、已知地点表自洽 |
+| `_bloodStatusGroup` / `_attributeLabelGroup` / `_questTypeLabelGroup` | 血统 / 属性 / 委托类型「标签单一来源」扫描 |
+| `_statusOccupationGroup` | /状态 职业字段回归 |
+| `_giftGivingGroup` / `_materialLootGroup` | 送礼判定、礼物对账、装备槽、送礼接线、材料产出分档 |
+
+**保证自足**：`_allLibFiles()` / `_codeOnly()` 两个文件级扫描小工具在新文件里各复制一份
+（两行级函数，复制维护成本远低于强行抽共享模块）；导入按移动后的实际引用逐一补齐，
+不跨文件 import 私有符号。
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `test/data_consistency_test.dart` | **新增**。8 个下沉 group + 两个扫描小工具，746 行，自足导入 |
+| `test/progression_fix_test.dart` | 删除已下沉的 8 个 `_xxxGroup()` 函数体及 `main()` 对应调用；清理据此失效的 9 处导入（`gift_rules` / `item_data` / `event_anchors` / `locations` / `house_data` / `blood_status` / `attribute_data` / `quest_data` / `course_data`）。单体 3,034 → 2,321 行（约 −23%） |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F22 / F42 双条目标 ✅ 批次19、总表两行回填、追加本批次记录 |
+
+**验证**：纯测试搬移 + 死导入清理，不触碰 `lib/` 产品代码与任何断言；本地无
+`flutter` SDK，靠推送后 CI 的 analyze + 全量 test 把关。旧的 8 组断言一字未改，行为
+等价性由「同 8 组在新文件中原样运行」保证。
