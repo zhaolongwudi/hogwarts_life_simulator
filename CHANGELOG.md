@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.1.7 — 2026-09-08
+
+**📋 变更说明**
+docs: 批次17 F15 异步安全核对更正（AI 层早已内置 CancelToken，误判）
+
+核对发现 F15「全库未使用 CancellationToken」不成立：ai_router/deepseek_service
+早已用 CancelToken + CancelableBridge 管理 AI 调用链取消（整链共用 token + 每次
+尝试独立 token，超时/熔断/切 Key 语义完整）。正确记录为误判更正，并评估其余
+异步均为 await-guarded 短促操作，明确不引入全库取消框架（有意取舍）。纯文档。
+
 ### v4.1.6 — 2026-09-08
 
 **📋 变更说明**
