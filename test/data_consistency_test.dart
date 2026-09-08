@@ -14,6 +14,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/data/attribute_data.dart';
 import 'package:hogwarts_life_simulator/data/blood_status.dart';

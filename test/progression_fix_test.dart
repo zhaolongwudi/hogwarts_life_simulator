@@ -14,6 +14,8 @@ import 'package:hogwarts_life_simulator/data/provider_defaults.dart';
 import 'package:hogwarts_life_simulator/data/pet_data.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/data/political_stance.dart';
+import 'package:hogwarts_life_simulator/data/item_data.dart';
+import 'package:hogwarts_life_simulator/data/locations.dart';
 import 'package:hogwarts_life_simulator/data/world_rules.dart';
 import 'package:hogwarts_life_simulator/data/balance_constants.dart';
 import 'package:hogwarts_life_simulator/services/key_store.dart';
