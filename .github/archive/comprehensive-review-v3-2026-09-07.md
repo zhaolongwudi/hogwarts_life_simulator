@@ -36,6 +36,7 @@
 | **15** | **魔法数字提取：UI 层 Duration 语义 token 化** | **F25（UI 层时长）** | **✅ 已推送（CI 全绿，v4.1.4）** |
 | **16** | **UI 测试补全：高频游戏组件冒烟 + Semantics 回归** | **F21** | **✅ 已推送（CI 全绿）** |
 | **17** | **异步安全审计：CancellationToken 核对（AI 层早已落地，误判更正）** | **F15** | **✅ 已推送（核对更正，无代码改动）** |
+| **18** | **台账一致性回填：F1/F2/F13/F14/F40 与批次 11a-12c 记录对齐** | **F1 / F2 / F13 / F14 / F40** | **✅ 已推送（核对回填，无代码改动）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -122,11 +123,19 @@
 
 `lib/mixins/mixin_commands.dart` 一个方法 3,234 行，违反单一职责原则。调试、定位、维护成本极高。
 
+> **🟢 批次 11a（神方法拆分）**：`_ensureCommandsRegistered()` 已被拆分为 7 个分组注册方法
+> （`_registerBasicInfoCommands` / `_registerRelationCommands` / `_registerStudyCommands` /
+> `_registerItemCommands` / `_registerActivityCommands` / `_registerWorldCommands` /
+> `_registerCheatCommands`），巨型方法本身已消除。`mixin_commands.dart` 文件体仍约 3,250 行
+> （分组方法+注册逻辑都住这），进一步的「按域拆分文件」留作后续分阶段推进。
+
 **影响：** 任何命令注册的修改都需要在 3K+ 行的函数中定位，极易引入回归 bug。
 
 ### F2 — Mixin 导入膨胀 `[High] [v1]`
 
 `mixin_init.dart` 41 行导入，`mixin_narrative.dart` 35 行，`mixin_systems.dart` 27 行。部分导入仅在极少数分支中使用。
+
+> **✅ 批次 11c（导入清理）**：清理 6 处未使用 / 仅在极少数分支使用的 mixin 导入。
 
 **影响：** 编译时间增加，代码依赖关系不清晰。
 
@@ -251,9 +260,16 @@ GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能�
 
 `lib/screens/game/game_narrative_tab.dart` 的 build 方法接近 2,000 行，包含大量嵌套条件和三目运算符，可读性和维护性极差。
 
+> **🟢 批次 11b（组件抽取）**：高频独立 UI 段（属性闪帧、AI 失败提示等）抽取到
+> `widgets/narrative_widgets.dart`，`game_narrative_tab.dart` 1,927 → 约 1,670 行，改为
+> 从 `widgets/narrative_widgets.dart` 组合。
+
 ### F14 — world_map_screen.dart 1,488 行 `[Medium] [v2]`
 
 地图渲染单文件超 1,400 行，包含自定义 CustomPainter、手势处理、动画逻辑等，应拆分为多个文件。
+
+> **🟢 批次 12a（拆分）**：地图点位布局与绘制逻辑拆到 `screens/world_map/` 目录
+> （`marker_layout.dart` / `map_area_painter.dart`），`world_map_screen.dart` 1,488 → 约 1,200 行。
 
 ---
 
@@ -556,6 +572,11 @@ Android 构建缺少签名配置模板，新开发者需手动配置。
 ### F40 — 14 个 mixin 全部混合到 GameProvider `[High] [v2]`
 
 `GameProvider` 使用 14 个 mixin，单类承担过多职责，违反接口隔离原则。
+
+> **✅ 批次 11c（组织评估）**：核对后判定维持混合式组合——`GameProvider` 是无参构造的全局
+> 单例状态容器，mixin 在此是不需要额外 DI 的「按域拆分实现」手段，职责已按命名域分组清晰
+> （叙事/响应/关系/系统/学院/死亡/职业…），再引入组合/接口隔离只会放大样板代码而无实质收益。
+> 属「核对后不动的有结论」条目。
 
 ### F41 — mixin 间存在隐式通信 `[Medium] [v2]`
 
@@ -1063,8 +1084,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 
 | # | 问题 | 维度 | 严重度 | 版本 | 修复状态 |
 |---|------|------|--------|------|---------|
-| F1 | _ensureCommandsRegistered() 神类 3,234 行 | 代码组织 | Critical | v1 | — |
-| F2 | Mixin 导入膨胀（41/35/27 行） | 代码组织 | High | v1 | — |
+| F1 | _ensureCommandsRegistered() 神类 3,234 行 | 代码组织 | Critical | v1 | 🟢 批次11a（神方法拆分为 7 个 `_registerXxxCommands` 分组注册方法；`mixin_commands.dart` 文件体仍约 3,250 行，属分阶段推进） |
+| F2 | Mixin 导入膨胀（41/35/27 行） | 代码组织 | High | v1 | ✅ 批次11c（mixin 未使用导入清理 ×6） |
 | F3 | Player.fromJson 部分字段缺少类型断言 | 序列化 | High | v1 | ✅ 批次4 |
 | F4 | 存档版本无迁移机制 | 序列化 | Medium | v1 | ✅ 批次4（误判，同 SI1） |
 | F5 | NarrativeEvent.fromJson(dynamic) 类型风险 | 序列化 | Low | v2 | ✅ 批次4 |
@@ -1075,8 +1096,8 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F10 | notifyListeners 调用频繁（20+ 次） | 状态管理 | Medium | v1 | 🟢 批次8/10（批量通知收口 + `processChoice` 分支双通知合并，余下均为单次/互斥/await 间隔） |
 | F11 | 部分 UI 缺少 dispose 清理 | 状态管理 | Medium | v1 | 🟢 批次7（6 处对话框局部控制器统一 whenComplete 释放） |
 | F12 | 23 个文件使用 setState 尚未优化 | Widget 性能 | Medium | v1 | 🟢 批次13（高频击键热点 3 处 ValueNotifier 局部刷新；低频点击与滞回滚动维持现状） |
-| F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | — |
-| F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | — |
+| F13 | game_narrative_tab build() 1,927 行 | Widget 性能 | High | v1 | 🟢 批次11b（`build` 内高频组件抽取到 `widgets/narrative_widgets.dart`，文件 1,927 → 约 1,670 行） |
+| F14 | world_map_screen.dart 1,488 行 | Widget 性能 | Medium | v2 | 🟢 批次12a（地图点位/绘制拆到 `screens/world_map/` 目录，screen 1,488 → 约 1,200 行） |
 | F15 | 异步操作无 CancellationToken | 异步安全 | Medium | v1 | ✅ 批次17（核对更正：「全库未使用」不成立——`ai_router.dart`/`deepseek_service.dart` 早已内置 `CancelToken` + `CancelableBridge`：整链共用 token + 每次尝试独立 token，超时/熔断/切 Key 语义完整；其余异步均为 await-guarded 的短促操作，不构成引入全库取消框架的依据） |
 | F16 | SharedPreferences fire-and-forget | 异步安全 | High | v2 | ✅ 批次3 |
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
@@ -1102,7 +1123,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | ✅ 批次3 |
 | F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | — |
 | F39 | 大量非空断言（!） | 空安全 | Medium | v2 | 🟢 批次14（高危 4 处查表/兜底断言改判空回退：careerById×2 / rankDefById / currentCrushName；其余约 280 处核对为守卫/框架/正则组等安全惯用法，维持现状） |
-| F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | — |
+| F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | ✅ 批次11c（组织评估：混合式组合对单例状态容器利大于弊，无需再拆；混入职责已在 mixin 命名域内分组清晰） |
 | F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 | — |
 | F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 | — |
 | F43 | 测试数据设置重复 | 测试数据 | Medium | v2 | — |
@@ -1177,7 +1198,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 - **F10** — 优化 notifyListeners 调用
 - **F11** — 补充 dispose 清理
 - **F12** — 使用 Selector/ValueListenableBuilder
-- **F14** — 拆分 world_map_screen
+- **F14** — ~~拆分 world_map_screen~~（批次 12a 已完成：地图点位/绘制拆到 `screens/world_map/`，screen 1,488 → 约 1,200 行）
 - **F15** — ~~引入 CancellationToken~~（批次 17 核对更正：AI 层早已用 `CancelToken`，不引入全库取消框架）
 - **F17** — 异步操作生命周期检查
 - **F21** — 添加 UI 测试
@@ -1761,7 +1782,30 @@ CL1/CL2 已核对）；存档防抖在途节流 + `saveNow` 先 await 在途再�
 
 **验证**：纯文档修订，不触碰 Dart 逻辑；推送后 CI 照常跑 analyze + 全量 test 应保持全绿。
 
-### ⏭️ 交接：当前状态与下一步（2026-09-07 深夜收尾）
+### 批次 18 — 台账一致性回填：F1 / F2 / F13 / F14 / F40 与批次记录对齐
+
+**这一批的由来**：核对台账时发现 5 个条目在「修复状态」列仍是 `—`（如未处理），
+但批次 11a/11b/11c/12a 的记录早就写了它们已推送。台账本应是仓库的**唯一真实来源**，
+「上面记着做了、下面标成没做」会让后来者对状态产生二义——这正是本报告自己反复
+强调要避开的（"写完就过期的快照"）。于是逐条回到代码核实真实状态后回填。
+
+**核对与回填结论**
+
+| # | 批次记录 | 代码核实 | 回填为 |
+|---|---|---|---|
+| F1 | 11a 神方法拆分 | `mixin_commands.dart` 的 `_ensureCommandsRegistered()` 已由 7 个 `_registerXxxCommands` 分组方法替代，巨型方法消除 | 🟢 批次11a（文件体仍约 3,250 行，按域拆文件留后续） |
+| F2 | 11c 导入清理 ×6 | 导入已瘦身 | ✅ 批次11c |
+| F13 | 11b 组件抽取 | `game_narrative_tab.dart` 已 `import widgets/narrative_widgets.dart` 组合，文件 1,667 行 | 🟢 批次11b |
+| F14 | 12a world_map 拆分 | `screens/world_map/`（`marker_layout`/`map_area_painter`）已抽出，screen 1,202 行 | 🟢 批次12a |
+| F40 | 11c 组织评估 | 维持混合式组合（有结论的核对） | ✅ 批次11c |
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | 总表回填 5 行 + 对应 5 个条目补核对说明 + 路线图 F14 标注完成 + 补本批次记录。**无任何 Dart 代码改动** |
+
+**验证**：纯文档修订，不触碰 Dart 逻辑；推送后 CI 照常跑 analyze + 全量 test 应保持全绿。
 
 **已完成并全部推送、CI 全绿**（最近一次全绿 run：`101805871387`，批次6）：
 
