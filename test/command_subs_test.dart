@@ -2,15 +2,19 @@
 ///
 /// 指令中心面板的「二级指令一键执行」依赖注册表里每一条带子命令的指令
 /// 都声明了 subs（CommandSub）；一旦有人图省事只写 helpText、不写 subs，
-/// 面板就退回"填参打字"的老交互。这里用源码扫描钉死：
-///  · 高频子命令指令必须都有 subs
+/// 面板就退回"填参打字"的老交互。这里两种断言并用：
+///  · 高频子命令指令必须都有 subs（源码扫描，结构性接线守卫）
 ///  · P2#11 补的缺口子命令分支（/时间 快进、/时间 日程、/恋爱 历史、
 ///    /档案 回忆、/收藏 详情、/联动 状态）不得被后续重构删掉
+///  · 缺口指令的格式化方法用真实 GameProvider 跑出输出（F20 行为断言）
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/test_fixtures.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
 
   group('二级指令结构化（P2 指令面板一键执行的前提）', () {
@@ -104,12 +108,25 @@ void main() {
           reason: '/联动 状态 的 sub 被删');
     });
 
-    test('缺口指令的格式化方法定义在 mixin 内', () {
-      expect(src.contains('String formatMemories()'), isTrue);
-      expect(src.contains('String formatDailySchedule()'), isTrue);
-      final relations =
-          File('lib/mixins/mixin_relations.dart').readAsStringSync();
-      expect(relations.contains('String formatLoveHistory()'), isTrue);
+    test('缺口指令的格式化方法有真实输出（不是只定义了、一跑就空/炸）', () async {
+      // 行为断言替代源码扫描：/时间 日程、/档案 回忆、/恋爱 历史 背后
+      // 的格式化方法必须在真实 GameProvider 上跑得动、且产出对应标题。
+      final gp = await makeGame();
+      expect(
+        gp.formatDailySchedule(),
+        contains('【日程】'),
+        reason: '/时间 日程 的格式化方法不产出日程标题',
+      );
+      expect(
+        gp.formatMemories(),
+        contains('【人生回忆】'),
+        reason: '/档案 回忆 的格式化方法不产出回忆标题',
+      );
+      expect(
+        gp.formatLoveHistory(),
+        contains('【恋爱历史】'),
+        reason: '/恋爱 历史 的格式化方法不产出历史标题',
+      );
     });
   });
 }

@@ -374,6 +374,12 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 「老存档缺 scars 字段兜底」「effectiveAttr 叠加疤痕惩罚」3 条源码扫描断言改写为
 > 2 条真实行为测试（构造真实 `GameProvider`，断言 wandArm 疤使 50 额定的
 > spell_understanding / magic_control 落为 47 / 48）。该组源码扫描数从 6 → 3。
+>
+> **🟢 推进中（批次 21）。** 从 `command_subs_test.dart` 指令缺口组把
+> 「/时间 日程、/档案 回忆、/恋爱 历史的格式化方法存在」3 条纯源码文本断言改写为
+> 1 条行为测试：`makeGame()` 构造真实 `GameProvider`，实际调用 `formatDailySchedule()`
+> `/formatMemories()` `/formatLoveHistory()`，断言输出带对应标题。源码扫描数 −3。
+> 该文件的分派器接线守卫（`sub == '快进'` 等）与指令面板按钮渲染等结构性契约保留。
 > F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
 
 ### F21 — UI 测试缺失 `[Medium] [v1]`
@@ -1118,7 +1124,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次20（scar 接线 3 条源码断言→2 条行为测试，扫描 6→3，持续推进） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次21（batch20 scar 组、batch21 指令缺口格式化方法组持续推进，扫描 −3） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -1943,3 +1949,36 @@ CI 失败定位靠 grep 定位 group。批次的**唯一目标是把这块巨石
 **验证**：不触碰 `lib/`；新增行为测试走既有 `makeGame()` fixture 的真实路径，
 性质是「扫描断言 → 真跑断言」的增强。本地无 `flutter` SDK，靠推送后 CI analyze +
 全量 test 把关。
+
+### 批次 21 — F20 源码文本断言迁移：指令缺口「格式化方法存在」组
+
+**这一批的由来**：批次 20 已在 scar 组确立迁移范式。继续沿语义域推进：`command_subs_test.dart`
+里「指令缺口不得回潮」组末尾有一条纯 `readAsStringSync` 断言，只扫了
+`String formatMemories()/formatDailySchedule()/formatLoveHistory()` 这行签名是否存在。
+签名在 ≠ 能跑：方法若被改成抛异常、返回空串或删掉标题，扫描照样绿。本批把它改成真跑。
+
+**迁移原则（沿袭批次 20）**：只改写有干净行为等价物、能直接构造运行时的断言。
+分派器接线守卫（`sub == '快进'`、`ctx.arg(0) == '历史'`）与面板渲染契约（`_buildSubChip` 等）
+本质在锁协议/接线，保留源码扫描并登记理由。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| `String formatMemories()` 存在（扫 `mixin_commands.dart`） | `makeGame()` 真实 `GameProvider`，调用 `gp.formatMemories()`，断言输出含「【人生回忆】」 |
+| `String formatDailySchedule()` 存在（扫 `mixin_commands.dart`） | 调用 `gp.formatDailySchedule()`，断言输出含「【日程】」 |
+| `String formatLoveHistory()` 存在（扫 `mixin_relations.dart`） | 调用 `gp.formatLoveHistory()`，断言输出含「【恋爱历史】」 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/command_subs_test.dart` | 指令缺口组末条源码扫描断言改写为 1 条行为测试，从「3 条 `contains('String x()')`」降为 3 次真实调用（3 个 expect）；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()`；更新文件头注释说明双断言策略；该文件 `readAsStringSync` 引用 −2（不再扫 `mixin_relations.dart`） |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次21、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：`/时间 快进 分支`、`/时间 日程 分支`、
+`/恋爱 历史 分支`、`/档案 回忆 分支`、`/收藏 详情 分支`、`/联动 状态` 注册、`subs` 声明、
+子命令 keyword 非空、面板 chip 渲染——这些在锁「分派器把子参数路由到对应 handler」的接线
+与「面板能渲染按钮」的 UI 契约，写成行为测试需拉起完整指令面板生产路径，代价不成比例。
+
+**验证**：不触碰 `lib/`；新增行为测试走既有 `makeGame()` fixture 的真实路径
+（`worldState`/`player`/`time` 均由 `initializeGame` 初始化，格式化方法可安全调用）。
+本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
