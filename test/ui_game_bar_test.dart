@@ -13,15 +13,17 @@ import 'package:hogwarts_life_simulator/theme/miuix_tokens.dart';
 
 /// 批 16：F21 UI 测试补全 —— 两个游戏主界面高频组件冒烟 + Semantics 回归。
 ///
-/// 同时回批 14 的 F24 工作：用 `bySemanticsLabel` 断言「主界面已补语义标签」，
-/// 读屏用户依赖的 label 一旦被删，这里立刻红。
+/// 同时回批 14 的 F24 工作：用读「Semantics 组件的 label」断言主界面语义标签
+/// 仍在 —— 读屏用户依赖的 label 一旦被删，这里立刻红。不用 `bySemanticsLabel`
+/// 是因为它依赖 semantics 树启用（testWidgets 默认关闭且 ensureSemantics 在
+/// 本项目自动化绑定下不稳定），而直接读 widget 的 `properties.label` 不依赖
+/// 语义树，既可靠又不引入额外句柄生命周期负担。
 ///
-/// 注意：**绝不能走 `makeGame()` / `initializeGame`**。它们内部的异步链
-/// （如 SharedPreferences / Clear 链）在 `testWidgets` 的 fake-async zone 里
-/// 不会被真实推进，导致用例卡到 10 分钟超时（先前 CI 实测崩溃点就在这里）。
-/// 因此这里改为「构造 provider → 手动注入最小玩家」的静态方案，渲染与
-/// 交互所需的状态全部同步就绪，而后写盘路径则由 `SharedPreferences.mock`
-/// 承接（内存微任务，`pump` 即可落地；0 个 pending 定时器）。
+/// 注意：**绝不能走 `makeGame()` / `initializeGame`**。其内部异步链（Shared-
+/// Preferences / secure_storage 读取链）在 `testWidgets` 的 fake-async zone 不
+/// 会被真实推进，先前 CI 实测首用例卡满 10 分钟 `TimeoutException`。改为「构造
+/// provider → 手动注入最小玩家」的静态方案：渲染/交互所需状态全同步就绪，
+/// 写盘/quickSave 由 `SharedPreferences.setMockInitialValues` 承接（内存微任务）。
 Widget _wrap(GameProvider gp, Widget child) {
   return ChangeNotifierProvider<GameProvider>.value(
     value: gp,
@@ -41,8 +43,8 @@ void _phoneSize(WidgetTester tester) {
 
 /// 静态构造一个最小可渲染的 GameProvider：
 ///  · 不调用 initializeGame（避免 fake-async 挂起）；
-///  · 注入一个「测试巫师」玩家；isLoading 默认为 false；
-///  · mock SharedPreferences，使 quickSave/写盘走内存微任务即可完成。
+///  · 注入「测试巫师」玩家；isLoading 默认 false；
+///  · mock SharedPreferences，quickSave/写盘走内存微任务即可完成。
 GameProvider _buildGame() {
   SharedPreferences.setMockInitialValues({});
   final app = AppProvider();
@@ -63,18 +65,29 @@ GameProvider _buildGame() {
   return gp;
 }
 
+/// 读离 [icon] 最近的一层显式 `Semantics` 的语义标签。
+/// 不依赖 semantics 树启用，直接读 widget 实例属性。
+String? _semLabel(WidgetTester tester, IconData icon) {
+  final sem = tester.widget<Semantics>(
+    find
+        .ancestor(
+          of: find.byIcon(icon),
+          matching: find.byType(Semantics),
+        )
+        .first,
+  );
+  return sem.properties?.label;
+}
+
 void main() {
   testWidgets('GameTopBar 渲染玩家姓名与快速存档语义标签', (tester) async {
     _phoneSize(tester);
     final gp = _buildGame();
-    // testWidgets 默认关闭 semantics，`bySemanticsLabel` 前必须先显式开启
-    final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     await tester.pumpWidget(_wrap(gp, const GameTopBar()));
 
     expect(find.text('测试巫师'), findsOneWidget);
     // 批次 14 补的快速存档语义标签
-    expect(find.bySemanticsLabel('快速存档'), findsOneWidget);
+    expect(_semLabel(tester, Icons.save), '快速存档');
   });
 
   testWidgets('GameTopBar 存档按钮写入后弹 SnackBar', (tester) async {
@@ -83,13 +96,16 @@ void main() {
     await tester.pumpWidget(_wrap(gp, const GameTopBar()));
 
     await tester.tap(find.byIcon(Icons.save));
-    await tester.pump(); // quickSave → 内存写档（微任务即完成）→ showSnackBar
-    await tester.pump(const Duration(milliseconds: 300)); // SnackBar 入场动画
+    // quickSave → 内存写档 → showSnackBar → 入场动画，一路 settle 到静止
+    await tester.pumpAndSettle();
     expect(find.text('✅ 已存档'), findsOneWidget);
 
     // 消化 SnackBar 1s 自动隐藏定时器，避免用例结束报「A Timer is still pending」
-    await tester.pump(MiuiDuration.snackbarShort + const Duration(milliseconds: 200));
+    await tester.pump(
+      MiuiDuration.snackbarShort + const Duration(milliseconds: 200),
+    );
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('GameBottomInput 渲染推进/指令中心/发送语义标签', (tester) async {
@@ -97,8 +113,6 @@ void main() {
     final gp = _buildGame();
     final controller = TextEditingController();
     addTearDown(controller.dispose);
-    final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
 
     await tester.pumpWidget(_wrap(
       gp,
@@ -108,9 +122,9 @@ void main() {
       ),
     ));
 
-    expect(find.bySemanticsLabel('推进剧情'), findsOneWidget);
-    expect(find.bySemanticsLabel('打开指令中心'), findsOneWidget);
-    expect(find.bySemanticsLabel('发送行动'), findsOneWidget);
+    expect(_semLabel(tester, Icons.skip_next), '推进剧情');
+    expect(_semLabel(tester, Icons.terminal), '打开指令中心');
+    expect(_semLabel(tester, Icons.send), '发送行动');
     expect(find.text('输入行动或 /命令'), findsOneWidget);
   });
 
