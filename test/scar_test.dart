@@ -2,8 +2,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/scar_data.dart';
+import 'package:hogwarts_life_simulator/models/player.dart';
+
+import 'helpers/test_fixtures.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   // ============================================================
   // 认不认得出重伤
   // ============================================================
@@ -346,24 +350,37 @@ void main() {
   // 接线
   // ============================================================
   group('真的接进了游戏', () {
-    final playerSrc = File('lib/models/player.dart').readAsStringSync();
     final responseSrc =
         File('lib/mixins/mixin_response.dart').readAsStringSync();
     final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
     final narrativeSrc =
         File('lib/mixins/mixin_narrative.dart').readAsStringSync();
 
-    test('Player 上有 scars 字段，而且会存盘', () {
-      expect(playerSrc, contains('final List<Scar> scars;'));
-      expect(playerSrc, contains("'scars': scars.map"));
+    test('疤写进 Player 存档，能原样往返读回', () {
+      final p = Player(
+        name: '测试巫师',
+        birthYear: '1980',
+        bloodType: 'muggleborn',
+        birthLocation: '伦敦',
+        scars: const [Scar(site: ScarSite.leg, since: '1993-04-02')],
+      );
+      final j0 = (p.toJson()['scars'] as List).first as Map;
+      expect(j0['site'], 'leg');
+      expect(j0['since'], '1993-04-02');
+      final back = Player.fromJson(p.toJson());
+      expect(back!.scars, hasLength(1));
+      expect(back.scars.single.site, ScarSite.leg);
     });
 
-    test('老存档没有 scars 字段也能读进来', () {
-      final i = playerSrc.indexOf("scars: (json['scars']");
-      expect(i, greaterThan(-1));
-      // 用了 ?? const [] 兜底，且认不出的部位会被 whereType 过滤掉
-      expect(playerSrc.substring(i, i + 260), contains('?? const []'));
-      expect(playerSrc.substring(i, i + 260), contains('whereType<Scar>'));
+    test('老存档没有 scars 字段也能读进来（兜底为空，不炸）', () {
+      final p = Player(
+        name: '测试巫师',
+        birthYear: '1980',
+        bloodType: 'muggleborn',
+        birthLocation: '伦敦',
+      );
+      final old = Map<String, dynamic>.from(p.toJson())..remove('scars');
+      expect(Player.fromJson(old)!.scars, isEmpty);
     });
 
     test('落疤挂在每回合的叙事副作用里——不是只在开局跑一次', () {
@@ -394,12 +411,12 @@ void main() {
       expect(before, contains('parts.add'));
     });
 
-    test('读属性走 effectiveAttr，疤才不会在计算里消失', () {
-      final i = systemsSrc.indexOf('int effectiveAttr(String key)');
-      expect(i, greaterThan(-1));
-      final body = systemsSrc.substring(i, i + 900);
-      expect(body, contains('scarPenaltiesOf'), reason: '没有叠加上疤痕修正');
-      expect(body, contains('clamp(0, 100)'), reason: '修正后没有夹回区间');
+    test('身上的疤会压低 effectiveAttr——读数值确实叠加了疤痕惩罚', () async {
+      final gp = await makeGame();
+      gp.player!.scars.add(const Scar(site: ScarSite.wandArm, since: 'x'));
+      // wandArm 疤：施法理解 -3、魔咒掌控 -2；额定属性 50 → 47 / 48
+      expect(gp.effectiveAttr('spell_understanding'), 47);
+      expect(gp.effectiveAttr('magic_control'), 48);
     });
 
     test('判定的那一处不再直接读 attributes', () {

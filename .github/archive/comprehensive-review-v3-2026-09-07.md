@@ -370,6 +370,12 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 
 大量测试使用源码文本断言，需迁移至行为型断言。
 
+> **🟢 推进中（批次 20）。** 从 `scar_test.dart` 接线组起步：把「Player 疤存盘往返」
+> 「老存档缺 scars 字段兜底」「effectiveAttr 叠加疤痕惩罚」3 条源码扫描断言改写为
+> 2 条真实行为测试（构造真实 `GameProvider`，断言 wandArm 疤使 50 额定的
+> spell_understanding / magic_control 落为 47 / 48）。该组源码扫描数从 6 → 3。
+> F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
+
 ### F21 — UI 测试缺失 `[Medium] [v1]`
 
 无 Widget 测试 / 集成测试，所有测试均为纯逻辑单元测试。
@@ -1112,7 +1118,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | — |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次20（scar 接线 3 条源码断言→2 条行为测试，扫描 6→3，持续推进） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -1903,3 +1909,37 @@ CI 失败定位靠 grep 定位 group。批次的**唯一目标是把这块巨石
 **验证**：纯测试搬移 + 死导入清理，不触碰 `lib/` 产品代码与任何断言；本地无
 `flutter` SDK，靠推送后 CI 的 analyze + 全量 test 把关。旧的 8 组断言一字未改，行为
 等价性由「同 8 组在新文件中原样运行」保证。
+
+---
+
+### 批次 20 — F20 源码文本断言迁移：从 scar 接线组起步
+
+**这一批的由来**：F20（High）要求把「靠读 lib 源码文本、断言某函数存在」的方式逐步
+迁移为「真构造对象跑一遍、断言结果」的行为测试。源码扫描断言不是没用——接线守卫能
+防"引用丢了"，但它只证「代码里写着这行字」，不证「这行字真的跑得对」。全量 505 条
+一次吞下风险过高，故本批只下沉一个语义域：`scar_test.dart` 的「真的接进了游戏」组。
+
+**迁移原则**：只改写**有干净行为等价物**、可直接构造运行时的断言；像「命令已注册」
+「prompt 段注入」「副作用去重」这类结构性接线守卫保留为源码扫描，另行登记理由。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| `Player 上有 scars 字段，而且会存盘`（扫 `player.dart`） | `疤写进 Player 存档，能原样往返读回`：`Player(scars:[Scar(leg)])` → `toJson()` 校验 `site/since` → `fromJson` 往返字段一致 |
+| `老存档没有 scars 字段也能读进来`（扫 `player.dart`） | `老存档没有 scars 字段也能读进来`：去掉 `scars` 键后 `fromJson`，`scars` 兜底为空不炸 |
+| `读属性走 effectiveAttr，疤才不会在计算里消失`（扫 `mixin_systems.dart`） | `身上的疤会压低 effectiveAttr`：`makeGame()` 真实 `GameProvider`，给 `player.scars` 加 wandArm 疤，断言 `effectiveAttr` 把 50 额定 → 施法理解 47 / 魔咒掌控 48 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/scar_test.dart` | 接线组删除 3 条源码扫描断言、新增 2 条行为测试；补 `Player` / `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()`；该组 `readAsStringSync` 引用 6 → 3 |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次20、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：「落疤挂每回合副作用」「同一部位不重复
+落疤」「记长期记忆/弹通知」「疤进 prompt」「判定走 `_attr` 而非直读 attributes」「/伤痕
+命令注册」「轻伤会好重伤不会」——这几条本质在锁协议、接线与去重逻辑，改写行为测试
+需要拉起完整回合链（叙事副作用 + 存档 + 记忆 + 命令），代价与收益不成比例，留作脚手架。
+
+**验证**：不触碰 `lib/`；新增行为测试走既有 `makeGame()` fixture 的真实路径，
+性质是「扫描断言 → 真跑断言」的增强。本地无 `flutter` SDK，靠推送后 CI analyze +
+全量 test 把关。
