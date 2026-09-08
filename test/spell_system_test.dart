@@ -379,10 +379,11 @@ void main() {
     });
 
     test('/收藏 的空态文案不再许诺拿不到的东西', () async {
-      // 行为断言替代源码扫描：格式方法挂在真实 GameProvider 上，玩家开局
-      // 收藏为空，直接跑 formatCollection() 看空态文案。只测「真发生的输出」，
-      // 不再逐行读方法体猜它写了什么。
+      // 行为断言替代源码扫描：在真实 GameProvider 上把收藏清空，让
+      // formatCollection() 走空态分支，直接看玩家会看到的文案。
+      // （开局会送「站台纪念品」等收藏品，故先用真实玩家再清空，还原空收藏前提）
       final gp = await makeGame();
+      gp.player!.collection.clear();
       final text = gp.formatCollection();
       // 「日记本」在项目任何地方都不存在，不该再出现在提示里
       expect(text, isNot(contains('日记本')),

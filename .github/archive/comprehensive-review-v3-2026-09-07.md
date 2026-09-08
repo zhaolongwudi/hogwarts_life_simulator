@@ -2006,12 +2006,18 @@ CI 失败定位靠 grep 定位 group。批次的**唯一目标是把这块巨石
 
 | 原源码扫描断言 | 改写后行为测试 |
 |---|---|
-| 扫 `formatCollection()` 方法体，断言含「巧克力蛙」、不含「日记本」 | `makeGame()` 真实 `GameProvider`（收藏为空），调用 `gp.formatCollection()`，断言空态输出含「巧克力蛙」「一件都没有」、绝不含「日记本」 |
+| 扫 `formatCollection()` 方法体，断言含「巧克力蛙」、不含「日记本」 | `makeGame()` 真实 `GameProvider`，清空玩家收藏后调用 `gp.formatCollection()`，断言走空态分支、输出含「巧克力蛙」「一件都没有」、绝不含「日记本」 |
 
 | 文件 | 改动 |
 |---|---|
 | `test/spell_system_test.dart` | 收藏品组「/收藏 空态文案」条改写为 1 条行为测试；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()` |
 | `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次22、总表回填、追加本批次记录 |
+
+> **批次 22 修正（本体提交后 CI 红灯）。** 原以为是「玩家开局收藏为空」，但
+> `mixin_init.dart:641` 会送「站台纪念品」（`souvenir_platform`），真实新玩家收藏非空，
+> `formatCollection()` 走非空分支，空态断言「一件都没有」落空 → CI fail。
+> 修正：`makeGame()` 后先 `gp.player!.collection.clear()` 清空收藏，再跑 `formatCollection()`
+> 走空态分支，三处断言全部成立。仍是「真实 GameProvider 上真跑」的行为测试。
 
 **未迁移并登记理由**（保留为结构性接线守卫）：收藏品 id 不重复、目录无「拿不到」的孤儿、
 `addCollectible` 调用点 ≥5、画片系列非空、会掉收藏品的物品在商店买得到、「命令已注册 /
