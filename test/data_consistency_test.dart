@@ -480,9 +480,12 @@ void _statusOccupationGroup() {
       gp.player!.initialTalent = '档案测试天赋';
       gp.handleLocalCommand('/状态');
       final text = gp.currentNarrative!;
-      // 【职业】行：未毕业 → 「霍格沃茨N年级学生」
-      expect(text, contains('年级学生'), reason: '职业行没有显示在校身份');
-      expect(text, isNot(contains('档案测试天赋')),
+      // 只取【职业】那一行，单独判断「是学生、不含天赋」。
+      // 注意不能对整段 currentNarrative 判 notContains——主修天赋行本该含天赋值。
+      final occLine = RegExp(r'【职业】[^\n]*').firstMatch(text)?.group(0);
+      expect(occLine, isNotNull, reason: '职业行没了？');
+      expect(occLine, contains('年级学生'), reason: '职业行没有显示在校身份');
+      expect(occLine, isNot(contains('档案测试天赋')),
           reason: '职业行又把天赋当职业显示了');
       // 主修天赋：真出现在专属行
       expect(text, contains('主修天赋：档案测试天赋'),

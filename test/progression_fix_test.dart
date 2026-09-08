@@ -1359,12 +1359,14 @@ void _petReachabilityGroup() {
       expect(gp.buyPet(''), contains('商店'),
           reason: '空参数没有返回宠物商店清单');
 
-      // 已有宠物：买到之后二次购买被挡，别清羁绊
+      // 已有一只宠物（猫头鹰）时，二次购买被挡，别清羁绊
       gp.player!.petId = 'owl';
       final blocked = gp.buyPet('猫头鹰');
       expect(blocked, contains('你已经有'), reason: '已有宠物没有挡住二次购买');
-      expect(blocked, isNot(contains('宠物店欢迎你')), reason: '不应继续走购买流程');
-      // 金币不足：身上没钱时要有买不起提示，而不是成交
+      expect(blocked, isNot(contains('你花')), reason: '已有宠物却继续成交了');
+      // 金币不足：先清空宠物（否则会被「已有宠物」分支挡住测不到金币分支），
+      // 身上没钱时要有买不起提示，而不是成交
+      gp.player!.petId = null;
       gp.player!.galleons = 0;
       final broke = gp.buyPet('猫头鹰');
       expect(broke, contains('加隆'), reason: '金币不足没有提示价格');
