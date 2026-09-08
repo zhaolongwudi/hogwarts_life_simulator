@@ -10,6 +10,15 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.1.6 — 2026-09-08
+
+**📋 变更说明**
+tests: 批次16 移除测试环境不可行的 SnackBar 用例（path_provider 依赖）
+
+quickSave 经 path_provider 读真实文档目录，测试环境无插件实现必然抛
+MissingPluginException。删除该交互用例，测试文件顶注说明取舍；渲染、
+语义标签与核心回调仍充分覆盖。
+
 ### v4.1.5 — 2026-09-07
 
 **📋 变更说明**
