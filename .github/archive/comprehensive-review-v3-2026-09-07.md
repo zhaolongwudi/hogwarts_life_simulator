@@ -390,6 +390,11 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 人卡死」这条「正则切 `buyPet` 方法体、断言含 kw.isEmpty/galleons < price/p.petId != null」
 > 的源码扫描断言改写为 1 条行为测试：真实 `GameProvider` 上逐个分支真跑（空参返回在售清单、
 > 已有宠物挡住二次购买、金币不足提示价格不成交）。源码扫描数 −1。
+>
+> **🟢 推进中（批次 24）。** 从 `house_cup_test.dart` 接线组把「来源明细里扣分不显示成 +-5」这条
+> 「读 `formatHouseCup()` 方法体、断言含 `e.value >= 0 ? '+' : ''`」的源码扫描断言改写为
+> 1 条行为测试：真实 `GameProvider` 注入分院与一正一负两条来源，真跑 `formatHouseCup()`，
+> 断言渲染是「日常扣分 -5」「魁地奇取胜 +30」、绝无「日常扣分 +-5」。源码扫描数 −1。
 > F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
 
 ### F21 — UI 测试缺失 `[Medium] [v1]`
@@ -1134,7 +1139,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次23（scar/指令缺口/收藏空态/buyPet分支 4 组持续推进，扫描 −5） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次24（scar/指令缺口/收藏空态/buyPet分支/学院杯负号 5 组持续推进，扫描 −5） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -2066,3 +2071,35 @@ prompt 注入 / 跨 mixin 基类声明」等——前者是数据自洽，后者
 上顺序构造。`findPet('猫头鹰')`（物种名）命中 `owl`，`kPetPrices['owl']=30`；
 `Player` 默认 `petId=null`、`galleons=500`（可注入为 0 制造「买不起」）。
 本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
+
+### 批次 24 — F20 源码文本断言迁移：学院杯负号渲染组
+
+**这一批的由来**：`house_cup_test.dart` 接线组「来源明细里扣分不显示成 +-5」这条，原本用
+`_code()` 剥注释后 `substring` 切出 `formatHouseCup()` 方法体，再断言含 `e.value >= 0 ? '+' : ''`
+（这段三行逻辑是防「日常扣分 +-5」）。这类「读方法体源码猜渲染」不验证真跑出来玩家看到什么，
+且写法上硬锁了实现表达式。`formatHouseCup()` 是纯只读格式化（无 AI/随机/副作用）、返回 String、
+分支由玩家状态决定，可干净行为化。
+
+**迁移原则（沿袭批次 20-23）**：只改写有干净行为等价物、能直接构造运行时的断言。
+同组「结算会清零负分不滚动」「静态说明里提到日常途径」「addHouseCupPoints 基类声明」里，
+前两条属方法体接线守卫，最后一条是跨 mixin 基类声明契约，均保留。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 切 `formatHouseCup()` 方法体，断言含 `e.value >= 0 ? '+' : ''` | 真实 `GameProvider` 注入 `house='Gryffindor'` 与来源 `{魁地奇取胜:30, 日常扣分:-5}`，真跑 `formatHouseCup()`，断言出「日常扣分 -5」「魁地奇取胜 +30」、绝无「日常扣分 +-5」 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/house_cup_test.dart` | 接线组「来源明细里扣分不显示成 +-5」改写为 1 条行为测试；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()` |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次24、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：「结算会清零负分不滚动」「静态说明里提到日常
+途径」是方法体接线守卫，迁移需拉起完整学年结算/说明文案链路；「addHouseCupPoints 基类声明」
+是跨 mixin 可见性契约，编译层守卫无法用行为替代。
+
+**验证**：不触碰 `lib/`；`formatHouseCup` 为纯只读方法。注入 `house='Gryffindor'` 被
+`normalizeHouseKey` 识别（`kHouseDisplayNames` 含该 key），分支切到「得分构成」；
+`_ensureHouseCupYearly` 自动补四院不崩。`Player.house/houseCupPoints/houseCupSources` 均
+可注入。本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。

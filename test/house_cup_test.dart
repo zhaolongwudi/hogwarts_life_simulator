@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/house_cup_data.dart';
 
+import 'helpers/test_fixtures.dart';
+
 /// lib/ 下各文件的源码，给接线断言用。
 String _src(String path) => File('lib/$path').readAsStringSync();
 
@@ -45,6 +47,7 @@ const _boringTexts = [
 ];
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   // ============================================================ 判定本身
   group('从叙事里认出学院分', () {
     test('绝大多数回合返回 null', () {
@@ -321,12 +324,25 @@ void main() {
       expect(body, contains('p.houseCupSources.clear()'));
     });
 
-    test('来源明细里扣分不显示成 +-5', () {
-      final src = _code('mixins/mixin_play.dart');
-      final fn = src.indexOf('String formatHouseCup()');
-      final body = src.substring(fn, src.indexOf('\n  }', fn));
-      expect(body, contains("e.value >= 0 ? '+' : ''"),
+    test('来源明细里扣分不显示成 +-5', () async {
+      // 行为断言替代源码扫描：造真实 GameProvider，注入分院与一正一负两条来源，
+      // 真跑 formatHouseCup() 看渲染。扣分该是「日常扣分 -5」，不是「日常扣分 +-5」。
+      final gp = await makeGame();
+      gp.player!.house = 'Gryffindor';
+      gp.player!.houseCupPoints = 25;
+      gp.player!.houseCupSources = {
+        '魁地奇取胜': 30,
+        '日常扣分': -5,
+      };
+      final text = gp.formatHouseCup();
+      // 负分不带 +：渲染成「日常扣分 -5」
+      expect(text, contains('日常扣分 -5'),
+          reason: '扣分来源没有显示成负号（不带 +）');
+      // 关键：绝不能出现「日常扣分 +-5」
+      expect(text, isNot(contains('+-5')),
           reason: '否则来源明细会出现「日常扣分 +-5」');
+      // 正分带 +：渲染成「魁地奇取胜 +30」
+      expect(text, contains('魁地奇取胜 +30'), reason: '正分来源没带 + 号');
     });
 
     test('静态说明里提到了日常这条途径', () {
