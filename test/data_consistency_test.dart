@@ -27,7 +27,10 @@ import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 
+import 'helpers/test_fixtures.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   _giftGivingGroup();
   _materialLootGroup();
   _eventAnchorGroup();
@@ -468,22 +471,22 @@ void _questTypeLabelGroup() {
 
 void _statusOccupationGroup() {
   group('/状态 的职业字段', () {
-    test('「职业」不再直接显示 initialTalent', () {
-      final src = _codeOnly('lib/mixins/mixin_commands.dart');
-      final status = RegExp(
-        r'String _formatStatus\(\) \{(.*?)\n  \}',
-        dotAll: true,
-      ).firstMatch(src);
-      expect(status, isNotNull, reason: '没找到 _formatStatus，正则该更新了');
-      final body = status!.group(1)!;
-      // 【职业】那一行不能再出现 initialTalent
-      final occLine =
-          RegExp(r"【职业】(.*)").allMatches(body).map((m) => m.group(1)!).join();
-      expect(occLine, isNotEmpty, reason: '【职业】这行没了？');
-      expect(occLine, isNot(contains('initialTalent')),
-          reason: '职业又显示成天赋了');
-      // 天赋只该出现在「主修天赋」那行
-      expect(body, contains('initialTalent'));
+    test('「职业」不再直接显示 initialTalent', () async {
+      // 行为断言替代源码扫描：真实 GameProvider 上经 /状态 命令真跑 _formatStatus。
+      // 给玩家塞一个独有的天赋值，/状态 后：
+      //  1. 【职业】行必须是「学生」身份，绝不出现这个天赋值；
+      //  2. 天赋只该出现在「主修天赋」那一行。
+      final gp = await makeGame();
+      gp.player!.initialTalent = '档案测试天赋';
+      gp.handleLocalCommand('/状态');
+      final text = gp.currentNarrative!;
+      // 【职业】行：未毕业 → 「霍格沃茨N年级学生」
+      expect(text, contains('年级学生'), reason: '职业行没有显示在校身份');
+      expect(text, isNot(contains('档案测试天赋')),
+          reason: '职业行又把天赋当职业显示了');
+      // 主修天赋：真出现在专属行
+      expect(text, contains('主修天赋：档案测试天赋'),
+          reason: '主修天赋那一行没有显示天赋');
     });
 
     test('毕业后会显示最近岗位，没打过工显示待业', () {
