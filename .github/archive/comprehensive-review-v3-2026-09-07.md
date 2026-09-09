@@ -1,23 +1,90 @@
 # 全方位无遗漏审查报告 v3 — 终极版
 
-> **Hogwarts Life Simulator** — 终极全面审查  
-> 覆盖前两轮全部 28 个维度 + 新增 10 个维度，共计 **38 个审查维度**，无任何遗漏  
-> 日期：2026-09-07 | 三轮叠加（v1+v2+v3）  
-> 152 文件 / 79,506 行 | 38 个审查维度 | 52 项问题
->
-> ---
->
-> ### 🔧 修复进度（报告正文已随修复同步更新）
->
-> 本报告不再只是"问题清单"，同时是**修复台账**：每完成一批修复，就在对应条目上标注
-> 「✅ 已修复（批次 N）」并写清改了什么、为什么这么改，再提交推送。完整流水见
-> [§41 修复记录](#41-修复记录)。
->
-> | 批次 | 主题 | 涉及条目 | 状态 |
-> |---|---|---|---|
-> | 1 | 文档与配置补齐 | DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47 | ✅ 已推送（CI 全绿） |
+> **Hogwarts Life Simulator** · 三轮叠加审查（v1 + v2 + v3）
+> 范围：152 个 Dart 文件 / 79,506 行 · **38 个审查维度** · 问题台账 **78 条**
+> 报告生成：2026-09-07 · 台账整理：2026-09-10（批次 28 后）· 当前版本 4.2.4
+
+---
+
+## 1. 怎么读这份文档
+
+| 你想看什么 | 去哪里 |
+|---|---|
+| 当前整体进度（一眼） | [§3 修复进度总览](#3-修复进度总览) 或 [§8.1 状态总览](#81-状态总览) |
+| 某个问题的编号 / 状态 / 修复批次 | [§4 问题清单总表](#4-问题清单总表)（78 行逐条标注，主索引） |
+| 某个问题的详情（问题 / 影响 / 状态 / 处理） | [§5 条目详情 · F 系列](#5-条目详情--f1f48)、[§6 条目详情 · v3 系列](#6-条目详情--v3-新增系列)——**小节编号即条目编号，全文按编号升序** |
+| 某批修复改了什么、为什么 | [§9 修复记录](#9-修复记录批次-1--281)（按批次序） |
+| 还剩哪些没做 | [§8.2 未处理事项](#82-未处理事项14-项按建议动手顺序) |
+| 哪些已定案不做、避免重复评估 | [§8.3 定案清单](#83-定案不做--误判更正清单避免未来重复评估) |
+| 按审查维度浏览 | [附录 A](#附录-a--38-维度与条目对照) |
+
+**状态图例**（全文统一）：
+
+| 符号 | 含义 |
+|---|---|
+| ✅ | 完全闭环（已修复 / 误判更正 / 核对关闭 / 定案不做） |
+| 🟢 | 已收口（主体完成，剩余部分注明边界或缓做理由） |
+| 🟡 | 部分完成（仅 CS1） |
+| 🟗 | 重新定性（仅 F20，目标已改写为长期维护约束） |
+| ⬜ | 未处理 |
+
+**条目统一模板**：每条 = 标题 + 标签行（严重度 / 轮次 / 维度）→「问题」→「影响」（如有）→「状态」→ 处理说明。
+
+---
+
+## 目录
+
+1. [怎么读这份文档](#1-怎么读这份文档)
+2. [概况与统计](#2-概况与统计)
+3. [修复进度总览](#3-修复进度总览)
+4. [问题清单总表](#4-问题清单总表)
+5. [条目详情 · F1–F48](#5-条目详情--f1f48)
+6. [条目详情 · v3 新增系列](#6-条目详情--v3-新增系列)
+7. [审查亮点](#7-审查亮点)
+8. [优化路线图](#8-优化路线图批次-28-后重写)
+9. [修复记录（批次 1 → 28.1）](#9-修复记录批次-1--281)
+A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
+
+---
+
+## 2. 概况与统计
+
+| 指标 | 数值 |
+|------|------|
+| Dart 源文件 | 152 |
+| 总代码行数 | 79,506 |
+| 测试文件 | 59 |
+| 测试代码行数 | 16,600 |
+| 审查维度 | 38 |
+| 问题台账 | 78 条（✅ 38 闭环 · 🟢 24 收口 · 🟡 1 部分 · 🟗 1 重新定性 · ⬜ 14 未处理） |
+| 最大文件行数 | 3,234 |
+| 核心 Provider | 8 |
+| Mixin 数 | 14 |
+| AI 服务 | 3 |
+| 测试用例数 | 1,384 |
+| 当前版本 | 4.2.4 |
+
+本报告是 **第三轮全方位无遗漏审查**，在前两轮（v1 覆盖 20 维、v2 覆盖 28 维）的基础上，新增 10 个此前遗漏的审查维度，共计 38 个维度。所有发现的问题按严重度分级（Critical / High / Medium / Low），并附有可操作的优化建议。
+
+**审查范围说明：**
+- v1 覆盖维度：20 个（基础维度）
+- v2 新增维度：8 个（导航/路由、正则/文本解析、集合/内存、动画/渲染、存储模式、导入管理、空安全、Mixin 架构）
+- **v3 新增维度：10 个**（安全审计、性能基准、代码重复度、设计模式一致性、文档完整性、冷启动性能、状态持久化完整性、回调/闭包生命周期、延迟加载策略、平台兼容性）
+- v3 保留维度：全部 28 个 v1+v2 维度，已验证修复状态并补充新发现
+
+---
+
+## 3. 修复进度总览
+
+本报告不只是"问题清单"，同时是**修复台账**：每完成一批修复，就在对应条目上标注状态并写清改了什么、为什么这么改，再提交推送。完整流水见 [§9 修复记录](#9-修复记录批次-1--281)。
+
+> **台账 78 条：✅ 38 完全闭环 · 🟢 24 已收口 · 🟡 1 部分 · 🟗 1 重新定性 · ⬜ 14 未处理**
+
+| 批次 | 主题 | 涉及条目 | 状态 |
+|---|---|---|---|
+| 1 | 文档与配置补齐 | DOC1 / DOC2 / DOC3 / F27 / F45 / F46 / F18 / F47 | ✅ 已推送（CI 全绿） |
 | 2 | 错误处理与日志 | F7 / F8 / F19 / F26 / S2 / S3 | ✅ 已推送（CI 两次变红，见 2.1） |
-| **2.1** | **CI 热修复 — 脱敏正则的语法** | **F26 / S2 / S3** | **✅ 已推送（CI 全绿）** |
+| 2.1 | CI 热修复 — 脱敏正则的语法 | F26 / S2 / S3 | ✅ 已推送（CI 全绿） |
 | 3 | 存储与启动 | F16 / F36 / F37 / D4 / CS1 / CS2 | ✅ 已推送 |
 | 4 | 外来数据的健壮性 | F3 / F5 / SI2 / SI3 | ✅ 已推送 |
 | 5 | 缓存与正则静态化 | F31 / F33 / F35 | ✅ 已推送 |
@@ -32,11 +99,11 @@
 | 12a | F14 world_map_screen 拆分 | F14 | ✅ 已推送 |
 | 12b | S1 API Key 降级策略 | S1 | ✅ 已推送 |
 | 13 | F12 setState 热点局部刷新 | F12 | ✅ 已推送 |
-| **14** | **健壮性加固：回调生命周期 + 查表判空 + 语义标签** | **CL1 / F39（高危 4 处）/ F24（主界面）** | **✅ 已推送（CI 全绿，v4.1.2）** |
-| **15** | **魔法数字提取：UI 层 Duration 语义 token 化** | **F25（UI 层时长）** | **✅ 已推送（CI 全绿，v4.1.4）** |
-| **16** | **UI 测试补全：高频游戏组件冒烟 + Semantics 回归** | **F21** | **✅ 已推送（CI 全绿）** |
-| **17** | **异步安全审计：CancellationToken 核对（AI 层早已落地，误判更正）** | **F15** | **✅ 已推送（核对更正，无代码改动）** |
-| **18** | **台账一致性回填：F1/F2/F13/F14/F40 与批次 11a-12c 记录对齐** | **F1 / F2 / F13 / F14 / F40** | **✅ 已推送（核对回填，无代码改动）** |
+| 14 | 健壮性加固：回调生命周期 + 查表判空 + 语义标签 | CL1 / F39（高危 4 处）/ F24（主界面） | ✅ 已推送（CI 全绿，v4.1.2） |
+| 15 | 魔法数字提取：UI 层 Duration 语义 token 化 | F25（UI 层时长） | ✅ 已推送（CI 全绿，v4.1.4） |
+| 16 | UI 测试补全：高频游戏组件冒烟 + Semantics 回归 | F21 | ✅ 已推送（CI 全绿） |
+| 17 | 异步安全审计：CancellationToken 核对 | F15 | ✅ 已推送（核对更正，无代码改动） |
+| 18 | 台账一致性回填：与批次 11a–12c 记录对齐 | F1 / F2 / F13 / F14 / F40 | ✅ 已推送（核对回填，无代码改动） |
 | 19 | 测试规模再平衡：data_consistency_test 独立成文件 | F22 / F42 | ✅ 已推送 |
 | 20 | F20 迁移：scar 接线组 | F20 | ✅ 已推送 |
 | 21 | F20 迁移：指令缺口「格式化方法存在」组 | F20 | ✅ 已推送 |
@@ -45,1126 +112,23 @@
 | 24 | F20 迁移：学院杯负号渲染组 | F20 | ✅ 已推送（CI 先红后修） |
 | 25 | F20 迁移：档案可见性组 | F20 | ✅ 已推送（CI 先红后修） |
 | 26 | F20 迁移：/状态 职业分流组 | F20 | ✅ 已推送（CI 先红后修） |
-| **27** | **F20 迁移：存档往返组 + 本地 Flutter 工具链落地** | **F20** | **✅ 已推送（首次本地 `flutter test` 验证后再推）** |
-| **27.1** | **CI 热修复：批次 20 那条是随机测试（开局特质 RNG），改断言降幅** | **F20** | **✅ 已推送** |
-> **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
-> 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
-> 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
-> 详见各条目下的说明。
+| 27 | F20 迁移：存档往返组 + 本地 Flutter 工具链落地 | F20 | ✅ 已推送（首次本地 `flutter test` 验证后再推） |
+| 27.1 | CI 热修复：批次 20 那条是随机测试，改断言降幅 | F20 | ✅ 已推送 |
+| 28 | F20 迁移：数据层扫描→直接 import（5 条）+ 存量分类、重新定性 | F20 | ✅ 已推送 |
+
+> **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService` 的注释早已解释清楚，只做了二次核对）、SI1 / F4（版本号与 `_migrateSave` 早就都有，批次 1 只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。详见各条目。
 
 ---
 
-## 目录（38 维）
+## 4. 问题清单总表
 
-1. [概况与统计](#1-概况与统计)
-2. [代码组织与架构](#2-代码组织与架构)
-3. [序列化与数据持久化](#3-序列化与数据持久化)
-4. [错误处理与异常恢复](#4-错误处理与异常恢复)
-5. [状态管理](#5-状态管理)
-6. [Widget 性能](#6-widget-性能)
-7. [异步安全](#7-异步安全)
-8. [网络层](#8-网络层)
-9. [文件 I/O](#9-文件-io)
-10. [测试质量](#10-测试质量)
-11. [国际化与无障碍](#11-国际化与无障碍)
-12. [配置管理](#12-配置管理)
-13. [日志系统](#13-日志系统)
-14. [构建系统与 CI/CD](#14-构建系统与-cicd)
-15. [导航/路由](#15-导航路由)
-16. [正则/文本解析](#16-正则文本解析)
-17. [集合/内存](#17-集合内存)
-18. [动画/渲染](#18-动画渲染)
-19. [存储模式](#19-存储模式)
-20. [导入管理](#20-导入管理)
-21. [空安全](#21-空安全)
-22. [Mixin 架构](#22-mixin-架构)
-23. [测试数据](#23-测试数据)
-24. [资源管理](#24-资源管理)
-25. [依赖管理](#25-依赖管理)
-26. [注释健康度](#26-注释健康度)
-27. [AI 架构](#27-ai-架构)
-28. [Prompt 工程](#28-prompt-工程)
-29. [安全审计（新）](#29-安全审计新)
-30. [性能基准（新）](#30-性能基准新)
-31. [代码重复度（新）](#31-代码重复度新)
-32. [设计模式一致性（新）](#32-设计模式一致性新)
-33. [文档完整性（新）](#33-文档完整性新)
-34. [冷启动性能（新）](#34-冷启动性能新)
-35. [状态持久化完整性（新）](#35-状态持久化完整性新)
-36. [回调/闭包生命周期（新）](#36-回调闭包生命周期新)
-37. [延迟加载策略（新）](#37-延迟加载策略新)
-38. [平台兼容性（新）](#38-平台兼容性新)
-39. [问题清单总表](#39-问题清单总表)
-40. [优化路线图](#40-优化路线图)
-41. [修复记录](#41-修复记录)
+本台账共收录 **78 条** 问题（v1/v2 主编号 F1–F48 共 48 条 + v3 新增编号 S/P/D/DS/DOC/CS/SI/CL/L/PC 共 30 条），按严重度分布：
 
----
+- **Critical 1** | **High 14** | **Medium 41** | **Low 22**
 
-## 1. 概况与统计
-
-| 指标 | 数值 |
-|------|------|
-| Dart 源文件 | 152 |
-| 总代码行数 | 79,506 |
-| 测试文件 | 59 |
-| 测试代码行数 | 16,600 |
-| 审查维度 | 38 |
-| 发现问题 | 52 |
-| 最大文件行数 | 3,234 |
-| 核心 Provider | 8 |
-| Mixin 数 | 14 |
-| AI 服务 | 3 |
-| 测试用例数 | 1,384 |
-| 当前版本 | 4.2.3 |
-
-本报告是 **第三轮全方位无遗漏审查**，在前两轮（v1 覆盖 20 维、v2 覆盖 28 维）的基础上，新增 10 个此前遗漏的审查维度，共计 38 个维度。所有发现的问题按严重度分级（Critical / High / Medium / Low），并附有可操作的优化建议。
-
-**审查范围说明：**
-- v1 覆盖维度：20 个（基础维度）
-- v2 新增维度：8 个（导航/路由、正则/文本解析、集合/内存、动画/渲染、存储模式、导入管理、空安全、Mixin 架构）
-- **v3 新增维度：10 个**（安全审计、性能基准、代码重复度、设计模式一致性、文档完整性、冷启动性能、状态持久化完整性、回调/闭包生命周期、延迟加载策略、平台兼容性）
-- v3 保留维度：全部 28 个 v1+v2 维度，已验证修复状态并补充新发现
-
----
-
-## 2. 代码组织与架构
-
-### F1 — _ensureCommandsRegistered() 神类 3,234 行 `[Critical] [v1]`
-
-`lib/mixins/mixin_commands.dart` 一个方法 3,234 行，违反单一职责原则。调试、定位、维护成本极高。
-
-> **🟢 批次 11a（神方法拆分）**：`_ensureCommandsRegistered()` 已被拆分为 7 个分组注册方法
-> （`_registerBasicInfoCommands` / `_registerRelationCommands` / `_registerStudyCommands` /
-> `_registerItemCommands` / `_registerActivityCommands` / `_registerWorldCommands` /
-> `_registerCheatCommands`），巨型方法本身已消除。`mixin_commands.dart` 文件体仍约 3,250 行
-> （分组方法+注册逻辑都住这），进一步的「按域拆分文件」留作后续分阶段推进。
-
-**影响：** 任何命令注册的修改都需要在 3K+ 行的函数中定位，极易引入回归 bug。
-
-### F2 — Mixin 导入膨胀 `[High] [v1]`
-
-`mixin_init.dart` 41 行导入，`mixin_narrative.dart` 35 行，`mixin_systems.dart` 27 行。部分导入仅在极少数分支中使用。
-
-> **✅ 批次 11c（导入清理）**：清理 6 处未使用 / 仅在极少数分支使用的 mixin 导入。
-
-**影响：** 编译时间增加，代码依赖关系不清晰。
-
-### 优点：目录结构清晰
-
-- `lib/mixins/` — 所有 GameProvider 扩展逻辑集中管理
-- `lib/screens/` — 按功能拆分子目录（game/, settings/, shop/, other/）
-- `lib/services/` — 所有外部服务隔离
-- `lib/utils/` — 工具函数归集
-
----
-
-## 3. 序列化与数据持久化
-
-### F3 — Player.fromJson 部分字段缺少类型断言 `[High] [v1]`
-
-`lib/models/player.dart` 中部分字段反序列化时未对 `Map<String, dynamic>` 做类型断言，旧存档升级可能静默失败。
-
-> **✅ 已修复（批次 4）。** 新增 `lib/utils/json_read.dart` 安全读取工具
-> （`readString/readStringOrNull/readInt/readIntOrNull/readDouble/readBool/readStringList`），
-> 把 `Player.fromJson` 全部标量字段与 String 列表字段改走宽容读取：
-> 数字、数字字符串等宽容形态能算出值就用，取不到走 fallback，
-> 不再「一个字段类型漂移就整份档读不出来」。见 [批次 4 记录](#41-修复记录)。
-
-### F4 — 存档版本无迁移机制 `[Medium] [v1]`
-
-存档中无版本号字段，新旧格式变更时无法自动迁移，只能依赖手动清零。
-
-> **✅ 核对更正（批次 4）：与 SI1 是同一件事，已具备。** 版本号 + `_migrateSave`
-> 都在（见 [SI1 的说明](#si1--存档无版本号-high-v3)）。
-
-### F5 — NarrativeEvent.fromJson(dynamic) 类型风险 `[Low] [v2]`
-
-`lib/models/world_state.dart:16` 参数类型为 `dynamic`，内部自动推导，但外来数据可能引发运行时异常。
-
-> **✅ 已修复（批次 4）。** `NarrativeEvent.fromJson` 的 `src['t'] as String?`
-> 在 t 为非字符串时会抛类型异常，已改走宽容读取（`readString` / `readIntOrNull`）：
-> 数值也转成字符串尽量保住内容，取不到用空串，绝不炸在读档上。
-
-### 优点：JSON 序列化覆盖全面
-
-- `Player`, `WorldState`, `NPC`, `LongTermMemory`, `NarrativeEvent`, `GameTime`, `ChatMessage`, `CrashEntry`, `QuestRecord`, `Scar`, `TokenUsage` 等均有 toJson/fromJson
-- 手动手写序列化，无代码生成依赖，可控性强
-
----
-
-## 4. 错误处理与异常恢复
-
-### F6 — 用户可见错误信息不足 `[Medium] [v1]`
-
-大多数 catch 块仅做 `debugPrint` 日志，用户界面无任何反馈。如网络超时、AI 服务异常等场景用户只能看到白屏或卡住。
-
-### F7 — 前置断言完全缺失 `[High] [v1]`
-
-全库未发现 `assert()` 调用，无法在开发阶段捕获前置条件违反。
-
-> **✅ 已修复（批次 2）— 按「症状与原因距离」挑了最值得断言的两个入口**
-> 不搞全员撒 assert（那会制造一堆无意义的噪音），只补了两类**症状与原因隔得最远**的入口：
-> - `AiRouter.chatComplete`（`ai_router.dart`）：断言 `prompt` 非空、`maxTokens > 0`、
->   `temperature ∈ [0,2]`。这三条被破坏时不会崩，而是变成「AI 返回空/半截内容」，
->   排查成本以小时计；断言让它在开发期直接炸在调用点。
-> - `SaveService.saveGame`（`save_service.dart`）：断言槽位 id 非空且不含路径分隔符、
->   `turnCount >= 0`。槽位 id 是**直接当文件名用的**，含 `/` 时写出去一个打不开的文件，
->   而读档端只报「存档不存在」—— 症状和原因隔了十万八千里。
-> 已核对三处生产调用点（`mixin_systems` / `npc_chat_service` / 测试）的入参均满足断言。
-
-### F8 — 部分 catch 块为空或仅日志 `[Medium] [v3 新发现]`
-
-`liquid_glass.dart:38` 和 `game_world_tab.dart:552` 使用 `catch (_) {}` 完全静默吞异常。
-
-**影响：** 静默吞异常会隐藏潜在 bug，导致难以排查的问题。
-
-> **✅ 已修复（批次 2）**
-> 三处静默 catch 全部补上了日志，**兜底行为一个都没改**（这点很重要：
-> 这些 catch 的降级逻辑是对的，缺的只是痕迹）：
-> | 位置 | 原状 | 改后 |
-> |---|---|---|
-> | `widgets/liquid_glass.dart` | `catch (_) {}` 静默降级 | `catch (e, st)` + 记录着色器不可用的原因（Skia 后端 / 编译失败 / 资源缺失） |
-> | `screens/game/game_world_tab.dart` | `catch (_) { return 1; }` | 记录解析失败的 `yearStr` 与异常，仍回退 1 年级 |
-> | `services/save_service.dart:185` | `catch (_) {}` 空块 | 记录「用备份修复主存档失败」——不影响本次读档，但"主存档一直是坏的、每次都靠备份顶着"必须留下痕迹 |
->
-> 另外全库扫了一遍：除这三处外没有其他 `catch (_) {}` / `catch (e) {}` 空块。
-> 报告里提到的 `game_world_tab.dart:552` 行号与当前代码对得上（现 556 行，因补了几行注释）。
-
-### F9 — 错误恢复策略缺乏统一模式 `[Medium] [v3 新发现]`
-
-不同模块的恢复策略不一致：save_load_screen 统一显示 SnackBar，但 screens 中的 catch 块有的弹 SnackBar、有的 debugPrint、有的静默。
-
-### 优点：try/catch 覆盖广泛
-
-- AI 调用链路三层兜底：重试 → 切 Key → 本地兜底叙事
-- 文件 I/O 操作均有 try/catch 保护
-- crash_logger 和 ai_debug_logger 全面捕获异常
-
----
-
-## 5. 状态管理
-
-### F10 — notifyListeners 调用频繁 `[Medium] [v1]`
-
-GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能触发多次重建。
-
-### F11 — 部分 UI 缺少 dispose 清理 `[Medium] [v1]`
-
-部分 StatefulWidget 未在 `dispose()` 中清理控制器和订阅。
-
-### F12 — 23 个文件使用 setState 尚未优化 `[Medium] [v1]`
-
-大量 `setState((){})` 调用会触发整个 widget 子树重建，未使用 `ValueListenableBuilder` 或 `Selector` 做局部刷新。
-
-### 优点：Provider 模式正确
-
-- 使用 `ChangeNotifier` + `Provider` 模式，架构清晰
-- `AppProvider` 和 `GameProvider` 职责分离
-- `GameProviderBase` 抽象基类提供统一接口
-
----
-
-## 6. Widget 性能
-
-### F13 — game_narrative_tab build() 1,927 行 `[High] [v1]`
-
-`lib/screens/game/game_narrative_tab.dart` 的 build 方法接近 2,000 行，包含大量嵌套条件和三目运算符，可读性和维护性极差。
-
-> **🟢 批次 11b（组件抽取）**：高频独立 UI 段（属性闪帧、AI 失败提示等）抽取到
-> `widgets/narrative_widgets.dart`，`game_narrative_tab.dart` 1,927 → 约 1,670 行，改为
-> 从 `widgets/narrative_widgets.dart` 组合。
-
-### F14 — world_map_screen.dart 1,488 行 `[Medium] [v2]`
-
-地图渲染单文件超 1,400 行，包含自定义 CustomPainter、手势处理、动画逻辑等，应拆分为多个文件。
-
-> **🟢 批次 12a（拆分）**：地图点位布局与绘制逻辑拆到 `screens/world_map/` 目录
-> （`marker_layout.dart` / `map_area_painter.dart`），`world_map_screen.dart` 1,488 → 约 1,200 行。
-
----
-
-## 7. 异步安全
-
-### F15 — 异步操作无 CancellationToken `[Medium] [v1]`
-
-全库未使用 `CancellationToken`、`CancelableOperation` 或 `Completer` 管理异步操作生命周期。
-
-> **✅ 已核对更正（批次 17，误判）**
-> 这条结论同样犯了「正式条目在 lib/ 里仅按关键词抽查、漏掉依赖链实现」的错——
-> AI 服务层（全库**最重要、最长的异步链路**）早在审查前就内置了完整的取消令牌机制：
->
-> - `lib/services/ai_router.dart`：`CancelToken()`（整条调用链共用，仅全局超时取消，见
->   [L254-282](#)）；每次尝试又单独建 `callToken`，让单次超时不炸掉整条 Key 链（L404-422），
->   只有共享 token 被取消才 `rethrow`（L470-477）；配套 `CancelableBridge.attach/detach`（L542-558）。
-> - `lib/services/deepseek_service.dart`：`chatComplete` 透传 `CancelToken?`，底层 HTTP 一并取消。
->
-> 这正是「想让异步可取消应该怎么写」的标准做法——审查时只搜了全局有没有 CancelToken 字样，
-> 没把它和"异步操作"的关系建立起来，又没看一眼服务层，于是得出"全库未使用"的错误结论。
->
-> **剩余异步操作评估**：除 AI 链路外，全库其余异步均为 await-guarded 的短促操作——
-> `Future.delayed`（打字机/防抖/退避）全部带 `mounted` 守卫（批次 8 F17、批次 14 CL1/CL2 已核对）；
-> 存档防抖在途节流 + `saveNow` 先 await 在途再无条件写（`game_provider.dart`）；无 Stream/isolate/worker。
-> 为这些已正确收口的短促操作再套一层 `CancelableOperation` 是过度设计，收益为负。
-> **因此不引入全库取消框架**——这是有意的工程取舍，而非疏漏。
-
-### F16 — SharedPreferences fire-and-forget `[High] [v2]`
-
-多处 `SharedPreferences.getInstance().then()` 未 await、未 catch，属 fire-and-forget 模式。
-
-> **✅ 已修复（批次 3）**
-> 4 处 `.then((prefs) => ...)` 全部改走 `PrefsStore.instance.writeAsync(...)`
-> （`game_started` / `display_mode` / `identity_mode` / `era`）。
-> 关键区别不是"改成 await"，而是**仍然不阻塞 UI、但一定会 catch 并记日志** ——
-> 设置项写慢一点无所谓，静默丢掉才是真问题（用户改了设置、下次打开又变回去，
-> 还以为是玄学）。封装见 D4。
-
-### F17 — 部分异步操作未检查生命周期 `[Medium] [v3 新发现]`
-
-`game_narrative_tab.dart:1731` 的 `Future.delayed` 后虽然有 mounted 检查，但前面的 `setState` 调用在 `Future.delayed` 之前未检查。
-
-### 优点：mounted 检查较全面
-
-- 19 处 `if (!mounted) return;` 检查
-- 3 处 `context.mounted` 检查（Flutter 3.7+ 推荐方式）
-
----
-
-## 8. 网络层
-
-### F18 — _maxRetriesPerService = 0 注释矛盾 `[Low] [v1]`
-
-配置值为 0 但注释称"重试 2 次"，文档与实现不一致。
-
-> **✅ 已修复（批次 1）— 实际为「报告过期」，本轮做了二次核对**
-> `lib/services/ai_router.dart:98-112` 现在的注释长达 15 行，完整写了「为什么是 0」：
-> 允许重试会让单 Key 最坏耗时变成 `perCallTimeout×(n+1)+退避`（2 次重试 = 156s），
-> 而全局超时在 summary 场景上限只有 60s，第一个坏 Key 就会把时间吃光。
-> 注释与代码一致，**无需改动**。同类的 F47 一并核对为已修复。
-
-### 优点：网络层健壮
-
-- 使用 Dio 作为 HTTP 客户端，支持拦截器
-- 多 Key 负载均衡和熔断机制
-- ResponseCache 键含 provider+model 维度
-- 降级链完整：重试 → 切 Key → 本地兜底
-
----
-
-## 9. 文件 I/O
-
-### F19 — crash_logger 同步写盘 `[Low] [v1]`
-
-CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
-
-> **✅ 已修复（批次 2）— 核对为「剩余同步写是刻意的」**
-> `CrashLogger` 现在有两个入口，同步是**分场景的正确选择**，不是遗漏：
-> - `record()` —— 已经是**全异步**（`await f.writeAsString`），日常记录走这条；
-> - `recordSync()` —— 崩溃 handler 专用。进程随时会被系统杀掉，异步写根本来不及落盘，
->   写完前进程一死崩溃就"没有记录"了。这里必须同步 + `flush: true`；
-> - `logHeartbeat()` —— ANR 定位专用，带 **300ms 节流**（同一瞬间爆发的心跳只落盘第一条，
->   内存始终最新），把每回合 2~4 次同步写降到 1~2 次。
->
-> 三者都在源码注释里写明了"为什么必须同步"。所以这条结论是：**不需要改**，
-> 强行改成异步反而会让崩溃日志彻底失效。
-
-### 优点：文件操作隔离
-
-- 所有文件操作通过 `path_provider` 获取正确路径
-- crash_logger 和 ai_debug_logger 独立管理文件
-
----
-
-## 10. 测试质量
-
-### F20 — 505 条源码文本断言迁移停滞 `[High] [v1]`
-
-大量测试使用源码文本断言，需迁移至行为型断言。
-
-> **🟢 推进中（批次 20）。** 从 `scar_test.dart` 接线组起步：把「Player 疤存盘往返」
-> 「老存档缺 scars 字段兜底」「effectiveAttr 叠加疤痕惩罚」3 条源码扫描断言改写为
-> 2 条真实行为测试（构造真实 `GameProvider`，断言 wandArm 疤使 50 额定的
-> spell_understanding / magic_control 落为 47 / 48）。该组源码扫描数从 6 → 3。
->
-> ⚠️ **上面这个写法是错的，批次 27.1 已修正。**「额定属性 50」这个前提不成立：
-> `initializeGame` 会调 `_rollStartingTraits()` 随机抽 3 个开局特质，再经
-> `_applyTraitBonuses()` 把加成叠进 `player.attributes`。稀有特质「咒语奇才」恰好给
-> `spell_understanding +12` / `magic_control +8`，于是落疤后是 62−3 = **59** 而不是 47。
-> CI 实测撞出过 `Expected: <47> / Actual: <59>`，本地连跑 5 次全绿（rare 特质没抽中），
-> 是标准的一次性随机测试。修法不是把 47 改成 59，而是**断言降幅**
-> （落疤前后各降 3 / 2）——降幅才是这条要保证的性质，断言绝对值等于把
-> 「开局抽到什么特质」这个无关变量锁进了用例。
->
-> **🟢 推进中（批次 21）。** 从 `command_subs_test.dart` 指令缺口组把
-> 「/时间 日程、/档案 回忆、/恋爱 历史的格式化方法存在」3 条纯源码文本断言改写为
-> 1 条行为测试：`makeGame()` 构造真实 `GameProvider`，实际调用 `formatDailySchedule()`
-> `/formatMemories()` `/formatLoveHistory()`，断言输出带对应标题。源码扫描数 −3。
-> 该文件的分派器接线守卫（`sub == '快进'` 等）与指令面板按钮渲染等结构性契约保留。
->
-> **🟢 推进中（批次 22）。** 从 `spell_system_test.dart` 收藏品组把「/收藏 空态文案」这条
-> 「读 `formatCollection()` 方法体源码、断言含/不含某词」的源码扫描断言改写为 1 条行为测试：
-> `makeGame()` 构造真实 `GameProvider`（收藏为空），实际调用 `formatCollection()`，断言空态
-> 输出含「巧克力蛙」「一件都没有」、绝不含「日记本」。源码扫描数 −1。
->
-> **🟢 推进中（批次 23）。** 从 `progression_fix_test.dart` 宠物组把「/宠物 购买 的分支不会把
-> 人卡死」这条「正则切 `buyPet` 方法体、断言含 kw.isEmpty/galleons < price/p.petId != null」
-> 的源码扫描断言改写为 1 条行为测试：真实 `GameProvider` 上逐个分支真跑（空参返回在售清单、
-> 已有宠物挡住二次购买、金币不足提示价格不成交）。源码扫描数 −1。
->
-> **🟢 推进中（批次 24）。** 从 `house_cup_test.dart` 接线组把「来源明细里扣分不显示成 +-5」这条
-> 「读 `formatHouseCup()` 方法体、断言含 `e.value >= 0 ? '+' : ''`」的源码扫描断言改写为
-> 1 条行为测试：真实 `GameProvider` 注入分院与一正一负两条来源，真跑 `formatHouseCup()`，
-> 断言渲染是「日常扣分 -5」「魁地奇取胜 +30」、绝无「日常扣分 +-5」。源码扫描数 −1。
->
-> **🟢 推进中（批次 25）。** 从 `progression_fix_test.dart` 查看组把「可见性判定仍然生效
-> （没见过的 NPC 不给看）」这条「读 `formatCharacterDossier()` 方法体、断言含 _isNPCVisible/素不相识」
-> 的源码扫描断言改写为 1 条行为测试：真实 `GameProvider` 显式分到 Gryffindor 后查西弗勒斯·斯内普
-> （教职、异院、impactScore=0，必然不可见），断言返回「素不相识」。源码扫描数 −1。
->
-> **🟢 推进中（批次 26）。** 从 `data_consistency_test.dart` 状态组把「「职业」不再直接显示
-> initialTalent」这条「正则切 `_formatStatus()` 方法体、断言职业行不含 initialTalent、且方法体
-> 仍含 initialTalent」的源码扫描断言改写为 1 条行为测试：真实 `GameProvider` 注入独有天赋值后
-> 经 `/状态` 命令真跑 `_formatStatus()`，断言职业行是「学生」身份、绝不含该天赋值、主修天赋行
-> 才显示它。源码扫描数 −1。
-> **CI 修正**：首版行为断言误对整段 `currentNarrative` 判 `notContains(天赋值)`，与「主修天赋行
-> 应含天赋值」自相矛盾，已改为只截取 `【职业】` 行单独断言。
->
-> **🟢 推进中（批次 27）。** 从 `progression_fix_test.dart` 存档往返组把「Player.children 有
-> toJson / fromJson」「LoveState 婚姻/孕期字段有 toJson / fromJson」2 条「扫 `player.dart` /
-> `game_systems.dart` 里有没有那行序列化代码」的源码扫描断言，改写为 2 条行为测试：真构造
-> `Player(children: [ChildRecord(...)])` 与 `LoveState(engagedDate/…)`，跑 `toJson → fromJson`
-> 往返，断言子女与婚姻孕期字段原样读回；并各自补一条**反向兜底**（老存档缺 `children` 键读回
-> 空列表；单身档四个婚姻孕期字段读回 `null` 而不是 0）。源码扫描数 −2。
-> 原扫描只认「`children.map((e) => e.toJson()).toList()`」这一种写法，换个等价写法就漏判；
-> 而真往返能同时抓住「写了 toJson 忘了 fromJson」这种半截序列化。
->
-> **批次 27 的另一个变化：本地终于能跑测试了。** 前 26 个批次全部「本地无 flutter SDK、靠推送后
-> CI 把关」，代价很直接——批次 23/24/25/26 连续四批 CI 先红，每批都要再补一个「CI 修正」提交
-> 擦屁股。本批次在沙箱里装上了与 CI 同版本的 Flutter 3.47.2（Dart 3.13.2），推送前先本地
-> `flutter test` 验过。装法与两条踩坑见
-> [§41 批次 27](#批次-27--f20-源码文本断言迁移存档往返组--本地-flutter-工具链落地)。
->
-> F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
-
-### F21 — UI 测试缺失 `[Medium] [v1]`
-
-无 Widget 测试 / 集成测试，所有测试均为纯逻辑单元测试。
-
-### F22 — 测试文件规模分布不均 `[Medium] [v2]`
-
-`progression_fix_test.dart` 3,038 行，占全部测试的 19%，而部分测试文件仅 200+ 行。
-
-> **✅ 已修复（批次 19）。** 把「数据一致性 / 送礼实物 / 材料产出」8 个 `_xxxGroup()`
-> （送礼判定、送礼数据对账、装备槽、送礼命令、材料产出分档、事件锚点、已知地点、
-> 学院名、血统标签、属性标签、委托类型标签、/状态职业）下沉到独立文件
-> `test/data_consistency_test.dart`，并对原文件清理了据此失效的 9 处导入。
-> 单体文件从 3,034 行降到 2,321 行（约 −23%），聚焦更清晰。批次 19 详情见文末。
-
-### 优点：测试覆盖率高
-
-- 59 个测试文件，16,600 行测试代码
-- 1,384 个测试用例全部通过（批次 27 本地实测）
-- 测试纪律三原则：注入参数与生产同侧 / 断言性质不守定义式 / 不锁实现细节
-
----
-
-## 11. 国际化与无障碍
-
-### F23 — 全中文硬编码，无国际化 `[Medium] [v1]`
-
-所有 UI 文本直接硬编码为中文，未使用 ARB 或 l10n 框架。
-
-### F24 — 未使用 Semantics 标签 `[Low] [v1]`
-
-仅 5 处使用 `Semantics` widget，屏幕阅读器支持几乎为零。
-
----
-
-## 12. 配置管理
-
-### F25 — 大量硬编码魔法数字 `[Medium] [v1]`
-
-Duration 值、padding、margin、动画时长等大量硬编码，未提取为命名常量。
-
-### 优点：主题系统完善
-
-- MiuiTheme 颜色 token 化
-- 使用 CSS 变量风格的 Theme 设计
-
----
-
-## 13. 日志系统
-
-### F26 — debugPrint 生产环境残留 `[Low] [v1]`
-
-20+ 处 `debugPrint` 在生产构建中仍然输出，部分日志包含敏感信息。
-
-> **✅ 已修复（批次 2）— 84 处，比报告估计的 20+ 多得多**
-> - 新增 `lib/utils/debug_log.dart`，导出 `debugLog(String?, {int? wrapWidth})`：
->   签名与 `debugPrint` **完全一致**，`kDebugMode` 为 false 时直接返回。
-> - 全库 17 个文件、84 处 `debugPrint(` 一次性替换为 `debugLog(` 并补上 import
->   （`debug_log.dart` 自身内部的 `debugPrint` 保留，否则会无限递归 —— 这个坑踩了一次，已修）。
-> - 为什么值得做：`debugPrint` 只做**节流**、不做**环境判断**，release 里照样往 stdout 写；
->   AI 链路那批日志带着完整 prompt、response 与 Key 片段，等于把用户对话内容输出到系统日志。
-> - 新增 `test/debug_log_test.dart`（9 个用例）钉住脱敏边界。
-
-### 优点：日志系统分层
-
-- `crash_logger.dart` — 崩溃日志持久化
-- `ai_debug_logger.dart` — AI 调用日志专用
-- 日志文件轮转（保留最近 N 条）
-
----
-
-## 14. 构建系统与 CI/CD
-
-### F27 — 缺少 Android 签名配置模板 `[Low] [v1]`
-
-Android 构建缺少签名配置模板，新开发者需手动配置。
-
-> **✅ 已修复（批次 1）**
-> - 新增 `android/key.properties.example`：模板含 `storeFile / storePassword /
->   keyAlias / keyPassword` 四项 + 一份现成的 `keytool -genkey` 命令，复制改名即可用。
-> - `android/app/build.gradle`：存在 `key.properties` 时用它签 release，
->   **不存在时自动回退 debug 签名**。回退是关键 —— CI 没有私钥也能出包，
->   不会因为加了签名配置就把构建打断。
-> - `.gitignore` 追加 `android/key.properties` 与 `*.jks` / `*.keystore`，
->   模板入库、真身不入库。
-> - README「构建 APK」补上这段说明。
-> 决策记录见 `docs/ARCHITECTURE.md` ADR-010。
-
-### 优点：CI 配置完整
-
-- GitHub Actions CI 配置
-- 测试全部自动运行
-- Analyze 0 error
-
----
-
-## 15. 导航/路由
-
-### F28 — 路由模式混合不统一 `[Medium] [v2]`
-
-同时使用 `Navigator.pushNamed`（命名路由）和 `Navigator.push(MaterialPageRoute(...))`（直接构造），无统一路由表。
-
-### F29 — 硬编码导航集中在 game_phone_tab `[Medium] [v2]`
-
-`game_phone_tab.dart` 中所有导航目标硬编码在 widget 中。
-
-### 优点：导航逻辑基本正确
-
-- `Navigator.pop` 使用正确，无栈泄漏
-- 所有导航均在 mounted 后执行
-
----
-
-## 16. 正则/文本解析
-
-### F30 — story_text_renderer 正则密集 `[High] [v2]`
-
-`lib/utils/story_text_renderer.dart` 中 30+ 个 `RegExp` 实例，部分在热路径中重复创建。文本渲染性能瓶颈所在。
-
-### F31 — 部分 RegExp 未使用静态缓存 `[Low] [v2]`
-
-部分 RegExp 未声明为 `static final`，每次方法调用都会重新编译。
-
-### 优点：部分正则已优化
-
-- 部分关键正则已声明为 `static final`
-- 使用编译标志提升性能
-
----
-
-## 17. 集合/内存
-
-### F32 — 频繁的 List.from + sort 重建 `[Medium] [v2]`
-
-`story_text_renderer.dart` 中多处 `.toList()..sort()` 模式，高频调用时产生大量临时对象。
-
-### F33 — 全局缓存缺乏清理策略 `[Low] [v2]`
-
-部分全局 Map 缓存无 LRU 或定时清理机制，长期运行可能内存泄漏。
-
----
-
-## 18. 动画/渲染
-
-### F34 — 多个 AnimationController 未释放 `[Medium] [v2]`
-
-`liquid_glass_nav_bar.dart` 和 `miuix_components.dart` 中的 AnimationController 在 `dispose()` 中未调用 `dispose()`。
-
-### F35 — liquid_glass 着色器每次 build 重建 `[Low] [v2]`
-
-每次 build 都重新创建 fragment shader 实例，未做缓存。
-
----
-
-## 19. 存储模式
-
-### F36 — SharedPreferences fire-and-forget `[High] [v2]`
-
-多处 `SharedPreferences.getInstance().then()` 未 await、未 catch，写入失败不可知。
-
-> **✅ 已修复（批次 3）**（与 F16 同一批改动）
-> 全库 16 处 `SharedPreferences.getInstance()` 现已收敛为 1 处（`PrefsStore.init`），
-> 写入路径全部带 label 与 catch，失败日志形如
-> `[PrefsStore] 偏好写入失败(display_mode): ...`，能直接看出是哪个设置丢了。
-
-### F37 — SharedPreferences 缺少批量写入 `[Medium] [v2]`
-
-多个独立 `setBool`/`setInt` 调用，未使用 `SetBatch` 批量写入。
-
-> **✅ 已修复（批次 3）**
-> `PrefsStore.write(label, (prefs) { ... })` 的闭包里可以写任意多个 key，
-> 一次调用只提交一次。`clearApiKeyFor` 里原先两次独立 `remove`（各提交一次）
-> 已合并进同一个闭包。测试用"闭包被调用次数 == 1"钉住这个契约。
-> 附带更正：报告里的 `SetBatch` 不是 shared_preferences 的 API；
-> 该插件本来就是"多次 setXxx + 一次提交"的模型，真正的收益是把多次提交合成一次。
-
----
-
-## 20. 导入管理
-
-### F38 — Barrel 文件编译膨胀 `[Low] [v2]`
-
-`game_provider_mixins.dart` 导出 9 个 mixin，`other_screens.dart` 导出 6 个 screen，Any import of these barrel files pulls in all dependencies。
-
-### 优点：导入组织清晰
-
-- Barrel 文件按功能域分组
-- import 顺序合理（dart → flutter → 第三方 → 本地）
-
----
-
-## 21. 空安全
-
-### F39 — 大量非空断言（!） `[Medium] [v2]`
-
-20+ 处 `!` 非空断言，如果上游数据变化可能导致运行时崩溃。
-
-### 优点：Dart 3 空安全启用
-
-- 项目使用 `sdk: '>=3.12.0 <4.0.0'`，Dart 3 空安全默认开启
-- 大部分类型标注正确
-
----
-
-## 22. Mixin 架构
-
-### F40 — 14 个 mixin 全部混合到 GameProvider `[High] [v2]`
-
-`GameProvider` 使用 14 个 mixin，单类承担过多职责，违反接口隔离原则。
-
-> **✅ 批次 11c（组织评估）**：核对后判定维持混合式组合——`GameProvider` 是无参构造的全局
-> 单例状态容器，mixin 在此是不需要额外 DI 的「按域拆分实现」手段，职责已按命名域分组清晰
-> （叙事/响应/关系/系统/学院/死亡/职业…），再引入组合/接口隔离只会放大样板代码而无实质收益。
-> 属「核对后不动的有结论」条目。
-
-### F41 — mixin 间存在隐式通信 `[Medium] [v2]`
-
-Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约。
-
----
-
-## 23. 测试数据
-
-### F42 — 测试文件规模分布不均 `[Medium] [v2]`
-
-`progression_fix_test.dart` 3,038 行，占总测试 19%，而部分文件仅 200+ 行。
-
-> **✅ 已修复（批次 19）。** 同上文 F22：数据一致性 / 送礼 / 材料 / 学院 / 血统 / 属性 /
-> 委托 / 职业 共 8 组下沉到 `data_consistency_test.dart`，原文件缩减约 23%、死导入清理。
-
-### F43 — 测试数据设置重复 `[Medium] [v2]`
-
-多个测试文件中的 setUp 块重复创建相似的 Player/WorldState 对象。
-
----
-
-## 24. 资源管理
-
-### F44 — 图片格式不统一，加载策略单一 `[Low] [v2]`
-
-头像同时使用 PNG 和 JPG 格式，无 webp 或 avif 等现代格式，未使用 `cached_network_image` 或预加载策略。
-
-### 优点：资源组织清晰
-
-- `assets/images/avatars/` 按角色命名
-- Shader 文件独立管理
-
----
-
-## 25. 依赖管理
-
-### F45 — 部分依赖版本约束过宽 `[Low] [v2]`
-
-`cupertino_icons: ^1.0.8` 等允许 major 版本升级，可能引入 breaking change。
-
-> **✅ 已修复（批次 1）— 附带一处事实更正**
-> 先更正：Dart 的 `^1.0.8` 语义是 `>=1.0.8 <2.0.0`，**本来就不允许**跨 major，
-> 所以"约束过宽"这个定性不成立。真正的问题是**上界是隐式的**，
-> 「这个包我们允许它升到哪一版」要脑补 caret 规则才知道。
-> 改法：`pubspec.yaml` 全部依赖改写成显式区间（`>=当前 <下一个 major`），
-> 上界一律取 `pubspec.lock` 当前解析版本的下一个 major，**不收窄任何现有解析结果**
-> （已逐个核对 lock：cupertino_icons 1.0.9 / dio 5.11.1 / provider 6.1.5+1 /
-> shared_preferences 2.5.5 / uuid 4.6.0 / flutter_slidable 3.1.2 /
-> path_provider 2.1.6 / flutter_secure_storage 9.2.4 / flutter_lints 4.0.0，全部落在区间内）。
-> `flutter_secure_storage` 的上界另加了注释：9.x 要求 minSdk ≥ 23，升 10.x 前要先确认。
-
-### F46 — 缺少依赖版本锁定检查 `[Low] [v2]`
-
-无定期 `dart pub outdated` 检查或 Dependabot 配置。
-
-> **✅ 已修复（批次 1）**
-> 新增 `.github/dependabot.yml`：
-> - `pub` 生态每周一 03:00（Asia/Shanghai）扫描，单生态最多 5 个 PR；
-> - `github-actions` 生态每月扫一次（CI 里 pin 的 `actions/checkout@v4` 之类过期会有安全告警）；
-> - 打 `dependencies` / `ci` 标签，commit 前缀 `chore(deps)` / `chore(ci)`。
-> 与 F45 的显式上界配套：major 升级会单独成一个 PR，breaking change 不会混进无关提交。
-
-### 优点：依赖精简
-
-- 仅 7 个直接依赖（不含 flutter SDK）
-- 无冗余或重复依赖
-
----
-
-## 26. 注释健康度
-
-### F47 — 部分注释与代码不一致 `[Medium] [v2]`
-
-`_maxRetriesPerService = 0` 注释称"重试 2 次"，与代码矛盾。
-
-> **✅ 已修复（批次 1）— 核对为已修复**
-> 全库检索「重试 N 次」类注释，仅剩 `mixin_narrative.dart:658` 的
-> `retriesLeft = 2`，那是**叙事违规自纠正**的重试（critical 级违规 / BUG-H
-> 模型返回选项而非叙事时重来），与 `_maxRetriesPerService` 不是同一回事，语义自洽。
-> `ai_router.dart` 侧同 F18，注释已重写完毕。
-
-### 优点：文档注释覆盖率较高
-
-- 大量使用 `///` 文档注释
-- 关键算法和业务逻辑有详细说明
-
----
-
-## 27. AI 架构
-
-### 已修复项（第 17 轮）
-
-- System Prompt 缓存机制
-- maxTokens 精细化（narrative 4000→2000, choice 1000→500, npcChat 4000→500, summary 4000→3000）
-- Token 自适应削减（>50K 降 20%）
-- T2 NPC 场景感知裁剪（24→8）
-- T0 阈值提升（≥4→≥5）和上限缩减（60→40）
-- T3 近期事件去重
-- NPC 聊天使用 API system role
-
-### F48 — AI 服务层缺少请求超时统一管理 `[Medium] [v3]`
-
-`deepseek_service.dart` 和 `ai_router.dart` 中不同场景的超时时间未统一管理，分散在多个文件中。
-
-### 优点：AI 降级链完整
-
-- 重试 2 次 → 切 Key/熔断 → 本地兜底叙事 → 选项承接兜底
-- 多 Key 负载均衡
-- token 使用追踪
-
----
-
-## 28. Prompt 工程
-
-### 已修复项
-
-- 写作规则重叠消除
-- NPC 聊天 Prompt 使用 system role
-- 关系锚注入
-- 冗余 sanitization 移除
-
-### 优点：Prompt 设计合理
-
-- 分层 prompt 设计（system → context → instruction）
-- 信息密度监控和调节
-- 格式示例丰富
-
----
-
-## 29. 安全审计（新） `[新增维度]`
-
-本维度对项目进行安全审查，涵盖 API Key 存储、输入验证、敏感信息泄露等。
-
-### S1 — API Key 使用 flutter_secure_storage 但缺少降级策略 `[High] [v3]`
-
-`lib/services/key_store.dart` 使用 `flutter_secure_storage` 存储 API Key。在 Android 无锁屏设备上，`flutter_secure_storage` 会自动降级到 `EncryptedSharedPreferences` 或直接报错。缺少降级后的用户提示和备用方案。
-
-**影响：** 用户在无锁屏设备上可能无法使用 AI 功能但不知原因。
-
-> **✅ 已修复（批次 12b）**
-> - `KeyStore.writeKey / writeKeys` 改为返回 `bool`：写入失败不再静默吞掉，
->   通过 `debugLog` 留痕并向上传递（Android 无锁屏设备上
->   `flutter_secure_storage` 会降级或抛错）。
-> - `AppProvider` 新增 `_secureStorageDegraded` 状态与
->   `_recordKeyWrite(bool)`：任何一次 key 写入失败即置位并 `notifyListeners`。
-> - 设置页「保存」成功后若检测到降级，弹出对话框明确告知：
->   「安全存储不可用（常见于未设置锁屏密码），Key 仅存内存、重启即丢」，
->   并引导用户开启锁屏密码后重新保存。
-> - 覆盖路径：`saveApiKey` / `removeApiKeyAt` / `setAllKeysForProvider`
->   三条写入路径全部接入；启动时的旧明文迁移写入保持静默（尽力而为，
->   不打扰冷启动）。
-
-### S2 — crash_logger 可能记录敏感信息 `[Medium] [v3]`
-
-`crash_logger.dart` 记录 `dynamic error` 和 `StackTrace`，如果 AI API 响应中包含用户对话内容或 API Key 片段，可能被写入日志文件。
-
-**影响：** 敏感信息可能持久化到设备存储中。
-
-> **✅ 已修复（批次 2）**
-> - 新增 `redactSecrets()`（`lib/utils/debug_log.dart`），落盘前统一过一遍。
-> - `CrashLogger` 的 `error` / `stackTrace` / `extra` 三个字段全部脱敏，
->   且**抽成一个 `_sanitizedEntry()` 工厂**供 `record()` 与 `recordSync()` 共用 ——
->   两条路径行为必须一致，漏一条就等于没做。
-> - 匹配三类：`Bearer/Basic xxx`、`sk-xxx`、`apiKey/token/secret/password=xxx` 键值，
->   以及 URL query 里的 `?key=` / `&token=`。
-> - **刻意没做**「长度 ≥32 的 hex/base64 长串一律打码」：实测会把堆栈里的文件路径、
->   package 名、UUID 一起吃掉，日志直接失去定位能力。宁可漏掉一种罕见形态，
->   也不能让日志没法用。测试里专门有一条断言钉住"堆栈必须原样保留"。
-
-### S3 — debugPrint 中的 AI 调试日志可能泄露 `[Low] [v3]`
-
-`ai_debug_logger.dart` 和多个 mixin 使用 `debugPrint` 输出 AI 请求和响应内容，在调试模式下可能被系统日志捕获。
-
-> **✅ 已修复（批次 2）**
-> - `debugPrint` → `debugLog`（release 静默），见 F26。
-> - 核对了 `AiDebugLogger` 的落盘开关：它**本来就受 `_enabled` 控制**，
->   而该值来自 `AppProvider.aiDebugLogEnabled`（默认 `false`，用户在设置页显式开启才写）。
->   所以"完整 prompt/response 写进设备文件"只在用户主动开调试时发生，不是默认行为。
-> - `docs/AI_SERVICE_API.md` §8 明确写了：日志含用户对话内容，不要公开贴出完整日志。
-
-### 优点：安全设计亮点
-
-- API Key 使用 `flutter_secure_storage` 而非 SharedPreferences
-- 输入注入防御双保险（当次净化 + NPC 历史回放重净化）
-- `//` 转义处理
-
----
-
-## 30. 性能基准（新） `[新增维度]`
-
-本维度评估项目的性能测试覆盖、性能关键路径和潜在瓶颈。
-
-### P1 — 缺少性能基准测试 `[High] [v3]`
-
-全项目无任何性能基准测试（benchmark test）。无渲染帧率、启动时间、AI 响应时间、序列化吞吐量等关键指标监控。
-
-**影响：** 性能退化无法被自动检测，只能靠人工发现。
-
-### P2 — story_text_renderer 渲染性能瓶颈 `[High] [v3]`
-
-`story_text_renderer.dart` 2,163 行，30+ 正则表达式，每次文本渲染执行大量字符串操作。更早版本中曾因 colon 扫描死循环导致 ANR。
-
-**影响：** 长文本渲染时可能导致 UI 卡顿。
-
-### P3 — 频繁的集合重建 `[Medium] [v3]`
-
-`.toList()..sort()` 模式在 story_text_renderer 中出现 10+ 次，每次调用创建新列表。热路径中频繁触发 GC。
-
-### P4 — notifyListeners 级联触发 `[Medium] [v3]`
-
-GameProvider 的多个 mixin 顺序调用 notifyListeners，单次用户操作可能触发 3-5 次 UI 重建。
-
-### 已优化的性能点
-
-- 叙事渲染死循环已修复（43ms 替代 3 分钟，3200x 提升）
-- System Prompt 缓存减少重复构建
-- 部分正则已静态缓存
-
----
-
-## 31. 代码重复度（新） `[新增维度]`
-
-本维度评估代码重复度，识别可提取为公共函数或类的重复模式。
-
-### D1 — 测试数据设置重复 `[Medium] [v3]`
-
-多个测试文件的 `setUp` 块重复创建相似的 `Player`、`WorldState`、`GameProvider` 对象，可提取为测试 fixture。
-
-> **✅ 已修复（批次 9）**
-> 新增 `test/helpers/test_fixtures.dart`：`makeGame({offlineQuickMode})` 成为唯一来源。
-> `provider_logic_test` / `round15_fixes_test` / `round16_fixes_test` / `round16c_repro_test`
-> 四份完全相同的 `Future<GameProvider> makeGame()` 定义全部删除，改为引用共享 fixture
-> （round16c 的离线快速模式差异收敛为参数 `offlineQuickMode: true`）。
-> 结构护栏见 `test/code_dedup_audit_test.dart`（test/ 下出现第二份 makeGame 定义即报错）。
-
-### D2 — 重复的导航模式 `[Medium] [v3]`
-
-`Navigator.push(context, MaterialPageRoute(builder: ...))` 模式在 10+ 个文件中重复出现，可封装为辅助函数。
-
-> **✅ 已修复（批次 9）**
-> `lib/utils/ui_helpers.dart` 新增 `pushRoute<T>(context, page)`：Route 构造细节（全屏/动效/泛型）
-> 集中一处维护，调用方只表达「去哪」。8 个文件 20 处 `Navigator.push(MaterialPageRoute(...))`
-> 全部收口（`game_phone_tab` 10、`communication_screen` 2、`game_narrative_tab` 2、
-> `home_screen` 2、`shop_tab` / `settings_body` / `settings_crash_section` / `game_bottom_input` 各 1）。
-> `Navigator.pushNamed`（命名路由跳转）不在此列，按原样保留。
-> 结构护栏见 `test/code_dedup_audit_test.dart`（lib/ 下 MaterialPageRoute 只允许出现在
-> ui_helpers.dart，且不再出现 `Navigator.push(` 直连）。
-
-### D3 — 重复的 try/catch 模式 `[Low] [v3]`
-
-`save_load_screen.dart` 中 7 个 try/catch 块结构几乎相同，仅调用方法不同。
-
-### D4 — 重复的 SharedPreferences 读取模式 `[Low] [v3]`
-
-`app_provider.dart` 中多次 `SharedPreferences.getInstance()` 调用，可封装为单例或缓存。
-
-> **✅ 已修复（批次 3）**
-> 新增 `lib/services/prefs_store.dart`：`PrefsStore` 单例缓存实例 + 三个入口
-> （`init()` / `write()` / `writeAsync()`）+ 三个带 fallback 的同步读。
-> `app_provider.dart` 里 9 处调用全部改走它，并且**把 `shared_preferences` 的 import
-> 从 app_provider 里删掉了** —— 现在想绕过 PrefsStore 直接写偏好得先重新 import，
-> 是个天然阻力。刻意没做「全局自动初始化」：初始化失败是有意义的信号，
-> 静默吞掉只会让问题更难查。
-
----
-
-## 32. 设计模式一致性（新） `[新增维度]`
-
-本维度评估项目中使用设计模式的一致性和合理性。
-
-### 发现：设计模式使用整体一致
-
-- **Provider 模式**：`ChangeNotifier` + `Provider` 统一使用，无 mix of Riverpod/BLoC 等
-- **Mixin 模式**：14 个 mixin 全部用于 `GameProvider`，模式一致但过度集中
-- **工厂模式**：`fromJson` 工厂构造函数统一使用
-- **策略模式**：`AiRouter` 的降级链属于策略模式
-- **单例模式**：`CrashLogger`、`AiDebugLogger` 使用单例
-
-### DS1 — 缺少 Repository 模式 `[Medium] [v3]`
-
-数据访问逻辑（JSON 序列化、文件读写、SharedPreferences）直接混杂在 Provider 和 Service 中，未使用 Repository 模式隔离。
-
-**影响：** 数据源变更（如从本地文件改为数据库）需修改多个层。
-
-### DS2 — 缺少 Service Locator 或 DI 容器 `[Medium] [v3]`
-
-服务依赖通过构造函数注入，但无集中式 DI 容器管理生命周期。部分服务（如 `NpcChatService`）在 `GameProvider` 中延迟创建。
-
----
-
-## 33. 文档完整性（新） `[新增维度]`
-
-本维度评估项目文档的完整性和质量。
-
-### 优点：文档覆盖较好
-
-- `.github/霍格沃兹审查修复档案总览.md` — 审查历史完整记录
-- 大量 `///` 文档注释在关键类和函数上
-- CI 配置和测试运行正常
-
-### DOC1 — 缺少 README 项目总览 `[Medium] [v3]`
-
-项目根目录无 `README.md`，新开发者无法快速了解项目用途、架构、如何运行。
-
-> **✅ 已修复（批次 1）— 原始描述有误，README 一直存在**
-> 仓库根目录 `README.md` 有 207 行，涵盖核心特色、五个时代、玩法总览、60+ 指令、
-> 隐私说明、更新日志、开发相关。**这条是 v3 报告的误判。**
-> 真正存在的问题是 README 里的**事实已经过期**，本轮做了校正：
-> - 徽章：Flutter 3.16+ → **3.44+**、Dart 3.2+ → **3.12+**（与 `pubspec.yaml` 的
->   `sdk: '>=3.12.0'` / `flutter: '>=3.44.0'` 对齐，写低了会让人以为老版本能跑）；
->   版本 v3.5.5 → **v3.9.3**；测试数 1254 → **1314**（与 v3 报告统计一致）。
-> - AI 提供商列表里把已不在代码中的「智谱」删掉（实际是 deepseek / agnes / sensenova 三家）。
-> - 「构建 APK」补正式签名说明（配合 F27）；「开发相关」补上架构文档与 API 文档的入口。
-> - 「存档兼容」章节原文写的字段名 `_saveVersion` 是**错的**（实际是 `save_version`，
->   常量 `kSaveVersion` 在 `save_service.dart`），已改正。
-
-### DOC2 — 缺少架构文档 `[Medium] [v3]`
-
-无架构决策记录（ADR）或架构概览图，新加入者需通读代码才能理解整体架构。
-
-> **✅ 已修复（批次 1）**
-> 新增 `docs/ARCHITECTURE.md`（约 300 行）：
-> - **架构全景图**（Mermaid flowchart）：UI / 状态 / 领域逻辑 / 数据 / 外部依赖五层，
->   含四条依赖方向铁律（UI 不直接碰 service、mixin 之间不互相 import、
->   `data/` 保持纯常量、模型 fromJson 必给缺省值）；
-> - **11 条 ADR**：mixin 组合选型（ADR-001，含已知债与约束）、手写序列化不引代码生成
->   （ADR-002）、AI 单 Key 不重试（ADR-003）、全局超时按 Key 数算（ADR-004）、
->   老档兼容铁律（ADR-005）、存档版本号唯一来源（ADR-006）、CI 自动 bump 版本（ADR-007）、
->   **暂不引入 Repository/DI（ADR-008，附复查触发条件）**、CI 锁 flutter 版本（ADR-009）、
->   release 签名可回退（ADR-010）、依赖显式上界（ADR-011）；
-> - 「一次玩家输入」的时序图（Mermaid sequenceDiagram）；
-> - 末尾一张「审查项 ↔ 本文 ADR」对照表，方便后续按审查条目回查。
->
-> 顺带把 DS1 / DS2 这两条「建议引入 Repository / DI 容器」明确回复了：
-> 目前只有一个本地数据源，加一层无行为差异的接口不划算，写进了 ADR-008 并给了复查触发条件。
-
-### DOC3 — 缺少 API 文档 `[Low] [v3]`
-
-AI 服务接口（DeepSeekService、AiRouter）无外部 API 文档，第三方开发者无法集成。
-
-> **✅ 已修复（批次 1）**
-> 新增 `docs/AI_SERVICE_API.md`：组件一览、`AiScene` / `AiProvider` / `AiConfig` 说明、
-> `AiRouter.chatComplete` 完整签名与四步行为、**三层超时模型表**（Dio receiveTimeout >
-> 路由层 perCallTimeout，否则日志里"网关慢"和"请求挂死"长得一样）、错误模型与熔断参数、
-> `NpcChatService` / `KeyStore` 用法、测试注入点（`AiRouter(services: {...})`）、
-> 以及调试日志的两段式机制。
-> 文中同时点出 S1（KeyStore 无降级策略）为已知缺口，避免文档把现状写得比实际更好。
-
----
-
-## 34. 冷启动性能（新） `[新增维度]`
-
-本维度评估应用冷启动路径上的性能瓶颈。
-
-### CS1 — 启动时同步加载 SharedPreferences `[High] [v3]`
-
-`AppProvider` 构造函数中 await `SharedPreferences.getInstance()`，阻塞启动流程直到读取完成。
-
-> **🟡 部分修复（批次 3）**
-> 先更正位置：await 不在构造函数里（构造函数是纯同步的），而在 `main.dart` 的启动区；
-> 真正慢的也不是 SharedPreferences，而是**加密存储的 Key 读取**。
-> 已做的：
-> - `loadSettings()` 里三个 provider 各 1~2 次 `KeyStore` 读取（Keystore /
->   EncryptedSharedPreferences，比 SharedPreferences 慢一个量级）**原先全串行**，
->   改成两轮 `Future.wait`：先并行读所有 provider 的多 Key，再对没读到的并行读单 Key。
->   跨 provider 无依赖可并行；同一 provider 内 `readKeys → readKey` 有依赖，只能分两轮。
->   最坏从「6 次 platform 往返串成一条」降到「2 轮」。
-> - SharedPreferences 实例由 `PrefsStore` 统一缓存（见 D4），后续读取不再走 channel。
->
-> **没做的**：把 `runApp` 提前到加载完成之前（splash 首帧方案）。主游戏页深度依赖
-> `appProvider` 的 Key 与场景路由，提前渲染就要引入"设置未就绪"中间态，
-> 改动面横跨 `main.dart` / `app.dart` / 所有读 `AiProvider` 的页面，
-> 收益（几十到几百毫秒）配不上这个回归风险。等真有启动耗时投诉再做。
-
-### CS2 — 启动时加载所有 NPC 数据 `[Medium] [v3]`
-
-`npc_data.dart` 1,581 行，所有 NPC 数据在启动时一次性加载到内存。可按需加载或懒加载。
-
-> **✅ 已修复（批次 3）— 核对为误判**
-> `npc_data.dart` 里全是 **`const` 顶层集合**（`staffSeeds` / `harrySameGryffindor` /
-> `maraudersSeeds` …），只有 `firstWarSeeds` 是 `final`。Dart 顶层变量是**懒初始化**
-> 的：只在第一次被引用时才求值，`const` 更是在编译期就规范好了。
-> 所以"启动时一次性加载所有 NPC 数据"并不存在 —— 1581 行是源码规模，不是启动期开销。
->
-> 顺带记一条方法论：**用行数推断性能问题不可靠**。本报告里 CS2 / L1 / P2 都有这个毛病，
-> 只有 F1 / F13 / F14 / F22 那种"行数 = 可维护性"的用法才成立。
-
-### CS3 — 缺少启动画面优化 `[Low] [v3]`
-
-启动画面为默认 Flutter 白色，无品牌启动页或预加载指示。
-
----
-
-## 35. 状态持久化完整性（新） `[新增维度]`
-
-本维度评估游戏状态持久化的完整性和一致性。
-
-### 优点：存档覆盖全面
-
-- `saveGame` 保存 player、worldState、npcRegistry、memory
-- 所有关键模型均有 toJson/fromJson
-- 世界线快照 timelineSnapshots 支持重演
-
-### SI1 — 存档无版本号 `[High] [v3]`
-
-存档中无格式版本号，未来模型变更时无法自动迁移旧存档。用户只能手动清零。
-
-> **✅ 核对更正（批次 4）：这条整体不成立，版本号与迁移机制都有。**
-> 存档版本号 `kSaveVersion = 2` 定义在 `lib/services/save_service.dart`，
-> 每次写档都会把 `'save_version': kSaveVersion` 盖进去；迁移函数
-> `_migrateSave(data, version)` 在 `lib/mixins/mixin_systems.dart:3006`，
-> 已有 v1→v2 的实际迁移逻辑（英文月份名 → 中文月份、`world_state.time` 字段补全），
-> 并且 `test/progression_fix_test.dart` 里有一组测试专门钉住
-> 「版本号只有一处定义」「写档必须盖 `kSaveVersion` 的章」「当前版本要有迁移分支」。
->
-> 批次 1 时我在这里写下「版本号存在、缺迁移函数」，那是**只搜了 `save_service.dart`
-> 就下结论**的结果 —— 迁移函数一直住在 `mixin_systems.dart` 里。
-> 这是本轮修复中我自己犯的一次误判，比报告原作者的误判更该记下来：
-> **"全库检索不到"和"我没搜到"是两回事。**
-
-### SI2 — 存档完整性校验缺失 `[Medium] [v3]`
-
-加载存档时无校验和或签名验证，损坏的存档文件可能导致静默数据丢失。
-
-> **✅ 已修复（批次 4）。** `SaveService` 新增公开方法 `isStructurallyValid()`：
-> 校验 `player` / `world_state` 必须是对象、`turn_count` 须非负数值（容忍数字
-> 字符串）、`save_version` 须可识别；`loadGame` / `_tryLoadBackup` / `importSave`
-> 三处统一改走该校验，不合格走已有的备份回滚路径，不再带着坏数据继续。
-
-### SI3 — 部分状态可能未持久化 `[Medium] [v3]`
-
-`AppProvider` 中的 AI 调试日志开关、快速模式开关等用户偏好通过 SharedPreferences 持久化，但 `CrashLogger` 和 `AiDebugLogger` 的日志文件路径无统一管理。
-
-> **✅ 已修复（批次 4）。** 日志路径统一收口到 `lib/utils/log_paths.dart`
-> （`kCrashLogFileName` / `kHeartbeatFileName` / `kAiDebugLogDirName` 三个常量），
-> `CrashLogger` 与 `AiDebugLogger` 改用常量拼接，改名/搬目录只改一处。
-> 偏好持久化部分批次 3 已随 PrefsStore 处理。
-
----
-
-## 36. 回调/闭包生命周期（新） `[新增维度]`
-
-本维度评估回调、闭包、事件订阅的生命周期管理。
-
-### CL1 — 部分回调未在 dispose 中取消 `[Medium] [v3]`
-
-部分 `StatefulWidget` 使用 `addListener` 或 `StreamSubscription`，但未在 `dispose()` 中调用 `removeListener` 或 `cancel()`。
-
-### CL2 — 闭包捕获可能的内存泄漏 `[Low] [v3]`
-
-部分匿名闭包在 `Future.delayed` 或 `Timer` 中捕获 `BuildContext`，widget 销毁后闭包仍执行。
-
-### 优点：mounted 检查已覆盖大部分场景
-
-- 19 处 `if (!mounted) return;` 检查
-- 3 处 `context.mounted` 检查
-
----
-
-## 37. 延迟加载策略（新） `[新增维度]`
-
-本维度评估项目中延迟加载的使用情况和优化空间。
-
-### L1 — 缺少延迟加载 `[Medium] [v3]`
-
-项目仅在 `pubspec.yaml` 中声明了 `shaders` 和 `assets/images/avatars/`，所有资源在启动时加载。大量 NPC 数据（`npc_data.dart` 1,581 行）在启动时全部加载。
-
-### L2 — 图片无懒加载 `[Medium] [v3]`
-
-所有头像图片（PNG/JPG）在 widget 构建时立即加载，未使用 `FadeInImage` 或占位图策略。
-
-### L3 — screen 级别无懒加载 `[Low] [v3]`
-
-所有 screen 在导航时直接构建，未使用 `DeferredWidget` 或 `lazy loading` 拆分代码包。
-
----
-
-## 38. 平台兼容性（新） `[新增维度]`
-
-本维度评估项目在不同平台上的兼容性。
-
-### 优点：平台适配亮点
-
-- 使用 `path_provider` 获取平台无关路径
-- 使用 `flutter_secure_storage` 跨平台安全存储
-- Dio 跨平台网络请求
-
-### PC1 — 仅 Android 平台 `[Medium] [v3]`
-
-项目明确仅支持 Android（通过 `flutter_secure_storage` 的 Android 原生实现），iOS 和 Web 平台未经测试。
-
-### PC2 — 缺少平台条件编译 `[Low] [v3]`
-
-无 `dart:io` / `dart:html` 条件导入，Web 平台编译可能失败。
-
-### PC3 — 缺少平台特定配置 `[Low] [v3]`
-
-iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺失。
-
----
-
-## 39. 问题清单总表
-
-本次审查共发现 **52 项** 问题，按严重度分布：
-
-- **Critical 1** | **High 9** | **Medium 15** | **Low 8** | **v3 新增 10** | **优点 9**
+> 原报告生成时写「52 项」，与总表行数对不上（F 系列与 v3 系列存在同题重复收录、
+> 且计数漏项），整理时以总表实际行数为准。同题重复收录的条目（F22/F42、F16/F36、
+> F43/D1 等）在「修复状态」列互相注明。
 
 | # | 问题 | 维度 | 严重度 | 版本 | 修复状态 |
 |---|------|------|--------|------|---------|
@@ -1187,7 +151,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次27.1（同上 8 组，扫描 −7；批次 27 起本地可跑 `flutter test` 后再推；27.1 修正批次 20 那条随机测试） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟗 批次28（9 组共迁移 18 条，扫描 181→176；**可行为化池子已近枯竭，余下 84 条接线守卫 + 40 条反向约束无行为等价物，F20 目标已重新定性**；27.1 修正批次 20 那条随机测试） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -1210,7 +174,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | ✅ 批次11c（组织评估：混合式组合对单例状态容器利大于弊，无需再拆；混入职责已在 mixin 命名域内分组清晰） |
 | F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 | — |
 | F42 | 测试文件规模分布不均 | 测试数据 | Medium | v2 | ✅ 批次19（与 F22 同批：数据/送礼/材料/标签组下沉，死导入清理） |
-| F43 | 测试数据设置重复 | 测试数据 | Medium | v2 | — |
+| F43 | 测试数据设置重复 | 测试数据 | Medium | v2 | ✅ 批次9（与 D1 同一问题在两轮报告里重复收录；`test/helpers/test_fixtures.dart` 收口） |
 | F44 | 图片格式不统一，加载策略单一 | 资源管理 | Low | v2 | — |
 | F45 | 部分依赖版本约束过宽 | 依赖管理 | Low | v2 | ✅ 批次1（定性更正） |
 | F46 | 缺少依赖版本锁定检查 | 依赖管理 | Low | v2 | ✅ 批次1 |
@@ -1227,12 +191,12 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | D2 | 重复的导航模式 | 代码重复度 | Medium | v3 | 🟢 批次9（`pushRoute` 收口 8 文件 20 处） |
 | D3 | 重复的 try/catch 模式 | 代码重复度 | Low | v3 | 🟢 批次6/7（`_showError` 统一错误处理，骨架差异属必要） |
 | D4 | 重复的 SharedPreferences 读取 | 代码重复度 | Low | v3 | ✅ 批次3 |
-| DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 | — |
-| DS2 | 缺少 DI 容器 | 设计模式 | Medium | v3 | — |
+| DS1 | 缺少 Repository 模式 | 设计模式 | Medium | v3 | ✅ 批次1（定案不做：单本地数据源加无行为差异的接口不划算，写入 ADR-008 并附复查触发条件） |
+| DS2 | 缺少 DI 容器 | 设计模式 | Medium | v3 | ✅ 批次1（定案不做，同 DS1 / ADR-008） |
 | DOC1 | 缺少 README 项目总览 | 文档完整性 | Medium | v3 | ✅ 批次1（误判，已校正过期内容） |
 | DOC2 | 缺少架构文档 | 文档完整性 | Medium | v3 | ✅ 批次1 |
 | DOC3 | 缺少 API 文档 | 文档完整性 | Low | v3 | ✅ 批次1 |
-| CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 | 🟡 批次3（部分） |
+| CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 | 🟡 批次3（部分：KeyStore 并行读 + PrefsStore 缓存已落地；剩余「runApp 提前」定案缓做，见 §6 · CS1） |
 | CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 | ✅ 批次3（误判） |
 | CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 | — |
 | SI1 | 存档无版本号 | 状态持久化 | High | v3 | ✅ 批次4（整体误判，版本号+迁移都有） |
@@ -1249,105 +213,1433 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 
 ---
 
-## 40. 优化路线图
+## 5. 条目详情 · F1–F48
 
-基于三轮审查的全部发现，制定以下分阶段优化路线图：
+48 条基础条目，按编号升序。状态以本条为准，与 §4 总表同步维护。
 
-### P0 — 立即修复（Critical，1 项）
+### F1 — _ensureCommandsRegistered() 神类 3,234 行
+`[Critical]` `[v1]` `[代码组织]`
 
-- **F1** — 拆分 _ensureCommandsRegistered() 为多个方法/文件
+**问题**：`lib/mixins/mixin_commands.dart` 一个方法 3,234 行，违反单一职责原则。调试、定位、维护成本极高。
 
-### P1 — 短期修复（High，9 项）
+**状态**：🟢 批次 11a（已收口）
 
-- **F2** — 精简 Mixin 导入，按需导入
-- **F3** — Player.fromJson 增加类型断言
-- **F7** — 增加前置 assert 断言
-- **F13** — 拆分 game_narrative_tab build 方法
-- **F16/F36** — SharedPreferences 统一 await + catch
-- **F20** — 推进源码文本断言迁移
-- **F30** — 优化 story_text_renderer 正则性能
-- **F40** — GameProvider mixin 拆分评估
-- **S1** — API Key 降级策略
-- **P1** — 添加性能基准测试
-- **P2** — 优化 story_text_renderer 渲染性能
-- **CS1** — 启动时异步加载 SharedPreferences
-- **SI1** — 存档版本号 + 迁移机制
+> `_ensureCommandsRegistered()` 已被拆分为 7 个分组注册方法
+> （`_registerBasicInfoCommands` / `_registerRelationCommands` / `_registerStudyCommands` /
+> `_registerItemCommands` / `_registerActivityCommands` / `_registerWorldCommands` /
+> `_registerCheatCommands`），巨型方法本身已消除。`mixin_commands.dart` 文件体仍约 3,250 行
+> （分组方法+注册逻辑都住这），进一步的「按域拆分文件」留作后续分阶段推进。
 
-### P2 — 中期优化（Medium，15 项）
-
-- **F4** — 存档迁移机制
-- **F6** — 统一用户可见错误信息
-- **F8** — 修复空 catch 块
-- **F9** — 统一错误恢复模式
-- **F10** — 优化 notifyListeners 调用
-- **F11** — 补充 dispose 清理
-- **F12** — 使用 Selector/ValueListenableBuilder
-- **F14** — ~~拆分 world_map_screen~~（批次 12a 已完成：地图点位/绘制拆到 `screens/world_map/`，screen 1,488 → 约 1,200 行）
-- **F15** — ~~引入 CancellationToken~~（批次 17 核对更正：AI 层早已用 `CancelToken`，不引入全库取消框架）
-- **F17** — 异步操作生命周期检查
-- **F21** — 添加 UI 测试
-- **F22/F42** — 平衡测试文件规模
-- **F23** — 引入 ARB 国际化
-- **F25** — 提取魔法数字为命名常量
-- **F28** — 统一路由表
-- **F29** — 解耦导航逻辑
-- **F32** — 优化集合重建
-- **F34** — 释放 AnimationController
-- **F37** — SharedPreferences 批量写入
-- **F39** — 减少非空断言
-- **F41** — Mixin 间显式接口契约
-- **F43/D1** — 测试 fixture 提取
-- **F47** — 修复注释与代码不一致
-- **F48** — 统一 AI 超时管理
-- **S2** — 日志敏感信息过滤
-- **P3** — 优化集合重建
-- **P4** — 优化 notifyListeners 级联
-- **D2** — 封装导航模式
-- **DS1** — 引入 Repository 模式
-- **DS2** — 引入 DI 容器
-- **DOC1** — 添加 README
-- **DOC2** — 添加架构文档
-- **CS2** — NPC 数据懒加载
-- **SI2** — 存档完整性校验
-- **SI3** — 统一状态持久化
-- **CL1** — 补充 dispose 取消
-- **L1** — 引入延迟加载
-- **L2** — 图片懒加载
-- **PC1** — 评估多平台支持
-
-### P3 — 长期优化（Low，8 项）
-
-- F5 — NarrativeEvent.fromJson 类型加固
-- F18 — 修复注释与代码矛盾
-- F19 — crash_logger 异步写盘
-- F24 — 添加 Semantics 标签
-- F26 — 生产环境移除 debugPrint
-- F27 — Android 签名配置模板
-- F31 — RegExp 静态缓存
-- F33 — 全局缓存清理策略
-- F35 — 着色器缓存
-- F38 — 优化 Barrel 文件
-- F44 — 统一图片格式
-- F45 — 收紧依赖版本约束
-- F46 — 添加 Dependabot
-- S3 — 调试日志脱敏
-- D3 — 封装 try/catch 模式
-- D4 — SharedPreferences 单例
-- DOC3 — 添加 API 文档
-- CS3 — 启动画面优化
-- CL2 — 闭包生命周期管理
-- L3 — Screen 懒加载
-- PC2 — 平台条件编译
-- PC3 — 平台配置补充
+**影响：** 任何命令注册的修改都需要在 3K+ 行的函数中定位，极易引入回归 bug。
 
 ---
 
-> **全方位无遗漏审查报告 v3 — 终极版**  
-> Hogwarts Life Simulator &copy; 2026 | 三轮审查覆盖 38 个维度，发现 52 项问题  
-> 审查工具：Trae Work | 报告生成日期：2026-09-07
+### F2 — Mixin 导入膨胀
+`[High]` `[v1]` `[代码组织]`
+
+**问题**：`mixin_init.dart` 41 行导入，`mixin_narrative.dart` 35 行，`mixin_systems.dart` 27 行。部分导入仅在极少数分支中使用。
+
+**状态**：✅ 批次 11（已修复）
+
+> 清理 6 处未使用 / 仅在极少数分支使用的 mixin 导入。
+
+**影响：** 编译时间增加，代码依赖关系不清晰。
+
 ---
 
-## 41. 修复记录
+### F3 — Player.fromJson 部分字段缺少类型断言
+`[High]` `[v1]` `[序列化]`
+
+**问题**：`lib/models/player.dart` 中部分字段反序列化时未对 `Map<String, dynamic>` 做类型断言，旧存档升级可能静默失败。
+
+**状态**：✅ 批次 4（已修复）
+
+> 新增 `lib/utils/json_read.dart` 安全读取工具
+> （`readString/readStringOrNull/readInt/readIntOrNull/readDouble/readBool/readStringList`），
+> 把 `Player.fromJson` 全部标量字段与 String 列表字段改走宽容读取：
+> 数字、数字字符串等宽容形态能算出值就用，取不到走 fallback，
+> 不再「一个字段类型漂移就整份档读不出来」。见 [批次 4 记录](#9-修复记录批次-1--281)。
+
+---
+
+### F4 — 存档版本无迁移机制
+`[Medium]` `[v1]` `[序列化]`
+
+**问题**：存档中无版本号字段，新旧格式变更时无法自动迁移，只能依赖手动清零。
+
+**状态**：✅ 批次 4（误判更正）
+
+> 版本号 + `_migrateSave`
+> 都在（见 [SI1 的说明](#si1--存档无版本号)）。
+
+---
+
+### F5 — NarrativeEvent.fromJson(dynamic) 类型风险
+`[Low]` `[v2]` `[序列化]`
+
+**问题**：`lib/models/world_state.dart:16` 参数类型为 `dynamic`，内部自动推导，但外来数据可能引发运行时异常。
+
+**状态**：✅ 批次 4（已修复）
+
+> `NarrativeEvent.fromJson` 的 `src['t'] as String?`
+> 在 t 为非字符串时会抛类型异常，已改走宽容读取（`readString` / `readIntOrNull`）：
+> 数值也转成字符串尽量保住内容，取不到用空串，绝不炸在读档上。
+
+---
+
+### F6 — 用户可见错误信息不足
+`[Medium]` `[v1]` `[错误处理]`
+
+**问题**：大多数 catch 块仅做 `debugPrint` 日志，用户界面无任何反馈。如网络超时、AI 服务异常等场景用户只能看到白屏或卡住。
+
+**状态**：🟢 批次 6（已收口）
+
+> 统一映射原语+示范屏迁移，AI 主链路边界已注明，待渐进
+
+---
+
+### F7 — 前置断言完全缺失
+`[High]` `[v1]` `[错误处理]`
+
+**问题**：全库未发现 `assert()` 调用，无法在开发阶段捕获前置条件违反。
+
+**状态**：✅ 批次 2（已修复）
+
+> 不搞全员撒 assert（那会制造一堆无意义的噪音），只补了两类**症状与原因隔得最远**的入口：
+> - `AiRouter.chatComplete`（`ai_router.dart`）：断言 `prompt` 非空、`maxTokens > 0`、
+>   `temperature ∈ [0,2]`。这三条被破坏时不会崩，而是变成「AI 返回空/半截内容」，
+>   排查成本以小时计；断言让它在开发期直接炸在调用点。
+> - `SaveService.saveGame`（`save_service.dart`）：断言槽位 id 非空且不含路径分隔符、
+>   `turnCount >= 0`。槽位 id 是**直接当文件名用的**，含 `/` 时写出去一个打不开的文件，
+>   而读档端只报「存档不存在」—— 症状和原因隔了十万八千里。
+> 已核对三处生产调用点（`mixin_systems` / `npc_chat_service` / 测试）的入参均满足断言。
+
+---
+
+### F8 — 部分 catch 块为空或仅日志
+`[Medium]` `[v3]` `[错误处理]`
+
+**问题**：`liquid_glass.dart:38` 和 `game_world_tab.dart:552` 使用 `catch (_) {}` 完全静默吞异常。
+
+**影响：** 静默吞异常会隐藏潜在 bug，导致难以排查的问题。
+
+**状态**：✅ 批次 2（已修复）
+
+> 三处静默 catch 全部补上了日志，**兜底行为一个都没改**（这点很重要：
+> 这些 catch 的降级逻辑是对的，缺的只是痕迹）：
+> | 位置 | 原状 | 改后 |
+> |---|---|---|
+> | `widgets/liquid_glass.dart` | `catch (_) {}` 静默降级 | `catch (e, st)` + 记录着色器不可用的原因（Skia 后端 / 编译失败 / 资源缺失） |
+> | `screens/game/game_world_tab.dart` | `catch (_) { return 1; }` | 记录解析失败的 `yearStr` 与异常，仍回退 1 年级 |
+> | `services/save_service.dart:185` | `catch (_) {}` 空块 | 记录「用备份修复主存档失败」——不影响本次读档，但"主存档一直是坏的、每次都靠备份顶着"必须留下痕迹 |
+>
+> 另外全库扫了一遍：除这三处外没有其他 `catch (_) {}` / `catch (e) {}` 空块。
+> 报告里提到的 `game_world_tab.dart:552` 行号与当前代码对得上（现 556 行，因补了几行注释）。
+
+---
+
+### F9 — 错误恢复策略缺乏统一模式
+`[Medium]` `[v3]` `[错误处理]`
+
+**问题**：不同模块的恢复策略不一致：save_load_screen 统一显示 SnackBar，但 screens 中的 catch 块有的弹 SnackBar、有的 debugPrint、有的静默。
+
+**状态**：🟢 批次 6（已收口）
+
+> 统一错误提示原语，存量屏幕渐进接入
+
+---
+
+### F10 — notifyListeners 调用频繁
+`[Medium]` `[v1]` `[状态管理]`
+
+**问题**：GameProvider 各 mixin 中 20+ 处 notifyListeners 调用，单次操作可能触发多次重建。
+
+**状态**：🟢 批次 8（已收口）
+
+> 批量通知收口 + `processChoice` 分支双通知合并，余下均为单次/互斥/await 间隔
+
+---
+
+### F11 — 部分 UI 缺少 dispose 清理
+`[Medium]` `[v1]` `[状态管理]`
+
+**问题**：部分 StatefulWidget 未在 `dispose()` 中清理控制器和订阅。
+
+**状态**：🟢 批次 7（已收口）
+
+> 6 处对话框局部控制器统一 whenComplete 释放
+
+---
+
+### F12 — 23 个文件使用 setState 尚未优化
+`[Medium]` `[v1]` `[Widget 性能]`
+
+**问题**：大量 `setState((){})` 调用会触发整个 widget 子树重建，未使用 `ValueListenableBuilder` 或 `Selector` 做局部刷新。
+
+**状态**：🟢 批次 13（已收口）
+
+> 高频击键热点 3 处 ValueNotifier 局部刷新；低频点击与滞回滚动维持现状
+
+---
+
+### F13 — game_narrative_tab build() 1,927 行
+`[High]` `[v1]` `[Widget 性能]`
+
+**问题**：`lib/screens/game/game_narrative_tab.dart` 的 build 方法接近 2,000 行，包含大量嵌套条件和三目运算符，可读性和维护性极差。
+
+**状态**：🟢 批次 11b（已收口）
+
+> 高频独立 UI 段（属性闪帧、AI 失败提示等）抽取到
+> `widgets/narrative_widgets.dart`，`game_narrative_tab.dart` 1,927 → 约 1,670 行，改为
+> 从 `widgets/narrative_widgets.dart` 组合。
+
+---
+
+### F14 — world_map_screen.dart 1,488 行
+`[Medium]` `[v2]` `[Widget 性能]`
+
+**问题**：地图渲染单文件超 1,400 行，包含自定义 CustomPainter、手势处理、动画逻辑等，应拆分为多个文件。
+
+**状态**：🟢 批次 12a（已收口）
+
+> 地图点位布局与绘制逻辑拆到 `screens/world_map/` 目录
+> （`marker_layout.dart` / `map_area_painter.dart`），`world_map_screen.dart` 1,488 → 约 1,200 行。
+
+---
+
+### F15 — 异步操作无 CancellationToken
+`[Medium]` `[v1]` `[异步安全]`
+
+**问题**：全库未使用 `CancellationToken`、`CancelableOperation` 或 `Completer` 管理异步操作生命周期。
+
+**状态**：✅ 批次 17（核对关闭）
+
+> 这条结论同样犯了「正式条目在 lib/ 里仅按关键词抽查、漏掉依赖链实现」的错——
+> AI 服务层（全库**最重要、最长的异步链路**）早在审查前就内置了完整的取消令牌机制：
+>
+> - `lib/services/ai_router.dart`：`CancelToken()`（整条调用链共用，仅全局超时取消，见
+>   [L254-282](#)）；每次尝试又单独建 `callToken`，让单次超时不炸掉整条 Key 链（L404-422），
+>   只有共享 token 被取消才 `rethrow`（L470-477）；配套 `CancelableBridge.attach/detach`（L542-558）。
+> - `lib/services/deepseek_service.dart`：`chatComplete` 透传 `CancelToken?`，底层 HTTP 一并取消。
+>
+> 这正是「想让异步可取消应该怎么写」的标准做法——审查时只搜了全局有没有 CancelToken 字样，
+> 没把它和"异步操作"的关系建立起来，又没看一眼服务层，于是得出"全库未使用"的错误结论。
+>
+> **剩余异步操作评估**：除 AI 链路外，全库其余异步均为 await-guarded 的短促操作——
+> `Future.delayed`（打字机/防抖/退避）全部带 `mounted` 守卫（批次 8 F17、批次 14 CL1/CL2 已核对）；
+> 存档防抖在途节流 + `saveNow` 先 await 在途再无条件写（`game_provider.dart`）；无 Stream/isolate/worker。
+> 为这些已正确收口的短促操作再套一层 `CancelableOperation` 是过度设计，收益为负。
+> **因此不引入全库取消框架**——这是有意的工程取舍，而非疏漏。
+
+---
+
+### F16 — SharedPreferences fire-and-forget
+`[High]` `[v2]` `[异步安全]`
+
+**问题**：多处 `SharedPreferences.getInstance().then()` 未 await、未 catch，属 fire-and-forget 模式。
+
+**状态**：✅ 批次 3（已修复）
+
+> 4 处 `.then((prefs) => ...)` 全部改走 `PrefsStore.instance.writeAsync(...)`
+> （`game_started` / `display_mode` / `identity_mode` / `era`）。
+> 关键区别不是"改成 await"，而是**仍然不阻塞 UI、但一定会 catch 并记日志** ——
+> 设置项写慢一点无所谓，静默丢掉才是真问题（用户改了设置、下次打开又变回去，
+> 还以为是玄学）。封装见 D4。
+
+---
+
+### F17 — 部分异步操作未检查生命周期
+`[Medium]` `[v3]` `[异步安全]`
+
+**问题**：`game_narrative_tab.dart:1731` 的 `Future.delayed` 后虽然有 mounted 检查，但前面的 `setState` 调用在 `Future.delayed` 之前未检查。
+
+**状态**：🟢 批次 8（核对关闭）
+
+> 核对：`Future.delayed` 前后均有 mounted 检查
+
+---
+
+### F18 — _maxRetriesPerService = 0 注释矛盾
+`[Low]` `[v1]` `[网络层]`
+
+**问题**：配置值为 0 但注释称"重试 2 次"，文档与实现不一致。
+
+**状态**：✅ 批次 1（核对关闭）
+
+> `lib/services/ai_router.dart:98-112` 现在的注释长达 15 行，完整写了「为什么是 0」：
+> 允许重试会让单 Key 最坏耗时变成 `perCallTimeout×(n+1)+退避`（2 次重试 = 156s），
+> 而全局超时在 summary 场景上限只有 60s，第一个坏 Key 就会把时间吃光。
+> 注释与代码一致，**无需改动**。同类的 F47 一并核对为已修复。
+
+---
+
+### F19 — crash_logger 同步写盘
+`[Low]` `[v1]` `[文件 I/O]`
+
+**问题**：CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
+
+**状态**：✅ 批次 2（核对关闭）
+
+> `CrashLogger` 现在有两个入口，同步是**分场景的正确选择**，不是遗漏：
+> - `record()` —— 已经是**全异步**（`await f.writeAsString`），日常记录走这条；
+> - `recordSync()` —— 崩溃 handler 专用。进程随时会被系统杀掉，异步写根本来不及落盘，
+>   写完前进程一死崩溃就"没有记录"了。这里必须同步 + `flush: true`；
+> - `logHeartbeat()` —— ANR 定位专用，带 **300ms 节流**（同一瞬间爆发的心跳只落盘第一条，
+>   内存始终最新），把每回合 2~4 次同步写降到 1~2 次。
+>
+> 三者都在源码注释里写明了"为什么必须同步"。所以这条结论是：**不需要改**，
+> 强行改成异步反而会让崩溃日志彻底失效。
+
+---
+
+### F20 — 源码文本断言迁移
+`[High]` `[v1]` `[测试质量]`
+
+**问题**：大量测试用「读 `lib/` 源码文本、断言某行存在」的方式做守卫。批次 20-28 逐组迁移，
+并在批次 28 对存量做了**全量分类**，结论：**可行为化的子集已经做完，剩下 176 处不该再迁**。
+
+**已迁移（批次 20-28，9 组，扫描引用 181 → 176）**
+
+| 批次 | 语义域 | 改法 |
+|---|---|---|
+| 20 | scar 接线组 | `Player` 存档往返 / `effectiveAttr` 真跑 |
+| 21 | 指令缺口「格式化方法存在」 | 真调 `formatMemories()` 等并断言输出标题 |
+| 22 | /收藏 空态文案 | 真调 `formatCollection()` |
+| 23 | /宠物 购买分支 | 真跑 `buyPet` 三个分支 |
+| 24 | 学院杯负号渲染 | 真跑 `formatHouseCup()`，断言无 `+-5` |
+| 25 | 档案可见性 | 真跑 `formatCharacterDossier()` 查不可见 NPC |
+| 26 | /状态 职业分流 | 经 `/状态` 命令真跑 `_formatStatus()` |
+| 27 | 存档往返组 | `Player.children` / `LoveState` 婚姻孕期字段真往返 |
+| 28 | 数据层 5 条 | 正则扫 `lib/data/*.dart` → 直接 import 断言真实对象 |
+
+**存量分类（批次 28，176 处引用 / 127 条用例）**
+
+| 类别 | 条数 | 典型形态 | 该不该迁 |
+|---|---|---|---|
+| B 跨文件接线守卫 | **84** | `expect(src.contains('rivalryDirectiveFor'), isTrue, reason: '又变成没人读的死表了')` | ❌ 行为化需拉起完整叙事/命令链路 |
+| C 反向约束 | **40** | 「lib/ 下不再出现 `Navigator.push(`」「旧硬编码数值不得回潮」 | ❌ 断言"某串字不出现"，无行为等价物 |
+| D 数据/文案表校验 | ~3 | 扫 `lib/data/` 取字段集合 | ✅ 可改直接 import（本批已迁 5 条） |
+
+**两条"看着能改、改了反而更弱"而保留的**（`cg_unlock_conditions.dart` 条件组）：
+`CgUnlockEvaluator.evaluate` 只接受 `cgId`、无法注入合成条件，借真实 CG 跑会被多条件组合
+掩盖漏判；「注释里提到的类型都在枚举里」保的是"文档别撒谎"，换成测试里写死枚举清单
+就丢掉了文档那一半。
+
+**F20 的目标就此改写为**：
+
+1. 迁移可行为化子集 —— **已完成**；
+2. 对 B / C 两类**登记保留理由**（各批次记录里逐条写过）；
+3. **新增断言默认写行为型，不再新增源码扫描** —— 存量 176 处是历史包袱，新增的没理由走老路。
+
+**遗留教训**：批次 20 迁移的一条曾是**随机测试**（开局特质 RNG 导致 CI 偶发红），
+已在批次 27.1 修正为降幅断言。迁移前必须确认链路上没有随机源，详见 §9 批次 27.1。
+
+各批次逐条改法见 [§9 修复记录](#9-修复记录批次-1--281) 批次 20-28。
+
+**状态**：🟗 批次 28（重新定性）
+
+> 9 组共迁移 18 条，扫描 181→176；**可行为化池子已近枯竭，余下 84 条接线守卫 + 40 条反向约束无行为等价物，F20 目标已重新定性**；27.1 修正批次 20 那条随机测试
+
+---
+
+### F21 — UI 测试缺失
+`[Medium]` `[v1]` `[测试质量]`
+
+**问题**：无 Widget 测试 / 集成测试，所有测试均为纯逻辑单元测试。
+
+**状态**：🟢 批次 16（核对关闭）
+
+> 核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签
+
+---
+
+### F22 — 测试文件规模分布不均
+`[Medium]` `[v2]` `[测试质量]`
+
+**问题**：`progression_fix_test.dart` 3,038 行，占全部测试的 19%，而部分测试文件仅 200+ 行。
+
+**状态**：✅ 批次 19（已修复）
+
+> 把「数据一致性 / 送礼实物 / 材料产出」8 个 `_xxxGroup()`
+> （送礼判定、送礼数据对账、装备槽、送礼命令、材料产出分档、事件锚点、已知地点、
+> 学院名、血统标签、属性标签、委托类型标签、/状态职业）下沉到独立文件
+> `test/data_consistency_test.dart`，并对原文件清理了据此失效的 9 处导入。
+> 单体文件从 3,034 行降到 2,321 行（约 −23%），聚焦更清晰。批次 19 详情见文末。
+
+---
+
+### F23 — 全中文硬编码，无国际化
+`[Medium]` `[v1]` `[国际化]`
+
+**问题**：所有 UI 文本直接硬编码为中文，未使用 ARB 或 l10n 框架。
+
+**状态**：⬜ 未处理
+
+---
+
+### F24 — 未使用 Semantics 标签
+`[Low]` `[v1]` `[无障碍]`
+
+**问题**：仅 5 处使用 `Semantics` widget，屏幕阅读器支持几乎为零。
+
+**状态**：🟢 批次 14（已收口）
+
+> 主游戏界面 5 处高频交互补语义标签：发送/指令中心/推进/快捷行动 chip/快速存档；地图点位与其余 IconButton 留作后续
+
+---
+
+### F25 — 大量硬编码魔法数字
+`[Medium]` `[v1]` `[配置管理]`
+
+**问题**：Duration 值、padding、margin、动画时长等大量硬编码，未提取为命名常量。
+
+**状态**：🟢 批次 15（已收口）
+
+> 新增 `MiuiDuration` 语义时长 token，收敛 UI 层 17 个文件 29 处散落 Duration；服务层超时属业务配置、组件专属时长维持 `MiuiMotion` 语义，均注明边界
+
+---
+
+### F26 — debugPrint 生产环境残留
+`[Low]` `[v1]` `[日志]`
+
+**问题**：20+ 处 `debugPrint` 在生产构建中仍然输出，部分日志包含敏感信息。
+
+**状态**：✅ 批次 2（已修复）
+
+> - 新增 `lib/utils/debug_log.dart`，导出 `debugLog(String?, {int? wrapWidth})`：
+>   签名与 `debugPrint` **完全一致**，`kDebugMode` 为 false 时直接返回。
+> - 全库 17 个文件、84 处 `debugPrint(` 一次性替换为 `debugLog(` 并补上 import
+>   （`debug_log.dart` 自身内部的 `debugPrint` 保留，否则会无限递归 —— 这个坑踩了一次，已修）。
+> - 为什么值得做：`debugPrint` 只做**节流**、不做**环境判断**，release 里照样往 stdout 写；
+>   AI 链路那批日志带着完整 prompt、response 与 Key 片段，等于把用户对话内容输出到系统日志。
+> - 新增 `test/debug_log_test.dart`（9 个用例）钉住脱敏边界。
+
+---
+
+### F27 — 缺少 Android 签名配置模板
+`[Low]` `[v1]` `[构建系统]`
+
+**问题**：Android 构建缺少签名配置模板，新开发者需手动配置。
+
+**状态**：✅ 批次 1（已修复）
+
+> - 新增 `android/key.properties.example`：模板含 `storeFile` / `storePassword` / `keyAlias` / `keyPassword` 四项 + 一份现成的 `keytool -genkey` 命令，复制改名即可用。
+> - `android/app/build.gradle`：存在 `key.properties` 时用它签 release，
+>   **不存在时自动回退 debug 签名**。回退是关键 —— CI 没有私钥也能出包，
+>   不会因为加了签名配置就把构建打断。
+> - `.gitignore` 追加 `android/key.properties` 与 `*.jks` / `*.keystore`，
+>   模板入库、真身不入库。
+> - README「构建 APK」补上这段说明。
+> 决策记录见 `docs/ARCHITECTURE.md` ADR-010。
+
+---
+
+### F28 — 路由模式混合不统一
+`[Medium]` `[v2]` `[导航/路由]`
+
+**问题**：同时使用 `Navigator.pushNamed`（命名路由）和 `Navigator.push(MaterialPageRoute(...))`（直接构造），无统一路由表。
+
+**状态**：🟢 批次 10（已收口）
+
+> `router/app_routes.dart` 唯一路由源，`main.dart` 引用 `appRoutes` 表
+
+---
+
+### F29 — 硬编码导航集中在 game_phone_tab
+`[Medium]` `[v2]` `[导航/路由]`
+
+**问题**：`game_phone_tab.dart` 中所有导航目标硬编码在 widget 中。
+
+**状态**：🟢 批次 10（已收口）
+
+> 幽灵路由 `/world_map` `/save_load` 清除，低频页走 `pushRoute` 构造器
+
+---
+
+### F30 — story_text_renderer 正则密集
+`[High]` `[v2]` `[正则/文本解析]`
+
+**问题**：`lib/utils/story_text_renderer.dart` 中 30+ 个 `RegExp` 实例，部分在热路径中重复创建。文本渲染性能瓶颈所在。
+
+**状态**：🟢 批次 5（核对关闭）
+
+> 核对：全部静态化，含标签/动词预编译
+
+---
+
+### F31 — 部分 RegExp 未使用静态缓存
+`[Low]` `[v2]` `[正则/文本解析]`
+
+**问题**：部分 RegExp 未声明为 `static final`，每次方法调用都会重新编译。
+
+**状态**：✅ 批次 5（已修复）
+
+---
+
+### F32 — 频繁的 List.from + sort 重建
+`[Medium]` `[v2]` `[集合/内存]`
+
+**问题**：`story_text_renderer.dart` 中多处 `.toList()..sort()` 模式，高频调用时产生大量临时对象。
+
+**状态**：🟢 批次 5（核对关闭）
+
+> 核对：热路径已静态缓存，其余一次性排序非热路径
+
+---
+
+### F33 — 全局缓存缺乏清理策略
+`[Low]` `[v2]` `[集合/内存]`
+
+**问题**：部分全局 Map 缓存无 LRU 或定时清理机制，长期运行可能内存泄漏。
+
+**状态**：✅ 批次 5（已修复）
+
+---
+
+### F34 — 多个 AnimationController 未释放
+`[Medium]` `[v2]` `[动画/渲染]`
+
+**问题**：`liquid_glass_nav_bar.dart` 和 `miuix_components.dart` 中的 AnimationController 在 `dispose()` 中未调用 `dispose()`。
+
+**状态**：✅ 批次 8（误判更正）
+
+> 误判：`liquid_glass_nav_bar` / `miuix_components` 均已 dispose
+
+---
+
+### F35 — liquid_glass 着色器每次 build 重建
+`[Low]` `[v2]` `[动画/渲染]`
+
+**问题**：每次 build 都重新创建 fragment shader 实例，未做缓存。
+
+**状态**：✅ 批次 5（已修复）
+
+---
+
+### F36 — SharedPreferences fire-and-forget
+`[High]` `[v2]` `[存储模式]`
+
+**问题**：多处 `SharedPreferences.getInstance().then()` 未 await、未 catch，写入失败不可知。
+
+**状态**：✅ 批次 3（已修复）
+
+> （与 F16 同一批改动）
+> 全库 16 处 `SharedPreferences.getInstance()` 现已收敛为 1 处（`PrefsStore.init`），
+> 写入路径全部带 label 与 catch，失败日志形如
+> `[PrefsStore] 偏好写入失败(display_mode): ...`，能直接看出是哪个设置丢了。
+
+---
+
+### F37 — SharedPreferences 缺少批量写入
+`[Medium]` `[v2]` `[存储模式]`
+
+**问题**：多个独立 `setBool`/`setInt` 调用，未使用 `SetBatch` 批量写入。
+
+**状态**：✅ 批次 3（已修复）
+
+> `PrefsStore.write(label, (prefs) { ... })` 的闭包里可以写任意多个 key，
+> 一次调用只提交一次。`clearApiKeyFor` 里原先两次独立 `remove`（各提交一次）
+> 已合并进同一个闭包。测试用"闭包被调用次数 == 1"钉住这个契约。
+> 附带更正：报告里的 `SetBatch` 不是 shared_preferences 的 API；
+> 该插件本来就是"多次 setXxx + 一次提交"的模型，真正的收益是把多次提交合成一次。
+
+---
+
+### F38 — Barrel 文件编译膨胀
+`[Low]` `[v2]` `[导入管理]`
+
+**问题**：`game_provider_mixins.dart` 导出 9 个 mixin，`other_screens.dart` 导出 6 个 screen，Any import of these barrel files pulls in all dependencies。
+
+**状态**：⬜ 未处理
+
+---
+
+### F39 — 大量非空断言（!）
+`[Medium]` `[v2]` `[空安全]`
+
+**问题**：20+ 处 `!` 非空断言，如果上游数据变化可能导致运行时崩溃。
+
+**状态**：🟢 批次 14（核对关闭）
+
+> 高危 4 处查表/兜底断言改判空回退：careerById×2 / rankDefById / currentCrushName；其余约 280 处核对为守卫/框架/正则组等安全惯用法，维持现状
+
+---
+
+### F40 — 14 个 mixin 全部混合到 GameProvider
+`[High]` `[v2]` `[Mixin 架构]`
+
+**问题**：`GameProvider` 使用 14 个 mixin，单类承担过多职责，违反接口隔离原则。
+
+**状态**：✅ 批次 11（已修复）
+
+> 核对后判定维持混合式组合——`GameProvider` 是无参构造的全局
+> 单例状态容器，mixin 在此是不需要额外 DI 的「按域拆分实现」手段，职责已按命名域分组清晰
+> （叙事/响应/关系/系统/学院/死亡/职业…），再引入组合/接口隔离只会放大样板代码而无实质收益。
+> 属「核对后不动的有结论」条目。
+
+---
+
+### F41 — mixin 间存在隐式通信
+`[Medium]` `[v2]` `[Mixin 架构]`
+
+**问题**：Mixin 之间通过 `GameProvider` 的共享状态通信，无显式接口契约。
+
+**状态**：⬜ 未处理
+
+---
+
+### F42 — 测试文件规模分布不均
+`[Medium]` `[v2]` `[测试数据]`
+
+**问题**：`progression_fix_test.dart` 3,038 行，占总测试 19%，而部分文件仅 200+ 行。
+
+**状态**：✅ 批次 19（已修复）
+
+> 同上文 F22：数据一致性 / 送礼 / 材料 / 学院 / 血统 / 属性 /
+> 委托 / 职业 共 8 组下沉到 `data_consistency_test.dart`，原文件缩减约 23%、死导入清理。
+
+---
+
+### F43 — 测试数据设置重复
+`[Medium]` `[v2]` `[测试数据]`
+
+**问题**：多个测试文件中的 setUp 块重复创建相似的 Player/WorldState 对象。
+
+**状态**：✅ 批次 9（已修复）
+
+> 与 D1 同一问题在两轮报告里重复收录；`test/helpers/test_fixtures.dart` 收口
+
+---
+
+### F44 — 图片格式不统一，加载策略单一
+`[Low]` `[v2]` `[资源管理]`
+
+**问题**：头像同时使用 PNG 和 JPG 格式，无 webp 或 avif 等现代格式，未使用 `cached_network_image` 或预加载策略。
+
+**状态**：⬜ 未处理
+
+---
+
+### F45 — 部分依赖版本约束过宽
+`[Low]` `[v2]` `[依赖管理]`
+
+**问题**：`cupertino_icons: ^1.0.8` 等允许 major 版本升级，可能引入 breaking change。
+
+**状态**：✅ 批次 1（已修复）
+
+> 先更正：Dart 的 `^1.0.8` 语义是 `>=1.0.8 <2.0.0`，**本来就不允许**跨 major，
+> 所以"约束过宽"这个定性不成立。真正的问题是**上界是隐式的**，
+> 「这个包我们允许它升到哪一版」要脑补 caret 规则才知道。
+> 改法：`pubspec.yaml` 全部依赖改写成显式区间（`>=当前 <下一个 major`），
+> 上界一律取 `pubspec.lock` 当前解析版本的下一个 major，**不收窄任何现有解析结果**
+> （已逐个核对 lock：cupertino_icons 1.0.9 / dio 5.11.1 / provider 6.1.5+1 /
+> shared_preferences 2.5.5 / uuid 4.6.0 / flutter_slidable 3.1.2 /
+> path_provider 2.1.6 / flutter_secure_storage 9.2.4 / flutter_lints 4.0.0，全部落在区间内）。
+> `flutter_secure_storage` 的上界另加了注释：9.x 要求 minSdk ≥ 23，升 10.x 前要先确认。
+
+---
+
+### F46 — 缺少依赖版本锁定检查
+`[Low]` `[v2]` `[依赖管理]`
+
+**问题**：无定期 `dart pub outdated` 检查或 Dependabot 配置。
+
+**状态**：✅ 批次 1（已修复）
+
+> 新增 `.github/dependabot.yml`：
+> - `pub` 生态每周一 03:00（Asia/Shanghai）扫描，单生态最多 5 个 PR；
+> - `github-actions` 生态每月扫一次（CI 里 pin 的 `actions/checkout@v4` 之类过期会有安全告警）；
+> - 打 `dependencies` / `ci` 标签，commit 前缀 `chore(deps)` / `chore(ci)`。
+> 与 F45 的显式上界配套：major 升级会单独成一个 PR，breaking change 不会混进无关提交。
+
+---
+
+### F47 — 部分注释与代码不一致
+`[Medium]` `[v2]` `[注释健康度]`
+
+**问题**：`_maxRetriesPerService = 0` 注释称"重试 2 次"，与代码矛盾。
+
+**状态**：✅ 批次 1（核对关闭）
+
+> 全库检索「重试 N 次」类注释，仅剩 `mixin_narrative.dart:658` 的
+> `retriesLeft = 2`，那是**叙事违规自纠正**的重试（critical 级违规 / BUG-H
+> 模型返回选项而非叙事时重来），与 `_maxRetriesPerService` 不是同一回事，语义自洽。
+> `ai_router.dart` 侧同 F18，注释已重写完毕。
+
+---
+
+### F48 — AI 服务层缺少请求超时统一管理
+`[Medium]` `[v3]` `[AI 架构]`
+
+**问题**：`deepseek_service.dart` 和 `ai_router.dart` 中不同场景的超时时间未统一管理，分散在多个文件中。
+
+**状态**：🟢 批次 8（已收口）
+
+> 超时策略收口 `ai_timeouts.dart` 单一来源
+
+---
+
+## 6. 条目详情 · v3 新增系列
+
+30 条 v3 新增条目（S 安全 / P 性能 / D 重复 / DS 设计模式 / DOC 文档 / CS 冷启动 / SI 持久化 / CL 回调 / L 懒加载 / PC 平台），按系列与编号升序。
+
+### CL1 — 部分回调未在 dispose 中取消
+`[Medium]` `[v3]` `[回调生命周期]`
+
+**问题**：部分 `StatefulWidget` 使用 `addListener` 或 `StreamSubscription`，但未在 `dispose()` 中调用 `removeListener` 或 `cancel()`。
+
+**状态**：🟢 批次 14（核对关闭）
+
+> 全库核对：唯一缺口 matchmaker_screen post-frame 回调补 mounted 守卫；addListener/AnimationController/TabController/Future.delayed 均已成对释放
+
+---
+
+### CL2 — 闭包捕获可能的内存泄漏
+`[Low]` `[v3]` `[回调生命周期]`
+
+**问题**：部分匿名闭包在 `Future.delayed` 或 `Timer` 中捕获 `BuildContext`，widget 销毁后闭包仍执行。
+
+**状态**：🟢 批次 14（核对关闭）
+
+> 核对：全库无 StreamSubscription/Timer 使用；3 处 Future.delayed 回调均带 mounted 守卫
+
+---
+
+### CS1 — 启动时同步加载 SharedPreferences
+`[High]` `[v3]` `[冷启动性能]`
+
+**问题**：`AppProvider` 构造函数中 await `SharedPreferences.getInstance()`，阻塞启动流程直到读取完成。
+
+**状态**：🟡 批次 3（部分完成）
+
+> 先更正位置：await 不在构造函数里（构造函数是纯同步的），而在 `main.dart` 的启动区；
+> 真正慢的也不是 SharedPreferences，而是**加密存储的 Key 读取**。
+> 已做的：
+> - `loadSettings()` 里三个 provider 各 1~2 次 `KeyStore` 读取（Keystore /
+>   EncryptedSharedPreferences，比 SharedPreferences 慢一个量级）**原先全串行**，
+>   改成两轮 `Future.wait`：先并行读所有 provider 的多 Key，再对没读到的并行读单 Key。
+>   跨 provider 无依赖可并行；同一 provider 内 `readKeys → readKey` 有依赖，只能分两轮。
+>   最坏从「6 次 platform 往返串成一条」降到「2 轮」。
+> - SharedPreferences 实例由 `PrefsStore` 统一缓存（见 D4），后续读取不再走 channel。
+>
+> **没做的**：把 `runApp` 提前到加载完成之前（splash 首帧方案）。主游戏页深度依赖
+> `appProvider` 的 Key 与场景路由，提前渲染就要引入"设置未就绪"中间态，
+> 改动面横跨 `main.dart` / `app.dart` / 所有读 `AiProvider` 的页面，
+> 收益（几十到几百毫秒）配不上这个回归风险。等真有启动耗时投诉再做。
+
+---
+
+### CS2 — 启动时加载所有 NPC 数据
+`[Medium]` `[v3]` `[冷启动性能]`
+
+**问题**：`npc_data.dart` 1,581 行，所有 NPC 数据在启动时一次性加载到内存。可按需加载或懒加载。
+
+**状态**：✅ 批次 3（误判更正）
+
+> `npc_data.dart` 里全是 **`const` 顶层集合**（`staffSeeds` / `harrySameGryffindor` /
+> `maraudersSeeds` …），只有 `firstWarSeeds` 是 `final`。Dart 顶层变量是**懒初始化**
+> 的：只在第一次被引用时才求值，`const` 更是在编译期就规范好了。
+> 所以"启动时一次性加载所有 NPC 数据"并不存在 —— 1581 行是源码规模，不是启动期开销。
+>
+> 顺带记一条方法论：**用行数推断性能问题不可靠**。本报告里 CS2 / L1 / P2 都有这个毛病，
+> 只有 F1 / F13 / F14 / F22 那种"行数 = 可维护性"的用法才成立。
+
+---
+
+### CS3 — 缺少启动画面优化
+`[Low]` `[v3]` `[冷启动性能]`
+
+**问题**：启动画面为默认 Flutter 白色，无品牌启动页或预加载指示。
+
+**状态**：⬜ 未处理
+
+---
+
+### D1 — 测试数据设置重复
+`[Medium]` `[v3]` `[代码重复度]`
+
+**问题**：多个测试文件的 `setUp` 块重复创建相似的 `Player`、`WorldState`、`GameProvider` 对象，可提取为测试 fixture。
+
+**状态**：🟢 批次 9（已收口）
+
+> 新增 `test/helpers/test_fixtures.dart`：`makeGame({offlineQuickMode})` 成为唯一来源。
+> `provider_logic_test` / `round15_fixes_test` / `round16_fixes_test` / `round16c_repro_test`
+> 四份完全相同的 `Future<GameProvider> makeGame()` 定义全部删除，改为引用共享 fixture
+> （round16c 的离线快速模式差异收敛为参数 `offlineQuickMode: true`）。
+> 结构护栏见 `test/code_dedup_audit_test.dart`（test/ 下出现第二份 makeGame 定义即报错）。
+
+---
+
+### D2 — 重复的导航模式
+`[Medium]` `[v3]` `[代码重复度]`
+
+**问题**：`Navigator.push(context, MaterialPageRoute(builder: ...))` 模式在 10+ 个文件中重复出现，可封装为辅助函数。
+
+**状态**：🟢 批次 9（已收口）
+
+> `lib/utils/ui_helpers.dart` 新增 `pushRoute<T>(context, page)`：Route 构造细节（全屏/动效/泛型）
+> 集中一处维护，调用方只表达「去哪」。8 个文件 20 处 `Navigator.push(MaterialPageRoute(...))`
+> 全部收口（`game_phone_tab` 10、`communication_screen` 2、`game_narrative_tab` 2、
+> `home_screen` 2、`shop_tab` / `settings_body` / `settings_crash_section` / `game_bottom_input` 各 1）。
+> `Navigator.pushNamed`（命名路由跳转）不在此列，按原样保留。
+> 结构护栏见 `test/code_dedup_audit_test.dart`（lib/ 下 MaterialPageRoute 只允许出现在
+> ui_helpers.dart，且不再出现 `Navigator.push(` 直连）。
+
+---
+
+### D3 — 重复的 try/catch 模式
+`[Low]` `[v3]` `[代码重复度]`
+
+**问题**：`save_load_screen.dart` 中 7 个 try/catch 块结构几乎相同，仅调用方法不同。
+
+**状态**：🟢 批次 6（已收口）
+
+> `_showError` 统一错误处理，骨架差异属必要
+
+---
+
+### D4 — 重复的 SharedPreferences 读取模式
+`[Low]` `[v3]` `[代码重复度]`
+
+**问题**：`app_provider.dart` 中多次 `SharedPreferences.getInstance()` 调用，可封装为单例或缓存。
+
+**状态**：✅ 批次 3（已修复）
+
+> 新增 `lib/services/prefs_store.dart`：`PrefsStore` 单例缓存实例 + 三个入口
+> （`init()` / `write()` / `writeAsync()`）+ 三个带 fallback 的同步读。
+> `app_provider.dart` 里 9 处调用全部改走它，并且**把 `shared_preferences` 的 import
+> 从 app_provider 里删掉了** —— 现在想绕过 PrefsStore 直接写偏好得先重新 import，
+> 是个天然阻力。刻意没做「全局自动初始化」：初始化失败是有意义的信号，
+> 静默吞掉只会让问题更难查。
+
+---
+
+### DOC1 — 缺少 README 项目总览
+`[Medium]` `[v3]` `[文档完整性]`
+
+**问题**：项目根目录无 `README.md`，新开发者无法快速了解项目用途、架构、如何运行。
+
+**状态**：✅ 批次 1（误判更正）
+
+> 仓库根目录 `README.md` 有 207 行，涵盖核心特色、五个时代、玩法总览、60+ 指令、
+> 隐私说明、更新日志、开发相关。**这条是 v3 报告的误判。**
+> 真正存在的问题是 README 里的**事实已经过期**，本轮做了校正：
+> - 徽章：Flutter 3.16+ → **3.44+**、Dart 3.2+ → **3.12+**（与 `pubspec.yaml` 的
+>   `sdk: '>=3.12.0'` / `flutter: '>=3.44.0'` 对齐，写低了会让人以为老版本能跑）；
+>   版本 v3.5.5 → **v3.9.3**；测试数 1254 → **1314**（与 v3 报告统计一致）。
+> - AI 提供商列表里把已不在代码中的「智谱」删掉（实际是 deepseek / agnes / sensenova 三家）。
+> - 「构建 APK」补正式签名说明（配合 F27）；「开发相关」补上架构文档与 API 文档的入口。
+> - 「存档兼容」章节原文写的字段名 `_saveVersion` 是**错的**（实际是 `save_version`，
+>   常量 `kSaveVersion` 在 `save_service.dart`），已改正。
+
+---
+
+### DOC2 — 缺少架构文档
+`[Medium]` `[v3]` `[文档完整性]`
+
+**问题**：无架构决策记录（ADR）或架构概览图，新加入者需通读代码才能理解整体架构。
+
+**状态**：✅ 批次 1（已修复）
+
+> 新增 `docs/ARCHITECTURE.md`（约 300 行）：
+> - **架构全景图**（Mermaid flowchart）：UI / 状态 / 领域逻辑 / 数据 / 外部依赖五层，
+>   含四条依赖方向铁律（UI 不直接碰 service、mixin 之间不互相 import、
+>   `data/` 保持纯常量、模型 fromJson 必给缺省值）；
+> - **11 条 ADR**：mixin 组合选型（ADR-001，含已知债与约束）、手写序列化不引代码生成
+>   （ADR-002）、AI 单 Key 不重试（ADR-003）、全局超时按 Key 数算（ADR-004）、
+>   老档兼容铁律（ADR-005）、存档版本号唯一来源（ADR-006）、CI 自动 bump 版本（ADR-007）、
+>   **暂不引入 Repository/DI（ADR-008，附复查触发条件）**、CI 锁 flutter 版本（ADR-009）、
+>   release 签名可回退（ADR-010）、依赖显式上界（ADR-011）；
+> - 「一次玩家输入」的时序图（Mermaid sequenceDiagram）；
+> - 末尾一张「审查项 ↔ 本文 ADR」对照表，方便后续按审查条目回查。
+>
+> 顺带把 DS1 / DS2 这两条「建议引入 Repository / DI 容器」明确回复了：
+> 目前只有一个本地数据源，加一层无行为差异的接口不划算，写进了 ADR-008 并给了复查触发条件。
+
+---
+
+### DOC3 — 缺少 API 文档
+`[Low]` `[v3]` `[文档完整性]`
+
+**问题**：AI 服务接口（DeepSeekService、AiRouter）无外部 API 文档，第三方开发者无法集成。
+
+**状态**：✅ 批次 1（已修复）
+
+> 新增 `docs/AI_SERVICE_API.md`：组件一览、`AiScene` / `AiProvider` / `AiConfig` 说明、
+> `AiRouter.chatComplete` 完整签名与四步行为、**三层超时模型表**（Dio receiveTimeout >
+> 路由层 perCallTimeout，否则日志里"网关慢"和"请求挂死"长得一样）、错误模型与熔断参数、
+> `NpcChatService` / `KeyStore` 用法、测试注入点（`AiRouter(services: {...})`）、
+> 以及调试日志的两段式机制。
+> 文中同时点出 S1（KeyStore 无降级策略）为已知缺口，避免文档把现状写得比实际更好。
+
+---
+
+### DS1 — 缺少 Repository 模式
+`[Medium]` `[v3]` `[设计模式]`
+
+**问题**：数据访问逻辑（JSON 序列化、文件读写、SharedPreferences）直接混杂在 Provider 和 Service 中，未使用 Repository 模式隔离。
+
+**影响：** 数据源变更（如从本地文件改为数据库）需修改多个层。
+
+**状态**：✅ 批次 1（定案不做）
+
+> 定案不做：单本地数据源加无行为差异的接口不划算，写入 ADR-008 并附复查触发条件
+
+---
+
+### DS2 — 缺少 Service Locator 或 DI 容器
+`[Medium]` `[v3]` `[设计模式]`
+
+**问题**：服务依赖通过构造函数注入，但无集中式 DI 容器管理生命周期。部分服务（如 `NpcChatService`）在 `GameProvider` 中延迟创建。
+
+**状态**：✅ 批次 1（定案不做）
+
+> 定案不做，同 DS1 / ADR-008
+
+---
+
+### L1 — 缺少延迟加载
+`[Medium]` `[v3]` `[延迟加载]`
+
+**问题**：项目仅在 `pubspec.yaml` 中声明了 `shaders` 和 `assets/images/avatars/`，所有资源在启动时加载。大量 NPC 数据（`npc_data.dart` 1,581 行）在启动时全部加载。
+
+**状态**：⬜ 未处理
+
+---
+
+### L2 — 图片无懒加载
+`[Medium]` `[v3]` `[延迟加载]`
+
+**问题**：所有头像图片（PNG/JPG）在 widget 构建时立即加载，未使用 `FadeInImage` 或占位图策略。
+
+**状态**：⬜ 未处理
+
+---
+
+### L3 — screen 级别无懒加载
+`[Low]` `[v3]` `[延迟加载]`
+
+**问题**：所有 screen 在导航时直接构建，未使用 `DeferredWidget` 或 `lazy loading` 拆分代码包。
+
+**状态**：⬜ 未处理
+
+---
+
+### P1 — 缺少性能基准测试
+`[High]` `[v3]` `[性能基准]`
+
+**问题**：全项目无任何性能基准测试（benchmark test）。无渲染帧率、启动时间、AI 响应时间、序列化吞吐量等关键指标监控。
+
+**影响：** 性能退化无法被自动检测，只能靠人工发现。
+
+**状态**：⬜ 未处理
+
+---
+
+### P2 — story_text_renderer 渲染性能瓶颈
+`[High]` `[v3]` `[性能基准]`
+
+**问题**：`story_text_renderer.dart` 2,163 行，30+ 正则表达式，每次文本渲染执行大量字符串操作。更早版本中曾因 colon 扫描死循环导致 ANR。
+
+**影响：** 长文本渲染时可能导致 UI 卡顿。
+
+**状态**：⬜ 未处理
+
+---
+
+### P3 — 频繁的集合重建
+`[Medium]` `[v3]` `[性能基准]`
+
+**问题**：`.toList()..sort()` 模式在 story_text_renderer 中出现 10+ 次，每次调用创建新列表。热路径中频繁触发 GC。
+
+**状态**：⬜ 未处理
+
+---
+
+### P4 — notifyListeners 级联触发
+`[Medium]` `[v3]` `[性能基准]`
+
+**问题**：GameProvider 的多个 mixin 顺序调用 notifyListeners，单次用户操作可能触发 3-5 次 UI 重建。
+
+**状态**：🟢 批次 8（已收口）
+
+> 明显级联已合并，同帧重复 rebuild 清除
+
+---
+
+### PC1 — 仅 Android 平台
+`[Medium]` `[v3]` `[平台兼容性]`
+
+**问题**：项目明确仅支持 Android（通过 `flutter_secure_storage` 的 Android 原生实现），iOS 和 Web 平台未经测试。
+
+**状态**：⬜ 未处理
+
+---
+
+### PC2 — 缺少平台条件编译
+`[Low]` `[v3]` `[平台兼容性]`
+
+**问题**：无 `dart:io` / `dart:html` 条件导入，Web 平台编译可能失败。
+
+**状态**：⬜ 未处理
+
+---
+
+### PC3 — 缺少平台特定配置
+`[Low]` `[v3]` `[平台兼容性]`
+
+**问题**：iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺失。
+
+**状态**：⬜ 未处理
+
+---
+
+### S1 — API Key 使用 flutter_secure_storage 但缺少降级策略
+`[High]` `[v3]` `[安全审计]`
+
+**问题**：`lib/services/key_store.dart` 使用 `flutter_secure_storage` 存储 API Key。在 Android 无锁屏设备上，`flutter_secure_storage` 会自动降级到 `EncryptedSharedPreferences` 或直接报错。缺少降级后的用户提示和备用方案。
+
+**影响：** 用户在无锁屏设备上可能无法使用 AI 功能但不知原因。
+
+**状态**：✅ 批次 12b（已修复）
+
+> - `KeyStore.writeKey / writeKeys` 改为返回 `bool`：写入失败不再静默吞掉，
+>   通过 `debugLog` 留痕并向上传递（Android 无锁屏设备上
+>   `flutter_secure_storage` 会降级或抛错）。
+> - `AppProvider` 新增 `_secureStorageDegraded` 状态与
+>   `_recordKeyWrite(bool)`：任何一次 key 写入失败即置位并 `notifyListeners`。
+> - 设置页「保存」成功后若检测到降级，弹出对话框明确告知：
+>   「安全存储不可用（常见于未设置锁屏密码），Key 仅存内存、重启即丢」，
+>   并引导用户开启锁屏密码后重新保存。
+> - 覆盖路径：`saveApiKey` / `removeApiKeyAt` / `setAllKeysForProvider`
+>   三条写入路径全部接入；启动时的旧明文迁移写入保持静默（尽力而为，
+>   不打扰冷启动）。
+
+---
+
+### S2 — crash_logger 可能记录敏感信息
+`[Medium]` `[v3]` `[安全审计]`
+
+**问题**：`crash_logger.dart` 记录 `dynamic error` 和 `StackTrace`，如果 AI API 响应中包含用户对话内容或 API Key 片段，可能被写入日志文件。
+
+**影响：** 敏感信息可能持久化到设备存储中。
+
+**状态**：✅ 批次 2（已修复）
+
+> - 新增 `redactSecrets()`（`lib/utils/debug_log.dart`），落盘前统一过一遍。
+> - `CrashLogger` 的 `error` / `stackTrace` / `extra` 三个字段全部脱敏，
+>   且**抽成一个 `_sanitizedEntry()` 工厂**供 `record()` 与 `recordSync()` 共用 ——
+>   两条路径行为必须一致，漏一条就等于没做。
+> - 匹配三类：`Bearer/Basic xxx`、`sk-xxx`、`apiKey/token/secret/password=xxx` 键值，
+>   以及 URL query 里的 `?key=` / `&token=`。
+> - **刻意没做**「长度 ≥32 的 hex/base64 长串一律打码」：实测会把堆栈里的文件路径、
+>   package 名、UUID 一起吃掉，日志直接失去定位能力。宁可漏掉一种罕见形态，
+>   也不能让日志没法用。测试里专门有一条断言钉住"堆栈必须原样保留"。
+
+---
+
+### S3 — debugPrint 中的 AI 调试日志可能泄露
+`[Low]` `[v3]` `[安全审计]`
+
+**问题**：`ai_debug_logger.dart` 和多个 mixin 使用 `debugPrint` 输出 AI 请求和响应内容，在调试模式下可能被系统日志捕获。
+
+**状态**：✅ 批次 2（已修复）
+
+> - `debugPrint` → `debugLog`（release 静默），见 F26。
+> - 核对了 `AiDebugLogger` 的落盘开关：它**本来就受 `_enabled` 控制**，
+>   而该值来自 `AppProvider.aiDebugLogEnabled`（默认 `false`，用户在设置页显式开启才写）。
+>   所以"完整 prompt/response 写进设备文件"只在用户主动开调试时发生，不是默认行为。
+> - `docs/AI_SERVICE_API.md` §8 明确写了：日志含用户对话内容，不要公开贴出完整日志。
+
+---
+
+### SI1 — 存档无版本号
+`[High]` `[v3]` `[状态持久化]`
+
+**问题**：存档中无格式版本号，未来模型变更时无法自动迁移旧存档。用户只能手动清零。
+
+**状态**：✅ 批次 4（误判更正）
+
+> 存档版本号 `kSaveVersion = 2` 定义在 `lib/services/save_service.dart`，
+> 每次写档都会把 `'save_version': kSaveVersion` 盖进去；迁移函数
+> `_migrateSave(data, version)` 在 `lib/mixins/mixin_systems.dart:3006`，
+> 已有 v1→v2 的实际迁移逻辑（英文月份名 → 中文月份、`world_state.time` 字段补全），
+> 并且 `test/progression_fix_test.dart` 里有一组测试专门钉住
+> 「版本号只有一处定义」「写档必须盖 `kSaveVersion` 的章」「当前版本要有迁移分支」。
+>
+> 批次 1 时我在这里写下「版本号存在、缺迁移函数」，那是**只搜了 `save_service.dart`
+> 就下结论**的结果 —— 迁移函数一直住在 `mixin_systems.dart` 里。
+> 这是本轮修复中我自己犯的一次误判，比报告原作者的误判更该记下来：
+> **"全库检索不到"和"我没搜到"是两回事。**
+
+---
+
+### SI2 — 存档完整性校验缺失
+`[Medium]` `[v3]` `[状态持久化]`
+
+**问题**：加载存档时无校验和或签名验证，损坏的存档文件可能导致静默数据丢失。
+
+**状态**：✅ 批次 4（已修复）
+
+> `SaveService` 新增公开方法 `isStructurallyValid()`：
+> 校验 `player` / `world_state` 必须是对象、`turn_count` 须非负数值（容忍数字
+> 字符串）、`save_version` 须可识别；`loadGame` / `_tryLoadBackup` / `importSave`
+> 三处统一改走该校验，不合格走已有的备份回滚路径，不再带着坏数据继续。
+
+---
+
+### SI3 — 部分状态可能未持久化
+`[Medium]` `[v3]` `[状态持久化]`
+
+**问题**：`AppProvider` 中的 AI 调试日志开关、快速模式开关等用户偏好通过 SharedPreferences 持久化，但 `CrashLogger` 和 `AiDebugLogger` 的日志文件路径无统一管理。
+
+**状态**：✅ 批次 4（已修复）
+
+> 日志路径统一收口到 `lib/utils/log_paths.dart`
+> （`kCrashLogFileName` / `kHeartbeatFileName` / `kAiDebugLogDirName` 三个常量），
+> `CrashLogger` 与 `AiDebugLogger` 改用常量拼接，改名/搬目录只改一处。
+> 偏好持久化部分批次 3 已随 PrefsStore 处理。
+
+---
+
+## 7. 审查亮点
+
+原报告散落在各维度章节的「优点 / 亮点」汇总，按维度归组。
+
+**代码组织与架构**
+
+### 优点：目录结构清晰
+
+- `lib/mixins/` — 所有 GameProvider 扩展逻辑集中管理
+- `lib/screens/` — 按功能拆分子目录（game/, settings/, shop/, other/）
+- `lib/services/` — 所有外部服务隔离
+- `lib/utils/` — 工具函数归集
+
+---
+
+**序列化与数据持久化**
+
+### 优点：JSON 序列化覆盖全面
+
+- `Player`, `WorldState`, `NPC`, `LongTermMemory`, `NarrativeEvent`, `GameTime`, `ChatMessage`, `CrashEntry`, `QuestRecord`, `Scar`, `TokenUsage` 等均有 toJson/fromJson
+- 手动手写序列化，无代码生成依赖，可控性强
+
+---
+
+**错误处理与异常恢复**
+
+### 优点：try/catch 覆盖广泛
+
+- AI 调用链路三层兜底：重试 → 切 Key → 本地兜底叙事
+- 文件 I/O 操作均有 try/catch 保护
+- crash_logger 和 ai_debug_logger 全面捕获异常
+
+---
+
+**状态管理**
+
+### 优点：Provider 模式正确
+
+- 使用 `ChangeNotifier` + `Provider` 模式，架构清晰
+- `AppProvider` 和 `GameProvider` 职责分离
+- `GameProviderBase` 抽象基类提供统一接口
+
+---
+
+**异步安全**
+
+### 优点：mounted 检查较全面
+
+- 19 处 `if (!mounted) return;` 检查
+- 3 处 `context.mounted` 检查（Flutter 3.7+ 推荐方式）
+
+---
+
+**网络层**
+
+### 优点：网络层健壮
+
+- 使用 Dio 作为 HTTP 客户端，支持拦截器
+- 多 Key 负载均衡和熔断机制
+- ResponseCache 键含 provider+model 维度
+- 降级链完整：重试 → 切 Key → 本地兜底
+
+---
+
+**文件 I/O**
+
+### 优点：文件操作隔离
+
+- 所有文件操作通过 `path_provider` 获取正确路径
+- crash_logger 和 ai_debug_logger 独立管理文件
+
+---
+
+**测试质量**
+
+### 优点：测试覆盖率高
+
+- 59 个测试文件，16,600 行测试代码
+- 1,384 个测试用例全部通过（批次 27 本地实测）
+- 测试纪律三原则：注入参数与生产同侧 / 断言性质不守定义式 / 不锁实现细节
+
+---
+
+**配置管理**
+
+### 优点：主题系统完善
+
+- MiuiTheme 颜色 token 化
+- 使用 CSS 变量风格的 Theme 设计
+
+---
+
+**日志系统**
+
+### 优点：日志系统分层
+
+- `crash_logger.dart` — 崩溃日志持久化
+- `ai_debug_logger.dart` — AI 调用日志专用
+- 日志文件轮转（保留最近 N 条）
+
+---
+
+**构建系统与 CI/CD**
+
+### 优点：CI 配置完整
+
+- GitHub Actions CI 配置
+- 测试全部自动运行
+- Analyze 0 error
+
+---
+
+**导航/路由**
+
+### 优点：导航逻辑基本正确
+
+- `Navigator.pop` 使用正确，无栈泄漏
+- 所有导航均在 mounted 后执行
+
+---
+
+**正则/文本解析**
+
+### 优点：部分正则已优化
+
+- 部分关键正则已声明为 `static final`
+- 使用编译标志提升性能
+
+---
+
+**导入管理**
+
+### 优点：导入组织清晰
+
+- Barrel 文件按功能域分组
+- import 顺序合理（dart → flutter → 第三方 → 本地）
+
+---
+
+**空安全**
+
+### 优点：Dart 3 空安全启用
+
+- 项目使用 `sdk: '>=3.12.0 <4.0.0'`，Dart 3 空安全默认开启
+- 大部分类型标注正确
+
+---
+
+**资源管理**
+
+### 优点：资源组织清晰
+
+- `assets/images/avatars/` 按角色命名
+- Shader 文件独立管理
+
+---
+
+**依赖管理**
+
+### 优点：依赖精简
+
+- 仅 7 个直接依赖（不含 flutter SDK）
+- 无冗余或重复依赖
+
+---
+
+**注释健康度**
+
+### 优点：文档注释覆盖率较高
+
+- 大量使用 `///` 文档注释
+- 关键算法和业务逻辑有详细说明
+
+---
+
+**AI 架构**
+
+### 已修复项（第 17 轮）
+
+- System Prompt 缓存机制
+- maxTokens 精细化（narrative 4000→2000, choice 1000→500, npcChat 4000→500, summary 4000→3000）
+- Token 自适应削减（>50K 降 20%）
+- T2 NPC 场景感知裁剪（24→8）
+- T0 阈值提升（≥4→≥5）和上限缩减（60→40）
+- T3 近期事件去重
+- NPC 聊天使用 API system role
+
+### 优点：AI 降级链完整
+
+- 重试 2 次 → 切 Key/熔断 → 本地兜底叙事 → 选项承接兜底
+- 多 Key 负载均衡
+- token 使用追踪
+
+---
+
+**Prompt 工程**
+
+### 已修复项
+
+- 写作规则重叠消除
+- NPC 聊天 Prompt 使用 system role
+- 关系锚注入
+- 冗余 sanitization 移除
+
+### 优点：Prompt 设计合理
+
+- 分层 prompt 设计（system → context → instruction）
+- 信息密度监控和调节
+- 格式示例丰富
+
+---
+
+**安全审计（新）**
+
+### 优点：安全设计亮点
+
+- API Key 使用 `flutter_secure_storage` 而非 SharedPreferences
+- 输入注入防御双保险（当次净化 + NPC 历史回放重净化）
+- `//` 转义处理
+
+---
+
+**性能基准（新）**
+
+### 已优化的性能点
+
+- 叙事渲染死循环已修复（43ms 替代 3 分钟，3200x 提升）
+- System Prompt 缓存减少重复构建
+- 部分正则已静态缓存
+
+---
+
+**设计模式一致性（新）**
+
+### 发现：设计模式使用整体一致
+
+- **Provider 模式**：`ChangeNotifier` + `Provider` 统一使用，无 mix of Riverpod/BLoC 等
+- **Mixin 模式**：14 个 mixin 全部用于 `GameProvider`，模式一致但过度集中
+- **工厂模式**：`fromJson` 工厂构造函数统一使用
+- **策略模式**：`AiRouter` 的降级链属于策略模式
+- **单例模式**：`CrashLogger`、`AiDebugLogger` 使用单例
+
+**文档完整性（新）**
+
+### 优点：文档覆盖较好
+
+- `.github/霍格沃兹审查修复档案总览.md` — 审查历史完整记录
+- 大量 `///` 文档注释在关键类和函数上
+- CI 配置和测试运行正常
+
+**状态持久化完整性（新）**
+
+### 优点：存档覆盖全面
+
+- `saveGame` 保存 player、worldState、npcRegistry、memory
+- 所有关键模型均有 toJson/fromJson
+- 世界线快照 timelineSnapshots 支持重演
+
+**回调/闭包生命周期（新）**
+
+### 优点：mounted 检查已覆盖大部分场景
+
+- 19 处 `if (!mounted) return;` 检查
+- 3 处 `context.mounted` 检查
+
+---
+
+**平台兼容性（新）**
+
+### 优点：平台适配亮点
+
+- 使用 `path_provider` 获取平台无关路径
+- 使用 `flutter_secure_storage` 跨平台安全存储
+- Dio 跨平台网络请求
+
+---
+
+## 8. 优化路线图（批次 28 后重写）
+
+> 原路线图按报告生成时的优先级（P0–P3）罗列建议，随着批次 1–28 推进已严重过时：
+> 大量"待办"其实已闭环、已收口或已定案不做。本节按 **2026-09-10 整理时**的真实状态重写。
+> 逐条明细以 §4 总表为准，执行流水见 §9。
+
+### 8.1 状态总览
+
+| 状态 | 数量 | 含义 |
+|---|---|---|
+| ✅ 完全闭环 | 38 | 已修复 / 误判更正 / 核对关闭 / 定案不做 |
+| 🟢 已收口 | 24 | 主体完成；剩余部分在条目里注明边界或缓做理由 |
+| 🟡 部分完成 | 1 | CS1（剩余「runApp 提前」定案缓做，见 §6 · CS1） |
+| 🟗 重新定性 | 1 | F20（不再以扫描清零为目标，转为长期维护约束） |
+| ⬜ 未处理 | 14 | 见 40.2 |
+
+合计 78 条。**真正挂起的只有 40.2 那 14 条**，其余 64 条要么做完、要么带着明确理由关闭。
+
+### 8.2 未处理事项（14 项，按建议动手顺序）
+
+| 条目 | 事项 | 严重度 | 建议 |
+|---|---|---|---|
+| P1 | 缺少性能基准测试 | High | 先落 `benchmark_harness`，覆盖渲染帧率 / 序列化吞吐 / 启动耗时 |
+| P2 | story_text_renderer 渲染性能 | High | **依赖 P1**——没有基准就无法证明优化有效 |
+| P3 | 频繁的集合重建 | Medium | 同 P2，先有基准再动手 |
+| F23 | 全中文硬编码，无国际化 | Medium | 大工程，单独排期；建议从 `arb` 目录骨架起步 |
+| F41 | mixin 间隐式通信 | Medium | 下次动 GameProvider 体系时顺手做 |
+| L1 | 缺少延迟加载 | Medium | 等真实卡顿反馈；CS2 的教训（行数≠开销）在这里同样适用 |
+| L2 | 图片无懒加载 | Medium | 可随 L1 一起 |
+| PC1 | 仅 Android 平台 | Medium | 产品决策，先评估再排期 |
+| CS3 | 启动画面优化 | Low | 顺带可做 |
+| F38 | Barrel 文件编译膨胀 | Low | 低成本，可顺手 |
+| F44 | 图片格式不统一 | Low | 资源批量处理 |
+| L3 | screen 级懒加载 | Low | 跟随 L1 |
+| PC2 | 平台条件编译 | Low | 跟随 PC1 |
+| PC3 | 平台特定配置 | Low | 跟随 PC1 |
+
+### 8.3 定案不做 / 误判更正清单（避免未来重复评估）
+
+| 条目 | 结论 | 出处 |
+|---|---|---|
+| F15 | 全库 CancellationToken 不引入——AI 层 `CancelToken` 早已覆盖，其余为 await-guarded 短操作 | 批次 17 |
+| F40 | GameProvider 14-mixin 混合式组合维持现状 | 批次 11c |
+| DS1 / DS2 | Repository / DI 不引入（单本地数据源），ADR-008 附复查触发条件 | 批次 1 |
+| F4 / SI1 | 存档版本号与 `_migrateSave` 早已存在，原判误判 | 批次 4 |
+| CS2 | NPC 数据是 `const` 顶层集合，本就懒初始化，"启动全量加载"不存在 | 批次 3 |
+| F34 | AnimationController 均已 dispose，误判 | 批次 8 |
+| DOC1 | README 存在，误判（顺带校正过期内容） | 批次 1 |
+| CS1 剩余 | 「runApp 提前」收益配不上回归风险，等真实启动耗时投诉再做 | 批次 3 / §6 · CS1 |
+| F20 存量 | 余下 176 处源码扫描断言不再强迁——84 条接线守卫 + 40 条反向约束无行为等价物（见 §5 · F20） | 批次 28 |
+
+### 8.4 长期维护约束（从修复过程中沉淀）
+
+1. **新测试断言一律行为型**（F20 定性后的新规）：不得再新增 `readAsStringSync` + 正则匹配源码文本的断言。
+2. **随机路径断差值不断绝对值**：任何经过开局特质 RNG（`_rollStartingTraits` → `_applyTraitBonuses`）的断言，只能比对前后差值或不变量（批次 27.1 教训）。
+3. **`pubspec.lock` 不混入修复提交**：本地 `pub get` 会改 lock 文件，提交前 `git checkout -- pubspec.lock`。
+4. **台账先于代码**：动代码前先在 §4/§9 落条目，避免"改了什么为什么"事后补不清（批次 18 的回填就是代价）。
+
+---
+
+## 9. 修复记录（批次 1 → 28.1）
 
 > 本节按**批次**记录每一轮实际改了什么。规则：修一批、写一批、提交推送一批，
 > 保证报告永远反映仓库的真实状态，而不是一份写完就过期的快照。
@@ -1391,7 +1683,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
    `lib/mixins/mixin_systems.dart:3006`（v1→v2 迁移英文月份名、补 `world_state.time`），
    我当时只在 `save_service.dart` 里搜了，因为它的注释提到 `_migrateSave`
    就以为实现"该在这儿"。**"没搜到"不等于"不存在"，尤其在一个 8 万行、
-   逻辑按 mixin 分散的仓库里。** 详见 [SI1 条目](#si1--存档无版本号-high-v3)。
+   逻辑按 mixin 分散的仓库里。** 详见 [SI1 条目](#si1--存档无版本号)。
 
 **未做的事**
 
@@ -1430,28 +1722,6 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 - **S3 的落盘部分**：`AiDebugLogger` 本来就受用户开关控制（默认关），
   不是默认就把 prompt 写进设备文件。真正的问题只在 `debugPrint` 输出到 stdout，已随 F26 修掉。
 
-### 批次 3 — 存储与启动（F16 / F36 / F37 / D4 / CS1 / CS2）
-
-**改动清单**
-
-| 文件 | 改动 |
-|---|---|
-| `lib/services/prefs_store.dart` | **新增**。SharedPreferences 唯一收口：单例缓存 + `init/write/writeAsync` + 带 fallback 的同步读 |
-| `test/prefs_store_test.dart` | **新增**。4 个用例：写入可见、批量只提交一次、writeAsync 不阻塞、未初始化不抛 |
-| `lib/providers/app_provider.dart` | 9 处调用改走 PrefsStore；删掉 `shared_preferences` import；`loadSettings` 的 KeyStore 读取改两轮 `Future.wait` |
-
-**这一批的核心判断**：F16/F36 的修法不是"把 `.then()` 改成 `await`"。
-设置项这种场景**确实不该阻塞 UI**，问题只在于失败时无声无息。
-所以 `writeAsync` 保留了 fire-and-forget 的"不阻塞"，补上了 `catch + 日志 + 返回值`。
-
-**CS1 只做了一半，理由写在这里**：把 `runApp` 提前到设置加载完成之前，
-需要在 `main.dart` / `app.dart` / 所有读 `AiProvider` 的页面引入"设置未就绪"中间态，
-改动面很大，而收益只是几十到几百毫秒。真正的长尾开销（加密存储 Key 读取串行）
-已经用 `Future.wait` 消掉了。剩下那部分等有实测数据再决定要不要动。
-
-**CS2 是误判**：`npc_data.dart` 全是 `const` 顶层集合，Dart 顶层变量懒初始化，
-不存在"启动时一次性加载"。这条暴露了报告的方法论问题 —— 用源码行数推断运行时开销不可靠。
-
 ### 批次 2.1 — CI 热修复：脱敏正则（`(?i)` 在 Dart 里是非法语法）
 
 **发生了什么**：批次 2 推送后，CI run `34129953088` 的 `Run tests with coverage` 步骤报
@@ -1480,6 +1750,28 @@ Dart 的 `RegExp` 走 **ECMAScript 语义，不支持 `(?i)` 内联标志**，�
 `RegExp` 的语义在 2.17 与 3.x 之间没有差异，足够在推送前抓出这类
 "编译得过、跑起来才炸"的错误。**没有完整 SDK 不等于没有验证手段，
 至少要把"能验的那部分"验掉。**
+
+### 批次 3 — 存储与启动（F16 / F36 / F37 / D4 / CS1 / CS2）
+
+**改动清单**
+
+| 文件 | 改动 |
+|---|---|
+| `lib/services/prefs_store.dart` | **新增**。SharedPreferences 唯一收口：单例缓存 + `init/write/writeAsync` + 带 fallback 的同步读 |
+| `test/prefs_store_test.dart` | **新增**。4 个用例：写入可见、批量只提交一次、writeAsync 不阻塞、未初始化不抛 |
+| `lib/providers/app_provider.dart` | 9 处调用改走 PrefsStore；删掉 `shared_preferences` import；`loadSettings` 的 KeyStore 读取改两轮 `Future.wait` |
+
+**这一批的核心判断**：F16/F36 的修法不是"把 `.then()` 改成 `await`"。
+设置项这种场景**确实不该阻塞 UI**，问题只在于失败时无声无息。
+所以 `writeAsync` 保留了 fire-and-forget 的"不阻塞"，补上了 `catch + 日志 + 返回值`。
+
+**CS1 只做了一半，理由写在这里**：把 `runApp` 提前到设置加载完成之前，
+需要在 `main.dart` / `app.dart` / 所有读 `AiProvider` 的页面引入"设置未就绪"中间态，
+改动面很大，而收益只是几十到几百毫秒。真正的长尾开销（加密存储 Key 读取串行）
+已经用 `Future.wait` 消掉了。剩下那部分等有实测数据再决定要不要动。
+
+**CS2 是误判**：`npc_data.dart` 全是 `const` 顶层集合，Dart 顶层变量懒初始化，
+不存在"启动时一次性加载"。这条暴露了报告的方法论问题 —— 用源码行数推断运行时开销不可靠。
 
 ### 批次 4 — 外来数据的健壮性（F3 / F5 / SI2 / SI3）
 
@@ -2046,47 +2338,6 @@ CI 失败定位靠 grep 定位 group。批次的**唯一目标是把这块巨石
 （`worldState`/`player`/`time` 均由 `initializeGame` 初始化，格式化方法可安全调用）。
 本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关。
 
-### 批次 26 — F20 源码文本断言迁移：/状态 职业分流组
-
-**这一批的由来**：`data_consistency_test.dart` 状态组「「职业」不再直接显示 initialTalent」这条，
-原本用正则 `String _formatStatus\(\) \{(.*?)\n  \}` 切出方法体，再从 `【职业】` 行起断言不含
-`initialTalent`、且方法体仍含 `initialTalent`（证明天赋挪到了「主修天赋」行）。这是典型的
-「正则切方法体猜文案」——只证明源码里职业行没写 initialTalent，没验证玩家真跑 `/状态` 时
-看到的职业是不是「学生」、天赋是不是露进了职业。`_formatStatus()` 是私有方法无法直接调用，
-但它经 `/状态` 命令的 handler 设到 `currentNarrative`，全程无 AI/随机，可干净行为化。
-
-**触发链核验**（迁移前做过只读探查）：`_formatStatus()` 唯一触发入口是
-`/状态` 命令 handler（`mixin_commands.dart:58-63` 设 `m.currentNarrative = m._formatStatus()`）。
-`handleLocalCommand('/状态')` 去前导 `/`、查注册表、调 handler，`currentNarrative` 即为状态
-面板文本。`_formatStatus()` 的分支：未毕业（`graduated=false` 默认）→ 职业行是
-`霍格沃茨N年级学生`；天赋在「主修天赋」行。
-
-**构造关键**：`makeGame()` 建号后 `player.initialTalent=null`（`initializeGame` 可选参数默认
-null）。为让「职业行不显示天赋」这条有意义，显式注入一个独有值 `initialTalent='档案测试天赋'`。
-于是 `/状态` 后：
-- [职业] 行必为「年级学生」、绝不出现「档案测试天赋」；
-- [主修天赋] 行必含「档案测试天赋」。
-两条一起成立才算真正分了流，不锁实现。
-
-**改动清单**
-
-| 原源码扫描断言 | 改写后行为测试 |
-|---|---|
-| 切 `_formatStatus()` 方法体，断言 `【职业】` 行不含 initialTalent、方法体仍含 initialTalent | 真实 `GameProvider` 注入 `initialTalent='档案测试天赋'` 后经 `/状态` 真跑，断言 [职业] 行是「年级学生」且绝无该天赋、[主修天赋] 行显示该天赋 |
-
-| 文件 | 改动 |
-|---|---|
-| `test/data_consistency_test.dart` | 「/状态 的职业字段」组首条改写为 1 条行为测试；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()` |
-| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次26、总表回填、追加本批次记录 |
-
-**未迁移并登记理由**（保留为结构性接线守卫）：同组「毕业后会显示最近岗位，没打过工显示待业」
-「acceptJob 会记下岗位名」是方法体接线守卫生效，「毕业」「打工」要多绕一层构造
-`worldState.graduated` 的状态链路，代价与收益不成比例。
-
-**验证**：不触碰 `lib/`；`handleLocalCommand('/状态')` 设置 `currentNarrative` 后即可断言。
-`initialTalent` 注入为独有值保证「职业行不该出现」这条非空判断稳健。本地无 `flutter` SDK，
-靠推送后 CI analyze + 全量 test 把关。
-
 ### 批次 22 — F20 源码文本断言迁移：/收藏 空态文案组
 
 **这一批的由来**：批次 20/21 已确立「源码扫描 → 真跑」的迁移范式，且都落在
@@ -2228,10 +2479,51 @@ NPC 拿不到完整档案。`formatCharacterDossier(idOrName)` 是纯只读格�
 
 **未迁移并登记理由**（保留为结构性接线守卫）：「命令已注册且带别名」是命令注册；「基类有声明」
 是跨 mixin 可见性编译契约；「原著魔杖 canonWandFor 已接上」查的是数据引用点。三类均锁接线，
-迁移需拉起完整 `/查看 命令解析 + NPC 注册 + 原著数据 链路，代价与收益不成比例。
+迁移需拉起完整 `/查看` 命令解析 + NPC 注册 + 原著数据链路，代价与收益不成比例。
 
 **验证**：不触碰 `lib/`；`makeGame()` 初始 impactScore=0.0 ≤ 0.5、house=null，显式设为
 Gryffindor 后查斯内普（无关系、Slytherin、非高影响 canon）必然不可见。本地无 `flutter` SDK，
+靠推送后 CI analyze + 全量 test 把关。
+
+### 批次 26 — F20 源码文本断言迁移：/状态 职业分流组
+
+**这一批的由来**：`data_consistency_test.dart` 状态组「「职业」不再直接显示 initialTalent」这条，
+原本用正则 `String _formatStatus\(\) \{(.*?)\n  \}` 切出方法体，再从 `【职业】` 行起断言不含
+`initialTalent`、且方法体仍含 `initialTalent`（证明天赋挪到了「主修天赋」行）。这是典型的
+「正则切方法体猜文案」——只证明源码里职业行没写 initialTalent，没验证玩家真跑 `/状态` 时
+看到的职业是不是「学生」、天赋是不是露进了职业。`_formatStatus()` 是私有方法无法直接调用，
+但它经 `/状态` 命令的 handler 设到 `currentNarrative`，全程无 AI/随机，可干净行为化。
+
+**触发链核验**（迁移前做过只读探查）：`_formatStatus()` 唯一触发入口是
+`/状态` 命令 handler（`mixin_commands.dart:58-63` 设 `m.currentNarrative = m._formatStatus()`）。
+`handleLocalCommand('/状态')` 去前导 `/`、查注册表、调 handler，`currentNarrative` 即为状态
+面板文本。`_formatStatus()` 的分支：未毕业（`graduated=false` 默认）→ 职业行是
+`霍格沃茨N年级学生`；天赋在「主修天赋」行。
+
+**构造关键**：`makeGame()` 建号后 `player.initialTalent=null`（`initializeGame` 可选参数默认
+null）。为让「职业行不显示天赋」这条有意义，显式注入一个独有值 `initialTalent='档案测试天赋'`。
+于是 `/状态` 后：
+- [职业] 行必为「年级学生」、绝不出现「档案测试天赋」；
+- [主修天赋] 行必含「档案测试天赋」。
+两条一起成立才算真正分了流，不锁实现。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 切 `_formatStatus()` 方法体，断言 `【职业】` 行不含 initialTalent、方法体仍含 initialTalent | 真实 `GameProvider` 注入 `initialTalent='档案测试天赋'` 后经 `/状态` 真跑，断言 [职业] 行是「年级学生」且绝无该天赋、[主修天赋] 行显示该天赋 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/data_consistency_test.dart` | 「/状态 的职业字段」组首条改写为 1 条行为测试；补 `helpers/test_fixtures.dart` 导入与 `TestWidgetsFlutterBinding.ensureInitialized()` |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次26、总表回填、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：同组「毕业后会显示最近岗位，没打过工显示待业」
+「acceptJob 会记下岗位名」是方法体接线守卫生效，「毕业」「打工」要多绕一层构造
+`worldState.graduated` 的状态链路，代价与收益不成比例。
+
+**验证**：不触碰 `lib/`；`handleLocalCommand('/状态')` 设置 `currentNarrative` 后即可断言。
+`initialTalent` 注入为独有值保证「职业行不该出现」这条非空判断稳健。本地无 `flutter` SDK，
 靠推送后 CI analyze + 全量 test 把关。
 
 ### 批次 27 — F20 源码文本断言迁移：存档往返组 + 本地 Flutter 工具链落地
@@ -2334,7 +2626,7 @@ expect(gp.effectiveAttr('magic_control'),       beforeCtrl  - 2);
 
 降幅才是这条用例要保证的东西（"疤确实压低了属性，且压的就是 −3 / −2"），
 绝对值把"开局抽到什么特质"这个无关变量一起锁了进来。这也正好是
-§10「测试纪律三原则」里「不锁实现细节」说的同一件事——只是这次被锁的不是实现，
+§5 · F20 里的「测试纪律三原则」里「不锁实现细节」说的同一件事——只是这次被锁的不是实现，
 是 RNG。
 
 **顺带做的两件小事**：
@@ -2353,3 +2645,122 @@ expect(gp.effectiveAttr('magic_control'),       beforeCtrl  - 2);
 
 **验证**：`flutter analyze --no-fatal-warnings --no-fatal-infos` → 764 issues, exit 0；
 `flutter test --coverage` → 1384 passed。
+
+### 批次 28 — F20：数据层扫描改成直接 import（5 条）+ 存量全量分类与重新定性
+
+**这一批的由来**：批次 27 装好本地 Flutter 之后，「每批只敢改 1 条（怕 CI 红）」这个约束
+就没了，所以这一批一次改 5 条。同时做了一件前面 27 批都没做的事：**先把存量扫一遍，
+看看到底还剩多少是真正该迁的**。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 正则扫 `event_anchors.dart` 的 `month:\s*(\d+)` 取月份集合 | 直接 `eventAnchors.map((a) => a.month)`，断言 1-12 月都有锚点 |
+| 正则扫 `event_anchors.dart` 的 `id:\s*'([^']+)'` 判不重复 | 直接 `eventAnchors.map((a) => a.id)`，重复时**报出是哪个 id**（原写法只比 length 与 set.size，重复了也不知道是谁） |
+| 正则切 `npc_data.dart` 的三个 `List<NpcSeed>` 声明 + `contains('NpcSeed(')` 判非空 | 直接断言 `dumbledoreEraSeeds`/`maraudersSeeds`/`firstWarOriginals` 非空；「first_war 挂了原创名录」从「源码里出现过 `...firstWarOriginals` 这串字」改成**比对 id 集合**：`firstWarOriginals` 的 id 必须都在 `eraNpcSeeds['first_war']` 里 |
+| 正则扫 `npc_data.dart` 的 `id: '...'` 判全局唯一 | 直接摊平 10 张原始种子表判重。**不能用 `kAllNpcSeeds`** —— 它走 `_dedupById`，重复 id 被静默丢掉，恰好把这条要抓的问题藏起来 |
+| 正则扫 `npc_data.dart` 的 `bloodStatus: *'([^']+)'` 取已用血统 | 直接 `NpcSeed.bloodStatus` 取集合，再跑标签表校验 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/progression_fix_test.dart` | 内容覆盖度组 4 条改为直接 import 断言；补 `data/event_anchors.dart` / `data/npc_data.dart` 导入；`readAsStringSync` 引用 60 → 56 |
+| `test/data_consistency_test.dart` | 血统标签组 1 条改为直接 import 断言；补 `data/npc_data.dart` 导入；`readAsStringSync` 引用 14 → 13 |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标/总表/台账表回填、追加本批次记录 |
+
+**为什么这 5 条值得改**：它们扫的都是 `lib/data/*.dart`，而那些表全是 **const 顶层集合**——
+数据本身就在运行时里，却要用正则去源码文本里抠，属于绕远路。正则认的是**写法**：
+把 `month: 9` 写成 `month:09`、或文件里别处出现一个同名字段，就会漏判/误收。
+直接读对象则完全不受写法影响。
+
+**另一半：存量 176 处全量分类（这是本批更重要的产出）**
+
+前 27 批的口径是「505 条待迁移，按语义域逐批推进」，隐含假设是"剩下的迟早都能行为化"。
+批次 28 把所有含 `readAsStringSync` 的用例过了一遍（176 处引用 / 127 条用例），结果如下：
+
+| 类别 | 条数 | 典型形态 | 该不该迁 |
+|---|---|---|---|
+| **B 跨文件接线守卫** | **84** | `expect(src.contains('rivalryDirectiveFor'), isTrue, reason: '又变成没人读的死表了')` | ❌ |
+| **C 反向约束** | **40** | 「lib/ 下不再出现 `Navigator.push(`」「旧硬编码数值不得回潮」「不得绕过 `updateNpcAffection`」 | ❌ |
+| **D 数据/文案表校验** | ~3 | 扫 `lib/data/` 取字段集合 | ✅（本批已迁 5 条，剩约 3 条） |
+
+**B 类不该迁**：它要保证的是"这个数据表/函数真的被生产代码引用了"。行为化需要拉起完整
+链路（叙事 prompt 装配 / 回合推进 / 命令分派），代价与收益不成比例——这也是前几批
+「未迁移并登记理由」里反复出现的同一句话，现在有数据了：这类占了三分之二。
+
+**C 类没有行为等价物**：它断言的是"某种写法不出现"。把「不得绕过 `updateNpcAffection`」
+翻译成行为测试，等于要求测试去证明一个否定命题。这类断言的天花板就是源码扫描，
+改不动，也不该改。
+
+**所以 F20 的目标改写为**：
+
+1. 迁移可行为化子集 —— **已基本完成**（本批后只剩约 3 条 D 类）；
+2. 对 B / C 两类**登记保留理由**（本批已给出分类，各批次记录里也逐条写过）；
+3. **守住"新增断言不许再用源码扫描"** —— 这才是真正要防的。存量 176 处是历史包袱，
+   新增的没有理由再走老路。建议后续在 review checklist 里加这一条。
+
+**顺带核对过、确认"改了反而更弱"而保留的两条**（`progression_fix_test.dart` 的 CG 条件组）：
+「新加的条件类型必须被 evaluate 和文案生成同时处理」目前断言每个 enum 值在两处都有
+`case CgConditionType.$t:`。想行为化就要遍历 `CgConditionType.values` 真跑
+`CgUnlockEvaluator.evaluate`，但它**只接受 cgId、无法注入合成条件**——只能借用真实 CG，
+而一个 CG 带多个条件时，某条分支缺失会被另一条分支掩盖，判定模糊。
+改成"能跑但判不准"不如留着"判得准但在扫文本"。
+
+**验证（本地，Flutter 3.47.2）**
+
+```
+flutter analyze --no-fatal-warnings --no-fatal-infos   → 需重跑，见下
+flutter test test/progression_fix_test.dart            → 通过
+flutter test test/data_consistency_test.dart           → 通过
+flutter test                                           → 1384 passed
+```
+
+---
+
+## 附录 A · 38 维度与条目对照
+
+| # | 审查维度 | 问题条目 | 亮点 |
+|---|---|---|---|
+| 1 | 代码组织与架构 | F1🟢 F2✅ | 1 |
+| 2 | 序列化与数据持久化 | F3✅ F4✅ F5✅ | 1 |
+| 3 | 错误处理与异常恢复 | F6🟢 F7✅ F8✅ F9🟢 | 1 |
+| 4 | 状态管理 | F10🟢 F11🟢 | 1 |
+| 5 | Widget 性能 | F12🟢 F13🟢 F14🟢 | — |
+| 6 | 异步安全 | F15✅ F16✅ F17🟢 | 1 |
+| 7 | 网络层 | F18✅ | 1 |
+| 8 | 文件 I/O | F19✅ | 1 |
+| 9 | 测试质量 | F20🟗 F21🟢 F22✅ | 1 |
+| 10 | 国际化与无障碍 | F23⬜ F24🟢 | — |
+| 11 | 配置管理 | F25🟢 | 1 |
+| 12 | 日志系统 | F26✅ | 1 |
+| 13 | 构建系统与 CI/CD | F27✅ | 1 |
+| 14 | 导航/路由 | F28🟢 F29🟢 | 1 |
+| 15 | 正则/文本解析 | F30🟢 F31✅ | 1 |
+| 16 | 集合/内存 | F32🟢 F33✅ | — |
+| 17 | 动画/渲染 | F34✅ F35✅ | — |
+| 18 | 存储模式 | F36✅ F37✅ | — |
+| 19 | 导入管理 | F38⬜ | 1 |
+| 20 | 空安全 | F39🟢 | 1 |
+| 21 | Mixin 架构 | F40✅ F41⬜ | — |
+| 22 | 测试数据 | F42✅ F43✅ | — |
+| 23 | 资源管理 | F44⬜ | 1 |
+| 24 | 依赖管理 | F45✅ F46✅ | 1 |
+| 25 | 注释健康度 | F47✅ | 1 |
+| 26 | AI 架构 | F48🟢 | 2 |
+| 27 | Prompt 工程 | — | 2 |
+| 28 | 安全审计 | S1✅ S2✅ S3✅ | — |
+| 29 | 性能基准 | P1⬜ P2⬜ P3⬜ P4🟢 | — |
+| 30 | 代码重复度 | D1🟢 D2🟢 D3🟢 D4✅ | — |
+| 31 | 设计模式一致性 | DS1✅ DS2✅ | — |
+| 32 | 文档完整性 | DOC1✅ DOC2✅ DOC3✅ | — |
+| 33 | 冷启动性能 | CS1🟡 CS2✅ CS3⬜ | — |
+| 34 | 状态持久化完整性 | SI1✅ SI2✅ SI3✅ | — |
+| 35 | 回调/闭包生命周期 | — | — |
+| 36 | 延迟加载策略 | L1⬜ L2⬜ L3⬜ | — |
+| 37 | 平台兼容性 | PC1⬜ PC2⬜ PC3⬜ | — |
+
+---
+
+> **全方位无遗漏审查报告 v3 — 终极版**  
+> Hogwarts Life Simulator &copy; 2026 | 三轮审查覆盖 38 个维度，问题台账 78 条（已处置 64 / 未处理 14）  
+> 审查工具：Trae Work | 报告生成日期：2026-09-07 | 修复台账整理：2026-09-10（批次 28 后）
