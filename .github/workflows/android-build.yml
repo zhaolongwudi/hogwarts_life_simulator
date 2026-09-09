@@ -125,7 +125,7 @@ jobs:
 
       - name: Upload analyze log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: analyze-log-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
           path: analyze_output.log
@@ -152,7 +152,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
           path: coverage/lcov.info
@@ -180,7 +180,7 @@ jobs:
 
       - name: Upload build logs
         if: always() && steps.check.outputs.RELEASE_WORTHY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-logs-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
           path: |
@@ -211,7 +211,7 @@ jobs:
 
       - name: Upload APK
         if: steps.check.outputs.RELEASE_WORTHY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}
           path: ${{ env.RENAMED_APK }}
@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload APK (nightly)
         if: steps.check.outputs.RELEASE_WORTHY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: HogwartLige-nightly
           path: ${{ env.RENAMED_APK }}
