@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.2.7 — 2026-09-09
+
+**📋 变更说明**
+批次29.1: CI 版本号门禁误判修复 — 改用 git diff before..HEAD 判定 release-worthy
+
+run 34402831753 实测 github.event.commits 的 added/modified/removed 提取为空，
+含 lib/android 改动的提交被门禁误判为不 release-worthy（Bump/APK/Release 全 skipped）。
+判定依据改为 checkout 后仓库内真实 diff（git -c core.quotepath=false diff --name-only
+github.event.before HEAD），不依赖事件 payload 结构；本地验证 16 个变更文件命中关键路径。
+
 ### v4.2.6 — 2026-09-09
 
 **📋 变更说明**
