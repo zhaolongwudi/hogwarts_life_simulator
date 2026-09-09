@@ -22,6 +22,8 @@ import 'package:hogwarts_life_simulator/services/key_store.dart';
 import 'package:hogwarts_life_simulator/services/save_service.dart';
 import 'package:hogwarts_life_simulator/data/cg_data.dart';
 import 'package:hogwarts_life_simulator/data/cg_unlock_conditions.dart';
+import 'package:hogwarts_life_simulator/data/event_anchors.dart';
+import 'package:hogwarts_life_simulator/data/npc_data.dart';
 
 import 'helpers/test_fixtures.dart';
 
@@ -427,12 +429,12 @@ void _contentGroup() {
 /// 内容覆盖度：数据层不该出现"整片空白"。
 void _contentCoverageGroup() {
   group('内容覆盖度', () {
+    // 批次 28：以下 4 条原本是「正则扫 event_anchors.dart / npc_data.dart 的源码
+    // 文本」。正则认的是写法不是数据——换了等价写法就漏判，文件里多一处同名字段
+    // 就误判。这些表都是 const 顶层集合，直接 import 进来断言真实对象即可。
     test('12 个月每个月都有事件锚点（此前 3 月整月空白）', () {
-      final src = File('lib/data/event_anchors.dart').readAsStringSync();
-      final months = RegExp(r'month:\s*(\d+)')
-          .allMatches(src)
-          .map((m) => int.parse(m.group(1)!))
-          .toSet();
+      expect(eventAnchors, isNotEmpty);
+      final months = eventAnchors.map((a) => a.month).toSet();
       final missing = [
         for (var i = 1; i <= 12; i++)
           if (!months.contains(i)) i
@@ -441,39 +443,54 @@ void _contentCoverageGroup() {
     });
 
     test('事件锚点 id 不重复', () {
-      final src = File('lib/data/event_anchors.dart').readAsStringSync();
-      final ids = RegExp(r"id:\s*'([^']+)'")
-          .allMatches(src)
-          .map((m) => m.group(1)!)
-          .toList();
-      expect(ids.length, ids.toSet().length);
+      final seen = <String>{};
+      final dup = <String>[];
+      for (final a in eventAnchors) {
+        if (!seen.add(a.id)) dup.add(a.id);
+      }
+      expect(dup, isEmpty, reason: '重复的事件锚点 id：$dup');
     });
 
     test('每个时代都有专属 NPC 阵容（first_war 此前全靠复刻掠夺者）', () {
-      final src = File('lib/data/npc_data.dart').readAsStringSync();
-      for (final listName in [
-        'dumbledoreEraSeeds',
-        'maraudersSeeds',
-        'firstWarOriginals',
-      ]) {
-        final m = RegExp(
-          '(?:const|final) List<NpcSeed> $listName = \\[(.*?)\n];',
-          dotAll: true,
-        ).firstMatch(src);
-        expect(m, isNotNull, reason: '$listName 列表不存在');
-        expect(m!.group(1)!.contains('NpcSeed('), isTrue,
-            reason: '$listName 是空的');
+      for (final e in <String, List<NpcSeed>>{
+        'dumbledoreEraSeeds': dumbledoreEraSeeds,
+        'maraudersSeeds': maraudersSeeds,
+        'firstWarOriginals': firstWarOriginals,
+      }.entries) {
+        expect(e.value, isNotEmpty, reason: '${e.key} 是空的');
       }
-      // first_war 必须把原创名录挂进去，否则白写
-      final eraMap = src.substring(src.indexOf('eraNpcSeeds = {'));
-      expect(eraMap.contains('...firstWarOriginals'), isTrue);
+      // 光写了名录不挂进时代阵容等于白写 —— 检查"真的在里头"而不是
+      // 源码里出现过 `...firstWarOriginals` 这串字
+      final firstWar = eraNpcSeeds['first_war'];
+      expect(firstWar, isNotNull, reason: 'eraNpcSeeds 里没有 first_war');
+      final inEra = firstWar!.map((s) => s.id).toSet();
+      final missing =
+          firstWarOriginals.map((s) => s.id).toSet().difference(inEra);
+      expect(missing, isEmpty,
+          reason: '这些 first_war 原创 NPC 没有挂进时代阵容：$missing');
     });
 
     test('NPC seed 的 id 全局唯一', () {
-      final src = File('lib/data/npc_data.dart').readAsStringSync();
-      final ids =
-          RegExp(r"id: '([a-z0-9_]+)'").allMatches(src).map((m) => m.group(1)!);
-      expect(ids.length, ids.toSet().length);
+      // 注意不能用 kAllNpcSeeds：它走 _dedupById，重复 id 会被静默丢掉，
+      // 恰好把这条要抓的问题藏起来。只能拿原始定义表来查。
+      final raw = <NpcSeed>[
+        ...staffSeeds,
+        ...harrySameGryffindor,
+        ...harrySameSenior,
+        ...harrySameSlytherin,
+        ...harrySameRavenclaw,
+        ...harrySameHufflepuff,
+        ...maraudersSeeds,
+        ...dumbledoreEraSeeds,
+        ...postWarSeeds,
+        ...firstWarOriginals,
+      ];
+      final seen = <String>{};
+      final dup = <String>[];
+      for (final s in raw) {
+        if (!seen.add(s.id)) dup.add(s.id);
+      }
+      expect(dup, isEmpty, reason: '重复的 NPC seed id：$dup');
     });
   });
 

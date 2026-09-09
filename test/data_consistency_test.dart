@@ -25,6 +25,7 @@ import 'package:hogwarts_life_simulator/data/archetype_data.dart';
 import 'package:hogwarts_life_simulator/data/house_data.dart';
 import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/locations.dart';
+import 'package:hogwarts_life_simulator/data/npc_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 
 import 'helpers/test_fixtures.dart';
@@ -331,14 +332,25 @@ void _bloodStatusGroup() {
     });
 
     test('npc_data 里用到的血统都能翻出来', () {
-      // 兜底：将来往 NPC 数据里加血统时，忘了补标签表会在这里炸出来
-      final src = File('lib/data/npc_data.dart').readAsStringSync();
-      final re = RegExp(r"bloodStatus: *'([^']+)'");
-      final used = <String>{};
-      for (final m in re.allMatches(src)) {
-        used.add(m.group(1)!);
-      }
-      expect(used, isNotEmpty, reason: '没扫到 bloodStatus 字段，正则该更新了');
+      // 兜底：将来往 NPC 数据里加血统时，忘了补标签表会在这里炸出来。
+      // 批次 28：原来用正则扫 `bloodStatus: '...'` 的源码文本取这个集合，
+      // 认的是写法不是数据（换种写法就漏扫、别处的同名字段会误收）。
+      // 直接读真实 NpcSeed 对象——取不到才是真出问题。
+      final allSeeds = <NpcSeed>[
+        ...staffSeeds,
+        ...harrySameGryffindor,
+        ...harrySameSenior,
+        ...harrySameSlytherin,
+        ...harrySameRavenclaw,
+        ...harrySameHufflepuff,
+        ...maraudersSeeds,
+        ...dumbledoreEraSeeds,
+        ...postWarSeeds,
+        ...firstWarOriginals,
+        ...shopkeeperSeeds,
+      ];
+      final used = allSeeds.map((s) => s.bloodStatus).toSet();
+      expect(used, isNotEmpty, reason: '一份 NPC seed 都没读到，数据表名可能变了');
       for (final key in used) {
         final label = npcBloodStatusLabel(key);
         expect(label, isNot(contains('bloodStatus')), reason: 'NPC 血统 $key 没翻出来');
