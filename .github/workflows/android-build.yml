@@ -23,6 +23,39 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # ================================================================
+      # 版本号防膨胀门禁（用户需求：测试项/构建失败修复项不需要构建 app）。
+      # 规则：只有当本次 push 触及「会改变 APK 产物」的路径时才 bump 版本 +
+      # 构建 APK + 发 Release；仅文档/测试/CI 配置变更时只跑 analyze+test，
+      # 版本号与构建产物都不动。analyze/test 仍是全量质量门禁。
+      # 关键路径：lib/、assets/、shaders/、android/、pubspec.yaml(.lock)。
+      # workflow_dispatch 是手动触发，视为明确要求构建。
+      # ================================================================
+      - name: Check release-worthy changes
+        id: check
+        run: |
+          RELEASE_WORTHY=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE_WORTHY=true
+          else
+            echo '${{ toJson(github.event.commits) }}' > /tmp/commits.json
+            CHANGED=$(jq -r '.[] | .added[], .modified[], .removed[]' /tmp/commits.json 2>/dev/null | sort -u)
+            for f in $CHANGED; do
+              case "$f" in
+                lib/*|assets/*|shaders/*|android/*|pubspec.yaml|pubspec.lock)
+                  RELEASE_WORTHY=true
+                  break
+                  ;;
+              esac
+            done
+          fi
+          echo "RELEASE_WORTHY=$RELEASE_WORTHY" >> "$GITHUB_OUTPUT"
+          if [ "$RELEASE_WORTHY" = "true" ]; then
+            echo "本次 push 触及 app 关键路径，执行版本 bump + APK 构建"
+          else
+            echo "本次 push 仅含文档/测试/CI 变更，跳过版本号递增与 APK 构建（analyze+test 仍执行）"
+          fi
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -52,6 +85,7 @@ jobs:
 
       - name: Bump version for build
         id: bump
+        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           PUB="pubspec.yaml"
           CURRENT=$(grep '^version:' "$PUB" | awk '{print $2}')
@@ -93,7 +127,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: analyze-log-${{ steps.bump.outputs.VERSION_NAME }}
+          name: analyze-log-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
           path: analyze_output.log
           retention-days: 14
 
@@ -120,12 +154,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ steps.bump.outputs.VERSION_NAME }}
+          name: coverage-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
           path: coverage/lcov.info
           retention-days: 14
 
       - name: Build APK
         id: build
+        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           flutter build apk --release 2>&1 | tee build_output.log
           APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
@@ -144,10 +179,10 @@ jobs:
         timeout-minutes: 20
 
       - name: Upload build logs
-        if: always()
+        if: always() && steps.check.outputs.RELEASE_WORTHY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ steps.bump.outputs.VERSION_NAME }}
+          name: build-logs-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
           path: |
             build_output.log
             build_result.txt
@@ -155,6 +190,7 @@ jobs:
 
       - name: Check build result and locate APK
         id: apk
+        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           EXIT_CODE=$(grep BUILD_EXIT_CODE build_result.txt | cut -d= -f2)
           if [ "$EXIT_CODE" != "0" ]; then
@@ -166,6 +202,7 @@ jobs:
           echo "APK_PATH=$APK_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
+        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           APK_PATH="${{ steps.apk.outputs.APK_PATH }}"
           APK_DIR=$(dirname "$APK_PATH")
@@ -173,6 +210,7 @@ jobs:
           echo "RENAMED_APK=$APK_DIR/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk" >> "$GITHUB_ENV"
 
       - name: Upload APK
+        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}
@@ -180,6 +218,7 @@ jobs:
           retention-days: 30
 
       - name: Upload APK (nightly)
+        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: HogwartLige-nightly
@@ -194,7 +233,7 @@ jobs:
 
       - name: Sync changelog to CHANGELOG.md（验证通过后）
         id: sync
-        if: success()
+        if: success() && steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           chmod +x scripts/sync_changelog.sh
           bash scripts/sync_changelog.sh
@@ -238,6 +277,7 @@ jobs:
       # ================================================================
 
       - name: Create GitHub Release
+        if: success() && steps.check.outputs.RELEASE_WORTHY == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -264,6 +304,7 @@ jobs:
           echo "✅ Released $TAG"
 
       - name: Prune old releases (keep latest 5)
+        if: success() && steps.check.outputs.RELEASE_WORTHY == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -281,6 +322,7 @@ jobs:
           echo "✅ Release 清理完成，当前共 $REMAINING 个"
 
       - name: Output download links
+        if: success() && steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           echo "## 📱 下载地址" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

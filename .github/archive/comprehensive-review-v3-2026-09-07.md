@@ -78,7 +78,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 
 本报告不只是"问题清单"，同时是**修复台账**：每完成一批修复，就在对应条目上标注状态并写清改了什么、为什么这么改，再提交推送。完整流水见 [§9 修复记录](#9-修复记录批次-1--281)。
 
-> **台账 78 条：✅ 38 完全闭环 · 🟢 24 已收口 · 🟡 1 部分 · 🟗 1 重新定性 · ⬜ 14 未处理**
+> **台账 78 条：✅ 44 完全闭环 · 🟢 25 已收口 · 🟡 1 部分 · 🟗 1 重新定性 · ⬜ 7 未处理**
 
 | 批次 | 主题 | 涉及条目 | 状态 |
 |---|---|---|---|
@@ -115,6 +115,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | 27 | F20 迁移：存档往返组 + 本地 Flutter 工具链落地 | F20 | ✅ 已推送（首次本地 `flutter test` 验证后再推） |
 | 27.1 | CI 热修复：批次 20 那条是随机测试，改断言降幅 | F20 | ✅ 已推送 |
 | 28 | F20 迁移：数据层扫描→直接 import（5 条）+ 存量分类、重新定性 | F20 | ✅ 已推送 |
+| 29 | 性能基准起步 + 去 barrel 化 + 启动画面 + 平台/国际化定案 | P1 / F38 / CS3 / PC1 / PC2 / PC3 / F23 | ✅ 已推送（本地 analyze+test 全绿后推送；CI 版本号门禁同步上线） |
 
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService` 的注释早已解释清楚，只做了二次核对）、SI1 / F4（版本号与 `_migrateSave` 早就都有，批次 1 只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。详见各条目。
 
@@ -154,7 +155,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟗 批次28（9 组共迁移 18 条，扫描 181→176；**可行为化池子已近枯竭，余下 84 条接线守卫 + 40 条反向约束无行为等价物，F20 目标已重新定性**；27.1 修正批次 20 那条随机测试） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
-| F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
+| F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | ✅ 批次29（定案不做：单机中文用户，国际化的收益配不上引入成本；若将来有外发需求再开） |
 | F24 | 未使用 Semantics 标签 | 无障碍 | Low | v1 | 🟢 批次14（主游戏界面 5 处高频交互补语义标签：发送/指令中心/推进/快捷行动 chip/快速存档；地图点位与其余 IconButton 留作后续） |
 | F25 | 大量硬编码魔法数字 | 配置管理 | Medium | v1 | 🟢 批次15（新增 `MiuiDuration` 语义时长 token，收敛 UI 层 17 个文件 29 处散落 Duration；服务层超时属业务配置、组件专属时长维持 `MiuiMotion` 语义，均注明边界） |
 | F26 | debugPrint 生产环境残留 | 日志 | Low | v1 | ✅ 批次2（84 处） |
@@ -169,7 +170,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | F35 | liquid_glass 着色器每次 build 重建 | 动画/渲染 | Low | v2 | ✅ 批次5 |
 | F36 | SharedPreferences fire-and-forget | 存储模式 | High | v2 | ✅ 批次3 |
 | F37 | SharedPreferences 缺少批量写入 | 存储模式 | Medium | v2 | ✅ 批次3 |
-| F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | — |
+| F38 | Barrel 文件编译膨胀 | 导入管理 | Low | v2 | ✅ 批次29（删除 2 个单消费者 barrel：`game_provider_mixins.dart`（13 mixin）改 game_provider 直接 import、`other_screens.dart`（6 screen）改 game_phone_tab 直接 import；app.dart 等公共 API barrel 保留） |
 | F39 | 大量非空断言（!） | 空安全 | Medium | v2 | 🟢 批次14（高危 4 处查表/兜底断言改判空回退：careerById×2 / rankDefById / currentCrushName；其余约 280 处核对为守卫/框架/正则组等安全惯用法，维持现状） |
 | F40 | 14 个 mixin 全部混合到 GameProvider | Mixin 架构 | High | v2 | ✅ 批次11c（组织评估：混合式组合对单例状态容器利大于弊，无需再拆；混入职责已在 mixin 命名域内分组清晰） |
 | F41 | mixin 间存在隐式通信 | Mixin 架构 | Medium | v2 | — |
@@ -183,7 +184,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | S1 | API Key 缺少降级策略 | 安全审计 | High | v3 | ✅ 批次12b（写入失败检测 + 降级提示弹窗） |
 | S2 | crash_logger 可能记录敏感信息 | 安全审计 | Medium | v3 | ✅ 批次2 |
 | S3 | debugPrint 中的 AI 调试日志可能泄露 | 安全审计 | Low | v3 | ✅ 批次2 |
-| P1 | 缺少性能基准测试 | 性能基准 | High | v3 | — |
+| P1 | 缺少性能基准测试 | 性能基准 | High | v3 | 🟢 批次29（部分落地：`benchmark_harness` + 纯 Dart 基准 2 个——Player 序列化往返 / 集合重建开销基线；渲染帧率与启动耗时需设备侧 profiling，登记缓做） |
 | P2 | story_text_renderer 渲染性能瓶颈 | 性能基准 | High | v3 | — |
 | P3 | 频繁的集合重建 | 性能基准 | Medium | v3 | — |
 | P4 | notifyListeners 级联触发 | 性能基准 | Medium | v3 | 🟢 批次8/10（明显级联已合并，同帧重复 rebuild 清除） |
@@ -198,7 +199,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | DOC3 | 缺少 API 文档 | 文档完整性 | Low | v3 | ✅ 批次1 |
 | CS1 | 启动时同步加载 SharedPreferences | 冷启动性能 | High | v3 | 🟡 批次3（部分：KeyStore 并行读 + PrefsStore 缓存已落地；剩余「runApp 提前」定案缓做，见 §6 · CS1） |
 | CS2 | 启动时加载所有 NPC 数据 | 冷启动性能 | Medium | v3 | ✅ 批次3（误判） |
-| CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 | — |
+| CS3 | 缺少启动画面优化 | 冷启动性能 | Low | v3 | ✅ 批次29（暗色品牌启动页 + 居中图标 + NormalTheme 防闪白 + Android 12+ 系统启动屏 values-v31） |
 | SI1 | 存档无版本号 | 状态持久化 | High | v3 | ✅ 批次4（整体误判，版本号+迁移都有） |
 | SI2 | 存档完整性校验缺失 | 状态持久化 | Medium | v3 | ✅ 批次4 |
 | SI3 | 部分状态可能未持久化 | 状态持久化 | Medium | v3 | ✅ 批次4 |
@@ -207,9 +208,9 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | L1 | 缺少延迟加载 | 延迟加载 | Medium | v3 | — |
 | L2 | 图片无懒加载 | 延迟加载 | Medium | v3 | — |
 | L3 | screen 级别无懒加载 | 延迟加载 | Low | v3 | — |
-| PC1 | 仅 Android 平台 | 平台兼容性 | Medium | v3 | — |
-| PC2 | 缺少平台条件编译 | 平台兼容性 | Low | v3 | — |
-| PC3 | 缺少平台特定配置 | 平台兼容性 | Low | v3 | — |
+| PC1 | 仅 Android 平台 | 平台兼容性 | Medium | v3 | ✅ 批次29（定案不做：产品决策——仅 Android、单机自用，多平台没有受众；维持现状即正确） |
+| PC2 | 缺少平台条件编译 | 平台兼容性 | Low | v3 | ✅ 批次29（定案不做：跟随 PC1，无多平台目标就不存在「缺条件编译」） |
+| PC3 | 缺少平台特定配置 | 平台兼容性 | Low | v3 | ✅ 批次29（定案不做：跟随 PC1；Android 签名配置模板已由 F27/批次1 提供） |
 
 ---
 
@@ -573,7 +574,12 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 
 **问题**：所有 UI 文本直接硬编码为中文，未使用 ARB 或 l10n 框架。
 
-**状态**：⬜ 未处理
+**状态**：✅ 批次 29（定案不做）
+
+> 产品定位是「仅 Android、单机自用」的中文玩家（批次 29 与 PC1/PC2/PC3 同时定案）。
+> 唯一用户就是作者自己，国际化（ARB + l10n + 复数/方向处理）的引入成本与维护负担
+> 配不上收益；若将来有外发多语言需求再重新开项。新增文案仍建议集中在既有数据表/常量里，
+> 方便将来一次性抽取。
 
 ---
 
@@ -750,7 +756,14 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 
 **问题**：`game_provider_mixins.dart` 导出 9 个 mixin，`other_screens.dart` 导出 6 个 screen，Any import of these barrel files pulls in all dependencies。
 
-**状态**：⬜ 未处理
+**状态**：✅ 批次 29（已修复）
+
+> 两个 barrel 都只有一个消费者，去 barrel 化零成本：`game_provider.dart` 改为直接
+> import 13 个 mixin 文件（原 barrel 的「mixin 必须 `on GameProviderBase`」设计约束
+> 注释同步迁到 game_provider.dart 头部）；`game_phone_tab.dart` 改为直接 import
+> 6 个 screen 文件。删除 `game_provider_mixins.dart` 与 `other_screens.dart` 两个 barrel。
+> `app.dart`（公共 API 出口）、`prompts.dart`、`shop_inventory_screens.dart` 等
+> 保留——它们是刻意设计的聚合出口，不在本条命名范围内。
 
 ---
 

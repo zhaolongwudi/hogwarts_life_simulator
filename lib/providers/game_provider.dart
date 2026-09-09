@@ -3,7 +3,23 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'app_provider.dart';
 import 'game_provider_base.dart';
-import '../mixins/game_provider_mixins.dart';
+// F38：不再经 barrel（game_provider_mixins.dart 已删除）直接导入各 Mixin。
+// 设计约束：所有 Mixin 必须写 `mixin X on GameProviderBase`，而不能 `on GameProvider`。
+// 因为 GameProvider 又 `with` 这些 Mixin，后者会形成 recursive_interface_inheritance
+// 继承环（Dart 3.x 报错）。
+import '../mixins/mixin_init.dart';
+import '../mixins/mixin_narrative.dart';
+import '../mixins/mixin_narrative_continuity.dart';
+import '../mixins/mixin_commands.dart';
+import '../mixins/mixin_response.dart';
+import '../mixins/mixin_response_affection.dart';
+import '../mixins/mixin_response_choices.dart';
+import '../mixins/mixin_relations.dart';
+import '../mixins/mixin_systems.dart';
+import '../mixins/mixin_play.dart';
+import '../mixins/mixin_animagus.dart';
+import '../mixins/mixin_death.dart';
+import '../mixins/mixin_career.dart';
 import '../data/balance_constants.dart';
 import '../data/rivalry_data.dart';
 import '../services/save_service.dart';

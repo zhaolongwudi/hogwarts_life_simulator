@@ -3,7 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/player.dart';
-import '../other/other_screens.dart';
+// F38：不再经 barrel（other_screens.dart 已删除）直接导入各 screen。
+import '../other/communication_screen.dart';
+import '../other/forum_screen.dart';
+import '../other/diary_screen.dart';
+import '../other/parallel_world_screen.dart';
+import '../other/matchmaker_screen.dart';
+import '../other/affection_aggregate_screen.dart';
 import '../shop/shop_inventory_screens.dart';
 import '../memory_screen.dart';
 import '../job_screen.dart';

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 lib/utils/ui_helpers.dart 的 bg（0xFF0D1117）保持一致 -->
+    <color name="launch_background">#0D1117</color>
+</resources>
