@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.2.4 — 2026-09-09
+
+**📋 变更说明**
+批次27.1: 修批次20那条随机测试（开局特质RNG），断言降幅而非绝对值
+
+批次27推送后 CI 挂在 Run tests with coverage：1383 passed / 1 failed。
+失败的不是本批新加的两条，而是批次20迁过来的那条：
+  ❌ scar_test.dart 身上的疤会压低 effectiveAttr
+     Expected: <47>  Actual: <59>
+本地 flutter test / --coverage 各跑一遍都是1384全绿，单跑该用例5次也全绿 ——
+
 ### v4.2.3 — 2026-09-08
 
 **📋 变更说明**
