@@ -189,3 +189,6 @@ UPDATE_DESC.md
 # AI debug logs
 ai_log*
 临时构建*
+
+# 覆盖率产物（CI 与本地 flutter test --coverage 都往这里写）
+coverage/

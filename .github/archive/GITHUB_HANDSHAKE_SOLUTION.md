@@ -207,7 +207,22 @@ openssl x509 -req -in leaf.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out lea
 > `RPC failed; HTTP 400 ... fatal: expected 'packfile'`。
 > v2 改为**每请求一个独立上游连接 + 请求头强制 `Connection: close`**，上游发完即关，
 > 代理以 EOF 收尾：不解析 chunked，也不再空等超时。
-> 已能 clone 的机器可直接用仓库里的 `scripts/gh_proxy.py`（与此处内容一致）。
+> 已能 clone 的机器可直接用仓库里的 `scripts/gh_proxy.py`。
+>
+> ⚠️ **2026-09-10 更正：这句话里的「与此处内容一致」已经不成立了。**
+> 仓库里的 `scripts/gh_proxy.py` 后来演进成了 **v3**，比上面这份 v2 更强，两者已不是同一份代码：
+>
+> | 能力 | 上文 v2 | 仓库 `scripts/gh_proxy.py`（v3） |
+> |---|---|---|
+> | 拿真实 IP | 硬编码池，逐个试 | **TCP/53 解析优先**（过滤 `198.18.*`），失败才回退硬编码池；结果按 host 缓存 |
+> | 判定回源域名 | 读 HTTP `Host` 头 | **直接从 TLS ClientHello 里抠 SNI**，`Host` 头拿不到也能正确回源 |
+> | 响应结束判据 | 强制 `Connection: close`，靠上游 EOF | **`select` 双向 pipe**，任一端 EOF 收工；上游 keep-alive 也照常工作 |
+> | 监听地址 | `127.0.0.1:443` | `0.0.0.0:443`，端口可从 `argv[1]` 取 |
+> | 证书位置 | 写死当前目录 | 依次找 `/opt/ghproxy`、脚本同目录、`certs/` |
+>
+> v2 的「每请求一个上游连接」是为了绕开 v1 的 chunked 坑，代价是每请求一次 TLS 握手；
+> v3 用 pipe 直接把这件事解决了，**优先用 v3**。本文 §5.3 的代码保留作为原理说明与兜底
+> （v3 脚本万一丢失时，照它重写即可跑通 clone/push）。
 
 ```python
 #!/usr/bin/env python3
@@ -657,6 +672,19 @@ curl -sSL --cacert /opt/ghproxy/ca.crt \
 1. **日志不在 GitHub，在 Azure Blob**。`Location` 指向
    `productionresultssa*.blob.core.windows.net`，这个域名同样被拦，
    也要加进 `/etc/hosts` 走本地代理（它同样吃"无 SNI"这一套，握手能过）。
+
+   > **2026-09-10 补充一个必踩的坑：`/etc/hosts` 不支持通配。**
+   > 写 `127.0.0.1 blob.core.windows.net` **不等于** 覆盖 `productionresultssa4.blob.core.windows.net`，
+   > 必须把 302 里那个**具体的完整主机名**写进去，否则 curl 仍然直连、照样 `exit 35`。
+   > 实操：先不加 hosts 跑一次 curl，从报错里抄出 `in connection to <host>:443` 的那个 host，
+   > 再 `echo "127.0.0.1 <host>" >> /etc/hosts`，重跑即可。
+   > 另一个前提：代理得能解析这个陌生域名——v3 脚本（`scripts/gh_proxy.py`）走 TCP/53
+   > 真实解析，天然支持；如果用的是本文 §5.3 的 v2，确认它的 `ips_for()` 对非 github
+   > 域名也做了 DNS 解析，而不是一律回落到 GitHub 的 IP 池。
+   >
+   > 还有一点：下载到的常常**不是 zip 而是带 BOM 的纯文本**（`file` 显示
+   > `Unicode text, UTF-8 (with BOM)`），用 `open(path, encoding='utf-8-sig')` 读，
+   > 别拿 `zipfile` 去解，会报 "not a zip file"。
 2. **叶子证书的 SAN 不含 blob 域名**，客户端校验主机名会失败。
    重签叶子证书时把 `DNS:*.blob.core.windows.net` 加进 `subjectAltName`：
 
@@ -759,3 +787,84 @@ analyze 只报编译错误（0 issue）→ 恢复 lint 门禁（P1-8）后 lint 
    echo $! > /tmp/ghproxy.pid
    # 停止时：kill -9 $(cat /tmp/ghproxy.pid)
    ```
+
+---
+
+## 11. 沙箱里装 Flutter：把"只能靠 CI 看结果"变成"推送前本地验证"（2026-09-10）
+
+**为什么要写这一节**：本仓库的修复流程是「改一批 → 推 → 看 CI」。
+沙箱预装的 Flutter 是 **3.0.0 / Dart 2.17**，而项目要求 `sdk: '>=3.12.0 <4.0.0'`、
+`flutter: '>=3.44.0'`，低版本连 `pubspec.yaml` 都解析不了，只能干等 CI。
+代价很实在：修复台账里 **批次 23/24/25/26 连续四批 CI 先红**，每批都要再补一个
+「CI 修正」提交擦屁股。根因不是改动难，是**写完看不见结果**。
+
+装上与 CI 同版本的 Flutter 之后，`flutter analyze` / `flutter test` 都能本地跑，
+推送前就能知道红不红。
+
+### 11.1 三步装好（约 5 分钟，含 1.5 GB 下载）
+
+官方源 `storage.googleapis.com` 走 443 被拦（`curl` 报 `exit 35`），
+但**国内镜像 `storage.flutter-io.cn` 是通的**：
+
+```bash
+# 1) 查当前 stable 版本号与归档名
+curl -s "https://storage.flutter-io.cn/flutter_infra_release/releases/releases_linux.json" \
+  -o /tmp/rel.json
+# → current_release.stable 对应的 archive：
+#   stable/linux/flutter_linux_3.47.2-stable.tar.xz（Dart 3.13.2）
+
+# 2) 下载 + 解压（注意：解压到干净目录，别直接 -C /opt 覆盖已有的旧 flutter）
+curl -sL "https://storage.flutter-io.cn/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.2-stable.tar.xz" \
+  -o /opt/flutter347.tar.xz
+mkdir -p /opt/x && tar -xf /opt/flutter347.tar.xz -C /opt/x && mv /opt/x/flutter /opt/flutter347
+
+# 3) 配好镜像与 CA，再验证
+export PUB_HOSTED_URL=https://pub.flutter-io.cn          # pub 镜像
+export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
+export GIT_SSL_CAINFO=/opt/ghproxy/ca.crt                # 关键，见 11.2
+/opt/flutter347/bin/flutter --version --suppress-analytics
+# → Flutter 3.47.2 • Dart 3.13.2
+```
+
+### 11.2 三个必踩的坑
+
+| 症状 | 原因 | 解法 |
+|---|---|---|
+| `flutter --version` 卡在 `git fetch __flutter_version_check__` 报 `server certificate verification failed. CAfile: none` | 这是**GitHub 被拦的连带症状**——flutter 启动时要 fetch 自己的 git 仓库做版本检查 | `export GIT_SSL_CAINFO=/opt/ghproxy/ca.crt`（§5 的本地 CA 已经覆盖了 github.com），配好后自愈 |
+| `tar -xf ... -C /opt` 后 `flutter --version` 行为诡异 | 沙箱预装的旧 `/opt/flutter` 与新包**合并**了，残留旧文件 | 解压到临时目录再 `mv` 过去，不要直接覆盖 |
+| `flutter pub get` 跑完 `git status` 多出一个 `pubspec.lock` 的改动 | pub 按镜像上的新版本顺手升了 4 个依赖 | **推之前 `git checkout -- pubspec.lock`**。工具链变动不该混进业务提交 |
+
+### 11.3 与 CI 对齐的三条命令
+
+CI（`android-build.yml`）跑的是 `flutter analyze --no-fatal-warnings --no-fatal-infos`
+和 `flutter test --coverage`，本地照抄同一组即可：
+
+```bash
+cd /workspace/hogwarts_life_simulator
+export PUB_HOSTED_URL=https://pub.flutter-io.cn GIT_SSL_CAINFO=/opt/ghproxy/ca.crt
+
+/opt/flutter347/bin/flutter analyze --no-fatal-warnings --no-fatal-infos   # 看退出码，不看 issue 数
+/opt/flutter347/bin/flutter test test/<改到的那个文件>.dart                 # 快，秒级
+/opt/flutter347/bin/flutter test --coverage                                # 全量，约 25s
+```
+
+两个注意点：
+
+- **看退出码，不要看 issue 数。** 本项目 `analyze` 有 764 条 issue，几乎全是
+  `prefer_const_constructors` 之类的 info；`--no-fatal-infos` 下退出码才是判据
+  （详见 §9.3 那个「0 error 但仍然 exit 1」的教训）。
+- `--coverage` 会生成 `coverage/` 目录，**它不在 `.gitignore` 里**（已在 2026-09-10 补上）。
+  没忽略时一次 `git add -A` 就把覆盖率产物带进提交。
+
+### 11.4 沙箱重置后怎么恢复
+
+`/opt` 里的文件实测会保留（`/etc/hosts` 会被清空，见 §8），所以**不用重装**。
+每个新会话开工前跑一遍：
+
+```bash
+ls /opt/flutter347/bin/flutter >/dev/null && echo "SDK 在"        # 不在才回到 11.1
+grep -c "hogwarts-proxy" /etc/hosts                                # 0 = 要补 §5.4 的映射
+pgrep -f "python3.*gh_proxy" | head -1                             # 空 = 要重启代理
+```
+
+三条都正常，`flutter test` 就能直接跑。

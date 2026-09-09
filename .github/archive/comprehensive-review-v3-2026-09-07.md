@@ -46,6 +46,7 @@
 | 25 | F20 迁移：档案可见性组 | F20 | ✅ 已推送（CI 先红后修） |
 | 26 | F20 迁移：/状态 职业分流组 | F20 | ✅ 已推送（CI 先红后修） |
 | **27** | **F20 迁移：存档往返组 + 本地 Flutter 工具链落地** | **F20** | **✅ 已推送（首次本地 `flutter test` 验证后再推）** |
+| **27.1** | **CI 热修复：批次 20 那条是随机测试（开局特质 RNG），改断言降幅** | **F20** | **✅ 已推送** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -383,6 +384,15 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 「老存档缺 scars 字段兜底」「effectiveAttr 叠加疤痕惩罚」3 条源码扫描断言改写为
 > 2 条真实行为测试（构造真实 `GameProvider`，断言 wandArm 疤使 50 额定的
 > spell_understanding / magic_control 落为 47 / 48）。该组源码扫描数从 6 → 3。
+>
+> ⚠️ **上面这个写法是错的，批次 27.1 已修正。**「额定属性 50」这个前提不成立：
+> `initializeGame` 会调 `_rollStartingTraits()` 随机抽 3 个开局特质，再经
+> `_applyTraitBonuses()` 把加成叠进 `player.attributes`。稀有特质「咒语奇才」恰好给
+> `spell_understanding +12` / `magic_control +8`，于是落疤后是 62−3 = **59** 而不是 47。
+> CI 实测撞出过 `Expected: <47> / Actual: <59>`，本地连跑 5 次全绿（rare 特质没抽中），
+> 是标准的一次性随机测试。修法不是把 47 改成 59，而是**断言降幅**
+> （落疤前后各降 3 / 2）——降幅才是这条要保证的性质，断言绝对值等于把
+> 「开局抽到什么特质」这个无关变量锁进了用例。
 >
 > **🟢 推进中（批次 21）。** 从 `command_subs_test.dart` 指令缺口组把
 > 「/时间 日程、/档案 回忆、/恋爱 历史的格式化方法存在」3 条纯源码文本断言改写为
@@ -1177,7 +1187,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次27（scar/指令缺口/收藏空态/buyPet分支/学院杯负号/档案可见性/职业分流/存档往返 8 组持续推进，扫描 −7；批次 27 起本地可跑 `flutter test` 后再推） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次27.1（同上 8 组，扫描 −7；批次 27 起本地可跑 `flutter test` 后再推；27.1 修正批次 20 那条随机测试） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -2282,3 +2292,64 @@ flutter test                                           → 1384 passed
 **下一步的连带收益**：F20 还剩约 176 处 `readAsStringSync` 引用，此前每批只能改 1-2 条
 （改多了怕 CI 红），现在可以按语义域一次多改几条、本地验完再推。另外 P1（缺性能基准测试，
 High）一直没动就是因为本地跑不了什么，工具链到位后这条也可以开工了。
+
+### 批次 27.1 — CI 热修复：批次 20 那条行为断言是随机测试
+
+**现象**：批次 27 推送后 CI 挂在 `Run tests with coverage`：`1383 tests passed, 1 failed`。
+失败的不是本批次新加的两条，而是**批次 20 迁过来的那条**：
+
+```
+❌ scar_test.dart: 真的接进了游戏 身上的疤会压低 effectiveAttr
+   Expected: <47>
+     Actual: <59>
+```
+
+**为什么本地没复现**：本地 `flutter test` / `flutter test --coverage` 各跑一遍都是 1384 全绿，
+单独重跑该用例 5 次也全绿。这不是"本地与 CI 环境不一致"，是**这条用例本身时红时绿**。
+
+**根因**：断言写的是绝对值 `effectiveAttr('spell_understanding') == 47`，注释里写着
+「额定属性 50 → 47」。`makeGame()` 确实传了全属性 50，但 `initializeGame` 之后还有一步：
+
+```dart
+final rolledTraits = _rollStartingTraits();     // 随机抽 3 个开局特质
+player!.traits.addAll(rolledTraits.map((t) => t.id));
+_applyTraitBonuses(rolledTraits);               // 把加成叠进 player.attributes
+```
+
+`trait_data.dart` 里的稀有特质「咒语奇才」正好是
+`attributeBonus: {'spell_understanding': 12, 'magic_control': 8}`。
+抽中它：50 + 12 − 3 = **59**，与 CI 报的 Actual 一字不差。
+它是 rare，本地那几次没抽中，所以本地永远绿、CI 偶尔红。
+
+**修法**：不改期望值（改成 59 只是换一个照样会红的数），改**断言的性质**——
+从"落疤后等于多少"改成"落疤后降了多少"：
+
+```dart
+final beforeSpell = gp.effectiveAttr('spell_understanding');
+final beforeCtrl  = gp.effectiveAttr('magic_control');
+gp.player!.scars.add(const Scar(site: ScarSite.wandArm, since: 'x'));
+expect(gp.effectiveAttr('spell_understanding'), beforeSpell - 3);
+expect(gp.effectiveAttr('magic_control'),       beforeCtrl  - 2);
+```
+
+降幅才是这条用例要保证的东西（"疤确实压低了属性，且压的就是 −3 / −2"），
+绝对值把"开局抽到什么特质"这个无关变量一起锁了进来。这也正好是
+§10「测试纪律三原则」里「不锁实现细节」说的同一件事——只是这次被锁的不是实现，
+是 RNG。
+
+**顺带做的两件小事**：
+
+- `coverage/` 不在 `.gitignore` 里。CI 和本地 `flutter test --coverage` 都会生成它，
+  不忽略的话一次 `git add -A` 就把覆盖率产物带进提交。已补上。
+- 全库核对了同类隐患：`effectiveAttr` 在测试里只有 scar_test 一处调用点；
+  `foreign_data_robustness_test.dart` 里那两条 `health == 100` / `galleons == 500`
+  是直接 `Player.fromJson` 构造的，不经过特质抽取，不受影响。
+
+**教训（值得单独记一条）**：源码扫描断言 → 行为断言的迁移，并不自动等于"更可靠"。
+**行为断言只是把断言对象从"源码文本"换成了"运行值"，如果运行值里混着随机源，
+它比扫描断言更危险——扫描断言至少是确定性的。** 迁移前要先确认这条链路
+`initializeGame → _rollStartingTraits → _applyTraitBonuses` 上没有 RNG；
+有就断言变化量，不要断言绝对值。
+
+**验证**：`flutter analyze --no-fatal-warnings --no-fatal-infos` → 764 issues, exit 0；
+`flutter test --coverage` → 1384 passed。

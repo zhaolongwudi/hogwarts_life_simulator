@@ -413,10 +413,16 @@ void main() {
 
     test('身上的疤会压低 effectiveAttr——读数值确实叠加了疤痕惩罚', () async {
       final gp = await makeGame();
+      // 开局会抽 3 个特质并叠加属性加成（稀有特质「咒语奇才」给
+      // spell_understanding +12、magic_control +8），所以基准值不是固定 50。
+      // 断言「落疤后各降了多少」而不是绝对值 47/48 —— 写死绝对值会随 RNG
+      // 时红时绿（CI 曾实测拿到 59 = 50+12-3）。降幅才是这条要保证的性质。
+      final beforeSpell = gp.effectiveAttr('spell_understanding');
+      final beforeCtrl = gp.effectiveAttr('magic_control');
       gp.player!.scars.add(const Scar(site: ScarSite.wandArm, since: 'x'));
-      // wandArm 疤：施法理解 -3、魔咒掌控 -2；额定属性 50 → 47 / 48
-      expect(gp.effectiveAttr('spell_understanding'), 47);
-      expect(gp.effectiveAttr('magic_control'), 48);
+      // wandArm 疤：施法理解 -3、魔咒掌控 -2
+      expect(gp.effectiveAttr('spell_understanding'), beforeSpell - 3);
+      expect(gp.effectiveAttr('magic_control'), beforeCtrl - 2);
     });
 
     test('判定的那一处不再直接读 attributes', () {
