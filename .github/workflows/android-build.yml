@@ -30,6 +30,11 @@ jobs:
       # 版本号与构建产物都不动。analyze/test 仍是全量质量门禁。
       # 关键路径：lib/、assets/、shaders/、android/、pubspec.yaml(.lock)。
       # workflow_dispatch 是手动触发，视为明确要求构建。
+      #
+      # 判定依据用 checkout 后的仓库内真实 diff（git diff before..HEAD），
+      # 不用 github.event.commits 的 added/modified/removed —— 实测（run
+      # 34402831753）该 payload 在本 workflow 下提取为空导致门禁误判
+      # skip 了含 lib/android 改动的提交。git diff 不依赖事件结构，可靠。
       # ================================================================
       - name: Check release-worthy changes
         id: check
@@ -38,16 +43,21 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RELEASE_WORTHY=true
           else
-            echo '${{ toJson(github.event.commits) }}' > /tmp/commits.json
-            CHANGED=$(jq -r '.[] | .added[], .modified[], .removed[]' /tmp/commits.json 2>/dev/null | sort -u)
-            for f in $CHANGED; do
-              case "$f" in
-                lib/*|assets/*|shaders/*|android/*|pubspec.yaml|pubspec.lock)
-                  RELEASE_WORTHY=true
-                  break
-                  ;;
-              esac
-            done
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              # 分支首次推送（无父提交）：无从 diff，保守视为 release-worthy
+              RELEASE_WORTHY=true
+            else
+              CHANGED=$(git -c core.quotepath=false diff --name-only "$BEFORE" HEAD | sort -u)
+              for f in $CHANGED; do
+                case "$f" in
+                  lib/*|assets/*|shaders/*|android/*|pubspec.yaml|pubspec.lock)
+                    RELEASE_WORTHY=true
+                    break
+                    ;;
+                esac
+              done
+            fi
           fi
           echo "RELEASE_WORTHY=$RELEASE_WORTHY" >> "$GITHUB_OUTPUT"
           if [ "$RELEASE_WORTHY" = "true" ]; then

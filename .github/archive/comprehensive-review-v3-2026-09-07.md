@@ -116,6 +116,7 @@ A. [附录 · 38 维度与条目对照](#附录-a--38-维度与条目对照)
 | 27.1 | CI 热修复：批次 20 那条是随机测试，改断言降幅 | F20 | ✅ 已推送 |
 | 28 | F20 迁移：数据层扫描→直接 import（5 条）+ 存量分类、重新定性 | F20 | ✅ 已推送 |
 | 29 | 性能基准起步 + 去 barrel 化 + 启动画面 + 平台/国际化定案 | P1 / F38 / CS3 / PC1 / PC2 / PC3 / F23 | ✅ 已推送（本地 analyze+test 全绿后推送；CI 版本号门禁同步上线） |
+| 29.1 | CI 门禁误判修复：`github.event.commits` 的 added/modified/removed 在 push 事件下提取为空，含 lib/android 改动的提交被误判跳过版本构建（run 34402831753） | PC1 | ✅ 已推送（判定依据改为 checkout 后 `git diff before..HEAD`，不依赖事件 payload 结构；本地验证 16 个变更文件命中 lib/android 关键路径） |
 
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService` 的注释早已解释清楚，只做了二次核对）、SI1 / F4（版本号与 `_migrateSave` 早就都有，批次 1 只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。详见各条目。
 
