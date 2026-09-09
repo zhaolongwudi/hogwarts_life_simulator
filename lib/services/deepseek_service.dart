@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../providers/app_provider.dart';
 import 'ai_timeouts.dart' as timeouts;
+import 'empty_response_monitor.dart';
 import 'rate_limiter.dart';
 
 class TokenUsage {
@@ -54,6 +55,43 @@ class AiNonRetryableException implements Exception {
   AiNonRetryableException(this.message);
   @override
   String toString() => message;
+}
+
+/// 用户主动取消（router.cancelCurrentCall）时抛出的异常。
+///
+/// 与超时/网络错误不同：调用方应静默收尾——不重试、不切 Key、不生成兜底
+/// 剧情。此前取消只表现为 DioException(cancel) → 被 `_handleError` 归类成
+/// 「网络错误」→ 上层误以为 AI 挂了而走本地兜底，把玩家正在看的剧情
+/// 替换成过渡文本（Q5）。
+class AiCanceledException implements Exception {
+  final String message;
+  AiCanceledException(this.message);
+  @override
+  String toString() => 'AiCanceledException: $message';
+}
+
+/// 连续空响应达到阈值（EmptyResponseMonitor.degradeThreshold）后抛出的异常。
+///
+/// 与偶发空响应（AiRetryableException）不同：它携带「该模型不稳定」信号，
+/// 路由层据此跳过该提供商**全部** Key 降级到备用提供商，并提示玩家更换
+/// 稳定模型（Q9）。文案自带换模型建议——即使全链失败把异常上抛给玩家，
+/// 提示也不会丢。
+class AiEmptyResponseException implements Exception {
+  final String provider;
+  final String model;
+  final String message;
+  AiEmptyResponseException(this.provider, this.model, this.message);
+  @override
+  String toString() => message;
+}
+
+/// 偶发空响应（未达到连续降级阈值）抛出的异常。
+///
+/// 语义上「可重试」（mixin 的强化指令重试逻辑照常接管），但归因是模型
+/// 输出质量而非 Key/网络——路由层据此**不记 Key 熔断**：模型不稳定 ≠
+/// Key 失效，把空响应计入熔断只会让 60 秒冷却白等（Q9）。
+class AiEmptyRetryableException extends AiRetryableException {
+  AiEmptyRetryableException(super.message);
 }
 
 class DeepSeekService {
@@ -173,6 +211,11 @@ class DeepSeekService {
   }) async {
     try {
       await _acquireSlot();
+      // 限流排队期间用户可能已取消：token 已掐断时不再发请求，
+      // 直接以取消异常收尾，避免「取消后又立刻发起新请求」。
+      if (cancelToken?.isCancelled == true) {
+        throw AiCanceledException('请求已取消');
+      }
       final response = await _dio.post(
         normalizePath(config.chatPath),
         data: jsonEncode({
@@ -204,15 +247,38 @@ class DeepSeekService {
       final usage = TokenUsage.fromJson(usageData ?? const {});
 
       // 空响应同样要可重试：模型偶发空输出是高频事件，不该被放大成「Key 失效」。
+      // Q9：连续空响应达到阈值 → 抛 AiEmptyResponseException，让路由层跳过
+      // 整个提供商并提示换稳定模型；偶发空响应抛 AiEmptyRetryableException
+      //（可重试，且不记 Key 熔断——空响应是模型质量问题，不是 Key 问题）。
       if (content.isEmpty) {
-        throw AiRetryableException('AI 返回了空响应，请重试');
+        final providerName = config.provider.name;
+        final degraded = EmptyResponseMonitor.instance
+            .recordEmpty(providerName, config.model);
+        if (degraded) {
+          throw AiEmptyResponseException(
+            providerName,
+            config.model,
+            '模型 ${config.model} 连续${EmptyResponseMonitor.degradeThreshold}次返回空响应，'
+            '已判定不稳定；建议在设置页更换稳定模型',
+          );
+        }
+        throw AiEmptyRetryableException('AI 返回了空响应，请重试');
       }
+      // 成功响应清零连续空响应计数（Q9：该模型恢复稳定）
+      EmptyResponseMonitor.instance.recordSuccess(
+          config.provider.name, config.model);
       return ChatResult(content: content, usage: usage);
     } on DioException catch (e) {
       _handleError(e);
       rethrow;
     } on AiRetryableException {
       rethrow; // 上面结构断言抛出的可重试异常，直接放行
+    } on AiCanceledException {
+      rethrow; // Q5：用户取消，不得被下面的兜底重包成「解析失败」
+    } on AiGateTimeoutException {
+      rethrow; // Q7：本地限流/配额排队超时，不是「响应坏了」，不得重包
+    } on AiEmptyResponseException {
+      rethrow; // Q9：连续空响应=模型不稳定信号，不得被兜底重包
     } catch (e) {
       // 兜底：任何非预期解析异常都归一为可重试，避免被当成 Key 失效
       throw AiRetryableException('AI 响应解析失败: $e');
@@ -246,6 +312,9 @@ class DeepSeekService {
       // 重试同一把——那点预算该留给下一个 Key。
       throw AiRetryableException('请求超时（${e.type.name}），请重试',
           isTimeout: true);
+    } else if (e.type == DioExceptionType.cancel) {
+      // 用户主动取消（Q5）：不归类成网络错误，让上层走「静默收尾」路径。
+      throw AiCanceledException('请求已取消');
     } else if (statusCode != null && statusCode >= 400 && statusCode < 500) {
       throw AiNonRetryableException('API 错误 ($statusCode): $msg');
     } else {

@@ -732,7 +732,7 @@ void main() {
           'test-key',
           timeout: const Duration(milliseconds: 60),
         ),
-        throwsA(isA<Exception>()),
+        throwsA(isA<AiGateTimeoutException>()),
       );
       AgnesRateLimiter.instance.reset();
     });

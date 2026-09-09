@@ -57,6 +57,18 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 每回合信息密度历史记录，用于调试与调优
   final List<_NarrativeDensityRecord> _narrativeDensityHistory = [];
 
+  /// Q5：取消当前正在进行的叙事/选项生成。
+  ///
+  /// UI 加载槽位的「取消」按钮对接这里。路由器掐断整条调用链（含底层
+  /// HTTP），[processChoice] 捕获 [AiCanceledException] 后静默收尾——
+  /// 不重试、不切 Key、不生成本地兜底剧情（否则玩家正在看的正文会被
+  /// 替换成过渡文本）。
+  void cancelCurrentNarrative() {
+    final r = router;
+    if (r == null || !isLoading) return;
+    r.cancelCurrentCall();
+  }
+
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
     CrashLogger.instance.logHeartbeat(
@@ -673,6 +685,9 @@ $kNarrativeWritingRules
           response = (await callDeepSeek(currentPrompt)).content;
         } on AiNonRetryableException {
           rethrow;
+        } on AiCanceledException {
+          // Q5：用户取消 → 不重试（重试会立刻再发起一次新请求），直接上抛。
+          rethrow;
         } catch (e) {
           loadingStage = '请求失败，正在重试...';
           notifyListeners();
@@ -950,6 +965,14 @@ $kNarrativeWritingRules
       isLoading = false;
       notifyListeners();
       unawaited(autoSave());
+    } on AiCanceledException {
+      // Q5：用户主动取消。不降级兜底（会覆盖当前正文/回合进度），
+      // 只恢复可输入状态并给出轻量提示，让玩家重新输入行动。
+      debugLog('⏹ 剧情/选项生成已被用户取消');
+      notifications.add('⏹ 已取消本次 AI 生成，可重新输入行动');
+      loadingStage = '';
+      isLoading = false;
+      notifyListeners();
     } catch (e) {
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
       debugLog('❌ 剧情生成失败，启用本地兜底叙事: $e');

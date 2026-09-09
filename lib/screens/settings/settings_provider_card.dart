@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/ui_helpers.dart';
 import '../../data/provider_defaults.dart';
 import '../../providers/app_provider.dart';
+import '../../services/rate_limiter.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../widgets/miuix_overlays.dart';
 
@@ -208,6 +209,10 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
           runSpacing: 6,
           children: models.map((model) {
             final selected = current == model;
+            // Q12：SenseNova 按模型分档限流（1500/500 次每 5 小时），
+            // chip 上直接标注。数据源与限流闸门共用 quotaForModel，
+            // 不在这里再抄一份数字——设置页与执行层对不上就是这类「第二份」造成的。
+            final quotaHint = _quotaHintFor(p, model);
             return InkWell(
               onTap: () {
                 widget.modelController.text = model;
@@ -235,12 +240,27 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                     width: selected ? 1.5 : 1,
                   ),
                 ),
-                child: Text(
-                  model,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: selected ? accent : MiuiColors.onSurface,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                child: Text.rich(
+                  TextSpan(
+                    text: model,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: selected ? accent : MiuiColors.onSurface,
+                      fontWeight:
+                          selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    children: [
+                      if (quotaHint != null)
+                        TextSpan(
+                          text: '  $quotaHint',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: selected
+                                ? accent.withValues(alpha: 0.8)
+                                : MiuiColors.onSurfaceVariantSummary,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -249,6 +269,15 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
         ),
       ],
     );
+  }
+
+  /// SenseNova 模型配额标注（1500/500 次每 5 小时）；其他提供商返回 null。
+  ///
+  /// 只给 SenseNova 标注：Agnes 是 20 RPM 维度（卡片说明区已写）、
+  /// DeepSeek 按量计费无限流。数字从限流闸门取，杜绝两处维护。
+  String? _quotaHintFor(AiProvider p, String model) {
+    if (p != AiProvider.sensenova) return null;
+    return '${SenseNovaQuotaManager.quotaForModel(model)}次/5h';
   }
 
   /// 收起/展开共用的头部行

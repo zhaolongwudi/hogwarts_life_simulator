@@ -2738,6 +2738,14 @@ mixin GameSystemsMixin on GameProviderBase {
       temperature: 0.85,
       maxTokens: maxTokens,
     );
+    // Q9：模型连续空响应触发降级（成功走了备用提供商）时，把「已切换备用
+    // 模型 + 建议换稳定模型」的提示追加到通知栏，只提示一次。失败路径由
+    // AiEmptyResponseException 自身的文案兜底，这里不必重复。
+    final degradeNotice = r.lastDegradeNotice;
+    if (degradeNotice != null && degradeNotice.isNotEmpty) {
+      notifications.add('⚠️ $degradeNotice');
+      r.clearDegradeNotice();
+    }
     // 使用 try-catch 保护 token 统计，避免因 API 返回格式异常导致崩溃
     try {
       totalPromptTokens += result.usage.promptTokens;

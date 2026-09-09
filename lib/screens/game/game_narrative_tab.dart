@@ -1178,6 +1178,30 @@ class _NarrativeTabState extends State<NarrativeTab> {
                           ),
                         ),
                       ],
+                      // Q5：加载中可取消。多 Key 惩罚序列最坏要等 111s，
+                      // 玩家不应只能干等——点一下立即掐断整条 AI 调用链。
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: gp.cancelCurrentNarrative,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: MiuiColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            '取消',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: MiuiColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

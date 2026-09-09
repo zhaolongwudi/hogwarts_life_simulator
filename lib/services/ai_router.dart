@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../providers/app_provider.dart';
 import '../utils/ai_debug_logger.dart';
 import '../data/provider_defaults.dart';
@@ -8,6 +7,7 @@ import 'ai_timeouts.dart' as timeouts;
 // rate_limiter 里除了两个限流闸门，还放了 ResponseCache（响应缓存）——
 // 本文件只用到后者。闸门统一由 DeepSeekService._acquireSlot() 负责，这里不要再调。
 import 'rate_limiter.dart';
+import 'empty_response_monitor.dart';
 import '../utils/debug_log.dart';
 
 enum AiScene { narrative, summary, npcChat, choice }
@@ -223,6 +223,45 @@ class AiRouter {
     }
     return n;
   }
+  /// 正在执行的那条调用链的共享取消令牌。
+  ///
+  /// Q5：UI 的「取消」按钮通过 [cancelCurrentCall] 掐断它。令牌只在
+  /// chatComplete 生命周期内有效，调用结束即清空，避免误取消下一次请求。
+  CancelToken? _activeChainToken;
+  _CancelBridge? _activeBridge;
+
+  /// Q9：最近一次「模型连续空响应 → 跳过提供商降级」的提示文案。
+  ///
+  /// 调用方（callDeepSeek）在**成功**拿到结果后读取一次并追加到通知栏，
+  /// 随后调用 [clearDegradeNotice] 防重复；失败路径由异常自身的文案兜底
+  /// （AiEmptyResponseException.toString 自带换模型建议）。
+  String? _lastDegradeNotice;
+  String? get lastDegradeNotice => _lastDegradeNotice;
+  void clearDegradeNotice() => _lastDegradeNotice = null;
+
+  /// Q9：已提示过降级的「提供商/模型」键集合。
+  ///
+  /// 模型**持续**不稳定期间（连续空响应未中断），每次叙事都会触发一次降级，
+  /// 若每次都刷「换稳定模型」提示就成了弹窗轰炸。只有模型恢复稳定
+  /// （一次成功响应清零连续计数）后再次降级，才重新提示。
+  final Set<String> _degradeNotified = {};
+
+  String _degradeKey(String provider, String model) => '$provider/$model';
+
+  /// 用户主动取消当前正在执行的调用链（Q5）。
+  ///
+  /// 掐掉共享令牌 + 通过 bridge 转发给此刻正在跑的那次尝试，底层 HTTP
+  /// 请求随之终止。没有进行中的调用时是安全的 no-op。
+  void cancelCurrentCall({String reason = '用户取消'}) {
+    _activeBridge?.cancelCurrent(reason);
+    final token = _activeChainToken;
+    if (token != null && !token.isCancelled) {
+      token.cancel(reason);
+    }
+    _activeChainToken = null;
+    _activeBridge = null;
+  }
+
   Future<ChatResult> chatComplete({
     required AiScene scene,
     required String prompt,
@@ -255,6 +294,48 @@ class AiRouter {
     // 单次尝试另有自己的令牌（见 _callWithFallback），两者通过 bridge 单向连通。
     final cancelToken = CancelToken();
     final bridge = _CancelBridge();
+    _activeChainToken = cancelToken;
+    _activeBridge = bridge;
+    try {
+      return await _runChainWithGlobalTimeout(
+        scene: scene,
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        callId: callId,
+        cancelToken: cancelToken,
+        bridge: bridge,
+        primary: primary,
+        sceneLabel: sceneLabel,
+        keyCount: _attemptedKeyCount(primary),
+      );
+    } finally {
+      // 调用链结束（无论成败/取消）都要摘掉活动令牌，
+      // 否则下一次请求会误取消到上一次的令牌（Q5）。
+      if (_activeChainToken == cancelToken) _activeChainToken = null;
+      if (identical(_activeBridge, bridge)) _activeBridge = null;
+    }
+  }
+
+  /// chatComplete 的主体：起调用链 future + 按场景挂全局超时。
+  ///
+  /// 拆出来单独成方法，是为了让 chatComplete 能用 try/finally 管理
+  /// [_activeChainToken]/[_activeBridge] 的生命周期，同时保持超时逻辑
+  /// 与原先完全一致。
+  Future<ChatResult> _runChainWithGlobalTimeout({
+    required AiScene scene,
+    required String prompt,
+    String? systemPrompt,
+    required double temperature,
+    required int maxTokens,
+    required String? callId,
+    required CancelToken cancelToken,
+    required _CancelBridge bridge,
+    required AiProvider primary,
+    required String sceneLabel,
+    required int keyCount,
+  }) async {
     final future = _callWithFallback(
       primary: primary,
       prompt: prompt,
@@ -271,7 +352,6 @@ class AiRouter {
     // 全局超时按「实际会尝试的 Key 数」动态算，而不是写死一个值——
     // 写死 75s 时，3 个 Key 的惩罚序列（111s）会在第二个 Key 还没上场前
     // 就被掐断，熔断永远达不到阈值（详见 globalTimeoutFor 的注释）。
-    final keyCount = _attemptedKeyCount(primary);
     final globalTimeout = globalTimeoutFor(scene, keyCount);
     final seconds = globalTimeout.inSeconds;
 
@@ -363,7 +443,9 @@ class AiRouter {
         attempted.fold<int>(0, (n, p) => n + (_services[p]?.length ?? 0));
 
     Object? lastError;
-    for (final provider in attempted) {
+    // Q9：连续空响应 = 模型不稳定，跳过该提供商**全部** Key 直接降级到
+    // 下一个提供商。用 label 从内层 Key 循环直接跳出外层提供商循环。
+    providers: for (final provider in attempted) {
       final services = _services[provider]!;
 
       // 轮询选择起始 key，避免每次从头开始（让多个 key 均匀分配流量）
@@ -396,6 +478,12 @@ class AiRouter {
         }
 
         for (var attempt = 0; attempt <= maxRetriesPerService; attempt++) {
+          // Q5：用户取消后链上令牌已掐断，不再发起新的尝试——
+          // 否则「取消」与「下一次请求发出」之间出现竞态，玩家点了取消
+          // 剧情还是继续生成。
+          if (cancelToken?.isCancelled == true) {
+            throw AiCanceledException('请求已取消');
+          }
           if (_circuitOpen(service)) {
             // 熔断中的 Key 直接跳过，不再点卯
             debugLog('⚠️ ${provider.name}[$keyHash] 熔断中，跳过');
@@ -441,6 +529,15 @@ class AiRouter {
                 );
             cancelBridge?.detach(callToken);
             _recordSuccess(service);
+            // Q9：该模型恢复稳定（连续空响应清零）后，移除降级提示去重键——
+            // 下次再降级可以重新提示一次。
+            final stableKey =
+                _degradeKey(provider.name, service.config.model);
+            if (_degradeNotified.contains(stableKey) &&
+                !EmptyResponseMonitor.instance
+                    .isDegraded(provider.name, service.config.model)) {
+              _degradeNotified.remove(stableKey);
+            }
             // 缓存成功响应（带上这把 Key 的 provider/model，见上面 cacheLookup）
             if (useCache) {
               _responseCache.set(
@@ -477,16 +574,61 @@ class AiRouter {
             if (cancelToken?.isCancelled == true) {
               rethrow;
             }
+
+            // ki 是相对轮询起点的偏移量，不是"第几个 key"；但循环覆盖了
+            // 全部 serviceIdx，所以 ki 走到最后一轮时确实就是这条链的最后一次尝试。
+            // 提前计算：Q9 降级分支与常规失败分支都要用它区分 ERROR/FALLBACK。
+            final isLastKey =
+                (ki == services.length - 1) && provider == attempted.last;
+
+            // Q9：连续空响应 = 模型不稳定，不是 Key 问题。
+            // 不记 Key 熔断（冷却 60 秒对模型质量毫无意义），直接跳过该
+            // 提供商全部 Key 降级到备用提供商，并留下「换稳定模型」提示。
+            if (e is AiEmptyResponseException) {
+              // 只在「该模型首次降级」时设置提示；持续不稳定期间的后续降级
+              // 不重复设置（模型恢复稳定后 _recordSuccess 会移除键，重新放行）。
+              if (_degradeNotified.add(_degradeKey(e.provider, e.model))) {
+                _lastDegradeNotice =
+                    '${getProviderLabel(provider)} 模型 ${e.model} 连续'
+                    '${EmptyResponseMonitor.degradeThreshold}次空响应，已自动切换备用'
+                    '提供商；若频繁出现，建议在设置页更换稳定模型';
+              }
+              debugLog('⚠️ ${provider.name}[$keyHash] ${e.model} 连续空响应，'
+                  '跳过整个提供商降级: $e');
+              final degradeSceneLabel =
+                  scene?.toString().split('.').last ?? 'unknown';
+              await AiDebugLogger.instance.logComplete(
+                callId: callId,
+                timestamp: DateTime.now().toIso8601String(),
+                scene: degradeSceneLabel,
+                provider: '${getProviderLabel(provider)}[$keyHash]',
+                action: isLastKey ? 'ERROR' : 'FALLBACK',
+                error: e.toString(),
+                keepPending: !isLastKey,
+              );
+              lastError = e;
+              continue providers; // 跳过本提供商剩余 Key，降级到下一个提供商
+            }
+
+            // Q9：偶发空响应同样是模型质量问题，不记 Key 熔断——否则模型
+            // 连续空 3 次（刚够判定不稳定）之前，Key 先被 60 秒冷却，换模型
+            // 后冷却还在，白等。
+            final isEmptyResponse = e is AiEmptyRetryableException;
             lastError = e;
-            _recordFailure(service);
+            if (!isEmptyResponse) {
+              _recordFailure(service);
+            }
 
             // 可重试错误且还有重试机会：指数退避后重试同一 key。
             //
             // 但**超时不重试**：对端这会儿就是慢，再试一次只会再吃满一个
             // perCallTimeout 窗口。有多个 Key 时连非超时错误也不重试——直接
             // 换人，把预算留给别的 Key（理由见 perKeyBudgetFor 的注释）。
+            // 偶发空响应也不重试：mixin 层已有「强化指令重试」接管，路由层
+            // 重试同 Key 只会再拿一次空输出。
             final timedOut = e is AiRetryableException && e.isTimeout;
             if (!timedOut &&
+                !isEmptyResponse &&
                 totalKeyCount <= 1 &&
                 e is AiRetryableException &&
                 attempt < maxRetriesPerService) {
@@ -499,10 +641,6 @@ class AiRouter {
             // 当前 key 所有重试耗尽，记录日志并尝试下一个 key
             debugLog('⚠️ ${provider.name}[$keyHash] 已耗尽，尝试下一个 Key: $e');
             final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
-            // ki 是相对轮询起点的偏移量，不是"第几个 key"；但循环覆盖了
-            // 全部 serviceIdx，所以 ki 走到最后一轮时确实就是这条链的最后一次尝试。
-            final isLastKey =
-                (ki == services.length - 1) && provider == attempted.last;
             await AiDebugLogger.instance.logComplete(
               callId: callId,
               timestamp: DateTime.now().toIso8601String(),

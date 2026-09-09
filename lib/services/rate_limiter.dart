@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+
+import '../utils/debug_log.dart';
+import 'prefs_store.dart';
 
 /// 限流 / 配额闸门的等待超时上限。
 ///
@@ -8,6 +12,19 @@ import 'dart:async';
 /// 「单次 AI 请求超时」——实际卡在本地限流排队，排查方向被彻底带偏
 /// （第八次审查 P2-1）。
 const Duration kGateWaitTimeout = Duration(seconds: 30);
+
+/// 本地限流/配额闸门的等待超时异常。
+///
+/// 与 AI 响应解析失败完全不同：这是「排队没排到」，不是「响应坏了」。
+/// 单独成类型，让 DeepSeekService 的兜底 catch 能放行它——修复前闸门抛裸
+/// `Exception`，被 chatComplete 的兜底重包成「AI 响应解析失败: ...」，
+/// 玩家以为模型坏了，实际是本地排队超时（Q7）。
+class AiGateTimeoutException implements Exception {
+  final String message;
+  AiGateTimeoutException(this.message);
+  @override
+  String toString() => message;
+}
 
 // 本文件的两个闸门此前完全没接进请求路径，等于裸奔：Agnes 免费版 20 RPM、
 // SenseNova 每 5 小时有配额上限，超了服务方直接返 429。现在由
@@ -19,6 +36,10 @@ const Duration kGateWaitTimeout = Duration(seconds: 30);
 
 /// Agnes速率限制器（免费版限20 RPM）
 /// 支持多 API Key：每个 Key 独立统计 RPM，互不影响。
+///
+/// 刻意**不做**持久化（对比 SenseNovaQuotaManager 的 Q1）：RPM 是 60 秒
+/// 滑动窗口，App 重启最多丢 60 秒内的计数，服务商窗口几乎同步滑过；
+/// 且 _keyHash 明确不落盘（见 DeepSeekService），持久化反而违背该约定。
 class AgnesRateLimiter {
   /// 公开给测试与诊断：Agnes 免费版上限 20 RPM，这里留 2 个余量。
   static const int maxRPM = 18;
@@ -51,7 +72,9 @@ class AgnesRateLimiter {
       if (now.isAfter(deadline)) {
         // 文案里写明是「本地限流」而不是「AI 请求超时」：抛出时还没切到任何
         // 备用 Key，写「已切换备用提供商」会让排查的人往网络方向找。
-        throw Exception(
+        // 用专用异常类型而不是裸 Exception：否则 DeepSeekService 的兜底
+        // catch 会把它重包成「AI 响应解析失败」（Q7）。
+        throw AiGateTimeoutException(
             'Agnes($keyHash) 本地限流等待超时（${timeout.inSeconds}秒），跳过该 Key');
       }
       // 最早一条请求在 oldest+60s 滑出窗口，精确睡到该时刻（+50ms 缓冲）
@@ -77,8 +100,16 @@ class AgnesRateLimiter {
 ///   - sensenova-6.8-flash-lite / sensenova-6.7-flash-lite / sensenova-u1-fast：1500次/5h
 ///   - deepseek-v4-flash / glm-5.2：500次/5h（RPM 极低，约1.67次/分钟）
 /// 配额按模型独立计量，一个模型用完不影响其他模型。
+///
+/// Q1：本地计数**持久化**。服务商的 5 小时配额窗口从玩家第一次调用起算，
+/// 而本类此前把调用时间只存在内存里——App 重启后本地计数归零，玩家以为
+/// 还有 1500 次额度，实际服务商窗口还在计，超了直接返 429。现在调用时间
+/// 落盘 SharedPreferences，重启后恢复计数，本地窗口与服务商窗口不脱节。
 class SenseNovaQuotaManager {
   static const Duration _windowDuration = Duration(hours: 5);
+
+  /// SharedPreferences key 前缀：`ai_quota_sensenova_{model}` → JSON 时间戳数组。
+  static const String _prefsPrefix = 'ai_quota_sensenova_';
 
   /// 模型 → 每5小时配额上限
   static int quotaForModel(String model) {
@@ -90,12 +121,67 @@ class SenseNovaQuotaManager {
   /// 模型 → 调用时间记录
   final Map<String, List<DateTime>> _callTimesByModel = {};
 
+  /// 懒加载 Future：只加载一次，防并发请求重复走 platform channel。
+  Future<void>? _loadFuture;
+
   SenseNovaQuotaManager._privateConstructor();
   static final SenseNovaQuotaManager instance = SenseNovaQuotaManager._privateConstructor();
+
+  /// 从本地持久化恢复调用时间（Q1）。
+  ///
+  /// 每个模型的 key 独立存储，遍历 prefs 过滤前缀即可全部恢复；
+  /// 超过 5 小时窗口的旧记录直接丢弃（服务商窗口同样已滑过）。
+  /// prefs 不可用（测试环境 / 平台异常）时静默回退到空计数，不阻塞请求。
+  Future<void> _ensureLoaded() {
+    return _loadFuture ??= _loadFromPrefs();
+  }
+
+  Future<void> _loadFromPrefs() async {
+    try {
+      final prefs = await PrefsStore.instance.init();
+      final now = DateTime.now();
+      for (final key in prefs.getKeys()) {
+        if (!key.startsWith(_prefsPrefix)) continue;
+        final model = key.substring(_prefsPrefix.length);
+        final raw = prefs.getString(key);
+        if (raw == null) continue;
+        final times = (jsonDecode(raw) as List)
+            .map((e) => DateTime.tryParse(e as String))
+            .whereType<DateTime>()
+            .toList();
+        // 窗口外旧记录：服务商那边也已滑出窗口，本地不该再占着计数
+        times.removeWhere((t) => now.difference(t) > _windowDuration);
+        if (times.isNotEmpty) {
+          _callTimesByModel[model] = times;
+        }
+      }
+    } catch (e) {
+      // 恢复失败只影响「本地提前感知配额」，不影响请求本身
+      debugLog('[SenseNovaQuotaManager] 配额持久化恢复失败: $e');
+    }
+  }
+
+  /// 把该模型的调用时间写入持久化（Q1）。fire-and-forget：
+  /// 写失败不阻塞限流热路径，PrefsStore.writeAsync 内部已 catch + 留痕。
+  void _persist(String model, List<DateTime> times) {
+    PrefsStore.instance.writeAsync('sensenova_quota_$model', (p) {
+      final key = _prefsPrefix + model;
+      if (times.isEmpty) {
+        p.remove(key);
+      } else {
+        p.setString(
+          key,
+          jsonEncode(times.map((t) => t.toIso8601String()).toList()),
+        );
+      }
+    });
+  }
 
   /// 精确等待配额窗口：计算最早一条调用滑出 5 小时窗口的时刻并睡到那一刻。
   /// 超时抛异常，让上层 AiRouter 捕获并切换到备用提供商。
   Future<void> waitForQuota(String model, {Duration timeout = kGateWaitTimeout}) async {
+    // Q1：先恢复持久化计数，再判断窗口——否则重启后第一次调用就清零重计
+    await _ensureLoaded();
     final deadline = DateTime.now().add(timeout);
     while (true) {
       final now = DateTime.now();
@@ -103,10 +189,11 @@ class SenseNovaQuotaManager {
       times.removeWhere((t) => now.difference(t) > _windowDuration);
       if (times.length < quotaForModel(model)) {
         times.add(DateTime.now());
+        _persist(model, times);
         return;
       }
       if (now.isAfter(deadline)) {
-        throw Exception(
+        throw AiGateTimeoutException(
             'SenseNova($model) 本地配额等待超时（${timeout.inSeconds}秒），跳过该 Key');
       }
       final waitMs = _windowDuration.inMilliseconds -
@@ -119,8 +206,13 @@ class SenseNovaQuotaManager {
     }
   }
 
+  /// 清空内存计数并重置加载缓存（测试/诊断用）。
+  ///
+  /// 不清理已落盘的持久化数据：测试隔离由 `SharedPreferences.setMockInitialValues`
+  /// 负责（每次测试从干净存储开始）；生产代码不调用本方法。
   void reset() {
     _callTimesByModel.clear();
+    _loadFuture = null;
   }
 }
 

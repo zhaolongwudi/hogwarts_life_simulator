@@ -20,6 +20,22 @@ run 34402831753 实测 github.event.commits 的 added/modified/removed 提取为
 判定依据改为 checkout 后仓库内真实 diff（git -c core.quotepath=false diff --name-only
 github.event.before HEAD），不依赖事件 payload 结构；本地验证 16 个变更文件命中关键路径。
 
+**📋 变更说明**
+批次30: AI 服务层免费模型适配 5 项修复（Q1/Q5/Q7/Q9/Q12，v4 审查台账）
+
+- Q1 配额本地计数持久化：SenseNova 调用时间落盘 SharedPreferences（ai_quota_sensenova_{model}），
+  重启后 waitForQuota 先恢复计数再判窗口，超 5h 旧记录恢复时丢弃，本地闸门不再与服务器窗口脱节
+- Q5 叙事等待可取消：加载中等待区新增「取消」按钮（取消当前整条调用链），
+  多 Key 惩罚序列最坏 111s 也能中止，不再干等 ~3 分钟
+- Q7 限流文案分型：新增 AiGateTimeoutException，本地限流/配额等待超时保留原文案并明确
+  「本地配额窗口」，不再被兜底 catch 误标「AI 响应解析失败」
+- Q9 空响应监控：EmptyResponseMonitor 按提供商/模型统计连续空响应，连续 3 次判定不稳定 →
+  跳过该提供商降级备用并提示「更换稳定模型」；一次成功响应清零恢复
+- Q12 配额进 UI：设置页模型预设 chip 按模型标注「1500次/5h」/「500次/5h」，
+  数据源与限流闸门共用 quotaForModel，托管模型误选风险可见
+- 新增测试 q1_quota_persist / q5_cancel / q7_gate_timeout / q9_empty_response / q12_quota_label，
+  全量 1409 用例通过，analyze 0 error
+
 ### v4.2.6 — 2026-09-09
 
 **📋 变更说明**
