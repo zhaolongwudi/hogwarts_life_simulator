@@ -326,24 +326,68 @@ void _contentGroup() {
   });
 
   group('存档往返：新字段不得丢', () {
-    test('Player.children 有 toJson / fromJson', () {
-      final p = File('lib/models/player.dart').readAsStringSync();
-      expect(p.contains("'children': children.map((e) => e.toJson()).toList()"),
-          isTrue);
-      expect(p.contains("children: (json['children'] as List<dynamic>? ?? [])"),
-          isTrue);
+    // 批次 27：以下两条原本是「扫 player.dart / game_systems.dart 源码里有没有那行
+    // 序列化代码」，签名在 ≠ 存盘真能对得上。改为真构造 → toJson → fromJson 往返。
+    test('Player.children 会真的存盘并读回（老存档缺字段也不炸）', () {
+      final p = Player(
+        name: '存档往返测试',
+        birthYear: '1980',
+        bloodType: '混血',
+        birthLocation: '伦敦',
+        children: [
+          ChildRecord(
+            name: '林星河',
+            gender: '女',
+            bornOn: '1998年3月2日',
+            bornAbsDay: 1234,
+            otherParentName: '赫敏',
+            traits: ['好奇', '爱笑'],
+          ),
+        ],
+      );
+      final json = p.toJson();
+      expect(json['children'], isA<List>());
+      expect((json['children'] as List).length, 1);
+
+      final back = Player.fromJson(json);
+      expect(back.children.length, 1);
+      expect(back.children.first.name, '林星河');
+      expect(back.children.first.bornAbsDay, 1234);
+      expect(back.children.first.traits, ['好奇', '爱笑']);
+
+      // 反向兜底：没有 children 键的老存档读进来应当是空列表而不是崩
+      final legacy = Player.fromJson(
+          Map<String, dynamic>.from(json)..remove('children'));
+      expect(legacy.children, isEmpty);
     });
 
-    test('LoveState 婚姻/孕期字段有 toJson / fromJson', () {
-      final gs = File('lib/models/game_systems.dart').readAsStringSync();
-      for (final k in [
-        "'engaged_date'",
-        "'married_date'",
-        "'married_abs_day'",
-        "'pregnant_since_abs_day'",
-      ]) {
-        expect(gs.contains(k), isTrue, reason: '$k 未序列化');
-      }
+    test('LoveState 婚姻/孕期字段会真的存盘并读回', () {
+      final love = LoveState(
+        status: '结婚',
+        partnerName: '赫敏',
+        engagedDate: '1997年6月1日',
+        marriedDate: '1998年8月8日',
+        marriedAbsDay: 4321,
+        pregnantSinceAbsDay: 4400,
+      );
+      final json = love.toJson();
+      expect(json['engaged_date'], '1997年6月1日');
+      expect(json['married_date'], '1998年8月8日');
+      expect(json['married_abs_day'], 4321);
+      expect(json['pregnant_since_abs_day'], 4400);
+
+      final back = LoveState.fromJson(json);
+      expect(back.engagedDate, '1997年6月1日');
+      expect(back.marriedDate, '1998年8月8日');
+      expect(back.marriedAbsDay, 4321);
+      expect(back.pregnantSinceAbsDay, 4400);
+
+      // 反向兜底：未结婚/未怀孕的存档这四个字段应读回 null 而不是 0
+      final single = LoveState.fromJson(LoveState().toJson());
+      expect(single.engagedDate, isNull);
+      expect(single.marriedDate, isNull);
+      expect(single.marriedAbsDay, isNull);
+      expect(single.pregnantSinceAbsDay, isNull);
     });
 
     test('ChildRecord JSON 往返', () {

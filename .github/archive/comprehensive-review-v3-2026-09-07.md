@@ -37,6 +37,15 @@
 | **16** | **UI 测试补全：高频游戏组件冒烟 + Semantics 回归** | **F21** | **✅ 已推送（CI 全绿）** |
 | **17** | **异步安全审计：CancellationToken 核对（AI 层早已落地，误判更正）** | **F15** | **✅ 已推送（核对更正，无代码改动）** |
 | **18** | **台账一致性回填：F1/F2/F13/F14/F40 与批次 11a-12c 记录对齐** | **F1 / F2 / F13 / F14 / F40** | **✅ 已推送（核对回填，无代码改动）** |
+| 19 | 测试规模再平衡：data_consistency_test 独立成文件 | F22 / F42 | ✅ 已推送 |
+| 20 | F20 迁移：scar 接线组 | F20 | ✅ 已推送 |
+| 21 | F20 迁移：指令缺口「格式化方法存在」组 | F20 | ✅ 已推送 |
+| 22 | F20 迁移：/收藏 空态文案组 | F20 | ✅ 已推送（含 1 次 CI 修正） |
+| 23 | F20 迁移：/宠物 购买分支组 | F20 | ✅ 已推送（CI 先红后修） |
+| 24 | F20 迁移：学院杯负号渲染组 | F20 | ✅ 已推送（CI 先红后修） |
+| 25 | F20 迁移：档案可见性组 | F20 | ✅ 已推送（CI 先红后修） |
+| 26 | F20 迁移：/状态 职业分流组 | F20 | ✅ 已推送（CI 先红后修） |
+| **27** | **F20 迁移：存档往返组 + 本地 Flutter 工具链落地** | **F20** | **✅ 已推送（首次本地 `flutter test` 验证后再推）** |
 > **已核对为误判的条目**：DOC1（README 其实存在）、F18 / F47（`_maxRetriesPerService`
 > 的注释早已解释清楚，本轮只做了二次核对）、SI1 / F4（版本号与 `_migrateSave`
 > 早就都有，批次 1 我只搜了一个文件就写了「缺迁移函数」，批次 4 已更正）。
@@ -96,16 +105,16 @@
 |------|------|
 | Dart 源文件 | 152 |
 | 总代码行数 | 79,506 |
-| 测试文件 | 51 |
-| 测试代码行数 | 15,803 |
+| 测试文件 | 59 |
+| 测试代码行数 | 16,600 |
 | 审查维度 | 38 |
 | 发现问题 | 52 |
 | 最大文件行数 | 3,234 |
 | 核心 Provider | 8 |
 | Mixin 数 | 14 |
 | AI 服务 | 3 |
-| 测试用例数 | 1,314 |
-| 当前版本 | 3.9.3 |
+| 测试用例数 | 1,384 |
+| 当前版本 | 4.2.3 |
 
 本报告是 **第三轮全方位无遗漏审查**，在前两轮（v1 覆盖 20 维、v2 覆盖 28 维）的基础上，新增 10 个此前遗漏的审查维度，共计 38 个维度。所有发现的问题按严重度分级（Critical / High / Medium / Low），并附有可操作的优化建议。
 
@@ -408,6 +417,22 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 > 才显示它。源码扫描数 −1。
 > **CI 修正**：首版行为断言误对整段 `currentNarrative` 判 `notContains(天赋值)`，与「主修天赋行
 > 应含天赋值」自相矛盾，已改为只截取 `【职业】` 行单独断言。
+>
+> **🟢 推进中（批次 27）。** 从 `progression_fix_test.dart` 存档往返组把「Player.children 有
+> toJson / fromJson」「LoveState 婚姻/孕期字段有 toJson / fromJson」2 条「扫 `player.dart` /
+> `game_systems.dart` 里有没有那行序列化代码」的源码扫描断言，改写为 2 条行为测试：真构造
+> `Player(children: [ChildRecord(...)])` 与 `LoveState(engagedDate/…)`，跑 `toJson → fromJson`
+> 往返，断言子女与婚姻孕期字段原样读回；并各自补一条**反向兜底**（老存档缺 `children` 键读回
+> 空列表；单身档四个婚姻孕期字段读回 `null` 而不是 0）。源码扫描数 −2。
+> 原扫描只认「`children.map((e) => e.toJson()).toList()`」这一种写法，换个等价写法就漏判；
+> 而真往返能同时抓住「写了 toJson 忘了 fromJson」这种半截序列化。
+>
+> **批次 27 的另一个变化：本地终于能跑测试了。** 前 26 个批次全部「本地无 flutter SDK、靠推送后
+> CI 把关」，代价很直接——批次 23/24/25/26 连续四批 CI 先红，每批都要再补一个「CI 修正」提交
+> 擦屁股。本批次在沙箱里装上了与 CI 同版本的 Flutter 3.47.2（Dart 3.13.2），推送前先本地
+> `flutter test` 验过。装法与两条踩坑见
+> [§41 批次 27](#批次-27--f20-源码文本断言迁移存档往返组--本地-flutter-工具链落地)。
+>
 > F20 属持续工程，按语义域逐批推进，不在一批内硬吞全部 505 条。
 
 ### F21 — UI 测试缺失 `[Medium] [v1]`
@@ -426,8 +451,8 @@ CrashLogger 在 UI 线程同步写文件，可能阻塞主线程。
 
 ### 优点：测试覆盖率高
 
-- 51 个测试文件，15,803 行测试代码
-- 1,314 个测试用例全部通过
+- 59 个测试文件，16,600 行测试代码
+- 1,384 个测试用例全部通过（批次 27 本地实测）
 - 测试纪律三原则：注入参数与生产同侧 / 断言性质不守定义式 / 不锁实现细节
 
 ---
@@ -1152,7 +1177,7 @@ iOS 平台缺少 Info.plist 中必要的权限声明。Android 签名配置缺�
 | F17 | 部分异步操作未检查生命周期 | 异步安全 | Medium | v3 | 🟢 批次8（核对：`Future.delayed` 前后均有 mounted 检查） |
 | F18 | _maxRetriesPerService = 0 注释矛盾 | 网络层 | Low | v1 | ✅ 批次1（核对已修复） |
 | F19 | crash_logger 同步写盘 | 文件 I/O | Low | v1 | ✅ 批次2（核对：同步是刻意的） |
-| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次26（scar/指令缺口/收藏空态/buyPet分支/学院杯负号/档案可见性/职业分流 7 组持续推进，扫描 −5） |
+| F20 | 505 条源码文本断言迁移停滞 | 测试质量 | High | v1 | 🟢 批次27（scar/指令缺口/收藏空态/buyPet分支/学院杯负号/档案可见性/职业分流/存档往返 8 组持续推进，扫描 −7；批次 27 起本地可跑 `flutter test` 后再推） |
 | F21 | UI 测试缺失 | 测试质量 | Medium | v1 | 🟢 批次16（核对：已有 `widget_test` 首页冒烟 + `choice_panel/command_center_panel` 组件测试；新增 `ui_game_bar_test.dart` 给 `GameTopBar`/`GameBottomInput` 高频组件补无头冒烟，并断言批次14 的语义标签） |
 | F22 | 测试文件规模分布不均 | 测试质量 | Medium | v2 | ✅ 批次19（8 组下沉 `data_consistency_test.dart`，单体 3,034→2,321 行） |
 | F23 | 全中文硬编码，无国际化 | 国际化 | Medium | v1 | — |
@@ -2198,3 +2223,62 @@ NPC 拿不到完整档案。`formatCharacterDossier(idOrName)` 是纯只读格�
 **验证**：不触碰 `lib/`；`makeGame()` 初始 impactScore=0.0 ≤ 0.5、house=null，显式设为
 Gryffindor 后查斯内普（无关系、Slytherin、非高影响 canon）必然不可见。本地无 `flutter` SDK，
 靠推送后 CI analyze + 全量 test 把关。
+
+### 批次 27 — F20 源码文本断言迁移：存档往返组 + 本地 Flutter 工具链落地
+
+**这一批的由来**：F20 推进到存档往返组。`progression_fix_test.dart` 的
+「存档往返：新字段不得丢」里有 2 条纯源码扫描断言，分别扫 `player.dart` 里有没有
+`'children': children.map((e) => e.toJson()).toList()` 这行、以及 `game_systems.dart` 里
+有没有 `'engaged_date'` 等 4 个键。它们各自有两个毛病：
+
+1. **只认一种写法**。把 `children.map((e) => e.toJson()).toList()` 改成语义完全等价的
+   `[for (final c in children) c.toJson()]`，扫描立刻红 —— 但它明明是对的。
+   反过来，只加 `toJson` 忘了加 `fromJson`（半截序列化，存进去读不出来）扫描照样绿。
+2. **顺序反了**。真正该保的是「子女/婚姻状态在存盘往返后还在」，源码里有没有那行字只是
+   实现细节。同一组里已经躺着 `ChildRecord JSON 往返` 这条现成的正确范式，那两条扫描是
+   同组里的异类。
+
+**改动清单**
+
+| 原源码扫描断言 | 改写后行为测试 |
+|---|---|
+| 扫 `player.dart` 含 `children.map(...toJson)...` 与 `children: (json['children'] as List<dynamic>? ?? [])` | 真构造 `Player(children:[ChildRecord(林星河…)])` → `toJson()` 断言 `children` 是长 1 的 List → `Player.fromJson` 读回，断言 `name/bornAbsDay/traits` 原样；再删掉 `children` 键模拟老存档，断言读回空列表不炸 |
+| 扫 `game_systems.dart` 含 `'engaged_date'` / `'married_date'` / `'married_abs_day'` / `'pregnant_since_abs_day'` | 真构造 `LoveState(status:'结婚', engagedDate/marriedDate/marriedAbsDay/pregnantSinceAbsDay 全给值)` → `toJson()` 断言 4 个键写对 → `LoveState.fromJson` 读回断言 4 个字段原样；再用 `LoveState()` 空档往返，断言 4 个字段读回 `null` 而非 0 |
+
+| 文件 | 改动 |
+|---|---|
+| `test/progression_fix_test.dart` | 存档往返组 2 条源码扫描断言改写为 2 条行为测试（`Player` / `LoveState` / `ChildRecord` 本就是该文件已导入的符号，无需新增 import）；该文件 `readAsStringSync` 引用 66 → 64 |
+| `.github/archive/comprehensive-review-v3-2026-09-07.md` | F20 目标 🟢 批次27、总表回填、台账表补批次 19-27、追加本批次记录 |
+
+**未迁移并登记理由**（保留为结构性接线守卫）：同文件的「决斗/禁林每日上限」「禁词表」
+「CG 解锁路径」「成就目录」「命令已注册」「不得绕过 updateNpcAffection」「autoSave 必须
+`unawaited`」等组，锁的是跨文件接线与数据引用点，行为化要么需要拉起完整回合链，要么
+（如「禁止某种写法出现」这类反向约束）根本没有行为等价物，维持源码扫描。
+
+**批次 27 的另一半：把本地 Flutter 工具链装上**
+
+前 26 批每批末尾都写一句「本地无 `flutter` SDK，靠推送后 CI analyze + 全量 test 把关」。
+这句话的代价在批次 23-26 集中兑现了：**连续四批 CI 先红**，每批都要再补一个「CI 修正」
+提交擦屁股（26 的修正是把 `notContains(天赋值)` 从整段 `currentNarrative` 收窄到 `【职业】`
+行）。根因不是改动难，是**写完看不见结果**。
+
+本批次解决了它。要点：
+
+| 问题 | 解法 |
+|---|---|
+| 沙箱预装的 Flutter 是 3.0.0 / Dart 2.17，项目要求 Dart ≥3.12，连 `pubspec.yaml` 都解析不了 | 装与 CI 同版本的 **3.47.2（Dart 3.13.2）** |
+| 官方 `storage.googleapis.com` 走 443 被拦（exit 35） | 改用国内镜像 `https://storage.flutter-io.cn/flutter_infra_release/releases/releases_linux.json` 查版本、`.../stable/linux/flutter_linux_3.47.2-stable.tar.xz` 下载 |
+| `flutter --version` 卡在 `git fetch __flutter_version_check__` 报证书错 | 这是 GitHub 被拦的连带症状，`export GIT_SSL_CAINFO=/opt/ghproxy/ca.crt` 后自愈；再配 `PUB_HOSTED_URL=https://pub.flutter-io.cn` 走 pub 镜像 |
+| `flutter pub get` 会顺手改 `pubspec.lock`（本次动了 4 个依赖） | **推之前 `git checkout -- pubspec.lock`**，工具链变动不该混进业务提交 |
+
+**验证（首次做到推送前本地验证）**
+
+```
+flutter analyze --no-fatal-warnings --no-fatal-infos   → 764 issues, exit 0
+flutter test test/progression_fix_test.dart            → 187 passed
+flutter test                                           → 1384 passed
+```
+
+**下一步的连带收益**：F20 还剩约 176 处 `readAsStringSync` 引用，此前每批只能改 1-2 条
+（改多了怕 CI 红），现在可以按语义域一次多改几条、本地验完再推。另外 P1（缺性能基准测试，
+High）一直没动就是因为本地跑不了什么，工具链到位后这条也可以开工了。
