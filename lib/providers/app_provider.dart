@@ -462,7 +462,7 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.deepseek:
         return ['deepseek-chat'];
       case AiProvider.agnes:
-        return ['agnes-3.0-flash', 'agnes-2.5-flash', 'agnes-2.5-turbo'];
+        return ['agnes-2.5-flash', 'agnes-2.5-turbo'];
       case AiProvider.sensenova:
         // 公测期间全部免费，按调用次数限流（每5小时重置）
         return [
