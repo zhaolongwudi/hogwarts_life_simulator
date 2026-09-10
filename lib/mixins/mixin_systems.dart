@@ -2715,12 +2715,13 @@ mixin GameSystemsMixin on GameProviderBase {
       effectiveSystemPrompt = systemPrompt ?? '';
     }
     // 2026-08-24：maxTokens 按场景精细化分配
-    //   narrative 主剧情：2000（配合 600-800 字精练叙事要求，总 token 约 2000-3000）
+    //   narrative 主剧情：1600（v5 复查 P3 收紧；600-800 字精练叙事实际约需 ≤1100 token，
+    //                      收窄避免模型一次憋出超长冗余，缓解长线局单次延迟）
     //   choice 选项：500（只输出 4 行 ABCD ≈ 300 tokens，留余量给思考型模型的推理过程）
     //   summary 摘要：3000（输出 800-2400 字摘要 + 结构化记忆块）
     //   npcChat NPC聊天：500（对话场景不需要太长）
     int maxTokens = switch (scene) {
-      AiScene.narrative => 2000,
+      AiScene.narrative => 1600,
       AiScene.choice => 500,
       AiScene.summary => 3000,
       AiScene.npcChat => 500,

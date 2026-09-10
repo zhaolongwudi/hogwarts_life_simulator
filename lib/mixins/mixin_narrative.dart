@@ -408,9 +408,9 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         final structuredCount = t0.length + t1.length;
         // 以前这里是「结构化事实少于 30 条才注入，否则整段不注入」。
         // 而 t0 数的是**未截断**的 importance≥4 事实：开局 10 条，
-        // 每 15 回合一次摘要、每次最多 10 条，三次摘要后就稳稳超过 30，
+        // 每 20 回合一次摘要、每次最多 10 条，三次摘要后就稳稳超过 30，
         // 于是从中期开始 narrativeSummary 永久不再进入 prompt——
-        // 摘要任务照样每 15 回合跑一次，结果却从来没人读。
+        // 摘要任务照样每 20 回合跑一次，结果却从来没人读。
         // 整段剧情脉络（谁跟谁好上了、结了什么怨、许过什么诺）只剩碎片。
         //
         // 改成按量给：事实越多，摘要给得越短，但永远不归零。
@@ -1053,14 +1053,14 @@ $kNarrativeWritingRules
     updatePlayerImpactScore(action);
   }
 
-  /// 定期摘要：模型能力升级后回调到每15回合，缓冲阈值从3200→6000字。
-  /// 配合 _maxPendingSummaryChars=8000，每次摘要覆盖更长时间线，长线逻辑性更强。
+  /// 定期摘要：v5 复查(P1)回调到每20回合，缓冲提前阈值 6800 字。
+  /// 配合 _maxPendingSummaryChars=8000，每次摘要覆盖更长时间线，摘要调用频次
+  /// 相对旧值(15回合)约省 25%，且因 Q4 输入分层压缩输入 token 有上限。
   ///
   /// 单独抽出来是因为它是长期记忆（T0/T1/T3）的**唯一生产者**：
   /// 离线路径以前根本不调它，纯离线玩 200 回合后记忆库只剩开局那几条。
   void _maybeRunPeriodicSummary() {
-    if ((turnCount % 15 == 0 || pendingSummary.length > 6000) &&
-        pendingSummary.isNotEmpty) {
+    if (shouldRunPeriodicSummary(turnCount, pendingSummary.length)) {
       unawaited(
         Future.microtask(() async {
           try {
@@ -1071,6 +1071,16 @@ $kNarrativeWritingRules
         }),
       );
     }
+  }
+
+  /// v5(P1) 摘要触发判定：每 20 回合一次，或缓冲累计超 6800 字提前触发。
+  ///
+  /// 抽出成静态方法便于回归测试。缓冲上限 [_maxPendingSummaryChars]=8000，
+  /// 提前阈值 6800 在为长线局留足压缩余量的同时，把摘要调用频次相对旧值
+  /// （每 15 回合 / 6000 字）压低约 25%，对免费按次配额更友好。
+  static bool shouldRunPeriodicSummary(int turnCount, int pendingSummaryChars) {
+    return (turnCount % 20 == 0 || pendingSummaryChars > 6800) &&
+        pendingSummaryChars > 0;
   }
 
   /// 无 AI 快速模式：完全不调用 AI，用本地模板叙事 + 承接式选项推进一整回合。
