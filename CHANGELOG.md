@@ -10,6 +10,15 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.3.6 — 2026-09-10
+
+**📋 变更说明**
+revert: Agnes 默认模型回退到 agnes-2.5-flash
+
+agnes-3.0-flash 是 Agent/工具驱动的推理模型，非流式 chat 下正文 content 为空、
+推理落在 reasoning_content，项目只解析 content，故 narrative 连续空响应触发降级。
+回退默认模型并撤销 3.0 的可选入口（项目当前不具备 reasoning_content 回退解析）。
+
 ### v4.3.5 — 2026-09-10
 
 **📋 变更说明**
