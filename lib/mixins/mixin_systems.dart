@@ -34,6 +34,7 @@ import '../models/world_state.dart';
 import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
 import '../utils/debug_log.dart';
+import 'mixin_narrative.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
   /// 缓存：上次构建的 systemPrompt 和玩家状态哈希（用于检测是否需要重建）
@@ -2726,11 +2727,17 @@ mixin GameSystemsMixin on GameProviderBase {
       AiScene.summary => 3000,
       AiScene.npcChat => 500,
     };
-    // Token 自适应机制：游戏进入后期时自动降低 maxTokens 以节省 token
-    if (totalTokens > 100000) {
-      maxTokens = (maxTokens * 0.6).floor(); // 降低 40% (20% + 20%)
-    } else if (totalTokens > 50000) {
-      maxTokens = (maxTokens * 0.8).floor(); // 降低 20%
+    // Token 自适应机制：游戏进入后期时自动降低 maxTokens 以节省 token。
+    // P#2：旧实现按 totalTokens（含输入、随局龄只增不减）判定，输入 token 随
+    // 累积事实/摘要缓冲膨胀，前 ~20 回合就会误触「后期」降额；改为按回合数
+    // 判定真实进度，并豁免 summary（摘要是结构化长期记忆的唯一生产者，
+    // 降额截断会丢【了结】/【世界事件】记忆块）。
+    if (scene != AiScene.summary) {
+      if (turnCount > 150) {
+        maxTokens = (maxTokens * 0.6).floor(); // 后期：降低 40%
+      } else if (turnCount > 80) {
+        maxTokens = (maxTokens * 0.8).floor(); // 中期：降低 20%
+      }
     }
     final result = await r.chatComplete(
       scene: scene,
@@ -2889,6 +2896,9 @@ mixin GameSystemsMixin on GameProviderBase {
       commandResult = null;
       notifications.clear();
       lastAffectionSections.clear();
+      // 摘要连续失败计数是 static（P#10）：读档不归零会让上一局/上一个档的
+      // 失败计数串到新档，误触发「记忆未保存」提示。这里显式归零。
+      GameNarrativeMixin.resetSummaryFailCounter();
 
       // 读档后按当前时钟重新安排每个人的位置。存档里 NPC 带着
       // currentLocation 字段，但老档里它恒为 '霍格沃茨'，刷新一次最稳。

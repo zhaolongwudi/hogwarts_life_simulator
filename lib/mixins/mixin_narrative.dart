@@ -1060,6 +1060,10 @@ $kNarrativeWritingRules
   /// 单独抽出来是因为它是长期记忆（T0/T1/T3）的**唯一生产者**：
   /// 离线路径以前根本不调它，纯离线玩 200 回合后记忆库只剩开局那几条。
   void _maybeRunPeriodicSummary() {
+    // 离线快速模式红线（P#3）：全程 0 AI 调用。摘要会走 callDeepSeek(AiScene.summary)
+    // 产生一次 AI 请求，离线分支必须跳过——宁可离线长局的记忆退化为只靠
+    // pendingSummary 持久化，也不能违背「无 AI 快速模式」不消耗额度的承诺。
+    if (appProvider.offlineQuickMode) return;
     if (shouldRunPeriodicSummary(turnCount, pendingSummary.length)) {
       unawaited(
         Future.microtask(() async {
@@ -1530,8 +1534,7 @@ $kNarrativeWritingRules
     return _summaryConsecutiveFails == _summaryFailNotifyThreshold;
   }
 
-  /// 重置摘要连续失败计数（测试隔离用）。
-  @visibleForTesting
+  /// 重置摘要连续失败计数（读档 / 新开局复位；测试隔离也复用）。
   static void resetSummaryFailCounter() => _summaryConsecutiveFails = 0;
 
   void accumulateForSummary(String newNarrative) {

@@ -3,6 +3,7 @@ import '../providers/game_provider_base.dart';
 import '../data/era_data.dart';
 import '../data/locations.dart';
 import '../data/forbidden_words.dart' as dataForbidden;
+import '../data/game_config_rules.dart';
 import '../data/narrative_forward_rules.dart';
 import '../data/narrative_time_rules.dart';
 import '../utils/stagnation_detector.dart';
@@ -656,6 +657,28 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
             break;
           }
         }
+      }
+    }
+
+    // ---- R6: 区域门禁硬校验（P#1）----
+    // prompt 侧已有「当前无法进入的区域」软约束，但 AI 仍可能写玩家独自闯进
+    // 未解锁区域（如一年级新生深夜独闯禁林）。这里做兜底硬校验：命中锁定区域
+    // 名且无「教授带队/随队」豁免词 → warn。首版不定 critical：不打回重写，
+    // 避免为省一次越界反而增加一次重写调用（与限流/降级链叠加）。
+    if (p != null) {
+      final isWeekend = ws.time.weekday == 0 || ws.time.weekday == 6;
+      final locked = lockedRegionsFor(grade: p.grade, isWeekend: isWeekend);
+      const escortWords = ['教授带队', '教授带领', '随队', '带队', '老师带领', '教授陪同'];
+      final escorted = escortWords.any(nLower.contains);
+      for (final region in locked) {
+        // 长名只取主干词（如「城堡主楼（…）」→「城堡主楼」）；实际会锁定
+        // 的只有 禁林(≥2年级)、霍格莫德村(≥3年级且仅周末)。
+        final keyword = region.name.split('（').first;
+        if (keyword.isEmpty || !nLower.contains(keyword)) continue;
+        if (escorted) continue;
+        addV('warn', 'R6_region_lock',
+            '越界区域：玩家当前${p.grade ?? 1}年级${isWeekend ? '（周末）' : ''}无权独自进入「$keyword」（${region.unlockCondition ?? '未开放'}），不应安排其自行前往；确有需要须有教授带队。',
+            evidence: keyword);
       }
     }
 

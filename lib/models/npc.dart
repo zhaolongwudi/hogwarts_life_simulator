@@ -470,30 +470,30 @@ class NPC {
       };
 
   factory NPC.fromJson(Map<String, dynamic> json) => NPC(
-        id: json['id'],
-        name: json['name'],
+        id: _asString(json['id'], ''),
+        name: _asString(json['name'], ''),
         aliases: List<String>.from(json['aliases'] ?? []),
-        house: json['house'] ?? '',
-        grade: json['grade'] ?? 1,
-        bloodStatus: json['blood_status'] ?? 'unknown',
+        house: _asString(json['house'], ''),
+        grade: _asInt(json['grade'], 1),
+        bloodStatus: _asString(json['blood_status'], 'unknown'),
         isCanon: json['is_canon'] ?? false,
         isAlive: json['is_alive'] ?? true,
-        deathCause: json['death_cause'] as String?,
-        diedOn: json['died_on'] as String?,
+        deathCause: _asStringOrNull(json['death_cause']),
+        diedOn: _asStringOrNull(json['died_on']),
         personality: List<String>.from(json['personality'] ?? []),
         forbiddenActions: List<String>.from(json['forbidden_actions'] ?? const []),
         bloodSupremacist: json['blood_supremacist'] ?? false,
-        currentLocation: json['current_location'] ?? '霍格沃茨',
-        mood: json['mood'] ?? 50,
+        currentLocation: _asString(json['current_location'], '霍格沃茨'),
+        mood: _asInt(json['mood'], 50),
         knowsAbout: List<String>.from(json['knows_about'] ?? []),
-        personalGoal: json['personal_goal'],
+        personalGoal: _asStringOrNull(json['personal_goal']),
         lifeLog: List<String>.from(json['life_log'] ?? []),
         relationships: Map<String, int>.from(json['relationships'] ?? {}),
         recentEvents: List<String>.from(json['recent_events'] ?? []),
-        appearance: json['appearance'] ?? '',
-        gender: json['gender'] ?? '',
-        sexOrientation: json['sex_orientation'],
-        affection: json['affection'] ?? 0,
+        appearance: _asString(json['appearance'], ''),
+        gender: _asString(json['gender'], ''),
+        sexOrientation: _asStringOrNull(json['sex_orientation']),
+        affection: _asInt(json['affection'], 0),
         affectionLocks: List<String>.from(json['affection_locks'] ?? []),
         giftPrefs: Map<String, int>.from(json['gift_prefs'] ?? {}),
         schedule: Map<String, String>.from(json['schedule'] ?? {}),
@@ -502,31 +502,55 @@ class NPC {
         isConsideringConfession: json['is_considering_confession'] ?? false,
         confessed: json['confessed'] ?? false,
         isGenerated: json['is_generated'] ?? false,
-        generatedProfile: json['generated_profile'],
-        maxAffectionReached: json['max_affection_reached'] ?? 0,
+        generatedProfile: _asStringOrNull(json['generated_profile']),
+        maxAffectionReached: _asInt(json['max_affection_reached'], 0),
         grudges: List<Map<String, dynamic>>.from(
             (json['grudges'] as List<dynamic>? ?? []).map(
               (e) => Map<String, dynamic>.from(e as Map),
             ),
           ),
-        affectionGainedThisWeek: json['affection_gained_this_week'] ?? 0,
-        affectionGainedThisMonth: json['affection_gained_this_month'] ?? 0,
-        affectionMonthKey: json['affection_month_key'] ?? 0,
-        lastGrudgeDay: json['last_grudge_day'] ?? -1,
+        affectionGainedThisWeek: _asInt(json['affection_gained_this_week'], 0),
+        affectionGainedThisMonth: _asInt(json['affection_gained_this_month'], 0),
+        affectionMonthKey: _asInt(json['affection_month_key'], 0),
+        lastGrudgeDay: _asInt(json['last_grudge_day'], -1),
         // 老存档没有这个键：-1 按"刚刚互动过"豁免衰减（见字段注释）
-        lastAffectionTouchDay: json['last_affection_touch_day'] ?? -1,
+        lastAffectionTouchDay: _asInt(json['last_affection_touch_day'], -1),
         // 老存档没有这个键，按 null 处理（从未触发重大事件免疫）
-        majorEventDate: json['major_event_date'] as int?,
+        majorEventDate: _asIntOrNull(json['major_event_date']),
         // 老存档没有这几个键，读出来按"从没补救过、从没结仇"处理，
         // 宿敌分仍能从 grudges 算出来——不需要迁移脚本。
-        rivalryRelief: json['rivalry_relief'] ?? 0,
-        reliefGivenDay: json['relief_given_day'] ?? -1,
-        reliefGivenToday: json['relief_given_today'] ?? 0,
+        rivalryRelief: _asInt(json['rivalry_relief'], 0),
+        reliefGivenDay: _asInt(json['relief_given_day'], -1),
+        reliefGivenToday: _asInt(json['relief_given_today'], 0),
         formerRival: json['former_rival'] ?? false,
-        maxRivalryScoreReached: json['max_rivalry_score_reached'] ?? 0,
-        pendingSpite: json['pending_spite'] ?? 0,
+        maxRivalryScoreReached: _asInt(json['max_rivalry_score_reached'], 0),
+        pendingSpite: _asInt(json['pending_spite'], 0),
         introduced: json['introduced'] ?? false,
         graduated: json['graduated'] ?? false,
         affectionLocked: json['affection_locked'] ?? false,
       );
 }
+
+// ====== 存档类型防御（P#6）======
+// 老档 / 手动改过的存档字段类型可能漂移（数字写成字符串、字段缺失等），
+// 直接 `as int`/`as String` 会在加载时抛异常、整套 NPC 都拒载。统一走宽容
+// 转换：正确类型原样返回，可挽回的类型尽力解析，其余回退默认值 / null。
+
+int _asInt(dynamic v, int fallback) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+String _asString(dynamic v, String fallback) =>
+    v is String ? v : (v == null ? fallback : '$v');
+
+int? _asIntOrNull(dynamic v) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v);
+  return null;
+}
+
+String? _asStringOrNull(dynamic v) => v is String ? v : null;

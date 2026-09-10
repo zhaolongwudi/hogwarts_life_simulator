@@ -94,7 +94,11 @@ abstract final class Balance {
   /// +7~+9 / -8~-10，割裂导致「AI 写 25 只涨 10」的体验落差。
   /// prompt 侧直接引用本函数生成的落地区间，改压缩函数时提示词自动跟随。
   static String affectionLandingFor(String ruleType) {
-    final rule = affectionChangeRules.firstWhere((e) => e.type == ruleType);
+    final rule = affectionChangeRules.firstWhere(
+      (e) => e.type == ruleType,
+      // 未知类型兜底（P#9）：拼错规则名时不崩溃，返回中性的 0~0 落地区间。
+      orElse: () => const AffectionChange('', 0, 0),
+    );
     final min = compressAffectionDelta(rule.min);
     final max = compressAffectionDelta(rule.max);
     return '$min~$max';
@@ -106,7 +110,8 @@ abstract final class Balance {
   static const int consecutiveInteractionThreshold = 3;
 
   /// 连续互动超过阈值后的每回合衰减比例（0.0~1.0）
-  /// 第 4 回合好感收益 ×[1 - 0.3]，第 5 回合 ×[1 - 0.5]，第 6 回合 ×[1 - 0.7]
+  /// 实现：每超 1 回合收益 ×(1 - 0.2)。第 4 回合 ×0.8，第 5 回合 ×0.6，
+  /// 第 6 回合 ×0.4，之后封底 ×0.3（clamp 下界）。
   static double consecutiveInteractionDecay(int consecutiveTurns) {
     if (consecutiveTurns <= consecutiveInteractionThreshold) return 1.0;
     final excess = consecutiveTurns - consecutiveInteractionThreshold;

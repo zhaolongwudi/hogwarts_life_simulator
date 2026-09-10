@@ -454,9 +454,10 @@ class AiRouter {
       for (int ki = 0; ki < services.length; ki++) {
         final serviceIdx = (_roundRobinIndex + ki) % services.length;
         final service = services[serviceIdx];
-        final keyHash = service.config.apiKey.length > 8
-            ? service.config.apiKey.substring(0, 8)
-            : service.config.apiKey;
+        // 隐私（P#4）：keyHash 只作日志/调试标签，绝不能拿 API Key 明文前缀。
+        // 旧实现截前 8 位会把 Key 片段泄进 debugLog 与 AiDebugLogger；这里改
+        // 与 DeepSeekService._keyHash 同口径的整串 hashCode 转 36 进制。
+        final keyHash = service.config.apiKey.hashCode.abs().toRadixString(36);
 
         // 命中缓存就直接返回，不再发请求
         final cached = cacheLookup(provider, service.config.model);

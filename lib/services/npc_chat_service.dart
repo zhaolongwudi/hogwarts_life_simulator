@@ -32,10 +32,18 @@ class ChatMessage {
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-    role: json['role'] as String,
-    content: json['content'] as String,
-    timestamp: DateTime.parse(json['timestamp'] as String),
+    role: json['role'] is String ? json['role'] as String : '',
+    content: json['content'] is String ? json['content'] as String : '',
+    timestamp: _safeTimestamp(json['timestamp']),
   );
+
+  /// 存档时间戳类型防御（P#6）：时间戳缺失/损坏时回退当前时间，
+  /// 不抛异常导致整段会话拒载。
+  static DateTime _safeTimestamp(dynamic v) {
+    if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
+    if (v is DateTime) return v;
+    return DateTime.now();
+  }
 }
 
 class NpcChatService {
@@ -60,6 +68,15 @@ class NpcChatService {
     final result = _writeChain.then((_) => task());
     _writeChain = result.then((_) {}, onError: (_) {});
     return result;
+  }
+
+  /// 原子写（P#7）：先写临时文件再 rename，避免写一半崩溃把整份会话记录截断。
+  /// 与 save_service._atomicWrite 同思路，但这是独立文件，不复用其私有实现。
+  Future<void> _atomicWriteJson(String path, String content) async {
+    final tmpPath = '$path.tmp';
+    final tmpFile = File(tmpPath);
+    await tmpFile.writeAsString(content);
+    await tmpFile.rename(path);
   }
 
   NpcChatService({required this.appProvider}) {
@@ -352,7 +369,7 @@ class NpcChatService {
           data.addAll(jsonDecode(content) as Map<String, dynamic>);
         }
         data[npcId] = trimmed.map((m) => m.toJson()).toList();
-        await file.writeAsString(jsonEncode(data));
+        await _atomicWriteJson(path, jsonEncode(data));
       });
     } catch (e) {
       // 聊天记录写盘失败必须留痕（此前静默吞掉，坏了无法排查）
@@ -394,7 +411,7 @@ class NpcChatService {
           final content = await file.readAsString();
           final data = jsonDecode(content) as Map<String, dynamic>;
           data.remove(npcId);
-          await file.writeAsString(jsonEncode(data));
+          await _atomicWriteJson(path, jsonEncode(data));
         }
       });
     } catch (e) {

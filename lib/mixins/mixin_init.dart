@@ -25,6 +25,7 @@ import '../providers/game_provider_base.dart';
 import '../prompts/narrative_prompts.dart';
 import '../data/npc_schedule_rules.dart';
 import '../utils/debug_log.dart';
+import 'mixin_narrative.dart';
 
 mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
@@ -247,6 +248,7 @@ mixin GameInitMixin on GameProviderBase {
   void resetAllState() {
     // 世代号失效：在飞 AI 请求的响应必须在返回后被丢弃，不能写进新局
     invalidateSessionEpoch();
+    GameNarrativeMixin.resetSummaryFailCounter(); // 摘要连续失败计数归零（P#10）
     player = null;
     worldState = WorldState();
     npcRegistry.clear();
