@@ -97,9 +97,13 @@ class AgnesRateLimiter {
 /// SenseNova配额管理器（按模型区分，每5小时重置）
 ///
 /// 商汤平台不同模型配额不同（参考 https://platform.sensenova.cn/docs，2026-08）：
-///   - sensenova-6.8-flash-lite / sensenova-6.7-flash-lite / sensenova-u1-fast：1500次/5h
+///   - sensenova-6.8-flash-lite / sensenova-u1-fast：本地软限 1500次/5h
 ///   - deepseek-v4-flash / glm-5.2：500次/5h（RPM 极低，约1.67次/分钟）
 /// 配额按模型独立计量，一个模型用完不影响其他模型。
+///
+/// 2026-08-28 起商汤公测额度已从「按次」改为「积分制」（通用积分池 60,000 积分/滚动 5h）。
+/// 本类仍沿用「次/5h」作为本地保守软阈值（积分随 token 数变化，无法用固定次数精确折算），
+/// 真正的超限 429 仍以服务商积分窗口为准。
 ///
 /// Q1：本地计数**持久化**。服务商的 5 小时配额窗口从玩家第一次调用起算，
 /// 而本类此前把调用时间只存在内存里——App 重启后本地计数归零，玩家以为

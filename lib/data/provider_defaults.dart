@@ -63,7 +63,7 @@ const Map<String, ProviderDefault> kProviderDefaults = {
   'agnes': ProviderDefault(
     displayName: 'Agnes',
     tagline: '免费 · 响应最快',
-    model: 'agnes-2.5-flash',
+    model: 'agnes-3.0-flash',
     models: [
       'agnes-3.0-flash', // 最新：Agent/工具调用，512K上下文，输出上限65,536 token
       'agnes-2.5-flash',
@@ -78,8 +78,7 @@ const Map<String, ProviderDefault> kProviderDefaults = {
     tagline: '免费 · 剧情质量最佳',
     model: 'sensenova-6.8-flash-lite',
     models: [
-      'sensenova-6.8-flash-lite', // 最新：多模态智能体，1500次/5h
-      'sensenova-6.7-flash-lite', // 稳定版：256K上下文，1500次/5h
+      'sensenova-6.8-flash-lite', // 最新：多模态智能体；公测已改积分制（60,000积分/滚动5h）
       'deepseek-v4-flash', // DeepSeek对话模型，500次/5h
       'glm-5.2', // 智谱旗舰：1M上下文，500次/5h
       'sensenova-u1-fast', // 信息图生成专用（非chat场景）

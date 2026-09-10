@@ -466,8 +466,7 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.sensenova:
         // 公测期间全部免费，按调用次数限流（每5小时重置）
         return [
-          'sensenova-6.8-flash-lite', // 1500次/5h，最新多模态智能体
-          'sensenova-6.7-flash-lite', // 1500次/5h，稳定版
+          'sensenova-6.8-flash-lite', // 最新多模态智能体；公测已改积分制（60,000积分/滚动5h）
           'deepseek-v4-flash', // 500次/5h
           'glm-5.2', // 500次/5h，1M上下文
         ];

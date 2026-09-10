@@ -44,10 +44,6 @@ void main() {
       find.textContaining('sensenova-6.8-flash-lite  1500次/5h'),
       findsOneWidget,
     );
-    expect(
-      find.textContaining('sensenova-6.7-flash-lite  1500次/5h'),
-      findsOneWidget,
-    );
     // 托管模型 500 次/5h
     expect(find.textContaining('deepseek-v4-flash  500次/5h'), findsOneWidget);
     expect(find.textContaining('glm-5.2  500次/5h'), findsOneWidget);
