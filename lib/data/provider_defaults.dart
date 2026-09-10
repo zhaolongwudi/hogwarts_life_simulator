@@ -65,6 +65,7 @@ const Map<String, ProviderDefault> kProviderDefaults = {
     tagline: '免费 · 响应最快',
     model: 'agnes-2.5-flash',
     models: [
+      'agnes-3.0-flash', // 最新：Agent/工具调用，512K上下文，输出上限65,536 token
       'agnes-2.5-flash',
       'agnes-2.5-turbo',
       'agnes-2.5-pro',
