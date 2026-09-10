@@ -43,6 +43,16 @@ class NpcChatService {
   AiRouter? _router;
   final Map<String, List<ChatMessage>> _conversationCache = {};
 
+  /// 近 1 分钟内的 AI 调用时间戳（Q11 连发保护）。
+  ///
+  /// 默认 npcChat → Agnes（免费版 18 RPM 本地闸门）。玩家连续快速发消息时，
+  /// 每星期 3 秒/条，约 1 分钟后第 18 条起每次都会卡在「等待窗口滑出」最多
+  /// 30s。与其干等，不如在计数接近上限时直接降级本地模板——对玩家是
+  /// 「回答变快但略显模板化」，远好于「一句话卡半分钟」。
+  static const int kMaxRpmWindow = 18;
+  static const Duration kRpmWindow = Duration(minutes: 1);
+  final List<DateTime> _recentAiCalls = [];
+
   /// 串行化所有会话文件写操作，避免并发写同一文件导致丢更新
   Future<void> _writeChain = Future.value();
 
@@ -125,6 +135,13 @@ class NpcChatService {
     promptBuffer.write('ASSISTANT: ');
 
     try {
+      // Q11：连发保护——窗口内已接近本地限流上限时，直接降级本地模板，
+      // 不进入会让玩家干等的「等待窗口滑出」。判定离线（false）不计数。
+      if (_shouldDegradeLocal()) {
+        _recordAiCall();
+        return (_generateLocalResponse(npc, safeMessage), true);
+      }
+      _recordAiCall();
       final response = await _router!.chatComplete(
         scene: AiScene.npcChat,
         prompt: promptBuffer.toString(),
@@ -144,6 +161,37 @@ class NpcChatService {
       return (_generateLocalResponse(npc, safeMessage), true);
     }
   }
+
+  /// Q11 连发保护判定：滑动窗口内已发起 >= [kMaxRpmWindow] 次 AI 调用。
+  ///
+  /// 抽成独立方法便于单测——不必真的打进 18 个网络请求就能断言行为。
+  @visibleForTesting
+  bool shouldDegradeLocalForTest() {
+    _pruneRpmWindow();
+    return _recentAiCalls.length >= kMaxRpmWindow;
+  }
+
+  /// Q11 连发保护判定（chatWithNPC 内部使用；对测试暴露无下划线别名）。
+  bool _shouldDegradeLocal() => shouldDegradeLocalForTest();
+
+  /// 记录一次 AI 调用时间戳（滑动窗口按需清理过期项）。
+  void _recordAiCall() {
+    _recentAiCalls.add(DateTime.now());
+    _pruneRpmWindow();
+  }
+
+  /// Q11 测试钩子：手动注入一次调用计数（不真正发请求）。
+  @visibleForTesting
+  void recordAiCallForTest() => _recordAiCall();
+
+  void _pruneRpmWindow() {
+    final cutoff = DateTime.now().subtract(kRpmWindow);
+    _recentAiCalls.removeWhere((t) => t.isBefore(cutoff));
+  }
+
+  /// 测试复位：清空 RPM 计数，避免跨用例累计污染连发判定。
+  @visibleForTesting
+  void resetRpmWindowForTest() => _recentAiCalls.clear();
 
   String _buildNpcSystemPrompt(NPC npc, Player player, WorldState worldState, {String? relationshipAnchor}) {
     final personalityStr = npc.personality.join('、');

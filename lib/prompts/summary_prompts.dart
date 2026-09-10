@@ -1,5 +1,16 @@
 /// 剧情摘要压缩 Prompt。
 
+/// 前情摘要分层上限（Q4）。
+///
+/// `previousSummary` 是**累积拼接**的历史摘要：每 15 回合追加一次、limit 随
+/// 进度放宽到 2400 字，长线玩到一两百回合后，单是前情就 1 万字起步，
+/// 每次都原样塞进摘要 prompt，输入 token 随局龄线性膨胀。
+/// 这里做**分层压缩**：超过 [kMaxPreviousChars] 时，只把「最新一段」完整
+/// 传给 AI（接缝处的新剧情依赖它与新 chunk 缝合），更早的历史压成一行
+/// 粗略计数作为背景锚点，而不是线性全量。语义上不再逐字喂给模型，
+/// 但接缝信息完整保留——一场 300 回合的长局，摘要输入从此有上限。
+const int kMaxPreviousChars = 1400;
+
 /// 构造摘要压缩 Prompt。
 /// [limit] 字数上限 (AI 侧目标)，[previousSummary] 老摘要，[newChunk] 新剧情正文块，
 /// [relSnapshot] 当前NPC关系快照（以此校准，不要让 AI 凭印象写）。
@@ -12,6 +23,18 @@ String buildSummaryPrompt({
   required String relSnapshot,
   required String coreFacts,
 }) {
+  // Q4：对累积的前情做分层压缩。只有在超上限时才触发，不影响短局。
+  final String layeredPrevious;
+  if (previousSummary.length <= kMaxPreviousChars) {
+    layeredPrevious = previousSummary;
+  } else {
+    // 「最新一段」取 TO(尾部，不含 if) 的 kMaxPreviousChars 字——新 chunk
+    // 承接的是紧邻的旧摘要，保留这段才不脱缝。头部只剩一行计数。
+    final head = '（早期剧情已有 ${previousSummary.length} 字历史摘要，此处省略，仅保留最近一段）';
+    final tail = previousSummary.substring(previousSummary.length - kMaxPreviousChars);
+    layeredPrevious = '$head\n$tail';
+  }
+
   return '''请将以下剧情内容压缩成摘要。重要规则：
   1. 只保留【人物关系变化】和【重要剧情转折】
   2. 淘汰具体场景描述（如"在车站"、"在教室"、"列车走廊"等地点信息），这些会严重干扰后续剧情生成
@@ -26,7 +49,7 @@ String buildSummaryPrompt({
   ${coreFacts.isNotEmpty ? coreFacts : '（暂无）'}
 
   【前情摘要】
-  ${previousSummary.isNotEmpty ? previousSummary : '（开局）'}
+  ${layeredPrevious.isNotEmpty ? layeredPrevious : '（开局）'}
 
   【新剧情】
   $newChunk
