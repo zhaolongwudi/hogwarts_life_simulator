@@ -10,6 +10,24 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.2.8 — 2026-09-10
+
+**📋 变更说明**
+批次31: 玩家沟通层 4 项修复（Q2/Q6/Q8/Q14，v4 审查台账）
+
+- Q2 配额剩余视角：设置页新增「⏳ 5 小时配额窗口」卡片 `SettingsQuotaWindow`，
+  按 SenseNova 每个模型读限流闸门 `SenseNovaQuotaManager.remainingInWindow/usedInWindow`
+  展示「剩余 X / 上限 Y」+ 进度条（耗尽标红），配前可预判「还能玩多久」
+- Q6 预计等待信息：`narrativeExpectedWaitSeconds` 与 `AiRouter.globalTimeoutFor` 同源
+  预算公式推算最坏等待（3×全局叙事超时），loadingStage 区展示「预计最坏 N 秒」徽标，
+  无 AI / 离线返回 0 不显示，避免误判卡死
+- Q8 摘要失败感知：摘要连续失败计数达到阈值 3 次，一次性通知「长线记忆连续多次未保存」；
+  成功一次清零，不反复打扰（此前完全静默，长线记忆丢失玩家无感知）
+- Q14 NPC 本地兜底升级：模板按好感度分档（冷淡/普通/友好 × 四学院 + 教职工专属词库），
+  并加自增轮转计数——同一条消息多次问会轮换句子，不再「同句必同回」
+- 新增测试 batch31_player_comm_test（Q2 只读视角 / Q6 等待推算 / Q8 阈值边界 / Q14 分档轮转），
+  11 用例全过，analyze 0 error
+
 ### v4.2.7 — 2026-09-09
 
 **📋 变更说明**

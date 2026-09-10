@@ -1158,6 +1158,29 @@ class _NarrativeTabState extends State<NarrativeTab> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // Q6：加载时给出「预计最坏等待」，玩家知道不是卡死。
+                      // 0 秒（未配 AI/离线）时不展示。
+                      if (gp.isLoading &&
+                          gp.narrativeExpectedWaitHint.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: MiuiColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            gp.narrativeExpectedWaitHint,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: MiuiColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (gp.lastRoundTokens > 0) ...[
                         const SizedBox(width: 12),
                         Container(

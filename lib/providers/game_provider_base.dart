@@ -133,6 +133,35 @@ abstract class GameProviderBase extends ChangeNotifier
   String? systemPrompt;
   String loadingStage = '';
   List<String> lastAffectionSections = [];
+
+  /// 本次叙事最坏等待秒数（Q6 玩家沟通视角）。
+  ///
+  /// 修复前：loadingStage 只有「正在构建请求…/正在生成剧情…」这类文案，
+  /// 玩家不知道要等多久，慢模型（SenseNova 6.8）下一旦服务商波动就容易
+  /// 误以为卡死。现在用与超时体系同一套预算公式算出一个「最坏等几秒」
+  /// 的预期，UI 展示给玩家；0 表示未配置 AI 或离线模式（等待不适用）。
+  ///
+  /// 业务层叙事对解析失败最多重试 2 次，最坏要连续吃 3 个完整的全局超时
+  /// 预算（每次之间还有 500ms 退避）。因此预期值 = 3 × 全局叙事超时预算。
+  /// 注：单 Key 无重试的常规场景实测远小于此上限，这里的值是「最坏等多久」。
+  int get narrativeExpectedWaitSeconds {
+    final r = router;
+    if (r == null) return 0;
+    // 实际参与叙事路由的 Key 数：SenseNova + 回退链的 Agnes。
+    final keys = appProvider.keyCount(AiProvider.sensenova) +
+        appProvider.keyCount(AiProvider.agnes);
+    if (keys <= 0) return 0;
+    final budget = AiRouter.globalTimeoutFor(AiScene.narrative, keys);
+    return (budget.inSeconds * 3 + 1).clamp(0, 720);
+  }
+
+  /// 返回「预计最坏等待 N 秒」的短文案；无 AI / 离线时返回空串（不展示）。
+  String get narrativeExpectedWaitHint {
+    final s = narrativeExpectedWaitSeconds;
+    if (s <= 0) return '';
+    return '预计最坏 $s 秒';
+  }
+
   final List<String> notifications = [];
 
   /// 当前委托板上展示的模板 ID（按展示顺序）。

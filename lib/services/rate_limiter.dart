@@ -206,6 +206,27 @@ class SenseNovaQuotaManager {
     }
   }
 
+  /// 当前 5 小时窗口内该模型已用的调用次数（Q2 只读视角）。
+  ///
+  /// 只计算落在窗口内的记录，超窗口的旧记录不计入「已用」——
+  /// 与服务商 5h 窗口语义一致（窗口滑出即重置）。先恢复持久化计数
+  /// 再统计，避免重启后误报「剩余满配额」。
+  Future<int> usedInWindow(String model) async {
+    await _ensureLoaded();
+    final times = _callTimesByModel[model] ?? const <DateTime>[];
+    final now = DateTime.now();
+    return times.where((t) => now.difference(t) <= _windowDuration).length;
+  }
+
+  /// 当前 5 小时窗口内该模型剩余可用次数（Q2 玩家沟通视角）。
+  ///
+  /// 下限 0：配额耗尽时不显示负数。UI 展示「剩余 X / 上限 Y」用。
+  Future<int> remainingInWindow(String model) async {
+    final used = await usedInWindow(model);
+    final limit = quotaForModel(model);
+    return (limit - used).clamp(0, limit);
+  }
+
   /// 清空内存计数并重置加载缓存（测试/诊断用）。
   ///
   /// 不清理已落盘的持久化数据：测试隔离由 `SharedPreferences.setMockInitialValues`

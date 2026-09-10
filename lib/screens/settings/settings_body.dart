@@ -14,6 +14,7 @@ import 'settings_scene_routing.dart';
 import 'settings_preset_pickers.dart';
 import 'settings_stance.dart';
 import 'settings_token_usage.dart';
+import 'settings_quota_window.dart';
 import 'settings_crash_section.dart';
 import '../../data/political_stance.dart';
 import '../../theme/miuix_tokens.dart';
@@ -238,6 +239,9 @@ class _SettingsBodyState extends State<SettingsBody> {
           ),
           const SizedBox(height: 16),
           _buildOfflineModeCard(context, appProvider),
+          const SizedBox(height: 16),
+          const SettingsQuotaWindow(),
+          const SizedBox(height: 16),
           SettingsTokenUsage(
             gameProvider: gp,
             onReset: () {

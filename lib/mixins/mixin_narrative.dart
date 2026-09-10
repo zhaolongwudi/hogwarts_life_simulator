@@ -4,7 +4,7 @@ import '../data/command_registry.dart';
 // 只取 kDebugMode：给 _closeLoopIfMatched 的热路径日志加 `if (kDebugMode)`
 // 保护时漏了这个 import，整包 analyze 直接红——典型的「改了 A 没改它的
 // 对称面 B」（第八次审查 §4）。
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../services/deepseek_service.dart';
@@ -1395,6 +1395,34 @@ $kNarrativeWritingRules
   /// 待摘要缓冲上限：模型能力升级后 4000→8000 字，一次摘要可以压缩更多回合，减少摘要 AI 调用频次
   static const int _maxPendingSummaryChars = 8000;
 
+  /// 摘要连续失败计数（Q8 玩家感知）。
+  ///
+  /// 修复前：摘要失败只写 debugLog，玩家完全无感知——长线局若摘要持续失败
+  /// （如配额耗尽），玩家不知道「记忆正在丢」，最老部分会被截断标记替代。
+  /// 连续失败达到 [_summaryFailNotifyThreshold] 次时给玩家一次性弱提示；
+  /// 成功一次即清零，避免反复打扰。
+  static const int _summaryFailNotifyThreshold = 3;
+  static int _summaryConsecutiveFails = 0;
+
+  /// 摘要连续失败计数（测试/诊断读取）。
+  @visibleForTesting
+  static int get summaryConsecutiveFails => _summaryConsecutiveFails;
+
+  /// 摘要连续失败前进一次；返回「本次是否恰好跨过通知阈值」。
+  ///
+  /// 独立成纯静态方法便于测试：Q8 的核心是「连续失败 ≥ N 才通知，
+  /// 成功清零」。把计数与是否通知分开，测试可直接断言边界而不必
+  /// 真正发起一次失败的 AI 摘要请求。
+  @visibleForTesting
+  static bool advanceSummaryFailCounter() {
+    _summaryConsecutiveFails++;
+    return _summaryConsecutiveFails == _summaryFailNotifyThreshold;
+  }
+
+  /// 重置摘要连续失败计数（测试隔离用）。
+  @visibleForTesting
+  static void resetSummaryFailCounter() => _summaryConsecutiveFails = 0;
+
   void accumulateForSummary(String newNarrative) {
     // BUG-I：喂 summary buffer 之前必须先清洗！
     // 旧代码直接把 AI 返回的 raw narrative 塞进去，导致：
@@ -1470,12 +1498,25 @@ $kNarrativeWritingRules
       // 从 narrativeSummary 中剥离结构化块（它们已写入 LongTermMemory，
       // 不需要在 T4 自然语言摘要中重复，避免 token 浪费）
       narrativeSummary = _stripStructuredBlocks(rawSummary);
+      // 摘要成功 → 连续失败计数清零（Q8）
+      _summaryConsecutiveFails = 0;
       // 注意：这里不再清空 pendingSummary —— 待摘要内容在请求发出前就已取走，
       // 请求在飞期间新积累的回合仍留在缓冲里，等待下一次摘要。
     } catch (e) {
       debugLog('❌ 摘要生成失败: $e');
       // 失败则把内容还回缓冲头部，下回合重试，避免剧情永久丢失
       pendingSummary = chunk + pendingSummary;
+      // Q8：连续失败计数 + 达到阈值后告知玩家「记忆可能未保存」。
+      // 摘要失败本身是自恢复的（下回合重试），不能每次失败都弹提示刷屏，
+      // 只在「持续失败」的边界给一次弱提示，让玩家知道该去查 AI 配置/配额。
+      final crossed = advanceSummaryFailCounter();
+      if (crossed) {
+        notifications.add(
+          '📌 长线记忆连续多次未保存，请检查 AI 服务或更换模型；'
+          '失败期间最老的剧情会被截断标记替代。',
+        );
+        notifyListeners();
+      }
     } finally {
       isSummarizing = false;
     }
