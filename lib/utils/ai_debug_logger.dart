@@ -38,6 +38,18 @@ class AiDebugLogger {
     }
   }
 
+  /// 测试注入点：把日志根目录指向临时目录，避免污染真实文档目录。
+  /// 生产路径不要调用——正常 flow 由 [_ensureLogDir] 用真实目录初始化。
+  @visibleForTesting
+  Future<void> forceLogDirForTest(String absPath) async {
+    _logDir = absPath;
+    final dir = Directory(_logDir!);
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    _enabled = true;
+  }
+
   void setEnabled(bool value) {
     _enabled = value;
     if (value) {
@@ -76,9 +88,13 @@ class AiDebugLogger {
       buf.writeln(promptPreview);
       buf.writeln('---');
       if (systemPrompt != null && systemPrompt.isNotEmpty) {
-        buf.writeln('【System Prompt】');
+        // Q15：完整 systemPrompt 含玩家档案/关系/魔法能力等隐私，绝不整段落盘。
+        // 不写任何 systemPrompt 内容——即使只取"首行"，真机上常是单行 JSON，
+        // 整份档案仍会裸奔（实测发现单行 systemPrompt 首行=全部）。只记长度，
+        // 保留"本次用了多少约束上下文"的排查线索，隐私彻底脱敏。
+        buf.writeln('【System Prompt】(隐私脱敏：不落内容，仅记录规模)');
         buf.writeln('---');
-        buf.writeln(systemPrompt);
+        buf.writeln('共 ${systemPrompt.length} 字符，完整内容已脱敏');
         buf.writeln('---');
       }
       _pendingCalls[callId] = buf;
@@ -165,52 +181,79 @@ class AiDebugLogger {
     }
   }
 
-  static const int _maxFileBytes = 4 * 1024 * 1024; // 单日日志文件上限 4MB，防止无限膨胀
+  static const int _maxFileBytes = 4 * 1024 * 1024; // 单份日志文件上限 4MB，防止无限膨胀
 
   Future<void> _writeToFile(String content) async {
     if (_logDir == null) return;
     final now = DateTime.now();
-    final fileName = 'ai_log_${now.year}${_pad(now.month)}${_pad(now.day)}.txt';
-    final file = File('${_logDir!}/$fileName');
+    final base = '${now.year}${_pad(now.month)}${_pad(now.day)}';
 
-    try {
-      if (await file.exists() && await file.length() > _maxFileBytes) {
-        // 当日日志超过上限：轮转，仅保留最新条目，避免磁盘被日志撑满
-        await file.writeAsString(content, flush: true);
-      } else {
-        await file.writeAsString(content, mode: FileMode.append, flush: true);
-      }
-    } catch (e) {
-      debugLog('AiDebugLogger 写入失败: $e');
-    }
-
+    await _appendToShard(base, content);
     await _pruneOldLogs();
   }
 
-  /// 只保留最近 7 天的日志文件，清理更早的，防止 ai_log 目录无限增长
+  /// 把一条日志追加到「当日日志族」里第一份未超上限的分片。
+  ///
+  /// 旧实现（run 前的 Q15）：当日文件超 4MB 时直接 `writeAsString(content)`
+  /// 整体覆写，上一条并发写盘（同一文件多分片写）或当日更早的全部历史都会被
+  /// 清空，只剩最后一小段——丢日志不可接受。改为分片追加：主片满了就开下一个
+  /// `ai_log_YYYYMMDD_N.txt`（N 从 1 递增），历史永远保留，只是按容量分隔。
+  Future<void> _appendToShard(String base, String content) async {
+    try {
+      for (var shard = 0; shard < 32; shard++) {
+        final fileName = shard == 0
+            ? 'ai_log_$base.txt'
+            : 'ai_log_${base}_$shard.txt';
+        final file = File('${_logDir!}/$fileName');
+        if (await file.exists() && await file.length() > _maxFileBytes) {
+          continue; // 该分片已满，找下一个
+        }
+        await file.writeAsString(content, mode: FileMode.append, flush: true);
+        return;
+      }
+      // 32 片（合计约 128MB）都满：极不可能，兜底丢弃本条并仅登记计数，
+      // 避免日志写入拖垮正常游戏流程（日志本来就该失败静默）。
+      debugLog('AiDebugLogger 当日日志已达 ${32 * _maxFileBytes ~/ (1024 * 1024)}MB 上限，丢弃本条');
+    } catch (e) {
+      debugLog('AiDebugLogger 写入失败: $e');
+    }
+  }
+
+  /// 只保留最近 7 个「日志日期族」的调试日志（清理更早的），防止目录无限增长。
+  ///
+  /// 按文件名的 `YYYYMMDD` 前缀聚类：同一天的主片与分片（`ai_log_20260910.txt`/
+  /// `ai_log_20260910_1.txt`）算一个日期族，一起保留或一起删。
+  /// 不是按文件数保留——否则一天分片越多，能保留的天数就越少。
   Future<void> _pruneOldLogs() async {
     if (_logDir == null) return;
     try {
       final dir = Directory(_logDir!);
       if (!await dir.exists()) return;
       final files = (await dir.list().toList()).whereType<File>().toList();
-      if (files.length <= 7) return;
-      final pairs = <(File, DateTime)>[];
+      if (files.isEmpty) return;
+      final RegExp dayRe = RegExp(r'^ai_log_(\d{8})');
+      final Map<String, List<File>> byDay = {};
       for (final f in files) {
-        DateTime modified;
-        try {
-          modified = (await f.stat()).modified;
-        } catch (_) {
-          modified = DateTime.fromMillisecondsSinceEpoch(0);
-        }
-        pairs.add((f, modified));
+        final m = dayRe.firstMatch(f.path.split('/').last);
+        final day = m?.group(1) ?? 'other';
+        (byDay[day] ??= []).add(f);
       }
-      pairs.sort((a, b) => b.$2.compareTo(a.$2));
-      for (final p in pairs.skip(7)) {
+      if (byDay.length <= 7) return;
+      final days = byDay.keys.toList();
+      // 纯数字日期可字典序比较（YYYYMMDD → 较新的排后面），非日期键垫底
+      days.sort((a, b) {
+        if (a == 'other' || b == 'other') return a == 'other' ? -1 : 1;
+        return a.compareTo(b);
+      });
+      final toDelete = days
+          .take(days.length - 7)
+          .map((d) => byDay[d] ?? const <File>[])
+          .expand((files) => files);
+      for (final p in toDelete) {
         try {
-          await p.$1.delete();
+          await p.delete();
         } catch (e) {
-          debugLog('❌ 清理旧调试日志失败: $e');
+          debugLog('❌ 清理旧调试日志失败: ${p.path} $e');
         }
       }
     } catch (e) {
@@ -265,5 +308,15 @@ class AiDebugLogger {
       }
     }
     _pendingCalls.clear();
+  }
+
+  /// 测试复位：清空挂起调用并丢弃已设置的日志目录引用。
+  /// 不删文件（文件清理由测试自行 delete 临时目录），只解除测试间共享
+  /// 的 `_logDir`/`_enabled` 状态，避免上一用例的目录串到下一用例。
+  @visibleForTesting
+  void resetForTest() {
+    _pendingCalls.clear();
+    _logDir = null;
+    _enabled = false;
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../providers/app_provider.dart';
 import 'ai_timeouts.dart' as timeouts;
 import 'empty_response_monitor.dart';
@@ -285,6 +286,31 @@ class DeepSeekService {
     }
   }
 
+  /// 区分服务商 429 的两种常见语义（Q16），给出可行动的文案：
+  /// - 配额耗尽（quota / insufficient / 额度 / 次数用尽）→ 需要等 5 小时窗口重置
+  /// - 速率限制（rate limit / too many requests / 限流）→ 稍等再试通常能恢复
+  /// 判定只做关键词软匹配，拿不准就给通用文案，绝不臆造具体数字。
+  @visibleForTesting
+  static String classify429(String msg) {
+    final m = msg.toLowerCase();
+    final isQuota = m.contains('quota') ||
+        m.contains('insufficient') ||
+        m.contains('exceeded the quota') ||
+        m.contains('额度') ||
+        m.contains('次数用尽');
+    final isRateLimit = m.contains('rate limit') ||
+        m.contains('too many requests') ||
+        m.contains('限流') ||
+        m.contains('频繁');
+    if (isQuota) {
+      return '服务商配额已用尽（HTTP 429），需等待配额窗口（如 SenseNova 每 5 小时）重置后再试';
+    }
+    if (isRateLimit) {
+      return '服务商限流（HTTP 429）：请求过于频繁，请稍等片刻再试';
+    }
+    return '请求过于频繁（HTTP 429），请稍后重试 - $msg';
+  }
+
   void _handleError(DioException e) {
     final statusCode = e.response?.statusCode;
     final body = e.response?.data;
@@ -304,7 +330,11 @@ class DeepSeekService {
     } else if (statusCode == 404) {
       throw AiNonRetryableException('API 端点不存在，请检查 Base URL 设置');
     } else if (statusCode == 429) {
-      throw AiRetryableException('请求过于频繁，请稍后重试');
+      // Q16：HTTP 429 直接来自服务商，是「服务商侧」的限流/配额——
+      // 与本地限流闸门（_acquireSlot 超时抛 RateLimitWaitTimeout，
+      // "Q7：本地限流/配额排队超时"已经分流，不会走到这里）不同。
+      // 文案要能把玩家引到正确的方向：该等窗口重置，而不是去改 Key。
+      throw AiRetryableException(classify429(msg));
     } else if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout) {
@@ -372,7 +402,7 @@ class DeepSeekService {
         throw Exception('端点不存在 (404)：最终请求路径 $full，请检查 Base URL 与服务商是否匹配');
       }
       if (statusCode == 429) {
-        throw Exception('请求过于频繁（HTTP 429），请稍后重试${detail.isNotEmpty ? ' - $detail' : ''}');
+        throw Exception(classify429(detail));
       }
       if (statusCode == 400) {
         throw Exception('请求参数错误（HTTP 400）${detail.isNotEmpty ? '：$detail' : '，可能模型名与服务商不匹配'}');
