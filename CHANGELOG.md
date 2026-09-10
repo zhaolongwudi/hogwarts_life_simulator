@@ -10,6 +10,11 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.3.5 — 2026-09-10
+
+**📋 变更说明**
+feat: Agnes 默认切 agnes-3.0-flash；SenseNova 移除已停用的 6.7-flash-lite 并更新积分配额注释
+
 ### v4.3.4 — 2026-09-10
 
 **📋 变更说明**
