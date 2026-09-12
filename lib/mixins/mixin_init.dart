@@ -271,7 +271,10 @@ mixin GameInitMixin on GameProviderBase {
     notifications.clear();
     gameWeek = 1;
     lastSchoolYearStart = 0;
-    lastWeekBucket = 0;
+    // 清空跨周基准（回到「尚未建立」）。基准由 _advanceWorldClock 首次调用时
+    // 惰性建立，见 game_provider_base.dart 的 weekBucketBaseline 注释。
+    // 不再写 `= 0`——0 是 1991 年第一周的桶号，与"未初始化"不是一个意思。
+    clearWeekBucketBaseline();
     pendingAnchorDirective = null;
     pendingCausalAnchorId = null;
     lastDeviationTickBucket = -1;
@@ -478,6 +481,9 @@ mixin GameInitMixin on GameProviderBase {
       // R2：openingSceneById 提供 locationTemplate（含 ${birthLocation} 模板替换）
       worldState.currentLocation = scene.resolveLocation(player!.birthLocation);
       lastSchoolYearStart = startYear;
+      // 以开学时刻为跨周基准 0。惰性建立也能得到同样结果，
+      // 这里显式设置是为了让"开局的 gameWeek 从第 1 周算起"这件事在代码里可读，
+      // 而不是藏在 _advanceWorldClock 的默认分支里。
       lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
       updateAcademicYearLabel();
 

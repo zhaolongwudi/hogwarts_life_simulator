@@ -2495,8 +2495,7 @@ mixin GameCommandsMixin on GameProviderBase {
     // unlockCondition 以前只是打印出来的文案——有没有人真的去不了，
     // 全看 AI 那天心情好不好。现在按年级/周末实判，未开放的标 🔒。
     final p = player;
-    final isWeekend =
-        worldState.time.weekday == 0 || worldState.time.weekday == 6;
+    final isWeekend = isWeekendWeekday(worldState.time.weekday);
     final knownRegions = mapRegions
         .map((r) {
           final unlocked = r.isUnlocked(grade: p?.grade, isWeekend: isWeekend);

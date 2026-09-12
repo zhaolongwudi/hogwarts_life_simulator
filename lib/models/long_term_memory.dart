@@ -30,6 +30,90 @@ const int kMaxPersistentKeyFacts = 60;
 /// 1 万回合能堆到数十 MB 存档。
 const int kMaxRelationshipAnchorItems = 12;
 
+/// ====== 摘要关系快照的分层参数 ======
+///
+/// 【为什么需要】旧实现 `.take(5)` 只把 5 个 NPC 喂给摘要 AI，
+/// 第 6 人起的关系靠 AI 凭印象写，偏差会被固化成 9 分 T0 事实再注入，
+/// 形成随局龄单调加重的自我强化偏差（详见 buildRelationshipSnapshot 注释）。
+///
+/// 快照里 |affection| 达到此值即视为「强关系」，无论有多少人全部入选。
+/// 取 40 的理由：这是"明显要好/明显交恶"的量级（见 balance_constants 的
+/// 好感档位），远高于日常 +1~+3 的波动，不会把普通同学也算成主干关系。
+const int kSnapshotStrongAffection = 40;
+
+/// 关系快照的 NPC 总数上限（强关系层优先占位，超出部分按 |affection| 补足）。
+///
+/// 旧值是 5，对长局偏小；提到 12 与 [kMaxRelationshipAnchorItems] 对齐——
+/// 关系锚点本就维护 12 人，快照看得比锚点少没有道理。
+const int kSnapshotMaxNpcs = 12;
+
+/// ====== 注入侧配额（prompt 里实际写进多少条）======
+///
+/// 【为什么单独定义】存储容量（[kMaxPersistentKeyFacts] 等）和注入容量
+/// 原本是两个数：存储允许永不遗忘层留 60 条，注入却写死 `i < 40`。
+/// 后果是**第 41 条起的 9 分事实存着但永远不喂给 AI**——
+/// 「永不遗忘」在存储层成立、在注入层不成立，长局记忆因此失真。
+/// 现在两个配额都在这里定义，并由 [T0InjectionQuota] 保证
+/// 「永不遗忘层全量注入」这一不变量。
+///
+/// 普通层（importance 低于 [kPersistentFactImportance]）的注入上限。
+/// 这一层是「重要性 × 新鲜度」打分的产物，允许被截断——截掉的只是
+/// 最近没那么重要的事，AI 不该为它们挤掉永不遗忘层。
+const int kT0InjectionRegularQuota = 40;
+
+/// 永不遗忘层的注入上限。
+///
+/// 取值必须 ≥ [kMaxPersistentKeyFacts]：存储层允许留多少条，
+/// 注入层就必须能读到多少条，否则又会出现"存着读不到"。
+/// 这里直接取同一个常量，从类型层面消除两个数漂移的可能。
+const int kT0InjectionPersistentQuota = kMaxPersistentKeyFacts;
+
+/// T0 注入配额的分层结果。
+///
+/// 拆出这个纯数据类是为了让配额逻辑**可单测**：注入是本回合热路径，
+/// 直接断言 prompt 文本很难写，但断言"60 条 9 分事实全部入选"很容易。
+class T0InjectionQuota {
+  /// 永不遗忘层实际入选条数（= min(该层总数, [kT0InjectionPersistentQuota])）。
+  final int persistentCount;
+
+  /// 普通层实际入选条数。
+  final int regularCount;
+
+  const T0InjectionQuota({
+    required this.persistentCount,
+    required this.regularCount,
+  });
+
+  int get total => persistentCount + regularCount;
+}
+
+/// 按分层规则计算 T0 注入配额。
+///
+/// 规则：
+///   1. **[kPersistentFactImportance] 及以上全部优先入选**，最多
+///      [kT0InjectionPersistentQuota] 条（该值等于存储容量，正常不会触发截断）；
+///   2. 剩余额度给普通层，最多 [kT0InjectionRegularQuota] 条。
+///
+/// 入参 [sortedByImportanceDesc] 必须是**已按 importance 降序**排好的列表
+/// （同分次序由调用方决定，本函数不再排序，保持纯粹）。
+T0InjectionQuota computeT0InjectionQuota(
+  List<int> sortedImportanceDesc,
+) {
+  var persistent = 0;
+  var regular = 0;
+  for (final imp in sortedImportanceDesc) {
+    if (imp >= kPersistentFactImportance) {
+      if (persistent < kT0InjectionPersistentQuota) persistent++;
+    } else if (regular < kT0InjectionRegularQuota) {
+      regular++;
+    }
+  }
+  return T0InjectionQuota(
+    persistentCount: persistent,
+    regularCount: regular,
+  );
+}
+
 /// 给一条事实文本打重要性分（1~10）。
 ///
 /// 放在模型层而不是写它的 mixin 里，是因为**写入侧和读取侧必须用同一份表**：

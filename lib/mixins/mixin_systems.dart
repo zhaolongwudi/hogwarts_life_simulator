@@ -65,10 +65,16 @@ mixin GameSystemsMixin on GameProviderBase {
 
     // 游戏周追踪（好感沉淀用）：以绝对天数 / 7 分桶，
     // 只有当绝对天数跨过整周边界时才推进游戏周，避免 dayOfYear 头尾截断导致开局即跨周。
+    //
+    // 基准通过 weekBucketBaseline 惰性建立：新开局/读档后第一次走到这里时，
+    // 基准 = 当前桶号，跨周数为 0。这样**不依赖任何一处在别处补的初始化**——
+    // 旧实现用 `lastWeekBucket = 0` 占位、靠 mixin_init/applySaveData 各补一次，
+    // 漏一处就会把 gameWeek 一次性抬到几十（绝对周桶是从 1991 年起算的大数）。
     final newBucket = worldState.time.absoluteDayIndex ~/ 7;
-    if (newBucket > lastWeekBucket) {
+    final baseline = weekBucketBaseline(worldState.time.absoluteDayIndex);
+    if (newBucket > baseline) {
       // 补齐跨过的所有整周（快进时一次可能跨很多周）
-      final weeksCrossed = newBucket - lastWeekBucket;
+      final weeksCrossed = newBucket - baseline;
       gameWeek += weeksCrossed;
       lastWeekBucket = newBucket;
       _resetWeeklyAffectionCaps(weeksCrossed);
@@ -2574,9 +2580,23 @@ mixin GameSystemsMixin on GameProviderBase {
       notifyListeners();
       return;
     }
-    if (blockedByGradeGate(detected: normalized, grade: player?.grade ?? 1)) {
+    // 区域门禁：与叙事同步路径共用同一判定（evaluateRegionGate）。
+    // 地图是玩家**主动**点击的入口，更需要严格——玩家点了禁林/霍格莫德却进不去，
+    // 必须有明确提示，而不是静默失败。这里不给教授带队豁免：带队是剧情事件，
+    // 不是玩家在地图上能自助触发的。
+    final gate = evaluateRegionGate(
+      detected: normalized,
+      grade: player?.grade,
+      isWeekend: isWeekendWeekday(worldState.time.weekday),
+    );
+    if (gate.isBlocked) {
+      final reasonText = switch (gate.reason!) {
+        RegionGateReason.grade =>
+          '需${gate.blocked!.minGrade}年级，当前${player?.grade ?? 1}年级',
+        RegionGateReason.weekend => '仅周末开放',
+      };
       worldState.addNarrativeEvent(
-        '⏱ 地图旅行被年级门拦截：$location（霍格莫德需三年级，当前${player?.grade ?? 1}年级）',
+        '⏱ 地图旅行被区域门拦截：$location（${gate.blocked!.name}$reasonText）',
         turn: turnCount,
       );
       notifyListeners();
@@ -2843,9 +2863,15 @@ mixin GameSystemsMixin on GameProviderBase {
   ///
   /// 自动读档（tryAutoLoad）和槽位读档（loadFromSave）必须走同一套逻辑。
   /// 之前 tryAutoLoad 是复制粘贴出来的，漏了两件事：
-  ///  1. _migrateSave —— v1 老存档自动加载时月份字段不迁移、time 字段不补全，
+  ///  1. 存档版本迁移（本文件 `GameSystemsMixin._migrateSave`，约 3050 行起）
+  ///     —— v1 老存档自动加载时月份字段不迁移、time 字段不补全，
   ///     世界时间直接错乱；而手动读同一个存档却是好的。
-  ///  2. _runConsistencyChecks —— 损坏的自动存档不会被钳制，可能载入负血值。
+  ///  2. `_runConsistencyChecks`（本文件同 mixin 内）—— 损坏的自动存档
+  ///     不会被钳制，可能载入负血值。
+  ///
+  /// 注：迁移函数的版本判定依赖 `lib/services/save_service.dart` 中的
+  /// `kSaveVersion`；升级该常量时必须同步在 `_migrateSave` 里补一个
+  /// `if (version < N)` 分支，否则老档会静默跳过新字段补全。
   @override
   void applySaveData(Map<String, dynamic> data) {
     // ====== 快照：读档中途失败必须整体回滚，绝不留「新旧混合」状态 ======
@@ -2925,6 +2951,8 @@ mixin GameSystemsMixin on GameProviderBase {
       pendingSummary = extraData['pending_summary'] as String? ?? '';
       gameWeek = extraData['game_week'] as int? ?? 1;
       lastSchoolYearStart = extraData['last_school_year_start'] as int? ?? 0;
+      // 读档：以存档时间为跨周基准，避免把"存档前的旧桶号"与"当前时间"相比
+      // 导致读档瞬间误判跨周。惰性建立同样安全，这里显式设置是为了语义清晰。
       lastWeekBucket = worldState.time.absoluteDayIndex ~/ 7;
       lastRoundTokens = extraData['last_round_tokens'] as int? ?? 0;
       apiCalls = extraData['api_calls'] as int? ?? 0;
@@ -3023,6 +3051,15 @@ mixin GameSystemsMixin on GameProviderBase {
     }
   }
 
+  /// 存档格式升级：把老版本 data 就地补全到当前 [kSaveVersion] 形状。
+  ///
+  /// 触发点只有一处：[applySaveData] 在解析 JSON 之后、构造 `Player`/`WorldState`
+  /// 之前调用（见上方 `_migrateSave(data, version)`）。调用前 `version` 取自
+  /// `data['save_version']`，缺失按 v1 处理。
+  ///
+  /// 新增版本的规矩：升级 [kSaveVersion]（`lib/services/save_service.dart`）
+  /// 时，这里必须补一个 `if (version < N) { ... }` 分支，并在分支末尾写入
+  /// `data['save_version'] = kSaveVersion`，否则存档会被反复迁移。
   void _migrateSave(Map<String, dynamic> data, int version) {
     if (version < 2) {
       final ws = data['world_state'] as Map<String, dynamic>?;

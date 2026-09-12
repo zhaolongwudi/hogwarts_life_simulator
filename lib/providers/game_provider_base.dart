@@ -198,8 +198,44 @@ abstract class GameProviderBase extends ChangeNotifier
   int lastSchoolYearStart = 0;
 
   /// 用于判断跨周：上一状态对应的绝对天数除以 7 的桶编号。
-  /// 与 gameWeek 一同在 new game/load game 时初始化，避免开局几天就跨周。
-  int lastWeekBucket = 0;
+  ///
+  /// 【为什么是 `int?` 而不是 `int = 0`】「绝对周桶」是从 1991-01-01 起算的
+  /// 大数（1991-09-01 开学时约为 `243 ~/ 7 = 34`），用 0 当占位值是**量纲错误**：
+  /// 0 代表 1991 年第一周，与"尚未初始化"完全是两回事。旧写法靠
+  /// `mixin_init` / `applySaveData` 后面各补一次正确赋值来兜底，一旦将来有人在
+  /// 补值之前推进时间（开局过场、旅行耗时结算），`_advanceWorldClock` 就会
+  /// 读到 0 并一次性把 `gameWeek` 抬到几十，整套首周/首月好感沉淀静默失效。
+  ///
+  /// 现在改成可空 + 访问器：`null` 显式表示"还没建立基准"，由
+  /// [weekBucketBaseline] 在首次跨周判定时惰性建立并返回，**不可能再读到错值**。
+  int? _lastWeekBucket;
+
+  /// 仅测试/存档迁移使用：直接写基准值。
+  @visibleForTesting
+  set lastWeekBucketForTest(int? v) => _lastWeekBucket = v;
+
+  /// 清空跨周基准，回到「尚未建立」状态（重置/重开新局时调用）。
+  ///
+  /// 与 `lastWeekBucket = 0` 的区别：0 是 1991 年第一周的**合法桶号**，
+  /// 清空是「没有基准」。二者混淆正是旧实现静默失效的根源。
+  void clearWeekBucketBaseline() => _lastWeekBucket = null;
+
+  /// 跨周判定的基准桶号。
+  ///
+  /// [currentAbsoluteDayIndex] 传入当前绝对天索引：
+  ///   · 基准已建立 → 直接返回基准（正常路径）；
+  ///   · 基准为 null（新开局/读档后首次判定）→ 用当前天索引建立基准并返回，
+  ///     使「首次判定的跨周数」恒为 0，不会因初始化遗漏而爆炸。
+  ///
+  /// 这样新开局/读档**不再需要专门的一行赋值**——漏了也不会出错，
+  /// 从"依赖调用方记得补"变成"不变量由类型和访问器保证"。
+  int weekBucketBaseline(int currentAbsoluteDayIndex) {
+    final cur = currentAbsoluteDayIndex ~/ 7;
+    return _lastWeekBucket ??= cur;
+  }
+
+  /// 显式设置基准（跨周推进后调用，或读档时按存档时间建立）。
+  set lastWeekBucket(int bucket) => _lastWeekBucket = bucket;
 
   /// 导演节拍器：距上次「转折」节拍的回合数。
   /// 99 = 开局即视为"很久没转折"，不挡第一次转折抽取。

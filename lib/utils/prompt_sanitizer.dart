@@ -1,5 +1,10 @@
 /// 用户输入安全处理：在用户自由文本进入 Prompt 之前做净化，
 /// 降低 Prompt 注入与超长输入破坏叙事结构的风险。
+///
+/// **只处理玩家输入**。AI 输出侧的清洗是另一条链路，见
+/// `lib/mixins/mixin_response_choices.dart` 的 `GameResponseChoiceMixin
+/// .sanitizeChoiceText`（去 markdown/HTML/emoji，100 字上限）。两者威胁模型
+/// 相反，不要互相复用，详见该方法的文档注释。
 class PromptSanitizer {
   PromptSanitizer._();
 

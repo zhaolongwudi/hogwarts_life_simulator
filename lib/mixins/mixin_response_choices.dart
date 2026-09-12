@@ -3,6 +3,21 @@ import '../providers/game_provider_base.dart';
 import '../models/game_systems.dart';
 
 mixin GameResponseChoiceMixin on GameProviderBase {
+  /// 清洗「AI 输出的选项文本」，让它能被安全的当成一个可点击选项。
+  ///
+  /// **与 [PromptSanitizer] 的分工**（两者名字相近但职责完全不同，别互相调用）：
+  ///
+  /// | 维度 | 本方法 `sanitizeChoiceText` | `PromptSanitizer.sanitize` / `sanitizeAction` |
+  /// | --- | --- | --- |
+  /// | 输入来源 | **AI 的输出**（选项文本、旁白行） | **玩家的输入**（自由行动、聊天框） |
+  /// | 核心目的 | **去噪展示**：把 markdown/HTML/emoji 剥干净，避免选项里出现 `**`、`![img]` | **防注入**：控制长度、折叠空白、把「忽略以上」等标记打断 |
+  /// | 上限 | 100 字（超出截断加 `...`） | 500 字（`maxInputLength`，超出截断） |
+  /// | 对注入标记 | 不关心（AI 输出不是攻击面） | 主动插零宽空格降级 |
+  /// | 输出去向 | 直接进 `GameChoice`，渲染到选项面板 | 拼进 Prompt 的「玩家行动」段落 |
+  ///
+  /// 结论：**AI 输出走这里，玩家输入走 `PromptSanitizer`**。因为二者的威胁
+  /// 模型相反，把任何一个复用到另一边都会出问题：拿本方法处理玩家输入会漏掉
+  /// 注入标记；拿 `PromptSanitizer` 处理 AI 输出则剥不掉 markdown，选项会带垃圾。
   static String sanitizeChoiceText(String raw) {
     var s = raw.trim();
 

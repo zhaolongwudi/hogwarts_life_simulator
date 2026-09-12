@@ -1,3 +1,5 @@
+import 'game_config_rules.dart';
+
 /// 已知地点表（主名 × 别名）。
 ///
 /// 原先是 mixin_narrative 里的私有常量，但它其实是纯数据：
@@ -218,10 +220,22 @@ bool blockedBySeasonGate({
   return required != null && dateInt < required;
 }
 
-/// 年级门：霍格莫德三年级起才可去（原著设定）。一/二年级玩家被错切到
-/// 霍格莫德（如模型写了「三把扫帚」「蜂蜜公爵」）时拦截。
-bool blockedByGradeGate({required String detected, required int grade}) =>
-    detected.contains('霍格莫德') && grade < 3;
+/// 年级门（兼容层）：霍格莫德三年级起才可去（原著设定）。
+///
+/// 【保留原因】历史调用点多处使用该签名，替换为 [evaluateRegionGate] 前
+/// 保持向后兼容；新代码请直接用 `evaluateRegionGate`，它同时处理
+/// 年级门与周末门，并返回可读的拦截原因。
+///
+/// 【注意】本函数**无法**判定周末限制（没有 `isWeekend` 入参），
+/// 因此对「霍格莫德非周末」这种情况只能放行——这正是它被取代的原因。
+bool blockedByGradeGate({required String detected, required int grade}) {
+  final r = evaluateRegionGate(
+    detected: detected,
+    grade: grade,
+    isWeekend: true, // 兼容层不判周末，按"周末"传入以免误拦
+  );
+  return r.isBlocked;
+}
 
 /// 去掉叙事里的【地点】标签行，避免标签自身"自我佐证"漂移防护。
 final RegExp _locationTagLineRe = RegExp(r'【地点】[^\n]*');

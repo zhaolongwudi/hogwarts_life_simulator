@@ -41,6 +41,27 @@ const List<String> kStripSectionNames = [
 /// 现编译 9 遍——这里按组合缓存。
 final Map<String, RegExp> _stripPatternCache = <String, RegExp>{};
 
+// ====== 本文件热路径的固定正则（预编译，只构造一次）======
+//
+// 这些 pattern 是常量，但原先每段正文解析都重新 `RegExp(...)` 一次。
+// Dart 的正则构造包含解析+编译，在长局里属于纯浪费。
+// 统一提为顶层 final（文件内复用），语义不变。
+
+/// 连续 3 个以上换行 → 折叠为段落分隔。展示与解析路径都用到。
+final RegExp _reBlankLineRun = RegExp(r'\n{3,}');
+
+/// 【好感度变化】区块（含变体写法）。
+final RegExp _reAffectionBlockForDisplay =
+    RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+
+/// 【声望变化】区块（含变体写法）。
+final RegExp _reReputationBlockForDisplay =
+    RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
+
+/// 独占一行的【区块标题】（如【章节标题】），用于剥离记号但保留正文。
+final RegExp _reStandaloneBracketLabel =
+    RegExp(r'^【[^】\n]*】\s*$', multiLine: true);
+
 RegExp _stripPatternFor(String section, bool toEnd, bool bareLabel) {
   final key = '${toEnd ? 1 : 0}${bareLabel ? 1 : 0}|$section';
   final hit = _stripPatternCache[key];
@@ -315,7 +336,7 @@ mixin GameResponseMixin
     }
 
     var narrative = narrativeLines.join('\n');
-    narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    narrative = narrative.replaceAll(_reBlankLineRun, '\n\n').trim();
     // 输出侧兜底清洗：Markdown 残留（**加粗**/行首标题/列表符）与整段复读
     narrative = StoryTextRenderer.dedupeRepeatedParagraphs(narrative);
     narrative = StoryTextRenderer.stripMarkdownArtifacts(narrative);
@@ -745,15 +766,15 @@ mixin GameResponseMixin
         extracted['narrative'] as String? ?? currentNarrative;
 
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
-      RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)'),
+      _reAffectionBlockForDisplay,
       (m) => '',
     );
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
-      RegExp(r'【声望变化?】[\s\S]*?(?=【|$)'),
+      _reReputationBlockForDisplay,
       (m) => '',
     );
     narrativeForDisplay = narrativeForDisplay.replaceAll(
-      RegExp(r'\n{3,}'),
+      _reBlankLineRun,
       '\n\n',
     );
 
@@ -919,8 +940,8 @@ mixin GameResponseMixin
 
     // 4. 去掉【章节标题】等方括号记号但保留文字内容之间的空行
     cleaned = cleaned
-        .replaceAllMapped(RegExp(r'^【[^】\n]*】\s*$', multiLine: true), (m) => '')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .replaceAllMapped(_reStandaloneBracketLabel, (m) => '')
+        .replaceAll(_reBlankLineRun, '\n\n')
         .trim();
 
     // R4：时间戳回填。日历由系统独占推进，AI 自报的日期一律以系统为准。
