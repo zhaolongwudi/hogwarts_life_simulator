@@ -6,6 +6,7 @@ import '../models/npc.dart';
 import '../models/world_state.dart';
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
+import '../models/story_progress.dart';
 import '../data/faculty_data.dart';
 import '../data/house_data.dart';
 import '../data/ending_review_data.dart';
@@ -291,6 +292,7 @@ abstract class GameProviderBase extends ChangeNotifier
   int acceptJob(String jobId);
   void accumulateForSummary(String newNarrative);
   void advanceTimeForAction(String action);
+
   void appendRecentTurn(String narrative);
   String attrLabel(String key);
 
@@ -445,9 +447,30 @@ abstract class GameProviderBase extends ChangeNotifier
     return s.isEmpty ? title : s;
   }
 
+  /// ===== 主线剧情模式进度（跨 mixin 共享通道）=====
+  ///
+  /// 【为什么放基类】与上面 `lastCanonEventTitle` 同因：写入方在
+  /// `GameNarrativeMixin`（`_advanceStory` / `_enterStoryMode`），
+  /// 读取方还有 `GameSystemsMixin`（存档读写 `_saveExtraData` / `applySaveData`）
+  /// 与 `GameInitMixin`（开局进入剧情模式）。Dart 的 mixin 非抽象成员不跨
+  /// mixin 可见，放在共同基类上才都能看到。
+  ///
+  /// 默认值是 [StoryProgress.inactive]，即"非剧情模式"——
+  /// 于是所有既有存档（`extra_data` 里没有这个 key）读进来行为完全不变。
+  StoryProgress storyProgress = StoryProgress.inactive;
+
+  /// 是否处于主线剧情模式（便捷判定，避免各处重复 `storyProgress.active`）。
+  bool get isStoryModeActive => storyProgress.active;
+
+  /// 进入主线剧情模式（实现在 `GameNarrativeMixin` 的 `_enterStoryMode`）。
+  ///
+  /// 【为什么抽象声明】调用方是 `GameInitMixin`（开局），实现在
+  /// `GameNarrativeMixin`——私有成员跨 mixin 不可见，走基类抽象声明
+  /// 才能连起来（与 `advanceTimeForAction` 同一模式）。
+  void enterStoryMode();
+
   /// 处理 /阿尼马格斯 子命令（实现在 GameAnimagusMixin）。
   void handleAnimagusCommand(List<String> parts);
-
   /// 玩家死亡判定（实现在 GameDeathMixin）：health ≤ 0 时触发死亡终章。
   void checkPlayerDeath(String cause);
 

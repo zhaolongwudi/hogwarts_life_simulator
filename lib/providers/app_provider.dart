@@ -150,6 +150,13 @@ class AppProvider extends ChangeNotifier {
   bool _aiDebugLogEnabled = false;
   bool _offlineQuickMode = false;
 
+  /// 主线剧情模式：开局选「主线剧情」时置位。
+  ///
+  /// 【与 offlineQuickMode 的关系】剧情引擎挂在离线分支上（0 AI 调用是硬前提），
+  /// 所以选剧情模式时必须同时打开 offlineQuickMode——这是硬依赖，在
+  /// intro_screen 的 `_startGame` 里联动写入。这里只负责持久化这一个开关。
+  bool _storyMode = false;
+
   /// 安全存储降级标记（S1）：最后一次 KeyStore 写入失败时置位。
   /// Android 无锁屏设备上 flutter_secure_storage 会抛错，key 只在内存中
   /// 存活，重启即丢 —— 用户保存后必须收到明确提示。
@@ -165,6 +172,9 @@ class AppProvider extends ChangeNotifier {
   /// 无 AI 快速模式：整局用本地模板叙事 + 承接式选项，完全不调用 AI。
   /// 免费额度耗尽 / 未配 Key 时保底可玩，防「商业模式反噬」。
   bool get offlineQuickMode => _offlineQuickMode;
+
+  /// 主线剧情模式：按原著时间线章节推进（离线，0 AI 调用）。
+  bool get storyMode => _storyMode;
 
   /// 安全存储是否降级（S1）：true = 上次 API Key 写入失败，密钥无法持久保存。
   bool get secureStorageDegraded => _secureStorageDegraded;
@@ -337,6 +347,9 @@ class AppProvider extends ChangeNotifier {
 
     // Load offline quick mode switch
     _offlineQuickMode = prefs.getBool('offline_quick_mode') ?? false;
+
+    // Load story mode switch
+    _storyMode = prefs.getBool('story_mode') ?? false;
 
     notifyListeners();
   }
@@ -532,6 +545,20 @@ class AppProvider extends ChangeNotifier {
     await PrefsStore.instance.write(
       'offline_quick_mode',
       (prefs) => prefs.setBool('offline_quick_mode', value),
+    );
+    notifyListeners();
+  }
+
+  /// 设置「主线剧情模式」，同步写入 SharedPreferences 持久化。
+  ///
+  /// 【为什么不在这里联动 offlineQuickMode】这是新局入口（intro_screen）用的
+  /// 设置项；读取路径（loadSettings）读回两个独立开关。联动逻辑放在
+  /// `_startGame` 里做一次，避免 setter 之间互相调用造成写盘放大。
+  Future<void> setStoryMode(bool value) async {
+    _storyMode = value;
+    await PrefsStore.instance.write(
+      'story_mode',
+      (prefs) => prefs.setBool('story_mode', value),
     );
     notifyListeners();
   }
