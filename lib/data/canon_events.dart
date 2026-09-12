@@ -425,7 +425,7 @@ const List<CanonEvent> canonEvents = [
   CanonEvent(
     id: 'canon_ootp_umbridge',
     year: 1995,
-    month: 8,
+    month: 9,
     title: '魔法部接管霍格沃茨',
     bookRef: '凤凰社',
     eras: ['harry_same'],

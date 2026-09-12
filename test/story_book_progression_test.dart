@@ -1,14 +1,13 @@
-/// 跨书衔接引擎（批次 6：七部曲骨架 + 《密室》精做）测试。
+/// 跨书衔接引擎（七部曲全实装）测试。
 ///
 /// 【这一层测什么】
-///   1. 书表结构：书序环环相扣、只有实装书注册（骨架书防打穿）、锚点年份递进；
+///   1. 书表结构：书序环环相扣、七部全部实装且都有完整章节、锚点年份递进；
 ///   2. `beginBook` 工厂：养成资产（flags/effects/knowledge）跨部继承，
 ///      书内游标（doneSteps/chosen/endingId）换书即作废——"开新书"的语义核心；
-///   3. 空书防御：PS 结局点「别过这一年」→ PoA 未实装 → 得到明确提示，
-///      进度不崩、flag 去重不刷屏；
-///   4. **PS→CoS 跨书 E2E**（本轮的核心验收线）：跑完整本《魔法石》→
-///      结局选项点「向夏天走去」→ 快进到 1992 年夏 → 自动开启《密室》第一章，
-///      继承的养成资产原样带过去，全程 0 AI 调用；
+///   3. **七部连环 E2E**（本轮核心验收线）：从《魔法石》一路点到《死亡圣器》
+///      结局，每一部的衔接按钮都真的开出了下一部的第一步，全程 0 AI 调用；
+///   4. 末部完结：第七部结局不再渲染"下一部"按钮，重复点击旧按钮要给
+///      「七部曲已走完」的交代，而不是误导成"下一部没装载"；
 ///   5. /状态 面板的下一部预告（实装书 vs 骨架书两种文案）。
 library;
 
@@ -63,32 +62,44 @@ void main() {
       expect(nextStoryBookId('不存在'), isNull);
     });
 
-    test('已注册=可玩：只有 ps/cos 入册，骨架书不可查但可显示书名', () {
-      expect(kStoryBooks.keys, containsAll(const ['ps', 'cos']));
+    test('已注册=可玩：七部全部入册，每一部都能查到完整章节', () {
       expect(
         kStoryBooks.keys,
-        hasLength(2),
-        reason: 'poa~dh 是骨架书，注册空书会让守卫测试与玩家点击打穿引擎',
+        containsAll(const ['ps', 'cos', 'poa', 'gof', 'ootp', 'hbp', 'dh']),
       );
-      for (final id in const ['poa', 'gof', 'ootp', 'hbp', 'dh']) {
-        expect(findStoryBook(id), isNull, reason: '$id 未实装，查表必须为 null');
+      expect(
+        kStoryBooks.keys,
+        hasLength(7),
+        reason: '七部曲全部实装，书表里不应再有骨架书',
+      );
+      for (final id in kBookOrder) {
+        final book = findStoryBook(id);
+        expect(book, isNotNull, reason: '$id 必须已实装');
+        expect(book!.chapters, isNotEmpty, reason: '$id 不能是空骨架书');
         expect(
-          bookDisplayName(id),
-          isNotEmpty,
-          reason: '$id 的书名必须能显示（/状态 面板预告用）',
+          firstStepOfBook(id),
+          isNotNull,
+          reason: '$id 必须能定位到第一步',
         );
+        expect(book.endings, isNotEmpty, reason: '$id 必须有结局规则');
       }
     });
 
-    test('两部实装书的开篇锚点年份递进（七月暑假开局）', () {
-      final ps = findStoryBook('ps')!;
-      final cos = findStoryBook('cos')!;
-      expect(ps.startYear, 1991);
-      expect(cos.startYear, 1992);
-      expect(cos.startAbsoluteDayIndex, greaterThan(ps.startAbsoluteDayIndex));
-      // 锚点落在暑假：剧情从假期开始，开学前就把信送到位
-      expect(ps.startMonth, 7);
-      expect(cos.startMonth, 7);
+    test('七部开篇锚点逐年递进（七月暑假开局）', () {
+      final years = <int>[];
+      var prevDay = -1;
+      for (final id in kBookOrder) {
+        final b = findStoryBook(id)!;
+        years.add(b.startYear);
+        expect(b.startMonth, 7, reason: '$id 应从暑假开局');
+        expect(
+          b.startAbsoluteDayIndex,
+          greaterThan(prevDay),
+          reason: '$id 的开启锚点必须晚于上一部',
+        );
+        prevDay = b.startAbsoluteDayIndex;
+      }
+      expect(years, [1991, 1992, 1993, 1994, 1995, 1996, 1997]);
     });
   });
 
@@ -134,11 +145,8 @@ void main() {
     });
   });
 
-  group('C · 空书防御（下一部未实装）', () {
-    /// 跑完《魔法石》→ 衔接 → 跑完《密室》，到达"下一部是骨架书"的结局态。
-    ///
-    /// 【为什么这么绕】PS 的下一部（CoS）已实装，点按钮直接开新书；
-    /// 空书防御要等玩家站在《密室》结局（下一部 PoA 未实装）才触发。
+  group('C · 七部连环（每一部的衔接都要真开出下一部）', () {
+    /// 跑完《魔法石》→ 衔接 → 跑完《密室》。
     Future<GameProvider> playCosToEnd() async {
       final gp = await playPsToEnd();
       await gp.processChoice(
@@ -156,7 +164,25 @@ void main() {
       return gp;
     }
 
-    test('CoS 结局点「向夏天走去」→ 明确提示 + 进度不崩（PoA 未实装）', () async {
+    /// 跑完《魔法石》→《密室》→《阿兹卡班的囚徒》。
+    Future<GameProvider> playPoaToEnd() async {
+      final gp = await playCosToEnd();
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+      expect(gp.storyProgress.bookId, 'poa', reason: '前置：应已进入阿兹卡班');
+      var guard = 0;
+      while (!gp.storyProgress.isFinished && guard < 80) {
+        guard++;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+      expect(gp.storyProgress.isFinished, isTrue, reason: '前置：PoA 必须能跑完');
+      return gp;
+    }
+
+    test('CoS 结局点「向夏天走去」→ 直接开启第三部（PoA 已实装）', () async {
       final gp = await playCosToEnd();
       expect(gp.choices.map((c) => c.action), contains(kStoryNextBookAction));
 
@@ -164,28 +190,173 @@ void main() {
         const GameChoice(text: 'x', action: kStoryNextBookAction),
       );
 
-      expect(
-        gp.notifications.join('\n'),
-        contains('还没装载进当前版本'),
-        reason: 'PoA 未实装，必须给出明确提示而不是静默失败',
-      );
-      expect(gp.storyProgress.isFinished, isTrue, reason: '结局态不得被破坏');
-      expect(gp.storyProgress.bookId, 'cos');
-      expect(gp.choices, isNotEmpty, reason: '点击后仍要回到结局三出口');
-      // 骨架书没有锚点（findStoryBook(poa) == null → 不快进），时间停在 1993
-      expect(gp.worldState.time.year, 1993);
+      expect(gp.storyProgress.bookId, 'poa', reason: 'PoA 已实装，应直接开新书');
+      expect(gp.storyProgress.stepId, 'poa_ch1_news');
+      expect(gp.storyProgress.isFinished, isFalse, reason: '新书开局不是结局态');
+      expect(gp.choices, isNotEmpty);
     });
 
-    test('连续两次点击不崩、不改变结局态', () async {
-      final gp = await playCosToEnd();
+    /// 跑完四部。
+    Future<GameProvider> playGofToEnd() async {
+      final gp = await playPoaToEnd();
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+      expect(gp.storyProgress.bookId, 'gof', reason: '前置：应已进入火焰杯');
+      var guard = 0;
+      while (!gp.storyProgress.isFinished && guard < 80) {
+        guard++;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+      expect(gp.storyProgress.isFinished, isTrue, reason: '前置：GoF 必须能跑完');
+      return gp;
+    }
+
+    test('PoA 结局点「向夏天走去」→ 直接开启第四部（GoF 已实装）', () async {
+      final gp = await playPoaToEnd();
+      expect(gp.choices.map((c) => c.action), contains(kStoryNextBookAction));
+
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+
+      expect(gp.storyProgress.bookId, 'gof', reason: 'GoF 已实装，应直接开新书');
+      expect(gp.storyProgress.stepId, 'gof_ch1_arrival');
+      expect(gp.storyProgress.isFinished, isFalse);
+    });
+
+    /// 跑完五部。
+    Future<GameProvider> playOotpToEnd() async {
+      final gp = await playGofToEnd();
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+      expect(gp.storyProgress.bookId, 'ootp', reason: '前置：应已进入凤凰社');
+      var guard = 0;
+      while (!gp.storyProgress.isFinished && guard < 80) {
+        guard++;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+      expect(gp.storyProgress.isFinished, isTrue, reason: '前置：OotP 必须跑完');
+      return gp;
+    }
+
+    test('GoF 结局点「向夏天走去」→ 直接开启第五部（OotP 已实装）', () async {
+      final gp = await playGofToEnd();
+      expect(gp.choices.map((c) => c.action), contains(kStoryNextBookAction));
+
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+
+      expect(gp.storyProgress.bookId, 'ootp', reason: 'OotP 已实装，应直接开新书');
+      expect(gp.storyProgress.stepId, 'ootp_ch1_return');
+      expect(gp.storyProgress.isFinished, isFalse);
+    });
+
+    test('OotP 结局点「向夏天走去」→ 直接开启第六部（HBP 已实装）', () async {
+      final gp = await playOotpToEnd();
+      expect(gp.choices.map((c) => c.action), contains(kStoryNextBookAction));
+
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+
+      expect(gp.storyProgress.bookId, 'hbp', reason: 'HBP 已实装，应直接开新书');
+      expect(gp.storyProgress.stepId, 'hbp_ch1_return');
+      expect(gp.storyProgress.isFinished, isFalse);
+    });
+
+    /// 跑完六部，站在 HBP 结局（下一部 DH 已实装）。
+    Future<GameProvider> playHbpToEnd() async {
+      final gp = await playOotpToEnd();
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+      expect(gp.storyProgress.bookId, 'hbp', reason: '前置：应已进入混血王子');
+      var guard = 0;
+      while (!gp.storyProgress.isFinished && guard < 80) {
+        guard++;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+      expect(gp.storyProgress.isFinished, isTrue, reason: '前置：HBP 必须跑完');
+      return gp;
+    }
+
+    test('HBP 结局点「向夏天走去」→ 直接开启第七部（DH 已实装）', () async {
+      final gp = await playHbpToEnd();
+      expect(gp.choices.map((c) => c.action), contains(kStoryNextBookAction));
+
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+
+      expect(gp.storyProgress.bookId, 'dh', reason: 'DH 已实装，应直接开新书');
+      expect(gp.storyProgress.stepId, 'dh_ch1_fall');
+      expect(gp.storyProgress.isFinished, isFalse);
+    });
+
+    /// 跑完七部，站在 DH 结局——**整条七部曲的终点**。
+    Future<GameProvider> playDhToEnd() async {
+      final gp = await playHbpToEnd();
+      await gp.processChoice(
+        const GameChoice(text: 'x', action: kStoryNextBookAction),
+      );
+      expect(gp.storyProgress.bookId, 'dh', reason: '前置：应已进入死亡圣器');
+      var guard = 0;
+      while (!gp.storyProgress.isFinished && guard < 80) {
+        guard++;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+      expect(gp.storyProgress.isFinished, isTrue, reason: '前置：DH 必须跑完');
+      return gp;
+    }
+
+    test('DH 结局点 → 七部曲完结，不再有「下一部」按钮', () async {
+      final gp = await playDhToEnd();
+
+      expect(gp.storyProgress.bookId, 'dh');
+      expect(
+        gp.choices.map((c) => c.action),
+        isNot(contains(kStoryNextBookAction)),
+        reason: '第七部之后没有第八部，衔接按钮不该再出现',
+      );
+      expect(gp.choices, isNotEmpty, reason: '完结态仍要给玩家出口');
+      // 七部走完，世界时钟至少推到 1998 年（决战当年）
+      expect(gp.worldState.time.year, greaterThanOrEqualTo(1998));
+    });
+
+    test('七部曲连跑：PS → DH 一气呵成，年份逐部递进', () async {
+      final gp = await playDhToEnd();
+      // 养成资产一路继承下来，不会被任何一次跨部清空
+      expect(gp.storyProgress.effects, isNotEmpty);
+      expect(gp.player?.inventory, isNotEmpty);
+      // 结局规则匹配成功（不是 null 兜底）
+      expect(gp.storyProgress.isFinished, isTrue);
+    });
+
+    test('完结后重复点击旧衔接按钮不崩、不改结局态', () async {
+      final gp = await playDhToEnd();
       for (var i = 0; i < 2; i++) {
         await gp.processChoice(
           const GameChoice(text: 'x', action: kStoryNextBookAction),
         );
       }
       expect(gp.storyProgress.isFinished, isTrue);
-      expect(gp.storyProgress.bookId, 'cos');
-      expect(gp.choices.map((c) => c.action), contains(kStoryNextBookAction));
+      expect(gp.storyProgress.bookId, 'dh');
+      expect(
+        gp.notifications.join('\n'),
+        contains('七部曲已经全部走完'),
+        reason: '末部的重复点击要给"完结"交代，不能误导成下一部没装载',
+      );
     });
   });
 

@@ -1520,17 +1520,24 @@ $kNarrativeWritingRules
   /// 再进入新书第一步。快进走 `fastForwardDays` 全量结算（假期事件/
   /// 学院杯/月度演化一个不丢），而不是裸跳时间。
   void _runNextBookTransition() {
+    // 【七部曲已走完】最后一部没有下一部。正常流程下这个按钮不会渲染，
+    // 能走到这里只可能是旧存档的重放或重复点击——必须给出"完结"的交代，
+    // 绝不能误导成"下一部还没装载"。
+    final isFinalBook = nextStoryBookId(storyProgress.bookId) == null;
     final days = _bookTransitionDays();
     if (days > 0) {
       // 【为什么显式转型】与 `_finalizeTurn` 内的既有口径一致（见该处注释）。
       (this as GameSystemsMixin).fastForwardDays(days);
     }
-    final opened = _enterNextBook();
+    final opened = isFinalBook ? false : _enterNextBook();
     if (!opened) {
       // 未实装书：不快进白烧时间。已经快进的天数当作暑假的一部分——
       // 玩家至少"过完了假期"，提示也给了，不亏。
       notifications.add(
-        '📚 下一部的主线还没装载进当前版本，沙盒里的每一年照常可玩。',
+        isFinalBook
+            ? '🎓 七部曲已经全部走完了——'
+                '从今往后的每一天，都是你在霍格沃茨自己写下的时间。'
+            : '📚 下一部的主线还没装载进当前版本，沙盒里的每一年照常可玩。',
       );
     }
     _settleAfterNarrative();
@@ -2177,7 +2184,10 @@ $kNarrativeWritingRules
                 : '别过这一年，向夏天走去',
             action: kStoryNextBookAction,
           ),
-        const GameChoice(text: '回望这段经历', action: '/状态'),
+        GameChoice(
+          text: nextId == null ? '🎓 回望这七年' : '回望这段经历',
+          action: '/状态',
+        ),
         const GameChoice(text: '在城堡里四处走走', action: '在城堡里四处走走'),
       ];
     }

@@ -21,6 +21,7 @@ import 'package:hogwarts_life_simulator/data/canon_events.dart';
 import 'package:hogwarts_life_simulator/data/item_data.dart';
 import 'package:hogwarts_life_simulator/data/npc_data.dart';
 import 'package:hogwarts_life_simulator/data/story_data.dart';
+import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/story_progress.dart';
 
 /// 剧情模式挂 harry_same 时代——targetNpcId 必须是该时代真正登场的 NPC。
@@ -267,6 +268,40 @@ void main() {
               '书 ${book.id} 有原著节点没被剧情讲述：'
               '${expected.difference(covered)}——玩家会"跳过"这段原著',
         );
+      }
+    });
+
+    test('原著节点落在它真正发生的那个月（时间线与原著对齐）', () {
+      // 【为什么锁这条】canonRefId 的作用之一是把该节点的 📖 旁白收编进剧情
+      // 文本。若某步的时间步长把玩家带到了别的年月，玩家会在"错的季节"
+      // 读到这件事——原著时间线静默错位，而且没有任何运行时症状。
+      // 这里按"从本部开局日一步步累加 timeCostDays"重放整本书，
+      // 断言每个带 canonRefId 的步结束时，世界时钟落在节点的 (年, 月)。
+      final canonById = {for (final e in canonEvents) e.id: e};
+      for (final book in kStoryBooks.values) {
+        final clock = GameTime(
+          year: book.startYear,
+          month: book.startMonth,
+          day: book.startDay,
+        );
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            clock.advanceDays(s.timeCostDays);
+            final ref = s.canonRefId;
+            if (ref == null) continue;
+            final ev = canonById[ref];
+            if (ev == null) continue; // 存在性由上面的测试守住
+            expect(
+              '${clock.year}-${clock.month}',
+              '${ev.year}-${ev.month}',
+              reason:
+                  '步 ${s.id} 声明讲述「$ref」，但按时间步长重放后落在 '
+                  '${clock.year}年${clock.month}月，'
+                  '而原著节点发生在 ${ev.year}年${ev.month}月——'
+                  '请调整该章各步的 timeCostDays',
+            );
+          }
+        }
       }
     });
 

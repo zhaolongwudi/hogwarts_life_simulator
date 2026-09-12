@@ -43,6 +43,11 @@
 library;
 
 import '../models/story_progress.dart';
+import 'story_data_poa.dart';
+import 'story_data_gof.dart';
+import 'story_data_ootp.dart';
+import 'story_data_hbp.dart';
+import 'story_data_dh.dart';
 
 // ================================================================
 // 《魔法石》 1991-1992 · 一年级
@@ -63,7 +68,7 @@ const List<StoryChapterDef> _psChapters = [
         chapterId: 'ps_ch1',
         // 【修正】收信不是 canon_events 表里的节点，不能声明幽灵引用——
         // 批次 5 的 canonRefId 白名单抑制按「节点 id 精确匹配」工作。
-        timeCostDays: 3,
+        timeCostDays: 1,
         setup:
             '七月末的清晨，一只仓鸮落在你家窗台上，爪子上系着一封厚重的羊皮纸信。'
             '信封用翠绿墨水写着你的名字，背面压着一枚蜡封：盾徽上有狮子、鹰、獾和蛇。'
@@ -112,7 +117,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch1_tell',
         chapterId: 'ps_ch1',
-        timeCostDays: 5,
+        timeCostDays: 1,
         setup:
             '信读完了，接下来最难的部分是：怎么跟家里人说你要去一所魔法学校。'
             '信封里还附了一张清单——长袍、课本、坩埚，还有一根你自己的魔杖。'
@@ -153,7 +158,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch1_reply',
         chapterId: 'ps_ch1',
-        timeCostDays: 2,
+        timeCostDays: 1,
         setup:
             '该给霍格沃茨回信了。你捏着羽毛笔，面前是那张空白的回执。'
             '窗外的天已经暗下来，路灯一盏盏亮起。',
@@ -208,7 +213,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch2_arrival',
         chapterId: 'ps_ch2',
-        timeCostDays: 2,
+        timeCostDays: 1,
         setup:
             '八月下旬的上午，破釜酒吧的后院里，带你来的那个人用魔杖在砖墙上'
             '敲了五下。蓝色的砖块像门一样一块块挪开，对角巷在你面前展开——'
@@ -299,7 +304,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch2_shopping',
         chapterId: 'ps_ch2',
-        timeCostDays: 3,
+        timeCostDays: 21,
         setup:
             '清单还剩最后几项：课本、坩埚，以及最重要的一根魔杖。'
             '奥利凡德的店铺又窄又旧，门口的招牌金字剥落了大半。'
@@ -358,7 +363,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch3_platform',
         chapterId: 'ps_ch3',
-        timeCostDays: 1,
+        timeCostDays: 7,
         setup:
             '九月一日，国王十字车站挤满了返校的学生。'
             '你推着行李车穿过第九和第十站台之间的砖墙——'
@@ -406,7 +411,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch3_train',
         chapterId: 'ps_ch3',
-        timeCostDays: 1,
+        timeCostDays: 7,
         setup:
             '车厢里渐渐坐满了人。走廊里有人兜售巧克力蛙和南瓜馅饼，'
             '车窗外的伦敦变成郊外，又变成起伏的山丘。'
@@ -464,7 +469,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch4_boats',
         chapterId: 'ps_ch4',
-        timeCostDays: 1,
+        timeCostDays: 7,
         setup:
             '霍格莫德车站的天已经黑透。一个嗓门大得吓人的巨人提着灯笼，'
             '喊「一年级新生——这边！」。你们沿着一条陡峭的小路走到黑湖边，'
@@ -512,7 +517,7 @@ const List<StoryChapterDef> _psChapters = [
         chapterId: 'ps_ch4',
         // 原著节点：入学与分院（1991 年 9 月）
         canonRefId: 'canon_ps_sorting',
-        timeCostDays: 1,
+        timeCostDays: 6,
         setup:
             '大礼堂的四张长桌旁坐满了老生，烛光下面是一片被施了法的夜空。'
             '分院仪式开始了：一排新生站成三列，一顶打着补丁的尖顶旧帽子'
@@ -575,7 +580,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch5_first_class',
         chapterId: 'ps_ch5',
-        timeCostDays: 3,
+        timeCostDays: 7,
         setup:
             '开学第一周的魔咒课。弗立维教授站在一摞书上才够到讲台，'
             '他在黑板上写下今天的目标，然后环视全班：「规矩很简单——'
@@ -622,7 +627,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch5_potions',
         chapterId: 'ps_ch5',
-        timeCostDays: 3,
+        timeCostDays: 7,
         setup:
             '地下教室比外面冷得多，一排排泡在玻璃罐里的东西在昏暗里泛着光。'
             '斯内普教授进门时没有打招呼，教室里立刻安静得只剩下火苗的'
@@ -669,7 +674,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch5_library',
         chapterId: 'ps_ch5',
-        timeCostDays: 4,
+        timeCostDays: 10,
         setup:
             '九月的最后一个周末，城堡里的新鲜劲淡下去了，功课开始压上来。'
             '图书馆的高窗外天色正好，平斯夫人在书架间无声地巡行，'
@@ -725,7 +730,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch6_banquet',
         chapterId: 'ps_ch6',
-        timeCostDays: 2,
+        timeCostDays: 5,
         setup:
             '十月三十一日，城堡从早上就开始过节。礼堂天花板上悬着几百只'
             '活蝙蝠，南瓜灯一个比一个大，连走廊盔甲的头盔里都被塞了糖。'
@@ -772,7 +777,7 @@ const List<StoryChapterDef> _psChapters = [
         // 原著大局：巨怪被教工制服，无人重伤——玩家的选择改变不了这一点，
         // 改变的是那一晚自己站在哪里、做了什么。
         canonRefId: 'canon_ps_troll',
-        timeCostDays: 1,
+        timeCostDays: 2,
         setup:
             '万圣节晚宴吃到一半，礼堂的大门砰地被撞开——奇洛教授连滚带爬'
             '冲了进来，喊了一声「巨怪——在地下教室」，就直挺挺昏了过去。'
@@ -836,7 +841,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch6_after',
         chapterId: 'ps_ch6',
-        timeCostDays: 3,
+        timeCostDays: 18,
         setup:
             '巨怪事件之后的那几天，走廊里的话题只有一个。有人说巨怪是'
             '自己走进来的，有人说看见「有人从楼上跑下来」，还有人说'
@@ -897,7 +902,7 @@ const List<StoryChapterDef> _psChapters = [
         chapterId: 'ps_ch7',
         // 原著节点：第一场魁地奇比赛（1991 年 11 月）
         canonRefId: 'canon_ps_quidditch_first',
-        timeCostDays: 2,
+        timeCostDays: 12,
         setup:
             '十一月的第一个周六，格兰芬多对斯莱特林的魁地奇赛季首战。'
             '看台上挤得水泄不通，格兰芬多那边的横幅是高年级连夜画的，'
@@ -947,7 +952,7 @@ const List<StoryChapterDef> _psChapters = [
         chapterId: 'ps_ch7',
         // 原著节点：厄里斯魔镜的传闻（1991 年 12 月）
         canonRefId: 'canon_ps_christmas_mirror',
-        timeCostDays: 4,
+        timeCostDays: 31,
         setup:
             '圣诞假期开始，城堡一夜之间空了一大半。十二月中旬，'
             '一个传闻悄悄在留校生中间传开：八楼一间废弃教室里有一面'
@@ -1010,7 +1015,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch7_term_end',
         chapterId: 'ps_ch7',
-        timeCostDays: 4,
+        timeCostDays: 33,
         setup:
             '假期结束，期末考试像冬天最后一股寒流一样压了上来。'
             '图书馆的位子一夜之间重新紧张起来，走廊里人人嘴里都在'
@@ -1069,7 +1074,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch8_rumor',
         chapterId: 'ps_ch8',
-        timeCostDays: 3,
+        timeCostDays: 25,
         setup:
             '三月初，一条消息像融雪水一样渗进城堡：有学生在禁林边缘'
             '发现了一头受伤的独角兽。更瘆人的是另一个说法——'
@@ -1117,7 +1122,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch8_link',
         chapterId: 'ps_ch8',
-        timeCostDays: 2,
+        timeCostDays: 17,
         setup:
             '晚上在公共休息室，壁炉的火烤得人脸发烫。你把最近这些事'
             '在心里过了一遍：七月底被闯入的金库、圣诞夜那面'
@@ -1189,7 +1194,7 @@ const List<StoryChapterDef> _psChapters = [
         // 玩家只在外围帮忙/观望——林子里的事是别人的命运，
         // 玩家看见的只是「有什么东西在动」。
         canonRefId: 'canon_ps_forbidden_forest',
-        timeCostDays: 2,
+        timeCostDays: 16,
         setup:
             '三月末的一个傍晚，你替海格把两袋饲料搬到林子外围的围栏边'
             '——这是他亲口答应的「忙里帮闲」。天快黑时，他牵着猎犬'
@@ -1255,7 +1260,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch8_after',
         chapterId: 'ps_ch8',
-        timeCostDays: 3,
+        timeCostDays: 46,
         setup:
             '几天后，消息还是传开了：那头独角兽没能救回来。'
             '海格在场地边的板房前站了很久，哑着嗓子让大家别去林子边。'
@@ -1315,7 +1320,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch9_whisper',
         chapterId: 'ps_ch9',
-        timeCostDays: 2,
+        timeCostDays: 30,
         setup:
             '六月的前两个星期，期末考结束，城堡里却涌动着一股压不住的'
             '窃窃私语：三楼那条禁走廊、那只三头狗、还有「有人看见'
@@ -1364,7 +1369,7 @@ const List<StoryChapterDef> _psChapters = [
         chapterId: 'ps_ch9',
         // 原著节点：一年级期末与学院杯（1992 年 6 月）
         canonRefId: 'canon_ps_year_end',
-        timeCostDays: 1,
+        timeCostDays: 15,
         setup:
             '年终宴会那天，大礼堂的四张长桌按学院挂了色，天花板的星空'
             '亮得不像六月。邓布利多站起来致词，讲了讲这一年——然后，'
@@ -1414,7 +1419,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch9_farewell',
         chapterId: 'ps_ch9',
-        timeCostDays: 2,
+        timeCostDays: 15,
         setup:
             '离别日的清晨，特快停靠在霍格莫德车站。行李箱堆上车的声音、'
             '猫头鹰的叫声、还有最后一批合影的闪光，把站台搅成一片'
@@ -1527,7 +1532,10 @@ const StoryBookDef _philosophersStone = StoryBookDef(
   endings: _psEndings,
   startYear: 1991,
   startMonth: 7,
-  startDay: 31,
+  // 【为什么是 7 月 24 日】古灵阁那一步（canon_ps_gringotts）原著发生在
+  // 七月，而它前面还排着收信、对角巷等几步——开局日必须留出这几步的
+  // 余量，否则整条时间线会被推到八月，原著节点全部错位。
+  startDay: 24,
 );
 
 // ================================================================
@@ -1555,7 +1563,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch1_letter',
         chapterId: 'cos_ch1',
-        timeCostDays: 6,
+        timeCostDays: 10,
         onEnterText:
             '—— 第 2 部 · 密室 ——\n'
             '一年过去了。你如今是一名二年级学生，'
@@ -1599,7 +1607,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch1_diagon',
         chapterId: 'cos_ch1',
-        timeCostDays: 9,
+        timeCostDays: 16,
         setup:
             '对角巷和去年一样热闹，又比去年拥挤：丽痕书店门口排起长龙，'
             '横幅上写着「吉德罗·洛哈特，今日亲临签售」。队伍绕了三个街角，'
@@ -1661,7 +1669,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch1_summer_night',
         chapterId: 'cos_ch1',
-        timeCostDays: 5,
+        timeCostDays: 9,
         setup:
             '返校前的最后一晚，你把两个世界的行李分开装：'
             '麻瓜世界的夏天装进一个箱子，魔法世界的一年装进另一个。'
@@ -1718,7 +1726,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch2_feast',
         chapterId: 'cos_ch2',
-        timeCostDays: 7,
+        timeCostDays: 12,
         canonRefId: 'canon_cos_lockhart',
         setup:
             '九一之夜，四张长桌重新坐满。今年的一年级比去年更瘦小、更紧张。'
@@ -1763,7 +1771,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch2_first_week',
         chapterId: 'cos_ch2',
-        timeCostDays: 11,
+        timeCostDays: 5,
         setup:
             '开学第一周，走廊里贴满了新教授的移动海报。黑魔法防御术课的教室门口'
             '排起了合影的队——上课的人反而排不进去。隔壁的草药课倒是完全照旧：'
@@ -1817,7 +1825,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch3_rumor',
         chapterId: 'cos_ch3',
-        timeCostDays: 12,
+        timeCostDays: 5,
         canonRefId: 'canon_cos_chamber_open',
         setup:
             '开学不到一个月，一个词开始在走廊里流传：密室。'
@@ -1874,7 +1882,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch3_ghosts',
         chapterId: 'cos_ch3',
-        timeCostDays: 10,
+        timeCostDays: 14,
         setup:
             '你想到一条别人没想到的线索：活了几百年的幽灵，才是真正的目击者。'
             '问题是，幽灵们最近也有点反常——几乎没有谁肯好好回答问题，'
@@ -1916,7 +1924,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch3_old_news',
         chapterId: 'cos_ch3',
-        timeCostDays: 8,
+        timeCostDays: 11,
         setup:
             '高年级的讲述都是二手货。你想找一手记录——'
             '五十年前的旧《预言家日报》合订本就锁在图书馆的限阅区，'
@@ -1973,7 +1981,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch4_halloween_eve',
         chapterId: 'cos_ch4',
-        timeCostDays: 13,
+        timeCostDays: 19,
         setup:
             '十月最后一天，城堡挂满了南瓜灯。今晚有两场宴会：礼堂里的万圣节宴，'
             '和地窖里尼克的死亡日五百年纪念。你按下午的安排收拾好自己——'
@@ -2015,7 +2023,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch4_first_petrified',
         chapterId: 'cos_ch4',
-        timeCostDays: 8,
+        timeCostDays: 12,
         canonRefId: 'canon_cos_petrification',
         setup:
             '消息传开：费尔奇的猫被「石化」了——不是死，是僵在半空，'
@@ -2062,7 +2070,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch4_next_morning',
         chapterId: 'cos_ch4',
-        timeCostDays: 6,
+        timeCostDays: 3,
         setup:
             '血字的第二天早晨，二楼走廊被拉起了绳。'
             '学生们像参观某种可怕的展览一样远远探头，'
@@ -2118,7 +2126,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch5_pairs',
         chapterId: 'cos_ch5',
-        timeCostDays: 13,
+        timeCostDays: 6,
         setup:
             '校方的新规一条接一条：下午四点半后不许单独在走廊逗留、'
             '部分楼梯口封闭、每个学生登记「结伴名单」。'
@@ -2178,7 +2186,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch5_quidditch',
         chapterId: 'cos_ch5',
-        timeCostDays: 12,
+        timeCostDays: 6,
         setup:
             '魁地奇赛季照常开赛——这几乎是唯一没被恐慌取消的活动。'
             '看台上人人攥着围巾，喊声比往年更用力，像是要用声音把恐惧压回去。'
@@ -2223,7 +2231,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch5_weekend_mood',
         chapterId: 'cos_ch5',
-        timeCostDays: 7,
+        timeCostDays: 4,
         setup:
             '十一月的第一个周末，城堡里的空气闷得像结了冰的湖面。'
             '连画中人都在抱怨：「孩子们不笑了，画像都挂得没滋味。」'
@@ -2282,7 +2290,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch6_club',
         chapterId: 'cos_ch6',
-        timeCostDays: 12,
+        timeCostDays: 6,
         canonRefId: 'canon_cos_dueling_club',
         setup:
             '为了让学生「在危险面前有所准备」，洛哈特开办了决斗俱乐部。'
@@ -2328,7 +2336,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch6_aftermath',
         chapterId: 'cos_ch6',
-        timeCostDays: 10,
+        timeCostDays: 4,
         setup:
             '决斗俱乐部的次日，「蛇佬腔」三个字传遍走廊。'
             '有人说会跟蛇说话的是五十年来第一个，有人说这是萨拉查·斯莱特林的天赋——'
@@ -2372,7 +2380,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch6_whisper_winds',
         chapterId: 'cos_ch6',
-        timeCostDays: 8,
+        timeCostDays: 3,
         setup:
             '「继承人」的传闻开始长牙齿：有斯莱特林的同学在走廊被拦住质问，'
             '有混血背景的学生被人贴纸条。恐慌找到了可以欺负的具体对象——'
@@ -2432,7 +2440,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch7_stay_or_go',
         chapterId: 'cos_ch7',
-        timeCostDays: 9,
+        timeCostDays: 4,
         canonRefId: 'canon_cos_christmas',
         setup:
             '圣诞假期登记表贴了出来。今年签「回家」的人比去年多了一倍——'
@@ -2478,7 +2486,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch7_snow',
         chapterId: 'cos_ch7',
-        timeCostDays: 8,
+        timeCostDays: 7,
         setup:
             '留校的假期出奇地安静。大雪封了场地，湖面冻得结结实实，'
             '连城堡的吵闹都像被雪吸走了。有天下午，几个留校的学生'
@@ -2537,7 +2545,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch8_second_wave',
         chapterId: 'cos_ch8',
-        timeCostDays: 13,
+        timeCostDays: 12,
         setup:
             '假期的平静在新学期第二周被打破：又有人被石化了——'
             '这一次是一个一年级男孩和一位几百岁的幽灵，'
@@ -2583,7 +2591,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch8_parent_letters',
         chapterId: 'cos_ch8',
-        timeCostDays: 11,
+        timeCostDays: 10,
         setup:
             '家信一封接一封地到。有家长在信里直接质问校方「为什么还不关门」，'
             '猫头鹰们成群落在猫头鹰棚屋，雪片一样的信让传达室的教授应接不暇。'
@@ -2628,7 +2636,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch8_mandrake_progress',
         chapterId: 'cos_ch8',
-        timeCostDays: 8,
+        timeCostDays: 7,
         setup:
             '学生们的忍耐快到头了，但温室里的事在按另一种节奏走。'
             '你几次路过温室，听见斯普劳特教授在里面隔着布催苗——'
@@ -2686,7 +2694,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch9_valentine',
         chapterId: 'cos_ch9',
-        timeCostDays: 9,
+        timeCostDays: 8,
         setup:
             '二月十四日，洛克哈特包下整个礼堂搞了一场「情人节庆典」：'
             '粉红色的纸花从天花板飘落，几十个长翅膀的胖矮人抱着竖琴'
@@ -2792,7 +2800,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch10_library',
         chapterId: 'cos_ch10',
-        timeCostDays: 12,
+        timeCostDays: 30,
         canonRefId: 'canon_cos_hermione_petrified',
         setup:
             '三月的第一次警报来自图书馆：两名学生被石化，'
@@ -2841,7 +2849,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch10_leave_or_stay',
         chapterId: 'cos_ch10',
-        timeCostDays: 10,
+        timeCostDays: 13,
         setup:
             '家长的联名信把校董会惊动了。「停学」的传闻一天一个版本。'
             '有几个同学被接走了，行李箱轮子的声音再一次响遍走廊。'
@@ -2887,7 +2895,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch10_exam_cloud',
         chapterId: 'cos_ch10',
-        timeCostDays: 9,
+        timeCostDays: 12,
         setup:
             '「期末考可能取消」的传闻和「学校可能提前关」的传闻一起飞。'
             '二年级的魔咒课改成了自习，代课的教授照本宣科，'
@@ -2945,7 +2953,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch11_recall',
         chapterId: 'cos_ch11',
-        timeCostDays: 12,
+        timeCostDays: 16,
         setup:
             '五月中旬，一封校方的正式信件寄到每个离校学生手里：'
             '学年结束宴照常举行，石化事件「已获重大进展」，'
@@ -2990,7 +2998,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch11_final_night',
         chapterId: 'cos_ch11',
-        timeCostDays: 11,
+        timeCostDays: 15,
         setup:
             '六月前的一个深夜，你被一阵急促的敲门声和魔杖的灯光弄醒——'
             '所有学生被要求立刻到各自的公共休息室集合，不许外出，不许回寝室。'
@@ -3037,7 +3045,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch11_exam_cancel',
         chapterId: 'cos_ch11',
-        timeCostDays: 10,
+        timeCostDays: 13,
         setup:
             '校方正式通知：期末考试取消。公告贴出来时，'
             '所有人先是安静，然后爆发出的不是欢呼，而是一片叹息——'
@@ -3096,7 +3104,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch12_wake',
         chapterId: 'cos_ch12',
-        timeCostDays: 9,
+        timeCostDays: 12,
         setup:
             '消息像解冻的春水一样涌开：被石化的人全部醒了，'
             '第一个醒来的那个「图书馆常驻」，醒来第一句话是问书还了没有。'
@@ -3144,7 +3152,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch12_feast',
         chapterId: 'cos_ch12',
-        timeCostDays: 8,
+        timeCostDays: 10,
         canonRefId: 'canon_cos_resolved',
         setup:
             '学年结束宴如期而至。大礼堂的横幅换了新的，'
@@ -3274,4 +3282,9 @@ const StoryBookDef _chamberOfSecrets = StoryBookDef(
 void registerAllStoryBooks() {
   registerStoryBook(_philosophersStone);
   registerStoryBook(_chamberOfSecrets);
+  registerStoryBook(prisonerOfAzkaban);
+  registerStoryBook(gobletOfFire);
+  registerStoryBook(orderOfThePhoenix);
+  registerStoryBook(halfBloodPrince);
+  registerStoryBook(deathlyHallows);
 }
