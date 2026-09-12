@@ -26,6 +26,8 @@
 /// 「你是救世主」。这条约束由 `test/canon_story_parallel_test.dart` 扫描守住。
 library;
 
+import 'game_systems.dart';
+
 // ================================================================
 // 一、数据层（const 表）
 // ================================================================
@@ -268,12 +270,34 @@ class StoryBookDef {
   /// 结局规则（**顺序即优先级**，兜底规则放最后）。
   final List<StoryEndingRule> endings;
 
+  /// 本部剧情的**开启锚点**（原著该部故事开始的时间）。
+  ///
+  /// 【为什么书需要时间锚点】跨部衔接（`_maybeBeginNextBook`）要判定
+  /// 「世界时钟走到了下一部故事开始的季节」：PS 结局在 1992 年 6 月，
+  /// 而《密室》的故事从 1992 年 7 月底的暑假讲起——中间那段暑假就是
+  /// 玩家的沙盒呼吸期。锚点用 (年, 月, 日) 三元组声明，运行时换算成
+  /// `GameTime.absoluteDayIndex` 与世界时钟比较。
+  ///
+  /// 未实装的骨架书（chapters 为空）也必须填锚点：`/状态` 进度面板要
+  /// 用它显示「下一部将于 X 年 X 月开启」。
+  final int startYear;
+  final int startMonth;
+  final int startDay;
+
   const StoryBookDef({
     required this.id,
     required this.title,
     required this.chapters,
     this.endings = const [],
+    this.startYear = 1991,
+    this.startMonth = 7,
+    this.startDay = 31,
   });
+
+  /// 开启锚点的绝对天数（与 `GameTime.absoluteDayIndex` 同一口径）。
+  int get startAbsoluteDayIndex =>
+      GameTime(year: startYear, month: startMonth, day: startDay)
+          .absoluteDayIndex;
 }
 
 // ================================================================
@@ -331,6 +355,30 @@ class StoryProgress {
 
   /// 非剧情模式（默认值 / 老存档读出来的值）。
   static const StoryProgress inactive = StoryProgress(active: false);
+
+  /// 开启一部新书：书内游标全部重置，**养成状态全部继承**。
+  ///
+  /// 【跨部继承口径】好感/声望/学院分（effects）、flag（flags）、情报
+  /// （knowledge）是玩家的长线养成资产，跨部保留——这是"七部一场长局"
+  /// 的根基；doneSteps/chosen/endingId 是**书内游标**，换书即作废。
+  ///
+  /// 【为什么不用 copyWith】copyWith 的 `endingId: endingId ?? this.endingId`
+  /// 语义无法把 endingId 清空（null = 保持原值），而开新书恰恰要清掉它。
+  /// 直接走构造函数，顺便把"哪些字段继承、哪些重置"写成一个显式清单。
+  factory StoryProgress.beginBook({
+    required String bookId,
+    required String chapterId,
+    required String stepId,
+    required StoryProgress inherited,
+  }) => StoryProgress(
+    active: true,
+    bookId: bookId,
+    chapterId: chapterId,
+    stepId: stepId,
+    flags: inherited.flags,
+    effects: inherited.effects,
+    knowledge: inherited.knowledge,
+  );
 
   /// 累计好感（结局判定用）。
   int get totalAffection => effects['affection'] ?? 0;
@@ -436,6 +484,14 @@ class StoryProgress {
 /// 编码进 `action` 是唯一能穿过存档的通道。
 const String kStoryActionPrefix = '@@story:';
 
+/// 「开启下一部」专用 action（结局后的衔接按钮）。
+///
+/// 【为什么不用 kStoryActionPrefix 前缀】`parseStoryCommand` 会把
+/// `@@story:` 开头的字符串解析成分支指令；解析不出合法 `stepId:choiceId`
+/// 的部分会降级为"自由行动"，白白烧一个回合。衔接是**引擎级指令**，
+/// 用独立前缀 `@@story-next-book@@`，`_runStoryTurn` 顶部优先拦截。
+const String kStoryNextBookAction = '@@story-next-book@@';
+
 /// 把分支选择编码成可穿过存档的 `action`。
 String encodeStoryAction(String stepId, String choiceId) =>
     '$kStoryActionPrefix$stepId:$choiceId@@';
@@ -502,6 +558,57 @@ void registerStoryBook(StoryBookDef book) {
 
 /// 第一部（每局的起点）。
 const String kFirstStoryBookId = 'ps';
+
+/// 七部书序：跨部衔接的推进链。
+///
+/// 【为什么是全局列表而不是书上的 ordinal 字段】书序是**引擎的语义**
+/// （PS 结束 → CoS 开始），不是内容属性；放这里让 `nextStoryBookId`
+/// 可以在书尚未实装（`kStoryBooks` 里只有骨架）时也正确工作。
+const List<String> kBookOrder = <String>[
+  'ps',
+  'cos',
+  'poa',
+  'gof',
+  'ootp',
+  'hbp',
+  'dh',
+];
+
+/// [bookId] 在 [kBookOrder] 中的下一部；已是最后一部（或 id 不在表里）返回 null。
+String? nextStoryBookId(String bookId) {
+  final idx = kBookOrder.indexOf(bookId);
+  if (idx < 0 || idx + 1 >= kBookOrder.length) return null;
+  return kBookOrder[idx + 1];
+}
+
+/// 七部的中文书名。
+///
+/// 【为什么不用 findStoryBook 兜底】骨架书（PoA~DH）尚未实装时
+/// `kStoryBooks` 里没有它，`findStoryBook` 返回 null——但「筹备中」
+/// 通知和进度面板仍要能报出《阿兹卡班的囚徒》，而不是显示 'poa'。
+const Map<String, String> kBookTitles = <String, String>{
+  'ps': '魔法石',
+  'cos': '密室',
+  'poa': '阿兹卡班的囚徒',
+  'gof': '火焰杯',
+  'ootp': '凤凰社',
+  'hbp': '混血王子',
+  'dh': '死亡圣器',
+};
+
+/// 书的显示名：优先取注册表（实装书），骨架书退回 [kBookTitles]。
+String bookDisplayName(String bookId) =>
+    kStoryBooks[bookId]?.title ?? kBookTitles[bookId] ?? bookId;
+
+/// 按 [kBookOrder] 顺序取全部已注册的书（`/状态` 面板与测试用）。
+List<StoryBookDef> storyBooksInOrder() {
+  final out = <StoryBookDef>[];
+  for (final id in kBookOrder) {
+    final b = kStoryBooks[id];
+    if (b != null) out.add(b);
+  }
+  return out;
+}
 
 /// 按 bookId 取书；查不到返回 `null`。
 StoryBookDef? findStoryBook(String bookId) => kStoryBooks[bookId];

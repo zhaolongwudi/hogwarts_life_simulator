@@ -197,6 +197,20 @@ const List<CanonEvent> canonEvents = [
         '你可以向高年级生打听那段历史，也可以留意走廊里异常的动静。',
   ),
   CanonEvent(
+    id: 'canon_cos_lockhart',
+    year: 1992,
+    month: 9,
+    grade: 2,
+    title: '洛克哈特旋风',
+    bookRef: '密室',
+    eras: ['harry_same'],
+    directive:
+        '新来的黑魔法防御术课教授吉德罗·洛哈特是个穿着华丽袍子的金发男人，'
+        '据说写过一整套自传体畅销书。开学宴上他放了整面墙的移动签名照，'
+        '开学第一周书店门口排过抢签名的长队。'
+        '你可以试着围观这位「大人物」，也可以早早对那套书保持怀疑。',
+  ),
+  CanonEvent(
     id: 'canon_cos_petrification',
     year: 1992,
     month: 11,
@@ -223,6 +237,19 @@ const List<CanonEvent> canonEvents = [
         '你对这场闹剧的看法，以及是否认真练到东西，由你自己决定。',
   ),
   CanonEvent(
+    id: 'canon_cos_christmas',
+    year: 1992,
+    month: 12,
+    title: '石化阴影下的圣诞',
+    bookRef: '密室',
+    eras: ['harry_same'],
+    directive:
+        '这个圣诞假期，城堡比往年冷清：不少家长把孩子接回了家，'
+        '留下来的学生反而获得了难得的安静——礼堂立起十二棵挂满冰凌的圣诞树，'
+        '雪后的场地适合打一场没有旁观者的雪仗。'
+        '你可以留在学校过一个不同寻常的圣诞节，也可以回家躲开这一切。',
+  ),
+  CanonEvent(
     id: 'canon_cos_diary',
     year: 1993,
     month: 2,
@@ -233,6 +260,35 @@ const List<CanonEvent> canonEvents = [
         '学校里流传着一个说法：那本「出事前被人捡到的旧日记」可能和密室有关。'
         '有学生说见过一本能自己写字的本子，也有人认定这只是有人在传谣。'
         '你可以试着追查这条线索，也可以只管做好自己的期末准备。',
+  ),
+  CanonEvent(
+    id: 'canon_cos_hermione_petrified',
+    year: 1993,
+    month: 3,
+    grade: 2,
+    title: '图书馆里的纸条',
+    bookRef: '密室',
+    eras: ['harry_same'],
+    directive:
+        '又有两名学生被石化了——其中一名是低年级里出了名的「图书馆常驻」，'
+        '据说她被抬走时手里还攥着一张从书页里撕下来的纸条，'
+        '上面写着一个与「蛇」有关的词。校方随即封锁了图书馆的部分区域。'
+        '那条线索的传闻在走廊里悄悄流传，你可以试着拼出它的意思，也可以不碰。',
+  ),
+  CanonEvent(
+    id: 'canon_cos_resolved',
+    year: 1993,
+    month: 6,
+    grade: 2,
+    title: '密室之谜解开',
+    bookRef: '密室',
+    eras: ['harry_same'],
+    directive:
+        '学年末，笼罩城堡一整年的恐惧终于散去：被石化的学生全部苏醒，'
+        '祸害学校五十年的东西被除掉了，传言里「打开密室的人」也水落石出。'
+        '学年结束宴上，大礼堂的气氛比一年里任何一天都轻松，'
+        '被恐慌拖累的考试重新排上日程。这一年你活下来了——'
+        '还学会了在恐惧蔓延时如何自处。',
   ),
 
   // ================================================================

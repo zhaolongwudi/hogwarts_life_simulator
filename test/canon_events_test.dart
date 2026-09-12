@@ -139,23 +139,26 @@ void main() {
 
     test('一次性触发：已 fired 的节点不再返回（整个存档只响一次）', () {
       final id = 'canon_cos_chamber_open';
-      expect(
-        dueCanonEvents(
-          year: 1992,
-          month: 9,
-          grade: 2,
-          era: 'harry_same',
-          firedIds: const {},
-        ).map((e) => e.id),
-        contains(id),
+      final all = dueCanonEvents(
+        year: 1992,
+        month: 9,
+        grade: 2,
+        era: 'harry_same',
+        firedIds: const {},
+        limit: 100,
       );
+      expect(all.map((e) => e.id), contains(id));
+      // 【多节点兼容】同一个月可能有多条节点（如 9 月的「密室传闻」与
+      // 「洛克哈特旋风」）。一次性触发的语义是"每条只响一次"，
+      // 所以要把该月全部候选都 fire 掉，才能断言同月返回空。
       expect(
         dueCanonEvents(
           year: 1992,
           month: 9,
           grade: 2,
           era: 'harry_same',
-          firedIds: <String>{id},
+          firedIds: all.map((e) => e.id).toSet(),
+          limit: 100,
         ),
         isEmpty,
       );
@@ -176,12 +179,22 @@ void main() {
 
     test('firedIds 接受 List（与 WorldState.firedAnchorIds 同类型）', () {
       // WorldState.firedAnchorIds 是 List<String>，不是 Set
+      // 【多节点兼容】fire 掉该月全部候选后再断言为空。
+      final all = dueCanonEvents(
+        year: 1992,
+        month: 9,
+        grade: 2,
+        era: 'harry_same',
+        firedIds: const <String>[],
+        limit: 100,
+      );
       final due = dueCanonEvents(
         year: 1992,
         month: 9,
         grade: 2,
         era: 'harry_same',
-        firedIds: <String>['canon_cos_chamber_open'],
+        firedIds: all.map((e) => e.id).toList(),
+        limit: 100,
       );
       expect(due, isEmpty);
     });
