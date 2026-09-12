@@ -58,6 +58,88 @@ final RegExp _castActionRe = RegExp(
     r'(你.*(挥杖|举起魔杖|挥动魔杖|念咒|施了.*咒|施展.*咒))',
     caseSensitive: false);
 
+// ===== 短期断言抽取用的固定正则 =====
+// 这些原本写在 [extractShortTermAssertions] 的**函数体内部**，每回合调用一次
+// 就要重新编译 11 个正则。断言抽取在每回合末必跑，属于热路径，全部提到文件级
+// 只编译一次。模式串都是字面量，没有运行时变量，可以安全提升。
+
+final RegExp _reAssertWhitespace = RegExp(r'\s+');
+
+final RegExp _reAssertLock = RegExp(
+  r'((门窗|大门|房门|窗户|门|窗|密室入口|走廊)[^，。！？]{0,12}(被|已|已经|用.*|以.*)(锁死|封死|封上|封住|加固|上锁|挡死|堵死|施了锁门咒|施展了锁门咒))',
+);
+
+final RegExp _reAssertUnlock = RegExp(
+  r'((锁|封|屏障|封印|加固)[^，。！？]{0,12}(被|已|已经|被你)(打开|解开|破开|破坏|解除|击碎|敲碎|摧毁))',
+);
+
+final RegExp _reAssertHold = RegExp(
+  r'(手里(紧紧)?(攥着|握着|拿着|捏着|握着|举着|提着)[^，。！？]{0,10})',
+);
+
+final RegExp _reAssertDisarm = RegExp(
+  r'((你的)?魔杖[^，。！？]{0,8}(被击飞|被缴走|脱手|不在手中|丢到了一边|掉在地上))',
+);
+
+final RegExp _reAssertHide = RegExp(
+  r'(你(正)?(躲|藏|蹲|蜷缩)[^，。！？]{0,12}(在|到|进)[^，。！？]{0,14})',
+);
+
+final RegExp _reAssertInjury = RegExp(
+  r'((你的|你)(手臂|腿|肩膀|头|胸口|腹部|背部)[^，。！？]{0,12}(被划伤|被擦伤|出血|剧痛|麻木|骨折|瘀青|中了|中毒|被诅咒|被击中|受伤))',
+);
+
+final RegExp _reAssertHat = RegExp(
+  r'((分院帽)[^，。！？]{0,10}(扣在|落在|戴在|碰到|触到|停在)[^，。！？]{0,10}|'
+  r'(分院帽)[^，。！？]{0,10}(正在思考|在犹豫|沉吟|没说话|没出声))',
+);
+
+final RegExp _reAssertKnock = RegExp(
+  r'((敲门声|门[^，。！？]{0,4}被.*敲|有人敲门)[^，。！？]{0,10}(响起|传来|刚落下|刚响))',
+);
+
+final RegExp _reAssertCalled = RegExp(
+  r'((教授|级长|老师|NPC|同学)[^，。！？]{0,6}(点名叫|点了你的名|叫你的名字|喊你|注视着你等你回答))',
+);
+
+// ===== ContinuityBridge 锚点抽取用的固定正则 =====
+// 原本在 [extractContinuityAnchor] 内部现编译。该方法是 Step A，每回合必跑一次。
+final RegExp _reAnchorAfterQuote = RegExp(
+  r'[」"】][^，。！？\n]*?(养母|养父|海格|邓布利多|阿不思|斯内普|西弗勒斯|麦格|米勒娃|哈利|詹姆|波特|罗恩|韦斯莱|赫敏|格兰杰|马尔福|德拉科|纳威|隆巴顿|卢娜|洛夫古德|金妮|弗雷德|乔治|珀西|亚瑟|莫丽|小天狼星|布莱克|卢平|莱姆斯|教授|级长|妈妈|爸爸|同学|NPC)[^，。！？\n]{0,10}(说|开口|问|道|回答|叹了口气|笑了笑|低声|沉声|看着你)',
+  caseSensitive: false,
+);
+
+final RegExp _reAnchorDialog = RegExp(r'[「"]([^「"」]{2,40})[」"]', caseSensitive: false);
+
+final RegExp _reAnchorHanging = RegExp(
+    r'((正要|刚要|准备|就要|等着|正看着|盯着|握着.*把手|听到.*敲门声|敲门声响起|还没|尚未)[^。！？\n]{0,40})');
+
+final RegExp _reAnchorGenericAction = RegExp(
+    r'((你|你.+)[^。！？\n]{0,30}(站起身|走过去|坐下来|点点头|摇摇头|开口|问|说|笑了笑|叹了口气|伸出手|握住|接过|放下|看向|望向|转身))');
+
+// ===== 选项「前置条件未满足」标记用的固定正则 =====
+// 原本在选项校验函数体内现编译，且外层是 choices × assertions 双层循环——
+// 不提出来的话，每个选项每条断言都会重新编译这 6 个正则。
+final RegExp _reOptLockAssertion = RegExp(r'(锁死|封死|封住|挡死|堵死|施了锁门咒)');
+final RegExp _reOptWandLostAssertion = RegExp(r'(魔杖.*不在手中|魔杖.*掉在地上|魔杖.*脱手|魔杖.*被缴走)');
+final RegExp _reOptCalledAssertion = RegExp(r'(被点名|提问|叫你|喊你|等你回答|注视着你)');
+final RegExp _reOptLeaveAction = RegExp(r'(推门|走出去|离开房间|走出|下楼|出门|推开|打开门)');
+final RegExp _reOptCastAction = RegExp(r'(挥杖|施咒|举起魔杖|挥动魔杖|念咒|施展|施法)');
+final RegExp _reOptRespondAction = RegExp(r'(回答|回应|开口|说|答|回应|答话|应声)');
+
+// ===== 连续性/一致性校验里的零散固定正则 =====
+final RegExp _reTravelAction = RegExp(
+    r'(前往|出发|动身|去.*(车站|对角巷|大礼堂|特快|霍格沃茨)|回家|返校|走出门|下楼|走进)',
+    caseSensitive: false);
+
+final RegExp _reDursleyFamily = RegExp(
+  r'(玛吉|弗农|佩妮|达力)\s*[·.]?\s*德思礼|德思礼\s*(家|一家|夫妇|门口|住宅|姨父|姨妈|表哥)',
+  caseSensitive: false,
+);
+final RegExp _rePrivetDrive = RegExp(r'女贞路\s*4\s*号|德文郡.*德思礼', caseSensitive: false);
+final RegExp _reAloneDursley = RegExp(r'(弗农姨父|佩妮姨妈|达力表哥)', caseSensitive: false);
+final RegExp _reMonthDayCn = RegExp(r'(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日');
+
 /// 叙事连续性 Mixin — 从 [GameNarrativeMixin] 中拆分。
 ///
 /// 包含：短期断言系统、连续性桥接（ContinuityBridge）、
@@ -80,75 +162,47 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
 
     void addAssertion(String text) {
       if (text.length < 6) return;
-      final key = text.replaceAll(RegExp(r'\s+'), '');
+      final key = text.replaceAll(_reAssertWhitespace, '');
       if (seen.add(key) && result.length < 5) {
         result.add('• $text');
       }
     }
 
     // ---- 1) 物理封锁/屏障类 ----
-    final lockRe = RegExp(
-      r'((门窗|大门|房门|窗户|门|窗|密室入口|走廊)[^，。！？]{0,12}(被|已|已经|用.*|以.*)(锁死|封死|封上|封住|加固|上锁|挡死|堵死|施了锁门咒|施展了锁门咒))',
-    );
-    for (final m in lockRe.allMatches(tail)) {
+    for (final m in _reAssertLock.allMatches(tail)) {
       addAssertion('${m.group(1)}（玩家行动必须先解锁/破开才能直接通过）');
     }
     // 反过来："锁/封被打开/解除/破坏/破开"要覆盖前面的断言
-    final unlockRe = RegExp(
-      r'((锁|封|屏障|封印|加固)[^，。！？]{0,12}(被|已|已经|被你)(打开|解开|破开|破坏|解除|击碎|敲碎|摧毁))',
-    );
-    for (final m in unlockRe.allMatches(tail)) {
+    for (final m in _reAssertUnlock.allMatches(tail)) {
       addAssertion('${m.group(1)}（此前的封锁/屏障状态已失效）');
     }
 
     // ---- 2) 持有/姿态类：手里拿着 XX，魔杖被缴，你躲在 XX ----
-    final holdRe = RegExp(
-      r'(手里(紧紧)?(攥着|握着|拿着|捏着|握着|举着|提着)[^，。！？]{0,10})',
-    );
-    for (final m in holdRe.allMatches(tail)) {
+    for (final m in _reAssertHold.allMatches(tail)) {
       addAssertion('${m.group(1)}');
     }
-    final disarmRe = RegExp(
-      r'((你的)?魔杖[^，。！？]{0,8}(被击飞|被缴走|脱手|不在手中|丢到了一边|掉在地上))',
-    );
-    for (final m in disarmRe.allMatches(tail)) {
+    for (final m in _reAssertDisarm.allMatches(tail)) {
       addAssertion('${m.group(1)}（本回合若无"捡/拾/召唤"动作，不能直接写魔杖重新回到手中）');
     }
-    final hideRe = RegExp(
-      r'(你(正)?(躲|藏|蹲|蜷缩)[^，。！？]{0,12}(在|到|进)[^，。！？]{0,14})',
-    );
-    for (final m in hideRe.allMatches(tail)) {
+    for (final m in _reAssertHide.allMatches(tail)) {
       addAssertion('${m.group(1)}（若无"走出来/离开"动作，不能直接出现在别的房间）');
     }
 
     // ---- 3) 受伤/状态类：XX 部位受伤，中了 XX 毒/诅咒，精疲力竭 ----
-    final injuryRe = RegExp(
-      r'((你的|你)(手臂|腿|肩膀|头|胸口|腹部|背部)[^，。！？]{0,12}(被划伤|被擦伤|出血|剧痛|麻木|骨折|瘀青|中了|中毒|被诅咒|被击中|受伤))',
-    );
-    for (final m in injuryRe.allMatches(tail)) {
+    for (final m in _reAssertInjury.allMatches(tail)) {
       addAssertion('${m.group(1)}（本回合动作描写要考虑伤势限制）');
     }
 
     // ---- 4) 关键物件/仪式生效中：分院帽正扣在头上，分院帽在思考 ----
-    final hatRe = RegExp(
-      r'((分院帽)[^，。！？]{0,10}(扣在|落在|戴在|碰到|触到|停在)[^，。！？]{0,10}|'
-      r'(分院帽)[^，。！？]{0,10}(正在思考|在犹豫|沉吟|没说话|没出声))',
-    );
-    for (final m in hatRe.allMatches(tail)) {
+    for (final m in _reAssertHat.allMatches(tail)) {
       addAssertion('${m.group(0)}（分院进行中，玩家本回合不应离开大礼堂）');
     }
 
     // ---- 5) 事件未落地：敲门声刚响起、信刚送到、点名刚叫你 ----
-    final knockRe = RegExp(
-      r'((敲门声|门[^，。！？]{0,4}被.*敲|有人敲门)[^，。！？]{0,10}(响起|传来|刚落下|刚响))',
-    );
-    for (final m in knockRe.allMatches(tail)) {
+    for (final m in _reAssertKnock.allMatches(tail)) {
       addAssertion('${m.group(1)}（门外有人，尚未开门。下一动作先回应敲门更自然）');
     }
-    final calledRe = RegExp(
-      r'((教授|级长|老师|NPC|同学)[^，。！？]{0,6}(点名叫|点了你的名|叫你的名字|喊你|注视着你等你回答))',
-    );
-    for (final m in calledRe.allMatches(tail)) {
+    for (final m in _reAssertCalled.allMatches(tail)) {
       addAssertion('${m.group(1)}（被点名/提问，优先回应再做别的动作）');
     }
 
@@ -200,25 +254,18 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     if (loc != null && loc.isNotEmpty) anchor['location'] = loc;
 
     // 2) last_speaker + last_dialog
-    final afterQuoteRe = RegExp(
-      r'[」"】][^，。！？\n]*?(养母|养父|海格|邓布利多|阿不思|斯内普|西弗勒斯|麦格|米勒娃|哈利|詹姆|波特|罗恩|韦斯莱|赫敏|格兰杰|马尔福|德拉科|纳威|隆巴顿|卢娜|洛夫古德|金妮|弗雷德|乔治|珀西|亚瑟|莫丽|小天狼星|布莱克|卢平|莱姆斯|教授|级长|妈妈|爸爸|同学|NPC)[^，。！？\n]{0,10}(说|开口|问|道|回答|叹了口气|笑了笑|低声|沉声|看着你)',
-      caseSensitive: false,
-    );
-    final aqm = afterQuoteRe.allMatches(tail);
+    final aqm = _reAnchorAfterQuote.allMatches(tail);
     if (aqm.isNotEmpty) anchor['last_speaker'] = aqm.last.group(1) ?? '';
-    final dialogRe = RegExp(r'[「"]([^「"」]{2,40})[」"]', caseSensitive: false);
-    final dm = dialogRe.allMatches(tail);
+    final dm = _reAnchorDialog.allMatches(tail);
     if (dm.isNotEmpty) anchor['last_dialog'] = dm.last.group(1) ?? '';
 
     // 3) last_action（最后未完成动作）：正则抓"正/正要/刚/准备/就要/等着/听到敲门声/握着门把手/盯着"等时态
-    final hangingRe = RegExp(r'((正要|刚要|准备|就要|等着|正看着|盯着|握着.*把手|听到.*敲门声|敲门声响起|还没|尚未)[^。！？\n]{0,40})');
-    final hm = hangingRe.allMatches(tail);
+    final hm = _reAnchorHanging.allMatches(tail);
     if (hm.isNotEmpty) {
       anchor['last_action'] = hm.last.group(1) ?? '';
     } else {
       // 兜底：最后一个动作动词
-      final genericRe = RegExp(r'((你|你.+)[^。！？\n]{0,30}(站起身|走过去|坐下来|点点头|摇摇头|开口|问|说|笑了笑|叹了口气|伸出手|握住|接过|放下|看向|望向|转身))');
-      final gm = genericRe.allMatches(tail);
+      final gm = _reAnchorGenericAction.allMatches(tail);
       if (gm.isNotEmpty) anchor['last_action'] = gm.last.group(1) ?? '';
     }
 
@@ -270,8 +317,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     if (checkHits.isNotEmpty) matched = true;
 
     // 如果玩家本回合行动本身就是"换场景型动作"（出发/前往/动身/回家/去XX），允许直接写换场景，视为已衔接
-    final travelRe = RegExp(r'(前往|出发|动身|去.*(车站|对角巷|大礼堂|特快|霍格沃茨)|回家|返校|走出门|下楼|走进)', caseSensitive: false);
-    if (!matched && travelRe.hasMatch(playerActionText)) matched = true;
+    if (!matched && _reTravelAction.hasMatch(playerActionText)) matched = true;
 
     if (matched) {
       worldState.continuityBridgeMisses = 0;
@@ -621,27 +667,21 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     // ---- BUG2b R3c: 原创主角≠哈利的家庭设定混淆检测（德思礼/女贞路杂交）----
     if (p != null && p.name.toLowerCase() != '哈利' && !p.name.contains('波特')) {
       // 命中1：好感变化/叙事里直接出现「XX·德思礼」作为玩家养母/养父（如玛吉·德思礼）
-      final dursleyFamilyRe = RegExp(
-        r'(玛吉|弗农|佩妮|达力)\s*[·.]?\s*德思礼|德思礼\s*(家|一家|夫妇|门口|住宅|姨父|姨妈|表哥)',
-        caseSensitive: false,
-      );
-      final privetDriveRe = RegExp(r'女贞路\s*4\s*号|德文郡.*德思礼', caseSensitive: false);
-      if (dursleyFamilyRe.hasMatch(narrative) || privetDriveRe.hasMatch(narrative)) {
+      if (_reDursleyFamily.hasMatch(narrative) || _rePrivetDrive.hasMatch(narrative)) {
         addV('critical', 'R3c_family_not_dursley',
             '家庭设定杂交：主角是原创玩家（非哈利·波特），本回合却出现德思礼一家/女贞路4号等哈利专属的家庭成员和地点。必须把养母/养父称呼为"养母/养父/妈妈/爸爸"或原创姓名，绝不能套用德思礼的姓和住址。',
-            evidence: dursleyFamilyRe.stringMatch(narrative) ?? privetDriveRe.stringMatch(narrative) ?? '');
+            evidence: _reDursleyFamily.stringMatch(narrative) ?? _rePrivetDrive.stringMatch(narrative) ?? '');
       }
       // 命中2：当"弗农/佩妮/达力"单独出现在"家门/楼下喊你/敲门"这种家庭成员语境时也命中
-      final aloneDursley = RegExp(r'(弗农姨父|佩妮姨妈|达力表哥)', caseSensitive: false);
-      if (aloneDursley.hasMatch(narrative)) {
+      if (_reAloneDursley.hasMatch(narrative)) {
         addV('critical', 'R3c_family_not_dursley',
             '家庭设定杂交：主角不是哈利，叙事里却直接称呼家人为"弗农姨父/佩妮姨妈/达力表哥"（这些是哈利专属亲属称谓）。原创角色的家人必须使用原创称呼或"养父/养母/妈妈/爸爸"。',
-            evidence: aloneDursley.stringMatch(narrative) ?? '');
+            evidence: _reAloneDursley.stringMatch(narrative) ?? '');
       }
     }
 
     // ---- BUG5 R1b: 开学时间/阶段错位（7月31日还在暑假却写分院/上课/特快正式开学）----
-    final monthDayMatch = RegExp(r'(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日').firstMatch(nLower);
+    final monthDayMatch = _reMonthDayCn.firstMatch(nLower);
     if (monthDayMatch != null) {
       final m = int.tryParse(monthDayMatch.group(2) ?? '') ?? 0;
       final d = int.tryParse(monthDayMatch.group(3) ?? '') ?? 0;
@@ -666,7 +706,9 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     // 名且无「教授带队/随队」豁免词 → warn。首版不定 critical：不打回重写，
     // 避免为省一次越界反而增加一次重写调用（与限流/降级链叠加）。
     if (p != null) {
-      final isWeekend = ws.time.weekday == 0 || ws.time.weekday == 6;
+      // 周末判定统一走 isWeekendWeekday（lib/data/game_config_rules.dart），
+      // 不再各处手写 `weekday == 0 || weekday == 6`。
+      final isWeekend = isWeekendWeekday(ws.time.weekday);
       final locked = lockedRegionsFor(grade: p.grade, isWeekend: isWeekend);
       const escortWords = ['教授带队', '教授带领', '随队', '带队', '老师带领', '教授陪同'];
       final escorted = escortWords.any(nLower.contains);
@@ -675,7 +717,9 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
         // 的只有 禁林(≥2年级)、霍格莫德村(≥3年级且仅周末)。
         final keyword = region.name.split('（').first;
         if (keyword.isEmpty || !nLower.contains(keyword)) continue;
-        if (escorted) continue;
+        // 教授带队豁免：与 evaluateRegionGate 的豁免口径保持一致——
+        // 村民通行制度（weekendOnly）不给豁免，年级限制才给。
+        if (escorted && !region.weekendOnly) continue;
         addV('warn', 'R6_region_lock',
             '越界区域：玩家当前${p.grade ?? 1}年级${isWeekend ? '（周末）' : ''}无权独自进入「$keyword」（${region.unlockCondition ?? '未开放'}），不应安排其自行前往；确有需要须有教授带队。',
             evidence: keyword);
@@ -963,38 +1007,28 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     if (assertions.isEmpty) return choices;
 
     final result = <GameChoice>[];
-    // 断言类型判断
-    final lockAssertionRe = RegExp(r'(锁死|封死|封住|挡死|堵死|施了锁门咒)');
-    final wandLostAssertionRe =
-        RegExp(r'(魔杖.*不在手中|魔杖.*掉在地上|魔杖.*脱手|魔杖.*被缴走)');
-    final calledAssertionRe =
-        RegExp(r'(被点名|提问|叫你|喊你|等你回答|注视着你)');
-    // 选项动作判断
-    final leaveActionRe =
-        RegExp(r'(推门|走出去|离开房间|走出|下楼|出门|推开|打开门)');
-    final castActionRe =
-        RegExp(r'(挥杖|施咒|举起魔杖|挥动魔杖|念咒|施展|施法)');
-    final respondActionRe = RegExp(r'(回答|回应|开口|说|答|回应|答话|应声)');
+    // 断言类型判断 / 选项动作判断的正则已提到文件级（见 _reOpt* 系列常量），
+    // 避免在 choices × assertions 双层循环里反复编译。
 
     for (final choice in choices) {
       var needsMark = false;
 
       for (final assertion in assertions) {
         // 封锁状态 vs 离开动作
-        if (lockAssertionRe.hasMatch(assertion) &&
-            leaveActionRe.hasMatch(choice.action)) {
+        if (_reOptLockAssertion.hasMatch(assertion) &&
+            _reOptLeaveAction.hasMatch(choice.action)) {
           needsMark = true;
           break;
         }
         // 魔杖丢失 vs 施法动作
-        if (wandLostAssertionRe.hasMatch(assertion) &&
-            castActionRe.hasMatch(choice.action)) {
+        if (_reOptWandLostAssertion.hasMatch(assertion) &&
+            _reOptCastAction.hasMatch(choice.action)) {
           needsMark = true;
           break;
         }
         // 被点名/提问 vs 未回应
-        if (calledAssertionRe.hasMatch(assertion) &&
-            !respondActionRe.hasMatch(choice.action)) {
+        if (_reOptCalledAssertion.hasMatch(assertion) &&
+            !_reOptRespondAction.hasMatch(choice.action)) {
           needsMark = true;
           break;
         }
@@ -1019,36 +1053,13 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     if (narrative.isEmpty) return 0.0;
 
     // 统计总字数：中文字符 + 英文单词
-    final chineseChars =
-        RegExp(r'[\u4e00-\u9fff]').allMatches(narrative).length;
-    final englishWords = RegExp(r'[a-zA-Z]+').allMatches(narrative).length;
+    final chineseChars = _reDensityChinese.allMatches(narrative).length;
+    final englishWords = _reDensityEnglishWord.allMatches(narrative).length;
     final totalLength = chineseChars + englishWords;
     if (totalLength == 0) return 0.0;
 
-    // 有效事件信号模式
-    final eventPatterns = <RegExp>[
-      // "你" + 动作 + "了" 结尾
-      RegExp(r'你[^，。！？\n]{1,20}了'),
-      // 动词 + 人物/对象
-      RegExp(
-          r'(遇见|找到|见到|碰到|看到|发现|叫住|拦住|跟着|走向|来到|进入|离开|'
-          r'推开|打开|关上|拿起|放下|接过|递给|告诉|询问|回答|解释|喊道|低声|'
-          r'沉声|开口|转身|点头|摇头|坐下|站起|蹲下|举起|拔出|收起|施展|念出|'
-          r'抽出|抓住|握住|拉着|扶着|抱起)[^，。！？\n]{1,10}'),
-      // 时间词 + 事件
-      RegExp(
-          r'(突然|这时|就在这时|紧接着|忽然|猛然|终于|总算|片刻后|过了一会儿|'
-          r'正当|正在|正要|刚想|还没来得及|与此同时|转眼间)[^，。！？\n]{1,30}'),
-      // 环境变化 / 事件触发
-      RegExp(
-          r'(响起|传来|震动|摇晃|亮起|熄灭|出现|消失|裂开|破碎|打开|关闭|'
-          r'涌入|冲出|飞来|射来|喷出|落下|掉下|升起|沉入|爆炸|燃烧|绽放)'),
-      // 对话信号
-      RegExp(r'[「"][^「"」]{2,40}[」"]'),
-    ];
-
     int eventCount = 0;
-    for (final pattern in eventPatterns) {
+    for (final pattern in _densityEventPatterns) {
       eventCount += pattern.allMatches(narrative).length;
     }
 
@@ -1056,3 +1067,30 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     return density < 0.01 ? 0.0 : density;
   }
 }
+
+// ===== 信息密度统计用的固定正则 =====
+// 原本在 [calculateInformationDensity] 里每次调用现场构造 list + 编译 7 个正则，
+// 而该方法被叙事校验链路反复调用（含逐选项评估）。全部提到文件级只编译一次。
+final RegExp _reDensityChinese = RegExp(r'[\u4e00-\u9fff]');
+final RegExp _reDensityEnglishWord = RegExp(r'[a-zA-Z]+');
+
+final List<RegExp> _densityEventPatterns = <RegExp>[
+  // "你" + 动作 + "了" 结尾
+  RegExp(r'你[^，。！？\n]{1,20}了'),
+  // 动词 + 人物/对象
+  RegExp(
+      r'(遇见|找到|见到|碰到|看到|发现|叫住|拦住|跟着|走向|来到|进入|离开|'
+      r'推开|打开|关上|拿起|放下|接过|递给|告诉|询问|回答|解释|喊道|低声|'
+      r'沉声|开口|转身|点头|摇头|坐下|站起|蹲下|举起|拔出|收起|施展|念出|'
+      r'抽出|抓住|握住|拉着|扶着|抱起)[^，。！？\n]{1,10}'),
+  // 时间词 + 事件
+  RegExp(
+      r'(突然|这时|就在这时|紧接着|忽然|猛然|终于|总算|片刻后|过了一会儿|'
+      r'正当|正在|正要|刚想|还没来得及|与此同时|转眼间)[^，。！？\n]{1,30}'),
+  // 环境变化 / 事件触发
+  RegExp(
+      r'(响起|传来|震动|摇晃|亮起|熄灭|出现|消失|裂开|破碎|打开|关闭|'
+      r'涌入|冲出|飞来|射来|喷出|落下|掉下|升起|沉入|爆炸|燃烧|绽放)'),
+  // 对话信号
+  RegExp(r'[「"][^「"」]{2,40}[」"]'),
+];

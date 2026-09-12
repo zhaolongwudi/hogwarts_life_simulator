@@ -112,19 +112,47 @@ void main() {
         relSnapshot: '罗恩:友好/10',
         coreFacts: '',
       );
-      // 分层后：包含「省略提示」头部，且完整前情已不逐字出现在 prompt 里
-      expect(p, contains('早期剧情已有'));
-      expect(p, contains('省略'));
-      // 最老的第一段不再完整注入
-      expect(p, isNot(contains('第0段摘要')));
+      // 分层后：包含「省略提示」，且完整前情已不逐字出现在 prompt 里
+      expect(p, contains('历史摘要省略'));
+      expect(p, contains('最早一段'));
+      expect(p, contains('最近一段'));
+      // 中段被省略。本用例每段恒为 42 字、共 2570 字：
+      //   头部配额 600 字  → 完整覆盖第 0..13 段
+      //   尾部配额 1400 字 → 完整覆盖第 28..59 段
+      //   第 14..27 段落在省略区间内，用居中的「第20段摘要」做探针
+      //   （不要用靠近边界的段号，边界段会被头/尾截断后仍以残缺形式出现）。
+      expect(p, isNot(contains('第20段摘要')));
       // 最新的接缝段仍保留
       expect(p, contains('第59段摘要'));
-      // prompt 总长受控（不再有 40 段全量）
+      // prompt 总长受控（不再有 60 段全量）
       expect(p.length, lessThan(4000));
     });
 
-    test('恰好等于上限的前情不做分层', () {
-      final exact = 'a' * kMaxPreviousChars;
+    // v5 修正：只保尾部会让摘要 AI 看不到历史全貌，产出偏重近期的摘要，
+    // 再被 _extractMemoryFromSummary 固化成 9 分 T0 事实注入——偏差自我强化。
+    // 因此改为头尾双保，用本测试钉死"头部必须在场"这条不变量。
+    test('超长前情必须同时保住头部（开局地基事实）与尾部（接缝）', () {
+      final longPrev = StringBuffer();
+      for (var i = 0; i < 60; i++) {
+        longPrev.write('第$i段摘要：与赫敏好感上升、与马尔福交恶、击败巨怪、前往图书馆查看禁书区的链锁书。\n');
+      }
+      final prevStr = longPrev.toString();
+
+      final p = buildSummaryPrompt(
+        limit: 800,
+        previousSummary: prevStr,
+        newChunk: '今天上了魔咒课。',
+        relSnapshot: '罗恩:友好/10',
+        coreFacts: '',
+      );
+      // 头部（最早一段）在场 —— 这是原实现缺失、被本修复补上的部分
+      expect(p, contains('第0段摘要'), reason: '头部地基事实不能被整段丢弃');
+      // 尾部（最近一段）在场 —— 保证与新 chunk 缝合
+      expect(p, contains('第59段摘要'));
+    });
+
+    test('恰好等于头+尾配额的前情不做分层', () {
+      final exact = 'a' * (kMaxPreviousHeadChars + kMaxPreviousChars);
       final p = buildSummaryPrompt(
         limit: 800,
         previousSummary: exact,
@@ -133,7 +161,7 @@ void main() {
         coreFacts: '',
       );
       expect(p, contains(exact));
-      expect(p, isNot(contains('早期剧情已有')));
+      expect(p, isNot(contains('历史摘要省略')));
     });
   });
 }

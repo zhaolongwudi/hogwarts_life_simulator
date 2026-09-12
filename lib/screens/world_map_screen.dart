@@ -4,6 +4,7 @@ import '../utils/ui_helpers.dart';
 import 'world_map/marker_layout.dart';
 import 'world_map/map_area_painter.dart';
 import '../data/locations.dart';
+import '../data/game_config_rules.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../theme/miuix_tokens.dart';
@@ -1009,13 +1010,25 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               );
                               return;
                             }
-                            if (blockedByGradeGate(
+                            // 区域门禁：与 travelTo / 叙事同步共用同一判定。
+                            // 文案由判定结果动态生成，不再写死"需三年级"——
+                            // 旧文案在拦禁林时也这么说，因为旧函数只认霍格莫德。
+                            final gate = evaluateRegionGate(
                               detected: normalized,
-                              grade: gp.player?.grade ?? 1,
-                            )) {
+                              grade: gp.player?.grade,
+                              isWeekend: isWeekendWeekday(
+                                  gp.worldState.time.weekday),
+                            );
+                            if (gate.isBlocked) {
+                              final msg = switch (gate.reason!) {
+                                RegionGateReason.grade =>
+                                  '该地点需${gate.blocked!.minGrade}年级以上才能前往',
+                                RegionGateReason.weekend =>
+                                  '${gate.blocked!.name}仅周末开放',
+                              };
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('该地点需三年级以上才能前往'),
+                                SnackBar(
+                                  content: Text(msg),
                                   duration: MiuiDuration.snackbarMedium,
                                 ),
                               );

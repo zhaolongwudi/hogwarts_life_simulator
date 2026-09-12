@@ -4,6 +4,13 @@
 /// R10：魔杖来源描述（原 mixin_init.dart 3 处硬编码「奥利凡德魔杖店选中」）
 /// R11：地图区域定义（原 mixin_commands.dart _formatMap 硬编码列表）
 /// R12：课堂意外事件池（原 mixin_relations.dart 斯内普教授硬编码）
+///
+/// 依赖方向：本文件 → locations.dart（单向），因为 `regionForLocation` 需要
+/// 地点别名表把「蜂蜜公爵糖果店」这类子地点归到「霍格莫德村」区域。
+/// locations.dart **不得**反向 import 本文件，否则形成循环依赖。
+library;
+
+import 'locations.dart';
 
 // ====== R9：需要额外进度门的事件锚点 id 白名单 ======
 // 这些锚点如果要触发，除了 event_anchors.dart 自带的 month/grade/era 条件外，
@@ -147,6 +154,140 @@ List<MapRegionDef> lockedRegionsFor({
     mapRegions
         .where((r) => !r.isUnlocked(grade: grade, isWeekend: isWeekend))
         .toList();
+
+// ====== 区域门禁判定（统一入口） ======
+//
+// 【为什么要有这一层】R11 把区域条件数据化后，`minGrade` / `weekendOnly`
+// 只被 `isUnlocked` 消费，而 `isUnlocked` 的消费者只有两个「展示/提示」场景：
+//   · `unlockedRegionsFor` / `lockedRegionsFor` → 喂 prompt 文案与 /地点 面板
+//   · mixin_commands 的 🔒 标记
+// 真正决定「玩家能不能进」的**状态写入硬门**却在别处写死了 `'霍格莫德'` 三个字，
+// 于是：禁林 `minGrade: 2` 白定义、霍格莫德 `weekendOnly: true` 从未拦过。
+// 这就是典型的「配置字段与判定函数断链」——字段写得很规范，判定函数也有，
+// 但两者之间没有连线。本层的作用就是**把线连上**：所有门禁判定都从这里出，
+// 数据改一处、行为跟着改一处。
+
+/// 区域门禁的拦截原因。null 表示放行。
+///
+/// 用它替代原先的 `bool` 返回值，是为了让调用方能写出**准确**的提示文案——
+/// 以前三处调用点的文案都硬编码成"需三年级/霍格莫德需三年级"，
+/// 即使拦的是禁林也会这么说（因为函数只认霍格莫德，文案也就跟着只提三级）。
+/// 现在原因由数据推导，文案自然准确，也不会再出现"拦了 A 却说 B"。
+enum RegionGateReason {
+  /// 年级不够（[MapRegionDef.minGrade]）。
+  grade,
+
+  /// 非周末（[MapRegionDef.weekendOnly]）。
+  weekend,
+}
+
+/// 区域门禁判定的结果。
+class RegionGateResult {
+  /// 被拦下的区域定义；null 表示放行。
+  final MapRegionDef? blocked;
+
+  /// 拦截原因；[blocked] 为 null 时为 null。
+  final RegionGateReason? reason;
+
+  const RegionGateResult._(this.blocked, this.reason);
+
+  static const RegionGateResult allowed = RegionGateResult._(null, null);
+
+  bool get isBlocked => blocked != null;
+
+  /// 给玩家/日志看的解锁条件文案（来自数据表，不再各处硬编码）。
+  String get conditionText => blocked?.unlockCondition ?? '';
+}
+
+/// [detected] 文本命中的受限区域 → 它在地点表里的主名。没有则返回 null。
+///
+/// 匹配分两步，缺一不可：
+///   1. **区域主名直配**：`region.name` 出现在 detected 里，或去掉括号说明后的
+///      主干词出现（如「城堡主楼（大礼堂…）」→ 看「城堡主楼」）。
+///   2. **别名表回查**：AI 常写子地点而非区域名（「蜂蜜公爵糖果店」而不是
+///      「霍格莫德村」）。子地点关系定义在 `locations.dart` 的 `kKnownLocations`
+///      别名表里，这里用 `resolveLocationName` 反查主名，再看该主名是否
+///      以某个区域名开头（`霍格莫德村·三把扫帚`.startsWith(`霍格莫德村`)）。
+///
+/// 【为什么必须走别名表】这两张表（区域门禁 vs 地点别名）本来是**两套独立的
+/// 字符串**，靠"名字看起来一样"维持默契——这正是"配置与判定断链"的温床。
+/// 走 `resolveLocationName` 之后，地点归属只有 `kKnownLocations` 一个真源，
+/// 新增子地点时门禁自动跟随，不需要同时改两处。
+MapRegionDef? regionForLocation(String detected) {
+  if (detected.isEmpty) return null;
+
+  final restricted = mapRegions
+      .where((r) => r.minGrade > 0 || r.weekendOnly)
+      .toList(growable: false);
+  if (restricted.isEmpty) return null;
+
+  for (final region in restricted) {
+    if (_nameMatches(region.name, detected)) return region;
+  }
+
+  // 别名表回查：先归一到地点主名，再看它挂在哪条区域下
+  final canonical = resolveLocationName(detected);
+  if (canonical != null) {
+    final t = _stripParen(canonical);
+    for (final region in restricted) {
+      if (t == region.name || t.startsWith(region.name)) return region;
+    }
+  }
+  return null;
+}
+
+/// 去掉名称里的括号说明部分（`霍格莫德村（仅周末）` → `霍格莫德村`）。
+String _stripParen(String s) {
+  final idx = s.indexOf('（');
+  return idx > 0 ? s.substring(0, idx) : s;
+}
+
+/// [name] 是否在 [text] 中出现：先按全名，再按去括号后的主干词。
+bool _nameMatches(String name, String text) {
+  if (text.contains(name)) return true;
+  final stem = _stripParen(name);
+  return stem != name && text.contains(stem);
+}
+
+/// 区域门禁统一判定。
+///
+/// 【为什么取代 `blockedByGradeGate`】旧函数签名 `(detected, grade)` 有两个问题：
+///   1. 只认霍格莫德（写死字符串），禁林/周末限制形同虚设；
+///   2. 只收 `grade`，没有 `isWeekend`，天生无法表达周末限制。
+/// 新函数收齐判定所需的全部输入，并从数据表推导原因，避免再次断链。
+///
+/// [escortExempt] 用于「教授带队」豁免（禁林解锁条件明确写了"或由教授带队"）。
+/// 是否豁免由调用方决定——因为只有调用方拿得到叙事正文/事件上下文。
+RegionGateResult evaluateRegionGate({
+  required String detected,
+  required int? grade,
+  required bool isWeekend,
+  bool escortExempt = false,
+}) {
+  final region = regionForLocation(detected);
+  if (region == null) return RegionGateResult.allowed;
+
+  // 教授带队豁免：仅对「有年级限制但非周末限制」的区域生效。
+  // 霍格莫德是村民通行许可制度，带队也去不了，所以不给豁免。
+  if (escortExempt && !region.weekendOnly) {
+    return RegionGateResult.allowed;
+  }
+
+  final g = grade ?? 1;
+  if (g < region.minGrade) {
+    return RegionGateResult._(region, RegionGateReason.grade);
+  }
+  if (region.weekendOnly && !isWeekend) {
+    return RegionGateResult._(region, RegionGateReason.weekend);
+  }
+  return RegionGateResult.allowed;
+}
+
+/// 判断 [weekday] 是否为周末。
+///
+/// 单点定义，消除散落各处的 `weekday == 0 || weekday == 6`。
+/// `GameTime.weekday` 约定：0 = 星期日 … 6 = 星期六。
+bool isWeekendWeekday(int weekday) => weekday == 0 || weekday == 6;
 
 // ====== R12：课堂意外事件池 ======
 // 每一条包含：科目筛选（subjectFilter 为空表示全科目通用）、意外文本模板

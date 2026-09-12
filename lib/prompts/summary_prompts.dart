@@ -1,15 +1,78 @@
 /// 剧情摘要压缩 Prompt。
 
-/// 前情摘要分层上限（Q4）。
+/// 前情摘要分层压缩的**尾部**配额（Q4，v5 修正为头尾双保）。
 ///
 /// `previousSummary` 是**累积拼接**的历史摘要：按周期追加一次、limit 随
 /// 进度放宽到 2400 字，长线玩到一两百回合后，单是前情就 1 万字起步，
 /// 每次都原样塞进摘要 prompt，输入 token 随局龄线性膨胀。
-/// 这里做**分层压缩**：超过 [kMaxPreviousChars] 时，只把「最新一段」完整
-/// 传给 AI（接缝处的新剧情依赖它与新 chunk 缝合），更早的历史压成一行
-/// 粗略计数作为背景锚点，而不是线性全量。语义上不再逐字喂给模型，
-/// 但接缝信息完整保留——一场 300 回合的长局，摘要输入从此有上限。
+/// 这里做分层压缩，超出配额时**头尾各保一段**：
+///
+///   · **尾部**（本常量）：紧邻新 chunk 的那段旧摘要。新剧情承接的是它，
+///     保留才能不脱缝——这是原实现的唯一考虑。
+///   · **头部**（[kMaxPreviousHeadChars]）：最早那段历史摘要。它承载着
+///     开局身份、初始关系、早期承诺这些"地基"型事实。
+///
+/// 【为什么要补头部】旧实现只保尾部，头部只剩一行 `已有 N 字历史摘要`。
+/// 后果是摘要 AI **看不到历史全貌**，会把"最近发生的事"当成"整段历史"来压缩，
+/// 产出偏重近期的摘要；而这份摘要又会被 `_extractMemoryFromSummary`
+/// 固化成 9 分 T0 事实再注入 prompt——偏差因此一轮轮自我强化。
+/// 作者自己在 `mixin_narrative.dart` 里批判过同类问题（"从中期开始
+/// narrativeSummary 永久不再进入 prompt"），这里是把同一批评用在自己身上。
 const int kMaxPreviousChars = 1400;
+
+/// 前情摘要分层压缩的**头部**配额。
+///
+/// 取值小于尾部配额：头部的作用是锚住"地基事实"（开局身份/初始关系），
+/// 信息密度高、篇幅需求低；尾部需要保留足够上下文供新 chunk 缝合。
+const int kMaxPreviousHeadChars = 600;
+
+/// 分层压缩后的前情摘要 + 压缩元信息（便于测试断言与调试）。
+class LayeredPreviousSummary {
+  /// 实际拼进 prompt 的文本。
+  final String text;
+
+  /// 原始长度。
+  final int originalLength;
+
+  /// 是否触发了压缩。
+  final bool compressed;
+
+  const LayeredPreviousSummary({
+    required this.text,
+    required this.originalLength,
+    required this.compressed,
+  });
+
+  /// 压缩掉的字数（未压缩时为 0）。
+  int get elidedChars => compressed
+      ? originalLength - kMaxPreviousHeadChars - kMaxPreviousChars
+      : 0;
+}
+
+/// 对累积前情做分层压缩（纯函数，便于单测）。
+///
+/// 未超限时原样返回；超限时保留头部 [kMaxPreviousHeadChars] 字
+/// + 中间省略提示 + 尾部 [kMaxPreviousChars] 字。
+LayeredPreviousSummary layerPreviousSummary(String previousSummary) {
+  final total = previousSummary.length;
+  if (total <= kMaxPreviousHeadChars + kMaxPreviousChars) {
+    return LayeredPreviousSummary(
+      text: previousSummary,
+      originalLength: total,
+      compressed: false,
+    );
+  }
+  final head = previousSummary.substring(0, kMaxPreviousHeadChars);
+  final tail = previousSummary.substring(total - kMaxPreviousChars);
+  final elided = total - kMaxPreviousHeadChars - kMaxPreviousChars;
+  return LayeredPreviousSummary(
+    text: '【最早一段】$head\n'
+        '（中间 $elided 字历史摘要省略——如需回溯请参考 T0/T1/T3 结构化记忆）\n'
+        '【最近一段】$tail',
+    originalLength: total,
+    compressed: true,
+  );
+}
 
 /// 构造摘要压缩 Prompt。
 /// [limit] 字数上限 (AI 侧目标)，[previousSummary] 老摘要，[newChunk] 新剧情正文块，
@@ -23,17 +86,8 @@ String buildSummaryPrompt({
   required String relSnapshot,
   required String coreFacts,
 }) {
-  // Q4：对累积的前情做分层压缩。只有在超上限时才触发，不影响短局。
-  final String layeredPrevious;
-  if (previousSummary.length <= kMaxPreviousChars) {
-    layeredPrevious = previousSummary;
-  } else {
-    // 「最新一段」取 TO(尾部，不含 if) 的 kMaxPreviousChars 字——新 chunk
-    // 承接的是紧邻的旧摘要，保留这段才不脱缝。头部只剩一行计数。
-    final head = '（早期剧情已有 ${previousSummary.length} 字历史摘要，此处省略，仅保留最近一段）';
-    final tail = previousSummary.substring(previousSummary.length - kMaxPreviousChars);
-    layeredPrevious = '$head\n$tail';
-  }
+  // Q4：对累积的前情做头尾双保的分层压缩。短局不触发，行为与旧版一致。
+  final layeredPrevious = layerPreviousSummary(previousSummary).text;
 
   return '''请将以下剧情内容压缩成摘要。重要规则：
   1. 只保留【人物关系变化】和【重要剧情转折】

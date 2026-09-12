@@ -12,7 +12,8 @@ import '../utils/debug_log.dart';
 /// 加了 v3 迁移，写档还是盖 v2 的章，于是新存的档每次读都要过一遍 v3 迁移
 /// 逻辑——而迁移代码是按"老格式"写的，等于拿新档喂给它。
 ///
-/// 升级流程：把这里 +1，并在 _migrateSave 里补上对应分支。
+/// 升级流程：把这里 +1，并在 `lib/mixins/mixin_systems.dart` 的
+/// `GameSystemsMixin._migrateSave` 里补上对应分支（找不到入口时按名字搜）。
 const int kSaveVersion = 2;
 
 class SaveService {

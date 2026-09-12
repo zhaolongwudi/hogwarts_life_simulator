@@ -1,4 +1,5 @@
 import '../models/npc.dart';
+import 'game_config_rules.dart';
 
 // ==================== NPC 日程推导 ====================
 //
@@ -345,7 +346,8 @@ String npcExpectedLocation(NPC npc, int hour, {int weekday = 1}) {
 
   // ---- 学生 ----
   // GameTime.weekday：0=星期日 … 6=星期六
-  final isWeekend = weekday == 0 || weekday == 6;
+  // 统一走 isWeekendWeekday（lib/data/game_config_rules.dart），单点定义。
+  final isWeekend = isWeekendWeekday(weekday);
 
   if (!isClassHour(hour)) {
     // 傍晚：周末在场地，平时泡图书馆或休息室
