@@ -16,6 +16,8 @@ import '../data/worldline_data.dart';
 import '../data/legacy_data.dart';
 import '../data/event_anchors.dart';
 import '../data/collectible_data.dart';
+import '../data/collection_data.dart';
+import '../data/bestiary_data.dart';
 import '../data/exam_data.dart';
 import '../data/course_data.dart';
 import '../data/patronus_data.dart';
@@ -919,11 +921,14 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '图鉴',
         group: '玩法&活动',
-        helpText: '查看已发现的魔法生物图鉴',
+        helpText: '魔法世界图鉴：收录你的见闻（/图鉴 详情 查看条目说明）',
         panel: true,
+        subs: [CommandSub('详情', '查看已收录条目的完整说明')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          m.currentNarrative = m.formatBestiary();
+          m.currentNarrative = m._formatCollectionPanel(
+            detailed: ctx.parts.isNotEmpty && ctx.arg(0) == '详情',
+          );
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -1389,6 +1394,56 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
     ]);
+  }
+
+  // —— 魔法世界图鉴（百科收集，见 data/collection_data.dart）——
+
+  /// 图鉴面板：紧凑模式按 5 类列出已收录名与进度；详情模式逐条附说明。
+  /// 禁林遭遇生物是独立系统（player.bestiary），面板底部只给进度指路。
+  String _formatCollectionPanel({bool detailed = false}) {
+    final buf = StringBuffer(
+      '【魔法世界图鉴】（已收录 ${collectionUnlocked.length}/${kCollectionCatalog.length}）\n',
+    );
+    if (collectionUnlocked.isEmpty) {
+      buf.writeln(
+        '\n图鉴还空着。你的每一段经历都会被它记下来——去上课、去冒险、'
+        '去听见这个魔法世界，再回来翻看。',
+      );
+    } else if (!detailed) {
+      for (final cat in kCollectionCategories) {
+        final all =
+            kCollectionCatalog.where((e) => e.category == cat).toList();
+        final got =
+            all.where((e) => collectionUnlocked.contains(e.id)).toList();
+        buf.writeln(
+          '\n◆ $cat（${got.length}/${all.length}）'
+          '${got.isEmpty ? '：尚未收录' : '：${got.map((e) => e.name).join(' · ')}'}',
+        );
+      }
+      buf.writeln('\n输入 /图鉴 详情 查看条目说明。');
+    } else {
+      for (final cat in kCollectionCategories) {
+        final got = kCollectionCatalog
+            .where(
+              (e) => e.category == cat && collectionUnlocked.contains(e.id),
+            )
+            .toList();
+        if (got.isEmpty) continue;
+        buf.writeln('\n◆ $cat');
+        for (final e in got) {
+          buf.writeln('『${e.name}』${e.desc}');
+        }
+      }
+      final missing = kCollectionCatalog.length - collectionUnlocked.length;
+      if (missing > 0) {
+        buf.writeln('\n还有 $missing 条未知条目等着你。继续生活，继续遇见。');
+      }
+    }
+    buf.writeln(
+      '\n—— 禁林遭遇：${player?.bestiary.length ?? 0}/${kCreatureCatalog.length} 种'
+      '（/禁林 探险收录）',
+    );
+    return buf.toString();
   }
 
   void closeCommandPanel() {
@@ -2501,6 +2556,26 @@ mixin GameCommandsMixin on GameProviderBase {
         );
       if (sp.isFinished) {
         buf.writeln('本部剧情已完成（结局：${sp.endingId}）。');
+        // 跨部衔接预告：结局态下告知下一部的状态，让"七部一场长局"
+        // 的进度在状态页一目了然。
+        final nextId = nextStoryBookId(sp.bookId);
+        if (nextId != null) {
+          final nextBook = findStoryBook(nextId);
+          if (nextBook != null && nextBook.chapters.isNotEmpty) {
+            final anchor = worldState.time.absoluteDayIndex >=
+                    nextBook.startAbsoluteDayIndex
+                ? '现在就可以从结局选项进入'
+                : '${nextBook.startYear} 年 ${nextBook.startMonth} 月开启';
+            buf.writeln('下一部：《${nextBook.title}》——$anchor。');
+          } else {
+            buf.writeln(
+              '下一部：《${bookDisplayName(nextId)}》'
+              '的主线还没装载进当前版本。',
+            );
+          }
+        } else {
+          buf.writeln('七部曲至此全部走完——这一场魔法人生，是你自己的。');
+        }
       } else {
         buf.writeln('进度：已走 ${sp.doneSteps.length}/$totalSteps 步');
       }

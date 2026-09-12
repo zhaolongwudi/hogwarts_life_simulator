@@ -2826,6 +2826,8 @@ mixin GameSystemsMixin on GameProviderBase {
     // 走 extra_data 通道而不是 Player/WorldState 的 fromJson，
     // 是为了零迁移风险——见 lib/models/story_progress.dart 的文件头注释。
     'story_progress': storyProgress.toJson(),
+    // 魔法世界图鉴（百科收集）已收录 id。同走 extra_data 通道零迁移。
+    'collection': collectionUnlocked.toList(),
   };
 
   /// 统一的存档写入：快速存档 / 命名存档 / 自动存档都走这里。
@@ -3006,6 +3008,16 @@ mixin GameSystemsMixin on GameProviderBase {
       } catch (_) {
         storyProgress = StoryProgress.inactive;
       }
+
+      // 图鉴收录：老存档没有该键 → 空集合，行为与加此功能前一致（零迁移）。
+      collectionUnlocked
+        ..clear()
+        ..addAll(
+          (extraData['collection'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[],
+        );
 
       recentTurns
         ..clear()

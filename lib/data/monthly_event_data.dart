@@ -203,6 +203,85 @@ const List<MonthlyEventDef> monthlyEventPool = [
     weight: 3,
   ),
 
+  // —— 假期与季节日常（充实快进路上的"活着的世界"感）——
+  MonthlyEventDef(
+    id: 'se_summer_diagon',
+    category: 'season',
+    text: '对角巷迎来了返校购物潮，奥利凡德店门口排起长队，每一支新魔杖的主人都一脸紧张。',
+    seasonTags: ['summer'],
+    weight: 3,
+  ),
+  MonthlyEventDef(
+    id: 'se_summer_muggle',
+    category: 'season',
+    text: '在麻瓜世界过暑假的日子格外漫长——收音机、后院与蝉鸣，你数着日子等九月。',
+    seasonTags: ['summer'],
+    weight: 3,
+  ),
+  MonthlyEventDef(
+    id: 'se_summer_leaky',
+    category: 'season',
+    text: '破釜酒吧的夏夜旅人格外多，角落里有人压低声音谈论着什么，杯垫下压着一张对折的羊皮纸。',
+    seasonTags: ['summer'],
+    weight: 2,
+  ),
+  MonthlyEventDef(
+    id: 'se_summer_gnome',
+    category: 'season',
+    text: '给花园除地精是巫师家庭的传统暑期家务——地精们被甩过篱笆时嘴里骂骂咧咧。',
+    seasonTags: ['summer'],
+    weight: 2,
+  ),
+  MonthlyEventDef(
+    id: 'se_winter_christmas',
+    category: 'season',
+    text: '圣诞假期的大礼堂立起了十二棵巨树，留校学生的宴席上飘着烤火鸡与肉汁的香气。',
+    seasonTags: ['winter'],
+    weight: 3,
+  ),
+  MonthlyEventDef(
+    id: 'se_winter_snowball',
+    category: 'season',
+    text: '冻结的湖面成了最好的雪仗场，一群低年级学生用雪咒互轰，笑声惊飞了塔顶的猫头鹰。',
+    seasonTags: ['winter'],
+    weight: 3,
+  ),
+  MonthlyEventDef(
+    id: 'se_winter_newyear',
+    category: 'season',
+    text: '跨年夜的城堡安静得出奇，幽灵们在走廊里飘荡合唱，新年的钟声从天文塔一路传进梦乡。',
+    seasonTags: ['winter'],
+    weight: 2,
+  ),
+  MonthlyEventDef(
+    id: 'se_winter_hogsmeade',
+    category: 'season',
+    text: '大雪封路的周末，三把扫帚的暖炉边挤满了避寒的人，热黄油啤酒的气味飘出半条街。',
+    seasonTags: ['winter'],
+    weight: 3,
+  ),
+  MonthlyEventDef(
+    id: 'se_spring_owlery',
+    category: 'season',
+    text: '春日的猫头鹰棚屋吵翻了天——求偶季到了，几百只猫头鹰争着在横杆上占个好位置。',
+    seasonTags: ['spring'],
+    weight: 2,
+  ),
+  MonthlyEventDef(
+    id: 'se_autumn_trials',
+    category: 'season',
+    text: '新学年的魁地奇选拔开始了，看台上挤满观众，每一次俯冲都引来一阵惊呼。',
+    seasonTags: ['autumn'],
+    weight: 3,
+  ),
+  MonthlyEventDef(
+    id: 'se_holiday_letters',
+    category: 'season',
+    text: '假期里最盼的是猫头鹰——同学的信一封接一封，蜡封上还带着各自的印记。',
+    seasonTags: [],
+    weight: 2,
+  ),
+
   // ====== 学年特异性事件（带学年标记）======
   MonthlyEventDef(
     id: 'yr1_first_letter',

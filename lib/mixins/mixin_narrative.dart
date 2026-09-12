@@ -28,6 +28,7 @@ import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/canon_events.dart';
 import '../data/item_data.dart';
+import '../data/collection_data.dart';
 import '../models/story_progress.dart';
 import 'mixin_systems.dart';
 import '../data/narrative_time_rules.dart';
@@ -1090,6 +1091,14 @@ $kNarrativeWritingRules
     String action, {
     int? storyTimeCostDays,
   }) {
+    // ⓪ 图鉴收录（见 data/collection_data.dart）：扫描本回合叙事，命中
+    // 新条目时把一行提示追加到叙事尾部——放在锚点/摘要**之前**，让收录
+    // 提示随本回合文本一并入档，而不是悄悄消失。
+    final collectionHint = _scanCollectionUnlocks(narrative);
+    if (collectionHint != null) {
+      narrative = '$narrative\n$collectionHint';
+      currentNarrative = narrative;
+    }
     saveContinuityAnchor(narrative);
     accumulateForSummary(narrative);
     appendRecentTurn(narrative);
@@ -1106,6 +1115,24 @@ $kNarrativeWritingRules
     }
     updateNPCsFromAction(action);
     updatePlayerImpactScore(action);
+  }
+
+  /// 扫描一段叙事文本，把新命中的图鉴条目收录进 [collectionUnlocked]，
+  /// 返回给玩家的收录提示行（无新收录时返回 null）。
+  ///
+  /// 【为什么挂在 _finalizeTurn】剧情模式（`_advanceStory`）与沙盒模式
+  /// 最后都汇进 `_finalizeTurn` 收尾——一处钩子，两条路径全覆盖。
+  /// 只扫**本回合新增**文本：老内容反复被引用也不会重复提示（集合去重），
+  /// `matchCollection` 是纯函数（~60 条 × contains），每回合一次开销可忽略。
+  String? _scanCollectionUnlocks(String text) {
+    final fresh = matchCollection(text).difference(collectionUnlocked);
+    if (fresh.isEmpty) return null;
+    collectionUnlocked.addAll(fresh);
+    final names =
+        fresh.map((id) => collectionById(id)?.name ?? id).toList()..sort();
+    final shown = names.take(3).join('、');
+    final extra = names.length > 3 ? ' 等 ${names.length} 条' : '';
+    return '✦ 图鉴收录：$shown$extra（/图鉴 查看）';
   }
 
   /// 定期摘要：v5 复查(P1)回调到每20回合，缓冲提前阈值 6800 字。
@@ -1443,6 +1470,14 @@ $kNarrativeWritingRules
 
     _updateLocationTracking();
 
+    // 「开启下一部」专用通道（结局后选项）。必须在剧情推进之前拦截：
+    // 若放行，parseStoryCommand 解析不出合法分支 → isFreeAction 降级，
+    // 玩家点按钮只会白白烧一个回合。这里直接走衔接逻辑并提前收尾。
+    if (action == kStoryNextBookAction) {
+      _runNextBookTransition();
+      return;
+    }
+
     // ① 推进剧情：解析分支 → 查定义 → 落效果 → 定位下一步。
     //    返回本回合要写进叙事的"你做了什么"，null 表示走到了结局。
     final beat = _advanceStory(action);
@@ -1464,12 +1499,147 @@ $kNarrativeWritingRules
     // ④ 剧情选项（独立构建器，不进 buildFallbackChoices）。
     choices = _buildStoryChoices();
 
+    // ⑤ 结局态的世界衔接：玩家自由行动把时间玩到了下一部锚点 →
+    //    自动开新书并覆盖本回合的叙事/选项（结局文本已经看过了）。
+    if (storyProgress.isFinished && _maybeAutoBeginNextBook()) {
+      choices = _buildStoryChoices();
+    }
+
     _maybeRunPeriodicSummary();
     error = null;
     loadingStage = '';
     isLoading = false;
     notifyListeners();
     unawaited(autoSave());
+  }
+
+  /// 「开启下一部」按钮回合：结局态 → 衔接下一部（跨部继承养成状态）。
+  ///
+  /// 【时间怎么推】PS 结局在 6 月，而《密室》从 7 月底讲起——中间的暑假
+  /// 不能让玩家干等几十个空回合，这里一次性快进到下一部开启锚点日，
+  /// 再进入新书第一步。快进走 `fastForwardDays` 全量结算（假期事件/
+  /// 学院杯/月度演化一个不丢），而不是裸跳时间。
+  void _runNextBookTransition() {
+    final days = _bookTransitionDays();
+    if (days > 0) {
+      // 【为什么显式转型】与 `_finalizeTurn` 内的既有口径一致（见该处注释）。
+      (this as GameSystemsMixin).fastForwardDays(days);
+    }
+    final opened = _enterNextBook();
+    if (!opened) {
+      // 未实装书：不快进白烧时间。已经快进的天数当作暑假的一部分——
+      // 玩家至少"过完了假期"，提示也给了，不亏。
+      notifications.add(
+        '📚 下一部的主线还没装载进当前版本，沙盒里的每一年照常可玩。',
+      );
+    }
+    _settleAfterNarrative();
+    // 快进已经手动做过，这里只按常规节拍再走 1 天（锚点日当天的结算）。
+    _finalizeTurn(currentNarrative, kStoryNextBookAction, storyTimeCostDays: 1);
+    choices = _buildStoryChoices();
+
+    _maybeRunPeriodicSummary();
+    error = null;
+    loadingStage = '';
+    isLoading = false;
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  /// 距下一部开启锚点还有多少天（已到/已过/无下一部 = 0）。
+  int _bookTransitionDays() {
+    final nextId = nextStoryBookId(storyProgress.bookId);
+    if (nextId == null) return 0;
+    final b = findStoryBook(nextId);
+    if (b == null) return 0;
+    final delta = b.startAbsoluteDayIndex - worldState.time.absoluteDayIndex;
+    return delta > 0 ? delta : 0;
+  }
+
+  /// 把剧情进度切到下一部书的第一步。
+  ///
+  /// 【继承口径】见 `StoryProgress.beginBook`：养成全继承、游标全重置。
+  /// 【为什么 turnCount 归零】与 `_enterStoryMode` 同一口径——步长进度、
+  /// 摘要节奏、事件种子都按"新书新回合"重新计；游戏周/学院杯等
+  /// 世界态在 `worldState`/`Player` 上，不受影响。
+  bool _enterNextBook() {
+    final sp = storyProgress;
+    final nextId = nextStoryBookId(sp.bookId);
+    if (nextId == null) return false;
+    final nextBook = findStoryBook(nextId);
+    final first = firstStepOfBook(nextId);
+    if (nextBook == null ||
+        nextBook.chapters.isEmpty ||
+        first == null) {
+      _notifyPendingBookOnce(nextId);
+      return false;
+    }
+    storyProgress = StoryProgress.beginBook(
+      bookId: nextId,
+      chapterId: first.chapterId,
+      stepId: first.id,
+      inherited: sp,
+    );
+    _markCanonForStep(first);
+
+    turnCount = 0;
+    lastPlayerAction = '';
+    lastScannedNarrativeHash = null;
+
+    final ordinal = kBookOrder.indexOf(nextId) + 1;
+    currentNarrative = _composeStoryNarrative(
+      StoryBeat(
+        step: first,
+        choice: null,
+        consequence: '',
+        onEnterText: '—— 第 $ordinal 部 · ${nextBook.title} ——\n'
+            '${first.onEnterText ?? ''}'.trim(),
+      ),
+    );
+    choices = _buildStoryChoices();
+    notifications.add('📖 新篇章：《${nextBook.title}》');
+    memory = memory.addWorldEvent(
+      WorldEventRecord(
+        id: 'story_begin_${nextId}',
+        timestamp: worldState.time.format(),
+        title: '新篇章开启',
+        description: '《${nextBook.title}》的剧情开始了。',
+        importance: 8,
+        category: 'personal',
+      ),
+    );
+    debugLog('📖 衔接下一部：$nextId，首步=${first.id}');
+    return true;
+  }
+
+  /// 未实装书的「敬请期待」提示（每个下一部只弹一次，用 flag 去重）。
+  void _notifyPendingBookOnce(String nextId) {
+    final flag = 'kNextBookNotice_$nextId';
+    if (storyProgress.flags.contains(flag)) return;
+    storyProgress = storyProgress.copyWith(
+      flags: [...storyProgress.flags, flag],
+    );
+    final title = findStoryBook(nextId)?.title ?? nextId;
+    notifications.add(
+      '📚 《$title》的主线还没装载进当前版本——沙盒里的每一年照常可玩，'
+      '原著事件网也不会停。',
+    );
+  }
+
+  /// 世界时钟自然走到下一部开启锚点时的自动衔接（每回合结局态检查）。
+  ///
+  /// 【与手动按钮的分工】按钮是「不想干等，快进到夏天」；这个是玩家
+  /// 自由行动玩到了 7 月底——时间到位就自动开新书，不打扰节奏。
+  bool _maybeAutoBeginNextBook() {
+    if (!storyProgress.isFinished) return false;
+    final nextId = nextStoryBookId(storyProgress.bookId);
+    if (nextId == null) return false;
+    final b = findStoryBook(nextId);
+    if (b == null || b.chapters.isEmpty) return false;
+    if (worldState.time.absoluteDayIndex < b.startAbsoluteDayIndex) {
+      return false;
+    }
+    return _enterNextBook();
   }
 
   /// 一次剧情推进的结果，供叙事拼装使用。
@@ -1990,9 +2160,23 @@ $kNarrativeWritingRules
   List<GameChoice> _buildStoryChoices() {
     final progress = storyProgress;
 
-    // 已到结局：只留"回头看"与"继续自由活动"两个出口。
+    // 已到结局：留"衔接下一部 / 回头看 / 继续自由活动"三个出口。
+    //
+    // 【为什么衔接按钮在未实装时也显示】玩家需要知道"故事还有下一章"——
+    // 点下去会得到一次明确的「筹备中」提示（flag 去重，只弹一次），
+    // 而不是在结局文本里猜还有没有后续。
     if (progress.isFinished) {
+      final nextId = nextStoryBookId(progress.bookId);
+      final nextBook = nextId == null ? null : findStoryBook(nextId);
+      final nextReady = nextBook != null && nextBook.chapters.isNotEmpty;
       return [
+        if (nextId != null)
+          GameChoice(
+            text: nextReady
+                ? '别过这一年，向夏天走去（开启《${nextBook.title}》）'
+                : '别过这一年，向夏天走去',
+            action: kStoryNextBookAction,
+          ),
         const GameChoice(text: '回望这段经历', action: '/状态'),
         const GameChoice(text: '在城堡里四处走走', action: '在城堡里四处走走'),
       ];

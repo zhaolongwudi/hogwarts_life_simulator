@@ -459,6 +459,18 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 于是所有既有存档（`extra_data` 里没有这个 key）读进来行为完全不变。
   StoryProgress storyProgress = StoryProgress.inactive;
 
+  /// ===== 魔法世界图鉴（百科收集，见 data/collection_data.dart）=====
+  ///
+  /// 【为什么放基类】写入方在 `GameNarrativeMixin`（每回合 `_finalizeTurn`
+  /// 扫描叙事）与 `GameSystemsMixin`（存档读写），展示方在
+  /// `GameCommandsMixin`（/图鉴）——与上面 storyProgress 同一理由，
+  /// 私有/普通成员不跨 mixin 可见，放共同基类才都能摸到。
+  ///
+  /// 已收录条目 id 集合（对应 kCollectionCatalog）。无任何操作门槛：
+  /// 叙事文本关键词命中即收录；存档走 `extra_data['collection']`，
+  /// 老存档没有该键读入即空集，零迁移。
+  final Set<String> collectionUnlocked = <String>{};
+
   /// 是否处于主线剧情模式（便捷判定，避免各处重复 `storyProgress.active`）。
   bool get isStoryModeActive => storyProgress.active;
 
