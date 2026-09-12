@@ -27,7 +27,7 @@ dependencies:
   path_provider: '>=2.1.4 <3.0.0'
   # 上界卡在 10.0.0：9.x 要求 minSdk >= 23（见 android/app/build.gradle），
   # 升 10.x 前必须先确认 minSdk 与 EncryptedSharedPreferences 的行为变化。
-  flutter_secure_storage: '>=9.0.0 <10.0.0'
+  flutter_secure_storage: ^11.0.0
 
 dev_dependencies:
   flutter_test:
