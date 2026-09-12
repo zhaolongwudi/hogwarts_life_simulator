@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.3.9 — 2026-09-12
+
+**📋 变更说明**
+feat: 七部曲主线全部可玩（《混血王子》《死亡圣器》）+ 原著时间线对齐
+
+内容扩展
+- 新增 lib/data/story_data_hbp.dart：《混血王子》1996-1997，7 章 21 步，
+  覆盖 canon_hbp_return / malfoy_task / potions_book / astronomy_tower。
+  六年级被写成"七年里最后一段平常日子"——先给平静，再用天文塔之夜收走它。
+- 新增 lib/data/story_data_dh.dart：《死亡圣器》1997-1998，7 章 21 步，
+
 ### v4.3.8 — 2026-09-12
 
 **📋 变更说明**
