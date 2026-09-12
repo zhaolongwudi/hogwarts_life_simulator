@@ -1,0 +1,220 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'debug_log.dart';
+import 'log_paths.dart';
+
+class CrashEntry {
+  final DateTime time;
+  final String error;
+  final String stackTrace;
+  final String screen;
+  final String extra;
+
+  CrashEntry({
+    required this.time,
+    required this.error,
+    required this.stackTrace,
+    this.screen = '',
+    this.extra = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'time': time.toIso8601String(),
+    'error': error,
+    'stackTrace': stackTrace,
+    'screen': screen,
+    'extra': extra,
+  };
+
+  factory CrashEntry.fromJson(Map<String, dynamic> j) => CrashEntry(
+    time: DateTime.tryParse(j['time'] ?? '') ?? DateTime.now(),
+    error: (j['error'] ?? '').toString(),
+    stackTrace: (j['stackTrace'] ?? '').toString(),
+    screen: (j['screen'] ?? '').toString(),
+    extra: (j['extra'] ?? '').toString(),
+  );
+}
+
+class CrashLogger {
+  static CrashLogger? _instance;
+  static CrashLogger get instance => _instance ??= CrashLogger._();
+  CrashLogger._();
+
+  List<CrashEntry> _entries = [];
+  List<CrashEntry> get entries => List.unmodifiable(_entries);
+
+  /// 启动时缓存的应用文档目录（path_provider 只能异步取，崩溃 handler 里来不及）。
+  String? _cachedDir;
+
+  /// 最近一次心跳标记 + 时间（崩溃/ANR 后用于定位"卡死前在做什么"）。
+  Map<String, String> get heartbeatSnapshot => _heartbeat;
+  Map<String, String> _heartbeat = {};
+
+  /// 心跳写盘节流：同步写 + flush 的主成本在 fsync，不是写那 100 字节。
+  /// 同一瞬间爆发的连续心跳（如一次 notifyListeners 风暴里连埋 3 个 marker）
+  /// 只落盘第一条，后续只更新内存——卡死定位需要的是"最后一步"，300ms
+  /// 粒度完全够用。P2#17：把每回合 2~4 次同步写盘降到 1~2 次。
+  static const Duration _heartbeatThrottle = Duration(milliseconds: 300);
+  DateTime? _lastHeartbeatWrite;
+
+  File? _logFile;
+  Future<File> _ensureFile() async {
+    if (_logFile != null) return _logFile!;
+    final dir = await getApplicationDocumentsDirectory();
+    _cachedDir = dir.path;
+    _logFile = File('${dir.path}/$kCrashLogFileName');
+    if (!await _logFile!.exists()) {
+      await _logFile!.writeAsString(jsonEncode([]));
+    }
+    return _logFile!;
+  }
+
+  /// 构造一条崩溃记录，并对文本字段做脱敏。
+  ///
+  /// 为什么要脱敏（审查 S2）：崩溃日志会**持久化到设备文件**，而 AI 链路抛出的
+  /// 异常 message 里经常带着请求体、Authorization 头或 Key 片段
+  /// （Dio 的 DioException 尤其爱把整个 requestOptions 塞进 message）。
+  /// 不处理的话等于把密钥写进用户存储，还会被设置页的日志展示/导出带出去。
+  ///
+  /// 脱敏放在这一个函数里、而不是 record / recordSync 各写一遍，是为了保证
+  /// 同步与异步两条路径行为完全一致 —— 漏一条就等于没做。
+  static CrashEntry _sanitizedEntry({
+    required dynamic error,
+    required StackTrace? stack,
+    required String screen,
+    required String extra,
+  }) {
+    return CrashEntry(
+      time: DateTime.now(),
+      error: redactSecrets(error?.toString() ?? 'unknown error'),
+      stackTrace: redactSecrets(stack?.toString() ?? ''),
+      screen: screen,
+      extra: redactSecrets(extra),
+    );
+  }
+
+  /// 同步崩溃记录（崩溃 handler 专用）。
+  ///
+  /// 崩溃瞬间进程随时可能被系统杀掉——此前 record() 用异步写文件，
+  /// 写完前进程一死，崩溃就"没有记录"了。这里用同步写 + flush:true，
+  /// 崩溃 handler 里的同步写入一定落盘。
+  void recordSync(
+    dynamic error,
+    StackTrace? stack, {
+    String screen = '',
+    String extra = '',
+  }) {
+    final entry = _sanitizedEntry(
+      error: error,
+      stack: stack,
+      screen: screen,
+      extra: extra,
+    );
+    _entries.insert(0, entry);
+    if (_entries.length > 50) _entries = _entries.sublist(0, 50);
+    final dir = _cachedDir;
+    if (dir == null) return;
+    try {
+      final f = File('$dir/$kCrashLogFileName');
+      f.writeAsStringSync(
+        jsonEncode(_entries.map((e) => e.toJson()).toList()),
+        flush: true,
+      );
+    } catch (e) {
+      debugLog('[CrashLogger] 同步落盘失败: $e');
+    }
+  }
+
+  /// 心跳：记录"最近一次正在做什么"。
+  ///
+  /// ANR（主线程卡死，UI 冻结后系统杀进程）不会触发任何 onError，
+  /// 异常记录永远接不到。靠心跳文件在下次启动时定位卡死前的最后一步。
+  /// 只在回合边界调用（每回合 2~4 次）；同步写盘但带 300ms 节流，
+  /// 同一瞬间的连续 marker 只落盘第一条（内存始终是最新的）。
+  void logHeartbeat(String marker) {
+    final now = DateTime.now();
+    _heartbeat = {'time': now.toIso8601String(), 'marker': marker};
+    final dir = _cachedDir;
+    if (dir == null) return;
+    if (_lastHeartbeatWrite != null &&
+        now.difference(_lastHeartbeatWrite!) < _heartbeatThrottle) {
+      return; // 节流窗口内只更新内存，不落盘
+    }
+    _lastHeartbeatWrite = now;
+    try {
+      File(
+        '$dir/$kHeartbeatFileName',
+      ).writeAsStringSync(jsonEncode(_heartbeat), flush: true);
+    } catch (e) {
+      debugLog('❌ 心跳写盘失败: $e');
+    }
+  }
+
+  /// 启动时读取上次崩溃/卡死前的心跳（供设置页诊断展示）。
+  void loadHeartbeat() {
+    final dir = _cachedDir;
+    if (dir == null) return;
+    try {
+      final f = File('$dir/$kHeartbeatFileName');
+      if (f.existsSync()) {
+        _heartbeat = Map<String, String>.from(
+          jsonDecode(f.readAsStringSync()) as Map,
+        );
+      }
+    } catch (e) {
+      debugLog('❌ 心跳读取失败: $e');
+    }
+  }
+
+  Future<void> load() async {
+    try {
+      final f = await _ensureFile();
+      final content = await f.readAsString();
+      final list = jsonDecode(content) as List<dynamic>;
+      _entries = list
+          .map((e) => CrashEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+      loadHeartbeat();
+    } catch (e) {
+      debugLog('[CrashLogger] 读取日志失败: $e');
+      _entries = [];
+    }
+  }
+
+  Future<void> record(
+    dynamic error,
+    StackTrace? stack, {
+    String screen = '',
+    String extra = '',
+  }) async {
+    final entry = _sanitizedEntry(
+      error: error,
+      stack: stack,
+      screen: screen,
+      extra: extra,
+    );
+    _entries.insert(0, entry);
+    if (_entries.length > 50) _entries = _entries.sublist(0, 50);
+
+    try {
+      final f = await _ensureFile();
+      final out = _entries.map((e) => e.toJson()).toList();
+      await f.writeAsString(jsonEncode(out), flush: true);
+    } catch (e) {
+      debugLog('[CrashLogger] 落盘失败: $e');
+    }
+  }
+
+  Future<void> clear() async {
+    _entries = [];
+    try {
+      final f = await _ensureFile();
+      await f.writeAsString(jsonEncode([]), flush: true);
+    } catch (e) {
+      debugLog('❌ 日志清空失败: $e');
+    }
+  }
+}

@@ -1,0 +1,818 @@
+import 'package:flutter/material.dart';
+import '../../utils/ui_helpers.dart';
+import '../../data/provider_defaults.dart';
+import '../../providers/app_provider.dart';
+import '../../services/rate_limiter.dart';
+import '../../theme/miuix_tokens.dart';
+import '../../widgets/miuix_overlays.dart';
+
+/// AI 提供商配置卡片（可折叠）。
+/// 收起态：提供商名称 + 一句话定位 + 当前模型 + 配置状态，一眼总览。
+/// 展开态：完整说明 + API Key（可切换明文）+ 模型预设 + 自定义模型 + 连接测试。
+/// 未配置 Key 的提供商默认展开，引导用户先完成配置。
+class SettingsProviderCard extends StatefulWidget {
+  final AiProvider provider;
+  final AppProvider appProvider;
+  final TextEditingController keyController;
+  final TextEditingController modelController;
+  final bool testing;
+  final String? testResult;
+  final bool? testSuccess;
+  final VoidCallback? onSave;
+  final VoidCallback? onTest;
+  final void Function(String model)? onModelPresetSelected;
+
+  const SettingsProviderCard({
+    super.key,
+    required this.provider,
+    required this.appProvider,
+    required this.keyController,
+    required this.modelController,
+    required this.testing,
+    this.testResult,
+    this.testSuccess,
+    this.onSave,
+    this.onTest,
+    this.onModelPresetSelected,
+  });
+
+  @override
+  State<SettingsProviderCard> createState() => _SettingsProviderCardState();
+}
+
+class _SettingsProviderCardState extends State<SettingsProviderCard> {
+  late bool _expanded;
+  bool _obscureKey = true;
+  bool _obscureAdditionalKeys = true;
+
+  /// 额外 API Key 的控制器（第一个 key 使用 widget.keyController）
+  final List<TextEditingController> _additionalKeyControllers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // 未配置的提供商默认展开，引导填写；已配置的收起保持页面整洁
+    _expanded = !widget.appProvider.hasKey(widget.provider);
+    // 同步已有额外 key
+    _syncAdditionalKeyControllers();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsProviderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当 AppProvider 的数据变化时，同步额外 key 控制器
+    if (oldWidget.appProvider != widget.appProvider) {
+      _syncAdditionalKeyControllers();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _additionalKeyControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  // F12：模型输入变化不再 setState 整卡重建 —— 头部「当前模型」与
+  // 预设高亮改用 ValueListenableBuilder 监听 modelController 局部刷新。
+
+  /// 将 AppProvider 中的额外 key 同步到本地控制器
+  void _syncAdditionalKeyControllers() {
+    final allKeys = widget.appProvider.keysForProvider(widget.provider);
+    // 第一个 key 已经由 widget.keyController 管理，从第二个开始
+    final expectedExtraCount = allKeys.length > 1 ? allKeys.length - 1 : 0;
+
+    // 如果当前控制器比需要的多，移除多余的
+    while (_additionalKeyControllers.length > expectedExtraCount) {
+      _additionalKeyControllers.last.dispose();
+      _additionalKeyControllers.removeLast();
+    }
+
+    // 如果当前控制器比需要的少，添加缺少的
+    if (allKeys.length > 1) {
+      for (int i = 1; i < allKeys.length; i++) {
+        final existingIdx = i - 1;
+        if (existingIdx < _additionalKeyControllers.length) {
+          // 如果控制器已存在，同步文本（避免覆盖用户正在编辑的文字）
+          if (_additionalKeyControllers[existingIdx].text.isEmpty) {
+            _additionalKeyControllers[existingIdx].text = allKeys[i];
+          }
+        } else {
+          // 新建控制器
+          final ctrl = TextEditingController(text: allKeys[i]);
+          _additionalKeyControllers.add(ctrl);
+        }
+      }
+    }
+
+    // 如果状态变化了，重绘
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // 以下四项原先各写一份 switch，与 AiConfig 工厂、AppProvider._defaultModel
+  // 以及两个设置页的副本取值不一致。统一读 lib/data/provider_defaults.dart。
+  String defaultBaseUrl(AiProvider p) => defaultsForProvider(p.name).baseUrl;
+
+  String defaultModel(AiProvider p) => defaultsForProvider(p.name).model;
+
+  String providerNameLabel(AiProvider p) => providerDisplayName(p.name);
+
+  /// 一句话定位（收起态显示，帮助用户快速区分三家）
+  String _tagline(AiProvider p) => defaultsForProvider(p.name).tagline;
+
+  Color _providerColor(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return const Color(0xFF4D6BFE);
+      case AiProvider.agnes:
+        return MiuiColors.success;
+      case AiProvider.sensenova:
+        return const Color(0xFFFF8A3D);
+    }
+  }
+
+  IconData _providerIcon(AiProvider p) {
+    switch (p) {
+      case AiProvider.deepseek:
+        return Icons.water_outlined;
+      case AiProvider.agnes:
+        return Icons.bolt_outlined;
+      case AiProvider.sensenova:
+        return Icons.auto_awesome_outlined;
+    }
+  }
+
+  Widget _buildModelPresets(AiProvider p, AppProvider appProvider) {
+    final freeModels = appProvider.freeModelsFor(p);
+    final paidModels = appProvider.popularPaidModelsFor(p);
+
+    // F12：预设高亮跟随 modelController 局部刷新，不触发整卡 setState
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: widget.modelController,
+      builder: (context, value, _) {
+        final current = value.text.trim();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (freeModels.isNotEmpty)
+              _buildModelChipRow(
+                p,
+                '🎁 免费额度',
+                freeModels,
+                current,
+                MiuiColors.success,
+              ),
+            if (freeModels.isNotEmpty && paidModels.isNotEmpty)
+              const SizedBox(height: 6),
+            if (paidModels.isNotEmpty)
+              _buildModelChipRow(
+                p,
+                '⭐ 推荐付费',
+                paidModels,
+                current,
+                MiuiColors.primary,
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildModelChipRow(
+    AiProvider p,
+    String label,
+    List<String> models,
+    String current,
+    Color accent,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: accent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: models.map((model) {
+            final selected = current == model;
+            // Q12：SenseNova 按模型分档限流（1500/500 次每 5 小时），
+            // chip 上直接标注。数据源与限流闸门共用 quotaForModel，
+            // 不在这里再抄一份数字——设置页与执行层对不上就是这类「第二份」造成的。
+            final quotaHint = _quotaHintFor(p, model);
+            return InkWell(
+              onTap: () {
+                widget.modelController.text = model;
+                // 选完预设后，光标移到末尾方便编辑
+                widget.modelController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: widget.modelController.text.length),
+                );
+                widget.onModelPresetSelected?.call(model);
+                // F12：modelController 变化已由 ValueListenableBuilder 接管，
+                // 无需再 setState 整卡重建。
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? accent.withValues(alpha: 0.18)
+                      : MiuiColors.surfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: selected ? accent : MiuiColors.outline,
+                    width: selected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text.rich(
+                  TextSpan(
+                    text: model,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: selected ? accent : MiuiColors.onSurface,
+                      fontWeight:
+                          selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    children: [
+                      if (quotaHint != null)
+                        TextSpan(
+                          text: '  $quotaHint',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: selected
+                                ? accent.withValues(alpha: 0.8)
+                                : MiuiColors.onSurfaceVariantSummary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// SenseNova 模型配额标注（1500/500 次每 5 小时）；其他提供商返回 null。
+  ///
+  /// 只给 SenseNova 标注：Agnes 是 20 RPM 维度（卡片说明区已写）、
+  /// DeepSeek 按量计费无限流。数字从限流闸门取，杜绝两处维护。
+  String? _quotaHintFor(AiProvider p, String model) {
+    if (p != AiProvider.sensenova) return null;
+    return '${SenseNovaQuotaManager.quotaForModel(model)}次/5h';
+  }
+
+  /// 收起/展开共用的头部行
+  Widget _buildHeader(bool hasKey, {int keyCount = 0}) {
+    final p = widget.provider;
+    final accent = _providerColor(p);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // 提供商标识
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+                border: Border.all(color: accent.withValues(alpha: 0.4)),
+              ),
+              child: Icon(_providerIcon(p), size: 18, color: accent),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        providerNameLabel(p),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _tagline(p),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: MiuiColors.onSurfaceVariantSummary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  // F12：当前模型文本跟随 modelController 局部刷新，
+                  // 不在每次击键时重建整个头部与卡片。
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: widget.modelController,
+                    builder: (context, value, _) {
+                      final customModel = value.text.trim();
+                      final displayModel =
+                          customModel.isEmpty ? defaultModel(p) : customModel;
+                      final isDefaultModel = displayModel == defaultModel(p);
+                      return Row(
+                        children: [
+                          const Icon(
+                            Icons.memory_outlined,
+                            size: 12,
+                            color: MiuiColors.onSurfaceVariantActions,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              displayModel,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDefaultModel
+                                    ? MiuiColors.onSurfaceVariantActions
+                                    : accent,
+                              ),
+                            ),
+                          ),
+                          if (isDefaultModel)
+                            const Text(
+                              '默认',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: MiuiColors.onSurfaceVariantActions,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 配置状态徽章
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: hasKey
+                    ? MiuiColors.success.withValues(alpha: 0.15)
+                    : Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasKey
+                      ? MiuiColors.success.withValues(alpha: 0.5)
+                      : Colors.orange.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Text(
+                hasKey ? (keyCount > 1 ? '$keyCount Keys' : '已配置') : '未配置',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: hasKey ? MiuiColors.success : Colors.orange,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              _expanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+              color: MiuiColors.onSurfaceVariantSummary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 展开态：完整配置区
+  Widget _buildExpandedBody(bool hasKey) {
+    final p = widget.provider;
+    final desc = kProviderDescriptions[p] ?? '';
+    final testResult = widget.testResult;
+    final testSuccess = widget.testSuccess;
+    final keyCount = widget.appProvider.keyCount(p);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 详细说明
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: MiuiColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              desc,
+              style: const TextStyle(
+                color: MiuiColors.onSurfaceVariantSummary,
+                fontSize: 11.5,
+                height: 1.45,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Text(
+                'API Key',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: MiuiColors.onSurfaceVariantSummary,
+                ),
+              ),
+              if (keyCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: MiuiColors.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$keyCount 个 Key',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: MiuiColors.success,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // 第一个 Key
+          _buildKeyInputRow(
+            controller: widget.keyController,
+            obscureText: _obscureKey,
+            helperText: 'Key 1',
+            showDelete: false,
+            onToggleVisibility: () =>
+                setState(() => _obscureKey = !_obscureKey),
+          ),
+
+          // 额外 Key
+          for (int i = 0; i < _additionalKeyControllers.length; i++) ...[
+            const SizedBox(height: 6),
+            _buildKeyInputRow(
+              controller: _additionalKeyControllers[i],
+              obscureText: _obscureAdditionalKeys,
+              helperText: 'Key ${i + 2}',
+              showDelete: true,
+              onDelete: () async {
+                final ok = await confirmDangerDialog(
+                  context,
+                  title: '删除此 Key',
+                  message: '确定要删除第 ${i + 1} 个 API Key 吗？删除后无法恢复。',
+                  confirmText: '删除',
+                );
+                if (ok) _confirmDeleteKey(i + 1);
+              },
+              onToggleVisibility: () => setState(
+                () => _obscureAdditionalKeys = !_obscureAdditionalKeys,
+              ),
+            ),
+          ],
+
+          // 添加新 Key 按钮
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _addNewKey,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('添加 API Key', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: MiuiColors.success.withValues(alpha: 0.5),
+                ),
+                foregroundColor: MiuiColors.success,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+          const Text(
+            '模型（可选覆盖默认）',
+            style: TextStyle(
+              fontSize: 12,
+              color: MiuiColors.onSurfaceVariantSummary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: widget.modelController,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: defaultModel(p),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 40,
+                child: OutlinedButton(
+                  onPressed: widget.testing ? null : widget.onTest,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: MiuiColors.primary),
+                    foregroundColor: MiuiColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: const Size(0, 40),
+                  ),
+                  child: widget.testing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: MiuiColors.primary,
+                          ),
+                        )
+                      : const Text(
+                          '测试',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildModelPresets(p, widget.appProvider),
+          if (testResult != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: (testSuccess ?? false)
+                    ? MiuiColors.success.withValues(alpha: 0.15)
+                    : Colors.red.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    (testSuccess ?? false) ? Icons.check_circle : Icons.error,
+                    size: 14,
+                    color: (testSuccess ?? false)
+                        ? MiuiColors.success
+                        : Colors.red,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      testResult,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: (testSuccess ?? false)
+                            ? MiuiColors.success
+                            : Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (!hasKey) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(
+                  Icons.tips_and_updates_outlined,
+                  size: 13,
+                  color: MiuiColors.primary,
+                ),
+                SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '填入 API Key 并点击「保存」后，该提供商才会出现在场景路由的可选列表中。多个 Key 可提升并发上限（每个 Key 独立 20 RPM）',
+                    style: TextStyle(fontSize: 10.5, color: MiuiColors.primary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyInputRow({
+    required TextEditingController controller,
+    required bool obscureText,
+    required String helperText,
+    required bool showDelete,
+    required VoidCallback onToggleVisibility,
+    VoidCallback? onDelete,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'sk-...',
+              helperText: helperText,
+              helperStyle: const TextStyle(
+                fontSize: 10,
+                color: MiuiColors.onSurfaceVariantActions,
+              ),
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscureText
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 18,
+                  color: MiuiColors.onSurfaceVariantSummary,
+                ),
+                onPressed: onToggleVisibility,
+              ),
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 34,
+                minHeight: 0,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        if (showDelete && onDelete != null)
+          SizedBox(
+            height: 40,
+            child: IconButton(
+              onPressed: onDelete,
+              icon: const Icon(
+                Icons.remove_circle_outline,
+                color: Colors.red,
+                size: 20,
+              ),
+              tooltip: '删除此 Key',
+            ),
+          ),
+        const SizedBox(width: 6),
+        SizedBox(
+          height: 40,
+          child: ElevatedButton(
+            onPressed: () async {
+              await _saveAllKeys();
+              // S1：Android 无锁屏设备上安全存储可能写入失败，
+              // key 只活在内存里、重启即丢 —— 必须让用户知道原因。
+              if (widget.appProvider.secureStorageDegraded) {
+                if (!mounted) return;
+                widget.appProvider.clearSecureStorageDegraded();
+                showMiuixDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('密钥可能无法持久保存'),
+                    content: const Text(
+                      '当前设备的安全存储不可用（常见于未设置锁屏密码）。'
+                      'API Key 仅保存在内存中，重启应用后可能丢失。\n\n'
+                      '建议先在系统设置中开启锁屏密码，再重新保存。',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('知道了'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              widget.onSave?.call();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MiuiColors.primary,
+              foregroundColor: MiuiColors.surfaceContainerHigh,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              minimumSize: const Size(0, 40),
+            ),
+            child: const Text(
+              '保存',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveAllKeys() async {
+    final p = widget.provider;
+    final allKeys = <String>[];
+    // 第一个 key
+    final firstKey = widget.keyController.text.trim();
+    if (firstKey.isNotEmpty) allKeys.add(firstKey);
+    // 额外 key
+    for (final ctrl in _additionalKeyControllers) {
+      final key = ctrl.text.trim();
+      if (key.isNotEmpty) allKeys.add(key);
+    }
+    // 一次性写入 provider（避免多次 notifyListeners）
+    await widget.appProvider.setAllKeysForProvider(p, allKeys);
+  }
+
+  void _addNewKey() {
+    setState(() {
+      _additionalKeyControllers.add(TextEditingController());
+    });
+  }
+
+  void _confirmDeleteKey(int index) {
+    final p = widget.provider;
+    // 先保存控制器文本，再删除
+    final ctrl = _additionalKeyControllers[index - 1];
+    if (ctrl.text.trim().isNotEmpty) {
+      widget.appProvider.removeApiKeyAt(p, index);
+    }
+    setState(() {
+      ctrl.dispose();
+      _additionalKeyControllers.removeAt(index - 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasKey = widget.appProvider.hasKey(widget.provider);
+    final keyCount = widget.appProvider.keyCount(widget.provider);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: MiuiColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasKey
+              ? MiuiColors.success.withValues(alpha: 0.55)
+              : MiuiColors.disabledOnSurface,
+          width: hasKey ? 1.3 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(hasKey, keyCount: keyCount),
+          if (_expanded) ...[
+            const Divider(height: 1, color: MiuiColors.outline),
+            _buildExpandedBody(hasKey),
+          ],
+        ],
+      ),
+    );
+  }
+}

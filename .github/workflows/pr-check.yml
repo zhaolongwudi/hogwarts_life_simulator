@@ -1,0 +1,49 @@
+name: PR Check
+
+# P1-6：PR 阶段就跑 analyze + test，合入 main 前先验证。
+# 此前三个 workflow 都只监听 push，代码合入 main 才第一次验证——
+# 问题只能在 main 上被发现。此 workflow 不做 bump/push/release。
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  # upload-artifact 需要 actions: write；只写 contents 会把其余权限压成 none
+  actions: write
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # 与 android-build.yml 保持同一版本，避免 PR 绿了、main 红了。
+          channel: 'stable'
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: |
+          # fatal-infos 默认开启，必须显式关掉（同 android-build.yml）
+          set -o pipefail
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee analyze_output.log
+
+      - name: Upload analyze log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-log-pr-${{ github.sha }}
+          path: analyze_output.log
+          retention-days: 14
+
+      - name: Run tests
+        run: flutter test

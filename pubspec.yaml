@@ -1,0 +1,44 @@
+name: hogwarts_life_simulator
+description: HogwartLige - 霍格沃茨AI人生模拟器
+publish_to: 'none'
+version: 4.3.6+437
+
+environment:
+  # 约束必须与实际解析一致：pubspec.lock 中 dart >=3.12.0 / flutter >=3.44.0
+  # （flutter_secure_storage 9.x 等传递依赖抬高），写低了会让用户 pub get 直接失败
+  sdk: '>=3.12.0 <4.0.0'
+  flutter: '>=3.44.0'
+
+# F45：依赖一律写成显式上界（>=当前 <下一个 major）。
+# ^x.y.z 在 Dart 里本来就等价于 >=x.y.z <(x+1).0.0，语义上并没有放宽；
+# 写成显式区间的好处是「这个包我们允许它升到哪一版」变成一行看得见的事实，
+# 配合 .github/dependabot.yml（F46）按 major 单独提 PR，
+# 不会出现某天 pub get 悄悄跨了 major、breaking change 混进一次无关提交。
+# 上界一律取 pubspec.lock 当前解析版本的下一个 major，不收窄现有解析结果。
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: '>=1.0.8 <2.0.0'
+  dio: '>=5.4.3 <6.0.0'
+  provider: '>=6.1.2 <7.0.0'
+  shared_preferences: '>=2.5.0 <3.0.0'
+  uuid: '>=4.3.3 <5.0.0'
+  flutter_slidable: '>=3.1.0 <4.0.0'
+  path_provider: '>=2.1.4 <3.0.0'
+  # 上界卡在 10.0.0：9.x 要求 minSdk >= 23（见 android/app/build.gradle），
+  # 升 10.x 前必须先确认 minSdk 与 EncryptedSharedPreferences 的行为变化。
+  flutter_secure_storage: '>=9.0.0 <10.0.0'
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: '>=4.0.0 <6.0.0'
+  # P1：性能基准测试基础设施（benchmark_harness，dart-lang 官方）。
+  benchmark_harness: '>=2.3.0 <3.0.0'
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/avatars/
+  shaders:
+    - shaders/liquid_glass.frag
