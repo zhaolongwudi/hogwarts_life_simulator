@@ -26,6 +26,7 @@ import '../data/scar_data.dart';
 import '../data/era_data.dart';
 import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
+import '../data/canon_events.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
@@ -1210,9 +1211,6 @@ $kNarrativeWritingRules
     // 表白会改写 currentNarrative 并写好「接受/婉拒」两个专属选项，
     // 这时候不能再用承接型兜底选项把它冲掉。
     final confessedThisTurn = _settleAfterNarrative();
-    if (!confessedThisTurn) {
-      choices = buildFallbackChoices(currentNarrative);
-    }
 
     _finalizeTurn(currentNarrative, action);
 
@@ -1242,12 +1240,82 @@ $kNarrativeWritingRules
       }
     }
 
+    // ====== 原著剧情线注入（离线叙事升级）======
+    // 离线模式以前只有「地点氛围句 + 学年日历事件」，读起来像在原地打转：
+    // 世界不会因为处于 1993 年而提到小天狼星越狱，也不会因为是 1995 年
+    // 而提到魔法部接管学校。这里接入原著时间线，让「年份」真正有分量。
+    //
+    // 三个关键点：
+    //   1. 走 dueCanonEvents 纯函数，与 AI 路径的锚点机制**分离**——
+    //      原著大事是「整个存档一次」，不同于 EventAnchor 的「每学年一次」，
+    //      混用会让 1991 年发生过的密室在 1992 年又冒出来。
+    //   2. 与 EventAnchor **共用** firedAnchorIds 做去重（id 带 `canon_` 前缀），
+    //      避免两个系统各记一份、存档里出现同义的两套已触发集合。
+    //   3. 每回合最多注入一条，与 _checkEventAnchors 的节流口径一致。
+    _injectCanonEventIntoOfflineNarrative();
+
+    // 【顺序很关键】兜底选项必须在**原著节点注入之后**才生成。
+    // 原先这一行写在 _finalizeTurn 之前，比注入早了两步，导致两个后果：
+    //   1. 节点标题还没进 currentNarrative，buildFallbackChoices 拿到的
+    //      末尾文本里根本没有事件，自然生成不出事件相关选项；
+    //   2. `lastCanonEventTitle` 当时还是上一回合的旧值（或 null），
+    //      选项侧读到的是过时信息。
+    // 现在挪到注入之后，玩家能立刻对这个月刚发生的原著事件做出反应。
+    // 表白那回合仍不覆盖——它有自己的「接受/婉拒」专属选项。
+    if (!confessedThisTurn) {
+      choices = buildFallbackChoices(currentNarrative);
+    }
+
     _maybeRunPeriodicSummary();
     error = null;
     loadingStage = '';
     isLoading = false;
     notifyListeners();
     unawaited(autoSave());
+  }
+
+  /// 把命中的原著剧情节点融进离线叙事（`_runOfflineQuickTurn` 调用）。
+  ///
+  /// 【为什么单独抽成方法而不是内联】它有三条需要被单测直接钉住的规则
+  /// （时代过滤 / 一次性触发 / 每回合最多一条），内联在 1300 行的方法里
+  /// 就只能靠"跑整个离线回合"间接验证，定位失败原因成本很高。
+  @visibleForTesting
+  void injectCanonEventForTest() => _injectCanonEventIntoOfflineNarrative();
+
+
+  void _injectCanonEventIntoOfflineNarrative() {
+    final p = player;
+    if (p == null) return;
+
+    final t = worldState.time;
+    final due = dueCanonEvents(
+      year: t.year,
+      month: t.month,
+      grade: p.grade ?? 1,
+      era: worldState.era,
+      firedIds: worldState.firedAnchorIds,
+      limit: 1,
+    );
+    if (due.isEmpty) return;
+
+    final event = due.first;
+    worldState.firedAnchorIds.add(event.id);
+
+    final block = '📖 ${event.title}\n${event.directive}';
+    if (!currentNarrative.contains(event.title)) {
+      currentNarrative = '$currentNarrative\n\n$block';
+    }
+    notifications.add('📖 ${event.title}');
+    worldState.addNarrativeEvent('📖 ${event.title}', turn: turnCount);
+
+    // 把刚触发的节点名记下来，供 buildFallbackChoices 生成「有针对性的选项」。
+    // 为什么不在选项侧重新过滤一遍：buildFallbackChoices 拿不到「本回合
+    // 触发的是哪条」，再跑一次 dueCanonEvents 会因为 id 已被写进
+    // firedAnchorIds 而返回空。所以由触发方单向告知。
+    lastCanonEventTitle = event.title;
+    lastCanonEventDirective = event.directive;
+
+    debugLog('📖 原著节点注入: ${event.id}（${event.bookRef}）');
   }
 
   /// Q13：本地兜底叙事的事件种子池——按地点分池 + 时间条件化 + 大通用池轮转。
