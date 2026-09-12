@@ -12,7 +12,7 @@ import '../theme/miuix_typography.dart';
 import '../widgets/miui_magic_backdrop.dart';
 import '../widgets/miuix_components.dart';
 
-/// 十三轮初始设定流程
+/// 十四轮初始设定流程
 class IntroScreen extends StatefulWidget {
   const IntroScreen({super.key});
 
@@ -23,6 +23,10 @@ class IntroScreen extends StatefulWidget {
 class _IntroScreenState extends State<IntroScreen> {
   final PageController _pageController = PageController();
   int _step = 0;
+
+  /// 是否选择「主线剧情」模式（第十三轮）。
+  /// 默认 false = 自由沙盒（与历史版本行为一致，老玩家无感知）。
+  bool _storyMode = false;
 
   // ===== 十三轮设定数据 =====
   static const List<String> _stepTitles = [
@@ -38,7 +42,8 @@ class _IntroScreenState extends State<IntroScreen> {
     '第十轮 · 宠物',
     '第十一轮 · 好友关系',
     '第十二轮 · 剧情起点',
-    '第十三轮 · 最终确认',
+    '第十三轮 · 玩法模式',
+    '第十四轮 · 最终确认',
   ];
 
   // 1. 时代（8选项 → 框架1 四大时代 + 框架2 §12 五时代对齐，消除同名映射）
@@ -244,7 +249,7 @@ class _IntroScreenState extends State<IntroScreen> {
     if (!_validateCurrentStep()) {
       return;
     }
-    if (_step < 12) {
+    if (_step < 13) {
       setState(() => _step++);
       _pageController.nextPage(
         duration: MiuiDuration.fadeMedium,
@@ -317,6 +322,15 @@ class _IntroScreenState extends State<IntroScreen> {
       Era.random, // 随机时代
     ];
     appProvider.setEra(eraMap[_eraIndex]);
+
+    // 主线剧情模式联动：剧情引擎挂在离线分支上（0 AI 调用是硬前提），
+    // 所以选剧情模式必须**同时**打开「无 AI 快速模式」。
+    // 这是硬依赖而非偏好——没有它，processChoice 会因为"没有 AI 服务
+    // 且未开离线"直接报错返回。
+    await appProvider.setStoryMode(_storyMode);
+    if (_storyMode && !appProvider.offlineQuickMode) {
+      await appProvider.setOfflineQuickMode(true);
+    }
 
     // 默认名字统一走 kPetDefaultNames——对角巷买宠物用的是同一张表，
     // 免得问卷里叫「猫」、买回来叫「巫师猫」。
@@ -407,6 +421,7 @@ class _IntroScreenState extends State<IntroScreen> {
                     _buildPetStep(),
                     _buildFriendStep(),
                     _buildStartStep(),
+                    _buildModeStep(),
                     _buildConfirmStep(),
                   ],
                 ),
@@ -425,7 +440,7 @@ class _IntroScreenState extends State<IntroScreen> {
       child: Row(
         children: [
           Text(
-            '${_step + 1}/13',
+            '${_step + 1}/14',
             style: MiuiType.footnote1.copyWith(
               color: MiuiColors.onSurfaceVariantSummary,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -436,7 +451,7 @@ class _IntroScreenState extends State<IntroScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(3),
               child: LinearProgressIndicator(
-                value: (_step + 1) / 13,
+                value: (_step + 1) / 14,
                 minHeight: 4,
                 valueColor: const AlwaysStoppedAnimation(MiuiColors.primary),
               ),
@@ -458,7 +473,7 @@ class _IntroScreenState extends State<IntroScreen> {
 
   Widget _buildNavButtons() {
     final canProceed = _canProceed();
-    final isLast = _step == 12;
+    final isLast = _step == 13;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
@@ -1000,6 +1015,56 @@ class _IntroScreenState extends State<IntroScreen> {
     );
   }
 
+  // ==================== 第十三轮 · 玩法模式 ====================
+  Widget _buildModeStep() {
+    return _buildStepShell(
+      '玩法模式',
+      '你想怎么经历这一年？',
+      ListView(
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 16),
+        children: [
+          _buildRadioCard(
+            title: '📖 主线剧情',
+            selected: _storyMode,
+            onTap: () => setState(() => _storyMode = true),
+          ),
+          if (_storyMode)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Text(
+                '按《魔法石》原著时间线推进：一章一个节拍，'
+                '每一步都有选择；你的选择影响自己的结局，'
+                '但不会改写原著大局。全程离线，不消耗 AI 额度。',
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: MiuiColors.onSurfaceVariantSummary,
+                ),
+              ),
+            ),
+          _buildRadioCard(
+            title: '🎲 自由沙盒',
+            selected: !_storyMode,
+            onTap: () => setState(() => _storyMode = false),
+          ),
+          if (!_storyMode)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Text(
+                '想做什么就做什么：上课、探险、社交、恋爱，'
+                '世界随你的选择而动（原有玩法）。',
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: MiuiColors.onSurfaceVariantSummary,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   // ==================== 第十三轮 · 最终确认 ====================
   Widget _buildConfirmStep() {
     final wand = _selectedWandId != null ? wandById(_selectedWandId!) : null;
@@ -1027,6 +1092,7 @@ class _IntroScreenState extends State<IntroScreen> {
           _buildSummaryRow('宠物', _petName ?? '无'),
           _buildSummaryRow('好友', _friendChoice),
           _buildSummaryRow('起点', _startPoint),
+          _buildSummaryRow('玩法', _storyMode ? '📖 主线剧情' : '🎲 自由沙盒'),
         ],
       ),
     );

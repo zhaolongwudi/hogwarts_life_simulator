@@ -19,6 +19,7 @@ import '../data/attribute_data.dart';
 import '../services/save_service.dart';
 import '../models/player.dart';
 import '../models/long_term_memory.dart';
+import '../models/story_progress.dart';
 import '../data/balance_constants.dart';
 import '../data/goal_data.dart';
 import '../data/parallel_data.dart';
@@ -2821,6 +2822,10 @@ mixin GameSystemsMixin on GameProviderBase {
     'quest_board_week': questBoardWeek,
     'npc_generated_this_school_year': npcGeneratedThisSchoolYear,
     'npc_generation_school_year': npcGenerationSchoolYear,
+    // 主线剧情进度（null = 非剧情模式，老存档自然没有这个 key）。
+    // 走 extra_data 通道而不是 Player/WorldState 的 fromJson，
+    // 是为了零迁移风险——见 lib/models/story_progress.dart 的文件头注释。
+    'story_progress': storyProgress.toJson(),
   };
 
   /// 统一的存档写入：快速存档 / 命名存档 / 自动存档都走这里。
@@ -2986,6 +2991,21 @@ mixin GameSystemsMixin on GameProviderBase {
       npcGenerationSchoolYear =
           extraData['npc_generation_school_year'] as int? ??
           npcGenerationSchoolYear;
+
+      // 主线剧情进度。老存档没有这个 key → fromJson(null) 返回 inactive，
+      // 行为与加此功能之前完全一致（零迁移）。这是设计里"老存档兼容"的落点。
+      //
+      // 【为什么手写 as 而不是直接 cast】手改/损坏的存档里这个 key 可能是
+      // 任意类型（字符串、列表…）。`as Map<String, dynamic>?` 抛出的
+      // TypeError 会打断整个 applySaveData（整局读档失败），而剧情进度
+      // 丢了最多回到沙盒模式。局部 try 包住，脏数据只损失剧情进度本身。
+      try {
+        storyProgress = StoryProgress.fromJson(
+          extraData['story_progress'] as Map<String, dynamic>?,
+        );
+      } catch (_) {
+        storyProgress = StoryProgress.inactive;
+      }
 
       recentTurns
         ..clear()

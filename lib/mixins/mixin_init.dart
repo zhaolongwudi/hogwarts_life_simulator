@@ -613,6 +613,15 @@ mixin GameInitMixin on GameProviderBase {
       this.openingScene = openingScene;
       await _generateOpeningScene();
 
+      // 主线剧情模式：用第 1 章第 1 步的内容**替换**沙盒开场叙事，
+      // 让玩家一进来就在剧情里（而不是先看到一段自由沙盒的开场白）。
+      // 【为什么放在 _generateOpeningScene 之后而不是替代它】
+      // 沙盒开场顺带做了初始化（recentTurns / 摘要缓冲 / 本地分院等），
+      // 全部走完再覆盖叙事与选项，其余初始化成果都保留。
+      if (appProvider.storyMode) {
+        enterStoryMode();
+      }
+
       // 本地分院衔接：当玩家选择「hall（大礼堂）」或「eve（分院前夜）」作为剧情起点时，
       // 先在初始化后立刻跑一次本地逻辑分院（不消耗 token），把 house 提前写好；
       // 叙事合并进开场叙事并解锁 'sorted' 成就，后续 AI prompt 中的学院就正确了。

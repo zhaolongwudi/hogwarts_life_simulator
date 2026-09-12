@@ -27,6 +27,9 @@ import '../data/era_data.dart';
 import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
 import '../data/canon_events.dart';
+import '../data/item_data.dart';
+import '../models/story_progress.dart';
+import 'mixin_systems.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
@@ -40,6 +43,13 @@ import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
 import '../utils/debug_log.dart';
+
+/// 情报 token 归一化：剥掉下划线与所有非文字字符（`_composeCausalText` 用）。
+///
+/// 【为什么提为文件级】它在 `_composeCausalText` 的循环里逐条情报调用，
+/// 而本仓库有源码形状守卫（`test/regex_hotpath_test.dart`）专门禁止
+/// "循环内现编译 RegExp"。这条守卫曾抓出过真实的性能回归，不是风格洁癖。
+final RegExp _reNonWordChars = RegExp(r'[_\W]+');
 
 mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
@@ -104,6 +114,22 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       action = action.substring(1);
     }
     String? causalResult;
+
+    // ===== 主线剧情分支指令（必须排在其他解析之前）=====
+    //
+    // 【为什么位置这么靠前】剧情选项的 action 形如
+    // `@@story:ps_ch1_letter:read_in_room@@`，它既不是 `/` 指令、
+    // 也不含因果锚点关键词，理论上后面几个解析器都不会认。但**顺序不能赌**：
+    // `parseCausalCommand` 是按关键词匹配的，一旦某天有人给某个剧情选项
+    // 的文案里加了个与因果锚点撞词的字眼，分支语义就会被抢走。
+    // 显式排在最前，是让"剧情指令优先"成为**结构性保证**而非巧合。
+    //
+    // 命中后直接进剧情回合，不走 AI 路径也不走沙盒兜底。
+    final storyCmd = parseStoryCommand(action);
+    if (storyCmd != null && storyProgress.active) {
+      _runOfflineQuickTurn(action, causalResult: null);
+      return;
+    }
 
     // 因果锚点抉择（见 lib/data/worldline_data.dart）：
     // 唯一一个「先本地结算、再继续走叙事」的入口。先记账（数值 + 痕迹），
@@ -1052,11 +1078,32 @@ $kNarrativeWritingRules
   ///
   /// 与 [_settleAfterNarrative] 一起构成「一整个回合」的后半段，
   /// 两条路径必须共用（理由同上）。
-  void _finalizeTurn(String narrative, String action) {
+  ///
+  /// [storyTimeCostDays] 非空时走**章节节拍式时间**：直接按显式天数推进，
+  /// 不做行动关键词推断。为什么剧情模式必须这样：
+  ///   · `advanceTimeForAction` 按关键词猜时长（"去图书馆查资料"可能算半天），
+  ///     剧情 8 章只该跨几个月，猜出来的时间会让原著节点的月份整体错位；
+  ///   · `fastForwardDays` 内部走 `_advanceWorldClock` 全量结算（游戏周/
+  ///     学院杯/NPC 位置/学年推进/事件锚点/月度演化），语义比"猜时长"精确得多。
+  void _finalizeTurn(
+    String narrative,
+    String action, {
+    int? storyTimeCostDays,
+  }) {
     saveContinuityAnchor(narrative);
     accumulateForSummary(narrative);
     appendRecentTurn(narrative);
-    advanceTimeForAction(action);
+    if (storyTimeCostDays != null && storyTimeCostDays > 0) {
+      // 【为什么显式转型】`fastForwardDays` 实现在 `GameSystemsMixin`，
+      // 本项目实测：即使它已在 `GameProviderBase` 上声明，在
+      // `GameNarrativeMixin` 里裸写名字仍报 `undefined_method`。
+      // 既有的 `/快进` 指令（`mixin_commands.dart:90`）用的就是
+      // `gm.fastForwardDays(days)` 这一显式转型写法——跟随既有口径，
+      // 而不是再造第三种调用方式。
+      (this as GameSystemsMixin).fastForwardDays(storyTimeCostDays);
+    } else {
+      advanceTimeForAction(action);
+    }
     updateNPCsFromAction(action);
     updatePlayerImpactScore(action);
   }
@@ -1144,6 +1191,18 @@ $kNarrativeWritingRules
   /// 与 AI 失败时的瞬时兜底不同：这里**消耗回合**（推进时间/精力/NPC/影响力），
   /// 因为这是玩家主动选择的正式离线玩法，而不是需要重试的失败。
   void _runOfflineQuickTurn(String action, {String? causalResult}) {
+    // ===== 主线剧情模式分发（12 行，不改下面 129 行）=====
+    //
+    // 【为什么在顶部 return 而不是在里面加 if】
+    // 下面那段是"沙盒兜底叙事"，逻辑完好、测试完备（batch33_offline_ux_test
+    // 等十余个文件在钉它）。剧情模式的叙事来源、选项来源、推进方式**全都不同**，
+    // 硬塞进去只会让两条路径互相污染——上一轮 `hookAnswer` 恒真的教训就在眼前。
+    // 这里只做一件事：分流。沙盒路径一个字节都不动。
+    if (storyProgress.active) {
+      _runStoryTurn(action, causalResult: causalResult);
+      return;
+    }
+
     // 与 AI 正式路径保持完全一致的「回合推进」状态。
     // 这些原本写在 processChoice 的正式分支里（commandResult / turnCount++ /
     // lastPlayerAction），而快速模式是在那之前 return 的，于是长期漏掉：
@@ -1299,6 +1358,35 @@ $kNarrativeWritingRules
     if (due.isEmpty) return;
 
     final event = due.first;
+
+    // 【剧情模式白名单抑制（批次 5）】
+    // 若当前剧情步的 canonRefId 正好声明讲述这条节点，就不再贴 📖 旁白块
+    // ——那段原著由剧情文本讲述（有情境、分支与后果），重复贴块玩家会
+    // 把同一件事读到两遍。`firedAnchorIds` 照写：节点视为已消费，
+    // 之后任何路径都不会再对它注入。
+    //
+    // 【为什么是防御层】当前分发下，剧情模式的全部回合（含自由行动降级
+    // 与结局后行动）都走 `_runStoryTurn`，本函数只被**沙盒模式**的离线
+    // 回合调用，这段分支平时不会执行。它是给未来改动的保险：若有人把
+    // 剧情回合重新接回普通离线回合，这里保证「已由剧情讲述」优先于
+    // 「旁白注入」。防回归由 test/canon_story_dedup_test.dart 钉死。
+    if (storyProgress.active) {
+      final step = findStoryStep(
+        storyProgress.bookId,
+        storyProgress.chapterId,
+        storyProgress.stepId,
+      );
+      if (step != null && step.canonRefId == event.id) {
+        worldState.firedAnchorIds.add(event.id);
+        lastCanonEventTitle = null;
+        lastCanonEventDirective = null;
+        debugLog(
+          '📖 原著节点 ${event.id} 由剧情步 ${step.id} 讲述，跳过旁白注入',
+        );
+        return;
+      }
+    }
+
     worldState.firedAnchorIds.add(event.id);
 
     final block = '📖 ${event.title}\n${event.directive}';
@@ -1316,6 +1404,678 @@ $kNarrativeWritingRules
     lastCanonEventDirective = event.directive;
 
     debugLog('📖 原著节点注入: ${event.id}（${event.bookRef}）');
+  }
+
+  // ================================================================
+  // 主线剧情模式（离线）· 剧情引擎
+  // ================================================================
+  //
+  // 【它解决什么问题】离线模式此前是「一套去掉了所有剧情推进器官的回合循环」：
+  // 它复用了 AI 路径的回合收尾（时间/精力/NPC/影响力/原著节点注入），
+  // 却完全绕开了剧情上下文构建、伏笔回收、任务推进、记忆写入四大块，
+  // 于是"剧情"表现为每月往叙事尾巴贴一段旁白——没有前因、没有分支、没有推进。
+  //
+  // 【它怎么解决】把剧情拆成 书 → 章 → 步 → 分支 四层：
+  //   · 内容全是 `lib/data/story_data.dart` 里的 const 表（后六部只填表）；
+  //   · 进度是 `StoryProgress`（走存档 extra_data，老存档零迁移）；
+  //   · 每回合从当前步的 setup 出发生成叙事、由当前步的 choices 生成选项、
+  //     按玩家所选推进到下一步，并把效果落到玩家/世界/长期记忆上。
+  //
+  // 【三条红线】
+  //   1. 全程 0 AI 调用（`_maybeRunPeriodicSummary` 内部已按离线直接 return）；
+  //   2. 不进入 `buildFallbackChoices`——那个函数的 `hookAnswer` 判据含
+  //      `tail.contains('你的选择')`，而离线兜底叙事框架句恰有
+  //      「你的选择，会把它推向不同的方向。」→ 在离线路径下**恒为真**，
+  //      会把剧情选项全部冲掉。用独立的 `_buildStoryChoices` 从根上绕开。
+  //   3. 后半段结算（`_settleAfterNarrative` / `_finalizeTurn`）**必须共用**，
+  //      否则时间/精力/NPC/影响力/存档会与沙盒路径全线不一致。
+
+  /// 一整个剧情回合。与沙盒回合共用后半段结算，前半段完全走剧情引擎。
+  ///
+  /// 【为什么不 declare `@visibleForTesting`】它是生产路径
+  /// （`_runOfflineQuickTurn` 分发）真正要调的，加了会直接报错。
+  void _runStoryTurn(String action, {String? causalResult}) {
+    commandResult = causalResult;
+    error = null;
+    turnCount++;
+    lastScannedNarrativeHash = null;
+    lastPlayerAction = action;
+
+    _updateLocationTracking();
+
+    // ① 推进剧情：解析分支 → 查定义 → 落效果 → 定位下一步。
+    //    返回本回合要写进叙事的"你做了什么"，null 表示走到了结局。
+    final beat = _advanceStory(action);
+
+    // ② 拼叙事（三层三明治）。
+    currentNarrative = _composeStoryNarrative(beat);
+
+    // ③ 结算与收尾：与沙盒路径**同一套函数**，只有时间推进方式不同
+    //    （章节节拍式天数，见 _finalizeTurn 的参数说明）。
+    //    表白可能改写 currentNarrative——剧情模式下不采纳它的改写
+    //    （剧情文本优先），但表白状态机照常落库。
+    _settleAfterNarrative();
+    _finalizeTurn(
+      currentNarrative,
+      action,
+      storyTimeCostDays: beat.timeCostDays,
+    );
+
+    // ④ 剧情选项（独立构建器，不进 buildFallbackChoices）。
+    choices = _buildStoryChoices();
+
+    _maybeRunPeriodicSummary();
+    error = null;
+    loadingStage = '';
+    isLoading = false;
+    notifyListeners();
+    unawaited(autoSave());
+  }
+
+  /// 一次剧情推进的结果，供叙事拼装使用。
+  /// 用一个小结构体而不是一堆 out 参数，是因为叙事需要同时知道
+  /// "选了什么"、"效果是什么"、"有没有插曲"——拆成参数会变成 4 个可空值。
+  StoryBeat _advanceStory(String action) {
+    final progress = storyProgress;
+
+    // 已到结局：不再推进，只把结局文本重新呈现一次。
+    if (progress.isFinished) {
+      final book = findStoryBook(progress.bookId);
+      final ending = book?.endings.firstWhere(
+        (e) => e.id == progress.endingId,
+        orElse: () => book.endings.last,
+      );
+      return StoryBeat(
+        step: null,
+        choice: null,
+        consequence: '',
+        onEnterText: null,
+        endingTitle: ending?.title,
+        endingBody: ending?.body,
+      );
+    }
+
+    final step = findStoryStep(
+      progress.bookId,
+      progress.chapterId,
+      progress.stepId,
+    );
+    // 游标指向了不存在的步（手改档 / 内容改动 / 版本升级）：不去猜，
+    // 直接把进度重置到本部第一步，玩家最多重玩一章，而不是卡死。
+    if (step == null) {
+      debugLog('⚠️ 剧情游标失效(${progress.stepId})，重置到本部首步');
+      final first = firstStepOfBook(progress.bookId);
+      if (first == null) {
+        storyProgress = progress.copyWith(endingId: 'missing_content');
+        return const StoryBeat(
+          step: null,
+          choice: null,
+          consequence: '',
+          onEnterText: null,
+          endingTitle: '剧情内容缺失',
+          endingBody: '这一部的章节数据没有加载成功。',
+        );
+      }
+      storyProgress = progress.copyWith(
+        chapterId: first.chapterId,
+        stepId: first.id,
+      );
+      return _advanceStory(action);
+    }
+
+    // 找玩家选的分支。
+    final cmd = parseStoryCommand(action);
+    StoryChoiceDef? choice;
+    if (cmd != null && cmd.stepId == step.id) {
+      for (final c in step.choices) {
+        if (c.id == cmd.choiceId) {
+          choice = c;
+          break;
+        }
+      }
+    }
+    // 【风险 1 的对策】分支失效（读档后 action 被改写、内容升级后 id 变了、
+    // 玩家手打了别的东西）一律降级为"自由行动"：不抛错、不卡死，
+    // 空效果推进到下一步，叙事里把玩家原文当作"你决定……"写进去。
+    final bool isFreeAction = choice == null;
+
+    // 落效果（自由行动无效果）。
+    //
+    // 【顺序要命】`_applyStoryEffect` 内部会 `storyProgress = ...copyWith(...)`
+    // 把 effects/flags/knowledge 写进去。所以它之后**必须**以
+    // `storyProgress`（最新值）为基底继续构造，而不是用上面那个
+    // `progress` 局部快照——否则新建的 `updated` 会把刚落的 effects
+    // 覆盖回空，表现为"选项点了、剧情走了，但数值和 flag 全丢了"。
+    // 这个缺陷是 `story_turn_test.dart` 的 D 组抓出来的。
+    final effect = choice?.effect ?? StoryEffect.none;
+    if (!isFreeAction) {
+      _applyStoryEffect(effect);
+    }
+    final latest = storyProgress;
+
+    // 记录选择与完成步。
+    final doneSteps = List<String>.from(latest.doneSteps);
+    if (!doneSteps.contains(step.id)) doneSteps.add(step.id);
+    final chosen = Map<String, String>.from(latest.chosen);
+    if (choice != null) chosen[step.id] = choice.id;
+
+    // 节拍式时间推进：**不用 advanceTimeForAction 的关键词推断**。
+    // 具体推进在 `_finalizeTurn(storyTimeCostDays:)` 里做（那里才拿得到
+    // `fastForwardDays` 的全量结算），这里只把本步的步长带到叙事结构上，
+    // 供 `_runStoryTurn` 取用。这样时间只推一次，不会与关键词推断叠加。
+
+    // 定位下一步。
+    final nextStep = _resolveNextStep(step, choice);
+
+    var updated = latest.copyWith(
+      doneSteps: doneSteps,
+      chosen: chosen,
+      stepTurnSeed: latest.stepTurnSeed + 1,
+    );
+
+    if (nextStep == null) {
+      // 本章（或本部）走完 → 判定结局。
+      return _finishStory(step, choice, effect, isFreeAction, action, updated);
+    }
+
+    updated = updated.copyWith(
+      chapterId: nextStep.chapterId,
+      stepId: nextStep.id,
+    );
+    storyProgress = updated;
+
+    // 原著节点：剧情模式下由剧情文本讲述，但仍写 firedAnchorIds 防止
+    // 玩家退出剧情模式后同一件事再弹一次。
+    _markCanonForStep(nextStep);
+
+    return StoryBeat(
+      step: nextStep,
+      prevStep: step,
+      choice: choice,
+      consequence: choice?.consequence ?? '你决定：$action',
+      onEnterText: nextStep.onEnterText,
+      freeActionText: isFreeAction ? action : null,
+      effect: effect,
+      // 时间步长取自**已迈入的** nextStep：玩家读到的情境就是新一步的，
+      // 时间也该按新一步的节拍走，否则"过场文本已经到十一月、
+      // 时钟还停在十月"。
+      timeCostDays: nextStep.timeCostDays,
+    );
+  }
+
+  /// 走到本章末尾时的收束：要么进下一章，要么判定全书结局。
+  StoryBeat _finishStory(
+    StoryStepDef finishedStep,
+    StoryChoiceDef? choice,
+    StoryEffect effect,
+    bool isFreeAction,
+    String action,
+    StoryProgress updated,
+  ) {
+    final book = findStoryBook(updated.bookId);
+    final nextChapter = book == null
+        ? null
+        : _nextChapterAfter(book, finishedStep.chapterId);
+    debugLog(
+      '📖 剧情章末: ${finishedStep.chapterId} → '
+      '${nextChapter?.id ?? '（本部结束）'}',
+    );
+
+    if (nextChapter != null && nextChapter.steps.isNotEmpty) {
+      final first = nextChapter.steps.first;
+      final progressed = updated.copyWith(
+        chapterId: nextChapter.id,
+        stepId: first.id,
+      );
+      storyProgress = progressed;
+      _markCanonForStep(first);
+      return StoryBeat(
+        step: first,
+        prevStep: finishedStep,
+        choice: choice,
+        consequence: choice?.consequence ?? '你决定：$action',
+        onEnterText: '—— ${nextChapter.title} ——\n'
+            '${first.onEnterText ?? ''}'.trim(),
+        freeActionText: isFreeAction ? action : null,
+        effect: effect,
+        timeCostDays: first.timeCostDays,
+      );
+    }
+
+    // 本部结束 → 判定结局。结局由 flags + 累计数值决定，
+    // 所以必须用**结算后的** progress（effects 已在 _applyStoryEffect 里累加）。
+    final ending = book == null ? null : resolveStoryEnding(book, updated);
+    final finish = updated.copyWith(
+      endingId: ending?.id ?? 'default',
+    );
+    storyProgress = finish;
+    notifications.add('🏁 ${ending?.title ?? '结局'}');
+    worldState.addNarrativeEvent(
+      '🏁 剧情结局：${ending?.title ?? '结局'}',
+      turn: turnCount,
+    );
+
+    // 结局也写进长期记忆：这是整局最该被记住的事。
+    memory = memory.addWorldEvent(
+      WorldEventRecord(
+        id: 'story_ending_${finish.bookId}',
+        timestamp: worldState.time.format(),
+        title: '剧情结局',
+        description: ending?.title ?? '结局',
+        importance: 9,
+        category: 'personal',
+      ),
+    );
+
+    return StoryBeat(
+      step: null,
+      prevStep: finishedStep,
+      choice: choice,
+      consequence: choice?.consequence ?? '你决定：$action',
+      onEnterText: null,
+      endingTitle: ending?.title,
+      endingBody: ending?.body,
+      freeActionText: isFreeAction ? action : null,
+      effect: effect,
+    );
+  }
+
+  /// 定位下一步：优先用分支声明的 [StoryChoiceDef.nextStepId]，
+  /// 否则顺延到本章下一个未完成的步；本章没有就返回 null（= 换章）。
+  StoryStepDef? _resolveNextStep(StoryStepDef step, StoryChoiceDef? choice) {
+    final book = findStoryBook(storyProgress.bookId);
+    if (book == null) return null;
+    final chapter = findStoryChapter(book.id, step.chapterId);
+    if (chapter == null) return null;
+
+    if (choice != null && choice.nextStepId.isNotEmpty) {
+      for (final s in chapter.steps) {
+        if (s.id == choice.nextStepId) return s;
+      }
+      // 声明的目标不存在 —— 与"分支失效"同一处理口径：不抛错，走顺延。
+      debugLog('⚠️ 分支 ${step.id}/${choice.id} 指向的步不存在，改为顺延');
+    }
+
+    final idx = chapter.steps.indexWhere((s) => s.id == step.id);
+    if (idx >= 0 && idx + 1 < chapter.steps.length) {
+      return chapter.steps[idx + 1];
+    }
+    return null;
+  }
+
+  /// 取 [chapterId] 之后的下一章。
+  StoryChapterDef? _nextChapterAfter(StoryBookDef book, String chapterId) {
+    for (var i = 0; i < book.chapters.length; i++) {
+      if (book.chapters[i].id == chapterId) {
+        return i + 1 < book.chapters.length ? book.chapters[i + 1] : null;
+      }
+    }
+    return null;
+  }
+
+  /// 把 [StoryEffect] 落到玩家 / 世界 / 长期记忆上。
+  ///
+  /// 【为什么效果要用"累加"而不是"直接赋值"】
+  /// `StoryProgress.effects` 是跨存档累计的，用于结局判定；
+  /// 而 `Player` 上的数值会被剧情之外的行为改写（战斗、送礼…），
+  /// 两者不能混用，否则结局判定会随日常行为漂移。
+  void _applyStoryEffect(StoryEffect effect) {
+    if (effect.isEmpty) return;
+    final p = player;
+    final acc = Map<String, int>.from(storyProgress.effects);
+
+    void bump(String key, int delta) {
+      if (delta == 0) return;
+      acc[key] = (acc[key] ?? 0) + delta;
+    }
+
+    if (p != null) {
+      if (effect.spirit != 0) {
+        p.spirit = (p.spirit + effect.spirit).clamp(0, 100);
+      }
+      if (effect.galleons != 0) {
+        p.galleons = (p.galleons + effect.galleons).clamp(0, 1 << 30);
+      }
+      if (effect.housePoints != 0) {
+        // 【守卫约束】学院杯加分必须走 `addHouseCupPoints(amount, reason)`：
+        // 它内部记录来源明细（houseCupSources），学年结算要按来源展示。
+        // 裸写 `p.houseCupPoints += ...` 会被
+        // test/progression_fix_test.dart 的源码形状守卫抓出来。
+        addHouseCupPoints(effect.housePoints, '主线剧情');
+      }
+      if (effect.reputation != 0) {
+        p.playerReputation.add('story', effect.reputation);
+      }
+      if (effect.affection != 0 && effect.targetNpcId != null) {
+        // 【守卫约束】好感必须走 `updateNpcAffection` 统一入口——
+        // 它内部带状态同步/去重/通知管线，裸写 `npc.affection = ...`
+        // 会被 test/progression_fix_test.dart 的源码形状守卫抓出来
+        // （本轮实测被抓，改走统一入口）。
+        updateNpcAffection(
+          effect.targetNpcId!,
+          effect.affection,
+          reason: '主线剧情',
+          quiet: true,
+        );
+      }
+      for (final item in effect.addItems) {
+        // 【口径】`addItems` 填的是**物品名**，不是 id。
+        // 原因是本项目的背包存的是名字：`itemDefById` 已被删除
+        // （见 `item_data.dart:499` 的注释），全项目的物品查找入口是
+        // `itemDefByName`。这里跟随既有口径，避免造出第二种语义。
+        //
+        // 用名字去重（与 `_addItem` 一致）：同名物品玩家只该有一件。
+        final def = itemDefByName(item);
+        final key = def?.name ?? item;
+        if (!p.inventory.any((i) => i.name == key)) {
+          p.inventory.add(
+            InventoryItem(
+              id: def?.id ?? item,
+              name: key,
+              type: def?.type ?? '剧情',
+              description: def?.desc ?? '在主线剧情中获得。',
+            ),
+          );
+        }
+      }
+    }
+
+    bump('affection', effect.affection);
+    bump('reputation', effect.reputation);
+    bump('housePoints', effect.housePoints);
+    bump('spirit', effect.spirit);
+    bump('galleons', effect.galleons);
+
+    final flags = List<String>.from(storyProgress.flags);
+    final knowledge = List<String>.from(storyProgress.knowledge);
+    for (final f in effect.setFlags) {
+      if (!flags.contains(f)) flags.add(f);
+    }
+    for (final f in effect.clearFlags) {
+      flags.remove(f);
+    }
+    for (final k in effect.addKnowledge) {
+      if (!knowledge.contains(k)) knowledge.add(k);
+      // 情报同时写进长期记忆的 T0 核心事实层：
+      // 离线模式长期记忆几乎空转（唯一写入入口挂在 AI 摘要上），
+      // 剧情情报是少数能真正沉淀下来的东西，值得占一个 T0 位。
+      memory = memory.addKeyFact(
+        KeyFactRecord(
+          id: 'story_$k',
+          fact: '剧情情报：$k',
+          importance: kPersistentFactImportance,
+          timestamp: worldState.time.format(),
+          category: 'story',
+        ),
+      );
+    }
+
+    storyProgress = storyProgress.copyWith(
+      effects: acc,
+      flags: flags,
+      knowledge: knowledge,
+    );
+  }
+
+  /// 剧情模式下原著节点的处理。
+  ///
+  /// 若该步声明了 `canonRefId`，就把它记进 `firedAnchorIds`（防二次触发），
+  /// 并清掉 `lastCanonEventTitle`——因为这件事已经由**剧情文本**讲述过了，
+  /// 不该再由 `buildFallbackChoices` 生成一条"去打听…"的通用选项。
+  void _markCanonForStep(StoryStepDef step) {
+    final ref = step.canonRefId;
+    if (ref == null) return;
+    if (!worldState.firedAnchorIds.contains(ref)) {
+      worldState.firedAnchorIds.add(ref);
+    }
+    lastCanonEventTitle = null;
+    lastCanonEventDirective = null;
+    debugLog('📖 剧情步已讲述原著节点: $ref（${step.id}）');
+  }
+
+  /// 叙事三层拼装：
+  ///   [层1 情境] 本步 setup（+ 过场文本）
+  ///   [层2 因果] 由选择结果与知识库生成的过渡句
+  ///   [层3 世界] 地点氛围池（复用沙盒的 `localEventLinesFor`）
+  ///   末尾附上"你做了什么"（consequence）与数值变动的可读提示。
+  String _composeStoryNarrative(StoryBeat beat) {
+    final parts = <String>[];
+
+    // 结局回合：只呈现结局，不再有情境与选项。
+    if (beat.endingTitle != null) {
+      parts.add('🏁 结局 · ${beat.endingTitle}');
+      if (beat.endingBody != null && beat.endingBody!.trim().isNotEmpty) {
+        parts.add(beat.endingBody!.trim());
+      }
+      parts.add(
+        '（这一部的剧情到此结束。你可以继续在城堡里自由活动，'
+        '或在设置中开始新的存档。）',
+      );
+      return parts.join('\n\n');
+    }
+
+    final step = beat.step;
+    if (step == null) {
+      return '剧情数据暂时不可用，请尝试重新开始一局。';
+    }
+
+    // [层1] 情境层，带章节抬头——让玩家时刻知道"我在第几章"。
+    final book = findStoryBook(storyProgress.bookId);
+    final chapter = findStoryChapter(storyProgress.bookId, step.chapterId);
+    final header = book != null && chapter != null
+        ? '《${book.title}》第 ${chapter.ordinal} 章 · ${chapter.title}'
+        : '主线剧情';
+    parts.add('📖 $header');
+
+    if (beat.onEnterText != null && beat.onEnterText!.trim().isNotEmpty) {
+      parts.add(beat.onEnterText!.trim());
+    }
+    parts.add(step.setup.trim());
+
+    // [层2] 因果层：把上一步的选择与本步串起来。
+    final causal = _composeCausalText(beat);
+    if (causal.isNotEmpty) parts.add(causal);
+
+    // [层3] 世界层：地点氛围（复用沙盒的地点池，保证两套玩法读到的
+    // "城堡的样子"是一致的）。
+    if (step.ambient.isNotEmpty) {
+      parts.add(step.ambient[storyProgress.stepTurnSeed % step.ambient.length]);
+    } else {
+      final p = player;
+      if (p != null) {
+        final location = worldState.currentLocation ?? '霍格沃茨';
+        final hour = worldState.time.hour;
+        final lines = localEventLinesFor(
+          location: location,
+          hour: hour,
+          seed: storyProgress.stepTurnSeed,
+        );
+        if (lines.isNotEmpty) {
+          parts.add(lines[storyProgress.stepTurnSeed % lines.length]);
+        }
+      }
+    }
+
+    // 收束层：玩家做了什么 + 数值变动的可读回馈。
+    if (beat.consequence.trim().isNotEmpty) {
+      if (beat.freeActionText != null) {
+        parts.add('你选择按自己的方式行动：${beat.freeActionText}。');
+      }
+      parts.add(beat.consequence.trim());
+    }
+    final delta = _formatStoryDelta(beat.effect);
+    if (delta.isNotEmpty) parts.add(delta);
+
+    return parts.join('\n\n');
+  }
+
+  /// [层2 因果层] 把上一步的选择与获得的情报，织成一句过渡。
+  ///
+  /// 【为什么需要这一层】没有它，每一步都是独立的情境描写，读起来像
+  /// "在同一个地方反复醒来"。有了它，玩家能看见自己的选择正在生效——
+  /// 这是"有因果"在文本上唯一的证据。
+  String _composeCausalText(StoryBeat beat) {
+    final prev = beat.prevStep;
+    if (prev == null) return '';
+    final lines = <String>[];
+
+    // 情报引用：优先引用与本步 setup 相关的那条（简单的子串重叠判定），
+    // 引不到就引用最近一条——总比不说强。
+    final knowledge = storyProgress.knowledge;
+    if (knowledge.isNotEmpty) {
+      final corpus = '${beat.step?.setup ?? ''}${prev.setup}';
+      String? picked;
+      for (final k in knowledge.reversed) {
+        // 正则已提为文件级预编译（_reNonWordChars）：
+        // 这个方法每回合都会跑，而本仓库有源码形状守卫
+        // （test/regex_hotpath_test.dart）专门抓循环内现编译 RegExp。
+        final token = k.replaceAll(_reNonWordChars, '');
+        if (token.isNotEmpty && corpus.contains(token)) {
+          picked = k;
+          break;
+        }
+      }
+      picked ??= knowledge.last;
+      lines.add('你还记得之前留意到的那件事（$picked），于是脚步没有停。');
+    }
+
+    // 选择引用：上一步做了什么。
+    final chosenId = storyProgress.chosen[prev.id];
+    if (chosenId != null) {
+      for (final c in prev.choices) {
+        if (c.id == chosenId) {
+          lines.add('你此前的做法还留有余波：${c.text}。');
+          break;
+        }
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /// 把数值变动转成玩家能读懂的一行。全部为 0 时返回空串（不显示噪声）。
+  String _formatStoryDelta(StoryEffect e) {
+    final bits = <String>[];
+    if (e.housePoints != 0) {
+      bits.add('学院分 ${e.housePoints > 0 ? '+' : ''}${e.housePoints}');
+    }
+    if (e.reputation != 0) {
+      bits.add('声望 ${e.reputation > 0 ? '+' : ''}${e.reputation}');
+    }
+    if (e.spirit != 0) {
+      bits.add('精神 ${e.spirit > 0 ? '+' : ''}${e.spirit}');
+    }
+    if (e.affection != 0) {
+      bits.add('好感 ${e.affection > 0 ? '+' : ''}${e.affection}');
+    }
+    if (e.galleons != 0) {
+      bits.add('加隆 ${e.galleons > 0 ? '+' : ''}${e.galleons}');
+    }
+    if (e.addItems.isNotEmpty) {
+      bits.add('获得物品×${e.addItems.length}');
+    }
+    if (e.addKnowledge.isNotEmpty) {
+      bits.add('获得情报×${e.addKnowledge.length}');
+    }
+    return bits.isEmpty ? '' : '（${bits.join('，')}）';
+  }
+
+  /// 构建剧情选项。
+  ///
+  /// 【为什么不能用 `buildFallbackChoices`】那个函数的 `hookAnswer` 判据含
+  /// `tail.contains('你的选择')`（`mixin_response.dart:1097`），而离线兜底
+  /// 叙事的框架句 2 恰有固定句「你的选择，会把它推向不同的方向。」
+  /// → **整个离线路径下 `hookAnswer` 恒为真**，任何排在它后面的分支都是死代码。
+  /// 剧情模式直接读 `StoryStepDef.choices`，不进入那个函数，从根上绕开。
+  List<GameChoice> _buildStoryChoices() {
+    final progress = storyProgress;
+
+    // 已到结局：只留"回头看"与"继续自由活动"两个出口。
+    if (progress.isFinished) {
+      return [
+        const GameChoice(text: '回望这段经历', action: '/状态'),
+        const GameChoice(text: '在城堡里四处走走', action: '在城堡里四处走走'),
+      ];
+    }
+
+    final step = findStoryStep(
+      progress.bookId,
+      progress.chapterId,
+      progress.stepId,
+    );
+    if (step == null) return const [];
+
+    final flags = progress.flags.toSet();
+    final avail = availableStoryChoices(step, flags);
+
+    // 上限 4 条：与 AI 路径的选项数口径一致，也避免长表把按钮区撑爆。
+    return avail
+        .take(4)
+        .map(
+          (c) => GameChoice(
+            text: c.text,
+            action: encodeStoryAction(step.id, c.id),
+          ),
+        )
+        .toList();
+  }
+
+  /// 开局/读档后进入剧情模式：把进度初始化到第一部第一步，
+  /// 并用该步的内容生成首屏叙事与选项（**不调用任何 AI**）。
+  ///
+  /// 实现的是基类抽象声明 `enterStoryMode`（调用方在 `GameInitMixin`）。
+  @override
+  void enterStoryMode() => _enterStoryMode();
+
+  void _enterStoryMode() {
+    // 【开局场景定位】9 月开局不该从 7 月的信开始（时间倒流）——
+    // 按玩家选的开局场景跳过已经发生的暑假章节。
+    final first =
+        storyStartStepFor(openingScene) ??
+        firstStepOfBook(kFirstStoryBookId);
+    if (first == null) {
+      debugLog('⚠️ 剧情内容未加载，无法进入剧情模式');
+      storyProgress = StoryProgress.inactive;
+      return;
+    }
+    storyProgress = StoryProgress(
+      active: true,
+      bookId: kFirstStoryBookId,
+      chapterId: first.chapterId,
+      stepId: first.id,
+    );
+    _markCanonForStep(first);
+
+    turnCount = 0;
+    lastPlayerAction = '';
+    commandResult = null;
+    error = null;
+    lastScannedNarrativeHash = null;
+
+    currentNarrative = _composeStoryNarrative(
+      StoryBeat(
+        step: first,
+        choice: null,
+        consequence: '',
+        onEnterText: first.onEnterText,
+      ),
+    );
+    choices = _buildStoryChoices();
+    appendRecentTurn(currentNarrative);
+    accumulateForSummary(currentNarrative);
+
+    notifications.add('📖 主线剧情开始：《魔法石》');
+    memory = memory.addWorldEvent(
+      WorldEventRecord(
+        id: 'story_start_${first.id}',
+        timestamp: worldState.time.format(),
+        title: '主线剧情开始',
+        description: '你开始按原著时间线经历这一学年。',
+        importance: 7,
+        category: 'personal',
+      ),
+    );
+    debugLog('📖 进入剧情模式，首步=${first.id}');
   }
 
   /// Q13：本地兜底叙事的事件种子池——按地点分池 + 时间条件化 + 大通用池轮转。
@@ -2869,3 +3629,58 @@ class _NarrativeDensityRecord {
   String toString() =>
       '[turn=$turn] density=${density.toStringAsFixed(4)} isLow=$isLow offline=$isOffline';
 }
+
+/// 一次剧情推进的结果，供叙事拼装使用。
+///
+/// 【为什么抽成结构体】叙事需要同时知道"选了什么 / 效果是什么 / 有没有过场 /
+/// 是不是走到了结局"。用一堆可空 out 参数传会变成 6 个 `String?`，
+/// 调用点读起来完全不知道哪个对应什么。
+class StoryBeat {
+  /// 本回合要展示的步（`null` = 走到了结局，或内容缺失）。
+  final StoryStepDef? step;
+
+  /// 上一步（因果层引用它来织过渡句）。
+  final StoryStepDef? prevStep;
+
+  /// 玩家所做的分支（自由行动时为 `null`）。
+  final StoryChoiceDef? choice;
+
+  /// 要写进叙事的"你做了什么"。
+  final String consequence;
+
+  /// 进入本步的过场文本。
+  final String? onEnterText;
+
+  /// 非空 = 本回合到达结局。
+  final String? endingTitle;
+  final String? endingBody;
+
+  /// 玩家原文（自由行动降级路径用）。
+  final String? freeActionText;
+
+  /// 本回合生效的效果（用于生成可读的数值变动提示）。
+  final StoryEffect effect;
+
+  /// 本回合应推进的天数（章节节拍式时间）。
+  ///
+  /// 【为什么由 beat 携带而不是就地推进】时间推进必须走
+  /// `_finalizeTurn → fastForwardDays → _advanceWorldClock` 这条全量结算路径
+  /// （游戏周/学院杯/NPC位置/学年推进/事件锚点/月度演化都在里面）。
+  /// 在 `_advanceStory` 里就地 `advanceDays` 只会推时钟，漏掉全部结算，
+  /// 而且随后 `_finalizeTurn` 还会再按关键词推一次——时间被推两遍。
+  final int timeCostDays;
+
+  const StoryBeat({
+    required this.step,
+    this.prevStep,
+    required this.choice,
+    required this.consequence,
+    this.onEnterText,
+    this.endingTitle,
+    this.endingBody,
+    this.freeActionText,
+    this.effect = StoryEffect.none,
+    this.timeCostDays = 0,
+  });
+}
+

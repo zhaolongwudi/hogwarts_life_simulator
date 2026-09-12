@@ -22,6 +22,7 @@ import '../data/patronus_data.dart';
 import '../data/attribute_data.dart';
 import '../models/long_term_memory.dart';
 import '../models/player.dart';
+import '../models/story_progress.dart';
 import '../providers/game_provider_base.dart';
 import 'mixin_systems.dart';
 import '../utils/debug_log.dart';
@@ -2478,8 +2479,45 @@ mixin GameCommandsMixin on GameProviderBase {
     if (p.patronus != null && p.patronus!.isNotEmpty) {
       buf.writeln('【守护神】${p.patronus}');
     }
+    // 【主线剧情】剧情模式下把进度面板并进状态页（批次 5）。
+    // 非剧情模式 storyProgress 是 inactive（chapterId 为空），天然跳过。
+    // 【为什么放 /状态 而不是新开一块 UI】玩家问"我玩到哪了"的频率
+    // 远低于看状态本身；而 /状态 是剧情模式也照常可用的命令（零 AI），
+    // 复用它就不用为一块静态文本加屏幕、路由和入口按钮。
+    final sp = storyProgress;
+    if (sp.active && sp.chapterId.isNotEmpty) {
+      final book = findStoryBook(sp.bookId);
+      final ch = findStoryChapter(sp.bookId, sp.chapterId);
+      final totalSteps = book?.chapters.fold<int>(
+            0,
+            (n, c) => n + c.steps.length,
+          ) ??
+          0;
+      buf
+        ..writeln()
+        ..writeln(
+          '【主线剧情】📖 ${book?.title ?? sp.bookId}'
+          '${ch != null ? ' · 第 ${ch.ordinal} 章 · ${ch.title}' : ''}',
+        );
+      if (sp.isFinished) {
+        buf.writeln('本部剧情已完成（结局：${sp.endingId}）。');
+      } else {
+        buf.writeln('进度：已走 ${sp.doneSteps.length}/$totalSteps 步');
+      }
+      buf.writeln(
+        '剧情累计：好感${_signed(sp.totalAffection)} · '
+        '声望${_signed(sp.totalReputation)} · '
+        '学院分${_signed(sp.totalHousePoints)}',
+      );
+      if (sp.knowledge.isNotEmpty) {
+        buf.writeln('已获情报：${sp.knowledge.length} 条');
+      }
+    }
     return buf.toString();
   }
+
+  /// 带符号的数值显示（+5 / -3），剧情累计面板用。
+  String _signed(int v) => v >= 0 ? '+$v' : '$v';
 
   String _formatTime() {
     final w = worldState;

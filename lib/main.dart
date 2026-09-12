@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
+import 'data/story_data.dart';
 import 'router/app_routes.dart';
 import 'utils/crash_logger.dart';
 import 'utils/ai_debug_logger.dart';
@@ -46,6 +47,13 @@ void main() async {
       await appProvider.loadSettings();
       // 应用启动时恢复 AI 调试日志开关（之前被清回false的根因）
       await AiDebugLogger.instance.initialize(enabled: appProvider.aiDebugLogEnabled);
+      // 注册主线剧情书表（lib/data/story_data.dart）。
+      // 【为什么必须显式调用】书表用"注册表"模式填进 `kStoryBooks`，
+      // 是为了让纯函数层（models/story_progress.dart）不必反向 import
+      // 数据层（否则 `models → data → models` 循环 import）。
+      // 代价是：不在启动时注册，`kStoryBooks` 就是空的，选了剧情模式的
+      // 玩家会拿到"剧情内容缺失"。这一行是那个代价的付清点。
+      registerAllStoryBooks();
       runApp(
         MultiProvider(
           providers: [
