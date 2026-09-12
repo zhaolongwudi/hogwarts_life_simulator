@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.3.8 — 2026-09-12
+
+**📋 变更说明**
+feat: 魔法世界图鉴系统（百科收集）+ 假期事件池 + 双书衔接测试
+
+- collection_data.dart：62 条五类图鉴（生物/魔咒/地点/人物/奇物），
+  关键词扫描 matchCollection 纯函数，PS/CoS 现有文本自然命中 40 条（守卫测试钉住）
+- _finalizeTurn 开头扫描本回合叙事（剧情/沙盒两路径共用），解锁行追加进叙事并入档
+- GameProviderBase.collectionUnlocked + extra_data['collection'] 存档通道（零迁移）
+- /图鉴 升级为五类面板（/图鉴 详情 看条目说明），禁林遭遇图鉴保留指路
+
 ### v4.3.7 — 2026-09-12
 
 **📋 变更说明**
