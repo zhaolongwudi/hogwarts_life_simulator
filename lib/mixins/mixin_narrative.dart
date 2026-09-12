@@ -26,6 +26,7 @@ import '../data/scar_data.dart';
 import '../data/era_data.dart';
 import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
+import '../data/canon_events.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
@@ -261,8 +262,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         );
       }
 
-      final isWeekend =
-          worldState.time.weekday == 0 || worldState.time.weekday == 6;
+      final isWeekend = isWeekendWeekday(worldState.time.weekday);
       final lockedNow = lockedRegionsFor(grade: p.grade, isWeekend: isWeekend);
       if (lockedNow.isNotEmpty) {
         contextBuffer.writeln(
@@ -275,14 +275,18 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
       // ========== T0 / T1 / T2 / T3 结构化长期记忆注入（永不压缩的纯事实层） ==========
       // 永远放在【世界上下文】最前面，防止后面截断看不到
-      // 2026-08-23：模型能力升级，所有条数限制整体翻倍
-      // T0: 核心事实 (importance ≥ 5，重要性高到低，最多40条；
-      //     永不遗忘层 = importance ≥ kPersistentFactImportance，永远保留)
+      // T0: 核心事实 (importance ≥ 5，重要性高到低)
+      //   分层注入（修复"永不遗忘层在注入侧被截断"）：
+      //     · importance ≥ kPersistentFactImportance（9）→ 全量注入，
+      //       上限 kT0InjectionPersistentQuota（= 存储容量 kMaxPersistentKeyFacts）
+      //     · 其余 → 按分数选，上限 kT0InjectionRegularQuota
+      //   旧实现写死 `i < 40`，而存储层允许永不遗忘层留 60 条，
+      //   导致第 41 条起的 9 分事实（结婚/死亡/誓言）存着但永远读不到。
       final t0 = memory.keyFacts.where((f) => f.importance >= 5).toList()
         ..sort((a, b) {
           final c = b.importance.compareTo(a.importance);
           // 同分按写入时间新的靠前：Dart 的 sort 不稳定，大量 9 分并列时
-          // 若不加次级键，前 40 条每回合可能换一批，AI 记住的旧事随机漂移。
+          // 若不加次级键，前 N 条每回合可能换一批，AI 记住的旧事随机漂移。
           if (c != 0) return c;
           return b.absoluteDay.compareTo(a.absoluteDay);
         });
@@ -292,8 +296,12 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       // 这里在注入侧拦截，不改存档数据，AI 不再读到冲突事实。
       t0.removeWhere((f) => _factConflictsWithAuthority(f.fact));
       if (t0.isNotEmpty) {
+        // 配额由纯函数算，便于单测（test/t0_injection_quota_test.dart）。
+        final quota = computeT0InjectionQuota(
+          t0.map((f) => f.importance).toList(),
+        );
         contextBuffer.writeln('【T0 核心事实（永不遗忘；纯事实，不得更改或遗忘）】');
-        for (int i = 0; i < t0.length && i < 40; i++) {
+        for (var i = 0; i < quota.total; i++) {
           final f = t0[i];
           contextBuffer.writeln('• [${f.importance}] ${f.fact}');
         }
@@ -1060,11 +1068,19 @@ $kNarrativeWritingRules
   /// 单独抽出来是因为它是长期记忆（T0/T1/T3）的**唯一生产者**：
   /// 离线路径以前根本不调它，纯离线玩 200 回合后记忆库只剩开局那几条。
   void _maybeRunPeriodicSummary() {
+    // 退避计数每回合递减一次。放在最前面（在离线早退之前），
+    // 这样离线期间退避也在走时钟，切回在线时不会带着过期的冷却状态。
+    tickSummaryCooldown();
     // 离线快速模式红线（P#3）：全程 0 AI 调用。摘要会走 callDeepSeek(AiScene.summary)
     // 产生一次 AI 请求，离线分支必须跳过——宁可离线长局的记忆退化为只靠
     // pendingSummary 持久化，也不能违背「无 AI 快速模式」不消耗额度的承诺。
     if (appProvider.offlineQuickMode) return;
-    if (shouldRunPeriodicSummary(turnCount, pendingSummary.length)) {
+    if (shouldRunPeriodicSummary(
+      turnCount,
+      pendingSummary.length,
+      consecutiveFails: _summaryConsecutiveFails,
+      cooldownRemaining: _summaryCooldownRemaining,
+    )) {
       unawaited(
         Future.microtask(() async {
           try {
@@ -1077,14 +1093,50 @@ $kNarrativeWritingRules
     }
   }
 
-  /// v5(P1) 摘要触发判定：每 20 回合一次，或缓冲累计超 6800 字提前触发。
+  /// 摘要触发判定（v5 P1 节奏 + Q8-fix 失败退避）。
   ///
-  /// 抽出成静态方法便于回归测试。缓冲上限 [_maxPendingSummaryChars]=8000，
-  /// 提前阈值 6800 在为长线局留足压缩余量的同时，把摘要调用频次相对旧值
-  /// （每 15 回合 / 6000 字）压低约 25%，对免费按次配额更友好。
-  static bool shouldRunPeriodicSummary(int turnCount, int pendingSummaryChars) {
-    return (turnCount % 20 == 0 || pendingSummaryChars > 6800) &&
-        pendingSummaryChars > 0;
+  /// 触发条件（满足其一）且缓冲非空：
+  ///   · 回合数到达 [kSummaryIntervalTurns] 的整数倍；
+  ///   · 待摘要字数超过 [kSummaryEarlyTriggerChars]（长剧情提前压缩）。
+  ///
+  /// 【失败退避】[consecutiveFails] > 0 时**不触发**，直到
+  /// [cooldownRemaining] 归零。修复前的时序缺陷是：
+  /// 摘要失败会把 chunk 原样还回缓冲（`:1613` 等），缓冲立刻又满足
+  /// 「字数 > 阈值」→ 下一回合立即重试 → 再失败。在配额耗尽/服务不可用时，
+  /// 这形成"每回合烧一次失败调用"的风暴，正是免费按次配额最怕的形态。
+  ///
+  /// 退避长度随连续失败次数线性增长（见 [kSummaryFailCooldownTurns]），
+  /// 上限 [_summaryFailCooldownMaxTurns]，避免长局把摘要永久停掉。
+  ///
+  /// 【关于"或"关系】`turnCount % N == 0` 与字数阈值是**或**关系，
+  /// 而正常叙事 600-800 字/回合 → 约 9~11 回合就会由字数分支触发，
+  /// 因此实际节奏由字数主导，回合数分支只在剧情很短时才起作用。
+  /// 这不是缺陷（早触发意味着缓冲不溢出、丢字更少），但**不能**按
+  /// `20/15` 的间隔比去估算省下的调用数——那个估算只在"回合是唯一触发路径"
+  /// 时成立。相关断言见 test/summary_rhythm_test.dart。
+  static bool shouldRunPeriodicSummary(
+    int turnCount,
+    int pendingSummaryChars, {
+    int consecutiveFails = 0,
+    int cooldownRemaining = 0,
+  }) {
+    if (pendingSummaryChars <= 0) return false;
+    if (cooldownRemaining > 0) return false; // 退避中
+    return turnCount % kSummaryIntervalTurns == 0 ||
+        pendingSummaryChars > kSummaryEarlyTriggerChars;
+  }
+
+  /// 本次失败后应设定的冷却回合数（纯函数，便于单测）。
+  ///
+  /// 第 1 次失败冷却 [_summaryFailCooldownTurns] 回合，之后每次 +1，
+  /// 上限 [_summaryFailCooldownMaxTurns]。线性而非指数，是因为摘要失败
+  /// 多半是"配额耗尽"这类需要玩家介入的问题，指数退避会让记忆停顿过久。
+  static int cooldownForFailCount(int consecutiveFails) {
+    if (consecutiveFails <= 0) return 0;
+    final raw = _summaryFailCooldownTurns + (consecutiveFails - 1);
+    return raw > _summaryFailCooldownMaxTurns
+        ? _summaryFailCooldownMaxTurns
+        : raw;
   }
 
   /// 无 AI 快速模式：完全不调用 AI，用本地模板叙事 + 承接式选项推进一整回合。
@@ -1159,9 +1211,6 @@ $kNarrativeWritingRules
     // 表白会改写 currentNarrative 并写好「接受/婉拒」两个专属选项，
     // 这时候不能再用承接型兜底选项把它冲掉。
     final confessedThisTurn = _settleAfterNarrative();
-    if (!confessedThisTurn) {
-      choices = buildFallbackChoices(currentNarrative);
-    }
 
     _finalizeTurn(currentNarrative, action);
 
@@ -1191,12 +1240,82 @@ $kNarrativeWritingRules
       }
     }
 
+    // ====== 原著剧情线注入（离线叙事升级）======
+    // 离线模式以前只有「地点氛围句 + 学年日历事件」，读起来像在原地打转：
+    // 世界不会因为处于 1993 年而提到小天狼星越狱，也不会因为是 1995 年
+    // 而提到魔法部接管学校。这里接入原著时间线，让「年份」真正有分量。
+    //
+    // 三个关键点：
+    //   1. 走 dueCanonEvents 纯函数，与 AI 路径的锚点机制**分离**——
+    //      原著大事是「整个存档一次」，不同于 EventAnchor 的「每学年一次」，
+    //      混用会让 1991 年发生过的密室在 1992 年又冒出来。
+    //   2. 与 EventAnchor **共用** firedAnchorIds 做去重（id 带 `canon_` 前缀），
+    //      避免两个系统各记一份、存档里出现同义的两套已触发集合。
+    //   3. 每回合最多注入一条，与 _checkEventAnchors 的节流口径一致。
+    _injectCanonEventIntoOfflineNarrative();
+
+    // 【顺序很关键】兜底选项必须在**原著节点注入之后**才生成。
+    // 原先这一行写在 _finalizeTurn 之前，比注入早了两步，导致两个后果：
+    //   1. 节点标题还没进 currentNarrative，buildFallbackChoices 拿到的
+    //      末尾文本里根本没有事件，自然生成不出事件相关选项；
+    //   2. `lastCanonEventTitle` 当时还是上一回合的旧值（或 null），
+    //      选项侧读到的是过时信息。
+    // 现在挪到注入之后，玩家能立刻对这个月刚发生的原著事件做出反应。
+    // 表白那回合仍不覆盖——它有自己的「接受/婉拒」专属选项。
+    if (!confessedThisTurn) {
+      choices = buildFallbackChoices(currentNarrative);
+    }
+
     _maybeRunPeriodicSummary();
     error = null;
     loadingStage = '';
     isLoading = false;
     notifyListeners();
     unawaited(autoSave());
+  }
+
+  /// 把命中的原著剧情节点融进离线叙事（`_runOfflineQuickTurn` 调用）。
+  ///
+  /// 【为什么单独抽成方法而不是内联】它有三条需要被单测直接钉住的规则
+  /// （时代过滤 / 一次性触发 / 每回合最多一条），内联在 1300 行的方法里
+  /// 就只能靠"跑整个离线回合"间接验证，定位失败原因成本很高。
+  @visibleForTesting
+  void injectCanonEventForTest() => _injectCanonEventIntoOfflineNarrative();
+
+
+  void _injectCanonEventIntoOfflineNarrative() {
+    final p = player;
+    if (p == null) return;
+
+    final t = worldState.time;
+    final due = dueCanonEvents(
+      year: t.year,
+      month: t.month,
+      grade: p.grade ?? 1,
+      era: worldState.era,
+      firedIds: worldState.firedAnchorIds,
+      limit: 1,
+    );
+    if (due.isEmpty) return;
+
+    final event = due.first;
+    worldState.firedAnchorIds.add(event.id);
+
+    final block = '📖 ${event.title}\n${event.directive}';
+    if (!currentNarrative.contains(event.title)) {
+      currentNarrative = '$currentNarrative\n\n$block';
+    }
+    notifications.add('📖 ${event.title}');
+    worldState.addNarrativeEvent('📖 ${event.title}', turn: turnCount);
+
+    // 把刚触发的节点名记下来，供 buildFallbackChoices 生成「有针对性的选项」。
+    // 为什么不在选项侧重新过滤一遍：buildFallbackChoices 拿不到「本回合
+    // 触发的是哪条」，再跑一次 dueCanonEvents 会因为 id 已被写进
+    // firedAnchorIds 而返回空。所以由触发方单向告知。
+    lastCanonEventTitle = event.title;
+    lastCanonEventDirective = event.directive;
+
+    debugLog('📖 原著节点注入: ${event.id}（${event.bookRef}）');
   }
 
   /// Q13：本地兜底叙事的事件种子池——按地点分池 + 时间条件化 + 大通用池轮转。
@@ -1510,6 +1629,41 @@ $kNarrativeWritingRules
   /// 待摘要缓冲上限：模型能力升级后 4000→8000 字，一次摘要可以压缩更多回合，减少摘要 AI 调用频次
   static const int _maxPendingSummaryChars = 8000;
 
+  // ====== 摘要节奏常量（集中定义，消除散落的魔法数字）======
+
+  /// 摘要的回合数触发间隔。
+  ///
+  /// 【注意】它不是实际触发间隔——字数分支通常先命中（见 shouldRunPeriodicSummary）。
+  static const int kSummaryIntervalTurns = 20;
+
+  /// 待摘要字数提前触发阈值。必须 < [_maxPendingSummaryChars]，
+  /// 才能在缓冲溢出丢字之前先压缩一次。二者关系由测试断言。
+  static const int kSummaryEarlyTriggerChars = 6800;
+
+  /// 摘要失败后的基础冷却回合数（第 1 次失败）。
+  static const int _summaryFailCooldownTurns = 2;
+
+  /// 摘要失败冷却的回合数上限（避免长局把摘要永久停掉）。
+  static const int _summaryFailCooldownMaxTurns = 10;
+
+  /// 当前剩余的退避回合数。> 0 时 shouldRunPeriodicSummary 不触发。
+  static int _summaryCooldownRemaining = 0;
+
+  /// 剩余退避回合数（测试/诊断读取）。
+  @visibleForTesting
+  static int get summaryCooldownRemaining => _summaryCooldownRemaining;
+
+  /// 失败后设定退避（纯逻辑，供测试直接调用）。
+  @visibleForTesting
+  static void applySummaryCooldown(int consecutiveFails) {
+    _summaryCooldownRemaining = cooldownForFailCount(consecutiveFails);
+  }
+
+  /// 每回合递减退避计数（在 _maybeRunPeriodicSummary 里调用一次）。
+  static void tickSummaryCooldown() {
+    if (_summaryCooldownRemaining > 0) _summaryCooldownRemaining--;
+  }
+
   /// 摘要连续失败计数（Q8 玩家感知）。
   ///
   /// 修复前：摘要失败只写 debugLog，玩家完全无感知——长线局若摘要持续失败
@@ -1534,8 +1688,11 @@ $kNarrativeWritingRules
     return _summaryConsecutiveFails == _summaryFailNotifyThreshold;
   }
 
-  /// 重置摘要连续失败计数（读档 / 新开局复位；测试隔离也复用）。
-  static void resetSummaryFailCounter() => _summaryConsecutiveFails = 0;
+  /// 重置摘要连续失败计数与退避（读档 / 新开局复位；测试隔离也复用）。
+  static void resetSummaryFailCounter() {
+    _summaryConsecutiveFails = 0;
+    _summaryCooldownRemaining = 0;
+  }
 
   void accumulateForSummary(String newNarrative) {
     // BUG-I：喂 summary buffer 之前必须先清洗！
@@ -1612,8 +1769,9 @@ $kNarrativeWritingRules
       // 从 narrativeSummary 中剥离结构化块（它们已写入 LongTermMemory，
       // 不需要在 T4 自然语言摘要中重复，避免 token 浪费）
       narrativeSummary = _stripStructuredBlocks(rawSummary);
-      // 摘要成功 → 连续失败计数清零（Q8）
+      // 摘要成功 → 连续失败计数与退避一起清零（Q8 + 退避修复）
       _summaryConsecutiveFails = 0;
+      _summaryCooldownRemaining = 0;
       // 注意：这里不再清空 pendingSummary —— 待摘要内容在请求发出前就已取走，
       // 请求在飞期间新积累的回合仍留在缓冲里，等待下一次摘要。
     } catch (e) {
@@ -1624,6 +1782,9 @@ $kNarrativeWritingRules
       // 摘要失败本身是自恢复的（下回合重试），不能每次失败都弹提示刷屏，
       // 只在「持续失败」的边界给一次弱提示，让玩家知道该去查 AI 配置/配额。
       final crossed = advanceSummaryFailCounter();
+      // 退避：失败后暂停摘要若干回合，避免"失败→内容还回缓冲→字数仍超阈值
+      // →下回合立即重试→再失败"的风暴（配额耗尽时每回合烧一次调用）。
+      applySummaryCooldown(_summaryConsecutiveFails);
       if (crossed) {
         notifications.add(
           '📌 长线记忆连续多次未保存，请检查 AI 服务或更换模型；'
@@ -1650,7 +1811,7 @@ $kNarrativeWritingRules
     if (factsBlock.isNotEmpty) {
       final facts = factsBlock
           .split('\n')
-          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .map((l) => l.replaceAll(_reListPrefix, '').trim())
           .where((l) => l.isNotEmpty && l != '无' && l.length > 5)
           .take(10) // 每次摘要最多提取10条，防止爆炸
           .toList();
@@ -1679,8 +1840,8 @@ $kNarrativeWritingRules
     final loopsBlock = _extractBlock(rawSummary, '伏笔');
     if (loopsBlock.isNotEmpty) {
       final loops = loopsBlock
-          .split(RegExp(r'[;；\n]'))
-          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .split(_reListSeparator)
+          .map((l) => l.replaceAll(_reListPrefix, '').trim())
           .where((l) => l.isNotEmpty && l != '无' && l.length > 5)
           .take(8)
           .toList();
@@ -1717,8 +1878,8 @@ $kNarrativeWritingRules
     final closedBlock = _extractBlock(rawSummary, '了结');
     if (closedBlock.isNotEmpty) {
       final closedLines = closedBlock
-          .split(RegExp(r'[;；\n]'))
-          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .split(_reListSeparator)
+          .map((l) => l.replaceAll(_reListPrefix, '').trim())
           .where((l) => l.isNotEmpty && l != '无' && l.length > 4)
           .take(4) // 一段剧情里能了结的事不会太多，别让误伤扩散
           .toList();
@@ -1732,7 +1893,7 @@ $kNarrativeWritingRules
     if (eventsBlock.isNotEmpty) {
       final events = eventsBlock
           .split('\n')
-          .map((l) => l.replaceAll(RegExp(r'^[\s•·\-\d]+'), '').trim())
+          .map((l) => l.replaceAll(_reListPrefix, '').trim())
           .where((l) => l.isNotEmpty && l != '无' && l.contains('|'))
           .take(6)
           .toList();
@@ -1897,17 +2058,54 @@ $kNarrativeWritingRules
     }
   }
 
-  /// 生成当前重要NPC关系快照（取好感绝对值最高的前5位）
-
+  /// 生成当前重要NPC关系快照（喂给摘要 AI，用于校正长期关系记忆）。
+  ///
+  /// 【为什么要分层而不是只取前 5】旧实现是 `.take(5)`（按 |affection| 排序）。
+  /// 摘要 AI 只看到这 5 人，第 6 人起的关系**只能凭印象写**，而写出的偏差会被
+  /// `_extractMemoryFromSummary` 固化成 9 分 T0 事实，再注入 prompt 影响后续叙事——
+  /// 形成"偏差 → 固化 → 注入 → 更大偏差"的闭环，且随局龄单调加重。
+  ///
+  /// 现在的分层规则：
+  ///   1. **强关系层全量**：恋人 / 高宿敌分 / 好感 |x| ≥ [kSnapshotStrongAffection]
+  ///      的 NPC，无论多少人全部入选——这些是剧情主干，错了伤最重；
+  ///   2. **其余层补足**：按 |affection| 降序补齐到 [kSnapshotMaxNpcs] 人。
+  ///
+  /// 这样既保证主干关系不缺，又给快照一个确定的上界（避免长局 prompt 无界膨胀）。
   String buildRelationshipSnapshot() {
-    final npcs =
+    final love = player?.loveState;
+    final partnerId = love?.partnerId;
+    final crushName = love?.currentCrushName;
+    final nowDay = worldState.time.absoluteDayIndex;
+
+    final all =
         npcRegistry.values
             .where((n) => n.introduced && n.affection != 0)
             .toList()
           ..sort((a, b) => b.affection.abs().compareTo(a.affection.abs()));
-    return npcs
-        .take(5)
-        .map((n) => '${n.name}:${n.affectionStage}/${n.affection}')
+
+    // 第 1 层：强关系（恋人/暧昧对象/高宿敌分/高好感绝对值），全量保留
+    final strong = <NPC>[];
+    final rest = <NPC>[];
+    for (final n in all) {
+      final isPartner = partnerId != null && n.id == partnerId;
+      final isCrush = crushName != null && n.name == crushName;
+      final isStrong =
+          isPartner ||
+          isCrush ||
+          n.affection.abs() >= kSnapshotStrongAffection ||
+          n.rivalryTier(nowDay) != RivalryTier.none;
+      (isStrong ? strong : rest).add(n);
+    }
+
+    // 第 2 层：其余按 |affection| 补足到总上限
+    final remain = kSnapshotMaxNpcs - strong.length;
+    final picked = <NPC>[
+      ...strong,
+      if (remain > 0) ...rest.take(remain),
+    ];
+
+    return picked
+        .map((n) => '${n.name}:${affectionStageFor(n.affection)}/${n.affection}')
         .join('；');
   }
 
@@ -1927,6 +2125,38 @@ $kNarrativeWritingRules
 
   /// 根据行动关键词，只在关键剧情节点临时注入相关上下文（平时不注入）
 
+  // ====== 热路径预编译正则 ======
+  //
+  // 这些正则位于「每回合必然执行」的路径上（_buildCriticalContext、
+  // _syncLocationFromNarrative）。Dart 的 RegExp 每次构造都要重新解析
+  // 并编译 pattern，在长局里是纯浪费的 CPU 与 GC 压力。
+  // 统一提为 static final（只编译一次），语义完全不变。
+  // 参考实现见 mixin_response_affection.dart 与 mixin_response.dart 的
+  // _stripPatternCache —— 本项目的既有惯例就是「热路径正则必须预编译」。
+
+  static final RegExp _reCombatKeywords =
+      RegExp(r'(战斗|决斗|攻击|防御|施展咒语|施法|黑魔法|施咒|念咒|反击)');
+
+  static final RegExp _reStudyKeywords =
+      RegExp(r'(上课|考试|测验|作业|复习|学习|论文|写论文|做功课)');
+
+  static final RegExp _reRomanceKeywords =
+      RegExp(r'(约会|表白|心动|拥抱|接吻|单独见面|私聊)');
+
+  static final RegExp _reEconomyKeywords =
+      RegExp(r'(购买|出售|购物|交易|取钱|存钱|存取古灵阁)');
+
+  /// 社交意图关键词（_syncLocationFromNarrative 判定"是否与人互动"用）。
+  static final RegExp _reSocialIntent =
+      RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)');
+
+  /// 结构化块内条目前的列表符号 / 序号前缀（`- `、`• `、`1. ` 等）。
+  /// `_extractMemoryFromSummary` 里曾重复内联 4 次，现统一。
+  static final RegExp _reListPrefix = RegExp(r'^[\s•·\-\d]+');
+
+  /// 结构化块条目分隔符（中英文分号 / 换行）。曾重复内联 2 次。
+  static final RegExp _reListSeparator = RegExp(r'[;；\n]');
+
   String _buildCriticalContext(String action) {
     final p = player;
     if (p == null) return '';
@@ -1934,7 +2164,7 @@ $kNarrativeWritingRules
     final parts = <String>[];
 
     // 战斗/冲突 → 注入关键属性、魔咒、HP
-    if (a.contains(RegExp(r'(战斗|决斗|攻击|防御|施展咒语|施法|黑魔法|施咒|念咒|反击)'))) {
+    if (a.contains(_reCombatKeywords)) {
       final combatAttrs = p.attributes.entries
           .where((e) => e.value != 0)
           .take(3)
@@ -1952,7 +2182,7 @@ $kNarrativeWritingRules
     }
 
     // 学业/考试 → 注入相关属性
-    if (a.contains(RegExp(r'(上课|考试|测验|作业|复习|学习|论文|写论文|做功课)'))) {
+    if (a.contains(_reStudyKeywords)) {
       // 原来这里筛的是 const {'智慧','魔力','勤奋'}——属性表里根本没有这三个
       // 名字，过滤结果恒为空，【学业】上下文从来没注入过。改成按课程会提升的
       // 属性筛（kStudyAttributeKeys，与 course_data 对齐）。
@@ -1974,13 +2204,13 @@ $kNarrativeWritingRules
           .map((n) => '${n.name}:好感${n.affection}(${n.affectionStage})')
           .join('；');
       parts.add('【关系】$affs');
-    } else if (a.contains(RegExp(r'(约会|表白|心动|拥抱|接吻|单独见面|私聊)'))) {
+    } else if (a.contains(_reRomanceKeywords)) {
       final affs = formatAffections(maxEntries: 2);
       if (affs.isNotEmpty && !affs.contains('暂无深入关系')) parts.add('【关系】$affs');
     }
 
     // 购物/交易 → 注入金币和前3背包物品
-    if (a.contains(RegExp(r'(购买|出售|购物|交易|取钱|存钱|存取古灵阁)'))) {
+    if (a.contains(_reEconomyKeywords)) {
       parts.add('【经济】加隆:${p.galleons} 银行:${p.bankGalleons}');
       if (p.inventory.isNotEmpty) {
         final inv = p.inventory.take(3).map((e) => e.name).join('、');
@@ -2290,9 +2520,7 @@ $kNarrativeWritingRules
 
     // 沿用原先的节奏：每 5 回合查一次，或玩家这回合明显在跟人互动。
     // 不每回合都查，一是省算力，二是表白来得太密会掉价。
-    final interactive = lastPlayerAction.contains(
-      RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'),
-    );
+    final interactive = lastPlayerAction.contains(_reSocialIntent);
     if (turnCount > 0 && (turnCount % 5 != 0) && !interactive) return false;
 
     final before = p.loveState.awaitingConfession;
@@ -2378,11 +2606,30 @@ $kNarrativeWritingRules
       return; // 季节未到：保留上一地点
     }
 
-    // 年级门：霍格莫德三年级起才可去（原著设定）。一/二年级玩家被错切到
-    // 霍格莫德（如模型写了「三把扫帚」「蜂蜜公爵」）时，保留上一地点。
-    if (blockedByGradeGate(detected: detected, grade: player?.grade ?? 1)) {
+    // 区域门禁：年级 / 周末限制统一判定（数据源见 lib/data/game_config_rules.dart 的 mapRegions）。
+    //
+    // 【历史 bug】本处原先只调 `blockedByGradeGate`，而它内部写死 `'霍格莫德'`，
+    // 于是禁林的 `minGrade: 2` 从未在状态层拦过（一年级玩家被 AI 写进禁林照样切），
+    // 霍格莫德的 `weekendOnly: true` 也从未生效。现在统一走 `evaluateRegionGate`，
+    // 它是数据表的唯一消费入口——数据改一处，这里行为跟着改。
+    //
+    // 教授带队豁免：禁林的 unlockCondition 明确写了"或由教授带队"，
+    // 所以从叙事正文里识别带队词后放行（霍格莫德不受豁免，村民通行是制度性的）。
+    const escortWords = ['教授带队', '教授带领', '随队', '带队', '老师带领', '教授陪同'];
+    final gate = evaluateRegionGate(
+      detected: detected,
+      grade: player?.grade,
+      isWeekend: isWeekendWeekday(worldState.time.weekday),
+      escortExempt: escortWords.any(narrative.contains),
+    );
+    if (gate.isBlocked) {
+      final reasonText = switch (gate.reason!) {
+        RegionGateReason.grade =>
+          '需${gate.blocked!.minGrade}年级，当前${player?.grade ?? 1}年级',
+        RegionGateReason.weekend => '仅周末开放',
+      };
       worldState.addNarrativeEvent(
-        '⏱ 地点同步被年级门拦截：$detected（霍格莫德需三年级，当前${player?.grade ?? 1}年级）',
+        '⏱ 地点同步被区域门拦截：$detected（$reasonText）',
         turn: turnCount,
       );
       return;

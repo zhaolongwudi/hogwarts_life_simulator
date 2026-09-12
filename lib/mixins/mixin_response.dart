@@ -41,6 +41,42 @@ const List<String> kStripSectionNames = [
 /// 现编译 9 遍——这里按组合缓存。
 final Map<String, RegExp> _stripPatternCache = <String, RegExp>{};
 
+// ====== 本文件热路径的固定正则（预编译，只构造一次）======
+//
+// 这些 pattern 是常量，但原先每段正文解析都重新 `RegExp(...)` 一次。
+// Dart 的正则构造包含解析+编译，在长局里属于纯浪费。
+// 统一提为顶层 final（文件内复用），语义不变。
+
+/// 连续 3 个以上换行 → 折叠为段落分隔。展示与解析路径都用到。
+final RegExp _reBlankLineRun = RegExp(r'\n{3,}');
+
+/// 【好感度变化】区块（含变体写法）。
+final RegExp _reAffectionBlockForDisplay =
+    RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)');
+
+/// 【声望变化】区块（含变体写法）。
+final RegExp _reReputationBlockForDisplay =
+    RegExp(r'【声望变化?】[\s\S]*?(?=【|$)');
+
+/// 独占一行的【区块标题】（如【章节标题】），用于剥离记号但保留正文。
+final RegExp _reStandaloneBracketLabel =
+    RegExp(r'^【[^】\n]*】\s*$', multiLine: true);
+
+/// 引号之后的「说话人 + 动作」尾巴 —— 用于从正文末段回溯最后一位说话者。
+///
+/// 原先这串 pattern 内联在 `buildFallbackChoices` 里，每回合构造一次。
+/// 该函数是兜底路径，超时/异常时会连续触发，构造开销会叠加。
+final RegExp _reSpeakerAfterQuote = RegExp(
+  r'[」"】][^，。！？\n]*?(养母|养父|海格|邓布利多|斯内普|麦格|哈利|罗恩|赫敏|马尔福|教授|同学|级长|妈妈|爸爸|NPC)[^，。！？\n]{0,10}(说|开口|问|道|回答|叹了口气|笑了笑|低声|沉声|看着你)',
+  caseSensitive: false,
+);
+
+/// 任意成对引号中的短对话内容（2-40 字），用于取「最后一句对话的主题」。
+final RegExp _reQuotedDialog = RegExp(
+  r'[「"]([^「"」]{2,40})[」"]',
+  caseSensitive: false,
+);
+
 RegExp _stripPatternFor(String section, bool toEnd, bool bareLabel) {
   final key = '${toEnd ? 1 : 0}${bareLabel ? 1 : 0}|$section';
   final hit = _stripPatternCache[key];
@@ -315,7 +351,7 @@ mixin GameResponseMixin
     }
 
     var narrative = narrativeLines.join('\n');
-    narrative = narrative.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    narrative = narrative.replaceAll(_reBlankLineRun, '\n\n').trim();
     // 输出侧兜底清洗：Markdown 残留（**加粗**/行首标题/列表符）与整段复读
     narrative = StoryTextRenderer.dedupeRepeatedParagraphs(narrative);
     narrative = StoryTextRenderer.stripMarkdownArtifacts(narrative);
@@ -745,15 +781,15 @@ mixin GameResponseMixin
         extracted['narrative'] as String? ?? currentNarrative;
 
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
-      RegExp(r'【好感(?:度)?变化?】[\s\S]*?(?=【|$)'),
+      _reAffectionBlockForDisplay,
       (m) => '',
     );
     narrativeForDisplay = narrativeForDisplay.replaceAllMapped(
-      RegExp(r'【声望变化?】[\s\S]*?(?=【|$)'),
+      _reReputationBlockForDisplay,
       (m) => '',
     );
     narrativeForDisplay = narrativeForDisplay.replaceAll(
-      RegExp(r'\n{3,}'),
+      _reBlankLineRun,
       '\n\n',
     );
 
@@ -919,8 +955,8 @@ mixin GameResponseMixin
 
     // 4. 去掉【章节标题】等方括号记号但保留文字内容之间的空行
     cleaned = cleaned
-        .replaceAllMapped(RegExp(r'^【[^】\n]*】\s*$', multiLine: true), (m) => '')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .replaceAllMapped(_reStandaloneBracketLabel, (m) => '')
+        .replaceAll(_reBlankLineRun, '\n\n')
         .trim();
 
     // R4：时间戳回填。日历由系统独占推进，AI 自报的日期一律以系统为准。
@@ -1040,10 +1076,33 @@ mixin GameResponseMixin
   /// 核心原则：从「剧情最末尾的最后一位说话者 / 最后一个未完成动作 / 最后一个氛围钩子」出发，
   ///          产出 A(勇敢/主动) B(谨慎/观察) C(人际/沟通) D(取巧/隐忍) 四个风格，
   ///          玩家点任何一个都会让剧情**自然衔接**，不会出现"选了仔细查看 → 下回合叙事完全跳场景"的断链。
+  ///
+  /// 【原著事件感知】若本回合刚注入过原著节点（见 [hasFreshCanonEvent] /
+  /// [canonTopicFromTitle]，两者实现在 GameNarrativeMixin），A/B/C/D 四档
+  /// 各自会多出一个「围绕该事件」的分支，让玩家能对时代背景做出反应，
+  /// 而不是只读到一行旁白、选项仍是「四处看看」。
   List<GameChoice> buildFallbackChoices(String narrative) {
     final p = player;
     final energy = p?.energy ?? 100;
     final location = worldState.currentLocation ?? '';
+
+    // ---- 原著事件感知：本回合刚发生的节点，优先级最低但有真实针对性 ----
+    //
+    // 为什么放在末尾用 else if 而不是插在前面：A/B/C/D 四档的既有分支是按
+    // 「场景钩子精确度」排过序的（hookDoor/hookLetter 等），而节点分支的
+    // 判据只是「刚触发过事件」。让它插队会覆盖掉更精确的钩子，属于退化。
+    // 追加在末尾则恰好补上原先必然落进 `else` 通用兜底的那一档。
+    // 注意：加 `!` 是因为 `hasFreshCanonEvent` 这个 getter 本身无法为
+    // 类型分析器提供 promotion——getter 结果不被缓存，编译器不敢假设
+    // 两次调用（getter + `!`）之间值不变。
+    // 注意：`canonTopicFromTitle` 是基类上的 **static** 成员，mixin 内必须
+    // 写全 `GameProviderBase.` 前缀——裸写名字会走实例作用域解析，
+    // static 成员不参与，直接报 `undefined_method`（本轮踩过的坑）。
+    // 而 `hasFreshCanonEvent` 是实例 getter，可以裸用，但它无法为
+    // 类型分析器提供 promotion，故 `!` 不可省。
+    final canonTopic = hasFreshCanonEvent
+        ? GameProviderBase.canonTopicFromTitle(lastCanonEventTitle!)
+        : null;
     final atHome =
         location.contains('家中') ||
         location.contains('卧室') ||
@@ -1053,21 +1112,32 @@ mixin GameResponseMixin
         worldState.timestamp.contains('深夜') ||
         worldState.timestamp.contains('晚间') ||
         worldState.timestamp.contains('黄昏');
-    final tail = narrative.length > 800
+    final rawTail = narrative.length > 800
         ? narrative.substring(narrative.length - 800)
         : narrative;
+
+    // ---- 原著节点块必须先从「对话/说话人」提取范围里剔除 ----
+    //
+    // 踩过的坑：节点 directive 是**给叙事的指令文本**，里面带描述性引号
+    // （如「你决定不再只听二手传言」）。`_reQuotedDialog` 会把这种引号
+    // 当成"最后一句台词"，于是 `lastDialogTopic` 被污染成毫无意义的片段，
+    // 进而 A/B/C/D 四档**全部**命中 `hookAnswer` 分支——
+    // 表现为四个选项都在"回应某人的提问"，而原著事件选项永远轮不到。
+    //
+    // 节点块以 `📖 ` 开头的整段为界，只对**块之前的正文**做提取。
+    // 这里用 lastIndexOf 取最后一块，保证只切掉本回合新注入的那一块。
+    var tail = rawTail;
+    final canonBlockAt = tail.lastIndexOf('\n📖 ');
+    if (canonBlockAt >= 0) {
+      tail = tail.substring(0, canonBlockAt);
+    }
 
     // ---------- Step 1: 从末尾 800 字抓最后一位说话者 + 最后一句对话关键词 ----------
     String? lastSpeaker;
     String? lastDialogTopic;
-    final afterQuoteRe = RegExp(
-      r'[」"】][^，。！？\n]*?(养母|养父|海格|邓布利多|斯内普|麦格|哈利|罗恩|赫敏|马尔福|教授|同学|级长|妈妈|爸爸|NPC)[^，。！？\n]{0,10}(说|开口|问|道|回答|叹了口气|笑了笑|低声|沉声|看着你)',
-      caseSensitive: false,
-    );
-    final aqm = afterQuoteRe.allMatches(tail);
+    final aqm = _reSpeakerAfterQuote.allMatches(tail);
     if (aqm.isNotEmpty) lastSpeaker = aqm.last.group(1);
-    final dialogRe = RegExp(r'[「"]([^「"」]{2,40})[」"]', caseSensitive: false);
-    final dm = dialogRe.allMatches(tail);
+    final dm = _reQuotedDialog.allMatches(tail);
     if (dm.isNotEmpty) lastDialogTopic = dm.last.group(1);
 
     // ---------- Step 2: 抓末尾的未完成动作钩子（关键：位置门控，防止场景错位） ----------
@@ -1142,6 +1212,23 @@ mixin GameResponseMixin
         GameChoice(
           text: '和养父母认真告别后收拾行李，明天一早前往国王十字车站',
           action: '和养父母认真拥抱告别，随即开始收拾行李，确认车票、魔杖和加隆都已入箱，准备明天前往国王十字车站的九又四分之三站台',
+        ),
+      );
+    } else if (canonTopic != null) {
+      // 原著事件感知：**必须排在 hookAnswer 之前**。
+      //
+      // 为什么：`hookAnswer` 的判据里含 `tail.contains('你的选择')`，而离线
+      // 兜底叙事的固定句正是「你的选择，会把它推向不同的方向。」——于是
+      // 离线路径下 hookAnswer **恒为真**，会把所有更具体的分支全部压掉。
+      // 这一条是测试实测出来的（选项四连全是"回应提问"），不是推测。
+      // 但仍让它位于 hookGoodbye/hookDoor/hookLetter 之后：那三个是绑定
+      // 具体位置与物件的精确钩子（门、录取信、告别），精确度高于
+      // 「本月触发过事件」这种时间性判据。
+      fallback.add(
+        GameChoice(
+          text: '主动找消息灵通的同学打听「$canonTopic」的来龙去脉',
+          action:
+              '这件事已经传遍了周围，你决定不再只听二手传言：主动去找消息最灵通的同学或高年级学长问清楚「$canonTopic」到底是怎么回事，把时间、地点、涉及的人一一问明白，再判断它会怎么波及到你',
         ),
       );
     } else if (hookAnswer) {
@@ -1220,6 +1307,16 @@ mixin GameResponseMixin
           action: '感觉身体已经快到极限了，不再硬撑，找个安全的地方坐下或靠墙闭目养神，先把体力和精力恢复到能正常行动的水平再考虑下一步',
         ),
       );
+    } else if (canonTopic != null) {
+      // 原著事件感知（主动型）：事件发生在周围，玩家能做的是**追信息**，
+      // 而不是冲进去当主角——后者会破坏「平行世界，玩家是原创角色」的前提。
+      fallback.add(
+        GameChoice(
+          text: '主动找消息灵通的同学打听「$canonTopic」的来龙去脉',
+          action:
+              '这件事已经传遍了周围，你决定不再只听二手传言：主动去找消息最灵通的同学或高年级学长问清楚「$canonTopic」到底是怎么回事，把时间、地点、涉及的人一一问明白，再判断它会怎么波及到你',
+        ),
+      );
     } else {
       // 默认 A 选项：基于当前场景生成不同风格的主动型选项，避免多回合相同
       final defaultA = turnCount % 3 == 0
@@ -1240,7 +1337,24 @@ mixin GameResponseMixin
     }
 
     // ---- B 谨慎/智取/观察型 ----
-    if (hookAnswer) {
+    if (canonTopic != null) {
+      // 原著事件感知（谨慎型）：与 A 档形成风格对照——同样是关注事件，
+      // A 是主动打听，B 是安静收集。玩家点哪个都不会跳场景，
+      // 因为两者的动作都发生在「此刻所在的这个地方」。
+      //
+      // 【为什么四档都必须排在 hookAnswer 之前】
+      // `hookAnswer` 的判据含 `tail.contains('你的选择')`，而离线兜底叙事
+      // 里有一句固定文案「你的选择，会把它推向不同的方向。」——因此在
+      // **整个离线路径下 hookAnswer 恒为真**。任何排在它后面的分支都是
+      // 死代码。这不是风格取舍，是不这么排就永远不生效。
+      fallback.add(
+        GameChoice(
+          text: '表面不介入，安静留意周围关于「$canonTopic」的所有消息',
+          action:
+              '你不打算主动卷进这件事，但也不想一无所知：维持平日的作息与课业节奏，一边留意公告栏、走廊议论和教授们的神情，把关于「$canonTopic」的零碎消息拼成完整脉络，等分清利害再决定要不要介入',
+        ),
+      );
+    } else if (hookAnswer) {
       fallback.add(
         GameChoice(
           text: '不急于回答，先反问「${lastSpeaker ?? '对方'}」几个关键细节再决定',
@@ -1284,6 +1398,17 @@ mixin GameResponseMixin
           action: '先避开人流，找一个走廊的安静角落，把课程表、学院公共休息室位置和今天要做的事情逐一列清楚，避免走错教室或遗漏重要事项',
         ),
       );
+    } else if (canonTopic != null) {
+      // 原著事件感知（谨慎型）：与 A 档形成风格对照——同样是关注事件，
+      // A 是主动打听，B 是安静收集。玩家点哪个都不会跳场景，
+      // 因为两者的动作都发生在「此刻所在的这个地方」。
+      fallback.add(
+        GameChoice(
+          text: '表面不介入，安静留意周围关于「$canonTopic」的所有消息',
+          action:
+              '你不打算主动卷进这件事，但也不想一无所知：维持平日的作息与课业节奏，一边留意公告栏、走廊议论和教授们的神情，把关于「$canonTopic」的零碎消息拼成完整脉络，等分清利害再决定要不要介入',
+        ),
+      );
     } else {
       // 默认 B 选项：基于回合数和场景变化
       final defaultB = turnCount % 3 == 0
@@ -1304,7 +1429,21 @@ mixin GameResponseMixin
     }
 
     // ---- C 人际/沟通/结盟型 ----
-    if (lastSpeaker != null) {
+    if (canonTopic != null) {
+      // 原著事件感知（人际型）：原著大事往往也是人际场上的话题。
+      // 让玩家借事件去攀谈，是把「时代背景」变成「社交资源」的最自然方式。
+      //
+      // 位置：提到 `lastSpeaker != null` 之前。那一分支在离线路径下同样
+      // 恒为真（`_reQuotedDialog` 会把 NPC 台词抓成 lastSpeaker），
+      // 排它后面同样是死代码。
+      fallback.add(
+        GameChoice(
+          text: '借着「$canonTopic」这个话题，和身边的同学交换各自听来的版本',
+          action:
+              '你意识到这件事正是个自然的搭话由头：主动和身边的同学、室友交换各自听来的关于「$canonTopic」的版本，比对谁的消息更接近实情，顺便看清哪些同学和你在同一立场，把关系建立起来',
+        ),
+      );
+    } else if (lastSpeaker != null) {
       fallback.add(
         GameChoice(
           text: '和「$lastSpeaker」坐下来好好聊清楚${lastDialogTopic ?? '接下来的打算'}再决定',
@@ -1362,7 +1501,21 @@ mixin GameResponseMixin
     }
 
     // ---- D 取巧/隐忍/代价型 ----
-    if ((hookPacking || hookLeaving) && atHome) {
+    if (canonTopic != null) {
+      // 原著事件感知（隐忍型）：原著里的大事往往伴随管控与清算。
+      // 这一档给玩家「规避风险」的合理选择——不表态、不留痕迹、
+      // 先保护自己不受波及，符合平行世界原创角色的生存逻辑。
+      //
+      // 位置：提到 hookAnswer 之前，理由同 A/B/C 三档（离线路径下
+      // hookAnswer 恒真，排它后面即死代码）。
+      fallback.add(
+        GameChoice(
+          text: '对「$canonTopic」不作任何公开表态，先把自己从风口浪尖上摘干净',
+          action:
+              '你敏锐地察觉到「$canonTopic」这桩事正在让周围的人变得敏感：于是刻意不作公开表态，避开议论扎堆的地方，也不在书面上留下立场痕迹，先确保自己不会被卷进任何一方的清算里',
+        ),
+      );
+    } else if ((hookPacking || hookLeaving) && atHome) {
       fallback.add(
         GameChoice(
           text: '先把最重要的魔杖和车票揣进内袋，其余物品明天清早再收拾',
@@ -1405,6 +1558,17 @@ mixin GameResponseMixin
           text: '拿出提前准备好的笔记，把今天观察到的关键信息快速记下来建立情报优势',
           action:
               '掏出随身的羊皮纸小本和羽毛笔，把今天观察到的教授特点、同学性格、重要地点位置快速整理记录，建立属于自己的情报笔记方便日后利用',
+        ),
+      );
+    } else if (canonTopic != null) {
+      // 原著事件感知（隐忍型）：原著里的大事往往伴随管控与清算。
+      // 这一档给玩家「规避风险」的合理选择——不表态、不留痕迹、
+      // 先保护自己不受波及，符合平行世界原创角色的生存逻辑。
+      fallback.add(
+        GameChoice(
+          text: '对「$canonTopic」不作任何公开表态，先把自己从风口浪尖上摘干净',
+          action:
+              '你敏锐地察觉到「$canonTopic」这桩事正在让周围的人变得敏感：于是刻意不作公开表态，避开议论扎堆的地方，也不在书面上留下立场痕迹，先确保自己不会被卷进任何一方的清算里',
         ),
       );
     } else {

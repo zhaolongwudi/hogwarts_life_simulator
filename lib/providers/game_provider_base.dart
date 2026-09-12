@@ -198,8 +198,44 @@ abstract class GameProviderBase extends ChangeNotifier
   int lastSchoolYearStart = 0;
 
   /// 用于判断跨周：上一状态对应的绝对天数除以 7 的桶编号。
-  /// 与 gameWeek 一同在 new game/load game 时初始化，避免开局几天就跨周。
-  int lastWeekBucket = 0;
+  ///
+  /// 【为什么是 `int?` 而不是 `int = 0`】「绝对周桶」是从 1991-01-01 起算的
+  /// 大数（1991-09-01 开学时约为 `243 ~/ 7 = 34`），用 0 当占位值是**量纲错误**：
+  /// 0 代表 1991 年第一周，与"尚未初始化"完全是两回事。旧写法靠
+  /// `mixin_init` / `applySaveData` 后面各补一次正确赋值来兜底，一旦将来有人在
+  /// 补值之前推进时间（开局过场、旅行耗时结算），`_advanceWorldClock` 就会
+  /// 读到 0 并一次性把 `gameWeek` 抬到几十，整套首周/首月好感沉淀静默失效。
+  ///
+  /// 现在改成可空 + 访问器：`null` 显式表示"还没建立基准"，由
+  /// [weekBucketBaseline] 在首次跨周判定时惰性建立并返回，**不可能再读到错值**。
+  int? _lastWeekBucket;
+
+  /// 仅测试/存档迁移使用：直接写基准值。
+  @visibleForTesting
+  set lastWeekBucketForTest(int? v) => _lastWeekBucket = v;
+
+  /// 清空跨周基准，回到「尚未建立」状态（重置/重开新局时调用）。
+  ///
+  /// 与 `lastWeekBucket = 0` 的区别：0 是 1991 年第一周的**合法桶号**，
+  /// 清空是「没有基准」。二者混淆正是旧实现静默失效的根源。
+  void clearWeekBucketBaseline() => _lastWeekBucket = null;
+
+  /// 跨周判定的基准桶号。
+  ///
+  /// [currentAbsoluteDayIndex] 传入当前绝对天索引：
+  ///   · 基准已建立 → 直接返回基准（正常路径）；
+  ///   · 基准为 null（新开局/读档后首次判定）→ 用当前天索引建立基准并返回，
+  ///     使「首次判定的跨周数」恒为 0，不会因初始化遗漏而爆炸。
+  ///
+  /// 这样新开局/读档**不再需要专门的一行赋值**——漏了也不会出错，
+  /// 从"依赖调用方记得补"变成"不变量由类型和访问器保证"。
+  int weekBucketBaseline(int currentAbsoluteDayIndex) {
+    final cur = currentAbsoluteDayIndex ~/ 7;
+    return _lastWeekBucket ??= cur;
+  }
+
+  /// 显式设置基准（跨周推进后调用，或读档时按存档时间建立）。
+  set lastWeekBucket(int bucket) => _lastWeekBucket = bucket;
 
   /// 导演节拍器：距上次「转折」节拍的回合数。
   /// 99 = 开局即视为"很久没转折"，不挡第一次转折抽取。
@@ -334,6 +370,80 @@ abstract class GameProviderBase extends ChangeNotifier
   // 避免一个走老的简易关键词池、一个走新的末尾800字承接池，造成断链。
   List<GameChoice> buildFallbackChoices(String narrative);
   void generateNewNPC();
+
+  /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====
+  ///
+  /// 【为什么必须放在基类上】触发方在 `GameNarrativeMixin`
+  /// （`_injectCanonEventIntoOfflineNarrative`），消费方在
+  /// `GameResponseMixin.buildFallbackChoices`。Dart 的 mixin **非抽象成员**
+  /// 不像抽象方法那样跨 mixin 可见——直接引用会报 `undefined_identifier`。
+  /// 放在共同基类上，两个 mixin 才都能看到。这是编译期实测出来的约束，
+  /// 不是风格偏好（见本轮修复记录）。
+  ///
+  /// 本回合刚触发的原著剧情节点标题（无触发时为 null）。
+  String? lastCanonEventTitle;
+
+  /// 同上的节点指令原文，用于让选项文本带上事件的关键词。
+  String? lastCanonEventDirective;
+
+  /// 本回合是否刚注入过原著剧情节点。
+  ///
+  /// 判定口径：`lastCanonEventTitle` 被设置过即算。**不清零**——这是有意为之：
+  /// 触发节点的那一回合末尾调用的 `generateFallbackChoices` 可能会重试，
+  /// 若在第一次读取时就清空，重试那次又会退回通用选项。让它在下一回合
+  /// 被新叙事覆盖即可，最多影响一回合，且方向上仍是「贴近剧情」而非跑偏。
+  bool get hasFreshCanonEvent => lastCanonEventTitle != null;
+
+  /// 抽取节点标题里的**具体主题**，用于拼「去打听那件事」这类选项。
+  ///
+  /// 为什么需要它：标题形如「古灵阁闯入事件」「密室被打开」，直接塞进选项
+  /// 会得到「去打听古灵阁闯入事件这件事」这种叠字病句。这里剥掉尾部的
+  /// 「事件/之夜/案」等结构词，只留核心名词短语。
+  ///
+  /// 独立成 static 纯函数（不依赖任何实例字段），便于测试直接钉住
+  /// 「病句不再出现」，而不必跑完整回合再对选项文本做模糊匹配。
+  ///
+  /// 注意：**不要**给它加 `@visibleForTesting`——它是生产路径
+  /// （`buildFallbackChoices` 拼选项文案）真正要调的，
+  /// 加了之后生产代码引用它会直接报错。
+  static String canonTopicFromTitle(String title) {
+    var s = title.trim();
+    // 去掉开头的情态词，避免「传闻…」+「去打听」重复
+    for (final lead in const ['传闻', '据说', '有关', '关于']) {
+      if (s.startsWith(lead)) {
+        s = s.substring(lead.length);
+        break;
+      }
+    }
+    // 剥掉尾部结构性后缀。
+    //
+    // 顺序即优先级：**必须从长到短**，否则短后缀会先截断，留下「的」「被」
+    // 这类残缺尾巴。两条规则是被实测抓出来的（见 options 感知测试）：
+    //   - 「厄里斯魔镜的传闻」若先命中的是「传闻」，会剥成「厄里斯魔镜的」；
+    //   - 「阿兹卡班越狱事件」若先命中的是「越狱」，会剥成「阿兹卡班越狱」。
+    // 把「的传闻」「越狱事件」这类**连读后缀**整条列出，即可一次剥干净。
+    for (final suffix in const [
+      '的传闻',
+      '被闯入了',
+      '被闯入',
+      '被打开了',
+      '被打开',
+      '越狱事件',
+      '越狱',
+      '之夜',
+      '事件',
+      '风波',
+      '一案',
+      '案',
+      '传闻',
+    ]) {
+      if (s.length > suffix.length + 1 && s.endsWith(suffix)) {
+        s = s.substring(0, s.length - suffix.length);
+        break;
+      }
+    }
+    return s.isEmpty ? title : s;
+  }
 
   /// 处理 /阿尼马格斯 子命令（实现在 GameAnimagusMixin）。
   void handleAnimagusCommand(List<String> parts);
