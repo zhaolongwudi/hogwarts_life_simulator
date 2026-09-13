@@ -37,6 +37,16 @@ Future<GameProvider> makeStoryGame() async {
   return gp;
 }
 
+/// 取第一章（ps_ch1）的第 [index] 步。
+///
+/// 【为什么按顺序取而不是写死 id】第一章会随内容扩写增减节拍，
+/// 存档测试关心的是"游标落在第一章的第 2 步"这一结构性质。
+/// 写死 `ps_ch1_tell` 会在每次扩写时误报，掩盖真正的存档回归。
+StoryStepDef psCh1Step(int index) => findStoryBook('ps')!
+    .chapters
+    .firstWhere((c) => c.id == 'ps_ch1')
+    .steps[index];
+
 Map<String, dynamic> buildSaveJson(GameProvider gp) {
   final p = gp.player!;
   return {
@@ -113,7 +123,7 @@ void main() {
       expect(p.active, isTrue);
       expect(p.bookId, 'ps');
       expect(p.chapterId, 'ps_ch1');
-      expect(p.stepId, 'ps_ch1_tell');
+      expect(p.stepId, psCh1Step(1).id);
       expect(p.doneSteps, contains('ps_ch1_letter'));
       expect(p.chosen['ps_ch1_letter'], 'read_in_room');
       expect(p.flags, contains('ps_read_letter_first'));
@@ -136,7 +146,7 @@ void main() {
       for (final c in gp.choices) {
         final cmd = parseStoryCommand(c.action);
         expect(cmd, isNotNull, reason: '读档后选项丢了剧情编码：${c.action}');
-        expect(cmd!.stepId, 'ps_ch1_tell');
+        expect(cmd!.stepId, psCh1Step(1).id);
       }
 
       // 点一个选项能继续推进

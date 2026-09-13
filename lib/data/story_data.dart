@@ -86,7 +86,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你把门反锁，坐在床沿把信读完。信里写着入学通知、书单，'
                 '以及九月一日从国王十字车站出发的安排。你把信折好，塞进枕头底下。',
-            nextStepId: 'ps_ch1_tell',
+            nextStepId: 'ps_ch1_window',
             effect: StoryEffect(
               addItems: ['霍格沃茨的来信'],
               addKnowledge: ['knows_hogwarts_acceptance'],
@@ -101,7 +101,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你把信拍在餐桌上。养母的茶杯停在半空，养父放下报纸，'
                 '沉默了很久才说：「我们本来想等你再大一点再说。」'
                 '他们承认，你小时候确实发生过一些「说不清」的事。',
-            nextStepId: 'ps_ch1_tell',
+            nextStepId: 'ps_ch1_window',
             effect: StoryEffect(
               addItems: ['霍格沃茨的来信'],
               addKnowledge: [
@@ -111,6 +111,36 @@ const List<StoryChapterDef> _psChapters = [
               setFlags: ['ps_confronted_family'],
               spirit: -3,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch1_window',
+        chapterId: 'ps_ch1',
+        timeCostDays: 1,
+        setup:
+            '读完信之后，你做的第一件事是重新坐到窗边，把这件事想清楚。街上的夏天照旧：送奶的、遛狗的、隔壁小孩在墙根下踢一块石头。只有你知道，从今天起，这个世界在你眼里裂成了两半。',
+        ambient: [
+          '猫头鹰早已飞走了，窗台上只留下一小撮细绒毛。',
+          '养母在楼下喊你去买面包，声音和平常没什么两样。',
+          '你把信又抽出来看了一眼，确认那枚盾徽不是错觉。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'sit_watch',
+            text: '就这么坐着看完一整条街，把这一天记牢',
+            consequence:
+                '你坐了很久，直到面包店的卷帘门拉下来。你想，以后大概很难再有这样一天——世界还是你熟悉的样子，而你已经知道它底下藏着别的什么。',
+            nextStepId: 'ps_ch1_tell',
+            effect: StoryEffect(setFlags: ['ps_watched_street'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'ask_neighbor',
+            text: '揣着信去敲隔壁那户人家的门',
+            consequence:
+                '开门的老太太听完只是笑，说「小孩子做梦想进城堡」。你谢过她，转身往回走——原来在不知道的人眼里，这件事看起来就像个笑话。你没再提。',
+            nextStepId: 'ps_ch1_tell',
+            effect: StoryEffect(setFlags: ['ps_dismissed_by_neighbor'], spirit: -2),
           ),
         ],
       ),
@@ -134,7 +164,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你把清单摊在桌上，一条一条念。养母问了很多问题，'
                 '最后叹了口气说：「那……总得给你买齐东西。」'
                 '当晚，养父破天荒地在餐桌上讲了三个笑话。',
-            nextStepId: 'ps_ch1_study',
+            nextStepId: 'ps_ch1_list',
             effect: StoryEffect(
               setFlags: ['ps_family_supportive'],
               reputation: 2,
@@ -147,7 +177,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你说了个含糊的借口，他们信了一半。收拾行李那几天，'
                 '养母几次欲言又止，最后只是往你箱子里多塞了一件毛衣。',
-            nextStepId: 'ps_ch1_study',
+            nextStepId: 'ps_ch1_list',
             effect: StoryEffect(
               setFlags: ['ps_family_in_the_dark'],
               spirit: -5,
@@ -156,9 +186,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch1_list',
+        chapterId: 'ps_ch1',
+        timeCostDays: 1,
+        setup:
+            '清单被你摊在饭桌上，一样一样念过去：三套黑色工作长袍、一顶素面尖顶帽、一门课的课本、一口锡镴坩埚。念到「学生可携带猫头鹰、猫或蟾蜍」这一行时，你停顿了一下——原来连这个都有规定。',
+        ambient: [
+          '养父拿铅笔在纸边算总数，眉头越皱越紧。',
+          '纸角被汤碗压出了一个圆印子。',
+          '窗外有辆卡车经过，桌上的杯子轻轻震了一下。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'save_list',
+            text: '把清单折好收进书桌抽屉最里层',
+            consequence:
+                '你把它压在旧成绩单下面。那抽屉里装着各种你舍不得扔的东西——现在多了这张纸。你知道再过一个月它就会变成真的。',
+            nextStepId: 'ps_ch1_study',
+            effect: StoryEffect(setFlags: ['ps_saved_list'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'read_aloud',
+            text: '拉着养母把每一样都念给她听',
+            consequence:
+                '你念得很慢，她就跟着一道一道问「这个贵不贵」「这个危险吗」。念完以后她说：「去吧，别丢东西。」这大概是她能给出的最接近祝福的话。',
+            nextStepId: 'ps_ch1_study',
+            effect: StoryEffect(setFlags: ['ps_family_heard_list'], spirit: 5),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch1_study',
         chapterId: 'ps_ch1',
-        timeCostDays: 3,
+        timeCostDays: 1,
         setup:
             '离九月一日还有一个月。你在抽屉深处翻出几本旧课本，'
             '想先把能看懂的看一遍——可书上的字像是活的，'
@@ -202,7 +262,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch1_visit',
         chapterId: 'ps_ch1',
-        timeCostDays: 2,
+        timeCostDays: 1,
         setup:
             '八月初的一个下午，一位穿着深绿色斗篷的巫师来家里拜访。'
             '他自称是霍格沃茨的「联络人」，负责给麻瓜出身的家庭做说明。'
@@ -264,7 +324,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你把回执系好，推开窗。仓鸮展开翅膀，几乎是无声地滑进了夜色，'
                 '很快变成一个黑点。你站在窗边很久，心跳得厉害。',
-            nextStepId: 'ps_ch1_last_night',
+            nextStepId: 'ps_ch1_postbox',
             effect: StoryEffect(
               setFlags: ['ps_accepted'],
               addKnowledge: ['will_go_to_hogwarts'],
@@ -279,13 +339,43 @@ const List<StoryChapterDef> _psChapters = [
                 '你在回执上多写了两句犹豫的话。第二天清晨，猫头鹰回来了，'
                 '带回一张字迹工整的便条：「霍格沃茨随时欢迎你，但门只为你开一次。」'
                 '你把它读了三遍，最后还是把「我愿意」补了上去。',
-            nextStepId: 'ps_ch1_last_night',
+            nextStepId: 'ps_ch1_postbox',
             effect: StoryEffect(
               setFlags: ['ps_accepted', 'ps_hesitated_first'],
               addKnowledge: ['will_go_to_hogwarts'],
               spirit: -3,
               reputation: 1,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch1_postbox',
+        chapterId: 'ps_ch1',
+        timeCostDays: 1,
+        setup:
+            '回信写完之后，你捏着那只不肯离开的猫头鹰发愁：麻瓜的邮筒显然不合适，而厨房的烟囱又太窄。最后你把回执系在它腿上，走到院子里，把它举过头顶。',
+        ambient: [
+          '夜里的风比白天凉，草叶上已经有了露水。',
+          '远处有人家在放电视，声音闷闷的，听不清在说什么。',
+          '猫头鹰的爪子在你手腕上紧了紧，像是催你快点。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'release_now',
+            text: '松手，看着它飞进夜色里',
+            consequence:
+                '它飞得很低，掠过一排屋顶，然后突然拔高，几秒钟就融进了黑。你仰着头站了很久，脖子都酸了。',
+            nextStepId: 'ps_ch1_last_night',
+            effect: StoryEffect(setFlags: ['ps_owl_released'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'hold_back',
+            text: '先把它带回房间，喂点面包再送',
+            consequence:
+                '你翻出半块面包，它却看都不看，只是盯着你。你忽然明白它在等什么——于是你把窗户推开，它就走了。',
+            nextStepId: 'ps_ch1_last_night',
+            effect: StoryEffect(setFlags: ['ps_fed_owl'], spirit: 6),
           ),
         ],
       ),
@@ -412,7 +502,7 @@ const List<StoryChapterDef> _psChapters = [
                 '「空的金库用得着人去闯？」另一个声音嗤笑，'
                 '「依我看，里面『有过』什么东西，而现在不在了。」'
                 '你把这两句话都记下了。',
-            nextStepId: 'ps_ch2_shopping',
+            nextStepId: 'ps_ch2_crowd',
             effect: StoryEffect(
               addKnowledge: ['knows_gringotts_rumor'],
               setFlags: ['ps_heard_gringotts'],
@@ -426,7 +516,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你数清了钱袋里的加隆，把收据折好揣进口袋。'
                 '外面的阳光正好，你决定不去想金库里到底丢了什么——'
                 '那是妖精和傲罗的事。',
-            nextStepId: 'ps_ch2_shopping',
+            nextStepId: 'ps_ch2_crowd',
             effect: StoryEffect(
               setFlags: ['ps_kept_head_down'],
               galleons: 5,
@@ -436,9 +526,69 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch2_crowd',
+        chapterId: 'ps_ch2',
+        timeCostDays: 1,
+        setup:
+            '巷子里的人比你预想的要多得多。穿长袍的人、抱坩埚的人、肩上蹲着猫头鹰的人，挤在同一条鹅卵石街上。你被推着往前走，忽然意识到自己完全不知道该先去哪家。',
+        ambient: [
+          '有人扛着一摞教材从书店出来，最上面那本在往下滑。',
+          '街角蹲着一只瘦猫，正盯着药店门口挂着的一串死老鼠看。',
+          '空气里混着羊皮纸、蜡油和一点点硫磺的味道。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'follow_group',
+            text: '跟上一群背着新书包的同龄人',
+            consequence:
+                '你跟着他们走进长袍店，又跟着他们拐去书店。全程没人跟你说话，但你已经把这条街的顺序记熟了——这是最省事的认路方式。',
+            nextStepId: 'ps_ch2_vault',
+            effect: StoryEffect(setFlags: ['ps_learned_diagon'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'ask_direction',
+            text: '停下脚步，找个店员问路',
+            consequence:
+                '一个高个子的店员用魔杖指了指街尾，然后说「第一次来吧」。你点头。他笑了笑：「那就慢慢逛，反正你以后每年都来。」',
+            nextStepId: 'ps_ch2_vault',
+            effect: StoryEffect(addKnowledge: ['knows_diagon_layout'], setFlags: ['ps_asked_for_directions'], spirit: 2),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch2_vault',
+        chapterId: 'ps_ch2',
+        timeCostDays: 1,
+        setup:
+            '妖精领着你走过一段向下的石阶，空气越来越冷。轨道小车在黑暗里穿行，风声在耳边刮过去。最后停在一扇小门前——那扇门比走廊里所有门都小一圈。',
+        ambient: [
+          '车厢的木板上刻满了各种名字和日期，最早的已经看不清了。',
+          '隧道深处有水滴声，一下一下，很规律。',
+          '妖精把钥匙插进锁孔的时候，手背上的青筋鼓了起来。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'count_coins',
+            text: '把属于你的金币一枚一枚数清楚',
+            consequence:
+                '你数了三遍，确认了数目。这些钱够买齐清单上的每一样，还能剩下一点。你把它们重新装好，扎紧了袋口。',
+            nextStepId: 'ps_ch2_shopping',
+            effect: StoryEffect(setFlags: ['ps_counted_galleons'], spirit: 3, galleons: 12),
+          ),
+          StoryChoiceDef(
+            id: 'think_rumor',
+            text: '站在金库门口，又想起刚才听到的那句传闻',
+            consequence:
+                '你回头看了看走廊深处——那里还有几百扇同样的小门。闯进来的人到底在找哪一扇？这个问题你没问出口，因为问了也不会有人答。',
+            nextStepId: 'ps_ch2_shopping',
+            effect: StoryEffect(addKnowledge: ['knows_gringotts_depth'], setFlags: ['ps_pondered_gringotts'], spirit: -1),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch2_shopping',
         chapterId: 'ps_ch2',
-        timeCostDays: 21,
+        timeCostDays: 17,
         setup:
             '清单还剩最后几项：课本、坩埚，以及最重要的一根魔杖。'
             '奥利凡德的店铺又窄又旧，门口的招牌金字剥落了大半。'
@@ -458,7 +608,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你试到第七根的时候，杖尖终于冒出一簇金色的火星，'
                 '暖得像把整个夏天握在手里。店主满意地点头：'
                 '「看到了吧？我说过，总有一根在等你。」',
-            nextStepId: '',
+            nextStepId: 'ps_ch2_books',
             effect: StoryEffect(
               addItems: ['标准咒语书'],
               setFlags: ['ps_wand_found'],
@@ -472,13 +622,73 @@ const List<StoryChapterDef> _psChapters = [
                 '你踮脚取下那根没有盒子的魔杖，杖身有细小的刻痕。'
                 '店主盯着你看了很久，最后说：「这根等它的主人等了些年头了。」'
                 '它在你手里轻轻颤了一下，像是叹气。',
-            nextStepId: '',
+            nextStepId: 'ps_ch2_books',
             effect: StoryEffect(
               addItems: ['标准咒语书'],
               setFlags: ['ps_wand_old'],
               reputation: 1,
               spirit: 5,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch2_books',
+        chapterId: 'ps_ch2',
+        timeCostDays: 1,
+        setup:
+            '丽痕书店的门口堆着一摞一摞的教材，店员正用魔杖把它们一本本送到不同的顾客手里。你挤进去，在书架的阴影里找到了自己清单上的那几本。',
+        ambient: [
+          '有个一年级生把《标准咒语》拿反了，正皱着眉头看。',
+          '书架顶上蹲着一只店猫，尾巴垂下来一晃一晃。',
+          '收银台前排着队，有人在抱怨今年的书又涨价了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'browse_extra',
+            text: '多花点时间，把别的书也翻一翻',
+            consequence:
+                '你在角落翻到一本讲城堡传说的旧书，里面提到霍格沃茨的楼梯会自己换方向。你记下了这一条，付钱的时候还在想那会是什么样子。',
+            nextStepId: 'ps_ch2_icecream',
+            effect: StoryEffect(addItems: ['标准咒语书'], setFlags: ['ps_browsed_extra'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'buy_and_go',
+            text: '按清单买齐就走，别耽误时间',
+            consequence:
+                '你把书抱在怀里出门，纸页的味道一路跟着你。清单上的东西差不多齐了，只剩下最后一个也是最要紧的一项。',
+            nextStepId: 'ps_ch2_icecream',
+            effect: StoryEffect(addItems: ['标准咒语书'], setFlags: ['ps_quick_shopper'], spirit: 2),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch2_icecream',
+        chapterId: 'ps_ch2',
+        timeCostDays: 1,
+        setup:
+            '采购到一半，你在街边的小店买了一份冰淇淋——那种会冒冷烟、颜色不太对劲的那种。你靠在店门口的柱子上，看整条街的人来人往。',
+        ambient: [
+          '有对老夫妻在挑猫头鹰，把每只都叫起来听声音。',
+          '一个比你高半头的男孩抱着一大包东西匆匆走过，撞了你一下。',
+          '冰淇淋化得比想象中快，汁水顺着手指往下淌。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'watch_people',
+            text: '慢慢吃完，把这条街的人和事都看一遍',
+            consequence:
+                '你看到了至少三种不同的长袍款式、两个因为扫帚型号吵架的少年、和一位把帽子戴反了的老巫师。这些细节你后来一直记得。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_people_watcher'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'offer_seat',
+            text: '把旁边的凳子让给一个抱着小孩的女士',
+            consequence:
+                '她谢了你，坐下喂孩子吃点心。你站在一边把冰淇淋吃完，觉得今天的太阳格外好。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_offered_kindness'], reputation: 2, spirit: 3),
           ),
         ],
       ),
@@ -519,7 +729,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你们俩手忙脚乱地收拾，最后是那位男孩的奶奶帮你们把'
                 '书盒重新捆好。「我叫纳威，」他红着脸说，'
                 '「谢谢……我总是把东西弄丢。」',
-            nextStepId: 'ps_ch3_train',
+            nextStepId: 'ps_ch3_wall',
             effect: StoryEffect(
               targetNpcId: 'neville',
               affection: 2,
@@ -534,7 +744,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你把箱子塞进行李架，靠窗坐下。窗外的月台上，'
                 '家长们朝车厢里张望，有人抹了把眼睛。'
                 '汽笛响第二遍的时候，车身轻轻一震，动了。',
-            nextStepId: 'ps_ch3_train',
+            nextStepId: 'ps_ch3_wall',
             effect: StoryEffect(
               setFlags: ['ps_window_seat'],
               spirit: 2,
@@ -543,9 +753,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch3_wall',
+        chapterId: 'ps_ch3',
+        timeCostDays: 1,
+        setup:
+            '正对着那堵砖墙的时候，你犹豫了半秒。看起来它就是一堵结结实实的墙，后面是站台的承重柱。但前面那个穿校服的男孩毫不犹豫地撞了进去，消失了。',
+        ambient: [
+          '墙面上有一小块砖颜色比别处浅，像是被人反复摸过。',
+          '你身后有人推着行李车排队，不耐烦地清了清嗓子。',
+          '你的手心出汗了，把行李车的把手弄湿了一小片。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'walk_straight',
+            text: '闭一口气，直直走进去',
+            consequence:
+                '预想中的撞击没有发生。你穿过去的瞬间只觉得脸上一凉，然后就看见了那辆猩红色的火车，和挤满整个站台的、和你一样的学生。',
+            nextStepId: 'ps_ch3_train',
+            effect: StoryEffect(setFlags: ['ps_braved_wall'], spirit: 6),
+          ),
+          StoryChoiceDef(
+            id: 'watch_first',
+            text: '退到一边，再看来两个人过去才敢走',
+            consequence:
+                '你数到第五个人才挪步。走过去的时候你其实已经不怕了，但你还是走得很快——好像慢一点墙就会变硬。',
+            nextStepId: 'ps_ch3_train',
+            effect: StoryEffect(setFlags: ['ps_watched_first'], spirit: 2),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch3_train',
         chapterId: 'ps_ch3',
-        timeCostDays: 7,
+        timeCostDays: 5,
         setup:
             '车厢里渐渐坐满了人。走廊里有人兜售巧克力蛙和南瓜馅饼，'
             '车窗外的伦敦变成郊外，又变成起伏的山丘。'
@@ -564,7 +804,7 @@ const List<StoryChapterDef> _psChapters = [
                 '霍格沃茨的，双胞胎哥哥昨天还往他的坩埚里塞了只蜘蛛。'
                 '「你呢？」你说了自己的事——说到一半他自己接上了：'
                 '「那你得赶紧补课，不然魔药课第一个礼拜就会被叫起来回答问题。」',
-            nextStepId: '',
+            nextStepId: 'ps_ch3_candy',
             effect: StoryEffect(
               targetNpcId: 'ron',
               affection: 2,
@@ -580,11 +820,41 @@ const List<StoryChapterDef> _psChapters = [
                 '你看着山丘上的羊群一点点往后退。邻座打起了瞌睡，'
                 '你从口袋里摸出入学信又读了一遍。窗玻璃映出你的脸——'
                 '和收到信那天比，好像没什么变化，又好像完全不同了。',
-            nextStepId: '',
+            nextStepId: 'ps_ch3_candy',
             effect: StoryEffect(
               setFlags: ['ps_quiet_rider'],
               spirit: 3,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch3_candy',
+        chapterId: 'ps_ch3',
+        timeCostDays: 1,
+        setup:
+            '零食车推到你们包厢门口，老太太问要不要来点什么。你掏出口袋里的零钱，发现能买的东西比想象中多——巧克力蛙、比比多味豆、南瓜馅饼、还有几种你叫不上名字的。',
+        ambient: [
+          '隔壁包厢传来一声惊呼，大概是有人抽到了重复的卡片。',
+          '车厢晃了一下，零食车上的罐子互相碰了碰。',
+          '窗外开始出现田野，牛群在坡上慢吞吞地移动。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'share_candy',
+            text: '各样买两包，分给包厢里的人',
+            consequence:
+                '你把糖倒在座位上，几个人很快就吃开了。有人抽到一张著名巫师的卡片，举起来给大家看。这是你第一次觉得，学校可能不只是个地方，还是一群人。',
+            nextStepId: '',
+            effect: StoryEffect(addItems: ['比比多味豆'], setFlags: ['ps_shared_sweets'], spirit: 5, targetNpcId: 'ron', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'eat_alone',
+            text: '只买自己那份，靠着窗户慢慢吃',
+            consequence:
+                '你把巧克力蛙拆开，它一下跳到窗玻璃上，你手忙脚乱地把它按住。旁边的人笑了，你也跟着笑了——这一天开始变得轻松起来。',
+            nextStepId: '',
+            effect: StoryEffect(addItems: ['巧克力蛙'], setFlags: ['ps_ate_alone'], spirit: 4),
           ),
         ],
       ),
@@ -603,7 +873,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch4_boats',
         chapterId: 'ps_ch4',
-        timeCostDays: 7,
+        timeCostDays: 5,
         setup:
             '霍格莫德车站的天已经黑透。一个嗓门大得吓人的巨人提着灯笼，'
             '喊「一年级新生——这边！」。你们沿着一条陡峭的小路走到黑湖边，'
@@ -621,7 +891,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你数了数塔楼的数目，找到了最高的那座和它背后的天文塔。'
                 '有人说第一年谁都会迷路，你打算做个例外。',
-            nextStepId: 'ps_ch4_sorting',
+            nextStepId: 'ps_ch4_lake',
             effect: StoryEffect(
               addKnowledge: ['knows_hogwarts_layout'],
               setFlags: ['ps_mapped_castle'],
@@ -636,13 +906,73 @@ const List<StoryChapterDef> _psChapters = [
                 '白天行李散架的圆脸男孩又紧张起来。「那就说明帽子看见了'
                 '你没看见的东西。」你说。船尾有人小声接了一句：'
                 '「反正帽子不是非要听我们的。」',
-            nextStepId: 'ps_ch4_sorting',
+            nextStepId: 'ps_ch4_lake',
             effect: StoryEffect(
               targetNpcId: 'neville',
               affection: 2,
               setFlags: ['ps_met_neville'],
               spirit: 2,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch4_lake',
+        chapterId: 'ps_ch4',
+        timeCostDays: 1,
+        setup:
+            '船在黑湖上滑行，水面平得像一块黑玻璃。抬头的时候，城堡就在山丘上——窗口一扇一扇地亮着，比你见过的任何一栋建筑都大。',
+        ambient: [
+          '船头破开的水纹里，偶尔有个什么影子一闪而过。',
+          '有人在船上小声说「那里面会不会有东西」。',
+          '桨划水的声音很轻，整支船队都安安静静的。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'look_castle',
+            text: '一直抬头看着城堡，直到脖子发酸',
+            consequence:
+                '你数不清有多少扇窗。船靠岸的时候你还仰着头，差点绊了一跤。有人扶了你一把，你说了谢谢，眼睛还留在那上面。',
+            nextStepId: 'ps_ch4_wait',
+            effect: StoryEffect(setFlags: ['ps_first_sight_castle'], spirit: 7),
+          ),
+          StoryChoiceDef(
+            id: 'watch_water',
+            text: '低头看湖水，想知道底下有什么',
+            consequence:
+                '水很黑，什么也看不见。但你隐约觉得，刚才那个影子比鱼要大得多。你决定不去想它——至少今天晚上不去想。',
+            nextStepId: 'ps_ch4_wait',
+            effect: StoryEffect(addKnowledge: ['knows_lake_is_deep'], setFlags: ['ps_watched_lake'], spirit: 3),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch4_wait',
+        chapterId: 'ps_ch4',
+        timeCostDays: 1,
+        setup:
+            '名字一个接一个被念出来，被念到的人走上前，坐上那张凳子，帽子落到头上。你站在队伍里，手心里的汗把长袍的袖口浸湿了一小块。',
+        ambient: [
+          '前排有个女孩被分到某个学院时，那边的长桌爆出一阵欢呼。',
+          '天花板上的星星一动不动，像真的夜空被搬进了屋子里。',
+          '你听见自己的心跳，比周围所有的声音都响。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'listen_hat',
+            text: '竖起耳朵，仔细听帽子都在说什么',
+            consequence:
+                '你听出来了：帽子不是随便喊一个学院，它像是在跟每个人商量。有的商量得很久，有的刚一戴上就喊了出来。这个发现让你心里踏实了些。',
+            nextStepId: 'ps_ch4_sorting',
+            effect: StoryEffect(addKnowledge: ['knows_hat_chooses'], setFlags: ['ps_listened_to_hat'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'count_ahead',
+            text: '默默数前面还有几个人',
+            consequence:
+                '还有七个、六个、五个……数字越数越小，你反而越来越平静。轮到你的前一个，你甚至开始好奇自己会去哪里。',
+            nextStepId: 'ps_ch4_sorting',
+            effect: StoryEffect(setFlags: ['ps_counted_queue'], spirit: 3),
           ),
         ],
       ),
@@ -733,7 +1063,7 @@ const List<StoryChapterDef> _psChapters = [
                 '第十遍的时候，白羽毛颤了一下，离桌三寸，又落回去。'
                 '但全班都看见它动了。弗立维给你记了一分：'
                 '「节奏对了，剩下的交给练习。」',
-            nextStepId: 'ps_ch5_potions',
+            nextStepId: 'ps_ch5_doorway',
             effect: StoryEffect(
               setFlags: ['ps_spell_drill'],
               housePoints: 3,
@@ -747,7 +1077,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你注意到同桌的手腕一直绷得太死。「放松，像抖水彩笔那样。」'
                 '他照做了——羽毛晃晃悠悠升到了两人头顶。'
                 '弗立维从讲台后面探出头：「互相帮助，各记一分！」',
-            nextStepId: 'ps_ch5_potions',
+            nextStepId: 'ps_ch5_doorway',
             effect: StoryEffect(
               targetNpcId: 'seamus',
               affection: 2,
@@ -755,6 +1085,36 @@ const List<StoryChapterDef> _psChapters = [
               housePoints: 2,
               spirit: 4,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch5_doorway',
+        chapterId: 'ps_ch5',
+        timeCostDays: 1,
+        setup:
+            '第一堂课上完，你在走廊里迷了路。楼梯在你回头的时候换了个方向，本来是往上的，现在变成了往左。你抱着课本，站在一个完全陌生的岔口。',
+        ambient: [
+          '墙上的画里，一位骑士正在跟旁边那幅画吵架。',
+          '有只猫从你脚边走过，然后在拐角处停下，回头看了你一眼。',
+          '远处传来上课铃，但你不确定那是哪个方向。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'ask_painting',
+            text: '向墙上的画问路',
+            consequence:
+                '画里的骑士停止了争吵，很认真地给你指了一条路，然后补充说「不过它会动」。你谢过他，走了十分钟才明白这句话的意思。',
+            nextStepId: 'ps_ch5_potions',
+            effect: StoryEffect(setFlags: ['ps_asked_painting'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'follow_cat',
+            text: '跟着那只猫走',
+            consequence:
+                '猫在走廊里七拐八拐，最后停在一扇门前，舔了舔爪子就走了。你推门进去——居然就是你要找的教室。你后来一直怀疑那不是普通的猫。',
+            nextStepId: 'ps_ch5_potions',
+            effect: StoryEffect(addKnowledge: ['knows_castle_cats'], setFlags: ['ps_followed_cat'], spirit: 5),
           ),
         ],
       ),
@@ -780,7 +1140,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你按书上的顺序一样一样加，最后得到的药膏颜色和黑板上的'
                 '示范图分毫不差。斯内普路过时瞥了一眼你的坩埚，什么也没说'
                 '——但你注意到他在这页记录上多停了半秒。',
-            nextStepId: 'ps_ch5_library',
+            nextStepId: 'ps_ch5_cauldron',
             effect: StoryEffect(
               setFlags: ['ps_potions_precise'],
               housePoints: 2,
@@ -795,7 +1155,7 @@ const List<StoryChapterDef> _psChapters = [
                 '斯内普盯着你看了很久才开口：「因为八圈会破坏蜥蜴的成分，'
                 '七圈不到你连药渣都配不出来。」他转身走开前补了一句：'
                 '「会问问题的学生很少见。别浪费。」',
-            nextStepId: 'ps_ch5_library',
+            nextStepId: 'ps_ch5_cauldron',
             effect: StoryEffect(
               addKnowledge: ['knows_potions_why'],
               setFlags: ['ps_asked_why'],
@@ -806,9 +1166,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch5_cauldron',
+        chapterId: 'ps_ch5',
+        timeCostDays: 1,
+        setup:
+            '魔药课下课后，你的坩埚里还剩半锅没倒掉的药剂。它在你收拾书包的时候慢慢变成了浅紫色，然后开始冒一种很小的泡。',
+        ambient: [
+          '地窖比城堡别的地方都冷，你的手指有点僵。',
+          '架子上排着一罐罐泡着东西的玻璃瓶，标签字迹很小。',
+          '隔壁桌的人早就跑光了，只剩下你和这锅东西。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'clean_thoroughly',
+            text: '按课本写的步骤，一点一点刷干净',
+            consequence:
+                '你花了二十分钟。刷到最后，坩埚亮得能照出人影。教授路过的时候看了你一眼，什么也没说，但第二天上课他叫了你的名字。',
+            nextStepId: 'ps_ch5_library',
+            effect: StoryEffect(setFlags: ['ps_cleaned_cauldron'], housePoints: 5, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'leave_quickly',
+            text: '盖上盖子就走，反正下次还要用',
+            consequence:
+                '你把坩埚塞进书包，快步出了地窖。走到一半你闻到了一股怪味——那锅东西在你的书包里，把一本课本的封面染成了紫色。',
+            nextStepId: 'ps_ch5_library',
+            effect: StoryEffect(setFlags: ['ps_left_cauldron'], spirit: -2),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch5_library',
         chapterId: 'ps_ch5',
-        timeCostDays: 10,
+        timeCostDays: 7,
         setup:
             '九月的最后一个周末，城堡里的新鲜劲淡下去了，功课开始压上来。'
             '图书馆的高窗外天色正好，平斯夫人在书架间无声地巡行，'
@@ -826,7 +1216,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你把变形课的论文、魔药课的记录、还有抄了一半的星象表'
                 '排成一列，一项一项划掉。合上最后一本书的时候，'
                 '窗外的天已经黑了，但你心里前所未有地踏实。',
-            nextStepId: '',
+            nextStepId: 'ps_ch5_note',
             effect: StoryEffect(
               setFlags: ['ps_library_regular'],
               reputation: 2,
@@ -840,12 +1230,42 @@ const List<StoryChapterDef> _psChapters = [
                 '你们从三楼走廊摸到四楼，发现了一幅会指路的画像、'
                 '一条走到一半消失的楼梯，和一扇怎么推也推不开的门。'
                 '回去的路上谁也没说话——但每个人脸上都写着「下周再来」。',
-            nextStepId: '',
+            nextStepId: 'ps_ch5_note',
             effect: StoryEffect(
               addKnowledge: ['knows_secret_corridors'],
               setFlags: ['ps_explored_castle'],
               spirit: 5,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch5_note',
+        chapterId: 'ps_ch5',
+        timeCostDays: 1,
+        setup:
+            '图书馆的闭馆铃响了，你才发现自己坐了两个多小时。桌上的羊皮纸写满了字，但翻到下一页，你发现有几行写得完全看不懂——像是自己写的，又不像。',
+        ambient: [
+          '平斯夫人正在把散落的书归位，脚步声很轻。',
+          '窗外已经完全黑了，玻璃上倒映着你的脸。',
+          '油灯的火苗晃了一下，然后又稳住了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'copy_neat',
+            text: '把看不懂的那几行重新誊抄一遍',
+            consequence:
+                '你抄完之后，那几行字还是不懂，但形状记住了。你把纸夹进课本，想着也许以后哪一天会突然明白。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['knows_strange_handwriting'], setFlags: ['ps_copied_notes'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'pack_up',
+            text: '收好东西赶紧回去，明天还要早起',
+            consequence:
+                '你把纸卷起来塞进书包，几乎是小跑着出了图书馆。走廊里的画像都已经睡了，有几幅还在轻轻打鼾。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_left_library_early'], spirit: 3),
           ),
         ],
       ),
@@ -864,7 +1284,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch6_banquet',
         chapterId: 'ps_ch6',
-        timeCostDays: 5,
+        timeCostDays: 4,
         setup:
             '十月三十一日，城堡从早上就开始过节。礼堂天花板上悬着几百只'
             '活蝙蝠，南瓜灯一个比一个大，连走廊盔甲的头盔里都被塞了糖。'
@@ -882,7 +1302,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你踩着凳子把最后一串挂上去的时候，它突然自己转了个圈，'
                 '把灯影投得满墙都是。海格路过时哈哈大笑，'
                 '说这是他今年见过最有万圣节样子的灯。',
-            nextStepId: 'ps_ch6_troll',
+            nextStepId: 'ps_ch6_pumpkins',
             effect: StoryEffect(
               targetNpcId: 'hagrid',
               affection: 1,
@@ -896,11 +1316,41 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你在休息室的沙发上眯了半个钟头。醒来时走廊里已经开始热闹，'
                 '你理了理袍子往礼堂走——刚好赶上开饭。',
-            nextStepId: 'ps_ch6_troll',
+            nextStepId: 'ps_ch6_pumpkins',
             effect: StoryEffect(
               setFlags: ['ps_rest_before'],
               spirit: 2,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch6_pumpkins',
+        chapterId: 'ps_ch6',
+        timeCostDays: 1,
+        setup:
+            '万圣节前，大礼堂被装饰得闪闪发亮：上千只南瓜雕成的灯笼漂浮在天花板下面，烤南瓜的味道从厨房一路飘到门厅。',
+        ambient: [
+          '有只蝙蝠从蜡烛上方掠过，把火苗吹得歪了一下。',
+          '长桌上摆着还没点完的蜡烛，排列得很整齐。',
+          '几个低年级生正踮脚去够漂浮的南瓜。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'help_decorate',
+            text: '留下来帮忙把剩余的南瓜灯挂好',
+            consequence:
+                '你踩在凳子上挂了六只，最后一只位置太高，是路过的高年级生帮你按住的。全部挂完的时候，整个礼堂像被点着了一样亮。',
+            nextStepId: 'ps_ch6_troll',
+            effect: StoryEffect(setFlags: ['ps_helped_decorate'], housePoints: 5, spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'go_early',
+            text: '早点回公共休息室，避开晚宴的拥挤',
+            consequence:
+                '你顺着人流往回走，路上只碰到两三个人。休息室的炉火烧得很旺，你找了个靠火的位置坐下。',
+            nextStepId: 'ps_ch6_troll',
+            effect: StoryEffect(setFlags: ['ps_left_early'], spirit: 2),
           ),
         ],
       ),
@@ -931,7 +1381,7 @@ const List<StoryChapterDef> _psChapters = [
                 '数到第三遍确认没有漏，级长才关上休息室的门——'
                 '你听见他长长地出了一口气。后半夜，消息传回来：'
                 '教工把巨怪制服了，没有人受重伤。',
-            nextStepId: 'ps_ch6_after',
+            nextStepId: 'ps_ch6_corridor',
             effect: StoryEffect(
               setFlags: ['ps_troll_stood_together'],
               housePoints: 5,
@@ -946,7 +1396,7 @@ const List<StoryChapterDef> _psChapters = [
                 '那孩子的腿抖得站不住，你几乎是把他半拖半架到了休息室。'
                 '他缩在沙发角落里抓着你的袖子不肯放，直到级长把热可可'
                 '分到每个人手里。后来他红着眼圈说：「多亏有你。」',
-            nextStepId: 'ps_ch6_after',
+            nextStepId: 'ps_ch6_corridor',
             effect: StoryEffect(
               targetNpcId: 'neville',
               affection: 3,
@@ -962,7 +1412,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你只来得及看见走廊尽头的黑暗和一道挪动的阴影，'
                 '紧接着就被赶来的级长拽回了队伍。回到休息室你才后知后觉'
                 '地开始后怕——手心里全是冷汗。',
-            nextStepId: 'ps_ch6_after',
+            nextStepId: 'ps_ch6_corridor',
             effect: StoryEffect(
               addKnowledge: ['knows_troll_aftermath'],
               setFlags: ['ps_peaked_troll'],
@@ -973,9 +1423,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch6_corridor',
+        chapterId: 'ps_ch6',
+        timeCostDays: 1,
+        setup:
+            '巨怪的消息传开之后，走廊里全是乱跑的人。你被裹在人流里往前推，脚下的石板上有一摊没干的水渍。',
+        ambient: [
+          '有人摔了一跤，书包里的课本散了一地。',
+          '远处传来一声闷响，接着是好几个人的尖叫。',
+          '级长站在楼梯口，扯着嗓子喊「回休息室，不要停」。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'help_fallen',
+            text: '停下来把摔倒的人扶起来',
+            consequence:
+                '你蹲下去捡书，那人一边道谢一边发抖。你们一起挤出人群的时候，',
+            nextStepId: 'ps_ch6_after',
+            effect: StoryEffect(setFlags: ['ps_helped_firstyear'], reputation: 2, spirit: 3, targetNpcId: 'neville', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'stay_line',
+            text: '跟着队伍，不要掉队',
+            consequence:
+                '你紧紧跟着前面的人，一步也不敢停。回到休息室的时候，你的手还在抖，但至少你把自己完整地带回来了。',
+            nextStepId: 'ps_ch6_after',
+            effect: StoryEffect(setFlags: ['ps_stayed_with_group'], spirit: 1),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch6_after',
         chapterId: 'ps_ch6',
-        timeCostDays: 18,
+        timeCostDays: 16,
         setup:
             '巨怪事件之后的那几天，走廊里的话题只有一个。有人说巨怪是'
             '自己走进来的，有人说看见「有人从楼上跑下来」，还有人说'
@@ -994,7 +1474,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你把听到的版本排成一列：巨怪出现的地点、教授们消失的方向、'
                 '还有那位昏倒的奇洛教授后来「请了两天假」。拼完你发现'
                 '整件事最奇怪的不是巨怪——是那晚教授们的反应快得不正常。',
-            nextStepId: '',
+            nextStepId: 'ps_ch6_rumor',
             effect: StoryEffect(
               addKnowledge: ['knows_staff_reaction'],
               setFlags: ['ps_curious_mind'],
@@ -1009,13 +1489,43 @@ const List<StoryChapterDef> _psChapters = [
                 '那一晚落下的两节自习课你用三个晚上补了回来。'
                 '教授们似乎都注意到了你的用功——变形课上，'
                 '你的甲虫针脚第一次全部对齐了。',
-            nextStepId: '',
+            nextStepId: 'ps_ch6_rumor',
             effect: StoryEffect(
               setFlags: ['ps_back_on_track'],
               housePoints: 2,
               reputation: 2,
               spirit: 1,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch6_rumor',
+        chapterId: 'ps_ch6',
+        timeCostDays: 1,
+        setup:
+            '巨怪事件过去几天，走廊里的议论还没停。有人说巨怪是被几个一年级生撞见的，有人说地窖里其实还有别的东西。',
+        ambient: [
+          '公共休息室的告示板上多了一张新的通知。',
+          '壁炉边围着几个人，声音压得很低。',
+          '窗外的第一场霜落在草坪上，白了一片。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'listen_in',
+            text: '凑过去，把他们的说法都听一遍',
+            consequence:
+                '你听到至少三个版本，细节互相打架。唯一一致的是：那天晚上有人做对了事。你没插话，但记住了这件事可以被这样讲。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_heard_troll_versions'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'ignore_rumor',
+            text: '不去听，专心把落下的作业补上',
+            consequence:
+                '你把课本摊在膝头，炉火烤得人昏昏欲睡。作业补完了，传闻也自己慢慢淡了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_focused_on_work'], housePoints: 5, spirit: 2),
           ),
         ],
       ),
@@ -1149,7 +1659,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch7_term_end',
         chapterId: 'ps_ch7',
-        timeCostDays: 33,
+        timeCostDays: 29,
         setup:
             '假期结束，期末考试像冬天最后一股寒流一样压了上来。'
             '图书馆的位子一夜之间重新紧张起来，走廊里人人嘴里都在'
@@ -1168,7 +1678,7 @@ const List<StoryChapterDef> _psChapters = [
                 '六个人、五套笔记，互相挑错挑得面红耳赤。散伙的时候'
                 '你的笔记被借走了一遍，你也在别人的笔记里发现了'
                 '三个你从来没记过的要点。',
-            nextStepId: '',
+            nextStepId: 'ps_ch7_stands',
             effect: StoryEffect(
               targetNpcId: 'hermione',
               affection: 2,
@@ -1183,13 +1693,133 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你把每科的要点抄成了小卡片，睡前抽一张。'
                 '考试那几天的睡眠出奇地好——这大概就是准备充分的副产品。',
-            nextStepId: '',
+            nextStepId: 'ps_ch7_stands',
             effect: StoryEffect(
               setFlags: ['ps_solo_grind'],
               housePoints: 2,
               reputation: 1,
               spirit: 1,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch7_stands',
+        chapterId: 'ps_ch7',
+        timeCostDays: 1,
+        setup:
+            '第一场魁地奇比赛，你挤在看台的人群里。风很大，围巾被吹得贴在脸上，但没有人愿意先去避风的地方。',
+        ambient: [
+          '解说员的声音被风吹得断断续续。',
+          '看台另一头传来整齐的鼓点和口号。',
+          '你旁边的人一直在踮脚，挡住了你半边视线。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'cheer_loud',
+            text: '跟着大家一起喊，把嗓子喊哑',
+            consequence:
+                '你不记得自己喊了多久，只知道散场的时候说话都变了调。但这大概是入学以来最痛快的一场下午。',
+            nextStepId: 'ps_ch7_snow',
+            effect: StoryEffect(setFlags: ['ps_cheered_quidditch'], spirit: 6),
+          ),
+          StoryChoiceDef(
+            id: 'watch_players',
+            text: '只顾盯着场上的人看，不出声',
+            consequence:
+                '你看清了每一个人的位置、每一次传球。散场以后你还在想那些动作——有些东西你大概永远做不到，但看得懂也很好。',
+            nextStepId: 'ps_ch7_snow',
+            effect: StoryEffect(addKnowledge: ['knows_quidditch_play'], setFlags: ['ps_studied_quidditch'], spirit: 4),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch7_snow',
+        chapterId: 'ps_ch7',
+        timeCostDays: 1,
+        setup:
+            '圣诞假期留校的人不多。第一场大雪落下来的时候，你和几个同样没回家的同学在院子里堆了个雪人，用两颗煤球当眼睛。',
+        ambient: [
+          '雪还在下，落在雪人的肩膀上又加了一层。',
+          '远处厨房的窗户透出暖黄色的光。',
+          '有人从门厅出来喊「开饭了」，声音在雪地里传得很远。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'stay_outside',
+            text: '在雪里多待一会儿，直到手指冻僵',
+            consequence:
+                '你把雪人补得很结实，还给它围了根树枝当手臂。回屋的时候你的手套全湿了，但你觉得这个假期不算白过。',
+            nextStepId: 'ps_ch7_gift',
+            effect: StoryEffect(setFlags: ['ps_built_snowman'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'go_warm',
+            text: '先进屋，在炉火边看书',
+            consequence:
+                '你挑了本厚书坐到壁炉前，偶尔抬头看看窗外那个越堆越高的雪人。安静得能听见木柴噼啪的响声。',
+            nextStepId: 'ps_ch7_gift',
+            effect: StoryEffect(setFlags: ['ps_read_by_fire'], spirit: 4),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch7_gift',
+        chapterId: 'ps_ch7',
+        timeCostDays: 1,
+        setup:
+            '圣诞节的早晨，公共休息室的树下堆着包裹。你找到了写着自己名字的那几件——其中一件包得歪歪扭扭，一看就是家里人包的。',
+        ambient: [
+          '有人拆到一件手织的毛衣，举起来给大家看。',
+          '炉火把包装纸烤得卷了边。',
+          '窗外雪停了，光秃秃的树枝上挂着冰。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'open_all',
+            text: '把每一件都拆开，慢慢看',
+            consequence:
+                '有一件是养母寄来的，还有一张短短的字条。你把字条读了两遍，然后夹进那本最常用的课本里——后来你再翻到那一页时，总会停一下。',
+            nextStepId: 'ps_ch7_exams',
+            effect: StoryEffect(setFlags: ['ps_opened_gifts'], spirit: 8),
+          ),
+          StoryChoiceDef(
+            id: 'thank_first',
+            text: '先写信道谢，再拆包裹',
+            consequence:
+                '你铺开羊皮纸，写了两页。写到一半的时候你发现，自己居然有很多事可以说。信寄出去以后你才去拆包裹，拆得比往年都慢。',
+            nextStepId: 'ps_ch7_exams',
+            effect: StoryEffect(setFlags: ['ps_wrote_thanks'], reputation: 2, spirit: 6),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch7_exams',
+        chapterId: 'ps_ch7',
+        timeCostDays: 1,
+        setup:
+            '期末考前的图书馆坐满了人。你找到的位子旁边坐着一个正在小声背咒语的女生，她的笔记记得比课本还密。',
+        ambient: [
+          '闭馆铃响的时候，整层楼发出一片叹气声。',
+          '有人把羽毛笔咬得都是牙印。',
+          '窗外天早就黑了，玻璃上结了薄薄一层霜。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'study_with',
+            text: '跟她交换笔记，互相抽查',
+            consequence:
+                '你们互相问了半个小时，她记住了你抄的那几条，你也记住了她的。第二天考试的时候，有几道题你一看就笑了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_studied_together'], spirit: 4, targetNpcId: 'hermione', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'study_alone',
+            text: '自己按自己的节奏复习，不打扰别人',
+            consequence:
+                '你把课本从头过了一遍，把不确定的地方折了角。考试那天，折角的那几页果然都用上了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_studied_alone'], housePoints: 5, spirit: 3),
           ),
         ],
       ),
@@ -1229,7 +1859,7 @@ const List<StoryChapterDef> _psChapters = [
                 '「独角兽的事……你听谁说的？」他没否认，也没多说，'
                 '只反复叮嘱「林子里现在不干净，谁叫你都别去」。'
                 '临走他往你兜里塞了两块岩皮饼。',
-            nextStepId: 'ps_ch8_link',
+            nextStepId: 'ps_ch8_notice',
             effect: StoryEffect(
               targetNpcId: 'hagrid',
               affection: 2,
@@ -1244,7 +1874,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你把好奇收进心里，转身去抄草药课的笔记。'
                 '窗外的禁林安安静静——但你知道，安静本身就不太对劲。',
-            nextStepId: 'ps_ch8_link',
+            nextStepId: 'ps_ch8_notice',
             effect: StoryEffect(
               setFlags: ['ps_obeyed_forest_ban'],
               housePoints: 1,
@@ -1254,9 +1884,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch8_notice',
+        chapterId: 'ps_ch8',
+        timeCostDays: 1,
+        setup:
+            '公告栏上贴出了新的通知：近期任何人不得独自靠近禁林，违者按校规处理。落款是校长办公室。',
+        ambient: [
+          '有几个高年级生围着通知小声讨论。',
+          '走廊里的画像们也在交头接耳，有一位老校长甚至在画框里走来走去。',
+          '窗外的森林边沿，树影比平时显得更密。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'read_carefully',
+            text: '把通知逐字读完，包括最下面那行小字',
+            consequence:
+                '最下面写着「如有发现，请立即报告教工」。你把这句话记住了——它和平时那些「注意安全」的通知不太一样，这次是真的在提醒什么。',
+            nextStepId: 'ps_ch8_link',
+            effect: StoryEffect(addKnowledge: ['knows_forest_warning'], setFlags: ['ps_read_notice'], spirit: 1),
+          ),
+          StoryChoiceDef(
+            id: 'ask_prefect',
+            text: '去问级长到底发生了什么',
+            consequence:
+                '级长看了你一眼，说「不该问的别问」。但他走开之前又补了一句：「晚上别乱跑。」你能听出他也在紧张。',
+            nextStepId: 'ps_ch8_link',
+            effect: StoryEffect(addKnowledge: ['knows_prefects_worried'], setFlags: ['ps_asked_prefect'], spirit: -1),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch8_link',
         chapterId: 'ps_ch8',
-        timeCostDays: 17,
+        timeCostDays: 15,
         setup:
             '晚上在公共休息室，壁炉的火烤得人脸发烫。你把最近这些事'
             '在心里过了一遍：七月底被闯入的金库、圣诞夜那面'
@@ -1277,7 +1937,7 @@ const List<StoryChapterDef> _psChapters = [
                 '一起，你后背发凉：有同一个人在找同一样东西。'
                 '你没跟任何人说这个推论，但从此每次看到教授们低声交谈，'
                 '你都会竖起耳朵。',
-            nextStepId: 'ps_ch8_night',
+            nextStepId: 'ps_ch8_watch',
             // 【口径】requireFlag 过滤的是 **flags**（不是 knowledge）——
             // 所以这里引用 ch2_bank a_listen 置位的 flag，而不是它
             // addKnowledge 的知识 id。flag 才是"开关"，知识是"你知道了"。
@@ -1296,7 +1956,7 @@ const List<StoryChapterDef> _psChapters = [
                 '对方听完沉默了一会儿，说：「我猜邓布利多早就知道了。'
                 '校长办公室的灯这几周就没在半夜前熄过。」'
                 '有同伴一起琢磨，那份不安就变成了能摊开的谜题。',
-            nextStepId: 'ps_ch8_night',
+            nextStepId: 'ps_ch8_watch',
             effect: StoryEffect(
               targetNpcId: 'ron',
               affection: 2,
@@ -1312,12 +1972,42 @@ const List<StoryChapterDef> _psChapters = [
                 '你把羊皮纸铺开，强迫自己背完曼德拉草的三个休眠期。'
                 '疑云什么的，留给大人去头疼——一年级的你已经'
                 '卷进够多的事了。',
-            nextStepId: 'ps_ch8_night',
+            nextStepId: 'ps_ch8_watch',
             effect: StoryEffect(
               setFlags: ['ps_stayed_focused'],
               housePoints: 2,
               spirit: 1,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch8_watch',
+        chapterId: 'ps_ch8',
+        timeCostDays: 1,
+        setup:
+            '有个下午你路过城堡的侧门，看见海格正牵着那条大猎犬往林子方向走。他背着一只鼓鼓的布袋，脚步比平时快。',
+        ambient: [
+          '猎犬的耳朵一直竖着，鼻子贴在地上嗅。',
+          '侧门的台阶上还留着几个很大的泥脚印。',
+          '风从林子的方向吹过来，带着一股说不清的味道。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'offer_help',
+            text: '上前问要不要帮忙',
+            consequence:
+                '海格摆摆手说「不用，你回去」。但他顿了一下，又说「谢谢你想着」——这句话他说得比想象中轻。',
+            nextStepId: 'ps_ch8_night',
+            effect: StoryEffect(setFlags: ['ps_offered_hagrid_help'], spirit: 2, targetNpcId: 'hagrid', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'stay_back',
+            text: '站在门口看着他们走远',
+            consequence:
+                '你一直看到那一人一狗的背影被树影吞掉。你忽然很想知道林子里到底有什么，但你也知道，今天不是问的时候。',
+            nextStepId: 'ps_ch8_night',
+            effect: StoryEffect(setFlags: ['ps_watched_hagrid_go'], spirit: 1),
           ),
         ],
       ),
@@ -1350,7 +2040,7 @@ const List<StoryChapterDef> _psChapters = [
                 '他没说林子里有什么，只是拍了拍你的肩：「好孩子。'
                 '有些事，大人来。」回去的路上你们谁也没提林子，'
                 '聊的是他的猎犬最爱吃的骨头饼干。',
-            nextStepId: 'ps_ch8_after',
+            nextStepId: 'ps_ch8_return',
             effect: StoryEffect(
               targetNpcId: 'hagrid',
               affection: 3,
@@ -1366,7 +2056,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你按禁令原路返回，一路上把每个路口的画像都记了一遍。'
                 '回塔的路上你听到钟楼报时——你忽然明白，'
                 '为什么校规里「禁林」两个字写得那么大。',
-            nextStepId: 'ps_ch8_after',
+            nextStepId: 'ps_ch8_return',
             effect: StoryEffect(
               setFlags: ['ps_obeyed_forest_ban'],
               housePoints: 2,
@@ -1381,7 +2071,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你看见了——林子深处有一点银白的东西倒了下去，'
                 '随即有一道更黑的影子俯向它。你放下望远镜，'
                 '手心冰凉，一夜没再合眼。',
-            nextStepId: 'ps_ch8_after',
+            nextStepId: 'ps_ch8_return',
             effect: StoryEffect(
               addKnowledge: ['knows_forest_shadow'],
               setFlags: ['ps_saw_the_shadow'],
@@ -1392,9 +2082,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch8_return',
+        chapterId: 'ps_ch8',
+        timeCostDays: 1,
+        setup:
+            '很晚的时候，侧门那边有动静。你和另外两个同样没睡着的同学趴在窗边，看见海格回来了，步子比去的时候慢了很多。',
+        ambient: [
+          '猎犬走在他旁边，尾巴垂着。',
+          '有人小声说「他的脸色不太对」。',
+          '门厅的灯亮了又灭，走廊重新安静下来。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'wait_news',
+            text: '在窗边等到走廊彻底没声',
+            consequence:
+                '你们三个人一直等到打更的时间。什么也没等到，但你们都知道今天晚上发生了点什么。',
+            nextStepId: 'ps_ch8_after',
+            effect: StoryEffect(setFlags: ['ps_waited_for_news'], spirit: -1),
+          ),
+          StoryChoiceDef(
+            id: 'go_sleep',
+            text: '不看了，回去睡觉',
+            consequence:
+                '你爬上床，把被子拉到下巴。窗外偶尔有树枝摩擦的响声，你听着听着就睡着了。',
+            nextStepId: 'ps_ch8_after',
+            effect: StoryEffect(setFlags: ['ps_slept_through'], spirit: 2),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch8_after',
         chapterId: 'ps_ch8',
-        timeCostDays: 46,
+        timeCostDays: 44,
         setup:
             '几天后，消息还是传开了：那头独角兽没能救回来。'
             '海格在场地边的板房前站了很久，哑着嗓子让大家别去林子边。'
@@ -1413,7 +2133,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你们谁都没怎么说话。海格递给你一杯茶，说：'
                 '「独角兽的血是最强的东西，可喝它的人要被诅咒一辈子。」'
                 '你不完全懂，但你记住了——有些捷径的代价，是一辈子。',
-            nextStepId: '',
+            nextStepId: 'ps_ch8_morning',
             effect: StoryEffect(
               targetNpcId: 'hagrid',
               affection: 2,
@@ -1430,12 +2150,42 @@ const List<StoryChapterDef> _psChapters = [
                 '你甚至没见过那头独角兽。但有些愤怒不需要理由。'
                 '那晚你的卡片上多了一行字：变强，'
                 '然后在下一次，站在能拦住它的地方。',
-            nextStepId: '',
+            nextStepId: 'ps_ch8_morning',
             effect: StoryEffect(
               setFlags: ['ps_vow_stronger'],
               reputation: 1,
               spirit: 4,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch8_morning',
+        chapterId: 'ps_ch8',
+        timeCostDays: 1,
+        setup:
+            '第二天早上，林子边多了一道用魔杖划出来的警戒线。有几个教工站在那里，不让任何人靠近。',
+        ambient: [
+          '雪化了以后，地上的脚印看得更清楚。',
+          '有个低年级生想凑近看，被教工拦了回去。',
+          '上课铃响了，大家才慢慢散开。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'keep_watch',
+            text: '连着几天都绕路过来看一眼',
+            consequence:
+                '你说不清自己在看什么。警戒线一直没有撤，教工换了几批。这件事慢慢变成了你这一年的一个记号。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['knows_forest_guarded'], setFlags: ['ps_kept_forest_watch'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'move_on',
+            text: '看过一次就够了，回去上课',
+            consequence:
+                '你在警戒线外站了一分钟，然后就走了。课照常上，作业照常交，但你偶尔还会想起那天晚上的灯。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ps_moved_on'], housePoints: 5, spirit: 2),
           ),
         ],
       ),
@@ -1454,7 +2204,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch9_whisper',
         chapterId: 'ps_ch9',
-        timeCostDays: 30,
+        timeCostDays: 29,
         setup:
             '六月的前两个星期，期末考结束，城堡里却涌动着一股压不住的'
             '窃窃私语：三楼那条禁走廊、那只三头狗、还有「有人看见'
@@ -1474,7 +2224,7 @@ const List<StoryChapterDef> _psChapters = [
                 '被藏进了城堡，有人想偷，而几个一年级生抢在所有人前面'
                 '把它保住了——「最后一个关头是校长赶到的。」'
                 '你想起这一年里听到的所有传闻，忽然全都对上了。',
-            nextStepId: 'ps_ch9_feast',
+            nextStepId: 'ps_ch9_whispering',
             effect: StoryEffect(
               addKnowledge: ['knows_trapdoor_ending'],
               setFlags: ['ps_knows_truth'],
@@ -1489,12 +2239,42 @@ const List<StoryChapterDef> _psChapters = [
                 '你把书按科目捆好，袍子送去洗了，床头的墙上没留一颗钉子。'
                 '传闻里的事再大，也大不过你要回的家和你自己的暑假。'
                 '你把最后一本笔记本合上，心里出奇地平静。',
-            nextStepId: 'ps_ch9_feast',
+            nextStepId: 'ps_ch9_whispering',
             effect: StoryEffect(
               setFlags: ['ps_packed_early'],
               housePoints: 1,
               spirit: 3,
             ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch9_whispering',
+        chapterId: 'ps_ch9',
+        timeCostDays: 1,
+        setup:
+            '学年末的走廊里，到处都是压低了声音的交谈。有人说城堡里藏了东西，有人说几位教授最近都不见人影。',
+        ambient: [
+          '图书馆的书架这几天空了一半，借出去的书没还。',
+          '有几个高年级生凑在角落里画着什么图。',
+          '连画像们都比平时安静。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'piece_together',
+            text: '把听到的碎片一条条记下来',
+            consequence:
+                '你记了满满一页：谁在哪天说过什么、哪扇门平时锁着现在开着。写完之后你发现，这些碎片拼不出完整的图——但至少你不再是什么都不知道的人。',
+            nextStepId: 'ps_ch9_feast',
+            effect: StoryEffect(addKnowledge: ['knows_term_secrets'], setFlags: ['ps_collected_clues'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'stay_out',
+            text: '不听不问，把最后几周用在考试上',
+            consequence:
+                '你把心思全放在课本上。等考试结束你才发现，那几周城堡里发生的事，你几乎一无所知。',
+            nextStepId: 'ps_ch9_feast',
+            effect: StoryEffect(setFlags: ['ps_stayed_out_of_it'], housePoints: 5, spirit: 1),
           ),
         ],
       ),
@@ -1523,7 +2303,7 @@ const List<StoryChapterDef> _psChapters = [
                 '从站台上的陌生人到能互相挑错笔记的同桌，'
                 '这个杯子敬他们，也敬你自己。你的学院那一桌响起了'
                 '零零散散又汇成一片的掌声。',
-            nextStepId: 'ps_ch9_farewell',
+            nextStepId: 'ps_ch9_table',
             effect: StoryEffect(
               targetNpcId: 'hermione',
               affection: 2,
@@ -1540,7 +2320,7 @@ const List<StoryChapterDef> _psChapters = [
                 '还有讲台上校长那双弯起来的眼睛。你把这一切都收进记忆里'
                 '——第一年，你活着，你学到了东西，'
                 '你也终于知道这座城堡里什么最重要。',
-            nextStepId: 'ps_ch9_farewell',
+            nextStepId: 'ps_ch9_table',
             effect: StoryEffect(
               addKnowledge: ['knows_house_cup_result'],
               setFlags: ['ps_watched_feast'],
@@ -1551,9 +2331,39 @@ const List<StoryChapterDef> _psChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'ps_ch9_table',
+        chapterId: 'ps_ch9',
+        timeCostDays: 1,
+        setup:
+            '年终宴会那天，四个学院的长桌上方挂着各自颜色的旗帜。你坐在同院的人中间，桌上的金色盘子闪着光。',
+        ambient: [
+          '有人在讨论等会儿会不会有额外的加分。',
+          '天花板上的星星比平时更亮一些。',
+          '隔壁桌传来压抑的笑声，很快又被掌声盖过去。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'cheer_house',
+            text: '为本院的每一分都用力鼓掌',
+            consequence:
+                '你把手都拍红了。不管最后名次怎样，这一年的每一次加分都有人在下面记得——包括你自己在魔药课上挣来的那五分。',
+            nextStepId: 'ps_ch9_farewell',
+            effect: StoryEffect(setFlags: ['ps_cheered_house'], spirit: 6),
+          ),
+          StoryChoiceDef(
+            id: 'reflect_year',
+            text: '安静坐着，把这一年一件一件想一遍',
+            consequence:
+                '从那只落在窗台上的猫头鹰开始，你把它一路想到今天的宴会。有些事你做得不错，有些事如果再给你一次，你会做得不一样。',
+            nextStepId: 'ps_ch9_farewell',
+            effect: StoryEffect(setFlags: ['ps_reflected_year'], spirit: 5),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'ps_ch9_farewell',
         chapterId: 'ps_ch9',
-        timeCostDays: 15,
+        timeCostDays: 14,
         setup:
             '离别日的清晨，特快停靠在霍格莫德车站。行李箱堆上车的声音、'
             '猫头鹰的叫声、还有最后一批合影的闪光，把站台搅成一片'
@@ -1731,7 +2541,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_read_list_carefully'],
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch1_owl',),
           StoryChoiceDef(
             id: 'enjoy_summer',
             text: '先把信压在枕头下，夏天的最后两周要紧',
@@ -1742,6 +2552,36 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 5,
               setFlags: ['cos_squeezed_summer'],
             ),
+            nextStepId: 'cos_ch1_owl',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch1_owl',
+        chapterId: 'cos_ch1',
+        timeCostDays: 1,
+        setup:
+            '第二年的信又是在早饭时到的。这次你已经认得那只猫头鹰——它落在窗台上，很熟练地把爪子伸向你的盘子。',
+        ambient: [
+          '养母已经不看报纸了，只是把牛奶往你这边推了推。',
+          '窗外的树比去年又高了一截。',
+          '猫头鹰等你取信的时候，尾巴轻轻拍着窗台。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'read_now',
+            text: '当场把信拆开，把书单念出来',
+            consequence:
+                '书单比去年厚，多了几本你没见过的。念到一半养母插了句「又是一堆书」。她的语气比去年平静多了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_read_letter_early'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'read_after',
+            text: '把信收进口袋，等吃完再看',
+            consequence:
+                '你一直忍到收拾完碗筷。拆信的时候手还是有点抖——这件事大概永远也不会变得完全平常。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_saved_letter'], spirit: 3),
           ),
         ],
       ),
@@ -1774,7 +2614,7 @@ const List<StoryChapterDef> _cosChapters = [
               galleons: -6,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'cos_ch1_purchase',),
           StoryChoiceDef(
             id: 'buy_used',
             text: '转身去二手书摊，把七本都凑成便宜的旧版',
@@ -1789,7 +2629,7 @@ const List<StoryChapterDef> _cosChapters = [
               galleons: -2,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch1_purchase',),
           StoryChoiceDef(
             id: 'watch_from_far',
             text: '不凑热闹，去别家把别的用品买齐',
@@ -1804,13 +2644,43 @@ const List<StoryChapterDef> _cosChapters = [
               galleons: -3,
               spirit: 3,
             ),
+            nextStepId: 'cos_ch1_purchase',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch1_purchase',
+        chapterId: 'cos_ch1',
+        timeCostDays: 1,
+        setup:
+            '第二年的采购清单短了些，但你还是在对角巷花了一整个上午。经过古灵阁的时候，你忍不住看了一眼那些大理石台阶。',
+        ambient: [
+          '台阶上的警卫比去年多了两个。',
+          '有人在药店门口排队，队伍一直排到街上。',
+          '阳光很好，把鹅卵石晒得发亮。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'visit_bank',
+            text: '进去换些零钱，顺便看看大厅',
+            consequence:
+                '大厅还是那么高，妖精们还是坐在那么高的柜台后面。你换完钱往外走的时候，忽然想起去年在报纸上读到的那些字。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_visited_bank'], spirit: 2, galleons: 10),
+          ),
+          StoryChoiceDef(
+            id: 'skip_bank',
+            text: '直接去书店，钱的事以后再说',
+            consequence:
+                '你在书店待了很久，最后抱着书出来。没有多花一分钱，但也没多知道任何事。',
+            nextStepId: '',
+            effect: StoryEffect(addItems: ['标准咒语书'], setFlags: ['cos_skipped_bank'], spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch1_summer_night',
         chapterId: 'cos_ch1',
-        timeCostDays: 9,
+        timeCostDays: 6,
         setup:
             '返校前的最后一晚，你把两个世界的行李分开装：'
             '麻瓜世界的夏天装进一个箱子，魔法世界的一年装进另一个。'
@@ -1834,7 +2704,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_resolve_proactive'],
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch1_lastweek',),
           StoryChoiceDef(
             id: 'write_friends',
             text: '熬夜给同窗写信，约好站台上见',
@@ -1849,6 +2719,36 @@ const List<StoryChapterDef> _cosChapters = [
               affection: 2,
               spirit: 4,
             ),
+            nextStepId: 'cos_ch1_lastweek',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch1_lastweek',
+        chapterId: 'cos_ch1',
+        timeCostDays: 1,
+        setup:
+            '开学前的最后一周，你把去年的课本都翻了出来。有几页的笔记你还认得，有几页已经完全陌生。',
+        ambient: [
+          '书页间掉出一张去年夹进去的纸条。',
+          '窗外的蝉声比去年短了，已经开始有秋天的意思。',
+          '你把长袍从柜子里拿出来，发现袖口短了一截。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'review_all',
+            text: '把去年的课本全部过一遍',
+            consequence:
+                '你花了三天时间。有些咒语的发音还记得，有些已经忘了。你在忘掉的地方做了记号，打算开学以后重新问一遍。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_gaps'], setFlags: ['cos_reviewed_books'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'pack_light',
+            text: '不复习了，收拾行李要紧',
+            consequence:
+                '你把东西一件件塞进箱子，最后发现装不下，只好又拿出来几件。这种事你去年也遇到过。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_packed_light'], spirit: 3),
           ),
         ],
       ),
@@ -1893,7 +2793,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_counted_his_names'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'cos_ch2_seat',),
           StoryChoiceDef(
             id: 'compare_notes',
             text: '和同学小声比对新教授的传闻',
@@ -1906,13 +2806,43 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_openfeast_lockhart_fan', 'cos_doubted_lockhart'],
               spirit: 2,
             ),
+            nextStepId: 'cos_ch2_seat',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch2_seat',
+        chapterId: 'cos_ch2',
+        timeCostDays: 1,
+        setup:
+            '开学宴上，你找了个靠边的位置坐下。大礼堂的布置和去年一样，但坐在你周围的人好像都长高了一点。',
+        ambient: [
+          '新生队伍比去年短，有几个特别矮的走在最后。',
+          '长桌上的南瓜还在飘，只是没有万圣节那么多。',
+          '有人在小声认今年新来的老师是谁。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'greet_new',
+            text: '主动跟旁边的新生搭话',
+            consequence:
+                '你问他叫什么、从哪里来。他答得很小声，手一直攥着桌布。你想起来自己去年也是这样，于是又跟他说了几句，直到他笑了一下。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_greeted_new'], reputation: 1, spirit: 4, targetNpcId: 'ginny', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'sit_quiet',
+            text: '安静吃饭，观察这一年的变化',
+            consequence:
+                '你注意到教师的位子上多了一个人，还注意到有几个老同学没有回来。这些变化你默默记下了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_observed_changes'], spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch2_first_week',
         chapterId: 'cos_ch2',
-        timeCostDays: 5,
+        timeCostDays: 3,
         setup:
             '开学第一周，走廊里贴满了新教授的移动海报。黑魔法防御术课的教室门口'
             '排起了合影的队——上课的人反而排不进去。隔壁的草药课倒是完全照旧：'
@@ -1935,7 +2865,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_asked_sprout'],
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch2_schedule',),
           StoryChoiceDef(
             id: 'avoid_crowd',
             text: '躲开合影的队，把第一周的课表理顺',
@@ -1948,6 +2878,36 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_organized_week'],
               spirit: 3,
             ),
+            nextStepId: 'cos_ch2_schedule',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch2_schedule',
+        chapterId: 'cos_ch2',
+        timeCostDays: 1,
+        setup:
+            '新学期的课表发下来了，一张羊皮纸钉在公告栏上。你对着那张纸研究了半天，发现有几节课的时间竟然是重叠的，而课本上并没写遇到这种情况该怎么办。',
+        ambient: [
+          '公告栏前挤满了人，都在核对时间。',
+          '有人抱怨说今年的课排得太满。',
+          '走廊的钟敲了一下，人群开始往教室方向移动。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'ask_teacher',
+            text: '拿着课表去问教授怎么安排',
+            consequence:
+                '教授看了一眼说「你自己选」。这大概就是二年级的意思——没人再手把手告诉你要做什么了。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_self_choice'], setFlags: ['cos_asked_teacher'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'ask_senior',
+            text: '去问高年级的学长哪个更值得上',
+            consequence:
+                '学长说了半小时，最后总结成一句「选你喜欢的」。你谢过他，回到宿舍又把课表看了一遍。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_asked_senior'], spirit: 3),
           ),
         ],
       ),
@@ -1991,7 +2951,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_heard_chamber', 'cos_knew_legacy'],
               spirit: -3,
             ),
-          ),
+            nextStepId: 'cos_ch3_whisper',),
           StoryChoiceDef(
             id: 'check_wall',
             text: '亲自去二楼走廊看那面墙',
@@ -2004,7 +2964,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_checked_wall'],
               spirit: -2,
             ),
-          ),
+            nextStepId: 'cos_ch3_whisper',),
           StoryChoiceDef(
             id: 'ignore_it',
             text: '把传闻当鬼故事，专心自己的课业',
@@ -2017,6 +2977,36 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 2,
               housePoints: 2,
             ),
+            nextStepId: 'cos_ch3_whisper',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch3_whisper',
+        chapterId: 'cos_ch3',
+        timeCostDays: 1,
+        setup:
+            '关于城堡里那间密室的说法越传越邪乎。有人说五十年前死过人，有人说走廊里的水渍就是证据。',
+        ambient: [
+          '公共休息室里有人在画地图，标出所有水管经过的地方。',
+          '壁炉边的谈话声比平时小。',
+          '窗外开始下雨，敲在玻璃上嗒嗒响。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'join_map',
+            text: '凑过去一起看那张地图',
+            consequence:
+                '你们把城堡的管道系统拼了半张纸。虽然谁也不知道密室在哪，但你把这座城堡的结构记了个大概。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_castle_pipes'], setFlags: ['cos_joined_mapping'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'keep_out',
+            text: '这种事少掺和，做自己的事',
+            consequence:
+                '你往炉火边挪了挪，翻开课本。别人的地图越画越大，你一个字都没看进去。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_kept_out'], spirit: 1),
           ),
         ],
       ),
@@ -2046,7 +3036,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_asked_ghosts', 'cos_deathday_invited'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'cos_ch3_nearly_headless',),
           StoryChoiceDef(
             id: 'ask_myrtille_target',
             text: '打听五十年前「死掉的那个女生」的名字',
@@ -2059,13 +3049,43 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_knew_myrtille'],
               spirit: -1,
             ),
+            nextStepId: 'cos_ch3_nearly_headless',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch3_nearly_headless',
+        chapterId: 'cos_ch3',
+        timeCostDays: 1,
+        setup:
+            '走廊里碰见差点没头的尼克的时候，他正跟另一位幽灵争论什么。看见你过来，他停下来行了个礼。',
+        ambient: [
+          '幽灵飘过的地方，蜡烛会暗一下。',
+          '走廊尽头有扇门半开着，风从里面吹出来。',
+          '地板上的水渍还没有完全干。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'ask_ghost',
+            text: '问问他关于密室知道些什么',
+            consequence:
+                '尼克说「那件事我不在场」。但他补了一句：「活人要小心走廊里的水。」这句话你记了很久。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_ghost_hint'], setFlags: ['cos_asked_ghost'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'bow_back',
+            text: '还了礼就走，不打听',
+            consequence:
+                '你点头致意，绕开了那片暗。身后两位幽灵继续争论，声音一直传到你拐弯的地方。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_polite_to_ghost'], reputation: 1, spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch3_old_news',
         chapterId: 'cos_ch3',
-        timeCostDays: 11,
+        timeCostDays: 8,
         setup:
             '高年级的讲述都是二手货。你想找一手记录——'
             '五十年前的旧《预言家日报》合订本就锁在图书馆的限阅区，'
@@ -2090,7 +3110,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_read_archive', 'cos_kept_chasing'],
               spirit: -2,
             ),
-          ),
+            nextStepId: 'cos_ch3_clipping',),
           StoryChoiceDef(
             id: 'respect_limit',
             text: '只读校方通报的那一版，不碰学生死难的细节',
@@ -2104,6 +3124,36 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_read_archive'],
               spirit: 2,
             ),
+            nextStepId: 'cos_ch3_clipping',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch3_clipping',
+        chapterId: 'cos_ch3',
+        timeCostDays: 1,
+        setup:
+            '图书馆最里面的架子上，你找到了五十年前的旧报纸合订本。翻到冬天那几期的时候，你发现有几页被人整整齐齐地剪掉了，只剩下窄窄的一条白边。',
+        ambient: [
+          '合订本的皮革封面已经开裂，摸上去掉渣。',
+          '平斯夫人在远处整理书架，脚步声很轻。',
+          '窗外的雨停了，云里漏下一道光。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'note_missing',
+            text: '把被剪掉的日期和版面记下来',
+            consequence:
+                '你一共找出了七处缺口，集中在同一年的十一月。这个规律让你后背有点发凉。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_archive_gaps'], setFlags: ['cos_noted_gaps'], spirit: -1),
+          ),
+          StoryChoiceDef(
+            id: 'ask_librarian',
+            text: '拿着报纸去问平斯夫人',
+            consequence:
+                '她看了一眼就说「借阅规定不许议论」。但她把合订本收回去的时候，手比平时慢了一点。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_asked_librarian']),
           ),
         ],
       ),
@@ -2122,7 +3172,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch4_halloween_eve',
         chapterId: 'cos_ch4',
-        timeCostDays: 19,
+        timeCostDays: 18,
         setup:
             '十月最后一天，城堡挂满了南瓜灯。今晚有两场宴会：礼堂里的万圣节宴，'
             '和地窖里尼克的死亡日五百年纪念。你按下午的安排收拾好自己——'
@@ -2146,7 +3196,7 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: -1,
               reputation: 2,
             ),
-          ),
+            nextStepId: 'cos_ch4_pumpkin',),
           StoryChoiceDef(
             id: 'stay_hall',
             text: '留在礼堂的万圣节宴，和同学一起过节',
@@ -2158,6 +3208,36 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_halloween_witness', 'cos_hall_halloween'],
               spirit: -2,
             ),
+            nextStepId: 'cos_ch4_pumpkin',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch4_pumpkin',
+        chapterId: 'cos_ch4',
+        timeCostDays: 1,
+        setup:
+            '今年的万圣节装饰撤得特别早。前一天大礼堂里还挂着一排南瓜灯，第二天早上再经过的时候，那些位置全空了，只剩下挂过东西的细小绳痕。',
+        ambient: [
+          '门厅的蜡烛换成了普通的那种。',
+          '有个低年级生站在原来挂南瓜的位置抬头看。',
+          '走廊比往年安静，脚步声听得很清楚。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'ask_why',
+            text: '去问为什么今年撤得这么早',
+            consequence:
+                '得到的回答是「上面的安排」。你追问了一句，对方就摆手走了。你站在空荡荡的门厅里，忽然觉得这座城堡有点陌生。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_asked_why'], spirit: -1),
+          ),
+          StoryChoiceDef(
+            id: 'decorate_own',
+            text: '回休息室，自己摆了些东西',
+            consequence:
+                '你把去年留下的一只小南瓜摆在窗台上。整个休息室只有你这一处有节日的样子。有人经过时笑了一下。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_decorated_own'], spirit: 3),
           ),
         ],
       ),
@@ -2191,7 +3271,7 @@ const List<StoryChapterDef> _cosChapters = [
               targetNpcId: 'colin',
               spirit: 1,
             ),
-          ),
+            nextStepId: 'cos_ch4_crowd',),
           StoryChoiceDef(
             id: 'observe_calmly',
             text: '控制住恐惧，把现场看到的东西默记下来',
@@ -2205,13 +3285,43 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: -2,
               reputation: 1,
             ),
+            nextStepId: 'cos_ch4_crowd',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch4_crowd',
+        chapterId: 'cos_ch4',
+        timeCostDays: 1,
+        setup:
+            '第一个被石化的人被发现以后，走廊里围了一圈又一圈的人。你挤在外面，只看见担架的一角。',
+        ambient: [
+          '有人在哭，有人举着魔杖想往前挤。',
+          '教工把人群往两边拨，喊着「让开」。',
+          '墙上的水渍在灯光下显得特别明显。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'observe_seriously',
+            text: '认真看清现场，记住每一个细节',
+            consequence:
+                '你注意到担架旁边那滩水比别处大，还注意到被抬走的方向不是医疗翼。这两件事你都没跟人说。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_scene_details'], setFlags: ['cos_observed_scene'], spirit: -2),
+          ),
+          StoryChoiceDef(
+            id: 'help_crowd',
+            text: '帮着把围观的人往后带',
+            consequence:
+                '你张开手臂把人群往后挡，喊了几嗓子。教工看了你一眼，点了点头。等担架抬过去，你的手心全是汗。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_helped_crowd'], reputation: 2, spirit: 1),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch4_next_morning',
         chapterId: 'cos_ch4',
-        timeCostDays: 3,
+        timeCostDays: 1,
         setup:
             '血字的第二天早晨，二楼走廊被拉起了绳。'
             '学生们像参观某种可怕的展览一样远远探头，'
@@ -2237,7 +3347,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 2,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch4_morning_after',),
           StoryChoiceDef(
             id: 'avoid_second_floor',
             text: '从今天起，把二楼从自己的生活动线里删掉',
@@ -2249,6 +3359,36 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_route_map'],
               spirit: 1,
             ),
+            nextStepId: 'cos_ch4_morning_after',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch4_morning_after',
+        chapterId: 'cos_ch4',
+        timeCostDays: 1,
+        setup:
+            '第二天早上，出事的那条走廊被封了。地上拉起了两道绳子，隔着几米站着两个高年级生，路过的人都绕着走。',
+        ambient: [
+          '有学生在远处指指点点，不敢靠近。',
+          '被封的那段走廊里，灯一直亮着。',
+          '早餐时大家都在低声说话，没人开玩笑。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'detour_route',
+            text: '找一条新的路，绕开那段走廊',
+            consequence:
+                '你花了一天时间把城堡摸了个遍。从此你手里有了一张别人没有的路线图——虽然你希望自己用不上它。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_routes'], setFlags: ['cos_found_detour'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'stand_watch',
+            text: '在绳子外面站一会儿',
+            consequence:
+                '你没站多久就走了。回头的时候你看见那两个高年级生也在往里看。他们大概也不知道里面是什么。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_stood_watch']),
           ),
         ],
       ),
@@ -2293,7 +3433,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch5_buddy',),
           StoryChoiceDef(
             id: 'visit_hospital',
             text: '想办法去医疗翼，看看被石化的猫到底什么样',
@@ -2307,7 +3447,7 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_visited_hospital'],
               spirit: -2,
             ),
-          ),
+            nextStepId: 'cos_ch5_buddy',),
           StoryChoiceDef(
             id: 'study_hard',
             text: '恐惧越是蔓延，越要按时去每一堂课',
@@ -2321,6 +3461,36 @@ const List<StoryChapterDef> _cosChapters = [
               reputation: 2,
               spirit: 3,
             ),
+            nextStepId: 'cos_ch5_buddy',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch5_buddy',
+        chapterId: 'cos_ch5',
+        timeCostDays: 1,
+        setup:
+            '学校开始要求低年级生出行必须结伴。你的同伴是个跟你不太熟的男生，头两节课你们几乎没说过话。',
+        ambient: [
+          '走廊里到处是两人一组的学生。',
+          '有人抱怨这样做什么都不方便。',
+          '窗外的天阴沉着，像要下雪。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'make_friends',
+            text: '主动找话题，把这段同行变得不那么难熬',
+            consequence:
+                '你问了他在哪个学院、喜欢哪门课。聊到第三节课的时候，你们已经能在走廊里对着笑话笑了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_made_buddy'], spirit: 5, targetNpcId: 'seamus', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'walk_silent',
+            text: '各走各的，只要挨着就行',
+            consequence:
+                '你们保持着两米的距离走了一整天。虽然尴尬，但至少谁都没出事。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_silent_buddy']),
           ),
         ],
       ),
@@ -2351,7 +3521,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: 4,
             ),
-          ),
+            nextStepId: 'cos_ch5_match',),
           StoryChoiceDef(
             id: 'watch_ball',
             text: '盯住那颗不对劲的游走球，记下它的轨迹',
@@ -2366,13 +3536,43 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: -1,
               reputation: 1,
             ),
+            nextStepId: 'cos_ch5_match',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch5_match',
+        chapterId: 'cos_ch5',
+        timeCostDays: 1,
+        setup:
+            '这个赛季的第一场魁地奇比赛取消了。看台上空了大半，只有零星几个人坐着，球场上的三个球门在风里轻轻晃。',
+        ambient: [
+          '球场上的球门在风里轻轻晃。',
+          '有人拖着扫帚从场边走过，没有抬头。',
+          '解说席的喇叭一直没响。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'stay_and_watch',
+            text: '留下来坐一会儿，看看空球场',
+            consequence:
+                '你坐到散场才走。风把看台下面的纸片吹得满地跑。你想，有些东西一旦停下来，要重新开始就难了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_watched_empty'], spirit: -1),
+          ),
+          StoryChoiceDef(
+            id: 'leave_quietly',
+            text: '看一眼就走，回宿舍看书',
+            consequence:
+                '你转身往回走，路上一个人也没碰到。回到宿舍，炉火已经快灭了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_left_quietly'], spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch5_weekend_mood',
         chapterId: 'cos_ch5',
-        timeCostDays: 4,
+        timeCostDays: 1,
         setup:
             '十一月的第一个周末，城堡里的空气闷得像结了冰的湖面。'
             '连画中人都在抱怨：「孩子们不笑了，画像都挂得没滋味。」'
@@ -2398,7 +3598,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 2,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch5_letter_home',),
           StoryChoiceDef(
             id: 'brew_tea',
             text: '去温室找斯普劳特教授讨点安神的花草',
@@ -2413,6 +3613,36 @@ const List<StoryChapterDef> _cosChapters = [
               affection: 2,
               spirit: 3,
             ),
+            nextStepId: 'cos_ch5_letter_home',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch5_letter_home',
+        chapterId: 'cos_ch5',
+        timeCostDays: 1,
+        setup:
+            '这个周末你摊开羊皮纸，想给家里写封信。写到一半你停住了笔——你不知道该不该把学校里这几天发生的事如实告诉他们。',
+        ambient: [
+          '羊皮纸上已经写了大半页，都是些无关紧要的。',
+          '窗外有几个低年级生在雪地里跑。',
+          '墨水瓶快见底了，你把瓶底刮了刮。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'write_truth',
+            text: '把真实的情况写进去，哪怕他们担心',
+            consequence:
+                '你写了城堡里发生的事，也写了自己很安全。寄出去以后你想，他们大概还是会担心——但至少知道的是真的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_wrote_truth'], reputation: 1, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'write_safe',
+            text: '只写好的，别让他们胡思乱想',
+            consequence:
+                '你把信写得轻松愉快，连考试都写成了很有趣的事。封口的时候你叹了口气。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_wrote_safe'], spirit: 1),
           ),
         ],
       ),
@@ -2457,7 +3687,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch6_watch_club',),
           StoryChoiceDef(
             id: 'watch_snake',
             text: '留意场上那场「蛇」的意外——以及人群里骤起的窃语',
@@ -2471,13 +3701,43 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_saw_snake_talk'],
               spirit: -2,
             ),
+            nextStepId: 'cos_ch6_watch_club',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch6_watch_club',
+        chapterId: 'cos_ch6',
+        timeCostDays: 1,
+        setup:
+            '决斗俱乐部第一次活动那天，大礼堂里挤得满满当当。你站在后排，看几位高年级生怎么把中间的台子搭起来，又怎么把地板清空。',
+        ambient: [
+          '有人在前面演示，魔杖挥得很快。',
+          '观众里不断发出吸气声和笑声。',
+          '地板被清空了一大块，中间画了条线。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'watch_learn',
+            text: '认真看每一个动作，记下能记的',
+            consequence:
+                '你记住了两个咒语的起手式，虽然回家练了很多遍都没成功。但你知道自己记住了。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_duel_basics'], setFlags: ['cos_learned_moves'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'stay_back_row',
+            text: '站在后面，只想看看会发生什么',
+            consequence:
+                '后排的视野不好，你踮了几次脚。后来台子上出了状况，人群一阵骚动，你被推着往后退了两步。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_back_row'], spirit: 1),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch6_aftermath',
         chapterId: 'cos_ch6',
-        timeCostDays: 4,
+        timeCostDays: 3,
         setup:
             '决斗俱乐部的次日，「蛇佬腔」三个字传遍走廊。'
             '有人说会跟蛇说话的是五十年来第一个，有人说这是萨拉查·斯莱特林的天赋——'
@@ -2501,7 +3761,7 @@ const List<StoryChapterDef> _cosChapters = [
               reputation: 3,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch6_after_club',),
           StoryChoiceDef(
             id: 'dig_history',
             text: '去图书馆借《霍格沃茨：一段校史》，查萨拉查·斯莱特林',
@@ -2515,13 +3775,43 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_dug_history'],
               spirit: -1,
             ),
+            nextStepId: 'cos_ch6_after_club',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch6_after_club',
+        chapterId: 'cos_ch6',
+        timeCostDays: 1,
+        setup:
+            '俱乐部那晚之后，关于那条蛇的传言一夜之间传遍了整座城堡。你走在走廊里，听见每个人都在说同一件事。',
+        ambient: [
+          '有几个学生聚在一起，比划着蛇的动作。',
+          '走廊里的画像今天都不说话了。',
+          '窗外黑得早，玻璃上映着烛光。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'think_snake',
+            text: '回宿舍，把听到的所有说法整理一遍',
+            consequence:
+                '你写满了一页纸。写完之后你发现，所有人的说法都指向同一件事——但没人知道那条蛇在哪。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_snake_talk'], setFlags: ['cos_organized_rumors'], spirit: 1),
+          ),
+          StoryChoiceDef(
+            id: 'avoid_topic',
+            text: '不去想，做点别的分散注意力',
+            consequence:
+                '你找了本闲书看到很晚。书里的故事很好看，但合上的时候，走廊里那些话又回来了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_avoided_topic'], spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch6_whisper_winds',
         chapterId: 'cos_ch6',
-        timeCostDays: 3,
+        timeCostDays: 1,
         setup:
             '「继承人」的传闻开始长牙齿：有斯莱特林的同学在走廊被拦住质问，'
             '有混血背景的学生被人贴纸条。恐慌找到了可以欺负的具体对象——'
@@ -2548,7 +3838,7 @@ const List<StoryChapterDef> _cosChapters = [
               targetNpcId: 'blaise',
               spirit: 2,
             ),
-          ),
+            nextStepId: 'cos_ch6_wind',),
           StoryChoiceDef(
             id: 'report_pattern',
             text: '把「谁在带头欺负人」的规律整理给级长',
@@ -2563,6 +3853,36 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: 1,
             ),
+            nextStepId: 'cos_ch6_wind',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch6_wind',
+        chapterId: 'cos_ch6',
+        timeCostDays: 1,
+        setup:
+            '这天夜里风特别大，把城堡高处的窗户吹得哐哐作响。你被吵醒了，翻了好几次身也睡不着，索性坐起来听了一会儿。',
+        ambient: [
+          '塔楼的钟在风里响得不太准。',
+          '走道里有人起来走动，脚步声很轻。',
+          '窗帘被风吹起来又落回去。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'get_up',
+            text: '披上外套，到公共休息室坐一会儿',
+            consequence:
+                '休息室的炉火还没灭。你坐在火边，听见风声一层一层叠上来。后来你在沙发上睡着了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_night_up'], spirit: 1),
+          ),
+          StoryChoiceDef(
+            id: 'stay_bed',
+            text: '把被子蒙过头，逼自己再睡',
+            consequence:
+                '你数了很久的羊。风声慢慢变成了一种背景，最后你真的又睡着了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_slept_through_wind'], spirit: 2),
           ),
         ],
       ),
@@ -2607,7 +3927,7 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 3,
               reputation: 2,
             ),
-          ),
+            nextStepId: 'cos_ch7_decision',),
           StoryChoiceDef(
             id: 'go_home',
             text: '回家——让家里人也放心一点',
@@ -2621,13 +3941,43 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 4,
               reputation: -1,
             ),
+            nextStepId: 'cos_ch7_decision',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch7_decision',
+        chapterId: 'cos_ch7',
+        timeCostDays: 1,
+        setup:
+            '圣诞假期要不要留校，是这几天每个低年级生都在讨论的问题。你收拾行李的时候，箱子装了一半又停下了。',
+        ambient: [
+          '宿舍里的人越来越少，空床越来越多。',
+          '有人在门口问「你走不走」。',
+          '窗外开始飘雪，落在地上就化了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'decide_stay',
+            text: '决定留下，把箱子重新打开',
+            consequence:
+                '你把行李一件件放回去。整个宿舍最后只剩三个人。那天晚上城堡安静得不像真的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_stayed_christmas'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'decide_go',
+            text: '决定回家，把剩下的也装进去',
+            consequence:
+                '你很快就把箱子收拾好了。走的时候你在门口回头看了一眼，走廊尽头那盏灯还亮着。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_went_home'], spirit: 3),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch7_snow',
         chapterId: 'cos_ch7',
-        timeCostDays: 7,
+        timeCostDays: 5,
         setup:
             '留校的假期出奇地安静。大雪封了场地，湖面冻得结结实实，'
             '连城堡的吵闹都像被雪吸走了。有天下午，几个留校的学生'
@@ -2654,7 +4004,7 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 5,
               reputation: 2,
             ),
-          ),
+            nextStepId: 'cos_ch7_quiet_halls',),
           StoryChoiceDef(
             id: 'quiet_library',
             text: '趁图书馆没人，把这学年的线索重新捋一遍',
@@ -2668,6 +4018,36 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 1,
               housePoints: 2,
             ),
+            nextStepId: 'cos_ch7_quiet_halls',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch7_quiet_halls',
+        chapterId: 'cos_ch7',
+        timeCostDays: 1,
+        setup:
+            '假期里的城堡安静得能听见自己的脚步声。你走在平时最挤的那条走廊上，现在一个人也没有。',
+        ambient: [
+          '画像们有的在睡觉，有的在小声聊天。',
+          '有些教室的门锁上了，有些还虚掩着。',
+          '雪把窗外的草坪盖得平平的，没有脚印。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'explore',
+            text: '趁人少，把平时没去过的地方走一遍',
+            consequence:
+                '你找到了一条从图书馆直通四楼的近路，还发现了一间堆满旧课桌椅的储藏室。这些发现让你对这座城堡多了几分把握。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_shortcuts'], setFlags: ['cos_explored_halls'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'study_quiet',
+            text: '找间空教室，安静地复习',
+            consequence:
+                '你在空教室里待了一整天。没有人打扰，效率高得惊人。天黑的时候你才想起来吃饭。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_studied_quiet'], housePoints: 5, spirit: 3),
           ),
         ],
       ),
@@ -2712,7 +4092,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'cos_ch8_fear',),
           StoryChoiceDef(
             id: 'watch_silence',
             text: '留意谁在慌乱中反常地安静——安静的人往往知道点什么',
@@ -2726,6 +4106,36 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: -1,
               reputation: 1,
             ),
+            nextStepId: 'cos_ch8_fear',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch8_fear',
+        chapterId: 'cos_ch8',
+        timeCostDays: 1,
+        setup:
+            '第二起石化事件之后，学校的气氛明显变了。课间不再有人打闹，走廊里大家都贴着墙走。',
+        ambient: [
+          '有学生家长来接孩子，站在门厅不肯进来。',
+          '公告栏上的通知换得比平时勤。',
+          '食堂里空了好几排座位。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'keep_routine',
+            text: '照常上课、照常写作业',
+            consequence:
+                '你把每一天都排得满满的。规律的生活本身成了一种安定。在这种时候，能照常做事就是胜利。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_kept_routine'], housePoints: 5, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'reach_out',
+            text: '主动去关心几个看起来最害怕的人',
+            consequence:
+                '你找了几个一年级生聊天。有个小姑娘一开始不敢说话，聊到最后她问你「会不会有事」。你说不会——虽然你也不确定。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_reached_out'], reputation: 2, spirit: 2, targetNpcId: 'ginny', affection: 3),
           ),
         ],
       ),
@@ -2756,7 +4166,7 @@ const List<StoryChapterDef> _cosChapters = [
               addItems: ['手写贺卡'],
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch8_advice',),
           StoryChoiceDef(
             id: 'comfort_friend',
             text: '拉住一个被家信吓哭的同学，陪他吃完这顿饭',
@@ -2771,13 +4181,43 @@ const List<StoryChapterDef> _cosChapters = [
               reputation: 2,
               spirit: 2,
             ),
+            nextStepId: 'cos_ch8_advice',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch8_advice',
+        chapterId: 'cos_ch8',
+        timeCostDays: 1,
+        setup:
+            '家长的信像雪片一样飞进城堡，门厅的信架上堆得老高。有的家长要立刻接孩子回去，有的写信来要求学校给个说法，还有的干脆亲自来了，站在门厅不肯进。',
+        ambient: [
+          '公告栏边围着看信的家长和老师。',
+          '有学生看完信就回宿舍收拾东西了。',
+          '门厅的壁炉这几天一直烧得很旺。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'write_back',
+            text: '也给家里写信，说明自己的想法',
+            consequence:
+                '你写了自己不想回去的理由。写的时候你才发现，你其实已经把这里当成了家的一部分。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_wrote_own_choice'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'say_nothing',
+            text: '不给家里添乱，什么都不说',
+            consequence:
+                '你把这件事压在心里，谁也没说。从那以后每次收到家里的信，你都只回一句「一切都好」。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_said_nothing']),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch8_mandrake_progress',
         chapterId: 'cos_ch8',
-        timeCostDays: 7,
+        timeCostDays: 4,
         setup:
             '学生们的忍耐快到头了，但温室里的事在按另一种节奏走。'
             '你几次路过温室，听见斯普劳特教授在里面隔着布催苗——'
@@ -2803,7 +4243,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch8_greenhouse',),
           StoryChoiceDef(
             id: 'protect_secret',
             text: '把听到的「十天半个月」烂在肚子里，拦住打听的人',
@@ -2817,6 +4257,36 @@ const List<StoryChapterDef> _cosChapters = [
               reputation: 2,
               spirit: 1,
             ),
+            nextStepId: 'cos_ch8_greenhouse',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch8_greenhouse',
+        chapterId: 'cos_ch8',
+        timeCostDays: 1,
+        setup:
+            '草药课的温室里，那几盆曼德拉草长得比谁都快。教授说照这个速度，再过几个月就能拿来用了，但没说用来做什么。',
+        ambient: [
+          '温室的玻璃上全是水汽，看不清外面。',
+          '有几盆草在土里扭动，像不想待在原地。',
+          '戴耳罩的同学说话都得喊。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'ask_professor',
+            text: '问教授这草药到底治什么',
+            consequence:
+                '教授说「治那种被冻住的人」。你没再问，但你把这句话和走廊里的事连了起来。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_mandrake_cure'], setFlags: ['cos_knows_mandrake_use'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'tend_plants',
+            text: '留下来帮忙给草换盆',
+            consequence:
+                '你戴着手套忙了一下午。教授走的时候说了句「谢谢」。你手上沾着泥，心里却踏实。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_tended_plants'], housePoints: 5, spirit: 4, targetNpcId: 'hagrid', affection: 2),
           ),
         ],
       ),
@@ -2835,7 +4305,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch9_valentine',
         chapterId: 'cos_ch9',
-        timeCostDays: 8,
+        timeCostDays: 6,
         setup:
             '二月十四日，洛克哈特包下整个礼堂搞了一场「情人节庆典」：'
             '粉红色的纸花从天花板飘落，几十个长翅膀的胖矮人抱着竖琴'
@@ -2861,7 +4331,7 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 4,
               housePoints: 2,
             ),
-          ),
+            nextStepId: 'cos_ch9_lockhart_day',),
           StoryChoiceDef(
             id: 'slip_out',
             text: '趁礼堂都在过节，把无人注意的走廊再查一遍',
@@ -2875,6 +4345,66 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_checked_corridors'],
               spirit: -2,
             ),
+            nextStepId: 'cos_ch9_lockhart_day',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch9_lockhart_day',
+        chapterId: 'cos_ch9',
+        timeCostDays: 1,
+        setup:
+            '情人节那天，整个城堡被装饰成了一种让人说不出话的粉色。走廊里飘着一群挎着竖琴的小矮人。',
+        ambient: [
+          '有人被小矮人拦下当众念情诗，脸涨得通红。',
+          '粉色的纸花贴满了柱子和门框。',
+          '不少高年级生干脆躲进了图书馆。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'escape_library',
+            text: '躲进图书馆，把这一天当成普通日子',
+            consequence:
+                '图书馆里挤满了和你同样想法的人。你们谁也没说话，但气氛比外面好得多。',
+            nextStepId: 'cos_ch9_after_diary',
+            effect: StoryEffect(setFlags: ['cos_escaped_valentine'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'watch_fun',
+            text: '站在走廊边上看热闹',
+            consequence:
+                '你看了三场当众念诗，笑得差点扶不住墙。这一天大概是这个学期最轻松的一天。',
+            nextStepId: 'cos_ch9_after_diary',
+            effect: StoryEffect(setFlags: ['cos_watched_valentine'], spirit: 5),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch9_after_diary',
+        chapterId: 'cos_ch9',
+        timeCostDays: 1,
+        setup:
+            '那本日记的事传出来之后，整个城堡都在议论那本不起眼的小册子。有人说它是五十年前的东西，也有人说那上面记着当年的事。',
+        ambient: [
+          '有人在图书馆翻旧年鉴，找五十年前的照片。',
+          '走廊里的画像也在讨论这件事。',
+          '窗外的天开始放晴，雪化了一半。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'find_yearbook',
+            text: '去图书馆翻那一年的年鉴',
+            consequence:
+                '你找到了那一届的合影。照片里的人都笑着，但有一个人的位置是空的。你把那页记在了心里。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_old_year'], setFlags: ['cos_found_yearbook'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'dont_pry',
+            text: '不去翻，这种事不该打听',
+            consequence:
+                '你绕开了图书馆那片区域。但走廊里的议论声还是一路跟着你回了宿舍。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_didnt_pry'], spirit: 1),
           ),
         ],
       ),
@@ -2969,7 +4499,7 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: -3,
               reputation: 1,
             ),
-          ),
+            nextStepId: 'cos_ch10_study_hard',),
           StoryChoiceDef(
             id: 'grieve_hermione',
             text: '去医疗翼外放下一朵花，为被石化的人守一刻钟',
@@ -2984,6 +4514,36 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 1,
               reputation: 2,
             ),
+            nextStepId: 'cos_ch10_study_hard',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch10_study_hard',
+        chapterId: 'cos_ch10',
+        timeCostDays: 1,
+        setup:
+            '三月的图书馆比平时任何时候都挤。期末考临近，而整个学期有大半时间都没能正常上课。',
+        ambient: [
+          '有人在借参考书，书架前围了一圈。',
+          '有几个毕业班的学生占着最里面的位子不放。',
+          '窗外开始回暖，玻璃上的霜没了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'study_group',
+            text: '和几个人组个小组，互相补进度',
+            consequence:
+                '你们四个人把落下的内容分了工。每个人讲一章，讲到不懂的地方就一起翻书。这种学法比一个人啃快多了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_group_study'], housePoints: 5, spirit: 4, targetNpcId: 'hermione', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'solo_grind',
+            text: '自己一个人啃，按自己的进度来',
+            consequence:
+                '你每天泡在图书馆到闭馆。进度慢，但每一步都扎实。你把所有没弄懂的地方都列了出来。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_solo_study'], housePoints: 5, spirit: 3),
           ),
         ],
       ),
@@ -3016,7 +4576,7 @@ const List<StoryChapterDef> _cosChapters = [
               reputation: 3,
               housePoints: 3,
             ),
-          ),
+            nextStepId: 'cos_ch10_stay_question',),
           StoryChoiceDef(
             id: 'reply_home',
             text: '回信：我先回家，等一切平息再回来',
@@ -3030,13 +4590,43 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 1,
               reputation: -2,
             ),
+            nextStepId: 'cos_ch10_stay_question',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch10_stay_question',
+        chapterId: 'cos_ch10',
+        timeCostDays: 1,
+        setup:
+            '「要不要离开学校」这个问题在宿舍里被讨论了整整一晚。有人说家里已经买好了回程票。',
+        ambient: [
+          '宿舍的地板上摊着几个打开的箱子。',
+          '有人在窗边坐着不说话。',
+          '炉火没人添，慢慢暗下去了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'argue_stay',
+            text: '跟他们说，现在走反而更乱',
+            consequence:
+                '你说了你的想法：这里至少有老师在，路上的几周反而没人护着。有人被说服了，有人没有。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_argued_stay'], reputation: 2, spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'respect_choice',
+            text: '不劝，每个人的家里情况不一样',
+            consequence:
+                '你帮要走的同学收拾了行李，一直送到门厅。回来的时候宿舍空了一半。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_respected_choice'], spirit: -1),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch10_exam_cloud',
         chapterId: 'cos_ch10',
-        timeCostDays: 12,
+        timeCostDays: 9,
         setup:
             '「期末考可能取消」的传闻和「学校可能提前关」的传闻一起飞。'
             '二年级的魔咒课改成了自习，代课的教授照本宣科，'
@@ -3061,7 +4651,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 4,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch10_prep',),
           StoryChoiceDef(
             id: 'teach_firstyear',
             text: '把自习课变成「二年级辅导一年级」的课堂',
@@ -3076,6 +4666,36 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 4,
               spirit: 2,
             ),
+            nextStepId: 'cos_ch10_prep',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch10_prep',
+        chapterId: 'cos_ch10',
+        timeCostDays: 1,
+        setup:
+            '考试到底会不会照常举行，没有人给得出准确答复。课表改了一次又一次，公告栏上的通知换了一版又一版，你还是决定按「会考」来准备。',
+        ambient: [
+          '课表上的课被取消了几节，又补了几节。',
+          '教授们的脸色一天比一天严肃。',
+          '公告栏上多了一张又一张通知。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'prepare_anyway',
+            text: '不管考不考，都按计划复习',
+            consequence:
+                '你把三本课本从头到尾过了一遍。就算最后不考，这些知识以后也用得上。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_solid_basics'], setFlags: ['cos_prepared_anyway'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'follow_updates',
+            text: '每天去公告栏看有没有新消息',
+            consequence:
+                '你养成了每天看通知的习惯。虽然大部分通知都跟你没关系，但至少你不会错过重要的那些。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_knows_notices'], setFlags: ['cos_followed_updates'], spirit: 2),
           ),
         ],
       ),
@@ -3119,7 +4739,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 3,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch11_rumor_final',),
           StoryChoiceDef(
             id: 'return_quiet',
             text: '按信上的日子返校，先把校方说的「重大进展」打听清楚',
@@ -3133,6 +4753,36 @@ const List<StoryChapterDef> _cosChapters = [
               setFlags: ['cos_asked_progress'],
               spirit: 2,
             ),
+            nextStepId: 'cos_ch11_rumor_final',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch11_rumor_final',
+        chapterId: 'cos_ch11',
+        timeCostDays: 1,
+        setup:
+            '学期被一再延长，走廊里的消息一天比一天紧。有人说已经找到了那间密室的入口，也有人说还差得远。真真假假，没人分得清。',
+        ambient: [
+          '有几个教工整天不见人影。',
+          '走廊里的水渍又出现了，位置和上次一样。',
+          '晚上点名比以前早了一个小时。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'track_water',
+            text: '留意那些水渍，记下出现的位置',
+            consequence:
+                '你在三处地方做了记号。三天之后你去检查，有两处已经干了，一处的痕迹还在扩大。这个发现你只告诉了最信得过的一个人。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['cos_water_pattern'], setFlags: ['cos_tracked_water'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'wait_orders',
+            text: '不自己去查，等学校的安排',
+            consequence:
+                '你每天照常上课、照常回宿舍。你觉得这种事应该交给大人处理——虽然你也不确定他们处理得怎么样。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_waited_orders'], spirit: 1),
           ),
         ],
       ),
@@ -3165,7 +4815,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 4,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'cos_ch11_longest_night',),
           StoryChoiceDef(
             id: 'listen_facts',
             text: '竖起耳朵，把这一夜听到的只言片语全部记下来',
@@ -3180,13 +4830,43 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: -3,
               reputation: 2,
             ),
+            nextStepId: 'cos_ch11_longest_night',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch11_longest_night',
+        chapterId: 'cos_ch11',
+        timeCostDays: 1,
+        setup:
+            '那个晚上，整座城堡的灯都亮着。低年级生被集中在公共休息室里，有人说「今晚谁都别乱走」。',
+        ambient: [
+          '休息室的门被从里面闩上了。',
+          '有人带来了毯子和饼干，分给大家。',
+          '有低年级生一直在哭，被人搂着。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'reassure',
+            text: '把饼干分给最小的那几个，陪他们说话',
+            consequence:
+                '你讲了几个自己编的故事，讲得磕磕巴巴，但他们都听着。有个小姑娘后来靠在你肩上睡着了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_reassured_young'], reputation: 2, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'keep_vigil',
+            text: '坐在门边，一晚上没合眼',
+            consequence:
+                '你听着走廊里来来回回的脚步声。有几次你以为门要被推开了。天亮的时候，你的眼睛又酸又干。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_kept_vigil'], spirit: -1),
           ),
         ],
       ),
       StoryStepDef(
         id: 'cos_ch11_exam_cancel',
         chapterId: 'cos_ch11',
-        timeCostDays: 13,
+        timeCostDays: 10,
         setup:
             '校方正式通知：期末考试取消。公告贴出来时，'
             '所有人先是安静，然后爆发出的不是欢呼，而是一片叹息——'
@@ -3213,7 +4893,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 4,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch11_aftermath_day',),
           StoryChoiceDef(
             id: 'accept_and_rest',
             text: '接受取消，把攒了一年的疲惫还给自己',
@@ -3227,6 +4907,36 @@ const List<StoryChapterDef> _cosChapters = [
               spirit: 5,
               reputation: -1,
             ),
+            nextStepId: 'cos_ch11_aftermath_day',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch11_aftermath_day',
+        chapterId: 'cos_ch11',
+        timeCostDays: 1,
+        setup:
+            '第二天早上，消息传过来：事情解决了，被抓走的人也被送回来了。考试的安排改了，又改回去。',
+        ambient: [
+          '食堂里重新有了笑声，但声音还小。',
+          '有人抱着一摞书在走廊里跑，被级长叫住了。',
+          '窗外是四月的太阳，很亮。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'visit_medical',
+            text: '去医疗翼外面看看那些人',
+            consequence:
+                '你没能进去，但你在门口站了一会儿。出来的人脸色还白，但能走路。你远远地朝其中一个人点了点头。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_visited_medical'], reputation: 1, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'back_to_class',
+            text: '回教室，把落下的课一节节补回来',
+            consequence:
+                '你重新坐回教室里，把课本一页页翻开。窗外的阳光照在纸面上，比前几个月任何时候都要暖。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_back_to_class'], housePoints: 5, spirit: 3),
           ),
         ],
       ),
@@ -3245,7 +4955,7 @@ const List<StoryChapterDef> _cosChapters = [
       StoryStepDef(
         id: 'cos_ch12_wake',
         chapterId: 'cos_ch12',
-        timeCostDays: 12,
+        timeCostDays: 10,
         setup:
             '消息像解冻的春水一样涌开：被石化的人全部醒了，'
             '第一个醒来的那个「图书馆常驻」，醒来第一句话是问书还了没有。'
@@ -3273,7 +4983,7 @@ const List<StoryChapterDef> _cosChapters = [
               housePoints: 5,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'cos_ch12_sunlight',),
           StoryChoiceDef(
             id: 'visit_hermione',
             text: '去医疗翼，把这一年没说出口的话对苏醒的人说',
@@ -3287,6 +4997,66 @@ const List<StoryChapterDef> _cosChapters = [
               reputation: 2,
               spirit: 3,
             ),
+            nextStepId: 'cos_ch12_sunlight',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch12_sunlight',
+        chapterId: 'cos_ch12',
+        timeCostDays: 1,
+        setup:
+            '学年结束前的最后几周，天气好得反常。所有人都往户外跑，草坪上、湖边、门前的石阶上都是人，像要把关在屋子里的大半年一口气补回来。',
+        ambient: [
+          '草坪上到处是摊开的课本和毯子。',
+          '有人在湖边钓鱼，一条也没钓上来。',
+          '城堡的影子在草地上慢慢移动。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'outdoor_study',
+            text: '把复习搬到草坪上，边晒太阳边看书',
+            consequence:
+                '你看了半页就睡着了。醒过来的时候书还摊在胸口，旁边的人正拿草叶逗你。',
+            nextStepId: 'cos_ch12_lastlook',
+            effect: StoryEffect(setFlags: ['cos_outdoor_nap'], spirit: 6),
+          ),
+          StoryChoiceDef(
+            id: 'play_quidditch',
+            text: '和几个人踢一场随意的小球赛',
+            consequence:
+                '你们用一只旧手套当球，在草地上追着跑了一下午。最后谁也没记住比分，只记住了谁笑得最响。',
+            nextStepId: 'cos_ch12_lastlook',
+            effect: StoryEffect(setFlags: ['cos_played_outside'], spirit: 6, targetNpcId: 'ron', affection: 2),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'cos_ch12_lastlook',
+        chapterId: 'cos_ch12',
+        timeCostDays: 1,
+        setup:
+            '离开城堡前的最后一个早上，你起得比平时早，绕着熟悉的那几条走廊多走了一圈，把每一处都看了一遍。',
+        ambient: [
+          '画像们有的在道别，有的装作没看见。',
+          '行李箱已经堆在门厅了。',
+          '窗外的火车冒着白烟等在站台上。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'say_goodbye',
+            text: '跟几个这一年帮过你的人道个别',
+            consequence:
+                '你一个个找到他们，说了谢谢。有的人愣了一下，有的人笑着说「明年见」。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_said_goodbye'], reputation: 2, spirit: 6),
+          ),
+          StoryChoiceDef(
+            id: 'walk_alone',
+            text: '一个人把走廊走完，什么都不说',
+            consequence:
+                '你从一楼走到七楼，又走回来。每层楼你都停了一会儿。这一年在你的记忆里，比去年长得多。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['cos_walked_alone'], spirit: 5),
           ),
         ],
       ),

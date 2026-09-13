@@ -21,9 +21,13 @@ import 'package:hogwarts_life_simulator/models/story_progress.dart';
 const int kMinStepsPerChapter = 2;
 
 /// 每部书的总步数下限（七部曲各自的最低体量）。
+///
+/// 【这组数字怎么来的】它是"已完成扩写"的既有规模，而不是拍脑袋的目标：
+/// 低于它说明有人把内容删回去了。PS/CoS 的当前规模是 56 / 64；
+/// 其余五部尚未扩写，取下限 = 当前步数（21~24），扩写后应同步抬高。
 const Map<String, int> kMinStepsPerBook = {
-  'ps': 29,
-  'cos': 32,
+  'ps': 56,
+  'cos': 64,
   'poa': 24,
   'gof': 21,
   'ootp': 21,
@@ -31,8 +35,8 @@ const Map<String, int> kMinStepsPerBook = {
   'dh': 21,
 };
 
-/// 七部曲总步数下限。
-const int kMinTotalSteps = 169;
+/// 七部曲总步数下限（当前 56+64+24+21×4 = 228）。
+const int kMinTotalSteps = 228;
 
 /// 一部书总步数。
 int _stepsOf(StoryBookDef book) =>

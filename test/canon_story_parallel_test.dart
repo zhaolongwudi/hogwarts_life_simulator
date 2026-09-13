@@ -220,7 +220,7 @@ void main() {
       final book = findStoryBook('ps')!;
       expect(book.chapters.length, 9, reason: '九个章节');
       final steps = book.chapters.fold<int>(0, (n, c) => n + c.steps.length);
-      expect(steps, 29, reason: '全书 29 步（第一章扩写到 6 步）');
+      expect(steps, 56, reason: '全书 56 步（九章全部扩写后的体量）');
       final choices = book.chapters.fold<int>(
         0,
         (n, c) => n + c.steps.fold<int>(0, (m, s) => m + s.choices.length),

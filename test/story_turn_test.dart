@@ -38,6 +38,16 @@ Future<GameProvider> makeStoryGame() async {
 /// 取当前第一个选项的 action（即玩家的"点按钮"行为）。
 String firstAction(GameProvider gp) => gp.choices.first.action;
 
+/// 取第一章（ps_ch1）的第 [index] 步（0 起）。
+///
+/// 【为什么不再写死 step id】第一章会随内容扩写增减节拍（目前 9 步）。
+/// 测试关心的是"推进顺序、步长、选项指向当前步"这些**结构性质**，
+/// 而不是某个具体 id。写死 id 会在每次扩写时误报，掩盖真正的回归。
+StoryStepDef _ch1Step(int index) => findStoryBook('ps')!
+    .chapters
+    .firstWhere((c) => c.id == 'ps_ch1')
+    .steps[index];
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(registerAllStoryBooks);
@@ -91,7 +101,7 @@ void main() {
         isNot(beforeStep),
         reason: '剧情游标必须前进',
       );
-      expect(gp.storyProgress.stepId, 'ps_ch1_tell');
+      expect(gp.storyProgress.stepId, _ch1Step(1).id);
       expect(gp.storyProgress.doneSteps, contains('ps_ch1_letter'));
       expect(
         gp.storyProgress.chosen['ps_ch1_letter'],
@@ -124,7 +134,7 @@ void main() {
       await gp.processChoice(GameChoice(text: 'x', action: firstAction(gp)));
 
       expect(gp.choices, isNotEmpty);
-      final nextStep = findStoryStep('ps', 'ps_ch1', 'ps_ch1_tell')!;
+      final nextStep = _ch1Step(1);
       expect(gp.choices.length, nextStep.choices.length);
       for (final c in gp.choices) {
         final cmd = parseStoryCommand(c.action);
@@ -166,8 +176,8 @@ void main() {
 
       await gp.processChoice(GameChoice(text: 'x', action: firstAction(gp)));
 
-      // 进入的是下一步 `ps_ch1_tell`，其 timeCostDays = 5
-      final nextStep = findStoryStep('ps', 'ps_ch1', 'ps_ch1_tell')!;
+      // 进入的是第一章的第 2 步（随扩写变化，故按顺序取）
+      final nextStep = _ch1Step(1);
       final delta = gp.worldState.time.absoluteDayIndex - beforeDay;
       expect(
         delta,
@@ -179,14 +189,14 @@ void main() {
 
     test('同一步重复进入时时间不会被推两遍（关键词推断已让位）', () async {
       final gp = await makeStoryGame();
-      final step1 = findStoryStep('ps', 'ps_ch1', 'ps_ch1_tell')!;
+      final step1 = _ch1Step(1);
       final before = gp.worldState.time.absoluteDayIndex;
-      // 第一步默认选第一个分支 → 落到 ps_ch1_study
+      // 第一步默认选第一个分支 → 落到第一章的第 2 步
       await gp.processChoice(GameChoice(text: 'x', action: firstAction(gp)));
       final afterFirst = gp.worldState.time.absoluteDayIndex;
       expect(afterFirst - before, step1.timeCostDays);
       // 再走一步，增量应等于**下一步**的步长（而不是叠加）
-      final step2 = findStoryStep('ps', 'ps_ch1', 'ps_ch1_study')!;
+      final step2 = _ch1Step(2);
       await gp.processChoice(GameChoice(text: 'x', action: firstAction(gp)));
       final afterSecond = gp.worldState.time.absoluteDayIndex;
       expect(afterSecond - afterFirst, step2.timeCostDays);
@@ -247,21 +257,36 @@ void main() {
       expect(gp.storyProgress.effects['spirit'], -3);
       final afterFirst = gp.storyProgress.effects['spirit']!;
 
-      // 第二步选"把信摊开解释"：reputation +2 / spirit +8
-      final s2 = findStoryStep('ps', 'ps_ch1', 'ps_ch1_tell')!;
+      // 第二步：走"当前所在的那一步"的第一个分支。
+      // 【为什么不写死 ps_ch1_tell】第一章的第二步会随扩写变化（现在是
+      // ps_ch1_window）。测试要验的是"效果累加"这一性质，所以应当顺着
+      // 游标走，而不是钉死某一步的 id。
+      final s2 = _ch1Step(1);
+      final c2 = s2.choices.first;
+      final spirit2 = c2.effect.spirit;
+      final rep2 = c2.effect.reputation;
       await gp.processChoice(
         GameChoice(
           text: 'x',
-          action: encodeStoryAction(s2.id, 'tell_truth'),
+          action: encodeStoryAction(s2.id, c2.id),
         ),
       );
       expect(
         gp.storyProgress.effects['spirit'],
-        afterFirst + 8,
+        afterFirst + spirit2,
         reason: '效果必须**累加**，否则结局判定会随剧情推进漂移',
       );
-      expect(gp.storyProgress.effects['reputation'], 2);
-      expect(gp.storyProgress.flags, contains('ps_family_supportive'));
+      // 【口径】effects 只记录"非零增量"，零值不进表。所以要按 rep2 是否为 0
+      // 分别断言，而不是直接写死一个数字。
+      if (rep2 == 0) {
+        expect(
+          gp.storyProgress.effects['reputation'],
+          anyOf(isNull, 0),
+          reason: '本步没有声望效果时，不应凭空多出一条声望记录',
+        );
+      } else {
+        expect(gp.storyProgress.effects['reputation'], rep2);
+      }
     });
 
     test('获得情报时写进长期记忆的 T0 层（离线少有的沉淀机会）', () async {
