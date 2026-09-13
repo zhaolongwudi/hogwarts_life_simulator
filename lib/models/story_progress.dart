@@ -339,6 +339,19 @@ class StoryProgress {
   /// 本步内的回合计数种子，用于 [ambient] 池轮转。
   final int stepTurnSeed;
 
+  /// 是否允许在剧情步之间插话（"剧情骨架 + AI 自由发挥"模式）。
+  ///
+  /// 【为什么进 StoryProgress 而不是 AppProvider】它与一局的具体进度绑定：
+  /// 同一个玩家可以在这局开、下局关，且**必须跟着存档走**——否则读档后
+  /// 开关状态会与存档里的剧情进度对不上。放进 `Player`/`WorldState` 要动
+  /// 那两个类的 fromJson（迁移风险），而 `extra_data` 通道本就是扩展字段
+  /// 收纳口，读不到就走缺省值，零迁移风险。
+  ///
+  /// 【为什么默认 false】没配 AI Key 的玩家开它没有任何收益（只会多出一句
+  /// "需要配置 AI"的提示）；默认关闭同时保证"加这个功能之前的行为"
+  /// 逐字节不变，既有测试全部照常通过。玩家在设置里显式开启。
+  final bool freeformEnabled;
+
   const StoryProgress({
     required this.active,
     this.bookId = 'ps',
@@ -351,6 +364,7 @@ class StoryProgress {
     this.endingId,
     this.knowledge = const [],
     this.stepTurnSeed = 0,
+    this.freeformEnabled = false,
   });
 
   /// 非剧情模式（默认值 / 老存档读出来的值）。
@@ -378,6 +392,8 @@ class StoryProgress {
     flags: inherited.flags,
     effects: inherited.effects,
     knowledge: inherited.knowledge,
+    // 开关是**玩家偏好**而非书内游标：换部时跟人走，不跟书走。
+    freeformEnabled: inherited.freeformEnabled,
   );
 
   /// 累计好感（结局判定用）。
@@ -403,6 +419,7 @@ class StoryProgress {
     if (endingId != null) 'ending_id': endingId,
     'knowledge': knowledge,
     'step_turn_seed': stepTurnSeed,
+    'freeform_enabled': freeformEnabled,
   };
 
   /// 从存档读取。`null` / 类型不对 / 缺字段一律安全降级为 [inactive]。
@@ -441,6 +458,8 @@ class StoryProgress {
               .toList() ??
           const [],
       stepTurnSeed: json['step_turn_seed'] as int? ?? 0,
+      // 老存档没有这个 key → 缺省 false，行为与加此功能之前一致。
+      freeformEnabled: json['freeform_enabled'] == true,
     );
   }
 
@@ -456,6 +475,7 @@ class StoryProgress {
     String? endingId,
     List<String>? knowledge,
     int? stepTurnSeed,
+    bool? freeformEnabled,
   }) => StoryProgress(
     active: active ?? this.active,
     bookId: bookId ?? this.bookId,
@@ -468,6 +488,7 @@ class StoryProgress {
     endingId: endingId ?? this.endingId,
     knowledge: knowledge ?? this.knowledge,
     stepTurnSeed: stepTurnSeed ?? this.stepTurnSeed,
+    freeformEnabled: freeformEnabled ?? this.freeformEnabled,
   );
 }
 

@@ -277,9 +277,15 @@ void main() {
   });
 
   group('E · 健壮性（自由行动与失效分支）', () {
-    test('自由输入不卡死：降级为自由行动并推进', () async {
+    // 【行为变更说明】自由输入以前是"空效果推进到下一步"，于是玩家在剧情步
+    // 之间说一句话就会**白白花掉一个剧情步**——600+ 步的长局里这是实打实的
+    // 损失。现在改为"原地插话"：游标不动、效果不落、原选项重发。
+    // 下面三条断言从"必须推进"翻转为"必须不推进"。
+
+    test('自由输入不卡死：原地插话，游标不动且原选项重发', () async {
       final gp = await makeStoryGame();
       final beforeStep = gp.storyProgress.stepId;
+      final beforeChoices = gp.choices.map((c) => c.action).toList();
 
       await gp.processChoice(
         GameChoice(text: '四处看看', action: '四处看看'),
@@ -287,14 +293,20 @@ void main() {
 
       expect(
         gp.storyProgress.stepId,
-        isNot(beforeStep),
-        reason: '自由行动也要推进，否则玩家会卡在原地',
+        beforeStep,
+        reason: '插话不该消耗剧情步——否则长局会被闲聊啃掉一大块',
       );
       expect(gp.currentNarrative, contains('四处看看'));
-      expect(gp.choices, isNotEmpty, reason: '推进后必须给出新选项');
+      expect(gp.choices, isNotEmpty, reason: '插话后必须仍能继续推进剧情');
+      expect(
+        gp.choices.map((c) => c.action).toList(),
+        beforeChoices,
+        reason: '插话要重发当前步的原选项，玩家不能因此失去出口',
+      );
+      expect(gp.error, isNull);
     });
 
-    test('伪造的分支 id 不崩，降级为自由行动', () async {
+    test('伪造的分支 id 不崩，降级为原地插话', () async {
       final gp = await makeStoryGame();
       await gp.processChoice(
         GameChoice(
@@ -302,11 +314,13 @@ void main() {
           action: encodeStoryAction('ps_ch1_letter', '不存在的分支'),
         ),
       );
-      expect(gp.storyProgress.stepId, 'ps_ch1_tell');
+      // 分支无效 → 视为插话：不推进、不报错、仍给出当前步的选项。
+      expect(gp.storyProgress.stepId, 'ps_ch1_letter');
       expect(gp.error, isNull);
+      expect(gp.choices, isNotEmpty);
     });
 
-    test('stepId 对不上的旧 action 降级为自由行动（读档后 action 失效）', () async {
+    test('stepId 对不上的旧 action 降级为原地插话（读档后 action 失效）', () async {
       final gp = await makeStoryGame();
       await gp.processChoice(
         GameChoice(
@@ -315,8 +329,9 @@ void main() {
           action: encodeStoryAction('ps_ch0_不存在', 'a'),
         ),
       );
-      expect(gp.storyProgress.stepId, 'ps_ch1_tell');
+      expect(gp.storyProgress.stepId, 'ps_ch1_letter');
       expect(gp.error, isNull);
+      expect(gp.choices, isNotEmpty);
     });
 
     test('剧情游标指向不存在的步时重置到首步，而不是卡死', () async {

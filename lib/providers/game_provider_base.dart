@@ -481,6 +481,34 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 才能连起来（与 `advanceTimeForAction` 同一模式）。
   void enterStoryMode();
 
+  /// ===== 剧情自由插话通道（跨 mixin 共享，见 mixin_story_freeform.dart）=====
+  ///
+  /// 【为什么是一对 "预先取回 + 就地读取"】`_runStoryTurn` 整条链路是同步的
+  /// （保证"一次点击 = 一个完整回合"的原子性，含 autoSave 时序），而 AI 调用
+  /// 必须异步。折中办法：UI 在玩家提交自由文本时**先 await**
+  /// [prefetchStoryFreeformNarration] 把文本取回来放进缓存，随后同步的剧情
+  /// 回合只做 [takePendingFreeformText] 读取。
+  ///
+  /// 【失败与未配置的行为】取不到（未开开关 / 无 Key / 超时 / 异常）时
+  /// 缓存为空，`takePendingFreeformText` 返回 null，剧情回合走本地氛围池兜底
+  /// ——功能完整，只是少了 AI 续写的那一段。
+  ///
+  /// 实现在 `GameStoryFreeformMixin`。
+  Future<void> prefetchStoryFreeformNarration({
+    required String stepId,
+    required String setup,
+    required List<String> ambient,
+    required String playerInput,
+  });
+
+  /// 取出（并清空）与 [stepId] + [playerInput] 匹配的 AI 续写文本；
+  /// 无匹配返回 `null`。实现在 `GameStoryFreeformMixin`。
+  String? takePendingFreeformText(String stepId, String playerInput);
+
+  /// 清除自由插话缓存（换步 / 读档 / 关开关时调用，避免陈旧文本串场）。
+  /// 实现在 `GameStoryFreeformMixin`。
+  void clearStoryFreeformCache();
+
   /// 处理 /阿尼马格斯 子命令（实现在 GameAnimagusMixin）。
   void handleAnimagusCommand(List<String> parts);
   /// 玩家死亡判定（实现在 GameDeathMixin）：health ≤ 0 时触发死亡终章。

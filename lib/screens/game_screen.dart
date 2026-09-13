@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
@@ -56,10 +58,29 @@ class _GameScreenState extends State<GameScreen> {
     if (gp.isLoading) return;
     final action = _inputController.text.trim();
     if (action.isEmpty) return;
-    gp.processChoice(
-          GameChoice(text: action, action: action),
-        );
     _inputController.clear();
+    unawaited(_submitFreeAction(gp, action));
+  }
+
+  /// 提交自由输入。
+  ///
+  /// 【为什么是 async】剧情模式 + 开了「自由插话」时，先 await 一次 AI 续写
+  /// 预取，再走同步的剧情回合。AI 失败/未开开关时预取是**立即返回的 no-op**，
+  /// 所以纯本地玩家的行为与改造前完全一致（无额外延迟、无网络请求）。
+  Future<void> _submitFreeAction(GameProvider gp, String action) async {
+    if (gp.isStoryModeActive && gp.storyFreeformUsableNow) {
+      final step = gp.currentStoryStep;
+      if (step != null) {
+        await gp.prefetchStoryFreeformNarration(
+          stepId: step.id,
+          setup: step.setup,
+          ambient: step.ambient,
+          playerInput: action,
+        );
+      }
+    }
+    if (!mounted) return;
+    gp.processChoice(GameChoice(text: action, action: action));
   }
 
   void _handleChoice(int index) {

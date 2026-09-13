@@ -99,14 +99,20 @@ class GameBottomInput extends StatelessWidget {
                                     color: MiuiColors.onSurface,
                                     fontSize: 14,
                                   ),
-                                  decoration: const InputDecoration(
-                                    hintText: '输入行动或 /命令',
-                                    hintStyle: TextStyle(
+                                  decoration: InputDecoration(
+                                    // 剧情模式下提示语要区分两种状态：
+                                    // 开了自由插话 → 告诉玩家"说句话不会丢剧情步"，
+                                    // 这是本功能最容易被误解的地方（玩家会怕
+                                    // "乱打字是不是就把剧情走坏了"）。
+                                    hintText: gp.storyFreeformUsableNow
+                                        ? '说点什么或做个小动作（不消耗剧情步）'
+                                        : '输入行动或 /命令',
+                                    hintStyle: const TextStyle(
                                       color: MiuiColors.onSurfaceVariantActions,
                                       fontSize: 12,
                                     ),
                                     border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                                     isDense: true,
                                     counterText: '',
                                   ),

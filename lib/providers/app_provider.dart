@@ -351,6 +351,9 @@ class AppProvider extends ChangeNotifier {
     // Load story mode switch
     _storyMode = prefs.getBool('story_mode') ?? false;
 
+    // Load 剧情+AI 自由发挥 preference（缺省 false = 与加此功能前行为一致）
+    _storyFreeformPreference = prefs.getBool('story_freeform') ?? false;
+
     notifyListeners();
   }
 
@@ -559,6 +562,25 @@ class AppProvider extends ChangeNotifier {
     await PrefsStore.instance.write(
       'story_mode',
       (prefs) => prefs.setBool('story_mode', value),
+    );
+    notifyListeners();
+  }
+
+  /// 「剧情骨架 + AI 自由发挥」开关（全局默认值，开局时写进存档）。
+  ///
+  /// 【为什么不直接改 storyProgress】`storyProgress` 属于**一局的状态**，
+  /// 只有游戏跑起来之后才存在；而这个开关在设置页/开局页也可能被调整。
+  /// 所以分成两层：这里是"下一局用不用"的偏好（进 AppProvider），
+  /// 开局时把偏好写进 `StoryProgress.freeformEnabled`；游戏内的切换走
+  /// [GameProvider.setStoryFreeformEnabled] 直接改当前局。
+  bool get storyFreeformPreference => _storyFreeformPreference;
+  bool _storyFreeformPreference = false;
+
+  Future<void> setStoryFreeformPreference(bool value) async {
+    _storyFreeformPreference = value;
+    await PrefsStore.instance.write(
+      'story_freeform',
+      (prefs) => prefs.setBool('story_freeform', value),
     );
     notifyListeners();
   }

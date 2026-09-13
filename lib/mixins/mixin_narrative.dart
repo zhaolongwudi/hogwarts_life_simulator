@@ -1712,11 +1712,29 @@ $kNarrativeWritingRules
       }
     }
     // 【风险 1 的对策】分支失效（读档后 action 被改写、内容升级后 id 变了、
-    // 玩家手打了别的东西）一律降级为"自由行动"：不抛错、不卡死，
-    // 空效果推进到下一步，叙事里把玩家原文当作"你决定……"写进去。
+    // 玩家手打了别的东西）一律降级为"自由行动"：不抛错、不卡死。
     final bool isFreeAction = choice == null;
 
-    // 落效果（自由行动无效果）。
+    // 【自由插话：不消耗剧情步】玩家在剧情步之间打了一句自己的话。
+    //
+    // 【修的是什么】旧实现在这里空效果推进到下一步，于是"说一句话"的代价
+    // 是白白花掉一个剧情步——玩家想聊聊当前处境，主线的剧情步却凭空少了一格，
+    // 几百步的长局会因此被啃掉一大块。既然自由插话**不改变剧情状态**
+    // （无效果、无 flag、无推进），它就**不应该移动游标**。
+    //
+    // 【为什么放在这里而不是 _runStoryTurn】选分支与插话共用
+    // "action 解析 → 找 choice"这条前缀，判据（`choice == null`）只有在
+    // 解析完成后才拿得到。提前到入口会把这个解析写两遍。
+    //
+    // 【与 AI 旁路的关系】若开了"剧情骨架 + AI 自由发挥"且 AI 可用
+    // （`_tryStoryFreeform` 返回 true），插话文本由 AI 在原著框架内续写；
+    // 否则用本地氛围池兜底。**两条路径都不移动游标**，所以纯本地玩家
+    // 也照样不会丢剧情步。
+    if (isFreeAction) {
+      return _handleStoryFreeform(step, action);
+    }
+
+    // 落效果。
     //
     // 【顺序要命】`_applyStoryEffect` 内部会 `storyProgress = ...copyWith(...)`
     // 把 effects/flags/knowledge 写进去。所以它之后**必须**以
@@ -1724,17 +1742,15 @@ $kNarrativeWritingRules
     // `progress` 局部快照——否则新建的 `updated` 会把刚落的 effects
     // 覆盖回空，表现为"选项点了、剧情走了，但数值和 flag 全丢了"。
     // 这个缺陷是 `story_turn_test.dart` 的 D 组抓出来的。
-    final effect = choice?.effect ?? StoryEffect.none;
-    if (!isFreeAction) {
-      _applyStoryEffect(effect);
-    }
+    final effect = choice.effect;
+    _applyStoryEffect(effect);
     final latest = storyProgress;
 
     // 记录选择与完成步。
     final doneSteps = List<String>.from(latest.doneSteps);
     if (!doneSteps.contains(step.id)) doneSteps.add(step.id);
     final chosen = Map<String, String>.from(latest.chosen);
-    if (choice != null) chosen[step.id] = choice.id;
+    chosen[step.id] = choice.id;
 
     // 节拍式时间推进：**不用 advanceTimeForAction 的关键词推断**。
     // 具体推进在 `_finalizeTurn(storyTimeCostDays:)` 里做（那里才拿得到
@@ -1752,7 +1768,7 @@ $kNarrativeWritingRules
 
     if (nextStep == null) {
       // 本章（或本部）走完 → 判定结局。
-      return _finishStory(step, choice, effect, isFreeAction, action, updated);
+      return _finishStory(step, choice, effect, false, action, updated);
     }
 
     updated = updated.copyWith(
@@ -1769,15 +1785,85 @@ $kNarrativeWritingRules
       step: nextStep,
       prevStep: step,
       choice: choice,
-      consequence: choice?.consequence ?? '你决定：$action',
+      consequence: choice.consequence,
       onEnterText: nextStep.onEnterText,
-      freeActionText: isFreeAction ? action : null,
+      freeActionText: null,
       effect: effect,
       // 时间步长取自**已迈入的** nextStep：玩家读到的情境就是新一步的，
       // 时间也该按新一步的节拍走，否则"过场文本已经到十一月、
       // 时钟还停在十月"。
       timeCostDays: nextStep.timeCostDays,
     );
+  }
+
+  // ================================================================
+  // 剧情模式 · 自由插话（剧情骨架 + AI 自由发挥）
+  // ================================================================
+  //
+  // 【它解决什么问题】剧情模式原先只有"点选项"一种交互：玩家想说点什么、
+  // 想多看一眼现场、想问旁边的人一句话，唯一能做的是点一个不相关的选项。
+  // 而旧实现里自由输入会**空效果推进到下一步**——聊一句丢掉一个剧情步，
+  // 在 600+ 步的长局里这是实打实的损失。
+  //
+  // 【它怎么解决】插话 = "在当前步里加一段"，而不是"走到下一步"：
+  //   · 游标（bookId/chapterId/stepId）**完全不动**；
+  //   · 不落任何 StoryEffect、不写 flag、不写知识；
+  //   · 叙事 = 当前步的情境 + 玩家原文 + （AI 续写 或 本地氛围池兜底）；
+  //   · 选项 = **当前步的选项原样重发**，玩家接着选，一步都不少。
+  //
+  // 【为什么 AI 是可选的】没配 Key / AI 失败时走本地氛围池，玩家体验
+  // 降级为"确认收到了你的行动"，但**功能完整**——仍然不丢步、仍有原选项。
+  // 这是"离线模式配合 AI"的落点：AI 是增强，不是依赖。
+
+  /// 处理一次自由插话。**不移动剧情游标。**
+  ///
+  /// [step] 是玩家当前所在的步；[action] 是玩家原文。
+  StoryBeat _handleStoryFreeform(StoryStepDef step, String action) {
+    // AI 续写：开了开关 + AI 可用时才走。返回 null 表示"没续写"，
+    // 此时叙事只呈现玩家原文 + 本地氛围句。
+    final aiText = _tryStoryFreeformAi(step, action);
+
+    // stepTurnSeed 递增：让 ambient 池轮转，玩家连续插话会读到不同的氛围句，
+    // 而不是同一句重复贴。**这不影响剧情推进**，只是文本层面的变化。
+    storyProgress = storyProgress.copyWith(
+      stepTurnSeed: storyProgress.stepTurnSeed + 1,
+    );
+
+    return StoryBeat(
+      step: step,
+      // 【为什么 prevStep 传 null】插话没有"上一步的选择"可以承接，
+      // 传了会让 `_composeCausalText` 织出"你此前的做法还留有余波"这种
+      // 与当前动作无关的过渡句。
+      prevStep: null,
+      choice: null,
+      consequence: '',
+      freeActionText: action,
+      isFreeformInterjection: true,
+      freeformAiText: aiText,
+      effect: StoryEffect.none,
+      // 【为什么是 0 天】插话是场景内的一句话，不该推进章节节拍。
+      // 剧情模式的日历由 `timeCostDays` 驱动、要与原著节点月份对齐，
+      // 让闲聊推动日历会让时间线整体漂移。
+      timeCostDays: 0,
+    );
+  }
+
+  /// 尝试让 AI 为这次插话续写一段（在原著框架内）。
+  ///
+  /// 返回 `null` = 不续写（未开开关 / 没配 AI），调用方走本地兜底。
+  ///
+  /// 【为什么这里同步返回而不是 async】`_runStoryTurn` 整条链路是同步的
+  /// （它要保证"点一下按钮 = 一个完整回合"的原子性，包括自动存档）。
+  /// AI 续写是**可选的增强**，为它把整条链路改成异步会波及
+  /// `_finalizeTurn` / `_settleAfterNarrative` / `autoSave` 的时序契约，
+  /// 风险远大于收益。因此插话的 AI 续写走"上一回合已取到的文本"模式：
+  /// 由 `requestStoryFreeformNarration`（见 mixin_story_freeform.dart）
+  /// 预先取回并缓存在 `_pendingFreeformText`，这里只做读取。
+  ///
+  /// 未开开关时**不发起任何请求**，保证纯本地路径 0 AI 调用。
+  String? _tryStoryFreeformAi(StoryStepDef step, String action) {
+    if (!storyProgress.freeformEnabled) return null;
+    return takePendingFreeformText(step.id, action);
   }
 
   /// 走到本章末尾时的收束：要么进下一章，要么判定全书结局。
@@ -2044,6 +2130,23 @@ $kNarrativeWritingRules
         : '主线剧情';
     parts.add('📖 $header');
 
+    // 【自由插话回合】不走"情境三明治"，而是"你做了什么 → 世界如何回应"：
+    // 玩家上一句还在读这一步的情境，再贴一遍 setup 会显得像重开了一屏。
+    // 这里只呈现插话本身 + 现场回应，末尾提示剧情仍在原地等他继续。
+    if (beat.isFreeformInterjection) {
+      parts.add('你选择按自己的方式行动：${beat.freeActionText ?? ''}。');
+      final ai = beat.freeformAiText;
+      if (ai != null && ai.trim().isNotEmpty) {
+        parts.add(ai.trim());
+      } else if (step.ambient.isNotEmpty) {
+        // 本地兜底：AI 不可用时用当前步的氛围池回应一句，
+        // 让玩家感到"这句话被听见了"，而不是打了一行字毫无反应。
+        parts.add(step.ambient[storyProgress.stepTurnSeed % step.ambient.length]);
+      }
+      parts.add('（主线仍在原处等你——上面的选项依然有效。）');
+      return parts.join('\n\n');
+    }
+
     if (beat.onEnterText != null && beat.onEnterText!.trim().isNotEmpty) {
       parts.add(beat.onEnterText!.trim());
     }
@@ -2237,6 +2340,10 @@ $kNarrativeWritingRules
       bookId: kFirstStoryBookId,
       chapterId: first.chapterId,
       stepId: first.id,
+      // 把设置页的「剧情 + AI 自由发挥」偏好带进新局。
+      // 【为什么在开局时抄一次而不是每回合读偏好】一局的开关状态要跟着存档走
+      // （玩家可能中途改），偏好只在开局播种，之后以存档里的值为准。
+      freeformEnabled: appProvider.storyFreeformPreference,
     );
     _markCanonForStep(first);
 
@@ -3852,6 +3959,17 @@ class StoryBeat {
   /// 玩家原文（自由行动降级路径用）。
   final String? freeActionText;
 
+  /// 本回合是否为"自由插话"（不推进剧情步，游标原地不动）。
+  ///
+  /// 与 [freeActionText] 的区别：[freeActionText] 只表示"这段文本来自玩家原文"，
+  /// 本字段表示**引擎语义**——剧情游标没有被移动。叙事拼装与选项构建都要
+  /// 据此走不同分支：插话回合必须复用**当前这一步**的选项，否则玩家会看到
+  /// 一个没有出口的界面。
+  final bool isFreeformInterjection;
+
+  /// AI 为这次插话续写的正文（仅 freeform 路径、且 AI 可用时非空）。
+  final String? freeformAiText;
+
   /// 本回合生效的效果（用于生成可读的数值变动提示）。
   final StoryEffect effect;
 
@@ -3873,6 +3991,8 @@ class StoryBeat {
     this.endingTitle,
     this.endingBody,
     this.freeActionText,
+    this.isFreeformInterjection = false,
+    this.freeformAiText,
     this.effect = StoryEffect.none,
     this.timeCostDays = 0,
   });

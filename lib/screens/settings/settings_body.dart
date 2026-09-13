@@ -481,6 +481,37 @@ class _SettingsBodyState extends State<SettingsBody> {
                 activeColor: const Color(0xFF4CAF7D),
                 onChanged: (v) => context.read<AppProvider>().setOfflineQuickMode(v),
               ),
+              const Divider(height: 24, color: Color(0xFF2A2A4A)),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('剧情 + AI 自由发挥',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                subtitle: Text(
+                  appProvider.storyFreeformPreference
+                      ? '已开启：剧情主线仍由本地原著剧情表驱动（不跑偏），'
+                            '但在每个剧情步之间你可以自由打字行动，AI 会在原著框架内续写细节。'
+                      : '未开启：剧情模式为纯本地——只有剧情选项可以点，'
+                            '自由输入不会调用 AI。',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
+                ),
+                value: appProvider.storyFreeformPreference,
+                activeColor: const Color(0xFFD3A625),
+                onChanged: (v) async {
+                  // 两处都要改：
+                  //   · AppProvider 的偏好 → 决定"下一局开局时默认开不开"；
+                  //   · 当前局的 StoryProgress → 决定"现在这一局立刻生效"。
+                  // 只改前者的话，玩家在游戏中途打开开关会发现毫无变化
+                  // （因为正在跑的这一局读的是存档里的值）。
+                  await context
+                      .read<AppProvider>()
+                      .setStoryFreeformPreference(v);
+                  if (!context.mounted) return;
+                  final gp = context.read<GameProvider>();
+                  if (gp.isStoryModeActive) {
+                    gp.setStoryFreeformEnabled(v);
+                  }
+                },
+              ),
             ],
           ),
         ),
