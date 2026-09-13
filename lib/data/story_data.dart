@@ -134,7 +134,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你把清单摊在桌上，一条一条念。养母问了很多问题，'
                 '最后叹了口气说：「那……总得给你买齐东西。」'
                 '当晚，养父破天荒地在餐桌上讲了三个笑话。',
-            nextStepId: 'ps_ch1_reply',
+            nextStepId: 'ps_ch1_study',
             effect: StoryEffect(
               setFlags: ['ps_family_supportive'],
               reputation: 2,
@@ -147,10 +147,101 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你说了个含糊的借口，他们信了一半。收拾行李那几天，'
                 '养母几次欲言又止，最后只是往你箱子里多塞了一件毛衣。',
-            nextStepId: 'ps_ch1_reply',
+            nextStepId: 'ps_ch1_study',
             effect: StoryEffect(
               setFlags: ['ps_family_in_the_dark'],
               spirit: -5,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch1_study',
+        chapterId: 'ps_ch1',
+        timeCostDays: 3,
+        setup:
+            '离九月一日还有一个月。你在抽屉深处翻出几本旧课本，'
+            '想先把能看懂的看一遍——可书上的字像是活的，'
+            '你盯着一页看了十分钟，只觉得那些字母在纸上彼此推搡。'
+            '窗外的夏天正在一天天变短。',
+        ambient: [
+          '邻居家的孩子骑车经过，车铃响了两声，又骑远了。',
+          '台灯的光晕里，你的影子落在翻开的书页上，一动不动。',
+          '楼下传来电视的声音，播报员在念今天的天气。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'try_letters',
+            text: '硬着头皮，把字母一个一个抄下来',
+            consequence:
+                '你抄满了整整两页纸。抄到第三页时，某个词突然自己'
+                '「亮」了一下——不是发光，是你忽然读懂了它。'
+                '你把这一页折了个角，决定以后每天都抄一点。',
+            nextStepId: 'ps_ch1_visit',
+            effect: StoryEffect(
+              setFlags: ['ps_studied_ahead'],
+              addKnowledge: ['knows_letters_shift'],
+              spirit: 3,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'give_up',
+            text: '合上书，觉得到时候老师自然会教',
+            consequence:
+                '你把书塞回抽屉，用力推了一下抽屉让它关严。'
+                '反正买书的日子在后头，现在着急也没用——'
+                '你决定把剩下的暑假用来做点看得懂的事。',
+            nextStepId: 'ps_ch1_visit',
+            effect: StoryEffect(
+              setFlags: ['ps_no_prep'],
+              spirit: 2,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch1_visit',
+        chapterId: 'ps_ch1',
+        timeCostDays: 2,
+        setup:
+            '八月初的一个下午，一位穿着深绿色斗篷的巫师来家里拜访。'
+            '他自称是霍格沃茨的「联络人」，负责给麻瓜出身的家庭做说明。'
+            '他从袖子里抽出一根细杖，把养母手里那只总也不热的茶杯变成了'
+            '一只吱吱叫的仓鼠——然后又变了回去。',
+        ambient: [
+          '养父全程没说话，只是盯着那只杯子，手指在桌沿上敲个不停。',
+          '仓鼠在茶杯里打了个转，把奶油色的茶渍蹭得到处都是。',
+          '那位巫师说话很慢，每句话都像早就被说过一百遍。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'ask_questions',
+            text: '把攒了一个月的问题全问出来',
+            consequence:
+                '你问了学校在哪、有多少门课、会不会有危险、'
+                '还有「为什么是我」。他一条条答，答到最后一条时停了停：'
+                '「没有为什么。你会魔法，这就够了。」'
+                '这句话你记了很多年。',
+            nextStepId: 'ps_ch1_reply',
+            effect: StoryEffect(
+              addKnowledge: ['knows_school_basics'],
+              setFlags: ['ps_asked_why_me'],
+              reputation: 2,
+              spirit: 6,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'watch_quietly',
+            text: '坐在一边，看他们怎么跟养父母解释',
+            consequence:
+                '你什么也没问，只是听。听他说学费有专款、'
+                '听他说假期可以回家、听他说「孩子会写信」。'
+                '你忽然发现养母的肩膀松下来了一点——'
+                '原来她担心的从来不是「魔法」，是「你回不回来」。',
+            nextStepId: 'ps_ch1_reply',
+            effect: StoryEffect(
+              setFlags: ['ps_watched_explanation'],
+              spirit: 4,
             ),
           ),
         ],
@@ -173,7 +264,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你把回执系好，推开窗。仓鸮展开翅膀，几乎是无声地滑进了夜色，'
                 '很快变成一个黑点。你站在窗边很久，心跳得厉害。',
-            nextStepId: '',
+            nextStepId: 'ps_ch1_last_night',
             effect: StoryEffect(
               setFlags: ['ps_accepted'],
               addKnowledge: ['will_go_to_hogwarts'],
@@ -188,12 +279,55 @@ const List<StoryChapterDef> _psChapters = [
                 '你在回执上多写了两句犹豫的话。第二天清晨，猫头鹰回来了，'
                 '带回一张字迹工整的便条：「霍格沃茨随时欢迎你，但门只为你开一次。」'
                 '你把它读了三遍，最后还是把「我愿意」补了上去。',
-            nextStepId: '',
+            nextStepId: 'ps_ch1_last_night',
             effect: StoryEffect(
               setFlags: ['ps_accepted', 'ps_hesitated_first'],
               addKnowledge: ['will_go_to_hogwarts'],
               spirit: -3,
               reputation: 1,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ps_ch1_last_night',
+        chapterId: 'ps_ch1',
+        timeCostDays: 1,
+        setup:
+            '开学前的最后一夜，你躺在床上睡不着。行李箱立在墙角，'
+            '里面装着新买的长袍、几本还读不太懂的课本，'
+            '还有养母偷偷塞进来的一小包饼干。'
+            '你把手伸到枕头底下——那封信还在那儿。',
+        ambient: [
+          '窗帘没拉严，路灯的光在墙上拉出一条细长的亮线。',
+          '楼下偶尔传来一声碗碟轻响，说明还没人睡。',
+          '你把饼干包摸出来，拆了一小块，味道和平常一样。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'memorize_room',
+            text: '站起来，把房间的每个角落都看一遍',
+            consequence:
+                '书桌、窗户、那道被铅笔划过无数次的墙、'
+                '还有门后那道你小时候量身高的刻痕。'
+                '你把这些都看了一遍，像是要给它们拍一张照片存在脑子里。'
+                '明天起，这间屋子就只是「家」了。',
+            nextStepId: '',
+            effect: StoryEffect(
+              setFlags: ['ps_said_goodbye_room'],
+              spirit: 5,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'sleep_early',
+            text: '闭上眼，逼自己早点睡',
+            consequence:
+                '你翻了个身，把脸埋进枕头。心跳还是快，但你已经'
+                '决定了——明天要走。想到这儿，睡意反而自己来了。',
+            nextStepId: '',
+            effect: StoryEffect(
+              setFlags: ['ps_slept_before_departure'],
+              spirit: 4,
             ),
           ),
         ],
@@ -1532,10 +1666,17 @@ const StoryBookDef _philosophersStone = StoryBookDef(
   endings: _psEndings,
   startYear: 1991,
   startMonth: 7,
-  // 【为什么是 7 月 24 日】古灵阁那一步（canon_ps_gringotts）原著发生在
-  // 七月，而它前面还排着收信、对角巷等几步——开局日必须留出这几步的
-  // 余量，否则整条时间线会被推到八月，原著节点全部错位。
-  startDay: 24,
+  // 【为什么是 7 月 18 日】第一章「女贞路的信」共 5 天（收信 1 + 告知 1 +
+  // 预习 3 + 家访 2 + 回信 1 + 前夜 1 = 9 天，其中收信当天不计），
+  // 把它整段落在七月需要开局日 ≤ 7-25；留一天缓冲取 7-18，于是
+  // `ps_ch2_arrival` 恰好停在 7 月 31 日——与沙盒「letter 开局」
+  // （`opening_scene_data.dart` 的 1991-07-31）同日。
+  //
+  // 【为什么这条必须守住】`canon_ps_gringotts` 声明在 `ps_ch2_bank` 上，
+  // 按时间步长重放后必须落回 1991-07（`canon_story_parallel_test.dart`
+  // 的「原著节点落在它真正发生的那个月」）。开局日往后挪一天，
+  // 整条时间线（含排序、魁地奇、禁林、年终宴）全部错位。
+  startDay: 18,
 );
 
 // ================================================================

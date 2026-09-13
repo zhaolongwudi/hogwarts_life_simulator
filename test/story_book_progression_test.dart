@@ -30,7 +30,7 @@ Future<GameProvider> makeStoryGame() async {
 Future<GameProvider> playPsToEnd() async {
   final gp = await makeStoryGame();
   var guard = 0;
-  while (!gp.storyProgress.isFinished && guard < 40) {
+  while (!gp.storyProgress.isFinished && guard < 120) {
     guard++;
     await gp.processChoice(
       GameChoice(text: 'x', action: gp.choices.first.action),
@@ -154,7 +154,7 @@ void main() {
       );
       expect(gp.storyProgress.bookId, 'cos', reason: '前置：应已进入密室');
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 60) {
+      while (!gp.storyProgress.isFinished && guard < 160) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -172,7 +172,7 @@ void main() {
       );
       expect(gp.storyProgress.bookId, 'poa', reason: '前置：应已进入阿兹卡班');
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 80) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -204,7 +204,7 @@ void main() {
       );
       expect(gp.storyProgress.bookId, 'gof', reason: '前置：应已进入火焰杯');
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 80) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -235,7 +235,7 @@ void main() {
       );
       expect(gp.storyProgress.bookId, 'ootp', reason: '前置：应已进入凤凰社');
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 80) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -279,7 +279,7 @@ void main() {
       );
       expect(gp.storyProgress.bookId, 'hbp', reason: '前置：应已进入混血王子');
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 80) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -310,7 +310,7 @@ void main() {
       );
       expect(gp.storyProgress.bookId, 'dh', reason: '前置：应已进入死亡圣器');
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 80) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),

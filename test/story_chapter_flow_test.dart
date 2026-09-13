@@ -48,15 +48,26 @@ Set<String> allPsStepIds() => {
     for (final s in ch.steps) s.id,
 };
 
+/// 《魔法石》第一章的步数（扩写内容时只改书表，测试自动跟随）。
+int psCh1StepCount() => findStoryBook('ps')!
+    .chapters
+    .firstWhere((c) => c.id == 'ps_ch1')
+    .steps
+    .length;
+
+/// 《魔法石》全书步数。
+int psTotalSteps() => allPsStepIds().length;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(registerAllStoryBooks);
 
   group('A · 章与章的推进（批次 2 没覆盖的换章分支）', () {
-    test('跑完第一章三步 → 自动进入第二章首步', () async {
+    test('跑完第一章全部步 → 自动进入第二章首步', () async {
       final gp = await makeStoryGame();
+      final n = psCh1StepCount();
 
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < n; i++) {
         expect(
           gp.storyProgress.chapterId,
           'ps_ch1',
@@ -69,15 +80,19 @@ void main() {
 
       expect(gp.storyProgress.chapterId, 'ps_ch2');
       expect(gp.storyProgress.stepId, 'ps_ch2_arrival');
+      final ch1 = findStoryBook('ps')!
+          .chapters
+          .firstWhere((c) => c.id == 'ps_ch1');
       expect(
         gp.storyProgress.doneSteps,
-        containsAll(const ['ps_ch1_letter', 'ps_ch1_tell', 'ps_ch1_reply']),
+        containsAll(ch1.steps.map((s) => s.id)),
+        reason: '第一章每一步都必须落进 doneSteps',
       );
     });
 
     test('换章叙事带新章的抬头与过场', () async {
       final gp = await makeStoryGame();
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < psCh1StepCount(); i++) {
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
         );
@@ -88,7 +103,7 @@ void main() {
 
     test('换章后选项重新指向新步', () async {
       final gp = await makeStoryGame();
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < psCh1StepCount(); i++) {
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
         );
@@ -103,12 +118,12 @@ void main() {
   });
 
   group('B · 全书 E2E：从第一封信到学年结束', () {
-    test('letter 开局：26 步全部完成 → 判定出结局', () async {
+    test('letter 开局：全书步数全部完成 → 判定出结局', () async {
       final gp = await makeStoryGame();
       final seenNarratives = <String>[];
 
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 40) {
+      while (!gp.storyProgress.isFinished && guard < 120) {
         guard++;
         final action = gp.choices.first.action;
         expect(
@@ -120,7 +135,7 @@ void main() {
         seenNarratives.add(gp.currentNarrative);
       }
 
-      expect(gp.storyProgress.isFinished, isTrue, reason: '26 步后必须到结局');
+      expect(gp.storyProgress.isFinished, isTrue, reason: '全书跑完必须到结局');
       expect(
         gp.storyProgress.endingId,
         startsWith('ps_ending_'),
@@ -129,7 +144,7 @@ void main() {
       expect(
         gp.storyProgress.doneSteps.toSet(),
         allPsStepIds(),
-        reason: 'E2E 应该把全书 26 步全部完成',
+        reason: 'E2E 应该把全书 ${psTotalSteps()} 步全部完成',
       );
       expect(
         gp.storyProgress.chosen,
@@ -158,7 +173,7 @@ void main() {
     test('整本书跑完 AI 调用为 0（离线红线的全书压测）', () async {
       final gp = await makeStoryGame();
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 40) {
+      while (!gp.storyProgress.isFinished && guard < 120) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -170,7 +185,7 @@ void main() {
     test('好感管线在长跑中被真实走到（E2E 路径累计好感为正）', () async {
       final gp = await makeStoryGame();
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 40) {
+      while (!gp.storyProgress.isFinished && guard < 120) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -192,7 +207,7 @@ void main() {
       expect(gp.storyProgress.stepId, 'ps_ch3_platform');
 
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 40) {
+      while (!gp.storyProgress.isFinished && guard < 120) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -227,7 +242,7 @@ void main() {
     test('结局后继续选「自由活动」不崩、不重新触发剧情', () async {
       final gp = await makeStoryGame();
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 40) {
+      while (!gp.storyProgress.isFinished && guard < 120) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -250,14 +265,15 @@ void main() {
   group('E · 进度面板（/状态 里的主线剧情块）', () {
     test('跑进第二章后，/状态 显示书名、当前章与步数进度', () async {
       final gp = await makeStoryGame();
-      // 4 次选择：走完第一章 3 步 + 第二章首步 → 游标落在 ps_ch2_bank
-      for (var i = 0; i < 4; i++) {
+      // 走完第一章全部步 + 第二章首步 → 游标落在 ps_ch2_bank
+      final n = psCh1StepCount() + 1;
+      for (var i = 0; i < n; i++) {
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
         );
       }
       expect(gp.storyProgress.chapterId, 'ps_ch2');
-      expect(gp.storyProgress.doneSteps, hasLength(4));
+      expect(gp.storyProgress.doneSteps, hasLength(n));
 
       final ok = gp.handleLocalCommand('/状态');
       expect(ok, isTrue, reason: '/状态 命令必须正常执行');
@@ -266,7 +282,7 @@ void main() {
       expect(gp.currentNarrative, contains('第 2 章'));
       expect(gp.currentNarrative, contains('对角巷与古灵阁'));
       expect(
-        gp.currentNarrative.contains('已走 4/26 步'),
+        gp.currentNarrative.contains('已走 $n/${psTotalSteps()} 步'),
         isTrue,
         reason: '进度必须反映真实步数：${gp.currentNarrative}',
       );

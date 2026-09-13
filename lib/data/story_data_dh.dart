@@ -1180,7 +1180,7 @@ const List<StoryChapterDef> _dhChapters = [
             id: 'help_clear',
             text: '先去大厅帮忙抬石头、清出一条能走的路',
             consequence:
-                '你抬了六个小时的石头。'
+                '你抬了六个小时的石头，肩膀磨破了皮。'
                 '清出来的第一条路，'
                 '是通往医疗翼的。',
             effect: StoryEffect(

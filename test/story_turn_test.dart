@@ -137,15 +137,20 @@ void main() {
       }
     });
 
-    test('连点三次能一路走完第一章并进入第二章或结局', () async {
+    test('连点到底能一路走完第一章并进入第二章或结局', () async {
       final gp = await makeStoryGame();
-      // 第一章共 3 步
-      for (var i = 0; i < 3; i++) {
+      // 第一章共 6 步（收信/告知/预习/家访/回信/前夜）
+      final ch1Steps = findStoryBook('ps')!
+          .chapters
+          .firstWhere((c) => c.id == 'ps_ch1')
+          .steps
+          .length;
+      for (var i = 0; i < ch1Steps; i++) {
         if (gp.choices.isEmpty) break;
         final action = gp.choices.first.action;
         await gp.processChoice(GameChoice(text: 'x', action: action));
       }
-      // 走完第一章后应换章（本书目前只有 1 章，故应到达结局）
+      // 走完第一章后应换章
       expect(
         gp.storyProgress.isFinished || gp.storyProgress.chapterId != 'ps_ch1',
         isTrue,
@@ -176,11 +181,12 @@ void main() {
       final gp = await makeStoryGame();
       final step1 = findStoryStep('ps', 'ps_ch1', 'ps_ch1_tell')!;
       final before = gp.worldState.time.absoluteDayIndex;
+      // 第一步默认选第一个分支 → 落到 ps_ch1_study
       await gp.processChoice(GameChoice(text: 'x', action: firstAction(gp)));
       final afterFirst = gp.worldState.time.absoluteDayIndex;
       expect(afterFirst - before, step1.timeCostDays);
       // 再走一步，增量应等于**下一步**的步长（而不是叠加）
-      final step2 = findStoryStep('ps', 'ps_ch1', 'ps_ch1_reply')!;
+      final step2 = findStoryStep('ps', 'ps_ch1', 'ps_ch1_study')!;
       await gp.processChoice(GameChoice(text: 'x', action: firstAction(gp)));
       final afterSecond = gp.worldState.time.absoluteDayIndex;
       expect(afterSecond - afterFirst, step2.timeCostDays);
