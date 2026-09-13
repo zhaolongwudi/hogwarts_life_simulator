@@ -67,7 +67,7 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_heard_speech'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'ootp_ch1_letters',),
           StoryChoiceDef(
             id: 'check_seats',
             text: '数一数教工席上少了谁、多了谁',
@@ -80,7 +80,7 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_noticed_changes'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'ootp_ch1_letters',),
           StoryChoiceDef(
             id: 'plan_owls',
             text: '回宿舍先把 O.W.L.s 的考试范围摊开',
@@ -94,6 +94,36 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_owls_focus'],
               spirit: 1,
             ),
+            nextStepId: 'ootp_ch1_letters',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch1_letters',
+        chapterId: 'ootp_ch1',
+        timeCostDays: 1,
+        setup:
+            '回到学校以后，你发现同学们的信比往年多了一倍。每封都写得很短，而且读完之后大多被烧掉了。',
+        ambient: [
+          '公共休息室的炉火烧得特别旺。',
+          '有人一边写信一边往门口看。',
+          '窗外的天一直没晴过。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'write_home',
+            text: '也给家里写一封，但只说学校里的事',
+            consequence:
+                '你把能写的都写了：课程、天气、新换的教授。不能写的那些，你在纸上停了好几次，最后空着。信封封上之前你又拆开看了一遍。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_wrote_home'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'burn_drafts',
+            text: '写完就烧，不留草稿',
+            consequence:
+                '你写了三稿，一稿比一稿短。最后烧掉的是最短的那一版。看着纸在火里卷起来，你忽然明白大人们在怕什么。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['ootp_caution'], setFlags: ['ootp_burned_drafts'], spirit: -1),
           ),
         ],
       ),
@@ -157,7 +187,7 @@ const List<StoryChapterDef> _ootpChapters = [
       StoryStepDef(
         id: 'ootp_ch1_whispers',
         chapterId: 'ootp_ch1',
-        timeCostDays: 4,
+        timeCostDays: 3,
         setup:
             '开学两周，城堡里流传着两种说法：'
             '一种说去年六月那件事是谎话，'
@@ -252,7 +282,7 @@ const List<StoryChapterDef> _ootpChapters = [
               spirit: 1,
               targetNpcId: 'trelawney',
             ),
-          ),
+            nextStepId: 'ootp_ch2_first_class',),
           StoryChoiceDef(
             id: 'log_inspections',
             text: '记录她每一次出现的日期和班级',
@@ -266,7 +296,7 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_noticed_changes'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'ootp_ch2_first_class',),
           StoryChoiceDef(
             id: 'mimic_her',
             text: '跟着大家在背后模仿她，宣泄一下',
@@ -279,6 +309,36 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 1,
               spirit: 1,
             ),
+            nextStepId: 'ootp_ch2_first_class',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch2_first_class',
+        chapterId: 'ootp_ch2',
+        timeCostDays: 1,
+        setup:
+            '新来的那位坐在教室最前面，手里拿着一块板和一支笔。她一整节课都在写，没有抬头。你在下面坐得笔直，眼睛盯着黑板。',
+        ambient: [
+          '有人在下面偷偷交换眼神。',
+          '讲义发下来，比往年薄了一半。',
+          '窗外有乌鸦落在窗台上，看了两眼就飞走了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'take_notes',
+            text: '把该记的都记下来',
+            consequence:
+                '你照常记笔记，一个字都没漏。下课后有人问你怕不怕，你说怕，但课上讲的东西考试要考。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['ootp_theory_notes'], setFlags: ['ootp_took_notes'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'ask_question',
+            text: '举手问她一个课本上的问题',
+            consequence:
+                '她看了你一眼，说这个问题不该由你来问。全班安静了三秒。你说好，坐下。手指在桌下攥了一下。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_asked_question'], reputation: 1, spirit: -2),
           ),
         ],
       ),
@@ -341,7 +401,7 @@ const List<StoryChapterDef> _ootpChapters = [
       StoryStepDef(
         id: 'ootp_ch2_skills',
         chapterId: 'ootp_ch2',
-        timeCostDays: 12,
+        timeCostDays: 11,
         setup:
             '五年级的实操课越来越少，'
             '而每个人心里都清楚：真正需要练习的东西，'
@@ -438,7 +498,7 @@ const List<StoryChapterDef> _ootpChapters = [
               affection: 2,
               targetNpcId: 'hermione',
             ),
-          ),
+            nextStepId: 'ootp_ch3_signup',),
           StoryChoiceDef(
             id: 'send_someone',
             text: '让别人先去，自己先打听清楚',
@@ -454,7 +514,7 @@ const List<StoryChapterDef> _ootpChapters = [
               spirit: 2,
               targetNpcId: 'seamus',
             ),
-          ),
+            nextStepId: 'ootp_ch3_signup',),
           StoryChoiceDef(
             id: 'decline',
             text: '不去，把纸条烧掉',
@@ -467,6 +527,36 @@ const List<StoryChapterDef> _ootpChapters = [
               addKnowledge: ['ootp_declined_da'],
               spirit: -2,
             ),
+            nextStepId: 'ootp_ch3_signup',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch3_signup',
+        chapterId: 'ootp_ch3',
+        timeCostDays: 1,
+        setup:
+            '有人在公共休息室的墙上贴了一张很小的纸条，上面只有一句话和一个记号。看过的人都装作没看见。',
+        ambient: [
+          '那个记号第二天就被人撕掉了。',
+          '有人在你耳边说了个时间，然后就走开了。',
+          '炉火边坐着的人比平时多了几个。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'sign_name',
+            text: '在纸条背面写下自己的名字',
+            consequence:
+                '你写得很快，写完就走开了。第二天你发现自己不是唯一一个——那张纸的背面挤满了名字，有些写在角落里。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['ootp_group_meeting'], setFlags: ['ootp_joined_group'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'think_first',
+            text: '记下时间和记号，先不表态',
+            consequence:
+                '你把那个记号在心里描了好几遍。你没有写名字，但那天晚上你按写的时间去了门外。站在门口听了五分钟，又走开了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_hesitated'], spirit: -1),
           ),
         ],
       ),
@@ -534,7 +624,7 @@ const List<StoryChapterDef> _ootpChapters = [
       StoryStepDef(
         id: 'ootp_ch3_growth',
         chapterId: 'ootp_ch3',
-        timeCostDays: 29,
+        timeCostDays: 28,
         setup:
             '第四次集会时，屋里已经站了三十几个人。'
             '有人开始能连续挡住三次攻击，'
@@ -628,7 +718,7 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 2,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'ootp_ch4_holiday',),
           StoryChoiceDef(
             id: 'visit_hospital',
             text: '假期去看望还住在圣芒戈的人',
@@ -644,7 +734,7 @@ const List<StoryChapterDef> _ootpChapters = [
               affection: 2,
               targetNpcId: 'mcgonagall',
             ),
-          ),
+            nextStepId: 'ootp_ch4_holiday',),
           StoryChoiceDef(
             id: 'write_home_careful',
             text: '给家里写一封字斟句酌的信',
@@ -657,6 +747,36 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_complied'],
               spirit: 2,
             ),
+            nextStepId: 'ootp_ch4_holiday',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch4_holiday',
+        chapterId: 'ootp_ch4',
+        timeCostDays: 1,
+        setup:
+            '圣诞假期留校的人比往年多，大概是都不想回家。大礼堂的树照旧摆着，但没多少人去看。',
+        ambient: [
+          '有人把收到的礼物堆在床边，一件都没拆。',
+          '厨房的伙食比平时丰盛。',
+          '走廊里那几个穿粉色的人假期也没休息。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'open_gifts',
+            text: '把礼物一件件拆开，给送礼的人回信',
+            consequence:
+                '你拆了很久。其中有一件是你没想到的，包装很糙，但那个东西你后来一直留着。',
+            nextStepId: '',
+            effect: StoryEffect(addItems: ['手写贺卡'], setFlags: ['ootp_opened_gifts'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'leave_unopened',
+            text: '先放着，等学期结束再说',
+            consequence:
+                '你把那堆东西推到了床底下。有些好意你现在接不住。也许以后可以。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_left_gifts'], spirit: -1),
           ),
         ],
       ),
@@ -686,7 +806,7 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 3,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'ootp_ch4_raid_after',),
           StoryChoiceDef(
             id: 'grab_roster',
             text: '先把那张名单抢下来再跑',
@@ -700,7 +820,7 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 3,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'ootp_ch4_raid_after',),
           StoryChoiceDef(
             id: 'run_first',
             text: '跟着人流往外跑',
@@ -713,13 +833,43 @@ const List<StoryChapterDef> _ootpChapters = [
               addKnowledge: ['ootp_fled_raid'],
               spirit: -2,
             ),
+            nextStepId: 'ootp_ch4_raid_after',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch4_raid_after',
+        chapterId: 'ootp_ch4',
+        timeCostDays: 1,
+        setup:
+            '搜查的事情传开以后，公共休息室里的东西少了很多。有人把书藏到了床垫底下。有人低声说，下个星期可能还要再来一次。',
+        ambient: [
+          '走廊里有几间教室的门被贴了封条。',
+          '有人在收拾抽屉，动作很快。',
+          '窗外的雪停了，天还是灰的。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'help_hide',
+            text: '帮朋友把东西藏起来',
+            consequence:
+                '你们把东西分成了几份，分别放在几个人身上。做完之后谁也没说话，但都笑了一下。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_helped_hide'], spirit: 3, targetNpcId: 'ginny', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'stay_clear',
+            text: '不参与，把自己的东西理清楚',
+            consequence:
+                '你把自己的抽屉从头到尾理了一遍。该扔的扔，该留的收好。你想，至少自己的这一格是干净的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_stayed_clear'], spirit: 1),
           ),
         ],
       ),
       StoryStepDef(
         id: 'ootp_ch4_aftermath',
         chapterId: 'ootp_ch4',
-        timeCostDays: 29,
+        timeCostDays: 27,
         setup:
             '搜查之后，集会被迫停了三周。'
             '城堡里开始互相打量：'
@@ -816,7 +966,7 @@ const List<StoryChapterDef> _ootpChapters = [
               affection: 2,
               targetNpcId: 'hermione',
             ),
-          ),
+            nextStepId: 'ootp_ch5_group_study',),
           StoryChoiceDef(
             id: 'solo_sprint',
             text: '一个人闭关，按计划表死磕',
@@ -830,7 +980,7 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 1,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'ootp_ch5_group_study',),
           StoryChoiceDef(
             id: 'help_others_revise',
             text: '把自己的笔记印给别人，边给边讲',
@@ -846,6 +996,36 @@ const List<StoryChapterDef> _ootpChapters = [
               spirit: 2,
               targetNpcId: 'susan',
             ),
+            nextStepId: 'ootp_ch5_group_study',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch5_group_study',
+        chapterId: 'ootp_ch5',
+        timeCostDays: 1,
+        setup:
+            '考试临近，有人把课本上的东西重新分了一遍。不按章节分，按"考试会不会考"分。屋里的人都在埋头写字，没什么人说话。',
+        ambient: [
+          '有人把三本笔记订成了一本。',
+          '靠窗的位置总是最先被坐满。',
+          '有人在桌上画了张很长的图，画到桌角外面去了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'join_review',
+            text: '加入他们，把最难的部分分给自己',
+            consequence:
+                '你挑了最没人愿意碰的那一章。啃了两天，居然真让你理出了头绪。讲给别人的时候你自己也清楚了不少。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['ootp_reviewed'], setFlags: ['ootp_led_review'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'self_study',
+            text: '自己按自己的节奏来',
+            consequence:
+                '你没有加入任何一组。按自己的顺序把书过了一遍，最后合上书的时候，居然没什么可慌的。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['ootp_reviewed'], setFlags: ['ootp_self_study'], spirit: 3),
           ),
         ],
       ),
@@ -909,7 +1089,7 @@ const List<StoryChapterDef> _ootpChapters = [
       StoryStepDef(
         id: 'ootp_ch5_unease',
         chapterId: 'ootp_ch5',
-        timeCostDays: 26,
+        timeCostDays: 25,
         setup:
             '考完之后本该轻松，但城堡里反而更紧了。'
             '有教授在夜里匆匆离开，'
@@ -1031,7 +1211,7 @@ const List<StoryChapterDef> _ootpChapters = [
       StoryStepDef(
         id: 'ootp_ch6_waiting',
         chapterId: 'ootp_ch6',
-        timeCostDays: 6,
+        timeCostDays: 5,
         setup:
             '那一夜没有人睡。公共休息室里坐满了人，'
             '谁也不说话，只在有人推门时集体抬头。'
@@ -1054,7 +1234,7 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 2,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'ootp_ch6_before_news',),
           StoryChoiceDef(
             id: 'write_letters',
             text: '给那几个人各写一封没寄出的信',
@@ -1068,7 +1248,7 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_kept_vigil'],
               spirit: -2,
             ),
-          ),
+            nextStepId: 'ootp_ch6_before_news',),
           StoryChoiceDef(
             id: 'sleep_somehow',
             text: '逼自己睡一会儿，别拖垮身体',
@@ -1080,6 +1260,36 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_kept_vigil'],
               spirit: 2,
             ),
+            nextStepId: 'ootp_ch6_before_news',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch6_before_news',
+        chapterId: 'ootp_ch6',
+        timeCostDays: 1,
+        setup:
+            '等消息的那几天，学校里没人能安下心做事。有人一遍遍往校门方向走，有人干脆在门厅里坐着，谁也不肯散。',
+        ambient: [
+          '有人把写好的信又撕了，说等有消息再写。',
+          '医疗翼的灯一直亮着。',
+          '夜里的风里带着一点烧焦的味道。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'wait_outside',
+            text: '在门厅外面等着，不愿回宿舍',
+            consequence:
+                '你站了很久，脚都麻了。有人来劝你回去，你摇了摇头。后来你才发现，那天晚上很多人在不同的地方做同一件事。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_waited_all_night'], spirit: -3),
+          ),
+          StoryChoiceDef(
+            id: 'write_it_down',
+            text: '回宿舍，把这一年的事写下来',
+            consequence:
+                '你写了整整两页，写完自己读了一遍。有些事写下来以后反而没那么重了。你把纸折好收了起来，然后才躺下。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_wrote_it_down'], spirit: 2),
           ),
         ],
       ),
@@ -1182,7 +1392,7 @@ const List<StoryChapterDef> _ootpChapters = [
               reputation: 2,
               spirit: 3,
             ),
-          ),
+            nextStepId: 'ootp_ch7_silence',),
           StoryChoiceDef(
             id: 'welcome_back',
             text: '去跟回来的教授说声欢迎',
@@ -1197,7 +1407,7 @@ const List<StoryChapterDef> _ootpChapters = [
               spirit: 2,
               targetNpcId: 'dumbledore',
             ),
-          ),
+            nextStepId: 'ootp_ch7_silence',),
           StoryChoiceDef(
             id: 'burn_decrees',
             text: '把抄了一年的那份清单烧掉',
@@ -1210,6 +1420,36 @@ const List<StoryChapterDef> _ootpChapters = [
               setFlags: ['ootp_heard_news'],
               spirit: 2,
             ),
+            nextStepId: 'ootp_ch7_silence',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'ootp_ch7_silence',
+        chapterId: 'ootp_ch7',
+        timeCostDays: 1,
+        setup:
+            '战后那几天，城堡里安静得不像话。连平时最爱说话的人都不怎么开口了。你把脚步放得很轻，怕吵到谁。',
+        ambient: [
+          '有人在礼堂的角落坐了一整个下午。',
+          '有几间教室的门一直关着。',
+          '操场的草长得很快，没人去修剪。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'sit_with_them',
+            text: '陪那些说不出话的人坐一会儿',
+            consequence:
+                '你坐过去，什么也没说。过了很久对方把头靠过来，你把自己的外套给了他。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_comforted'], spirit: 3, targetNpcId: 'ginny', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'keep_busy',
+            text: '找点事做，别停下来',
+            consequence:
+                '你去帮忙搬东西、整理书、擦桌子。一天下来手都酸了，但至少没有一秒钟是空着的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['ootp_kept_busy'], reputation: 2, spirit: 1),
           ),
         ],
       ),
@@ -1276,7 +1516,7 @@ const List<StoryChapterDef> _ootpChapters = [
       StoryStepDef(
         id: 'ootp_ch7_home',
         chapterId: 'ootp_ch7',
-        timeCostDays: 4,
+        timeCostDays: 3,
         setup:
             '回家的列车上，五年级的人看起来都比去年老。'
             '窗外是熟悉的田野，'

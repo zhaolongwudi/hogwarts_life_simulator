@@ -69,7 +69,7 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_train_alert'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'hbp_ch1_results',),
           StoryChoiceDef(
             id: 'help_luggage',
             text: '帮旁边那个够不着行李架的一年级生把箱子塞上去',
@@ -84,7 +84,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: 2,
               targetNpcId: 'colin',
             ),
-          ),
+            nextStepId: 'hbp_ch1_results',),
           StoryChoiceDef(
             id: 'read_notice',
             text: '翻一翻随通知书寄来的那张安全须知',
@@ -98,6 +98,36 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_train_notice'],
               spirit: -1,
             ),
+            nextStepId: 'hbp_ch1_results',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch1_results',
+        chapterId: 'hbp_ch1',
+        timeCostDays: 1,
+        setup:
+            '成绩单寄到的那天，你拆信封的手有点抖。结果比预想的好一些，也没好到能吹的程度。你把信封翻过来又看了一遍，才收进抽屉。',
+        ambient: [
+          '有人的成绩单掉在地上，捡起来看了一遍又一遍。',
+          '窗外有猫头鹰在等回信。',
+          '走廊里到处在比分数。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'celebrate_small',
+            text: '不管别人怎么样，先给自己庆祝一下',
+            consequence:
+                '你去厨房要了块蛋糕，一个人吃完了。没有告诉任何人为什么。有些小小的胜利，本来就只该自己知道。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_celebrated_self'], spirit: 5),
+          ),
+          StoryChoiceDef(
+            id: 'check_others',
+            text: '先去看看几个朋友考得怎么样',
+            consequence:
+                '你挨个问了一圈。有人考砸了，你陪他在外面走了一小时。回宿舍的时候你才想起自己的成绩单还在口袋里。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_checked_friends'], reputation: 2, spirit: 2, targetNpcId: 'ron', affection: 2),
           ),
         ],
       ),
@@ -165,7 +195,7 @@ const List<StoryChapterDef> _hbpChapters = [
       StoryStepDef(
         id: 'hbp_ch1_owl_results',
         chapterId: 'hbp_ch1',
-        timeCostDays: 12,
+        timeCostDays: 11,
         setup:
             'O.W.L.s 的成绩单在早餐时送到了。'
             '有人尖叫，有人当场把纸翻过去扣在桌上。'
@@ -264,7 +294,7 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_watch_rumors'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'hbp_ch2_watch',),
           StoryChoiceDef(
             id: 'volunteer_guard',
             text: '报名周末在村口帮忙维持秩序',
@@ -280,7 +310,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -1,
               targetNpcId: 'mcgonagall',
             ),
-          ),
+            nextStepId: 'hbp_ch2_watch',),
           StoryChoiceDef(
             id: 'head_down',
             text: '不去看布告栏，把心思放回课业',
@@ -294,6 +324,36 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_focus_study'],
               spirit: -2,
             ),
+            nextStepId: 'hbp_ch2_watch',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch2_watch',
+        chapterId: 'hbp_ch2',
+        timeCostDays: 1,
+        setup:
+            '这一年城堡里多了些说不清的规矩。晚上回宿舍的时间被提前了，走廊里巡逻的人也多了。',
+        ambient: [
+          '有人被拦下来问了三遍才放行。',
+          '公告栏上的纸一天一换。',
+          '夜里的风比往年冷。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'follow_rules',
+            text: '老老实实按时间回来',
+            consequence:
+                '你每天准时回宿舍，路上的时间算得刚刚好。有人笑你太乖，你没反驳——这一年，能不出事就是本事。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_followed_rules'], reputation: 1, spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'walk_longer',
+            text: '故意绕远路，把校园走一遍',
+            consequence:
+                '你每天换一条路线。一个月下来，把城堡的每个角落都走熟了。有一次你看见有人从校长塔那边下来，走得很急。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['hbp_castle_secret'], setFlags: ['hbp_explored_castle'], spirit: 3),
           ),
         ],
       ),
@@ -360,7 +420,7 @@ const List<StoryChapterDef> _hbpChapters = [
       StoryStepDef(
         id: 'hbp_ch2_tail',
         chapterId: 'hbp_ch2',
-        timeCostDays: 10,
+        timeCostDays: 9,
         setup:
             '有些人反常得很难不注意到。'
             '一位你认识多年的高年级同学开始频繁消失，'
@@ -466,7 +526,7 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_borrowed_notes'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'hbp_ch3_margins',),
           StoryChoiceDef(
             id: 'ask_origin',
             text: '先问一句：这本书原来是谁的',
@@ -480,7 +540,7 @@ const List<StoryChapterDef> _hbpChapters = [
               reputation: 1,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'hbp_ch3_margins',),
           StoryChoiceDef(
             id: 'refuse_shortcut',
             text: '不借，回去照课本原步骤重熬一次',
@@ -496,6 +556,36 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_refused_shortcut'],
               spirit: 2,
             ),
+            nextStepId: 'hbp_ch3_margins',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch3_margins',
+        chapterId: 'hbp_ch3',
+        timeCostDays: 1,
+        setup:
+            '那本书的页边写满了字，字迹很挤，像是有人在赶时间。有几处还画了箭头，指向别页。你把它拿到窗边，借着光一行行看下去。',
+        ambient: [
+          '同页的印刷体已经被批注盖得看不清了。',
+          '书脊裂了一道，被谁用胶粘过。',
+          '有人凑过来看，你下意识合上了书。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'copy_notes',
+            text: '把有用的批注抄到自己的本子上',
+            consequence:
+                '你抄了整整两个晚上。抄的过程中你发现，写这些字的人不只是在教配方，还在教怎么想。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['hbp_margin_notes'], setFlags: ['hbp_copied_notes'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'return_book',
+            text: '把书还回去，不去碰别人的东西',
+            consequence:
+                '你把书放回了原处。走出图书馆的时候有点舍不得，但你不想靠这种东西赢。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_returned_book'], reputation: 2, spirit: 1),
           ),
         ],
       ),
@@ -567,7 +657,7 @@ const List<StoryChapterDef> _hbpChapters = [
       StoryStepDef(
         id: 'hbp_ch3_price',
         chapterId: 'hbp_ch3',
-        timeCostDays: 15,
+        timeCostDays: 14,
         setup:
             '捷径迟早会亮出账单。'
             '有人在魔药课上照着不知道从哪抄来的步骤操作，'
@@ -668,7 +758,7 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_party_attended'],
               reputation: 2,
             ),
-          ),
+            nextStepId: 'hbp_ch4_party_night',),
           StoryChoiceDef(
             id: 'decline_party',
             text: '不去，把那个晚上用来给家里写信',
@@ -682,7 +772,7 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_party_declined'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'hbp_ch4_party_night',),
           StoryChoiceDef(
             id: 'observe_party',
             text: '不去，但记下谁进去了、待了多久',
@@ -696,6 +786,36 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_party_observed'],
               spirit: -1,
             ),
+            nextStepId: 'hbp_ch4_party_night',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch4_party_night',
+        chapterId: 'hbp_ch4',
+        timeCostDays: 1,
+        setup:
+            '聚会开到一半，有人把窗帘拉开了一条缝。外面的天全黑了，雪落在窗台上不化。你靠在墙上，看屋里的人来来去去。',
+        ambient: [
+          '有人提议玩个游戏，规则讲了半天没讲明白。',
+          '杯子里剩的东西谁也不肯喝。',
+          '炉火把墙上的影子拉得很长。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'stay_late',
+            text: '留到最后，帮人收拾',
+            consequence:
+                '散场之后你和几个人把桌子擦干净，把椅子一把把推回去。最后关灯的时候，屋里比开始时还整齐。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_stayed_late'], reputation: 2, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'leave_early',
+            text: '找个借口先走',
+            consequence:
+                '你说自己不舒服，先出来了。走廊很安静，冷风从窗缝里进来，你反倒觉得清醒了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_left_early'], spirit: 1),
           ),
         ],
       ),
@@ -766,7 +886,7 @@ const List<StoryChapterDef> _hbpChapters = [
       StoryStepDef(
         id: 'hbp_ch4_winter',
         chapterId: 'hbp_ch4',
-        timeCostDays: 27,
+        timeCostDays: 26,
         setup:
             '二月。坏消息终于不再以传闻的形式出现——'
             '它出现在早餐的报纸上，占了整个头版。'
@@ -864,7 +984,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -1,
               targetNpcId: 'dumbledore',
             ),
-          ),
+            nextStepId: 'hbp_ch5_think',),
           StoryChoiceDef(
             id: 'ask_question',
             text: '问一句："这些事为什么现在才让我们知道"',
@@ -880,7 +1000,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -1,
               targetNpcId: 'dumbledore',
             ),
-          ),
+            nextStepId: 'hbp_ch5_think',),
           StoryChoiceDef(
             id: 'decline_memory',
             text: '站在门口，不进去',
@@ -893,6 +1013,36 @@ const List<StoryChapterDef> _hbpChapters = [
               addKnowledge: ['hbp_stood_at_door'],
               spirit: -1,
             ),
+            nextStepId: 'hbp_ch5_think',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch5_think',
+        chapterId: 'hbp_ch5',
+        timeCostDays: 1,
+        setup:
+            '那几段记忆在你脑子里过了一夜，越想越觉得有些地方对不上。你翻身坐起来，把想到的写在纸上。',
+        ambient: [
+          '油灯烧到了底，光在墙上晃。',
+          '有人的鼾声隔着床帘传过来。',
+          '窗外的月亮被云挡住了一半。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'connect_dots',
+            text: '把几件事按时间排一遍',
+            consequence:
+                '你排到第三遍的时候，发现有个人的名字出现了两次，而且中间隔了很久。你把这两个时间点圈了起来。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['hbp_timeline'], setFlags: ['hbp_connected'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'let_it_go',
+            text: '把纸揉了，不想再想',
+            consequence:
+                '你把那张纸团起来扔进了炉子。有些事你想不明白，也许就是不该由你想明白。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_let_go'], spirit: -1),
           ),
         ],
       ),
@@ -960,7 +1110,7 @@ const List<StoryChapterDef> _hbpChapters = [
       StoryStepDef(
         id: 'hbp_ch5_vow',
         chapterId: 'hbp_ch5',
-        timeCostDays: 29,
+        timeCostDays: 28,
         setup:
             '期末前一个月，有人来找你。'
             '他没有说要去哪儿，也没有说什么时候回来，'
@@ -1069,7 +1219,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -2,
             ),
             requireFlag: 'hbp_offered_help',
-          ),
+            nextStepId: 'hbp_ch6_wait',),
           StoryChoiceDef(
             id: 'lead_juniors',
             text: '把吓傻了的一年级生一个个拽起来往地下室带',
@@ -1085,7 +1235,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -1,
               targetNpcId: 'colin',
             ),
-          ),
+            nextStepId: 'hbp_ch6_wait',),
           StoryChoiceDef(
             id: 'freeze',
             text: '待在原地，一步也挪不动',
@@ -1097,6 +1247,36 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_froze'],
               spirit: -3,
             ),
+            nextStepId: 'hbp_ch6_wait',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch6_wait',
+        chapterId: 'hbp_ch6',
+        timeCostDays: 1,
+        setup:
+            '那天夜里的动静持续了很久。有人被叫起来帮忙，更多的人只是站在窗边看着。你站在那儿，直到腿有些发麻也没挪动。',
+        ambient: [
+          '夜里的风很冷，吹得人睁不开眼。',
+          '有人抱着衣服跑过走廊，没穿鞋。',
+          '远处有几点光在移动，看不清是什么。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'offer_help',
+            text: '穿好衣服下楼，看能帮上什么',
+            consequence:
+                '你被安排去帮着领人、递东西。天亮的时候你才发现自己一晚上没坐下过，但一点也不觉得累。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_helped_night'], reputation: 3, spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'stay_window',
+            text: '留在窗边，把那晚记住了',
+            consequence:
+                '你从头看到尾，什么也没做。后来的很多年里，你都还记得那天夜里风的方向。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_witnessed'], spirit: -3),
           ),
         ],
       ),
@@ -1163,7 +1343,7 @@ const List<StoryChapterDef> _hbpChapters = [
       StoryStepDef(
         id: 'hbp_ch6_funeral',
         chapterId: 'hbp_ch6',
-        timeCostDays: 5,
+        timeCostDays: 4,
         setup:
             '葬礼在湖边举行。'
             '来的人不只是学校里的——'
@@ -1258,7 +1438,7 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_packed'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'hbp_ch7_result',),
           StoryChoiceDef(
             id: 'stay_behind',
             text: '留到最后一天，帮忙把公共休息室恢复原样',
@@ -1273,7 +1453,7 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -1,
               targetNpcId: 'mcgonagall',
             ),
-          ),
+            nextStepId: 'hbp_ch7_result',),
           StoryChoiceDef(
             id: 'write_it_down',
             text: '把这一年的每件事按日期写成一张年表',
@@ -1289,13 +1469,43 @@ const List<StoryChapterDef> _hbpChapters = [
               setFlags: ['hbp_wrote_down'],
               spirit: -1,
             ),
+            nextStepId: 'hbp_ch7_result',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch7_result',
+        chapterId: 'hbp_ch7',
+        timeCostDays: 1,
+        setup:
+            '考试成绩出来的时候，大家挤在公告栏前面。有人看完就走，有人站在那里反复看。你把那张纸看了三遍，才慢慢走出人群。',
+        ambient: [
+          '有人的名字在很前面，自己都不敢信。',
+          '旁边有人小声算着要达到什么线才能选那门课。',
+          '公告栏的纸边被风吹得卷了起来。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'aim_high',
+            text: '按想要的课去凑分数',
+            consequence:
+                '你算了半天，发现自己差一点点。你去找了那位教授，问能不能通融。他看了你很久，最后说"下个学期看你的表现"。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['hbp_course_plan'], setFlags: ['hbp_aimed_high'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'accept_result',
+            text: '接受结果，按现有的选课',
+            consequence:
+                '你把能选的课排了一遍，发现自己其实还挺喜欢这个组合。有些路是走出来的，不是选出来的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['hbp_accepted_result'], spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'hbp_ch7_train',
         chapterId: 'hbp_ch7',
-        timeCostDays: 2,
+        timeCostDays: 1,
         setup:
             '回程的列车比来时空。'
             '不是因为人少了多少，'

@@ -23,20 +23,20 @@ const int kMinStepsPerChapter = 2;
 /// 每部书的总步数下限（七部曲各自的最低体量）。
 ///
 /// 【这组数字怎么来的】它是"已完成扩写"的既有规模，而不是拍脑袋的目标：
-/// 低于它说明有人把内容删回去了。PS/CoS 的当前规模是 56 / 64；
-/// 其余五部尚未扩写，取下限 = 当前步数（21~24），扩写后应同步抬高。
+/// 低于它说明有人把内容删回去了。七部曲现已全部扩写完毕，
+/// 各部下限 = 当前实际步数。
 const Map<String, int> kMinStepsPerBook = {
   'ps': 56,
   'cos': 64,
-  'poa': 24,
-  'gof': 21,
-  'ootp': 21,
-  'hbp': 21,
-  'dh': 21,
+  'poa': 35,
+  'gof': 30,
+  'ootp': 29,
+  'hbp': 28,
+  'dh': 30,
 };
 
-/// 七部曲总步数下限（当前 56+64+24+21×4 = 228）。
-const int kMinTotalSteps = 228;
+/// 七部曲总步数下限（当前 56+64+35+30+29+28+30 = 272）。
+const int kMinTotalSteps = 272;
 
 /// 一部书总步数。
 int _stepsOf(StoryBookDef book) =>

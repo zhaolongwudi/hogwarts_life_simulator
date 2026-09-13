@@ -75,7 +75,7 @@ const List<StoryChapterDef> _dhChapters = [
               setFlags: ['dh_read_rules'],
               spirit: -2,
             ),
-          ),
+            nextStepId: 'dh_ch1_family',),
           StoryChoiceDef(
             id: 'warn_family',
             text: '先给可能上名单的同学家里去一封信',
@@ -89,7 +89,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 2,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'dh_ch1_family',),
           StoryChoiceDef(
             id: 'hide_paper',
             text: '把通知书收起来，当做什么都没发生',
@@ -102,6 +102,36 @@ const List<StoryChapterDef> _dhChapters = [
               addKnowledge: ['dh_august_silence'],
               spirit: -2,
             ),
+            nextStepId: 'dh_ch1_family',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch1_family',
+        chapterId: 'dh_ch1',
+        timeCostDays: 1,
+        setup:
+            '出事之后，你花了整整两天把家里的东西看了一遍。该带走的、该藏起来的、该说再见的。',
+        ambient: [
+          '有人在门口站了很久，没进来。',
+          '屋里比平时安静很多。',
+          '窗外的街上没人，连狗都不叫了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'pack_family_things',
+            text: '把家人的东西收好，带上几件',
+            consequence:
+                '你挑了很小的一两件，塞在行李最里面。知道它们没有用处，但带上了。',
+            nextStepId: '',
+            effect: StoryEffect(addItems: ['旧书'], setFlags: ['dh_took_family_things'], spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'travel_light',
+            text: '什么都不带，能走就行',
+            consequence:
+                '你把行李减到最少，最后只剩几件换洗的。越轻越好，这一年你随时可能要走。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_travelled_light'], spirit: -1),
           ),
         ],
       ),
@@ -171,7 +201,7 @@ const List<StoryChapterDef> _dhChapters = [
       StoryStepDef(
         id: 'dh_ch1_platform',
         chapterId: 'dh_ch1',
-        timeCostDays: 10,
+        timeCostDays: 9,
         setup:
             '九又四分之三站台今年没有送行的家长。'
             '取而代之的是一排穿黑袍的检查者，'
@@ -273,7 +303,7 @@ const List<StoryChapterDef> _dhChapters = [
               setFlags: ['dh_knows_routes'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'dh_ch2_first_day',),
           StoryChoiceDef(
             id: 'sit_with_juniors',
             text: '主动坐到那几个没人敢挨着的一年级生旁边',
@@ -288,7 +318,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: -1,
               targetNpcId: 'colin',
             ),
-          ),
+            nextStepId: 'dh_ch2_first_day',),
           StoryChoiceDef(
             id: 'keep_invisible',
             text: '尽量不引人注意，安静读完每一天',
@@ -302,6 +332,36 @@ const List<StoryChapterDef> _dhChapters = [
               addKnowledge: ['dh_month_of_silence'],
               spirit: -2,
             ),
+            nextStepId: 'dh_ch2_first_day',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch2_first_day',
+        chapterId: 'dh_ch2',
+        timeCostDays: 1,
+        setup:
+            '开学第一天，点名的方式和往年不一样了。点到谁，谁就要站起来说清楚自己的来历。你把手放在膝盖上，尽量让自己看起来平常。',
+        ambient: [
+          '有人回答得很快，像是背过。',
+          '教室后面站着两个人，从头到尾没坐下。',
+          '窗外的天阴沉沉的。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'answer_plain',
+            text: '按最普通的说法回答',
+            consequence:
+                '你说得很简单，简单到对方都懒得多问一句。你坐下的时候，背后有人在看你。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_answered_plain'], spirit: 1),
+          ),
+          StoryChoiceDef(
+            id: 'answer_proud',
+            text: '把自己的来历说得清清楚楚',
+            consequence:
+                '你站直了说完。教室里安静了一下。那两个人交换了一个眼神，把你记下来了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_answered_proud'], reputation: 3, spirit: -2),
           ),
         ],
       ),
@@ -372,7 +432,7 @@ const List<StoryChapterDef> _dhChapters = [
       StoryStepDef(
         id: 'dh_ch2_roll_call',
         chapterId: 'dh_ch2',
-        timeCostDays: 19,
+        timeCostDays: 18,
         setup:
             '新成立的巡查队开始在大厅点名。'
             '被点到的人要站到一边，'
@@ -483,7 +543,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: 2,
               targetNpcId: 'neville',
             ),
-          ),
+            nextStepId: 'dh_ch3_broadcast',),
           StoryChoiceDef(
             id: 'supply_only',
             text: '不加入，但每周留一包吃的在墙角',
@@ -499,7 +559,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 2,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'dh_ch3_broadcast',),
           StoryChoiceDef(
             id: 'stay_away',
             text: '绕开八楼，从那面墙前面快步走过去',
@@ -514,6 +574,36 @@ const List<StoryChapterDef> _dhChapters = [
               addKnowledge: ['dh_walked_past'],
               spirit: -2,
             ),
+            nextStepId: 'dh_ch3_broadcast',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch3_broadcast',
+        chapterId: 'dh_ch3',
+        timeCostDays: 1,
+        setup:
+            '有人弄到一台旧收音机，每天晚上在固定时间转旋钮。大多数时候只有杂音。每到那个时候，屋里的人都会自觉安静下来。',
+        ambient: [
+          '有几次旋到某个位置，声音清楚了一下又没了。',
+          '收音机放在床垫下面，天线用铁丝接着。',
+          '有人负责望风。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'take_shift',
+            text: '接过望风的那一班',
+            consequence:
+                '你守在门口听了两个小时。中间有一次脚步声靠近，你咳嗽了一声，里面的人立刻把收音机关了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_took_shift'], spirit: 3, targetNpcId: 'ginny', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'listen_only',
+            text: '只听，不参与安排',
+            consequence:
+                '你每晚都听，坐在最边上。听的时候你什么也不说，但每一次杂音里出现的人名，你都在心里记一遍。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['dh_resistance_info'], setFlags: ['dh_listened_only'], spirit: 1),
           ),
         ],
       ),
@@ -586,7 +676,7 @@ const List<StoryChapterDef> _dhChapters = [
       StoryStepDef(
         id: 'dh_ch3_radio',
         chapterId: 'dh_ch3',
-        timeCostDays: 14,
+        timeCostDays: 13,
         setup:
             '有一台秘密的电台，每天夜里念一串名字。'
             '念的都是失踪的、被关起来的、'
@@ -689,7 +779,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 3,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'dh_ch4_after_punish',),
           StoryChoiceDef(
             id: 'take_turn',
             text: '替一个已经扛了三晚的同学去一次',
@@ -705,7 +795,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: -2,
               targetNpcId: 'ginny',
             ),
-          ),
+            nextStepId: 'dh_ch4_after_punish',),
           StoryChoiceDef(
             id: 'endure_winter',
             text: '熬过去，把每一天当成最后一天来过',
@@ -717,6 +807,36 @@ const List<StoryChapterDef> _dhChapters = [
               setFlags: ['dh_endured_winter'],
               spirit: -3,
             ),
+            nextStepId: 'dh_ch4_after_punish',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch4_after_punish',
+        chapterId: 'dh_ch4',
+        timeCostDays: 1,
+        setup:
+            '被罚的人回宿舍的时候手都在抖。有人想帮他，被他摆手推开了。屋里的人都围了过来，但谁也没先开口。',
+        ambient: [
+          '有人把热水倒在杯子里递过去。',
+          '屋里的人一个都没出去。',
+          '窗外的风把窗框吹得直响。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'sit_close',
+            text: '坐到他旁边，不说话',
+            consequence:
+                '你坐过去，什么也没问。过了很久他小声说了句谢谢。你说嗯，然后继续坐着。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_comforted'], spirit: 2, targetNpcId: 'ginny', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'organize_help',
+            text: '把大家组织起来，轮流照看他',
+            consequence:
+                '你排了个班，谁什么时候来看一眼、带什么。有人笑你小题大做，但没人不照做。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_organized_help'], reputation: 3, spirit: 2),
           ),
         ],
       ),
@@ -750,7 +870,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 3,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'dh_ch4_quiet_christmas',),
           StoryChoiceDef(
             id: 'small_gift',
             text: '给每一个还在的人准备一份很小很小的东西',
@@ -768,7 +888,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: 1,
               targetNpcId: 'luna',
             ),
-          ),
+            nextStepId: 'dh_ch4_quiet_christmas',),
           StoryChoiceDef(
             id: 'alone_christmas',
             text: '一个人待着，哪也不去',
@@ -781,13 +901,43 @@ const List<StoryChapterDef> _dhChapters = [
               setFlags: ['dh_alone_christmas'],
               spirit: -2,
             ),
+            nextStepId: 'dh_ch4_quiet_christmas',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch4_quiet_christmas',
+        chapterId: 'dh_ch4',
+        timeCostDays: 1,
+        setup:
+            '这个圣诞没有树，也没有宴会。留下来的人凑在炉火边，各自说着以前在家怎么过节。炉火噼啪响着，把屋子照得很暖。',
+        ambient: [
+          '有人用纸折了个很小的星星挂在窗上。',
+          '炉火映在每个人的脸上。',
+          '外面在下雪，落在地上就化了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'share_stories',
+            text: '讲一个自己家的圣诞',
+            consequence:
+                '你讲了个很小的事——小时候家里怎么抢最后一块点心。大家都笑了，有人也接着讲了一个。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_shared_stories'], spirit: 5, targetNpcId: 'ron', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'keep_watch',
+            text: '不多说，坐在靠门的位置',
+            consequence:
+                '你坐在能看见门口的地方。听着他们说话，偶尔起身去看一眼走廊。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_kept_watch'], spirit: 1),
           ),
         ],
       ),
       StoryStepDef(
         id: 'dh_ch4_escape',
         chapterId: 'dh_ch4',
-        timeCostDays: 26,
+        timeCostDays: 24,
         setup:
             '二月的某天夜里，地下组织被人告发了。'
             '屋子被查，'
@@ -893,7 +1043,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 3,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'dh_ch5_news',),
           StoryChoiceDef(
             id: 'prepare_room',
             text: '提前把有求必应屋重新打开，铺好床、备好水',
@@ -909,7 +1059,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 3,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'dh_ch5_news',),
           StoryChoiceDef(
             id: 'wait_quiet',
             text: '不动，等明确的信号出来再说',
@@ -922,6 +1072,36 @@ const List<StoryChapterDef> _dhChapters = [
               setFlags: ['dh_waited'],
               spirit: -1,
             ),
+            nextStepId: 'dh_ch5_news',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch5_news',
+        chapterId: 'dh_ch5',
+        timeCostDays: 1,
+        setup:
+            '回来的人带来了外面的消息，一条比一条重。有人听完就出去了。有人不停地往门口看，像是在等谁。',
+        ambient: [
+          '礼堂里的人越来越多，椅子不够坐。',
+          '有人在门口小声通报着还有什么人到了。',
+          '蜡烛的光比平时亮，像是要照清每一张脸。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'find_friends',
+            text: '先把自己认识的人找齐',
+            consequence:
+                '你挨个看过去，在人堆里找到了几个熟悉的脸。你们什么也没说，只是站得近了一点。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_found_friends'], spirit: 4, targetNpcId: 'ginny', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'listen_briefing',
+            text: '挤到前面去听安排',
+            consequence:
+                '你挤到前排，把每一条安排都听清了。听到关键的地方，你在心里默念了一遍。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['dh_battle_plan'], setFlags: ['dh_heard_briefing'], spirit: 1),
           ),
         ],
       ),
@@ -957,7 +1137,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: 1,
               targetNpcId: 'colin',
             ),
-          ),
+            nextStepId: 'dh_ch5_send_off',),
           StoryChoiceDef(
             id: 'guard_entrance',
             text: '守在通道口，撑到最后一队进去再撤',
@@ -974,7 +1154,7 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 4,
               spirit: -1,
             ),
-          ),
+            nextStepId: 'dh_ch5_send_off',),
           StoryChoiceDef(
             id: 'stay_and_fight',
             text: '不走——留下的人里也得有会拿魔杖的',
@@ -990,13 +1170,43 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 4,
               spirit: 2,
             ),
+            nextStepId: 'dh_ch5_send_off',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch5_send_off',
+        chapterId: 'dh_ch5',
+        timeCostDays: 1,
+        setup:
+            '低年级的人要先走。通道口排起了长队，有人一路都没有回头。你站在旁边，看着队伍一点一点往前挪。',
+        ambient: [
+          '有人把围巾解下来给了比自己小的。',
+          '通道里的火把一根接一根点起来。',
+          '外面的声音隔着石壁传进来，闷闷的。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'help_queue',
+            text: '在队尾帮着维持秩序',
+            consequence:
+                '你一个个点过去，把人送到门口。有个一年级的小孩抓着你的袖子不肯放，你蹲下来跟他说了几句话才松开。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_helped_evacuate'], reputation: 3, spirit: 2),
+          ),
+          StoryChoiceDef(
+            id: 'send_one',
+            text: '专门送一个认识的人走',
+            consequence:
+                '你一直把她送到通道口。她回头看了你一眼，你冲她摆了摆手，让她快走。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_sent_off'], spirit: 3, targetNpcId: 'ginny', affection: 4),
           ),
         ],
       ),
       StoryStepDef(
         id: 'dh_ch5_night_before',
         chapterId: 'dh_ch5',
-        timeCostDays: 23,
+        timeCostDays: 21,
         setup:
             '决战前一夜。'
             '城堡里没有课，没有点名，也没有宵禁——'
@@ -1107,7 +1317,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: -2,
             ),
             requireFlag: 'dh_stayed_to_fight',
-          ),
+            nextStepId: 'dh_ch6_inside',),
           StoryChoiceDef(
             id: 'carry_wounded',
             text: '在走廊上来回跑，把受伤的人往医疗点拖',
@@ -1125,7 +1335,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: -1,
               targetNpcId: 'pomfrey',
             ),
-          ),
+            nextStepId: 'dh_ch6_inside',),
           StoryChoiceDef(
             id: 'guard_children',
             text: '去藏身处，守在孩子们外面，一个都不让进来',
@@ -1141,6 +1351,36 @@ const List<StoryChapterDef> _dhChapters = [
               reputation: 4,
               spirit: -1,
             ),
+            nextStepId: 'dh_ch6_inside',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch6_inside',
+        chapterId: 'dh_ch6',
+        timeCostDays: 1,
+        setup:
+            '战斗打起来之后，城堡里的每一个走廊都成了战场。有人守在这里，有人往那边跑。你贴着墙往前走，尽量避开窗口的位置。',
+        ambient: [
+          '墙上的画像全都空了。',
+          '有台阶被咒语击塌了一角。',
+          '远处传来一声很响的轰塌声。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'hold_position',
+            text: '守住自己被安排的位置',
+            consequence:
+                '你守了很长时间。中间有人从你面前跑过去，你差点认错人。后来有人来换班，你才发现自己腿都站麻了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_held_position'], reputation: 3, spirit: 1),
+          ),
+          StoryChoiceDef(
+            id: 'run_to_help',
+            text: '听见有人喊，往那个方向跑',
+            consequence:
+                '你跑过去的时候已经晚了半步。但你把人拖了出来。拖出来的时候你的手在抖。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_ran_to_help'], reputation: 2, spirit: -2),
           ),
         ],
       ),
@@ -1206,7 +1446,7 @@ const List<StoryChapterDef> _dhChapters = [
       StoryStepDef(
         id: 'dh_ch6_after',
         chapterId: 'dh_ch6',
-        timeCostDays: 10,
+        timeCostDays: 9,
         setup:
             '战后第一天，所有人都在大厅里过夜。'
             '没有人回宿舍——'
@@ -1309,7 +1549,7 @@ const List<StoryChapterDef> _dhChapters = [
               addKnowledge: ['dh_walked_it_all'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'dh_ch7_look_back',),
           StoryChoiceDef(
             id: 'say_goodbye',
             text: '找到那几个还在的人，认真地说一句再见',
@@ -1326,7 +1566,7 @@ const List<StoryChapterDef> _dhChapters = [
               spirit: 2,
               targetNpcId: 'neville',
             ),
-          ),
+            nextStepId: 'dh_ch7_look_back',),
           StoryChoiceDef(
             id: 'leave_quick',
             text: '直接走，头也不回',
@@ -1339,6 +1579,36 @@ const List<StoryChapterDef> _dhChapters = [
               setFlags: ['dh_left_quickly'],
               spirit: -1,
             ),
+            nextStepId: 'dh_ch7_look_back',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'dh_ch7_look_back',
+        chapterId: 'dh_ch7',
+        timeCostDays: 1,
+        setup:
+            '离开的时候要经过一段很长的走廊。墙上原来的画都没了，只剩下挂过画的痕迹。你停下来喘了口气，才继续往前。',
+        ambient: [
+          '有人在走廊尽头站着，没有跟上来。',
+          '有一扇窗的玻璃碎了，风灌进来。',
+          '走廊很长，脚步声一声接一声。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'walk_slow',
+            text: '慢慢走，把这一路看仔细',
+            consequence:
+                '你走得很慢。每一扇门、每一段台阶，你都看了一眼。走到尽头的时候你回头了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_looked_back'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'walk_fast',
+            text: '低着头快步走过去',
+            consequence:
+                '你没有看两边，一直盯着前面。走到门口的时候你才敢抬头。门外的天比里面亮得多。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['dh_walked_fast'], spirit: -1),
           ),
         ],
       ),
@@ -1409,7 +1679,7 @@ const List<StoryChapterDef> _dhChapters = [
       StoryStepDef(
         id: 'dh_ch7_end',
         chapterId: 'dh_ch7',
-        timeCostDays: 9,
+        timeCostDays: 8,
         setup:
             '很多年后有人问你：'
             '"那七年里，你最记得哪一年。"'

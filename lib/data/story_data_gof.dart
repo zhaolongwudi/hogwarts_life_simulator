@@ -66,7 +66,7 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_knows_rules'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'gof_ch1_kitchens',),
           StoryChoiceDef(
             id: 'cheer_house',
             text: '先弄清楚本院谁最可能报名',
@@ -79,7 +79,7 @@ const List<StoryChapterDef> _gofChapters = [
               affection: 2,
               targetNpcId: 'cedric',
             ),
-          ),
+            nextStepId: 'gof_ch1_kitchens',),
           StoryChoiceDef(
             id: 'watch_cup',
             text: '盯着那只杯子看，直到宴席散场',
@@ -92,6 +92,36 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_knows_rules'],
               spirit: -1,
             ),
+            nextStepId: 'gof_ch1_kitchens',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch1_kitchens',
+        chapterId: 'gof_ch1',
+        timeCostDays: 1,
+        setup:
+            '开学第一天晚上，宿舍里没睡的人聚在一起猜今年的新鲜事。有人说大礼堂的布置换了，有人说教职工桌上多了几张生面孔。',
+        ambient: [
+          '楼下传来有人在楼梯上跑动的声音，很快又静了。',
+          '窗外有人在用魔杖放小小的烟花。',
+          '有人把带来的零食全倒在了床上。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'join_gossip',
+            text: '凑过去一起猜',
+            consequence:
+                '你听到的说法一个比一个离谱，最后大家笑得东倒西歪。第二天你会发现，他们猜的有一半是对的。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['gof_event_hint'], setFlags: ['gof_joined_rumors'], spirit: 4),
+          ),
+          StoryChoiceDef(
+            id: 'go_sleep',
+            text: '不参与，早点睡',
+            consequence:
+                '你躺下的时候他们还在吵。你把被子拉到头上，居然也很快睡着了。有些热闹错过了就错过了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_slept_early'], spirit: 2),
           ),
         ],
       ),
@@ -121,7 +151,7 @@ const List<StoryChapterDef> _gofChapters = [
               reputation: 2,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'gof_ch1_banner',),
           StoryChoiceDef(
             id: 'learn_about_them',
             text: '去图书馆查另外两所学校的资料',
@@ -134,7 +164,7 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_knows_rules'],
               spirit: 2,
             ),
-          ),
+            nextStepId: 'gof_ch1_banner',),
           StoryChoiceDef(
             id: 'keep_distance',
             text: '不凑热闹，照旧走自己的路',
@@ -146,13 +176,43 @@ const List<StoryChapterDef> _gofChapters = [
               addKnowledge: ['gof_kept_distance'],
               spirit: 1,
             ),
+            nextStepId: 'gof_ch1_banner',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch1_banner',
+        chapterId: 'gof_ch1',
+        timeCostDays: 1,
+        setup:
+            '大礼堂的墙上挂起了两条巨大的横幅，颜色和本校完全不一样。两个学校的人坐在不同的桌子上，谁也没先开口。',
+        ambient: [
+          '有个外校的学生好奇地打量着天花板。',
+          '本校有人在学对方的说话口音打趣。',
+          '烛台上的火苗比平时跳得更急。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'greet_guest',
+            text: '主动跟邻桌的外校学生搭话',
+            consequence:
+                '你问了几句他们那边的事。对方一开始很拘谨，后来聊到课程就放开了。原来他们也很想知道这边是什么样的。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['gof_foreign_school'], setFlags: ['gof_greeted_guests'], spirit: 4, targetNpcId: 'cedric', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'stay_with_friends',
+            text: '回头看自己人，该干嘛干嘛',
+            consequence:
+                '你没有过去。高年级的人都在忙着表现，你只想安安静静把这顿饭吃完。筷子碰盘子的声音里，你听见自己这边的人在笑。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_stayed_with_friends'], spirit: 2),
           ),
         ],
       ),
       StoryStepDef(
         id: 'gof_ch1_dark_news',
         chapterId: 'gof_ch1',
-        timeCostDays: 14,
+        timeCostDays: 12,
         setup:
             '秋天里有一则消息在报纸角落里待了三天才被人注意到：'
             '暑假期间，有一户麻瓜看门人在深夜遇袭，'
@@ -246,7 +306,7 @@ const List<StoryChapterDef> _gofChapters = [
               spirit: 3,
               targetNpcId: 'cedric',
             ),
-          ),
+            nextStepId: 'gof_ch2_after_select',),
           StoryChoiceDef(
             id: 'note_injustice',
             text: '在本子上记下：名单有第四条',
@@ -260,7 +320,7 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_sense_wrong'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'gof_ch2_after_select',),
           StoryChoiceDef(
             id: 'find_the_boy',
             text: '散场后去人群里找那个被点到的男孩',
@@ -273,6 +333,36 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_sense_wrong'],
               reputation: 1,
             ),
+            nextStepId: 'gof_ch2_after_select',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch2_after_select',
+        chapterId: 'gof_ch2',
+        timeCostDays: 1,
+        setup:
+            '名单公布之后，整个礼堂安静了好几秒。选出来的人和所有人预想的都不一样。有人站起来鼓掌，有人愣在原地看着那个名字。',
+        ambient: [
+          '有人小声说了句"怎么会是他"。',
+          '被点到的人坐在座位上没动。',
+          '教授们交换了一个很复杂的眼神。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'congratulate',
+            text: '走过去说一句恭喜',
+            consequence:
+                '你走过去的时候，那个人还没回过神。你说了一句很普通的话，对方笑了一下，跟你握了手，手心是凉的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_congratulated'], spirit: 3, targetNpcId: 'cedric', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'wait_see',
+            text: '什么也不说，先看看会怎么样',
+            consequence:
+                '你留在座位上。接下来的几天里，关于这件事的说法会越来越多，而那几条坐在台上的横幅，看起来也会越来越沉。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['gof_tournament_doubt'], setFlags: ['gof_waited'], spirit: 1),
           ),
         ],
       ),
@@ -336,7 +426,7 @@ const List<StoryChapterDef> _gofChapters = [
       StoryStepDef(
         id: 'gof_ch2_first_task',
         chapterId: 'gof_ch2',
-        timeCostDays: 20,
+        timeCostDays: 19,
         setup:
             '第一个项目的看台搭在禁林边上。木板被踩得咚咚响，'
             '下面围着的围栏里有什么在动，'
@@ -492,7 +582,7 @@ const List<StoryChapterDef> _gofChapters = [
               spirit: 3,
               targetNpcId: 'cho',
             ),
-          ),
+            nextStepId: 'gof_ch3_ball_night',),
           StoryChoiceDef(
             id: 'talk_to_stranger',
             text: '在露台上跟一个不认识的人聊天',
@@ -505,7 +595,7 @@ const List<StoryChapterDef> _gofChapters = [
               reputation: 3,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'gof_ch3_ball_night',),
           StoryChoiceDef(
             id: 'watch_from_corner',
             text: '靠在柱子边，把这一晚看完整',
@@ -519,13 +609,43 @@ const List<StoryChapterDef> _gofChapters = [
               addKnowledge: ['gof_ball_scenes'],
               spirit: 2,
             ),
+            nextStepId: 'gof_ch3_ball_night',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch3_ball_night',
+        chapterId: 'gof_ch3',
+        timeCostDays: 1,
+        setup:
+            '舞会的音乐换了第三首，大厅里终于没有一开始那么拘束了。有人已经跳得满头是汗。你站在边上，看了一圈，才慢慢往中间走。',
+        ambient: [
+          '天花板上飘着细小的雪花，落不到人身上。',
+          '角落里有几对人在小声说着什么。',
+          '外面的雪地上有一串很长的脚印，不知道是谁的。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'dance_all_night',
+            text: '不休息，一首接一首地跳',
+            consequence:
+                '你跳到腿上没力气才坐下。散场的时候鞋跟都磨破了，但那一晚你笑得比平时一整年都多。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_danced'], spirit: 7, targetNpcId: 'ginny', affection: 3),
+          ),
+          StoryChoiceDef(
+            id: 'step_outside',
+            text: '一个人到外面站一会儿',
+            consequence:
+                '外面很冷，呼出的气一下子成了白雾。你听见里面音乐闷闷地传出来，忽然觉得这样一个人站着也挺好。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_stepped_out'], spirit: 3),
           ),
         ],
       ),
       StoryStepDef(
         id: 'gof_ch3_after_ball',
         chapterId: 'gof_ch3',
-        timeCostDays: 18,
+        timeCostDays: 17,
         setup:
             '舞会结束后的日子有点空。假期里留校的人不多，'
             '城堡的走廊恢复了长度。'
@@ -617,7 +737,7 @@ const List<StoryChapterDef> _gofChapters = [
               reputation: 1,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'gof_ch4_library',),
           StoryChoiceDef(
             id: 'help_prepare',
             text: '帮那位勇士把要用的东西备齐',
@@ -632,7 +752,7 @@ const List<StoryChapterDef> _gofChapters = [
               affection: 3,
               targetNpcId: 'cedric',
             ),
-          ),
+            nextStepId: 'gof_ch4_library',),
           StoryChoiceDef(
             id: 'time_the_wait',
             text: '掐表记录每个勇士在水下待了多久',
@@ -645,6 +765,36 @@ const List<StoryChapterDef> _gofChapters = [
               addKnowledge: ['gof_task_timing'],
               spirit: 1,
             ),
+            nextStepId: 'gof_ch4_library',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch4_library',
+        chapterId: 'gof_ch4',
+        timeCostDays: 1,
+        setup:
+            '图书馆关于比赛项目的书一夜之间被借空了。你到的时候只剩几本没人要的旧年鉴。借书的人出来时都低着头，像是在想别的事。',
+        ambient: [
+          '有人抱着书匆匆跑过，撞了你一下也没道歉。',
+          '管理员在补书单，写得满满一页。',
+          '窗外的湖面还是灰的，春天的影子还没出来。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'read_old_books',
+            text: '把旧年鉴一本本翻过去',
+            consequence:
+                '你在五十年前的记录里找到一段话，讲的是同一项比赛的旧规矩。虽然版本不一样，但那个"为什么"是一样的。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['gof_old_rules'], setFlags: ['gof_read_yearbook'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'give_up',
+            text: '合上书，觉得这些没必要多想',
+            consequence:
+                '你把年鉴放回架子，走了出去。有些事不归你操心——但走在走廊上，你还是忍不住回头看了一眼那排书架。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_gave_up_reading'], spirit: 1),
           ),
         ],
       ),
@@ -708,7 +858,7 @@ const List<StoryChapterDef> _gofChapters = [
       StoryStepDef(
         id: 'gof_ch4_spring',
         chapterId: 'gof_ch4',
-        timeCostDays: 29,
+        timeCostDays: 28,
         setup:
             '三月之后天气转暖，禁林边上的草长得飞快。'
             '第三个项目定在六月，据说是一座迷宫。'
@@ -802,7 +952,7 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_maze_watched'],
               spirit: 1,
             ),
-          ),
+            nextStepId: 'gof_ch5_night',),
           StoryChoiceDef(
             id: 'encourage_champion',
             text: '在走廊上拦住本院那位勇士，说句话',
@@ -816,7 +966,7 @@ const List<StoryChapterDef> _gofChapters = [
               affection: 3,
               targetNpcId: 'cedric',
             ),
-          ),
+            nextStepId: 'gof_ch5_night',),
           StoryChoiceDef(
             id: 'avoid_maze',
             text: '不看它，绕开球场走另一条路',
@@ -828,6 +978,36 @@ const List<StoryChapterDef> _gofChapters = [
               addKnowledge: ['gof_avoided_maze'],
               spirit: -1,
             ),
+            nextStepId: 'gof_ch5_night',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch5_night',
+        chapterId: 'gof_ch5',
+        timeCostDays: 1,
+        setup:
+            '迷宫长得比人还快，一到晚上就能听见里面传来枝条挪动的声音。操场边拉起了绳子，不让靠近。',
+        ambient: [
+          '有学生在绳子外面站了很久，一句话不说。',
+          '几个高年级的人在远处比划着路线。',
+          '夜里的风把树梢吹得沙沙响。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'watch_from_far',
+            text: '站在远处看到熄灯',
+            consequence:
+                '你看了很久，直到管理员来赶人。回宿舍的路上你一直在想：那里面到底有多深。',
+            nextStepId: '',
+            effect: StoryEffect(addKnowledge: ['gof_maze_grown'], setFlags: ['gof_watched_maze'], spirit: -1),
+          ),
+          StoryChoiceDef(
+            id: 'back_indoor',
+            text: '看两眼就回去了',
+            consequence:
+                '你回到公共休息室，炉火正好烧得起劲。有人在讨论今年的分数，你听着听着就睡着了。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_stayed_indoor'], spirit: 2),
           ),
         ],
       ),
@@ -893,7 +1073,7 @@ const List<StoryChapterDef> _gofChapters = [
       StoryStepDef(
         id: 'gof_ch5_tension',
         chapterId: 'gof_ch5',
-        timeCostDays: 22,
+        timeCostDays: 21,
         setup:
             '赛前最后两周，城堡里的气氛不太对：'
             '有教授临时请假，有家长提前把孩子接走了，'
@@ -988,7 +1168,7 @@ const List<StoryChapterDef> _gofChapters = [
               spirit: 2,
               targetNpcId: 'cedric',
             ),
-          ),
+            nextStepId: 'gof_ch6_stands',),
           StoryChoiceDef(
             id: 'count_time',
             text: '掐着表，数他们进去了多久',
@@ -1002,7 +1182,7 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_maze_watched', 'gof_sense_wrong'],
               spirit: -2,
             ),
-          ),
+            nextStepId: 'gof_ch6_stands',),
           StoryChoiceDef(
             id: 'watch_the_center',
             text: '眼睛盯着迷宫中心那只奖杯',
@@ -1015,6 +1195,36 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_maze_watched'],
               spirit: -1,
             ),
+            nextStepId: 'gof_ch6_stands',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch6_stands',
+        chapterId: 'gof_ch6',
+        timeCostDays: 1,
+        setup:
+            '比赛开始的哨声吹响时，整个看台都站了起来。四个身影依次消失在树篱的缺口里。看台上的风很大，没人愿意先坐下。',
+        ambient: [
+          '有人把横幅举过头顶，风把它吹得哗哗响。',
+          '看台边有人在低声念着什么，像在祈祷。',
+          '天边的云被晚霞染成了暗红色。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'cheer_loud',
+            text: '跟着人群喊到嗓子哑',
+            consequence:
+                '你不知道自己喊了多久。哨声再响的时候，天已经全黑了。后来你才知道，那一个多小时里发生了什么。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_cheered_maze'], spirit: 6),
+          ),
+          StoryChoiceDef(
+            id: 'silent_watch',
+            text: '不出声，盯着那个缺口看',
+            consequence:
+                '你从始至终没有喊。眼睛一直盯着树篱的那个口子，像是想从黑暗里看出点什么来。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_watched_silently'], spirit: 2),
           ),
         ],
       ),
@@ -1079,7 +1289,7 @@ const List<StoryChapterDef> _gofChapters = [
       StoryStepDef(
         id: 'gof_ch6_night',
         chapterId: 'gof_ch6',
-        timeCostDays: 3,
+        timeCostDays: 1,
         setup:
             '那一夜城堡没有熄灯，也没有人睡。'
             '第二天早上，餐厅里有一把椅子空着，'
@@ -1102,7 +1312,7 @@ const List<StoryChapterDef> _gofChapters = [
               reputation: 2,
               spirit: 2,
             ),
-          ),
+            nextStepId: 'gof_ch6_later',),
           StoryChoiceDef(
             id: 'sit_with_friend',
             text: '什么都不说，就陪人坐着',
@@ -1117,7 +1327,7 @@ const List<StoryChapterDef> _gofChapters = [
               spirit: 1,
               targetNpcId: 'cho',
             ),
-          ),
+            nextStepId: 'gof_ch6_later',),
           StoryChoiceDef(
             id: 'write_down',
             text: '把他的名字写进自己的本子',
@@ -1131,6 +1341,36 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_after_silence'],
               spirit: -1,
             ),
+            nextStepId: 'gof_ch6_later',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch6_later',
+        chapterId: 'gof_ch6',
+        timeCostDays: 1,
+        setup:
+            '那天夜里没有人睡好。走廊里的灯亮到很晚，有人坐在台阶上不说话。有人把外套盖在腿上，一直坐到很晚。',
+        ambient: [
+          '医疗翼的门外一直有人站着。',
+          '有个低年级学生哭了一会儿，被同伴拉走了。',
+          '窗外的操场一片漆黑。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'sit_with_others',
+            text: '坐到台阶上，和大家一起待着',
+            consequence:
+                '你们谁也没说话，就那么坐着。天快亮的时候有人起身去倒了杯热水，回来递给旁边的人。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_sat_together'], spirit: 2, targetNpcId: 'ginny', affection: 2),
+          ),
+          StoryChoiceDef(
+            id: 'go_to_bed',
+            text: '回宿舍，把自己关起来',
+            consequence:
+                '你躺在床上睁着眼到天亮。你听见隔壁床的人也在翻身。没有人说晚安。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_alone_at_night'], spirit: -3),
           ),
         ],
       ),
@@ -1173,7 +1413,7 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_kept_question'],
               spirit: -1,
             ),
-          ),
+            nextStepId: 'gof_ch7_toast',),
           StoryChoiceDef(
             id: 'raise_glass',
             text: '举杯，跟所有人一起',
@@ -1186,7 +1426,7 @@ const List<StoryChapterDef> _gofChapters = [
               reputation: 1,
               spirit: 1,
             ),
-          ),
+            nextStepId: 'gof_ch7_toast',),
           StoryChoiceDef(
             id: 'leave_early',
             text: '中途离席，去院子里站一会儿',
@@ -1199,6 +1439,36 @@ const List<StoryChapterDef> _gofChapters = [
               setFlags: ['gof_after_silence'],
               spirit: -1,
             ),
+            nextStepId: 'gof_ch7_toast',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch7_toast',
+        chapterId: 'gof_ch7',
+        timeCostDays: 1,
+        setup:
+            '学期最后一次晚宴，大礼堂的布置比往年简单。有老师举杯说了一句很短的话，然后全场安静地喝了。',
+        ambient: [
+          '有人的杯子一直没抬起来。',
+          '烛火比平时矮，光落在每个人脸上。',
+          '墙角那两条横幅已经收走了，只剩两道浅痕。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'raise_cup',
+            text: '跟着举起杯子',
+            consequence:
+                '你举起杯，喝了一口。那一口有点苦。放下杯子的时候，你看见周围很多人的眼睛都是红的。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_raised_cup'], spirit: 3),
+          ),
+          StoryChoiceDef(
+            id: 'keep_still',
+            text: '没有举杯，低头坐着',
+            consequence:
+                '你没有喝。有些事不该用一杯甜饮料带过去。散场的时候你最后走，回头看了一眼那个空着的位置。',
+            nextStepId: '',
+            effect: StoryEffect(setFlags: ['gof_didnt_raise_cup'], spirit: -2),
           ),
         ],
       ),
@@ -1260,7 +1530,7 @@ const List<StoryChapterDef> _gofChapters = [
       StoryStepDef(
         id: 'gof_ch7_train',
         chapterId: 'gof_ch7',
-        timeCostDays: 2,
+        timeCostDays: 1,
         setup:
             '回家的列车上，一半人在睡觉，一半人在看窗外。'
             '今年没有人玩牌，也没有人串车厢。'
