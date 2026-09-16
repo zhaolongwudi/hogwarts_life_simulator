@@ -202,15 +202,43 @@ void main() {
       expect(opened, isNotEmpty, reason: '至少要有一条悬念，否则 T1 层永远空转');
 
       for (final e in canonEvents) {
-        final close = e.closeLoop;
-        if (close == null) continue;
-        expect(
-          opened.contains(close),
-          isTrue,
-          reason: '「${e.id}」要关的悬念「$close」没有任何节点开过——'
-              '这是内容层的悬空引用，点了也没反应',
-        );
+        for (final close in e.closeLoops) {
+          expect(
+            opened.contains(close),
+            isTrue,
+            reason: '「${e.id}」要关的悬念「$close」没有任何节点开过——'
+                '这是内容层的悬空引用，点了也没反应',
+          );
+        }
       }
+    });
+
+    test('每一条开过的悬念最终都有着落（不留永悬不决的伏笔）', () {
+      // 【为什么必须有这条】悬念开了不关，会一直挂在 T1「未完结事项」里，
+      // 直到 `staleLoopsToDrop` 按超期静默丢弃。玩家看到的是"一条永远没有
+      // 下文的线索"，而 AI 会把它当成仍在推进的伏笔继续加码。
+      // 第一版内容铺完时有 4 条悬念处于这个状态（第九次审查 P1）。
+      //
+      // 允许例外：跨部续接的悬念——如 `loop_ootp_ministry` 在《凤凰社》
+      // 末了结，而其影响延续到《混血王子》。这类"关掉但留有余波"由
+      // worldEvent 承载，不算漏关。真正的漏关是"到全书结束都没关过"。
+      final opened = <String>{};
+      final closed = <String>{};
+      for (final e in canonEvents) {
+        final open = e.openLoop;
+        if (open != null && open.contains('|')) {
+          opened.add(open.substring(0, open.indexOf('|')).trim());
+        }
+        closed.addAll(e.closeLoops);
+      }
+
+      final dangling = opened.difference(closed);
+      expect(
+        dangling,
+        isEmpty,
+        reason: '以下悬念开了却从未有过关节点——玩家会看到没有下文的伏笔：'
+            '$dangling',
+      );
     });
 
     test('数据层：unlockCg 引用的 CG 都在图鉴表里', () {

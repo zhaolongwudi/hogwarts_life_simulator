@@ -1590,6 +1590,20 @@ $kNarrativeWritingRules
   void applyStoryEffectForTest(StoryEffect effect) =>
       _applyStoryEffect(effect);
 
+  /// 直接广播一条原著节点的沉淀物（测试用）。
+  ///
+  /// 【为什么需要】`_sinkCanonNodeToMemory` 的悬念分支（openLoop / closeLoops）
+  /// 过去只有**数据层**断言兜着——「开过的都能对上关节点」这种表内自洽检查
+  /// 证明不了运行时分支被走到过。结果四条悬念开了从未被关，静默悬了一整个
+  /// 学年才被发现。这个入口让悬念的开→关生命周期可以被独立钉死。
+  ///
+  /// 与 `applyStoryEffectForTest` 的分工：那个测 `StoryEffect` 的三个列表
+  /// 字段（给剧情步用），这个测 `CanonEvent` 的节点沉淀（给原著节点用）。
+  /// 两套内容层走两条不同的接线，不能互相代偿。
+  @visibleForTesting
+  void sinkCanonNodeToMemoryForTest(String canonId) =>
+      _sinkCanonNodeToMemory(canonId);
+
 
   void _injectCanonEventIntoOfflineNarrative() {
     final p = player;
@@ -2489,9 +2503,17 @@ $kNarrativeWritingRules
       }
     }
 
-    final close = node.closeLoop;
-    if (close != null && close.trim().isNotEmpty) {
-      final idx = memory.openLoops.indexWhere((r) => r.id == close.trim());
+    // 悬念了结。一条节点可以同时收束多条线索（学年末一次回答好几个问题），
+    // 因此 `closeLoops` 是列表。
+    //
+    // 【为什么找不到就跳过而不报错】节点与悬念分处两张表，改一条悬念 id
+    // 不该让玩家的这一回合崩掉；`openLoops` 同理。真正的一致性由
+    // `canon_events_test.dart` 的"开过的都要关"静态断言保证，
+    // 不需要在运行时兜。
+    for (final close in node.closeLoops) {
+      final id = close.trim();
+      if (id.isEmpty) continue;
+      final idx = memory.openLoops.indexWhere((r) => r.id == id);
       if (idx >= 0 && memory.openLoops[idx].status != 'done') {
         final old = memory.openLoops[idx];
         memory = memory.addOrUpdateOpenLoop(

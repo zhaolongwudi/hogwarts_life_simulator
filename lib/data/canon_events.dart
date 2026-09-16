@@ -91,8 +91,15 @@ class CanonEvent {
   /// 已了结的事件不填（那属于 [worldEvent]）。
   final String? openLoop;
 
-  /// 本节点**了结**的悬念 id（对应某个先前 [openLoop] 开的 id）。
-  final String? closeLoop;
+  /// 本节点**了结**的悬念 id（对应先前某个 [openLoop] 开的 id）。
+  ///
+  /// 【为什么是列表而不是单值】原著里不少节点一口气收束多条线索。
+  /// 《魔法石》学年末同时回答了"713 号金库里是什么"（开于 7 月古灵阁）
+  /// 与"那面镜子照见的是什么"（开于 12 月）；用单值就只能关一条，
+  /// 另一条会永远挂在 T1「未完结事项」里，直到 `staleLoopsToDrop`
+  /// 按超期静默丢弃——玩家看到一条没有下文的悬念，AI 把它当成仍在
+  /// 推进的伏笔。实测七部曲里 4 条悬念正是这么悬着的（第九次审查 P1）。
+  final List<String> closeLoops;
 
   /// 本节点解锁的 CG id（如 `'CG-002'`）；null = 不牵 CG。
   final String? unlockCg;
@@ -109,7 +116,7 @@ class CanonEvent {
     this.worldEvent,
     this.worldEventImportance = 7,
     this.openLoop,
-    this.closeLoop,
+    this.closeLoops = const [],
     this.unlockCg,
   });
 }
@@ -230,7 +237,10 @@ const List<CanonEvent> canonEvents = [
         '邓布利多会在宴会上宣布最终名次并给今年「做出特别贡献」的学生加分。'
         '回顾你自己这一年的成长，教授或同学可能会对你做出具体评价。',
     worldEvent: '邓布利多宣布学年学院杯归属，并临时大幅调整积分。',
-    closeLoop: 'loop_ps_forest',
+    // 一年级的两条悬念都在活板门之下收束：「713 号金库里是什么」开于
+    // 七月的古灵阁，「那面镜子照见的是什么」开于十二月；答案都在学年末
+    // 由邓布利多给出。漏关的话它们会一直挂在 T1，直到超期被静默丢弃。
+    closeLoops: ['loop_ps_forest', 'loop_ps_vault', 'loop_ps_mirror'],
     unlockCg: 'CG-001',
   ),
 
@@ -354,7 +364,9 @@ const List<CanonEvent> canonEvents = [
         '还学会了在恐惧蔓延时如何自处。',
     worldEvent: '密室真相查明，蛇怪被击杀，学校恢复正常教学。',
     worldEventImportance: 9,
-    closeLoop: 'loop_cos_chamber',
+    // 「那本日记本是什么」开于一月，与密室之谜同源——蛇怪与日记本在
+    // 同一个夜晚一起水落石出，两条悬念应当同节点收束。
+    closeLoops: ['loop_cos_chamber', 'loop_cos_diary'],
   ),
 
   // ================================================================
@@ -542,7 +554,7 @@ const List<CanonEvent> canonEvents = [
         '也可以和同学们讨论这一切意味着什么。',
     worldEvent: '魔法部战斗后公开承认伏地魔已回归，阿兹卡班发生大规模越狱。',
     worldEventImportance: 9,
-    closeLoop: 'loop_ootp_ministry',
+    closeLoops: ['loop_ootp_ministry'],
   ),
 
   // ================================================================
@@ -604,7 +616,7 @@ const List<CanonEvent> canonEvents = [
         '也可以和同学讨论这场灾难会把霍格沃茨带向何方。',
     worldEvent: '邓布利多在天文塔身亡，城堡当晚被食死徒短暂攻入。',
     worldEventImportance: 9,
-    closeLoop: 'loop_hbp_plot',
+    closeLoops: ['loop_hbp_plot'],
   ),
 
   // ================================================================
@@ -1117,7 +1129,7 @@ const List<CanonEvent> canonEvents = [
         '「一切已按规程处理」。真相只在少数人的记忆里，'
         '而你听到的版本，取决于你那天站在哪条走廊上。',
     worldEvent: '布莱克一案真相被推翻，但嫌犯脱逃，魔法部公信力受质疑。',
-    closeLoop: 'loop_poa_black',
+    closeLoops: ['loop_poa_black'],
   ),
 
   // ----------------------------------------------------------------
@@ -1236,7 +1248,10 @@ const List<CanonEvent> canonEvents = [
         '而这件事的意义，要等很多年之后才会被完全理解。',
     worldEvent: '勇士在终点处被传送走，有人死了，伏地魔已恢复肉身回归。',
     worldEventImportance: 9,
-    closeLoop: 'loop_gof_tournament',
+    // 「世界杯营地那个黑魔标记是谁放的」开于八月：当时全场都以为只是
+    // 一次恶作剧，学年末才明白那是食死徒公开集结的第一声信号。
+    // 这条悬念的答案就是「伏地魔回来了」，与三强争霸赛的结果同源。
+    closeLoops: ['loop_gof_tournament', 'loop_gof_mark'],
   ),
 
   // ----------------------------------------------------------------
@@ -1354,7 +1369,7 @@ const List<CanonEvent> canonEvents = [
         '这条界线在哪里，是那一年所有人都在学的东西。',
     worldEvent: '霍格沃茨实施学生团体报备制度，教育令累计超过二十条。',
     worldEventImportance: 7,
-    closeLoop: 'loop_ootp_edicts',
+    closeLoops: ['loop_ootp_edicts'],
   ),
   CanonEvent(
     id: 'canon_ootp_owl_exam_week',
