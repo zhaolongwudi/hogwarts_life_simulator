@@ -1495,10 +1495,110 @@ const List<StoryChapterDef> _hbpChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'hbp_ch5_april',
+        chapterId: 'hbp_ch5',
+        timeCostDays: 1,
+        setup:
+            '四月过去了一半，城堡里的课程表开始变得奇怪：有几门课'
+            '的老师频繁缺席，代课的人显然没准备好，讲得心不在焉。'
+            '没有人正式宣布什么，也没有人解释原因，但所有人都'
+            '感觉得到——这一年的节奏正在被什么东西悄悄改掉。'
+        ,
+        ambient: [
+          '黑魔法防御术的教室门上贴了一张"本周自习"的条。',
+          '图书馆里那几排旧报纸被人翻得乱七八糟。',
+          '你注意到走廊尽头的门锁换了新的。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'track_absences',
+            text: '把缺席的课和换过锁的门记在一起',
+            consequence:
+                '你列了一张单子：哪天哪门课没人来，哪扇门换了锁，'
+                '哪几个人那几天不在。写完之后你盯着它看了很久——'
+                '单独看每一条都不奇怪，换个人不会多想；'
+                '可是排在一起，它们就长出形状来了。'
+                '你把单子折好，塞进课本的最后一页。'
+            ,
+            effect: StoryEffect(
+              addKnowledge: ['hbp_absence_pattern'],
+              setFlags: ['hbp_counted_absences'],
+              spirit: -1,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'keep_head_down',
+            text: '不去想它，专心准备 N.E.W.T. 的内容',
+            consequence:
+                '你把注意力收回到课本上，把那张单子压到箱底。'
+                '这一年里你能控制的只有这个——外面的世界可以'
+                '变糟，但成绩不会因为世界变糟就变得不重要。'
+                '你反复告诉自己这句话，后来也真的信了。'
+            ,
+            effect: StoryEffect(
+              setFlags: ['hbp_stayed_focused'],
+              spirit: 2,
+              housePoints: 2,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'hbp_ch5_may',
+        chapterId: 'hbp_ch5',
+        timeCostDays: 1,
+        onEnterText: '四月的单子还没弄清楚，五月就来了。',
+        setup:
+            '五月的第一个星期，城堡里忽然开始有人收拾东西。不是'
+            '放假——是家长来信，把孩子接回去了。宿舍楼里有几个'
+            '床铺一夜之间空了出来，枕头叠得整整齐齐，没有人'
+            '解释，也没有人问，大家只是从旁边绕过去。'
+        ,
+        ambient: [
+          '有个低年级学生在门厅里哭着等车。',
+          '公共休息室的布告栏上多了一张"外出登记"表。',
+          '你发现自己的室友开始把重要的东西收进箱子底层。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'help_juniors',
+            text: '去帮那些被接走的人收东西、送他们到门口',
+            consequence:
+                '你帮三个人搬了箱子，一直送到城堡大门口，'
+                '看着马车把他们拉走。其中一个走到一半回过头，'
+                '问你："我们还会回来吧？"你说会。'
+                '你当时并不确定这句话是不是真的，但还是说了。'
+            ,
+            effect: StoryEffect(
+              setFlags: ['hbp_helped_leavers'],
+              addKnowledge: ['hbp_spring_exodus'],
+              affection: 3,
+              spirit: -1,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'write_it_down',
+            text: '把五月这几天的变化写进日记',
+            consequence:
+                '你写了三页，把能想起来的都写了下来：谁走了，'
+                '哪天走的，走之前说了什么。写到最后你忽然'
+                '意识到——如果明年有新来的学生问起这一年，'
+                '你手上这份大概是全城堡最接近真相的东西。'
+            ,
+            effect: StoryEffect(
+              addItems: ['记满的日记本'],
+              setFlags: ['hbp_kept_record'],
+              addKnowledge: ['hbp_spring_record'],
+              spirit: 1,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'hbp_ch5_vow',
         canonRefId: 'canon_hbp_year_ends_early',
         chapterId: 'hbp_ch5',
-        timeCostDays: 28,
+        timeCostDays: 26,
         setup:
             '期末前一个月，有人来找你。'
             '他没有说要去哪儿，也没有说什么时候回来，'

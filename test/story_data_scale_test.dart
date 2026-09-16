@@ -28,15 +28,15 @@ const int kMinStepsPerChapter = 2;
 const Map<String, int> kMinStepsPerBook = {
   'ps': 56,
   'cos': 64,
-  'poa': 35,
-  'gof': 30,
-  'ootp': 29,
-  'hbp': 28,
-  'dh': 30,
+  'poa': 46,
+  'gof': 42,
+  'ootp': 45,
+  'hbp': 39,
+  'dh': 42,
 };
 
-/// 七部曲总步数下限（当前 56+64+35+30+29+28+30 = 272）。
-const int kMinTotalSteps = 272;
+/// 七部曲总步数下限（当前 56+64+46+42+45+39+42 = 334）。
+const int kMinTotalSteps = 334;
 
 /// 一部书总步数。
 int _stepsOf(StoryBookDef book) =>

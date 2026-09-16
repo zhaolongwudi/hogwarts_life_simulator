@@ -49,6 +49,7 @@ const Set<String> _storyItemWhitelist = {
   '课外小组批准函', // ootp_ch5_club：按教育令报备后拿到的批文，是"合规"的凭证
   'O.W.L. 成绩单', // ootp_ch6_owl_results：五年级普通巫师等级考试成绩单
   '厚笔记本', // ootp_ch7_accounting：期末清算时用来记录这一年发生过什么
+  '记满的日记本', // hbp_ch5_may：五月里离校潮那几天逐日写下的记录
 };
 
 /// 一步剧情的全部可见文本（禁用措辞 / 主体检查的语料）。

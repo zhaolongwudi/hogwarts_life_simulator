@@ -1242,10 +1242,108 @@ const List<StoryChapterDef> _gofChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'gof_ch4_march',
+        chapterId: 'gof_ch4',
+        timeCostDays: 9,
+        setup:
+            '三月过完，城堡里的气氛换了个调子。第三项任务的消息'
+            '传开之后，看台上的人开始用一种新的眼神打量那几个名字'
+            '——不再是好奇，是计算。你发现自己也在不知不觉中'
+            '开始按名次去记人，像记一张还没公布的榜单。'
+        ,
+        ambient: [
+          '有人在公共休息室墙上钉了一张赛程表，日期被圈了两遍。',
+          '走廊里的大幅布告换了新的，旧的那张还留着一角。',
+          '你的室友开始每天问一遍"你觉得谁会赢"。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'watch_favorites',
+            text: '去打听各校最被看好的是谁，把盘口记下来',
+            consequence:
+                '你问了七八个人，凑出一份默认的排名，连同每个人'
+                '给出的理由一并记下。有意思的是，没有一个人把第四个'
+                '名字排进去——不是恶意，是真的没人想过这种可能。'
+                '你把这件事记了下来，没有对任何人说出口。'
+            ,
+            effect: StoryEffect(
+              addKnowledge: ['gof_betting_odds'],
+              setFlags: ['gof_tracked_odds'],
+              spirit: 1,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'shut_out_noise',
+            text: '关掉这些声音，把心思放回自己的课上',
+            consequence:
+                '你不再听那些转述，也不再参与猜测，把课表排得'
+                '满满当当。课本上的东西至少有个明确的答案，'
+                '付出多少就能拿回多少——这在那一年的城堡里，'
+                '已经是件很奢侈的事了。'
+            ,
+            effect: StoryEffect(
+              setFlags: ['gof_kept_clear'],
+              addKnowledge: ['gof_steady_term'],
+              spirit: 2,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
+        id: 'gof_ch4_aprillight',
+        chapterId: 'gof_ch4',
+        timeCostDays: 10,
+        onEnterText: '三月的风还带着冷意，四月一到，场地那边开始有动静了。',
+        setup:
+            '四月初，禁林边上开始围起一圈木板，把一整片地圈在了'
+            '里面。没有人明说那是什么，管事的人只是说"作业区域，'
+            '闲人勿近"。但所有人都知道——第三项任务要用的东西，'
+            '正在那片围挡后面一点一点地长出来。'
+        ,
+        ambient: [
+          '木板缝里能看见新翻的土，颜色比周围的深。',
+          '有守夜的人在那儿搭了个小棚子，整夜亮着灯。',
+          '一个低年级学生踮脚往里看，被同伴拽走了。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'peek_boards',
+            text: '趁没人注意，贴着木板缝看几眼',
+            consequence:
+                '你只看见一片翻过的地，深褐色的土块堆在边上，'
+                '和几道刚开始往外冒的绿色，细小得几乎看不见。'
+                '你说不清那些是什么植物，但那个画面很奇怪地'
+                '在你脑子里存了下来，一直到夏天才重新浮上来。'
+            ,
+            effect: StoryEffect(
+              addKnowledge: ['gof_hedge_sprouts'],
+              setFlags: ['gof_peeked_hedges'],
+              spirit: 1,
+            ),
+          ),
+          StoryChoiceDef(
+            id: 'ask_keeper',
+            text: '去问守夜的人那里面在长什么',
+            consequence:
+                '守夜的人看了你一眼，说"不该问的别问"，'
+                '然后大概觉得你也没什么恶意，补了一句：'
+                '"反正六月你们都会看见的，着急什么。"'
+                '你把这句话原样记住了，连他说这话时那种'
+                '不以为然的语气一起。'
+            ,
+            effect: StoryEffect(
+              addKnowledge: ['gof_keeper_hint'],
+              setFlags: ['gof_asked_keeper'],
+              reputation: 1,
+            ),
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'gof_ch4_spring',
         canonRefId: 'canon_gof_rumor_tense',
         chapterId: 'gof_ch4',
-        timeCostDays: 28,
+        timeCostDays: 9,
         setup:
             '三月之后天气转暖，禁林边上的草长得飞快。'
             '第三个项目定在六月，据说是一座迷宫。'
