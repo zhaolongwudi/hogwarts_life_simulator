@@ -1,0 +1,603 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hogwarts_life_simulator/data/attribute_data.dart';
+import 'package:hogwarts_life_simulator/data/collectible_data.dart';
+import 'package:hogwarts_life_simulator/data/item_data.dart';
+import 'package:hogwarts_life_simulator/data/spell_data.dart';
+import 'package:hogwarts_life_simulator/data/time_cost_rules.dart';
+import 'package:hogwarts_life_simulator/models/game_systems.dart';
+import 'package:hogwarts_life_simulator/models/player.dart';
+
+import 'helpers/test_fixtures.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  group('咒语表自洽', () {
+    test('咒语名不重复', () {
+      final names = spellCatalog.map((s) => s.name).toList();
+      expect(names.toSet().length, names.length,
+          reason: '重名的咒语在 learnedSpells 里会互相覆盖');
+    });
+
+    test('咒文的中文名与拉丁名都不为空', () {
+      for (final s in spellCatalog) {
+        expect(s.name.trim().isNotEmpty, isTrue);
+        expect(s.incantation.trim().isNotEmpty, isTrue);
+      }
+    });
+
+    test('关联属性都是合法属性键', () {
+      final bad = spellCatalog
+          .where((s) => !kAttributeLabels.containsKey(s.attribute))
+          .map((s) => '${s.name} → ${s.attribute}')
+          .toList();
+      expect(bad, isEmpty,
+          reason: '这些咒语挂了不存在的属性，等级上限会算不出来：$bad');
+    });
+
+    test('年级与难度都在合理区间', () {
+      for (final s in spellCatalog) {
+        expect(s.minGrade, inInclusiveRange(1, 7),
+            reason: '${s.name} 的 minGrade 越界：${s.minGrade}');
+        expect(s.difficulty, inInclusiveRange(1, 5),
+            reason: '${s.name} 的 difficulty 越界：${s.difficulty}');
+      }
+    });
+
+    test('每个年级都有可学的咒语', () {
+      for (var g = 1; g <= 7; g++) {
+        expect(spellsLearnableAt(g), isNotEmpty,
+            reason: '$g 年级一个能学的咒语都没有');
+      }
+    });
+
+    test('一年级能学的咒语里没有不可饶恕咒与守护神咒', () {
+      // 一致性检查器（mixin_narrative_continuity 的 R5_spell_power_creep）
+      // 把 learnedSpells 当白名单：学会了才允许叙事里出现。要是守护神咒一
+      // 年级就能学，那条检查直接失效。
+      const forbidden = ['守护神咒', '夺魂咒', '钻心咒', '杀戮咒'];
+      final leaked = spellsLearnableAt(1)
+          .where((s) => forbidden.contains(s.name))
+          .map((s) => s.name)
+          .toList();
+      expect(leaked, isEmpty, reason: '一年级不该能学到：$leaked');
+    });
+
+    test('spellByName 认中文名、简称与拉丁咒文', () {
+      expect(spellByName('漂浮咒')?.name, '漂浮咒');
+      expect(spellByName('漂浮')?.name, '漂浮咒');
+      expect(spellByName('Expelliarmus')?.name, '缴械咒');
+      expect(spellByName('expelliarmus')?.name, '缴械咒');
+      expect(spellByName('Lumos')?.name, '照明咒');
+      expect(spellByName('不存在的咒语'), isNull);
+      expect(spellByName(''), isNull);
+    });
+
+    test('等级上限跟着熟练度走且封在 100', () {
+      const s = SpellDef(
+        name: '测试咒',
+        incantation: 'Testus',
+        category: SpellCategory.general,
+        minGrade: 1,
+        difficulty: 1,
+        attribute: 'spell_understanding',
+        effect: '',
+      );
+      expect(s.levelCapFor(0), 10);
+      expect(s.levelCapFor(50), 60);
+      expect(s.levelCapFor(95), 100);
+      expect(s.levelCapFor(200), 100);
+      // 单调不减
+      var last = -1;
+      for (var a = 0; a <= 100; a++) {
+        final cap = s.levelCapFor(a);
+        expect(cap, greaterThanOrEqualTo(last));
+        last = cap;
+      }
+    });
+
+    test('学习门槛随难度递增，且不超过属性上限', () {
+      for (final s in spellCatalog) {
+        expect(s.requiredAttribute, inInclusiveRange(30, 100),
+            reason: '${s.name} 的学习门槛 ${s.requiredAttribute} 不合理');
+      }
+      final byDifficulty = <int, Set<int>>{};
+      for (final s in spellCatalog) {
+        byDifficulty.putIfAbsent(s.difficulty, () => <int>{}).add(s.requiredAttribute);
+      }
+      for (var d = 2; d <= 5; d++) {
+        final lower = byDifficulty[d - 1];
+        final cur = byDifficulty[d];
+        if (lower == null || cur == null) continue;
+        expect(cur.reduce((a, b) => a < b ? a : b),
+            greaterThan(lower.reduce((a, b) => a > b ? a : b)),
+            reason: '难度 $d 的学习门槛没有比难度 ${d - 1} 更高');
+      }
+    });
+  });
+
+  group('咒语系统真的接上了', () {
+    test('learnedSpells 的写入点不止一处', () {
+      // 曾经全项目只有一处写入（用《标准咒语书》时塞一条漂浮咒 Lv.1），
+      // 玩家再没有第二个能学的咒、也没有任何办法把等级从 1 提上去。
+      // 成就「书虫」（学会 10 个魔咒）因此永远差 9 个。
+      var writes = 0;
+      for (final f in _allLibFiles()) {
+        final src = _codeOnly(f);
+        writes += RegExp(r'learnedSpells\[[^\]]*\]\s*=').allMatches(src).length;
+        writes += RegExp(r'learnedSpells\.(putIfAbsent|addAll|addEntries|update|remove)')
+            .allMatches(src)
+            .length;
+      }
+      expect(writes, greaterThanOrEqualTo(3),
+          reason: 'learnedSpells 只有 $writes 处写入，咒语系统又退回空壳了');
+    });
+
+    test('/咒语 命令的三个子命令都真实存在', () {
+      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      expect(src.contains("primary: '咒语'"), isTrue);
+      for (final call in ['m.learnSpell(', 'm.practiseSpell(', 'm.formatSpells()']) {
+        expect(src.contains(call), isTrue, reason: '/咒语 没有接到 $call');
+      }
+    });
+
+    test('练咒与学咒都计入了每日上限表', () {
+      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      expect(RegExp(r"'spell':\s*\d+").hasMatch(src), isTrue,
+          reason: 'kDailyActivityLimits 里没有练咒的次数上限');
+      expect(RegExp(r"'learn_spell':\s*\d+").hasMatch(src), isTrue,
+          reason: 'kDailyActivityLimits 里没有学新咒的次数上限');
+    });
+
+    test('学与练各自推进合理的时间', () {
+      // 「练习魔咒」曾经落到默认 15 分钟：一天 3 次只花 45 分钟，
+      // 学业节奏整个垮掉（练咒还顺带推进熟练度）。
+      expect(resolveActionCost('学习魔咒'), 120);
+      expect(resolveActionCost('练习魔咒'), 60);
+      // 一个不命中任何规则的动作，走默认时长
+      expect(resolveActionCost('阿不福思的镜子'), kDefaultActionMinutes);
+    });
+
+    test('咒语一览里报的每日次数与上限表一致', () {
+      final limits = _codeOnly('lib/mixins/mixin_systems.dart');
+      final m = RegExp(r"'spell':\s*(\d+)").firstMatch(limits);
+      expect(m, isNotNull);
+      final play = _codeOnly('lib/mixins/mixin_play.dart');
+      expect(play.contains("dailyLimitOf('spell')"), isTrue,
+          reason: '一览里写的次数不是从上限表取的');
+    });
+  });
+
+  group('成就的门槛与描述对得上', () {
+    // (成就 id, 描述里承诺的数字, 判定代码里实际比较的字面量)
+    //
+    // 三列放一起是有意的：以前「描述写一套、判定写另一套」出过好几次——
+    // 「时间行者」写「超过1年」判定却是 >= 2；「战争英雄」写「参与关键战
+    // 役」，而这个游戏根本没有战役事件；「优等生」写「技能熟练度」却去查
+    // 一个上限恒为 1 的咒语等级。任何一侧改动都会让这条测试失败。
+    const rows = <(String, String, String)>[
+      ('explorer', '5', '>= 5'),
+      ('rich_wizard', '1500', '>= 1500'),
+      ('bookworm', '10', '>= 10'),
+      ('social_butterfly', '10', '>= 10'),
+      ('deep_relationship', '80', '>= 80'),
+      ('honor_student', '90', '>= 90'),
+      ('monthly_evolution', '3', '>= 3'),
+      ('generation_artist', '5', '>= 5'),
+      ('cg_collector', '10', '>= 10'),
+      ('relationship_master', '3', '>= 3'),
+      ('time_master', '2', '>= 2'),
+      ('war_hero', '80', '>= 80'),
+      ('world_changer', '10', '>= 0.1'),
+      // 「红娘」不在这张表里：描述写的是羁绊值 60，判定比的是配对阶段
+      // stage >= 1，中间隔着 _shipStageFor。那条桥另有单测盯着。
+    ];
+
+    for (final row in rows) {
+      test('${row.$1}：描述写 ${row.$2}，判定是 ${row.$3}', () {
+        final ach = achievementCatalog.firstWhere(
+          (a) => a.id == row.$1,
+          orElse: () => throw StateError('成就表里没有 ${row.$1}'),
+        );
+        final stated = RegExp(r'\d+').firstMatch(ach.description)?.group(0);
+        expect(stated, row.$2,
+            reason: '「${ach.name}」的描述改了数字（现在是 $stated），'
+                '同步更新本表；或者判定改了，改第三列。');
+
+        final body = _checkBodyFor(row.$1);
+        expect(body, isNotNull, reason: '找不到 unlockAchievement(${row.$1}) 所在的函数');
+        // 格式容忍：dart format 会把 `>= 3` 拆成 `>=\n 3`，把判定字符串的
+        // 空格替换成 `\s*` 再匹配（契约是"判定数值与描述一致"，不是字面格式）
+        final pattern = row.$3.replaceAll(' ', r'\s*');
+        expect(RegExp(pattern).hasMatch(body!), isTrue,
+            reason: '「${ach.name}」的判定里找不到「${row.$3}」：\n$body');
+      });
+    }
+  });
+
+  group('成就不再指向不存在的玩法', () {
+    test('没有任何成就描述提到游戏里不存在的系统', () {
+      // 曾经「战争英雄」写的是「参与关键战役」，而全项目连一个战役事件都
+      // 没有——玩家照着描述去打，打完发现条件对不上。
+      const deadPromises = ['战役', '关键战役'];
+      final offenders = <String>[];
+      for (final a in achievementCatalog) {
+        for (final w in deadPromises) {
+          if (a.description.contains(w)) {
+            offenders.add('${a.id}（${a.name}）：${a.description}');
+          }
+        }
+      }
+      expect(offenders, isEmpty, reason: '这些成就承诺了不存在的玩法：$offenders');
+    });
+
+    test('「书虫」要求的咒语数量在咒语表里够得着', () {
+      final ach = achievementCatalog.firstWhere((a) => a.id == 'bookworm');
+      final need = int.parse(RegExp(r'\d+').firstMatch(ach.description)!.group(0)!);
+      expect(spellCatalog.length, greaterThanOrEqualTo(need),
+          reason: '咒语只有 ${spellCatalog.length} 个，学不到 $need 个');
+      expect(spellsLearnableAt(2).length, greaterThanOrEqualTo(need),
+          reason: '二年级可学的咒语不足 $need 个，「书虫」要等到高年级才拿得到');
+    });
+
+    test('「优等生」查的是学业属性而不是咒语等级', () {
+      final body = _checkBodyFor('honor_student');
+      expect(body, isNotNull);
+      expect(body!.contains('kStudyAttributeKeys'), isTrue,
+          reason: '判的不是学业熟练度：\n$body');
+      expect(body.contains('learnedSpells'), isFalse,
+          reason: '又回去查咒语等级了：\n$body');
+    });
+
+    test('「第一位朋友」的门槛问的是好感阶段表', () {
+      final body = _checkBodyFor('first_friend');
+      expect(body, isNotNull);
+      expect(body!.contains('affectionStageMin('), isTrue,
+          reason: '门槛写死在代码里，阶段表一改就对不上描述：\n$body');
+    });
+
+    test('「红娘」描述里的羁绊值确实对应判定用的阶段', () {
+      final ach = achievementCatalog.firstWhere((a) => a.id == 'matchmaker');
+      final bond = int.parse(RegExp(r'\d+').firstMatch(ach.description)!.group(0)!);
+      final body = _checkBodyFor('matchmaker');
+      expect(body, isNotNull);
+      final stage = RegExp(r'stage\s*>=\s*(\d+)').firstMatch(body!);
+      expect(stage, isNotNull, reason: '判定里找不到 stage >= N：\n$body');
+      // 羁绊 → 阶段的映射在 mixin_relations._shipStageFor，这里直接从源码
+      // 读出「阶段 N 的门槛」，确认描述写的羁绊值落在这一档上。
+      final src = _codeOnly('lib/mixins/mixin_relations.dart');
+      final need = int.parse(stage!.group(1)!);
+      final thresholds =
+          RegExp(r'if \(bond >= (\d+)\) return (\d+);').allMatches(src).map((m) {
+        return (int.parse(m.group(1)!), int.parse(m.group(2)!));
+      }).where((e) => e.$2 == need);
+      expect(thresholds, isNotEmpty,
+          reason: '_shipStageFor 里没有 stage $need 这一档');
+      expect(thresholds.map((e) => e.$1).reduce((a, b) => a < b ? a : b), bond,
+          reason: '描述写羁绊 $bond，但 stage $need 的门槛不是 $bond');
+    });
+  });
+
+  group('界面不许挂着兑现不了的承诺', () {
+    test('没有「还在开发中」「即将上线」这类占位文案', () {
+      // 「背景音乐 / 尚未上线」那张卡片挂了很久：项目里既没有音频依赖，
+      // assets 下也没有任何音频文件，它永远不可能兑现。同类占位一律清掉
+      // ——与其让一个漂亮的按钮告诉玩家「还没做」，不如不放这个按钮。
+      const placeholders = [
+        '还在开发中',
+        '即将上线',
+        '尚未上线',
+        '敬请期待',
+        '功能未开放',
+      ];
+      final offenders = <String>[];
+      for (final f in _allLibFiles()) {
+        final src = _codeOnly(f);
+        for (final w in placeholders) {
+          if (src.contains(w)) offenders.add('$f → $w');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: '这些文案承诺了不存在的功能：$offenders');
+    });
+
+    test('「你的回忆」三个分页都读真实数据', () {
+      final src = _codeOnly('lib/screens/memory_screen.dart');
+      for (final read in [
+        'recentNarrativeEvents',
+        'player?.collection',
+        'cgRecords',
+      ]) {
+        expect(src.contains(read), isTrue,
+            reason: '回忆页没有读 $read，那一栏又是写死的占位');
+      }
+      // 写死的样板不能再回来
+      expect(src.contains('全文完'), isFalse);
+      expect(src.contains('第1年·9月'), isFalse);
+    });
+
+    test('CG 画廊只有一份实现，回忆页复用日记页那一份', () {
+      final memory = _codeOnly('lib/screens/memory_screen.dart');
+      final diary = _codeOnly('lib/screens/other/diary_screen.dart');
+      expect(memory.contains('CgGalleryTab('), isTrue,
+          reason: '回忆页没有复用日记页的 CG 画廊，八成又抄了一份');
+      // 「按章节分组」的逻辑只该出现一次
+      final grouped = RegExp(r'putIfAbsent\(cg\.chapter')
+          .allMatches(memory + diary)
+          .length;
+      expect(grouped, 1, reason: '按章节分组 CG 的逻辑出现了 $grouped 份');
+    });
+  });
+
+  group('收藏品不再是空的许诺', () {
+    test('收藏品 id 不重复', () {
+      final ids = kCollectibleCatalog.map((c) => c.id).toList();
+      expect(ids.toSet().length, ids.length);
+    });
+
+    test('每一件收藏品都至少有一个真实的获取途径', () {
+      // /收藏 曾经永远显示「暂无收藏品。在冒险中收集独特物品，如巧克力蛙
+      // 画片、日记本等」——而全项目对 collection 的写入一处都没有。这句提
+      // 示承诺了两件根本拿不到的东西。现在反过来钉住：目录里不许出现拿不
+      // 到的条目。
+      final libSrc = <String, String>{};
+      for (final f in _allLibFiles()) {
+        libSrc[f] = _codeOnly(f);
+      }
+      bool reachable(String id) => libSrc.values.any((src) => src.contains("'$id'"));
+
+      final orphans = <String>[];
+      for (final c in kCollectibleCatalog) {
+        // 画片系列走「使用某物品随机掉落」，靠系列名而不是逐个 id 命中
+        final bySeries = collectibleSeriesForUse.values.contains(c.series);
+        final byPurchase = collectibleForPurchase.containsValue(c.id);
+        if (!reachable(c.id) && !bySeries && !byPurchase) {
+          orphans.add('${c.id}（${c.name}）');
+        }
+      }
+      expect(orphans, isEmpty,
+          reason: '这些收藏品没有任何获取途径，/收藏 里会永远锁着：$orphans');
+    });
+
+    test('会掉收藏品的物品在物品表里买得到', () {
+      for (final name in collectibleSeriesForUse.keys) {
+        expect(itemDefByName(name), isNotNull,
+            reason: '物品表里没有「$name」，掉了也没人吃得到');
+      }
+      for (final name in collectibleForPurchase.keys) {
+        expect(itemDefByName(name), isNotNull,
+            reason: '物品表里没有「$name」，商店里买不到');
+      }
+    });
+
+    test('画片系列确实非空，否则巧克力蛙什么也不掉', () {
+      for (final entry in collectibleSeriesForUse.entries) {
+        expect(collectiblesInSeries(entry.value), isNotEmpty,
+            reason: '系列「${entry.value}」是空的');
+      }
+    });
+
+    test('/收藏 的空态文案不再许诺拿不到的东西', () async {
+      // 行为断言替代源码扫描：在真实 GameProvider 上把收藏清空，让
+      // formatCollection() 走空态分支，直接看玩家会看到的文案。
+      // （开局会送「站台纪念品」等收藏品，故先用真实玩家再清空，还原空收藏前提）
+      final gp = await makeGame();
+      gp.player!.collection.clear();
+      final text = gp.formatCollection();
+      // 「日记本」在项目任何地方都不存在，不该再出现在提示里
+      expect(text, isNot(contains('日记本')),
+          reason: '空态文案还在许诺根本不存在的「日记本」');
+      // 巧克力蛙画片是唯一稳定的收藏品来源，得告诉玩家怎么开始
+      expect(text, contains('巧克力蛙'));
+      // 空态得说明「现在什么都没有」，不能只夸攒到的东西
+      expect(text, contains('一件都没有'),
+          reason: '空态文案没有说明「现在一件收藏都没有」');
+    });
+
+    test('收藏品的来源分散在开局/分院/购买/掉落，不是只有一处', () {
+      // 写入本身收在 addCollectible 一个漏斗里（好事），所以这里数的是调用
+      // 点：来源只有一处的话，玩家错过这一次就再也拿不到了。
+      var sites = 0;
+      var seriesDrops = 0;
+      for (final f in _allLibFiles()) {
+        final src = _codeOnly(f);
+        // 购买那条传的是变量而不是字面量，所以数调用次数而不是字符串字面量，
+        // 再减掉方法自身的声明。
+        sites += RegExp(r'addCollectible\(').allMatches(src).length -
+            RegExp(r'bool addCollectible\(').allMatches(src).length;
+        seriesDrops += RegExp(r'_addCollectibleFromSeries\(').allMatches(src).length;
+      }
+      expect(sites, greaterThanOrEqualTo(5),
+          reason: 'addCollectible 只有 $sites 个调用点，收集玩法的来源太单一');
+      expect(seriesDrops, greaterThanOrEqualTo(1),
+          reason: '没有任何地方走「使用物品掉落收藏品」这条线');
+    });
+  });
+
+  group('平行世界小剧场不再是写了就丢', () {
+    const screenPath = 'lib/screens/other/parallel_world_screen.dart';
+    final screenCode = _codeOnly(screenPath);
+    final playerCode = _codeOnly('lib/models/player.dart');
+
+    test('页面读 Provider 里的数据，而不是 Widget 的局部状态', () {
+      // 旧实现是 StatefulWidget，玩家写的剧本存在 State 的 _scenarios 里，
+      // 退出页面就没了——「创作」按钮看着能用，其实什么也没留下。
+      expect(RegExp(r'\bextends StatefulWidget\b').hasMatch(screenCode), isFalse,
+          reason: '这个页面没有需要跨帧保存的 UI 状态，数据得来自 Provider');
+      expect(RegExp(r'\bsetState\(').hasMatch(screenCode), isFalse,
+          reason: '还在用 setState 存内容 = 内容还在 Widget 局部');
+      expect(
+          screenCode.contains(
+              'context.watch<GameProvider>().player?.parallelScenarios'),
+          isTrue,
+          reason: '列表应该读 Player.parallelScenarios');
+    });
+
+    test('ParallelScenario 是 Player 的持久化字段，四个环节都齐', () {
+      expect(playerCode.contains('final List<ParallelScenario> parallelScenarios;'),
+          isTrue,
+          reason: 'Player 上没有这个字段，写进去的小剧场无处安放');
+      expect(playerCode.contains("List<ParallelScenario>? parallelScenarios,"),
+          isTrue,
+          reason: '构造参数缺了');
+      expect(playerCode.contains('parallelScenarios ='), isTrue,
+          reason: '构造体里忘了赋值，字段会一直是空列表');
+      expect(playerCode.contains("'parallel_scenarios':"), isTrue,
+          reason: 'toJson 没写这个键，存盘时会被丢掉');
+      expect(playerCode.contains("json['parallel_scenarios']"), isTrue,
+          reason: 'fromJson 不读这个键，读档时会被丢掉');
+    });
+
+    test('来回一趟不丢字段（图标和日期也带得回来）', () {
+      final s = ParallelScenario(
+        title: '如果分院帽把我分错了',
+        description: '那就将错就错。',
+        icon: '🔮',
+        createdAt: '1991-09-01',
+      );
+      final back = ParallelScenario.fromJson(s.toJson());
+      expect(back.title, s.title);
+      expect(back.description, s.description);
+      expect(back.icon, '🔮', reason: '图标丢了的话，重进页面全都变回 🎭');
+      expect(back.createdAt, '1991-09-01',
+          reason: '日期被覆盖成当天的话，「写于」这一行永远是今天');
+    });
+
+    test('增删都落到 Provider 上，并且会存盘', () {
+      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      for (final name in ['addParallelScenario', 'removeParallelScenario']) {
+        final body = _methodBody(src, 'void $name(');
+        expect(body, isNotNull, reason: '缺少 $name');
+        expect(body!.contains('notifyListeners()'), isTrue,
+            reason: '$name 不通知，界面不会刷新');
+        expect(body.contains('autoSave()'), isTrue,
+            reason: '$name 不存盘，退出应用就白写了');
+      }
+    });
+
+    test('预设脑洞只是示例，不会混进存档', () {
+      expect(screenCode.contains('final List<ParallelScenario> kPresetScenarios'),
+          isTrue,
+          reason: 'kPresetScenarios 得是顶层只读的示例表');
+      // 预设不进 Player：存档里出现它们 = 又变成写死内容假装是玩家创作
+      expect(
+          playerCode.contains('kPresetScenarios') ||
+              playerCode.contains('预设脑洞'),
+          isFalse,
+          reason: 'Player 不该持有预设剧本');
+      expect(screenCode.contains('不会进存档'), isTrue,
+          reason: '预设那一段得写明「不会进存档」，否则玩家会以为是自己写的');
+    });
+
+    test('弹窗里没有只弹提示、什么都不做的按钮', () {
+      // 旧实现的「收藏」按钮点了只弹一句「小剧场已收藏」，收藏册里一件也没有。
+      expect(screenCode.contains('收藏'), isFalse,
+          reason: '这里没有可收藏的东西，不该再摆一个收藏按钮');
+      // 留下来的两处提示都得配着真实的写入/删除
+      expect(
+          RegExp(r'addParallelScenario\(').allMatches(screenCode).length +
+              RegExp(r'removeParallelScenario\(').allMatches(screenCode).length,
+          greaterThanOrEqualTo(2),
+          reason: '创建和删除两条路都得接到 Provider 上');
+    });
+  });
+}
+
+
+// ==================== 扫描工具 ====================
+
+List<String> _allLibFiles() {
+  final out = <String>[];
+  void walk(Directory d) {
+    for (final e in d.listSync(followLinks: false)) {
+      if (e is Directory) {
+        walk(e);
+      } else if (e is File && e.path.endsWith('.dart')) {
+        out.add(e.path);
+      }
+    }
+  }
+
+  walk(Directory('lib'));
+  return out;
+}
+
+/// 去掉整行 `//` 注释。注释里经常引用旧代码，不剥掉会误报。
+String _codeOnly(String path) {
+  final lines = File(path).readAsStringSync().split('\n');
+  final out = <String>[];
+  for (final line in lines) {
+    if (line.trimLeft().startsWith('//')) continue;
+    out.add(line);
+  }
+  return out.join('\n');
+}
+
+/// 取出某个方法（[signature] 开头，如 `void foo(`）的完整函数体。
+///
+/// 签名可能跨好几行（`void foo({\n  required ...\n}) {`），所以既不能拿
+/// `indexOf('\n  }')` 当结束（会把 `}) {` 当成方法结束，取回一个空壳），
+/// 也不能纯靠缩进（签名的收尾行缩进同样是 2）。这里改成数花括号：先抹掉
+/// 单引号字符串，再从签名那行开始配对，depth 归零的那行就是方法结束。
+String? _methodBody(String src, String signature) {
+  final lines = src.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    final raw = lines[i];
+    if (!raw.trimLeft().startsWith(signature)) continue;
+    if (raw.length - raw.trimLeft().length != 2) continue;
+    var depth = 0;
+    final out = <String>[];
+    for (var j = i; j < lines.length; j++) {
+      out.add(lines[j]);
+      final code = lines[j].replaceAll(RegExp(r"'[^']*'"), "''");
+      for (final ch in code.split('')) {
+        if (ch == '{') depth++;
+        if (ch == '}') depth--;
+      }
+      if (depth <= 0) break;
+    }
+    return out.join('\n');
+  }
+  return null;
+}
+
+/// 取出 `unlockAchievement('<id>')` 所在方法的函数体。
+///
+/// 用缩进判断函数边界：类方法都是 2 空格起，遇到缩进 ≤ 2 的 `}` 就是结束。
+/// 只看顶层 `}`（曾经这么写过）会把下一个方法也算进来。
+String? _checkBodyFor(String achievementId) {
+  for (final path in _allLibFiles()) {
+    // 必须剥掉注释：我们习惯在注释里写「旧实现查的是 learnedSpells…」，
+    // 不剥的话「优等生不再查咒语等级」这类断言会被自己的注释打脸。
+    final lines = _codeOnly(path).split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      if (!lines[i].contains("unlockAchievement('$achievementId')")) continue;
+      if (path.endsWith('game_systems.dart')) continue; // 成就表自身
+      var start = i;
+      while (start > 0) {
+        final raw = lines[start];
+        final t = raw.trimLeft();
+        final indent = raw.length - t.length;
+        if (indent <= 2 &&
+            (t.startsWith('void ') ||
+                t.startsWith('String ') ||
+                t.startsWith('bool ') ||
+                t.startsWith('int ') ||
+                t.startsWith('double '))) {
+          break;
+        }
+        start--;
+      }
+      final end = <String>[];
+      for (var j = start; j < lines.length; j++) {
+        final raw = lines[j];
+        final t = raw.trimLeft();
+        if (j > start && t.startsWith('}') && (raw.length - t.length) <= 2) break;
+        end.add(lines[j]);
+      }
+      return end.join('\n');
+    }
+  }
+  return null;
+}
