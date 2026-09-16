@@ -366,7 +366,7 @@ const List<CanonEvent> canonEvents = [
     worldEventImportance: 9,
     // 「那本日记本是什么」开于一月，与密室之谜同源——蛇怪与日记本在
     // 同一个夜晚一起水落石出，两条悬念应当同节点收束。
-    closeLoops: ['loop_cos_chamber', 'loop_cos_diary'],
+    closeLoops: ['loop_cos_chamber', 'loop_cos_diary', 'loop_cos_heir'],
   ),
 
   // ================================================================
@@ -384,6 +384,11 @@ const List<CanonEvent> canonEvents = [
         '据说他是神秘人的追随者，当年被判终身监禁。'
         '麻瓜的晚间新闻也在播报「有逃犯在逃，请居民锁好门窗」。'
         '你可以在开学前就从家里听到这消息，也可以到校后再听同学们议论。',
+    // 【为什么这条值得进 T1】越狱本身是 worldEvent（已了结的事实），
+    // 但"他为什么要冒死越狱"是个贯穿全学年的问题：摄魂怪守在校园边上、
+    // 霍格莫德去不了、同学间互相猜疑，全都是这条悬念的下游。不写进 T1，
+    // 玩家在三月禁林那一夜拿到的线索就没有可以挂靠的"待解问题"。
+    openLoop: 'loop_poa_sirius|那个从阿兹卡班逃出来的人，为什么宁可冒死也要往霍格沃茨来，他在找的东西在城堡里吗',
   ),
   CanonEvent(
     id: 'canon_poa_dementors',
@@ -538,6 +543,9 @@ const List<CanonEvent> canonEvents = [
         '在有求必应屋一类的地方偷偷练实用的防御咒。'
         '组织者要求参与者签署保密协议，一旦被发现，后果可能很严重。'
         '你可以选择加入、自己找人练，或者干脆不掺和。',
+    // 邓布利多这一年几乎不跟任何人解释自己在做什么，「他在防什么」
+    // 是贯穿全书的悬念，也是玩家判断该站哪一边的依据。
+    openLoop: 'loop_ootp_why|邓布利多为什么整年避开所有人，他反复叮嘱要小心的那件事到底是什么',
   ),
   CanonEvent(
     id: 'canon_ootp_ministry_battle',
@@ -554,7 +562,8 @@ const List<CanonEvent> canonEvents = [
         '也可以和同学们讨论这一切意味着什么。',
     worldEvent: '魔法部战斗后公开承认伏地魔已回归，阿兹卡班发生大规模越狱。',
     worldEventImportance: 9,
-    closeLoops: ['loop_ootp_ministry'],
+    // 「他到底在防什么」与预言球的秘密同在神秘事务司揭晓。
+    closeLoops: ['loop_ootp_ministry', 'loop_ootp_why'],
   ),
 
   // ================================================================
@@ -600,6 +609,9 @@ const List<CanonEvent> canonEvents = [
         '书上署名「混血王子」，其中的窍门让持有者成绩突飞猛进。'
         '有人怀疑这是作弊，也有人认为这只是前人留下的笔记。'
         '你可以去打听这本书的来历，也可以专注自己的实验。',
+    // 「混血王子」是整本书的书名，也是这一年最大的悬念：一个写满边注的
+    // 署名人到底是谁。玩家在十一月拿到它，六月才知道答案有多难接受。
+    openLoop: 'loop_hbp_book|那本旧课本上署名的「混血王子」，到底是谁，他为什么懂得这么多',
   ),
   CanonEvent(
     id: 'canon_hbp_astronomy_tower',
@@ -683,6 +695,8 @@ const List<CanonEvent> canonEvents = [
         '但无论如何，这一夜都会成为你霍格沃茨生涯的终点。',
     worldEvent: '霍格沃茨爆发全面战斗，师生与来援者共同抵抗伏地魔军队。',
     worldEventImportance: 9,
+    // 名单为什么那样定、那间屋子里准备了什么——两件事都在这一夜有了答案。
+    closeLoops: ['loop_dh_list', 'loop_dh_room'],
   ),
 
   // ================================================================
@@ -921,6 +935,9 @@ const List<CanonEvent> canonEvents = [
         '并很快变成了针对某一整个学院的猜忌。有人开始绕着特定的人走，'
         '也有人在饭桌上公开指控。谣言在这所学校传播的速度，'
         '比任何咒语都快。你至少得决定：传、听，还是拦一句。',
+    // 石化事件与「继承人」的猜忌同源：玩家整个冬天都在猜是谁，
+    // 而每次猜错都会让下一间教室里的气氛更糟。
+    openLoop: 'loop_cos_heir|「斯莱特林的继承人」究竟是谁，为什么被石化的都是麻瓜出身的学生',
   ),
   CanonEvent(
     id: 'canon_cos_polyjuice',
@@ -1100,6 +1117,9 @@ const List<CanonEvent> canonEvents = [
         '没人肯把实物拿出来，但「谁为什么会在那个时间出现在那条走廊」'
         '这类问题开始有了新的答案。这一年，知道怎么走小路'
         '比知道怎么念咒语更有用。',
+    // 「活点地图是谁做的」是原著里小天狼星、卢平、彼得三人关系的第一块
+    // 拼图。玩家二月捡到它，六月才知道那四个署名意味着什么。
+    openLoop: 'loop_poa_map|那张能显示城堡里所有人的地图，是谁画的，四个署名又分别是谁',
   ),
   CanonEvent(
     id: 'canon_poa_exam_month',
@@ -1129,7 +1149,8 @@ const List<CanonEvent> canonEvents = [
         '「一切已按规程处理」。真相只在少数人的记忆里，'
         '而你听到的版本，取决于你那天站在哪条走廊上。',
     worldEvent: '布莱克一案真相被推翻，但嫌犯脱逃，魔法部公信力受质疑。',
-    closeLoops: ['loop_poa_black'],
+    // 布莱克一案与活点地图的四个署名人，都在这一夜一起水落石出。
+    closeLoops: ['loop_poa_black', 'loop_poa_sirius', 'loop_poa_map'],
   ),
 
   // ----------------------------------------------------------------
@@ -1507,6 +1528,8 @@ const List<CanonEvent> canonEvents = [
         '以这所学校的学生的身份站在这里。',
     worldEvent: '霍格沃茨为邓布利多举行葬礼，学年提前结束。',
     worldEventImportance: 9,
+    // 天文塔那一夜之后，「混血王子」的答案变得一点也不轻松。
+    closeLoops: ['loop_hbp_book'],
   ),
 
   // ----------------------------------------------------------------
@@ -1580,6 +1603,9 @@ const List<CanonEvent> canonEvents = [
         '被点到的人陆续消失了——有的说是转学，'
         '有的没有任何解释。所有人都学会了不去谈论'
         '那些空出来的座位。',
+    // 名单是这一年最冷的一件东西：它不解释标准，也不告诉你下一个是谁。
+    // 玩家能做的只有记住上面出现过谁——这条悬念一直挂到五月破晓。
+    openLoop: 'loop_dh_list|门厅里那份「需要接受核查」的名单是谁定的标准，下一个会是谁',
   ),
   CanonEvent(
     id: 'canon_dh_room_of_requirement',
@@ -1593,6 +1619,9 @@ const List<CanonEvent> canonEvents = [
         '里面住着几个不能回宿舍的学生，有人负责送饭，'
         '有人负责传消息。进门的方式只在几个人之间口头传递，'
         '连门牌都不存在——这是这一年唯一还算安全的房间。',
+    // 有求必应屋在这一年从「藏东西的地方」变成「准备反击的地方」。
+    // 玩家进去过、送过饭、传过消息，但直到五月才知道里面真正在准备什么。
+    openLoop: 'loop_dh_room|那间没有门牌的屋子里，除了躲着的人，还在准备什么',
   ),
   CanonEvent(
     id: 'canon_dh_holidays_alone',

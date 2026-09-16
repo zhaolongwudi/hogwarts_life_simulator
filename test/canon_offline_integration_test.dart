@@ -253,6 +253,41 @@ void main() {
       }
     });
 
+    test('数据层：每一部书都要有悬念，不能有整部空白的书', () {
+      // 【为什么钉住"按书分布"而不是只看总数】总量达标很容易掩盖结构性
+      // 空白：《死亡圣器》15 个节点一度一条悬念都没有，而它恰恰是七部里
+      // 局势最紧、最需要"悬而未决"感的一部。只看总数的话，前六部铺得够
+      // 多就能把这一部的空白压下去。
+      const bookRefs = [
+        '魔法石',
+        '密室',
+        '阿兹卡班的囚徒',
+        '火焰杯',
+        '凤凰社',
+        '混血王子',
+        '死亡圣器',
+      ];
+      final perBook = <String, int>{};
+      for (final e in canonEvents) {
+        if (e.openLoop == null) continue;
+        perBook[e.bookRef] = (perBook[e.bookRef] ?? 0) + 1;
+      }
+
+      for (final book in bookRefs) {
+        expect(
+          perBook[book] ?? 0,
+          greaterThanOrEqualTo(2),
+          reason: '《$book》只有 ${perBook[book] ?? 0} 条悬念——'
+              '整部书推进过程中没有可牵挂的问题，玩家只是在读流水账',
+        );
+      }
+
+      // 总量护栏：七部曲合计至少 18 条，防止有人一次删掉一批。
+      final total = perBook.values.fold<int>(0, (a, b) => a + b);
+      expect(total, greaterThanOrEqualTo(18),
+          reason: '悬念总量掉到 $total 条，长期记忆 T1 层基本空转（按书 $perBook）');
+    });
+
     test('剧情模式走一步：原著节点真的落进 worldEvents', () async {
       final gp = await makeGame(offlineQuickMode: true);
       gp.openingScene = 'letter';
