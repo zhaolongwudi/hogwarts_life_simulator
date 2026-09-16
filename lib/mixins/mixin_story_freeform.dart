@@ -283,24 +283,65 @@ String cleanStoryFreeformText(String raw) {
   }
 
   final lines = <String>[];
-  for (var line in s.split('\n')) {
-    line = line.trim();
+  for (var raw in s.split('\n')) {
+    var line = raw.trim();
     if (line.isEmpty) continue;
-    // 剥掉 Markdown 标题前缀。
-    line = line.replaceFirst(_reHeading, '');
+    // 【先判标题】必须在剥前缀之前判：`## 你的动作` 剥完只剩「你的动作」，
+    // 与一句真实的短句在字面上完全一样，之后再想区分就不可能了。
+    //
+    // 判定口径：Markdown 标题在这份输出里**永远是标签**，不是正文——
+    // 系统提示词明确要求「只输出正文段落，不要标题」。所以：
+    //   · `## 你的动作`           → 标签，丢弃；
+    //   · `## 你的动作\n- 正文`   → 标签，丢弃；
+    //   · `## 你的动作。`          → 带句读，当正文留着（模型偶尔这么写）。
+    final isHeading = _reHeading.hasMatch(line);
+    if (isHeading) {
+      line = line.replaceFirst(_reHeading, '').trim();
+      if (line.isEmpty) continue;
+      if (!_reSentenceEnd.hasMatch(line)) continue;
+    }
     // 剥掉无序列表前缀（AI 很爱用它分点，但正文是散文）。
-    line = line.replaceFirst(_reBullet, '');
+    line = line.replaceFirst(_reBullet, '').trim();
     // 剥掉有序列表前缀。
-    line = line.replaceFirst(_reOrdered, '');
+    line = line.replaceFirst(_reOrdered, '').trim();
     if (line.isEmpty) continue;
     // 剥掉常见的"元信息开场白"。
-    if (_metaOpeners.any((p) => line.startsWith(p))) continue;
+    line = _stripMetaOpener(line);
+    if (line.isEmpty) continue;
     lines.add(line);
   }
   return lines.join('');
 }
 
-/// 会被整体丢弃的"元信息开场白"。
+/// 判断一行是否以句读收尾（说明它是正文而不是标题标签）。
+final RegExp _reSentenceEnd = RegExp(r'[。！？…”』」)]$');
+
+/// 去掉行首的"元信息开场白"。
+///
+/// 【为什么是"前缀剥离"而不是"整行丢弃"】这些词是模型在正文前加的客套，
+/// 但模型**经常把客套和正文写在同一行**：
+///
+///     好的，你把它翻了过来。
+///     → 以前整行丢弃 → 玩家提交了一句插话，屏幕上什么都没有。
+///
+/// 所以改成只切掉客套前缀、保留后面的正文。切完为空（整行只有客套、
+/// 例如单独一行的「续写：」）才由调用方丢弃。
+///
+/// 【为什么必须用 first-match 而不是循环剥离】「好的，好的，」这种叠词
+/// 是模型罕见但确实会出的输出；反复剥会一路吃掉正文。剥一次就够。
+String _stripMetaOpener(String line) {
+  for (final p in _metaOpeners) {
+    if (line.startsWith(p)) {
+      final rest = line.substring(p.length).trim();
+      // 只剥问候式客套；「续写：」这类标签后面若直接是正文也要留住，
+      // 所以两者一视同仁——反正中间的分隔符（，/：）已经连同前缀一起切掉了。
+      return rest;
+    }
+  }
+  return line;
+}
+
+/// 会被剥掉的"元信息开场白"前缀。
 const List<String> _metaOpeners = [
   '以下是我的续写',
   '以下是续写',
@@ -308,6 +349,7 @@ const List<String> _metaOpeners = [
   '续写:',
   '好的，',
   '好的,',
+  '好的。',
 ];
 
 // 【为什么提到文件级】本文件有源码形状守卫
@@ -316,7 +358,6 @@ const List<String> _metaOpeners = [
 final RegExp _reHeading = RegExp(r'^#{1,6}\s*');
 final RegExp _reBullet = RegExp(r'^[-*+]\s+');
 final RegExp _reOrdered = RegExp(r'^\d+[.)]\s+');
-final RegExp _reFence = RegExp(r'^```');
 
 /// 该玩家当前是否处于"剧情 + AI 自由插话"可用状态。
 ///
