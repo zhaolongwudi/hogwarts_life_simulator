@@ -24,6 +24,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_story_freeform.dart';
 import 'package:hogwarts_life_simulator/models/story_progress.dart';
+import 'package:hogwarts_life_simulator/providers/game_provider.dart';
+
+import 'helpers/test_fixtures.dart';
 
 /// 一份指向固定步的进度的构造器。
 StoryProgress progressAt({
@@ -145,6 +148,30 @@ void main() {
       expect(r, contains('霍格沃茨特快在九又四分之三站台'));
     });
 
+    test('纯英文 id 形态的 knowledge 一律丢弃', () {
+      // 【为什么这条最要紧】实测 `addKnowledge` 的 403 个词条**含中文的有 0 个**
+      // （全是 `cos_archive_details` / `hbp_expelliarmus` 这类蛇形 id）。
+      // 把它们喂给模型不只是噪声——id 的名字本身就在剧透：
+      // `knows_hogwarts_acceptance` 直接告诉模型"玩家已被录取"。
+      final r = pickStoryHistoryHighlights(
+        step: null,
+        progress: progressAt(knowledge: const [
+          'knows_hogwarts_acceptance',
+          'cos_archive_details',
+          'hbp_expelliarmus',
+        ]),
+      );
+      expect(r, isEmpty, reason: '英文 id 不得进入 prompt');
+    });
+
+    test('真正的中文情报能进历史', () {
+      final r = pickStoryHistoryHighlights(
+        step: null,
+        progress: progressAt(knowledge: const ['你在站台上第一次听见了那个名字']),
+      );
+      expect(r, contains('你在站台上第一次听见了那个名字'));
+    });
+
     test('纯 ASCII 的 flag id 一律丢弃', () {
       // 【为什么钉这条】flag id 形如 `ps_built_snowman`，本身就是剧透
       // （"建过雪人"这件事在哪个时间点被玩家知道，是有节奏的），
@@ -160,10 +187,10 @@ void main() {
       expect(r, isEmpty);
     });
 
-    test('结果里不含任何 flag id 字样（用真实进度）', () {
-      // 【为什么用真实进度】手造的 flag 列表只能证明"这条规则写了"，
+    test('结果里不含任何内部 id 字样（用真实进度）', () {
+      // 【为什么用真实进度】手造的 id 列表只能证明"这条规则写了"，
       // 证明不了"真实数据里不会漏"。这里直接取表里的真实步，
-      // 填上真实的 flag 与真实的选择，再断言输出里没有任何 `xx_yy` 形态。
+      // 填上真实的 flag / 情报 / 选择，再断言输出里没有任何 `xx_yy` 形态。
       final book = findStoryBook('ps')!;
       final ch = book.chapters.first;
       final step = ch.steps.first;
@@ -179,7 +206,11 @@ void main() {
               .map((s) => s.id)
               .take(5)
               .toList(),
-          knowledge: const ['你在站台上第一次听见了那个名字'],
+          knowledge: const [
+            'knows_hogwarts_acceptance',
+            'knows_school_basics',
+            '你在站台上第一次听见了那个名字',
+          ],
           chosen: {step.id: cid},
         ),
       );
@@ -191,6 +222,8 @@ void main() {
         isFalse,
         reason: '输出里不得出现 `ps_xxx` 这类内部 id：\n$joined',
       );
+      // 顺带确认"该留的留着"，避免把过滤写成"全丢"
+      expect(joined, contains('你在站台上第一次听见了那个名字'));
     });
 
     test('Pass A：只有带门槛的选项才算"你的积累"', () {
@@ -334,6 +367,171 @@ void main() {
         ),
       );
       expect(r, equals(['真正的一条情报']));
+    });
+
+    test('全库知识/flag id 扫一遍：一个都不该漏进来', () {
+      // 【为什么做全库扫描而不是抽样】上面几条都是"我挑几个 id 试试"，
+      // 只能证明规则写了。这里把 const 表里**真实存在的全部** flag 与
+      // knowledge id 一次性灌进去，断言输出为空——覆盖的是数据，
+      // 不是我以为的数据。将来谁往表里加了含中文的 id，
+      // 这条会亮，而不是静默混进 prompt。
+      final ids = <String>{};
+      for (final b in kStoryBooks.values) {
+        for (final c in b.chapters) {
+          for (final s in c.steps) {
+            for (final ch in s.choices) {
+              if (ch.requireFlag != null) ids.add(ch.requireFlag!);
+              ids.addAll(ch.requireAllFlags);
+              ids.addAll(ch.requireAnyFlags);
+              ids.addAll(ch.requireKnowledge);
+              if (ch.hideIfFlag != null) ids.add(ch.hideIfFlag!);
+              ids.addAll(ch.effect.setFlags);
+              ids.addAll(ch.effect.addKnowledge);
+            }
+          }
+        }
+      }
+      expect(ids.length, greaterThan(500), reason: '前置条件：真的捞到了全量 id');
+
+      final r = pickStoryHistoryHighlights(
+        step: null,
+        progress: progressAt(
+          flags: ids.toList(),
+          knowledge: ids.toList(),
+        ),
+      );
+      expect(
+        r,
+        isEmpty,
+        reason: '全库 ${ids.length} 个内部 id 里不该有任何一个进 prompt，'
+            '实际漏进来的是：$r',
+      );
+    });
+  });
+
+  // ==============================================================
+  // D · prompt 集成
+  // ==============================================================
+  group('D · prompt 集成：默认参数下输出逐字节不变', () {
+    String build({List<String> history = const []}) => buildStoryFreeformPrompt(
+      bookTitle: '魔法石',
+      chapterTitle: '第一章',
+      stepSetup: '你坐在窗边，手里捏着那封信。',
+      ambient: const ['雨点敲着屋顶'],
+      playerInput: '我把信翻过来看了看火漆。',
+      historyHighlights: history,
+    );
+
+    test('有历史时 prompt 含历史段落', () {
+      final p = build(history: const ['你抄满了整整两页纸。']);
+      expect(p, contains('【玩家此前已经历过的事'));
+      expect(p, contains('- 你抄满了整整两页纸。'));
+    });
+
+    test('有历史时仍保留原有的场景/氛围/玩家输入三段', () {
+      final p = build(history: const ['你抄满了整整两页纸。']);
+      expect(p, contains('【此刻的场景】'));
+      expect(p, contains('【环境氛围'));
+      expect(p, contains('【玩家刚才做的事 / 说的话】'));
+      expect(p, contains('我把信翻过来看了看火漆。'));
+    });
+
+    test('历史段落排在场景之后、氛围之前', () {
+      // 顺序有实际意义：场景是"现在在哪"，历史是"怎么走到这里的"，
+      // 氛围是"当下有什么"。把历史插在氛围之后，模型容易把它当成
+      // 环境描写的一部分。
+      final p = build(history: const ['一段往事。']);
+      expect(
+        p.indexOf('【此刻的场景】'),
+        lessThan(p.indexOf('【玩家此前已经历过的事')),
+      );
+      expect(
+        p.indexOf('【玩家此前已经历过的事'),
+        lessThan(p.indexOf('【环境氛围')),
+      );
+    });
+
+    test('history 为空（默认参数）→ 不出现历史段落', () {
+      final p = build();
+      expect(p, isNot(contains('此前已经历过的事')));
+    });
+
+    test('history 全是空白项 → 同样不出现历史段落', () {
+      // 否则会留下一个空标题 + 零条列表，纯浪费 token 还让模型费解。
+      final p = build(history: const ['', '   ']);
+      expect(p, isNot(contains('此前已经历过的事')));
+    });
+
+    test('系统提示词含第 6 条红线：历史只加质感，不预告后续', () {
+      // 【为什么必须有这条】给了模型历史背景，它未被约束时的本能是
+      // 把背景"用起来"——写成"你后来才明白，那封信意味着……"。
+      // 那就等于用注入的历史绕过本地剧情表，把后续剧透了。
+      expect(kStoryFreeformSystemPrompt, contains('6.'));
+      expect(kStoryFreeformSystemPrompt, contains('不预告后续'));
+      expect(kStoryFreeformSystemPrompt, contains('不要复述'));
+    });
+
+    test('原有 5 条红线一条不少', () {
+      for (final n in ['1.', '2.', '3.', '4.', '5.']) {
+        expect(
+          kStoryFreeformSystemPrompt.contains('\n$n'),
+          isTrue,
+          reason: '第 $n 条红线丢了',
+        );
+      }
+    });
+  });
+
+  // ==============================================================
+  // E · 离线红线：历史摘要不得改变"0 调用"保证
+  // ==============================================================
+  group('E · 离线红线', () {
+    test('未开插话时预取是 no-op，全程 0 AI 调用', () async {
+      // 【为什么这条最要紧】"大量离线推进 + 少量 AI 剧情"是产品的核心承诺。
+      // 这次的改动往 prompt 里塞了新内容，一旦接线位置放错（例如把取历史
+      // 摘要挪到守卫之前），纯离线玩家就会开始产生额外开销。
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+
+      // 走几步，让进度里真的累积出可注入的历史（否则测不出东西）。
+      for (var i = 0; i < 4; i++) {
+        final cs = gp.choices;
+        if (cs.isEmpty) break;
+        await gp.processChoice(cs.first);
+      }
+
+      expect(gp.storyProgress.chosen, isNotEmpty, reason: '前置条件：已有历史可选');
+      expect(gp.apiCalls, 0);
+
+      final before = gp.apiCalls;
+      final step = gp.currentStoryStep;
+      if (step != null) {
+        await gp.prefetchStoryFreeformNarration(
+          stepId: step.id,
+          setup: step.setup,
+          ambient: step.ambient,
+          playerInput: '我抬头看了看天花板。',
+        );
+      }
+      expect(gp.apiCalls, before, reason: '未开插话的局不得产生任何 AI 调用');
+    });
+
+    test('开了插话但无叙事服务 → 仍是 0 调用', () async {
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+      gp.setStoryFreeformEnabled(true);
+
+      final step = gp.currentStoryStep!;
+      await gp.prefetchStoryFreeformNarration(
+        stepId: step.id,
+        setup: step.setup,
+        ambient: step.ambient,
+        playerInput: '我抬头看了看天花板。',
+      );
+      expect(gp.apiCalls, 0, reason: '没配 Key 就不该发请求');
+      expect(gp.error, isNull);
     });
   });
 }

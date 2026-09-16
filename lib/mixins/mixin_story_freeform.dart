@@ -91,6 +91,13 @@ mixin GameStoryFreeformMixin on GameProviderBase {
     storyFreeformLoading = true;
     notifyListeners();
     try {
+      // 取历史摘要放在**全部短路守卫之后**：顺序即契约。放前面虽然
+      // apiCalls 仍是 0，但白算一遍，而且以后有人调整守卫顺序时
+      // 会以为"反正不算请求"而把守卫挪到取数后面，红线就松了。
+      final history = pickStoryHistoryHighlights(
+        step: currentStoryStep,
+        progress: storyProgress,
+      );
       final result = await r.chatComplete(
         scene: AiScene.narrative,
         prompt: buildStoryFreeformPrompt(
@@ -101,6 +108,7 @@ mixin GameStoryFreeformMixin on GameProviderBase {
           playerInput: input.length > _maxInputChars
               ? input.substring(0, _maxInputChars)
               : input,
+          historyHighlights: history,
         ),
         systemPrompt: kStoryFreeformSystemPrompt,
         temperature: 0.9,
@@ -217,6 +225,10 @@ const String kStoryFreeformSystemPrompt =
     '4. 不替玩家做决定。点到为止，把选择权留给玩家，'
     '结尾不要出现"你要不要……？"之外的推进性问题。\n'
     '5. 不抄录原著原文句子，只写氛围与细节。\n'
+    '6. 历史只加质感，不预告后续。如果给了你"玩家此前已经历过的事"，'
+    '那只是为了让这一小段细节衔接得自然，**不要复述它们**，'
+    '更不要提及、暗示或提前揭晓任何尚未发生的情节，'
+    '不要写"你后来才明白……"这类回溯句。\n'
     '\n'
     '【篇幅】2~4 句，60~140 字。第二人称"你"。'
     '风格克制、具体、有生活质感，避免华丽辞藻与感叹号堆砌。\n'
@@ -233,6 +245,9 @@ String buildStoryFreeformPrompt({
   required String stepSetup,
   required List<String> ambient,
   required String playerInput,
+  /// 玩家此前经历过的摘要（见 [pickStoryHistoryHighlights]）。
+  /// 默认空 = 不加这一段，保证未接入时的输出逐字节不变。
+  List<String> historyHighlights = const [],
 }) {
   final buf = StringBuffer();
   buf.writeln('【当前剧情位置】'
@@ -242,6 +257,20 @@ String buildStoryFreeformPrompt({
     buf.writeln();
     buf.writeln('【此刻的场景】');
     buf.writeln(stepSetup.trim());
+  }
+  final history = [
+    for (final h in historyHighlights)
+      if (h.trim().isNotEmpty) h.trim(),
+  ];
+  if (history.isNotEmpty) {
+    buf.writeln();
+    // 【为什么标题里就写"不要复述"】这段如果不给明确用途，模型的默认行为
+    // 是把给它的背景"用起来"——即写进正文，于是玩家会读到一段他早已知晓的
+    // 流水账。标题即指令，先把用途框死，系统提示词第 6 条再兜一道。
+    buf.writeln('【玩家此前已经历过的事（供你保持连贯，不要复述它们）】');
+    for (final h in history) {
+      buf.writeln('- $h');
+    }
   }
   if (ambient.isNotEmpty) {
     buf.writeln();
@@ -406,13 +435,18 @@ const int kStoryHistoryItemMaxChars = 100;
 ///     某个词突然自己「亮」了一下」这样可直接入 prompt 的句子。
 ///   · Pass A —— 当前步**带门槛**的选项，取其 `text`。含义是"你现在能做
 ///     这件事，是因为之前做过某件事"。实测 80% 的步零门槛，所以它只是补充。
-///   · Pass C —— `knowledge` 情报词条，本身即中文短语。
+///   · Pass C —— `knowledge` 情报词条（同样只留能解析出中文的）。
 ///   · Pass D —— `flags` 兜底，只取**能解析出中文**的，解析不出一律丢弃。
 ///
-/// 【为什么不需要 flag → 中文映射表】三条主力路径拿到的本来就已经是
-/// 自然语言（`consequence` / 选项 `text` / 情报词条），映射表是多余的一层
-/// 维护成本。且**永不输出 flag id**——`poa_evidence_handed` 这类 id
-/// 本身就是剧透，对模型也只是噪声。
+/// 【为什么不需要 flag → 中文映射表】真正的主力路径（`consequence`
+/// 与选项 `text`）拿到的本来就已经是自然语言，映射表是多余的一层维护成本。
+///
+/// 【红线：永不输出内部 id】实测 `knowledge` 的 403 个词条**含中文的有 0 个**
+/// （全是 `cos_archive_details` / `hbp_expelliarmus` 这类蛇形 id），
+/// `flags` 同理。把这些 id 喂给模型不只是噪声——id 的**名字本身就在剧透**
+/// （`knows_hogwarts_acceptance` 直接告诉模型"玩家已被录取"），
+/// 等于用旁路泄露了本地剧情表的节奏。所以 Pass C / Pass D 统一走
+/// [_chineseHint] 过滤，宁可少给，不可错给。
 ///
 /// 【为什么是纯函数】无 IO、不 `notifyListeners`，可被单测直接调用，
 /// 也让"注入了什么"这件事可断言。
@@ -438,6 +472,13 @@ List<String> pickStoryHistoryHighlights({
     return true;
   }
 
+  /// 只收能解析出中文的条目，其余静默跳过（不占预算，也不终止遍历）。
+  bool pushChineseOnly(String raw) {
+    final zh = _chineseHint(raw);
+    if (zh == null) return true;
+    return push(_clipHistoryItem(zh));
+  }
+
   // ---- Pass B（主力）：玩家做过的选择 → 反查它当时写出来的 consequence ----
   for (final s in _chosenConsequences(progress)) {
     if (!push(_clipHistoryItem(s))) break;
@@ -451,14 +492,12 @@ List<String> pickStoryHistoryHighlights({
 
   // ---- Pass C：情报词条 ----
   for (final k in progress.knowledge) {
-    if (!push(_clipHistoryItem(k))) break;
+    if (!pushChineseOnly(k)) break;
   }
 
   // ---- Pass D：flag 兜底，只留能解析出中文的 ----
   for (final f in progress.flags) {
-    final zh = _hintFromFlagId(f);
-    if (zh == null) continue;
-    if (!push(_clipHistoryItem(zh))) break;
+    if (!pushChineseOnly(f)) break;
   }
 
   return out;
@@ -529,14 +568,15 @@ String _clipHistoryItem(String s) {
   return '${t.substring(0, kStoryHistoryItemMaxChars)}…';
 }
 
-/// 从 flag id 里勉强解析出一句可读中文；解析不出返回 null。
+/// 从内部 id（flag / 情报词条）里勉强解析出一句可读中文；解析不出返回 null。
 ///
-/// 【为什么这么保守】flag id 形如 `ps_built_snowman`，是**英文蛇形标识符**，
-/// 没有任何可靠的中文还原方式。这里只做最低限度的兜底：纯 ASCII 的 id 一律
-/// 丢弃（丢给模型也只是噪声，还白占预算）；只有本身就含中文的 id 才留下。
-/// 主力素材始终是 Pass B 的 `consequence`。
-String? _hintFromFlagId(String flagId) {
-  final s = flagId.trim();
+/// 【为什么这么保守】`flags` 与 `knowledge` 都是**英文蛇形标识符**
+/// （`ps_built_snowman` / `cos_archive_details`），没有任何可靠的中文还原
+/// 方式——实测 403 个 knowledge 词条里含中文的有 0 个。这里只做最低限度的
+/// 兜底：纯 ASCII 的 id 一律丢弃（丢给模型也只是噪声，还白占预算），
+/// 只有本身就含中文的才留下。主力素材始终是 Pass B 的 `consequence`。
+String? _chineseHint(String rawId) {
+  final s = rawId.trim();
   if (s.isEmpty) return null;
   final hasCjk = s.runes.any((r) => r >= 0x4E00 && r <= 0x9FFF);
   if (!hasCjk) return null;
