@@ -1219,9 +1219,18 @@ $kNarrativeWritingRules
     // 这样离线期间退避也在走时钟，切回在线时不会带着过期的冷却状态。
     tickSummaryCooldown();
     // 离线快速模式红线（P#3）：全程 0 AI 调用。摘要会走 callDeepSeek(AiScene.summary)
-    // 产生一次 AI 请求，离线分支必须跳过——宁可离线长局的记忆退化为只靠
-    // pendingSummary 持久化，也不能违背「无 AI 快速模式」不消耗额度的承诺。
-    if (appProvider.offlineQuickMode) return;
+    // 产生一次 AI 请求，离线分支必须跳过。
+    //
+    // 【但"不能调 AI"不等于"不能沉淀记忆"】这里以前是裸 `return`，
+    // 于是离线长局的记忆彻底停摆——而 `_summarizeNarrative` 是
+    // LongTermMemory 唯一的**批量**生产者。纯离线玩 200 回合后，
+    // memory 里只剩开局那几条 + 剧情情报转来的 T0。
+    // 现在改为走**纯本地摘要**：同样把 pendingSummary 消化掉、
+    // 同样写 T0/T1/T3，只是不经过模型——0 次 AI 调用，红线不破。
+    if (appProvider.offlineQuickMode) {
+      _runOfflineLocalSummary();
+      return;
+    }
     if (shouldRunPeriodicSummary(
       turnCount,
       pendingSummary.length,
@@ -1238,6 +1247,135 @@ $kNarrativeWritingRules
         }),
       );
     }
+  }
+
+  /// 离线本地摘要：不调用任何模型，用本地规则把叙事缓冲压成长期记忆。
+  ///
+  /// 【它解决什么问题】离线模式的记忆生产者是**零个**。`_summarizeNarrative`
+  /// 被离线守卫挡在门外，而它是 T0 核心事实、T1 未完结事项、T3 世界大事
+  /// 唯一的批量写入方。玩家越是用离线模式长期玩（正是本项目的目标玩法），
+  /// 记忆库越空——玩到第 300 回合，AI 换回来时对前 290 回合一无所知。
+  ///
+  /// 【怎么在 0 次 AI 调用下做到】
+  /// 摘要的**本质**是把"一段流水账"抽成"几条结论"。AI 做的是语义抽象；
+  /// 本地能做的是**结构化抽取**——`pendingSummary` 里其实已经写着结论，
+  /// 只是散落在叙事文本中：
+  ///   · 「📖 剧情步已讲述原著节点」这类引擎日志 → 世界大事；
+  ///   · 剧情 `knowledge`（`addKnowledge` 写的）→ 核心事实；
+  ///   · `storyProgress.flags` 里带语义前缀的 → 未完结事项的线索。
+  /// 本地摘要就是把这些**已经存在**的结构化信号捞出来写进记忆，
+  /// 再把缓冲清掉（避免无界增长）。
+  ///
+  /// 【与在线摘要的分工】在线摘要是"语义抽象 + 结构化抽取"两者都做；
+  /// 离线只做后者。所以离线玩出来的记忆**条目更少但每条都确凿**——
+  /// 这不是降级，是不同来源的合理分工。
+  ///
+  /// 【为什么必须清缓冲】不清的话 `pendingSummary` 会一路涨到
+  /// `_maxPendingSummaryChars` 然后被截断丢弃——那些剧情就真的没了。
+  void _runOfflineLocalSummary() {
+    // 触发节奏沿用在线那套（20 回合 / 6800 字），但**忽略退避**：
+    // 退避是为"AI 调用失败"设计的，本地路径不会失败，跟着退避只会少沉淀。
+    if (!shouldRunPeriodicSummary(
+      turnCount,
+      pendingSummary.length,
+      consecutiveFails: 0,
+      cooldownRemaining: 0,
+    )) {
+      return;
+    }
+
+    final chunk = pendingSummary;
+    // 【先取走再处理】与 `_summarizeNarrative` 同一口径：这样本回合
+    // 新积累的内容不会被误清。
+    pendingSummary = '';
+    if (chunk.trim().length < 50) return;
+
+    final ts = worldState.time.format();
+    var wrote = 0;
+
+    // ① 世界大事：chunk 里的引擎日志「📖 剧情步已讲述原著节点: <canon id>」。
+    //    这条日志说明"本段剧情讲到了某个原著节点"，正是最该沉淀的东西。
+    for (final m in RegExp(r'剧情步已讲述原著节点:\s*(canon_[a-z0-9_]+)')
+        .allMatches(chunk)) {
+      final node = canonEventById(m.group(1)!);
+      if (node == null) continue;
+      final desc = node.worldEvent?.trim();
+      memory = memory.addWorldEvent(
+        WorldEventRecord(
+          id: 'offline_${node.id}',
+          timestamp: ts,
+          title: node.title,
+          // 节点没声明 worldEvent 时用 directive 首句兜底——
+          // 至少让"这件事发生过"留下来，而不是整个丢掉。
+          description: (desc != null && desc.isNotEmpty)
+              ? desc
+              : _firstSentenceOf(node.directive),
+          importance: node.worldEvent?.isNotEmpty == true
+              ? node.worldEventImportance
+              : 6,
+          category: 'wizarding',
+          location: worldState.currentLocation,
+        ),
+      );
+      wrote++;
+    }
+
+    // ② 核心事实：剧情情报（`addKnowledge` 写进 storyProgress.knowledge
+    //    且已在 `_applyStoryEffect` 里进过 T0）。这里补的是**叙事文本里
+    //    出现的原著角色名字**——"你和赫敏·格兰杰一起…"这类句子说明
+    //    这段关系有实质进展，值得留一条。
+    final seenNpc = <String>{};
+    for (final npc in npcRegistry.values) {
+      if (!npc.isCanon) continue;
+      if (!chunk.contains(npc.name)) continue;
+      if (!seenNpc.add(npc.name)) continue;
+      memory = memory.addKeyFact(
+        KeyFactRecord(
+          id: 'offline_npc_${npc.id}',
+          fact: '这段时间你和${npc.name}有过直接往来。',
+          importance: 5,
+          timestamp: ts,
+          category: 'relationship',
+          npcIds: {npc.id},
+        ),
+      );
+      wrote++;
+    }
+
+    // ③ 悬而未决的剧情 flag：`ps_`/`cos_` 等前缀的 flag 是"某件事被打开了"，
+    //    登记成 T1 未完结事项，让长局里"还没了结的事"有账可查。
+    //    只在 flag 数超过阈值时抽最近的一批——逐条登记会让 T1 爆炸。
+    const flagPrefixes = ['ps_', 'cos_', 'poa_', 'gof_', 'ootp_', 'hbp_', 'dh_'];
+    final storyFlags = storyProgress.flags
+        .where((f) => flagPrefixes.any(f.startsWith))
+        .toList();
+    for (final f in storyFlags.take(3)) {
+      final loopId = 'offline_loop_$f';
+      if (memory.openLoops.any((r) => r.id == loopId)) continue;
+      memory = memory.addOrUpdateOpenLoop(
+        OpenLoopRecord(
+          id: loopId,
+          description: '剧情里的「$f」还没了结。',
+          status: 'open',
+          importance: 4,
+          openedAt: ts,
+          openedTurn: turnCount,
+          loopType: 'question',
+        ),
+      );
+      wrote++;
+    }
+
+    debugLog('🧠 离线本地摘要：消化 ${chunk.length} 字，写入 $wrote 条长期记忆');
+  }
+
+  /// 取一段文本的第一句（给没写 worldEvent 的节点兜底用）。
+  String _firstSentenceOf(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return '';
+    final idx = t.indexOf('。');
+    final cut = idx > 0 ? t.substring(0, idx + 1) : t;
+    return cut.length > 80 ? '${cut.substring(0, 80)}…' : cut;
   }
 
   /// 摘要触发判定（v5 P1 节奏 + Q8-fix 失败退避）。

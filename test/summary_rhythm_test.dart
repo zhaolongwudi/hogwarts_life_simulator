@@ -1,5 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
+import 'package:hogwarts_life_simulator/models/game_systems.dart';
+
+import 'helpers/test_fixtures.dart';
 
 /// 摘要触发节奏与失败退避的守门测试。
 ///
@@ -17,6 +21,9 @@ import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
 ///    下一回合立刻重试 → 再失败。配额耗尽时等于每回合烧一次失败调用。
 ///    修复方式：连续失败后进入退避（冷却回合数随失败次数线性增长，有上限）。
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(registerAllStoryBooks);
+
   group('触发节奏：字数分支主导（"或"关系的真实效果）', () {
     test('字数超阈值时立即触发，即使回合数远未到 20', () {
       expect(
@@ -154,6 +161,93 @@ void main() {
       expect(GameNarrativeMixin.shouldRunPeriodicSummary(5, 7000), isTrue);
       // 且 8000 也没问题
       expect(GameNarrativeMixin.shouldRunPeriodicSummary(5, 8000), isTrue);
+    });
+  });
+
+  // ================================================================
+  // 离线本地摘要（0 AI 调用的记忆沉淀）
+  // ================================================================
+  //
+  // 【为什么必须有这一组】离线分支此前是一句裸 `return`：
+  // `_summarizeNarrative` 是 LongTermMemory 唯一的**批量**生产者，
+  // 被挡在门外之后，离线长局的记忆生产者变成零个。
+  // 玩家越是用离线模式长期玩（本项目的主推玩法），记忆库越空。
+  // 现在换成 `_runOfflineLocalSummary`：本地结构化抽取，0 次 AI 调用。
+  group('离线本地摘要：不调 AI 也要沉淀记忆', () {
+    test('离线跑完《魔法石》全书，长期记忆有实质增长且 AI 调用为 0', () async {
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+
+      final we0 = gp.memory.worldEvents.length;
+      final kf0 = gp.memory.keyFacts.length;
+
+      var guard = 0;
+      while (!gp.storyProgress.isFinished && guard < 200) {
+        guard++;
+        if (gp.choices.isEmpty) break;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+
+      expect(gp.apiCalls, 0, reason: '离线红线：本地摘要一次 AI 都不能调');
+      expect(
+        gp.memory.worldEvents.length,
+        greaterThan(we0),
+        reason: '跑完全书世界大事必须增长（此前恒为初始值）',
+      );
+      expect(
+        gp.memory.keyFacts.length,
+        greaterThan(kf0),
+        reason: '跑完全书核心事实必须增长',
+      );
+    });
+
+    test('缓冲会被消费掉（不清就会涨到上限被截断丢弃）', () async {
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+
+      for (var i = 0; i < 25 && gp.choices.isNotEmpty; i++) {
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+
+      // 25 回合跨过了 20 回合的触发点，缓冲应已被消化到远低于上限。
+      expect(
+        gp.pendingSummary.length,
+        lessThan(6800),
+        reason: '缓冲必须被本地摘要消费，否则会用涨满截断的方式丢剧情',
+      );
+    });
+
+    test('本地摘要写出的世界大事描述非空且重要度合法', () async {
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+
+      for (var i = 0; i < 45 && gp.choices.isNotEmpty; i++) {
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+
+      final offline = gp.memory.worldEvents
+          .where((w) => w.id.startsWith('offline_'))
+          .toList();
+      if (offline.isEmpty) return; // 该路径未被走到时跳过（不误报）
+
+      for (final w in offline) {
+        expect(w.title.trim(), isNotEmpty, reason: '世界大事标题不能为空');
+        expect(w.description.trim(), isNotEmpty, reason: '描述不能为空');
+        expect(
+          w.importance,
+          inInclusiveRange(1, 10),
+          reason: '「${w.id}」重要度越界',
+        );
+      }
     });
   });
 }
