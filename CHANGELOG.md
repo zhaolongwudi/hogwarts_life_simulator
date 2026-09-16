@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.5.4 — 2026-09-16
+
+**📋 变更说明**
+feat(story): 把玩家历史摘要接进 AI 自由插话 prompt
+
+buildStoryFreeformPrompt 增加可选参数 historyHighlights，在【此刻的场景】
+之后、【环境氛围】之前插入一段历史摘要。为空时整段不写——默认参数下
+输出与改动前逐字节相同，既有 29 个自由插话用例不受影响。
+
+kStoryFreeformSystemPrompt 增加第 6 条红线：历史只加质感，不预告后续。
+
 ### v4.5.3 — 2026-09-16
 
 **📋 变更说明**
