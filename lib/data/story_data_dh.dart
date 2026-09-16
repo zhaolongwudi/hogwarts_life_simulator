@@ -1560,6 +1560,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '只在两个人都认识第三个人的时候才开口。'
                 '一天之内，整座城堡都知道了。'
                 '巡查队到晚上才发现。',
+            requireAnyFlags: ['dh_knew_the_list', 'dh_copied_list', 'dh_recorded_names', 'dh_kept_a_list', 'dh_wrote_names'],
             effect: StoryEffect(
               setFlags: ['dh_spread_signal'],
               addKnowledge: ['dh_three_person_rule'],
@@ -1575,6 +1576,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '第四次，门出现了。'
                 '你一个人铺了三十张床，'
                 '铺到一半的时候，后面有人接过了你手里的毯子。',
+            requireAnyFlags: ['dh_joined_underground', 'dh_supplied_quietly', 'dh_learned_route', 'dh_slept_in_shelter'],
             effect: StoryEffect(
               addItems: ['保暖毛线帽'],
               setFlags: ['dh_prepared_room'],
@@ -1653,6 +1655,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '你把他背了最后一段。'
                 '你最后一个进通道，'
                 '回身把入口的画框扶正。',
+            requireAnyFlags: ['dh_sat_with_juniors', 'dh_helped_holiday_meal', 'dh_organized_help', 'dh_carried_medicine'],
             effect: StoryEffect(
               addItems: ['勇气勋章'],
               addKnowledge: ['dh_last_one_in'],
@@ -1720,6 +1723,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '你把纸折起来塞给那个下午就要走的同学。'
                 '他愣了一下，说了句"我等下看"。'
                 '这张纸后来被转手过几次，你也不知道到了谁手上。',
+            requireAnyFlags: ['dh_helped_at_gate', 'dh_gave_cloak', 'dh_supplied_quietly', 'dh_kept_record'],
             effect: StoryEffect(
               addKnowledge: ['dh_last_notes'],
               setFlags: ['dh_shared_notes'],
@@ -1832,6 +1836,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '有三个人没睡，你也劝不动，'
                 '就坐下来陪他们各待了一会儿。'
                 '天亮的时候，你反而是最清醒的那个。',
+            requireAnyFlags: ['dh_took_shift', 'dh_slept_in_shelter', 'dh_brought_supplies', 'dh_sat_with_juniors'],
             effect: StoryEffect(
               setFlags: ['dh_checked_others'],
               reputation: 2,
@@ -1848,6 +1853,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '缴械咒、铁甲咒、昏睡咒——'
                 '你只练这三样，'
                 '因为你清楚明天用得上的就是这三样。',
+            requireAnyFlags: ['dh_learned_lefthand', 'dh_endured_winter', 'dh_took_a_turn', 'dh_hid_the_mark'],
             effect: StoryEffect(
               addKnowledge: ['dh_three_spells'],
               setFlags: ['dh_practiced'],
@@ -1917,6 +1923,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '手上都是热的。'
                 '有一趟你拖的是教过你三年书的先生，'
                 '他比你想的轻得多。',
+            requireAnyFlags: ['dh_opened_door', 'dh_gave_cloak', 'dh_held_someone', 'dh_accepted_help', 'dh_carried_medicine'],
             effect: StoryEffect(
               addItems: ['白鲜香精'],
               addKnowledge: ['dh_carried_the_wounded'],
@@ -2133,6 +2140,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '三个名单：能走的、要扶的、和最后一份。'
                 '第三份最短，'
                 '但你写得最慢。',
+            requireAnyFlags: ['dh_counted_missing', 'dh_avoided_room', 'dh_kept_a_list', 'dh_warned_them'],
             effect: StoryEffect(
               addItems: ['羊皮纸一包'],
               addKnowledge: ['dh_three_lists'],
@@ -2148,6 +2156,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '你抬了六个小时的石头，肩膀磨破了皮。'
                 '清出来的第一条路，'
                 '是通往医疗翼的。',
+            requireAnyFlags: ['dh_carried_medicine', 'dh_accepted_help', 'dh_hid_the_mark', 'dh_comforted'],
             effect: StoryEffect(
               setFlags: ['dh_cleared_the_hall'],
               reputation: 2,
@@ -2209,6 +2218,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '总会有人说出一个和它有关的小事——'
                 '他偷过谁的南瓜汁，她把书签借给过谁。'
                 '念完天就亮了。',
+            requireAnyFlags: ['dh_hung_ribbon', 'dh_listened_hidden', 'dh_kept_listening', 'dh_wrote_names'],
             effect: StoryEffect(
               setFlags: ['dh_read_the_names'],
               reputation: 3,
@@ -2284,6 +2294,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '也说了"下次什么时候见"。'
                 '你们都知道这个"下次"可能会拖很久，'
                 '但还是把日期定下来了。',
+            requireAnyFlags: ['dh_guarded_entrance', 'dh_led_evacuation', 'dh_held_the_door', 'dh_sat_together_dawn'],
             effect: StoryEffect(
               setFlags: ['dh_said_goodbye'],
               reputation: 2,
@@ -2325,6 +2336,7 @@ const List<StoryChapterDef> _dhChapters = [
             consequence:
                 '你走得很慢。每一扇门、每一段台阶，你都看了一眼。走到尽头的时候你回头了。',
             nextStepId: '',
+            requireAnyFlags: ['dh_sent_off', 'dh_helped_evacuate', 'dh_checked_others', 'dh_guarded_entrance'],
             effect: StoryEffect(setFlags: ['dh_looked_back'], spirit: 3),
           ),
           StoryChoiceDef(
@@ -2375,6 +2387,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '你从讲台上拿走了那半根粉笔。'
                 '很小，放进口袋里几乎感觉不到。'
                 '后来很多年，你换过好几次住处，它都还在。',
+            requireAnyFlags: ['dh_kept_record', 'dh_kept_a_list', 'dh_recorded_names', 'dh_copied_list', 'dh_wrote_letter'],
             effect: StoryEffect(
               addKnowledge: ['dh_kept_a_token'],
               setFlags: ['dh_took_token'],
@@ -2425,6 +2438,7 @@ const List<StoryChapterDef> _dhChapters = [
                 '不是为了成绩，'
                 '是为了能在没有宵禁、没有点名的走廊上，'
                 '好好走一年。',
+            requireAnyFlags: ['dh_counted_survivors', 'dh_read_the_names', 'dh_cleared_the_hall', 'dh_helped_rebuild'],
             effect: StoryEffect(
               addItems: ['计划书'],
               addKnowledge: ['dh_eighth_year'],

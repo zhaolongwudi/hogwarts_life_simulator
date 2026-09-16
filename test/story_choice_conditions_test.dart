@@ -314,16 +314,29 @@ void main() {
         }
       }
 
-      // POA / GOF / HBP 的中段章必须出现在名单里
+      // 七部书的中段章都必须出现在名单里。
+      // 只钉 POA/GOF/HBP 会掩盖其余四部的空白——PS 与 CoS 的
+      // flag 消费率一度只有 4% / 5%，就是因为没人按书检查。
       for (final ch in [
+        'ps_ch8',
+        'ps_ch9',
+        'cos_ch9',
+        'cos_ch10',
+        'cos_ch11',
         'poa_ch6',
         'poa_ch7',
         'gof_ch2',
         'gof_ch3',
         'gof_ch4',
         'gof_ch5',
+        'ootp_ch5',
+        'ootp_ch6',
+        'ootp_ch7',
         'hbp_ch5',
         'hbp_ch6',
+        'dh_ch5',
+        'dh_ch6',
+        'dh_ch7',
       ]) {
         expect(
           perChapter.containsKey(ch),
@@ -335,9 +348,63 @@ void main() {
       }
 
       // 总量护栏
+      // 实装值 76（提升前是 53）。下限留出余量但不允许明显倒退。
       final total = perChapter.values.fold<int>(0, (a, b) => a + b);
-      expect(total, greaterThanOrEqualTo(30),
+      expect(total, greaterThanOrEqualTo(72),
           reason: '带条件的选项总数掉到 $total，长期养成回馈基本失效');
+    });
+
+    test('flag 消费率：七部书各自都要有足够的 flag 被读回', () {
+      // 【为什么按书分别断言】总量达标会掩盖单部书的空白。
+      // 接线前 PS 产出 116 个 flag 只读 5 个（4%），但当时
+      // "总量护栏"照样通过——因为它只数绝对条数，不看比例。
+      // 这里对每部书单独算消费率。
+      // 下限按实装值留一点余量。注意这个口径只数 flag（不含
+      // requireKnowledge 那类知识门槛），所以 POA 的实测值 23 与
+      // 上面的 25 会有小差。
+      const floors = {
+        'ps': 18,
+        'cos': 20,
+        'poa': 20,
+        'gof': 9,
+        'ootp': 28,
+        'hbp': 15,
+        'dh': 40,
+      };
+
+      final bookOf = (String stepId) => stepId.split('_').first;
+
+      final produced = <String, Set<String>>{};
+      final consumed = <String, Set<String>>{};
+      for (final book in kStoryBooks.values) {
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            final b = bookOf(s.id);
+            for (final c in s.choices) {
+              produced.putIfAbsent(b, () => <String>{}).addAll(c.effect.setFlags);
+              consumed.putIfAbsent(b, () => <String>{}).addAll({
+                if (c.requireFlag != null) c.requireFlag!,
+                ...c.requireAllFlags,
+                ...c.requireAnyFlags,
+                if (c.hideIfFlag != null) c.hideIfFlag!,
+              });
+            }
+          }
+        }
+      }
+
+      for (final entry in floors.entries) {
+        final p = produced[entry.key] ?? const <String>{};
+        final u = consumed[entry.key] ?? const <String>{};
+        final hit = p.intersection(u).length;
+        expect(
+          hit,
+          greaterThanOrEqualTo(entry.value),
+          reason: '《${entry.key}》产出 ${p.length} 个 flag，'
+              '只有 $hit 个被后续节点读回（下限 ${entry.value}）——'
+              '前面攒的东西后面没人问，长期养成的意义就没了',
+        );
+      }
     });
   });
 }

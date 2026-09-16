@@ -1763,6 +1763,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你们把复习和集会合并了：一半时间背咒语，'
                 '一半时间练实操。那六周里你既过了科目，'
                 '也第一次教了别人——教才是最好的学。',
+            requireAnyFlags: ['ootp_joined_da', 'ootp_da_active', 'ootp_helped_hide', 'ootp_knows_order'],
             effect: StoryEffect(
               setFlags: ['ootp_owls_focus', 'ootp_da_active'],
               addItems: ['标准咒语书', '提神剂'],
@@ -1793,6 +1794,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你印了二十份笔记，讲到嗓子哑。'
                 '考完有六个人来谢你，'
                 '其中三个说："要不是你那张表，我这科就挂了。"',
+            requireAnyFlags: ['ootp_took_notes', 'ootp_practiced_alone', 'ootp_archivist'],
             effect: StoryEffect(
               setFlags: ['ootp_owls_focus', 'ootp_protected_others'],
               addItems: ['羊皮纸一包', '新羽毛笔'],
@@ -1859,6 +1861,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你们每周三下午在空教室里读报纸，'
                 '读那些被印出来的部分。'
                 '至少，这件事是允许的。',
+            requireAnyFlags: ['ootp_made_codes', 'ootp_no_written_list', 'ootp_rule_lawyer', 'ootp_archivist'],
             effect: StoryEffect(
               setFlags: ['ootp_club_approved'],
               addItems: ['课外小组批准函'],
@@ -1931,6 +1934,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '每场开考前你都会对旁边的人说一句"你能行"。'
                 '考完最后一场，那个人跑来跟你说：'
                 '"你那句话我记了十一场。"',
+            requireAnyFlags: ['ootp_protected_others', 'ootp_helped_hide', 'ootp_confronted_informant'],
             effect: StoryEffect(
               setFlags: ['ootp_exams_done', 'ootp_protected_others'],
               reputation: 3,
@@ -1946,6 +1950,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你注意到那位外部考官在实操考试上'
                 '特别留意几个学生的表现，还做了记录。'
                 '你把这件事写进了本子——它后来被证明是有用的。',
+            requireAnyFlags: ['ootp_noticed_changes', 'ootp_archivist', 'ootp_tests_boundaries', 'ootp_scouted_patrol'],
             effect: StoryEffect(
               setFlags: ['ootp_exams_done', 'ootp_da_watch'],
               addKnowledge: ['ootp_examiner_notes'],
@@ -2042,6 +2047,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你们约了一套暗号：'
                 '图书馆第三排书架放一支红羽毛笔，代表有急事。'
                 '三天后那支笔出现了。',
+            requireAnyFlags: ['ootp_knows_order', 'ootp_made_contacts', 'ootp_joined_da', 'ootp_da_active'],
             effect: StoryEffect(
               setFlags: ['ootp_da_active', 'ootp_da_watch', 'ootp_kept_vigil'],
               reputation: 2,
@@ -2055,6 +2061,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你收拾了一个小包：魔杖、干粮、一小瓶白鲜、'
                 '还有去年那张写着"我在场"的纸。'
                 '你把它塞在床底下，谁也没告诉。',
+            requireAnyFlags: ['ootp_scouted_patrol', 'ootp_avoided_notices', 'ootp_complied', 'ootp_tests_boundaries'],
             effect: StoryEffect(
               addItems: ['白鲜香精'],
               setFlags: ['ootp_kept_vigil'],
@@ -2175,6 +2182,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你记了六个名字。'
                 '你不知道他们去了哪里，但你知道——'
                 '如果有人要问起，这份名单就是证据。',
+            requireAnyFlags: ['ootp_heard_speech', 'ootp_protected_teacher', 'ootp_owls_focus', 'ootp_noticed_changes'],
             effect: StoryEffect(
               addItems: ['羊皮纸一包'],
               addKnowledge: ['ootp_departed_list'],
@@ -2189,6 +2197,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你把十几个低年级生聚到休息室，'
                 '生着火，讲了一晚上的无聊故事。'
                 '他们睡了，你守到天亮。',
+            requireAnyFlags: ['ootp_taught_newcomer', 'ootp_reassured_newcomer', 'ootp_walked_back', 'ootp_told_truth'],
             effect: StoryEffect(
               setFlags: ['ootp_protected_others', 'ootp_kept_vigil'],
               reputation: 3,
@@ -2266,6 +2275,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你写了六封，都没寄。'
                 '信里只有一句相同的话：'
                 '"等你回来，我们有话要说。"',
+            requireAnyFlags: ['ootp_kept_vigil', 'ootp_stayed_over_break', 'ootp_rested_over_break', 'ootp_left_gifts'],
             effect: StoryEffect(
               addItems: ['手写贺卡'],
               addKnowledge: ['ootp_unsent_letters'],
@@ -2424,6 +2434,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你去了。那位教授看着你，说：'
                 '"我听说你们自己练了一年。"'
                 '你说是。他说："那这一年就没白过。"',
+            requireAnyFlags: ['ootp_protected_teacher', 'ootp_quidditch_protest', 'ootp_stayed_to_last', 'ootp_made_a_promise'],
             effect: StoryEffect(
               setFlags: ['ootp_da_active'],
               reputation: 2,
@@ -2439,6 +2450,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你把它烧了。火很旺，'
                 '二十七条规矩在十秒内变成了灰。'
                 '你看着灰烬想：记住它们的，不只是纸。',
+            requireAnyFlags: ['ootp_archivist', 'ootp_made_codes', 'ootp_scouted_patrol', 'ootp_avoided_notices'],
             effect: StoryEffect(
               addKnowledge: ['ootp_burned_decrees'],
               setFlags: ['ootp_heard_news'],
@@ -2590,6 +2602,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你说"来"。十几个人一起说了"来"。'
                 '你们没有立字据，也没有宣誓——'
                 '但所有人都记着这句话。',
+            requireAnyFlags: ['ootp_taught_newcomer', 'ootp_reassured_newcomer', 'ootp_stayed_to_last', 'ootp_made_a_promise'],
             effect: StoryEffect(
               setFlags: ['ootp_da_active', 'ootp_protected_others'],
               reputation: 3,
@@ -2605,6 +2618,7 @@ const List<StoryChapterDef> _ootpChapters = [
                 '你把进度表卷起来带走了。'
                 '它现在是最没用、也最舍不得扔的一张纸——'
                 '上面三十几个对勾，每一个都是一个人。',
+            requireAnyFlags: ['ootp_made_codes', 'ootp_no_written_list', 'ootp_archivist', 'ootp_kept_open'],
             effect: StoryEffect(
               addItems: ['计划书'],
               addKnowledge: ['ootp_roster_kept'],

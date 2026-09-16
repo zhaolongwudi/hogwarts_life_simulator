@@ -1931,6 +1931,7 @@ const List<StoryChapterDef> _psChapters = [
                 '只反复叮嘱「林子里现在不干净，谁叫你都别去」。'
                 '临走他往你兜里塞了两块岩皮饼。',
             nextStepId: 'ps_ch8_notice',
+            requireAnyFlags: ['ps_festive_helper', 'ps_helped_decorate', 'ps_study_group', 'ps_studied_together'],
             effect: StoryEffect(
               targetNpcId: 'hagrid',
               affection: 2,
@@ -1972,6 +1973,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '最下面写着「如有发现，请立即报告教工」。你把这句话记住了——它和平时那些「注意安全」的通知不太一样，这次是真的在提醒什么。',
             nextStepId: 'ps_ch8_link',
+            requireAnyFlags: ['ps_curious_mind', 'ps_library_regular', 'ps_copied_notes', 'ps_studied_ahead'],
             effect: StoryEffect(addKnowledge: ['knows_forest_warning'], setFlags: ['ps_read_notice'], spirit: 1),
           ),
           StoryChoiceDef(
@@ -2028,6 +2030,7 @@ const List<StoryChapterDef> _psChapters = [
                 '校长办公室的灯这几周就没在半夜前熄过。」'
                 '有同伴一起琢磨，那份不安就变成了能摊开的谜题。',
             nextStepId: 'ps_ch8_watch',
+            requireAnyFlags: ['ps_study_group', 'ps_studied_together', 'ps_library_regular', 'ps_curious_mind'],
             effect: StoryEffect(
               targetNpcId: 'ron',
               affection: 2,
@@ -2070,6 +2073,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '海格摆摆手说「不用，你回去」。但他顿了一下，又说「谢谢你想着」——这句话他说得比想象中轻。',
             nextStepId: 'ps_ch8_night',
+            requireAnyFlags: ['ps_asked_why_me', 'ps_offered_kindness', 'ps_study_group', 'ps_helped_classmate'],
             effect: StoryEffect(setFlags: ['ps_offered_hagrid_help'], spirit: 2, targetNpcId: 'hagrid', affection: 3),
           ),
           StoryChoiceDef(
@@ -2298,6 +2302,7 @@ const List<StoryChapterDef> _psChapters = [
                 '把它保住了——「最后一个关头是校长赶到的。」'
                 '你想起这一年里听到的所有传闻，忽然全都对上了。',
             nextStepId: 'ps_ch9_whispering',
+            requireAnyFlags: ['ps_helped_firstyear', 'ps_troll_stood_together', 'ps_helped_classmate', 'ps_curious_mind'],
             effect: StoryEffect(
               addKnowledge: ['knows_trapdoor_ending'],
               setFlags: ['ps_knows_truth'],
@@ -2339,6 +2344,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你记了满满一页：谁在哪天说过什么、哪扇门平时锁着现在开着。写完之后你发现，这些碎片拼不出完整的图——但至少你不再是什么都不知道的人。',
             nextStepId: 'ps_ch9_feast',
+            requireAnyFlags: ['ps_detective_mind', 'ps_shared_doubt', 'ps_kept_forest_watch', 'ps_understood_price'],
             effect: StoryEffect(addKnowledge: ['knows_term_secrets'], setFlags: ['ps_collected_clues'], spirit: 2),
           ),
           StoryChoiceDef(
@@ -2377,6 +2383,7 @@ const List<StoryChapterDef> _psChapters = [
                 '这个杯子敬他们，也敬你自己。你的学院那一桌响起了'
                 '零零散散又汇成一片的掌声。',
             nextStepId: 'ps_ch9_table',
+            requireAnyFlags: ['ps_cheered_quidditch', 'ps_studied_quidditch', 'ps_study_group', 'ps_studied_together'],
             effect: StoryEffect(
               targetNpcId: 'hermione',
               affection: 2,
@@ -2421,6 +2428,7 @@ const List<StoryChapterDef> _psChapters = [
             consequence:
                 '你把手都拍红了。不管最后名次怎样，这一年的每一次加分都有人在下面记得——包括你自己在魔药课上挣来的那五分。',
             nextStepId: 'ps_ch9_farewell',
+            requireAnyFlags: ['ps_cheered_quidditch', 'ps_built_snowman', 'ps_wrote_home', 'ps_wrote_thanks', 'ps_festive_helper'],
             effect: StoryEffect(setFlags: ['ps_cheered_house'], spirit: 6),
           ),
           StoryChoiceDef(
@@ -4420,6 +4428,7 @@ const List<StoryChapterDef> _cosChapters = [
                 '墙上的水渍还在——费尔奇已经不擦了。'
                 '二楼盥洗室的门虚掩着，里面传出隐隐的哭声。'
                 '你在门口站了几秒，没敢进去，退了出来。',
+            requireAnyFlags: ['cos_shielded_firstyear', 'cos_stood_with_bullied', 'cos_observed_scene', 'cos_route_map'],
             effect: StoryEffect(
               addKnowledge: ['cos_myrtle_crying'],
               setFlags: ['cos_checked_corridors'],
@@ -4476,6 +4485,7 @@ const List<StoryChapterDef> _cosChapters = [
             consequence:
                 '你找到了那一届的合影。照片里的人都笑着，但有一个人的位置是空的。你把那页记在了心里。',
             nextStepId: '',
+            requireAnyFlags: ['cos_read_archive', 'cos_noted_gaps', 'cos_dug_history', 'cos_checked_wall'],
             effect: StoryEffect(addKnowledge: ['cos_knows_old_year'], setFlags: ['cos_found_yearbook'], spirit: 2),
           ),
           StoryChoiceDef(
@@ -4512,6 +4522,7 @@ const List<StoryChapterDef> _cosChapters = [
                 '每个人都说「听别人说的」。唯一确定的是——'
                 '传闻里的时间线对得上：那本日记据说出现在第一起石化之前。'
                 '你把「盥洗室」「日记」「五十年前」三个词写在一行，看了很久。',
+            requireAnyFlags: ['cos_visited_hospital', 'cos_organized_rumors', 'cos_dug_history', 'cos_reported_pattern'],
             effect: StoryEffect(
               addKnowledge: ['cos_diary_timeline'],
               setFlags: ['cos_chased_diary', 'cos_kept_chasing'],
@@ -4573,6 +4584,7 @@ const List<StoryChapterDef> _cosChapters = [
                 '你在笔记上画了半张城堡的管线草图，越画越冷：'
                 '如果它能在全城堡的管道里穿行，那任何水槽、任何盥洗室都是口子。'
                 '你没有把这张图给任何人看，只是把它锁进了箱底。',
+            requireAnyFlags: ['cos_knows_mandrake_use', 'cos_dug_history', 'cos_organized_rumors', 'cos_reported_pattern'],
             effect: StoryEffect(
               addKnowledge: ['cos_pipe_theory'],
               setFlags: ['cos_piece_clue', 'cos_kept_chasing'],
@@ -4742,6 +4754,7 @@ const List<StoryChapterDef> _cosChapters = [
                 '漂浮咒组、火苗组、变形入门组，二年级生一人带一组。'
                 '教室里第一次有了声音。散课时一个一年级的小姑娘说：'
                 '「上你们的课，就忘了害怕了。」',
+            requireAnyFlags: ['cos_greenhouse_helped', 'cos_knows_mandrake_use', 'cos_helped_juniors', 'cos_tended_plants'],
             effect: StoryEffect(
               setFlags: ['cos_taught_firstyear', 'cos_helped_juniors'],
               reputation: 4,
@@ -4816,6 +4829,7 @@ const List<StoryChapterDef> _cosChapters = [
                 '一个星期补完了半学期的功课。'
                 '同桌看你的眼神从惊讶变成了佩服。'
                 '逃开过一次的人才明白：能回来按时上课，本身就是一种奢侈。',
+            requireAnyFlags: ['cos_honest_letter', 'cos_wrote_own_choice', 'cos_helped_juniors', 'cos_taught_firstyear'],
             effect: StoryEffect(
               setFlags: ['cos_returned_early'],
               housePoints: 3,
@@ -4856,6 +4870,7 @@ const List<StoryChapterDef> _cosChapters = [
             consequence:
                 '你在三处地方做了记号。三天之后你去检查，有两处已经干了，一处的痕迹还在扩大。这个发现你只告诉了最信得过的一个人。',
             nextStepId: '',
+            requireAnyFlags: ['cos_route_map', 'cos_checked_wall', 'cos_found_detour', 'cos_noted_gaps'],
             effect: StoryEffect(addKnowledge: ['cos_water_pattern'], setFlags: ['cos_tracked_water'], spirit: 2),
           ),
           StoryChoiceDef(
@@ -4934,6 +4949,7 @@ const List<StoryChapterDef> _cosChapters = [
             consequence:
                 '你讲了几个自己编的故事，讲得磕磕巴巴，但他们都听着。有个小姑娘后来靠在你肩上睡着了。',
             nextStepId: '',
+            requireAnyFlags: ['cos_visited_hospital', 'cos_helped_juniors', 'cos_made_buddy', 'cos_organized_pairs'],
             effect: StoryEffect(setFlags: ['cos_reassured_young'], reputation: 2, spirit: 3),
           ),
           StoryChoiceDef(
@@ -5011,6 +5027,7 @@ const List<StoryChapterDef> _cosChapters = [
             consequence:
                 '你没能进去，但你在门口站了一会儿。出来的人脸色还白，但能走路。你远远地朝其中一个人点了点头。',
             nextStepId: '',
+            requireAnyFlags: ['cos_visited_hospital', 'cos_grieved_hospital', 'cos_made_buddy', 'cos_dug_history'],
             effect: StoryEffect(setFlags: ['cos_visited_medical'], reputation: 1, spirit: 3),
           ),
           StoryChoiceDef(
@@ -5060,6 +5077,7 @@ const List<StoryChapterDef> _cosChapters = [
                 '麦格教授翻完沉默了很久，最后只说了一句：'
                 '「二年级……有心了。」'
                 '她把笔记收进了自己的公文包，而不是丢进抽屉。',
+            requireAnyFlags: ['cos_learned_disarming', 'cos_piece_clue', 'cos_organized_rumors', 'cos_group_study'],
             effect: StoryEffect(
               setFlags: ['cos_shared_notes', 'cos_kept_chasing'],
               reputation: 5,
