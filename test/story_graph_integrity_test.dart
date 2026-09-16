@@ -118,6 +118,69 @@ void main() {
       expect(problems, isEmpty, reason: problems.join('\n'));
     });
 
+    test('显式边不构成环——有环玩家会卡死，永远跑不完全书', () {
+      // 【为什么必须查】孤儿步的后果是"少玩几步"（doneSteps 断言会说少了几步），
+      // 而**环**的后果是"永远跑不完"——E2E 只会报一句"GoF 必须能跑完"，
+      // 没有任何信息指向出问题的那一步。
+      //
+      // 【这个测试是被一次真实事故逼出来的】往《火焰杯》第一章插入新步时，
+      // 新步被排到了某已有步之前，而那个已有步的出边仍指着更靠前的步，
+      // 于是引擎在 `goblet` 与 `guests` 之间来回跳，guard 打满 200 次。
+      //
+      // 【只查显式边】`nextStepId: ''` 是"顺延到本章下一个未完成步"，
+      // 按文件顺序单调前进，不可能成环。
+      final cycles = <String>[];
+
+      for (final book in kStoryBooks.values) {
+        // 建图：步 id → 显式出边（限本书内）
+        final edges = <String, List<String>>{};
+        final allIds = <String>{};
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            allIds.add(s.id);
+          }
+        }
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            edges[s.id] = s.choices
+                .map((c) => c.nextStepId)
+                .where((n) => n.isNotEmpty && allIds.contains(n))
+                .toList();
+          }
+        }
+
+        // 三色 DFS 找环
+        const white = 0, gray = 1, black = 2;
+        final color = <String, int>{for (final id in allIds) id: white};
+        final stack = <String>[];
+
+        void dfs(String u) {
+          color[u] = gray;
+          stack.add(u);
+          for (final v in edges[u] ?? const <String>[]) {
+            if (color[v] == gray) {
+              final at = stack.indexOf(v);
+              cycles.add('${book.id}: ${stack.sublist(at).join(' → ')} → $v');
+            } else if (color[v] == white) {
+              dfs(v);
+            }
+          }
+          stack.removeLast();
+          color[u] = black;
+        }
+
+        for (final id in allIds) {
+          if (color[id] == white) dfs(id);
+        }
+      }
+
+      expect(
+        cycles,
+        isEmpty,
+        reason: '剧情图存在环，玩家会在这几步之间无限循环：\n${cycles.join('\n')}',
+      );
+    });
+
     test('步 id 与选择 id 全局唯一（防复制粘贴产生重名）', () {
       final stepIds = <String, String>{}; // id -> "book/step"
       final dupSteps = <String>[];

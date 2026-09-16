@@ -12,8 +12,15 @@
 /// 学年末以"传闻的碎片"形式飘到玩家耳边——你知道有件事被解决了，
 /// 但你不是解决它的人。
 ///
-/// 【原著节点覆盖】canon_poa_escape / canon_poa_dementors /
-/// canon_poa_hogsmeade / canon_poa_buckbeak 四个节点各由一步剧情讲述。
+/// 【原著节点覆盖】13 个 canon_poa_* 节点已全覆盖，一一挂载在
+/// 对应的 `canonRefId` 上，由 `story_graph_integrity_test` 与
+/// `verify_canon.py` 双向校验月份对齐。
+///
+/// 【内容密度】46 步 × 平均 7.4 天 ≈ 341 天。三年级原著里那些
+/// "恐惧如何渗进日常"的场景（到校第一夜、博格特之后不敢回宿舍、
+/// 空掉的球场、听证会之后不敢敲门、考试月夜里的警报）在早期版本里
+/// 被合并进了几个大步，玩家一部书只有 36 次选择——比《魔法石》少一半。
+/// 现在这些场景各自成步，选择密度与前两部看齐。
 library;
 
 import 'package:hogwarts_life_simulator/models/story_progress.dart';
@@ -21,8 +28,10 @@ import 'package:hogwarts_life_simulator/models/story_progress.dart';
 // ================================================================
 // 《阿兹卡班的囚徒》 1993-1994 · 三年级
 //
-// 【时间线】1993-07-25 开启锚点（第三年的信）→ 1994-06 学年结束。
-// 24 步 × 平均 13 天 ≈ 320 天，与 canon_poa_* 节点的月份逐一对齐。
+// 【时间线】1993-07-25 开启锚点（第三年的信）→ 1994-07-01 学年结束。
+// 46 步 × 平均 7.4 天 ≈ 341 天，与 13 个 canon_poa_* 节点的月份逐一对齐。
+// 注意：有两对锚点落在同一个月（10 月的 hogsmeade_form 与 boggart、
+// 11 月的 quidditch_storm 与 hogsmeade），改天数时不能把它们压到 0 天。
 // ================================================================
 
 const List<StoryChapterDef> _poaChapters = [
@@ -100,7 +109,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch1_news',
         chapterId: 'poa_ch1',
-        timeCostDays: 21,
+        timeCostDays: 20,
         onEnterText:
             '—— 第 3 部 · 阿兹卡班的囚徒 ——\n'
             '三年级的暑假来得很安静，直到一张报纸把整个夏天撕开。',
@@ -190,7 +199,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch1_dementor_rumor',
         chapterId: 'poa_ch1',
-        timeCostDays: 13,
+        timeCostDays: 10,
         setup:
             '八月的街上开始出现那种守卫。它们不走路，它们在飘；'
             '经过的时候，路灯会暗一下，空气里像被人抽走了所有暖和的东西。'
@@ -247,7 +256,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch1_booklist',
         chapterId: 'poa_ch1',
-        timeCostDays: 9,
+        timeCostDays: 6,
         setup:
             '三年级的书单上多了两门选修：占卜学和神奇动物保护。'
             '前者的教材封面画着一只眼睛，后者要求你准备一副厚手套。'
@@ -306,6 +315,67 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch1_leaky',
+        chapterId: 'poa_ch1',
+        timeCostDays: 12,
+        setup:
+            '开学前最后一次去对角巷，你在破釜酒吧等一壶热茶。'
+            '邻桌坐着两个穿旧袍子的巫师，声音压得很低，'
+            '但酒吧里太安静了——他们说的每一句你都听得见。'
+            '他们说的不是报纸上那套，是"当年跟他一起的人"。',
+        ambient: [
+          '老板擦杯子的手停了两次，又继续擦。',
+          '有人推门进来时带进一阵风，全屋的人都抬了一下头。',
+          '那两人走的时候，桌上的茶一口没动。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'listen_in',
+            text: '继续听，把他们说的记下来',
+            consequence:
+                '你听了二十分钟，记住三个名字和一句"他逃出来是为了什么"。'
+                '这句话报纸上从来没出现过。'
+                '后来你才明白，成年人知道的和说出来的从来不是同一件事。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_adult_version'],
+              setFlags: ['poa_overheard_adults'],
+              housePoints: 2,
+              spirit: -1,
+            ),
+            nextStepId: 'poa_ch1_shopping',
+          ),
+          StoryChoiceDef(
+            id: 'ask_keeper',
+            text: '去问那位老店主，他知道的比谁都多',
+            consequence:
+                '店主看了你一眼，把茶推过来，说："小孩子别打听这种事。"'
+                '然后他压低声音补了一句："不过今年学校里会不太平，你自己小心。"'
+                '这是他第一次跟你说这么长的话。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_barman_warning'],
+              setFlags: ['poa_warned_early'],
+              housePoints: 1,
+              affection: 1,
+              targetNpcId: 'rosmerta',
+            ),
+            nextStepId: 'poa_ch1_shopping',
+          ),
+          StoryChoiceDef(
+            id: 'ignore_it',
+            text: '不听了，把茶喝完就走',
+            consequence:
+                '你把茶喝完，付了钱，出门去丽痕书店。'
+                '这个夏天你决定不把这件事当成自己的事——'
+                '这个决定在两个月后被你自己推翻了。',
+            effect: StoryEffect(
+              setFlags: ['poa_avoided_news'],
+              spirit: 1,
+            ),
+            nextStepId: 'poa_ch1_shopping',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch1_shopping',
         chapterId: 'poa_ch1',
         timeCostDays: 1,
@@ -350,7 +420,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch2_platform',
         chapterId: 'poa_ch2',
-        timeCostDays: 3,
+        timeCostDays: 1,
         setup:
             '九月的站台上人声比去年低。墙根下立着几个穿长袍的守卫，'
             '帽檐压得很低，正一列一列地检查车厢。'
@@ -406,7 +476,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch2_train',
         chapterId: 'poa_ch2',
-        timeCostDays: 3,
+        timeCostDays: 1,
         canonRefId: 'canon_poa_dementors',
         setup:
             '火车开出半小时后，走廊尽头的光线开始变暗。不是云——'
@@ -462,6 +532,66 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch2_compartment',
+        chapterId: 'poa_ch2',
+        timeCostDays: 1,
+        setup:
+            '列车开出去两个小时，走道上的推车来过了两次。'
+            '你的包厢里坐着四个人，其中一个是二年级的，'
+            '一路上都在讲他从哥哥那里听来的阿兹卡班细节。'
+            '讲到一半，车慢了下来——不是因为到站。',
+        ambient: [
+          '有人在讲"那地方根本没有墙"的时候，灯闪了一下。',
+          '过道里有人跑过去，脚步声很急。',
+          '窗外的雨斜着打在玻璃上，越来越密。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'keep_talking',
+            text: '接着把话题讲完，装作没注意到车速',
+            consequence:
+                '你们把话讲完了，讲得很响，像是要把什么盖过去。'
+                '列车重新加速的时候，屋里没人提刚才那几分钟。'
+                '但你注意到那个二年级生的手一直攥着袖口。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_train_stories'],
+              setFlags: ['poa_talked_over_it'],
+              spirit: 1,
+            ),
+            nextStepId: '',
+          ),
+          StoryChoiceDef(
+            id: 'go_look',
+            text: '去走道尽头看看发生了什么',
+            consequence:
+                '你走到车厢连接处，看见两个级长站在那儿，脸色很难看。'
+                '其中一个回头看见你，只说了一句："回座位去。"'
+                '你回了座位——但那扇窗外的黑，你一直记着。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_saw_corridor'],
+              setFlags: ['poa_curious_on_train'],
+              energy: -8,
+              spirit: -2,
+            ),
+            nextStepId: '',
+          ),
+          StoryChoiceDef(
+            id: 'change_seat',
+            text: '换个座位，坐到靠窗但离门近的地方',
+            consequence:
+                '你换了个位置。没人问你为什么。'
+                '你后来想，这大概是你第一次凭本能给自己找退路——'
+                '这种直觉在接下来的两年里救过你几次。',
+            effect: StoryEffect(
+              setFlags: ['poa_instinct_tested'],
+              housePoints: 1,
+              satiety: -2,
+            ),
+            nextStepId: '',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch2_cold',
         chapterId: 'poa_ch2',
         timeCostDays: 1,
@@ -492,9 +622,56 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch2_dementor_night',
+        chapterId: 'poa_ch2',
+        timeCostDays: 1,
+        setup:
+            '到校第一夜，不少人没睡。'
+            '有人反复说自己"什么都想不起来"——'
+            '只记得冷，而且冷得没有尽头。'
+            '宿舍里没人开玩笑，连平时最爱闹的那个都早早拉上了床帘。',
+        ambient: [
+          '有人半夜坐起来，说听见了很远的哭声。',
+          '窗外的湖面一动不动，像结了冰。',
+          '第二天早上，有人把摄魂怪的事写进家信，写了三页。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'talk_it_out',
+            text: '把在车厢里听见的东西说给室友听',
+            consequence:
+                '你说了。说到一半发现屋里有三个人在听，谁都没插话。'
+                '你说完，有人跟着说了他的。'
+                '那一夜之后，这件事不再是你一个人的东西。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_train_shared'],
+              setFlags: ['poa_shared_fear'],
+              affection: 3,
+              spirit: 2,
+              targetNpcId: 'dean',
+            ),
+            nextStepId: 'poa_ch2_castle',
+          ),
+          StoryChoiceDef(
+            id: 'keep_quiet',
+            text: '不说，翻个身假装睡了',
+            consequence:
+                '你没说。你觉得说出来会让它变得更实在。'
+                '那一夜之后，每次列车开进隧道你都会先闭上眼睛——'
+                '这个习惯你保持了很久。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_kept_it_in'],
+              setFlags: ['poa_private_fear'],
+              spirit: -2,
+            ),
+            nextStepId: 'poa_ch2_castle',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch2_castle',
         chapterId: 'poa_ch2',
-        timeCostDays: 3,
+        timeCostDays: 2,
         setup:
             '夜里的城堡比去年安静。门口多了两道岗，'
             '开学宴上校长宣布摄魂怪将驻守学校四周，'
@@ -619,7 +796,7 @@ const List<StoryChapterDef> _poaChapters = [
         id: 'poa_ch3_tea',
         canonRefId: 'canon_poa_boggart',
         chapterId: 'poa_ch3',
-        timeCostDays: 1,
+        timeCostDays: 20,
         setup:
             '占卜课上，茶杯在手里转了三圈，最后剩在杯底的形状谁也不肯明说。老师看了一眼你的杯子，又看了一眼你，把话头引开了。',
         ambient: [
@@ -647,9 +824,59 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch3_after_boggart',
+        chapterId: 'poa_ch3',
+        timeCostDays: 1,
+        setup:
+            '博格特那堂课之后，走廊上的气氛变了几天。'
+            '有人互相打听"你看到的是什么"，'
+            '被问到的人都笑着说没什么——'
+            '然后当天晚上把床帘拉得比平时更严。',
+        ambient: [
+          '有人在盥洗室里待了很久，出来时眼睛是红的。',
+          '黑魔法防御术教室的柜子被搬到了角落，蒙上了布。',
+          '有人开始绕远路，就为了不经过那间教室。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'find_answer',
+            text: '去图书馆查博格特到底是怎么运作的',
+            consequence:
+                '你查了三天，最后在一本旧书上找到一句话：'
+                '"它没有自己的形状，只有你的。"'
+                '知道这一点并没有让恐惧变小——'
+                '但你不再觉得那是自己一个人的问题了。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_boggart_theory'],
+              setFlags: ['poa_studied_fear'],
+              reputation: 2,
+              housePoints: 2,
+            ),
+            nextStepId: 'poa_ch3_creatures',
+          ),
+          StoryChoiceDef(
+            id: 'help_classmate',
+            text: '去问那天反应最大的同学怎么样了',
+            consequence:
+                '你找到他的时候他正在擦一支笔，擦了很久。'
+                '你什么也没问，就坐在旁边陪着。'
+                '后来他忽然说："它变成了我爸。"'
+                '然后就没再说了。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_saw_others_fear'],
+              setFlags: ['poa_supported_peer'],
+              affection: 3,
+              spirit: 1,
+              targetNpcId: 'neville',
+            ),
+            nextStepId: 'poa_ch3_creatures',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch3_creatures',
         chapterId: 'poa_ch3',
-        timeCostDays: 14,
+        timeCostDays: 3,
         setup:
             '神奇动物保护的课在禁林边上。海格掀开栅栏上的帆布，'
             '里面站着一只半鹰半马的东西，正用一只琥珀色的眼睛看你。'
@@ -707,9 +934,72 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch3_creatures_class',
+        chapterId: 'poa_ch3',
+        timeCostDays: 1,
+        setup:
+            '海格的第一堂课把所有人都带到了城堡外面。'
+            '他站在一片空地上，笑得很用力，'
+            '身后是几个盖着布的大笼子。'
+            '他说这门课"没有课本"，因为他觉得课本没用。',
+        ambient: [
+          '笼子里传出很重的呼吸声，节奏不像任何一种你知道的动物。',
+          '有人已经开始悄悄往后退了。',
+          '海格不停地搓手，好像比你们还紧张。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'step_up',
+            text: '第一个站出来，说愿意试试',
+            consequence:
+                '你走到笼子前面。海格的眼睛一下子亮了，'
+                '他把布揭开一条缝，让你看里面。'
+                '你只看到了一只眼睛——很大，很安静，正在看你。'
+                '他说："好样的，好样的。"',
+            effect: StoryEffect(
+              setFlags: ['poa_first_to_step_up'],
+              affection: 4,
+              spirit: 2,
+              reputation: 2,
+              targetNpcId: 'hagrid',
+            ),
+            nextStepId: 'poa_ch3_defense',
+          ),
+          StoryChoiceDef(
+            id: 'take_notes',
+            text: '先站到后面，把海格说的每句话记下来',
+            consequence:
+                '你记了整整两页：喂食时间、不能做的动作、'
+                '以及一句"它们其实很记仇，但也记好"。'
+                '这堂课你没摸着任何动物，'
+                '但期末实操的时候，你是班里唯一没做错手势的人。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_creature_notes'],
+              setFlags: ['poa_took_notes'],
+              housePoints: 3,
+            ),
+            nextStepId: 'poa_ch3_defense',
+          ),
+          StoryChoiceDef(
+            id: 'skeptic',
+            text: '小声跟旁边的人说这课迟早要出大事',
+            consequence:
+                '你说对了。你当时很得意。'
+                '但后来出事的时候，你也在场——'
+                '而且你什么都没做。这句话你后悔了很久。',
+            effect: StoryEffect(
+              setFlags: ['poa_called_it'],
+              spirit: -1,
+              housePoints: 1,
+            ),
+            nextStepId: 'poa_ch3_defense',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch3_defense',
         chapterId: 'poa_ch3',
-        timeCostDays: 12,
+        timeCostDays: 3,
         setup:
             '黑魔法防御术今年换了新老师。他看起来总是很累，'
             '讲课却比谁都认真。第一节课他没讲防御，'
@@ -809,7 +1099,7 @@ const List<StoryChapterDef> _poaChapters = [
         id: 'poa_ch4_permit',
         canonRefId: 'canon_poa_quidditch_storm',
         chapterId: 'poa_ch4',
-        timeCostDays: 9,
+        timeCostDays: 3,
         setup:
             '三年级最大的特权来了：一张需要家长签字的同意表。'
             '签了，你就能在周末去霍格莫德村；不签，'
@@ -865,7 +1155,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch4_village',
         chapterId: 'poa_ch4',
-        timeCostDays: 6,
+        timeCostDays: 19,
         canonRefId: 'canon_poa_hogsmeade',
         setup:
             '第一次进村。雪把路面压出一条条车辙，'
@@ -925,7 +1215,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch4_sweetshop',
         chapterId: 'poa_ch4',
-        timeCostDays: 1,
+        timeCostDays: 3,
         setup:
             '糖果店里的货架高得顶到天花板，每一格都塞满了名字古怪的东西。店里很暖，玻璃上蒙着一层水雾。',
         ambient: [
@@ -956,7 +1246,7 @@ const List<StoryChapterDef> _poaChapters = [
         id: 'poa_ch4_shrieking',
         canonRefId: 'canon_poa_dementor_patrol',
         chapterId: 'poa_ch4',
-        timeCostDays: 22,
+        timeCostDays: 17,
         setup:
             '那栋屋子成了三年级的集体话题。有人说那是全英国'
             '最闹鬼的房子，有人说那只是风。'
@@ -1009,6 +1299,54 @@ const List<StoryChapterDef> _poaChapters = [
           ),
         ],
       ),
+      StoryStepDef(
+        id: 'poa_ch4_spring',
+        chapterId: 'poa_ch4',
+        timeCostDays: 12,
+        setup:
+            '复活节假期留校的人很少。'
+            '球场又一次没有开——这已经是这个学年第三次。'
+            '摄魂怪的巡逻范围向外扩了一圈，'
+            '连禁林边缘都不让靠近了。',
+        ambient: [
+          '草长得比往年高，没人来割。',
+          '有人在空球门下面坐着，坐了一下午。',
+          '天气开始回暖，但城堡里的人比冬天还安静。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'use_fields',
+            text: '和几个同学偷偷把球门柱修了修',
+            consequence:
+                '你们弄来了工具，修了三个下午。'
+                '没人在意这件事算不算违反校规——'
+                '反正球场已经空了大半年，修好它不会伤到谁。'
+                '完工那天有人带了球来，你们投了十几分钟。',
+            effect: StoryEffect(
+              setFlags: ['poa_repaired_pitch', 'poa_care_taken'],
+              reputation: 3,
+              spirit: 4,
+              energy: -10,
+            ),
+            nextStepId: '',
+          ),
+          StoryChoiceDef(
+            id: 'study_instead',
+            text: '把时间都花在功课上',
+            consequence:
+                '你把这个春天过成了一段很长的自习。'
+                '成绩单上多了几个不错的数字，'
+                '代价是你现在想起来，那半年几乎没剩下什么画面。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_quiet_spring'],
+              setFlags: ['poa_buried_in_books'],
+              housePoints: 3,
+              spirit: -1,
+            ),
+            nextStepId: '',
+          ),
+        ],
+      ),
     ],
   ),
 
@@ -1025,7 +1363,7 @@ const List<StoryChapterDef> _poaChapters = [
         id: 'poa_ch5_christmas',
         canonRefId: 'canon_poa_patronus_lesson',
         chapterId: 'poa_ch5',
-        timeCostDays: 29,
+        timeCostDays: 19,
         setup:
             '留校过圣诞的人比想象中多。今年城堡里挂着霜，'
             '礼堂的火炉烧得比往年旺，但坐在炉边的人'
@@ -1084,7 +1422,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch5_feast',
         chapterId: 'poa_ch5',
-        timeCostDays: 1,
+        timeCostDays: 14,
         setup:
             '圣诞晚餐的桌子上多摆了几副空碗筷，留给那些没有回家的人。大礼堂的蜡烛比平时矮了一截，光显得很温。',
         ambient: [
@@ -1115,7 +1453,7 @@ const List<StoryChapterDef> _poaChapters = [
         id: 'poa_ch5_lake',
         canonRefId: 'canon_poa_marauders_map',
         chapterId: 'poa_ch5',
-        timeCostDays: 27,
+        timeCostDays: 17,
         setup:
             '一月的湖冻得能走人，然后就出事了：'
             '有人在冰上遇见了它们，回来说自己的腿'
@@ -1172,9 +1510,69 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch5_library',
+        chapterId: 'poa_ch5',
+        timeCostDays: 8,
+        setup:
+            '一月开始，图书馆靠里的三排书架被划走了。'
+            '平斯夫人说那是"校方安排"，不肯多说。'
+            '被划走的那三排，恰好是最常被借的那三排。'
+            '有个斯莱特林的学生因为伸手去够最上面一层，被记了名字。',
+        ambient: [
+          '黄铜链子拉在书架之间，比平时紧绷得多。',
+          '有人隔着链子往里面看，看了很久。',
+          '平斯夫人在桌子之间巡视的次数，比往常多了一倍。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'find_elsewhere',
+            text: '去公共休息室翻学生留下的旧笔记',
+            consequence:
+                '你在旧物柜里翻到一本高年级留下的笔记本，'
+                '里面抄了不少被划走的书的内容——抄得很潦草，但够用。'
+                '你把它借了三天，抄完还了回去。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_borrowed_notes'],
+              setFlags: ['poa_made_do'],
+              housePoints: 2,
+              galleons: 2,
+            ),
+            nextStepId: 'poa_ch5_ice',
+          ),
+          StoryChoiceDef(
+            id: 'ask_why',
+            text: '去问平斯夫人为什么',
+            consequence:
+                '她说："因为有人在书里夹了不该夹的东西。"'
+                '你追问是什么东西，她把借书章重重盖了一下，'
+                '说："这不是你该操心的。"',
+            effect: StoryEffect(
+              addKnowledge: ['poa_library_reason'],
+              setFlags: ['poa_asked_librarian'],
+              housePoints: 2,
+            ),
+            nextStepId: 'poa_ch5_ice',
+          ),
+          StoryChoiceDef(
+            id: 'stay_clear',
+            text: '不去碰，把复习范围缩到还开着的那几排',
+            consequence:
+                '你把复习计划改了一遍，只用能拿到的书。'
+                '这么做很安全，也确实没耽误考试。'
+                '只是那年冬天你想查的很多东西，最后都没查到。',
+            effect: StoryEffect(
+              setFlags: ['poa_played_safe'],
+              housePoints: 1,
+              spirit: -1,
+            ),
+            nextStepId: 'poa_ch5_ice',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch5_ice',
         chapterId: 'poa_ch5',
-        timeCostDays: 1,
+        timeCostDays: 9,
         setup:
             '湖面结了冰，黑校袍的学生在冰上滑来滑去。有人在冰上摔了个四脚朝天，周围笑成一片。',
         ambient: [
@@ -1204,7 +1602,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch5_patronus',
         chapterId: 'poa_ch5',
-        timeCostDays: 29,
+        timeCostDays: 16,
         setup:
             '传闻开始流行：有人看见一道银色的东西从湖边冲过去，'
             '把那一整片都逼退了。没人说得出那是什么，'
@@ -1274,7 +1672,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch6_incident',
         chapterId: 'poa_ch6',
-        timeCostDays: 23,
+        timeCostDays: 12,
         setup:
             '消息是从医务室传出来的：那堂课上有学生被伤了，'
             '而承担责任的是那头动物。通告贴在公告栏上，'
@@ -1332,7 +1730,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch6_hearing',
         chapterId: 'poa_ch6',
-        timeCostDays: 18,
+        timeCostDays: 14,
         canonRefId: 'canon_poa_buckbeak',
         setup:
             '听证会那天，城堡里一半的人想去看，'
@@ -1390,7 +1788,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch6_after_hearing',
         chapterId: 'poa_ch6',
-        timeCostDays: 1,
+        timeCostDays: 5,
         setup:
             '判决下来的那天，消息传得比风还快。有人愤愤不平，有人不说话，更多的人只是低着头继续走路。',
         ambient: [
@@ -1418,9 +1816,70 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch6_after_verdict',
+        chapterId: 'poa_ch6',
+        timeCostDays: 7,
+        setup:
+            '裁决下来那天，消息传得很快。'
+            '海格从早上就没在城堡里出现，'
+            '小屋的灯亮着，但门被敲了两次都没开。'
+            '没有人知道该说什么——这件事本来就不该由学生来安慰。',
+        ambient: [
+          '小屋门口被人放了两块糖，第二天还在，第三天不见了。',
+          '有人说听见屋里有劈柴的声音，很晚才停。',
+          '草药课暂停了一次，代课的是另一位老师。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'leave_gift',
+            text: '去小屋门口放点东西，不留名字',
+            consequence:
+                '你把一包从霍格莫德带回来的糖果放在台阶上，'
+                '敲了一下门就走了。'
+                '后来你一直不知道他有没有看到那句话——'
+                '你在包装纸上写了"不是你的错"。',
+            effect: StoryEffect(
+              setFlags: ['poa_kind_to_hagrid'],
+              affection: 4,
+              spirit: 2,
+              targetNpcId: 'hagrid',
+            ),
+            nextStepId: 'poa_ch6_waiting',
+          ),
+          StoryChoiceDef(
+            id: 'ask_professor',
+            text: '去找教授问清到底发生了什么',
+            consequence:
+                '教授听完你的问题，沉默了一会儿，'
+                '然后只说了两句：'
+                '"程序走完了"和"这不是你们能改变的事"。'
+                '你从他脸上看出来，他自己也不认同这个结果。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_verdict_unjust'],
+              setFlags: ['poa_saw_faculty_doubt'],
+              housePoints: 2,
+            ),
+            nextStepId: 'poa_ch6_waiting',
+          ),
+          StoryChoiceDef(
+            id: 'stay_away',
+            text: '不去打扰，让他自己待着',
+            consequence:
+                '你什么都没做。'
+                '这件事你后来想起过很多次——'
+                '每次都觉得自己当时至少该走过去敲一次门。',
+            effect: StoryEffect(
+              setFlags: ['poa_stayed_away'],
+              spirit: -2,
+            ),
+            nextStepId: 'poa_ch6_waiting',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch6_waiting',
         chapterId: 'poa_ch6',
-        timeCostDays: 13,
+        timeCostDays: 7,
         setup:
             '判决之后是一段等待。执行日期被写在另一张通告上，'
             '没有写明地点。整个四月，城堡里的人走路都很轻，'
@@ -1491,7 +1950,7 @@ const List<StoryChapterDef> _poaChapters = [
         id: 'poa_ch7_exams',
         canonRefId: 'canon_poa_exam_month',
         chapterId: 'poa_ch7',
-        timeCostDays: 18,
+        timeCostDays: 11,
         setup:
             '考试周来了。今年的考场比往年冷，'
             '监考的老师们站在后面，'
@@ -1552,7 +2011,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch7_study',
         chapterId: 'poa_ch7',
-        timeCostDays: 1,
+        timeCostDays: 7,
         setup:
             '考试周的图书馆连过道都坐满了人。你把书摊在膝盖上，周围只有翻页的声音和喷嚏声。你翻到一半，才发现自己已经盯着同一行看了很久。',
         ambient: [
@@ -1582,7 +2041,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch7_rumors',
         chapterId: 'poa_ch7',
-        timeCostDays: 12,
+        timeCostDays: 7,
         setup:
             '六月的某个早上，城堡里的气氛忽然不一样了。'
             '没人说得清发生了什么，只知道夜里有人被带走了，'
@@ -1638,10 +2097,58 @@ const List<StoryChapterDef> _poaChapters = [
         ],
       ),
       StoryStepDef(
+        id: 'poa_ch7_patrol_night',
+        chapterId: 'poa_ch7',
+        timeCostDays: 8,
+        setup:
+            '考试月的某个夜里，城堡里响了一次警报。'
+            '所有人都被要求留在公共休息室，'
+            '级长在门口站到天亮。'
+            '第二天早上什么都没查出来，但那张通缉令又被贴了一张新的。',
+        ambient: [
+          '级长的椅子在门口摆了一夜，椅背上搭着他的校袍。',
+          '有人趴在桌上睡着了，手里还攥着复习提纲。',
+          '黎明时窗外有影子掠过——后来知道那只是一只猫头鹰。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'keep_studying',
+            text: '既然不能出去，就把这一夜用来复习',
+            consequence:
+                '你在公共休息室的地毯上坐了六个小时，'
+                '把魔咒课的重难点过了一遍。'
+                '第二个礼拜的实操考试，你答得比平时还稳。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_exam_night_study'],
+              setFlags: ['poa_steady_nerves'],
+              housePoints: 3,
+              spirit: 1,
+            ),
+            nextStepId: 'poa_ch7_night',
+          ),
+          StoryChoiceDef(
+            id: 'watch_window',
+            text: '守着窗户，想看看到底是什么',
+            consequence:
+                '你守到了天亮，只看到一次很远的影子。'
+                '你不知道那是不是你想的那个人。'
+                '但你记住了那一夜城堡外面的黑——'
+                '那种黑里什么都可能发生。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_watch_kept'],
+              setFlags: ['poa_saw_the_dark'],
+              spirit: -1,
+              energy: -5,
+            ),
+            nextStepId: 'poa_ch7_night',
+          ),
+        ],
+      ),
+      StoryStepDef(
         id: 'poa_ch7_night',
         canonRefId: 'canon_poa_time_turner',
         chapterId: 'poa_ch7',
-        timeCostDays: 7,
+        timeCostDays: 9,
         setup:
             '那天的夜里城堡没有熄灯。有人被叫醒，'
             '走廊里有急促的脚步声。你从床上坐起来，'
@@ -1710,7 +2217,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch8_lastlesson',
         chapterId: 'poa_ch8',
-        timeCostDays: 10,
+        timeCostDays: 6,
         setup:
             '最后一节课。神奇动物保护的老师站在空了一半的栅栏前，'
             '说这门课下学期照旧。'
@@ -1767,7 +2274,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch8_goodbye',
         chapterId: 'poa_ch8',
-        timeCostDays: 8,
+        timeCostDays: 4,
         setup:
             '最后两天大家在交换地址。有人说四年级再选同一门课，'
             '有人说暑假要去很远的地方。'
@@ -1827,7 +2334,7 @@ const List<StoryChapterDef> _poaChapters = [
       StoryStepDef(
         id: 'poa_ch8_end',
         chapterId: 'poa_ch8',
-        timeCostDays: 5,
+        timeCostDays: 3,
         setup:
             '结束宴之后是列车。今年的车厢里没有那种飘着的东西，'
             '阳光照进来，热得人想脱外套。'
@@ -1882,6 +2389,53 @@ const List<StoryChapterDef> _poaChapters = [
               spirit: 2,
             ),
             nextStepId: 'poa_ch8_train_home',),
+        ],
+      ),
+      StoryStepDef(
+        id: 'poa_ch8_lastweek',
+        chapterId: 'poa_ch8',
+        timeCostDays: 2,
+        setup:
+            '学年最后一周，城堡里的传言终于对上了。'
+            '有人说那个人根本没进城堡，有人说他进去了又走了。'
+            '有人说有一只鹰头马身有翼兽飞走了，'
+            '还有人说城堡的钟在某个夜里停过两次。'
+            '这些说法互相矛盾，但没有一个是完整的。',
+        ambient: [
+          '打包行李的人比往年安静，走廊里堆着箱子。',
+          '有人把这一年剪下的报纸夹进了课本里。',
+          '海格的小屋门口，那两块糖的位置空着。',
+        ],
+        choices: [
+          StoryChoiceDef(
+            id: 'piece_together',
+            text: '把自己听到的所有版本拼一遍',
+            consequence:
+                '你在行李上坐下来，把这些说法一条条写下来。'
+                '对不上的地方比能对上的多。'
+                '最后你得到的结论只有一句："至少有一件事被解决了，而我不是解决它的人。"'
+                '这大概是你这一年学到的最重要的一句话。',
+            effect: StoryEffect(
+              addKnowledge: ['poa_truth_fragments'],
+              setFlags: ['poa_pieced_together'],
+              housePoints: 3,
+              galleons: 2,
+            ),
+            nextStepId: '',
+          ),
+          StoryChoiceDef(
+            id: 'let_it_go',
+            text: '不整理了，把行李收好，去赶火车',
+            consequence:
+                '你把东西一件件放进箱子，最后看了一眼宿舍。'
+                '你决定不把这一年带走太多。'
+                '火车开动的时候，城堡缩成了一个很小的点。',
+            effect: StoryEffect(
+              setFlags: ['poa_left_it'],
+              spirit: 2,
+            ),
+            nextStepId: '',
+          ),
         ],
       ),
       StoryStepDef(
