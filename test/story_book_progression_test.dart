@@ -254,7 +254,9 @@ void main() {
       );
 
       expect(gp.storyProgress.bookId, 'ootp', reason: 'OotP 已实装，应直接开新书');
-      expect(gp.storyProgress.stepId, 'ootp_ch1_return');
+      // 【为什么是 grimmauld】凤凰社开篇新增了「格里莫广场」一章，
+      // 讲暑假最后一个月在凤凰社总部度过的日子；接书时落到该部第一步。
+      expect(gp.storyProgress.stepId, 'ootp_ch1_grimmauld');
       expect(gp.storyProgress.isFinished, isFalse);
     });
 

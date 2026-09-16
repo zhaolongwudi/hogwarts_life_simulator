@@ -45,6 +45,10 @@ const Set<String> _storyItemWhitelist = {
   '剪下来的报纸', // poa_ch1_wanted：暑假剪报（三强/越狱报道）
   '写着名字的纸片', // dh_ch4_quiet_holiday：留校时记下的同学名单
   '会变色的魁地奇徽章', // gof_ch1_world_cup：世界杯摊贩纪念品
+  '旧银器盒', // ootp_ch1_grimmauld：格里莫广场大扫除翻出的旧物，擦净后留作纪念
+  '课外小组批准函', // ootp_ch5_club：按教育令报备后拿到的批文，是"合规"的凭证
+  'O.W.L. 成绩单', // ootp_ch6_owl_results：五年级普通巫师等级考试成绩单
+  '厚笔记本', // ootp_ch7_accounting：期末清算时用来记录这一年发生过什么
 };
 
 /// 一步剧情的全部可见文本（禁用措辞 / 主体检查的语料）。

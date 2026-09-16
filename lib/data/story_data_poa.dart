@@ -65,7 +65,7 @@ const List<StoryChapterDef> _poaChapters = [
               setFlags: ['poa_studied_reports'],
               spirit: -2,
             ),
-            nextStepId: 'poa_ch1_telly',
+            nextStepId: 'poa_ch1_news',
           ),
           StoryChoiceDef(
             id: 'ask_shopkeeper',
@@ -79,7 +79,7 @@ const List<StoryChapterDef> _poaChapters = [
               setFlags: ['poa_asked_shopkeeper'],
               spirit: -1,
             ),
-            nextStepId: 'poa_ch1_telly',
+            nextStepId: 'poa_ch1_news',
           ),
           StoryChoiceDef(
             id: 'ignore',
@@ -93,7 +93,7 @@ const List<StoryChapterDef> _poaChapters = [
               setFlags: ['poa_ignored_reports'],
               spirit: 1,
             ),
-            nextStepId: 'poa_ch1_telly',
+            nextStepId: 'poa_ch1_news',
           ),
         ],
       ),

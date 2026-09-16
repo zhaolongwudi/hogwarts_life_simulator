@@ -1172,7 +1172,7 @@ const List<StoryChapterDef> _psChapters = [
         id: 'ps_ch5_cauldron',
         canonRefId: 'canon_ps_quidditch_tryout',
         chapterId: 'ps_ch5',
-        timeCostDays: 1,
+        timeCostDays: 2,
         setup:
             '魔药课下课后，你的坩埚里还剩半锅没倒掉的药剂。它在你收拾书包的时候慢慢变成了浅紫色，然后开始冒一种很小的泡。',
         ambient: [
@@ -2186,7 +2186,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch8_after',
         chapterId: 'ps_ch8',
-        timeCostDays: 44,
+        timeCostDays: 45,
         setup:
             '几天后，消息还是传开了：那头独角兽没能救回来。'
             '海格在场地边的板房前站了很久，哑着嗓子让大家别去林子边。'

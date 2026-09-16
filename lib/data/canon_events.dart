@@ -1281,6 +1281,7 @@ const List<CanonEvent> canonEvents = [
         '社团需要登记，违反者由新设的纪律小组处理。'
         '有人把这些纸条抄下来贴进公共休息室，'
         '也有人的态度是"反正我一条都不会犯"。',
+    openLoop: 'loop_ootp_edicts|教育令一周一涨，公告板上的规矩究竟要贴到哪里为止',
   ),
   CanonEvent(
     id: 'canon_ootp_inspection',
@@ -1337,6 +1338,23 @@ const List<CanonEvent> canonEvents = [
         '办公室里挂着一张写着各种职业入门要求的表，'
         '其中有不少条目在这一年被临时加上了新的通知。'
         '很多人第一次认真思考毕业之后的事。',
+  ),
+  CanonEvent(
+    id: 'canon_ootp_club',
+    year: 1996,
+    month: 3,
+    title: '被允许的团体与不被允许的团体',
+    bookRef: '凤凰社',
+    eras: ['harry_same'],
+    directive:
+        '教育令增加到二十多条以后，学校对"学生组织"的态度变得很明确：'
+        '要办团体就得报备，报备就得交出名单，而交出名单的人要承担后果。'
+        '与此同时，一些明显更危险的东西——比如某些"课外辅导"——'
+        '只要不写在纸上就没人管得着。'
+        '这条界线在哪里，是那一年所有人都在学的东西。',
+    worldEvent: '霍格沃茨实施学生团体报备制度，教育令累计超过二十条。',
+    worldEventImportance: 7,
+    closeLoop: 'loop_ootp_edicts',
   ),
   CanonEvent(
     id: 'canon_ootp_owl_exam_week',
