@@ -123,7 +123,7 @@ void main() {
       final seenNarratives = <String>[];
 
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 120) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         final action = gp.choices.first.action;
         expect(
@@ -173,7 +173,7 @@ void main() {
     test('整本书跑完 AI 调用为 0（离线红线的全书压测）', () async {
       final gp = await makeStoryGame();
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 120) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -185,7 +185,7 @@ void main() {
     test('好感管线在长跑中被真实走到（E2E 路径累计好感为正）', () async {
       final gp = await makeStoryGame();
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 120) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -207,7 +207,7 @@ void main() {
       expect(gp.storyProgress.stepId, 'ps_ch3_platform');
 
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 120) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),
@@ -242,7 +242,7 @@ void main() {
     test('结局后继续选「自由活动」不崩、不重新触发剧情', () async {
       final gp = await makeStoryGame();
       var guard = 0;
-      while (!gp.storyProgress.isFinished && guard < 120) {
+      while (!gp.storyProgress.isFinished && guard < 200) {
         guard++;
         await gp.processChoice(
           GameChoice(text: 'x', action: gp.choices.first.action),

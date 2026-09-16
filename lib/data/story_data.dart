@@ -1603,7 +1603,7 @@ const List<StoryChapterDef> _psChapters = [
         chapterId: 'ps_ch7',
         // 原著节点：厄里斯魔镜的传闻（1991 年 12 月）
         canonRefId: 'canon_ps_christmas_mirror',
-        timeCostDays: 30,
+        timeCostDays: 29,
         setup:
             '圣诞假期开始，城堡一夜之间空了一大半。十二月中旬，'
             '一个传闻悄悄在留校生中间传开：八楼一间废弃教室里有一面'
@@ -1624,7 +1624,7 @@ const List<StoryChapterDef> _psChapters = [
                 '直到远处传来脚步声，你才一步三回头地退出去。'
                 '回宿舍的路上你想了一路：那面镜子，为什么偏偏放在'
                 '没有人的教室里？',
-            nextStepId: 'ps_ch7_term_end',
+            nextStepId: 'ps_ch7_gifts',
             effect: StoryEffect(
               addKnowledge: ['knows_mirror_room'],
               setFlags: ['ps_seen_mirror'],
@@ -1639,7 +1639,7 @@ const List<StoryChapterDef> _psChapters = [
                 '你和留校的同学们把院子里的雪堆成了三座碉堡，'
                 '混战中连送信的猫头鹰都来参了一脚。晚上你裹着'
                 '新毛线帽睡得又沉又香——传闻什么的，留给他们去神秘。',
-            nextStepId: 'ps_ch7_term_end',
+            nextStepId: 'ps_ch7_gifts',
             effect: StoryEffect(
               addItems: ['保暖毛线帽'],
               setFlags: ['ps_snow_king'],
@@ -1653,7 +1653,7 @@ const List<StoryChapterDef> _psChapters = [
                 '家人到车站接你。这个圣诞节比往年都特别——餐桌上多了'
                 '会自己动的圣诞贺卡，养父偷偷问你「那个飞天扫帚贵不贵」，'
                 '养母把院子里也点了一盏像模像样的浮灯。',
-            nextStepId: 'ps_ch7_term_end',
+            nextStepId: 'ps_ch7_gifts',
             requireFlag: 'ps_family_supportive',
             effect: StoryEffect(
               addItems: ['手写贺卡'],
@@ -1666,7 +1666,7 @@ const List<StoryChapterDef> _psChapters = [
       StoryStepDef(
         id: 'ps_ch7_gifts',
         chapterId: 'ps_ch7',
-        timeCostDays: 1,
+        timeCostDays: 2,
         setup:
             '圣诞那天早上，公共休息室的壁炉前堆着一小摞用牛皮纸包着的盒子，'
             '上面写着你的名字。多数是家里寄来的：手织的围巾、一罐太甜的糖、'
