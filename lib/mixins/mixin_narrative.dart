@@ -2723,7 +2723,17 @@ $kNarrativeWritingRules
     if (step == null) return const [];
 
     final flags = progress.flags.toSet();
-    final avail = availableStoryChoices(step, flags);
+    // 【为什么把 knowledge / reputation 也传进去】内容表里越来越多的选项
+    // 需要"玩家知道什么"和"玩家在这一带的份量"两个维度来把关：
+    //   · knowledge——打听过内情的人才能看懂的出路；
+    //   · reputation——还没出名的低调出路 / 已经站稳脚的人才敢走的路。
+    // 这三样合起来，剧情选择才真正受玩家历史影响，而不是人人同一套按钮。
+    final avail = availableStoryChoices(
+      step,
+      flags,
+      knowledge: progress.knowledge.toSet(),
+      reputation: player?.wizardingReputation ?? 0,
+    );
 
     // 上限 4 条：与 AI 路径的选项数口径一致，也避免长表把按钮区撑爆。
     return avail

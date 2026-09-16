@@ -571,5 +571,78 @@ void main() {
       expect(once, greaterThanOrEqualTo(before));
       expect(gp.player!.cgRecords.containsKey('CG-002'), isTrue);
     });
+
+    test('「引用条例」只在玩家真的比对过教育令之后才出现', () async {
+      // 【这条测的是"条件选项真的接进了游戏"，不是"过滤函数对不对"】
+      // 过滤函数本身在 story_data_test 里已单测；这里验证的是：
+      // 运行时生成选项列表时，确实把 storyProgress.knowledge 传了下去。
+      final gp = await makeStoryGame();
+      final step = findStoryStep('ootp', 'ootp_ch4', 'ootp_ch4_raid')!;
+
+      // ① 没有情报时：看不到这条出路
+      final before = availableStoryChoices(
+        step,
+        gp.storyProgress.flags.toSet(),
+        knowledge: gp.storyProgress.knowledge.toSet(),
+        reputation: gp.player!.wizardingReputation,
+      ).map((c) => c.id);
+      expect(
+        before,
+        isNot(contains('cite_the_rules')),
+        reason: '没做过功课的人不该看到这条选项',
+      );
+
+      // ② 补上那条情报后再看：出现了
+      gp.applyStoryEffectForTest(
+        const StoryEffect(addKnowledge: ['ootp_edict_contradictions']),
+      );
+      final after = availableStoryChoices(
+        step,
+        gp.storyProgress.flags.toSet(),
+        knowledge: gp.storyProgress.knowledge.toSet(),
+        reputation: gp.player!.wizardingReputation,
+      ).map((c) => c.id);
+      expect(
+        after,
+        contains('cite_the_rules'),
+        reason: '比对过教育令条款之后，这条出路应当解锁',
+      );
+    });
+
+    test('替大家说话需要校内声望够高（声望门槛真的生效）', () async {
+      final gp = await makeStoryGame();
+      final step =
+          findStoryStep('ootp', 'ootp_ch7', 'ootp_ch7_accounting')!;
+      final flags = gp.storyProgress.flags.toSet();
+      final knowledge = gp.storyProgress.knowledge.toSet();
+
+      // 声望压到低位 → 这条选项不可见
+      gp.player!.playerReputation.academic = 0;
+      gp.player!.playerReputation.social = 0;
+      gp.player!.playerReputation.combat = 0;
+      gp.player!.playerReputation.moral = 0;
+      gp.player!.playerReputation.leadership = 0;
+      final low = availableStoryChoices(
+        step,
+        flags,
+        knowledge: knowledge,
+        reputation: gp.player!.wizardingReputation,
+      ).map((c) => c.id);
+      expect(low, isNot(contains('speak_for_group')));
+
+      // 声望拉高 → 可见
+      gp.player!.playerReputation.academic = 80;
+      gp.player!.playerReputation.social = 80;
+      gp.player!.playerReputation.combat = 80;
+      gp.player!.playerReputation.moral = 80;
+      gp.player!.playerReputation.leadership = 80;
+      final high = availableStoryChoices(
+        step,
+        flags,
+        knowledge: knowledge,
+        reputation: gp.player!.wizardingReputation,
+      ).map((c) => c.id);
+      expect(high, contains('speak_for_group'));
+    });
   });
 }

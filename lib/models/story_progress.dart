@@ -207,6 +207,39 @@ class StoryChoiceDef {
   /// 绝不让玩家面对一个空的选择界面。
   final String? requireFlag;
 
+  /// 需要同时具备这些 flag 才显示（全部满足，即 AND）。
+  ///
+  /// 与 [requireFlag] 可叠加使用；两者都满足才出现。
+  /// 适合"既知道了内情、又已经站在某一边"这类复合条件。
+  final List<String> requireAllFlags;
+
+  /// 具备其中**任意一个** flag 就显示（OR）。
+  ///
+  /// 适合"用任意一种方式打听到过消息"——玩家不必重复同一条路径。
+  final List<String> requireAnyFlags;
+
+  /// 需要掌握这些情报词条才显示（全部满足）。
+  ///
+  /// 与 flag 的区别：flag 记的是"世界状态变了"，
+  /// 情报记的是"玩家知道了什么"。同一个 flag 可能由多人共享，
+  /// 而情报只属于玩家本人——用它可以做"只有打听过的人才懂的选项"。
+  final List<String> requireKnowledge;
+
+  /// 需要持有该 flag 才**隐藏**此选项。
+  ///
+  /// 用于"已经做过就不能再做一次"的场景，比如已经公开表态之后，
+  /// 就不再出现"保持中立"这条出路。
+  final String? hideIfFlag;
+
+  /// 声望达到该值才显示（含）。
+  final int? minReputation;
+
+  /// 声望低于该值才显示（不含）。
+  ///
+  /// 与 [minReputation] 配合可做区间选项；单独用则可做"还没出名时
+  /// 才有的低调出路"。
+  final int? maxReputation;
+
   const StoryChoiceDef({
     required this.id,
     required this.text,
@@ -214,7 +247,50 @@ class StoryChoiceDef {
     this.nextStepId = '',
     this.effect = StoryEffect.none,
     this.requireFlag,
+    this.requireAllFlags = const [],
+    this.requireAnyFlags = const [],
+    this.requireKnowledge = const [],
+    this.hideIfFlag,
+    this.minReputation,
+    this.maxReputation,
   });
+
+  /// 本条选项在当前处境下是否可见。
+  ///
+  /// [flags] = 玩家持有的 flag；[knowledge] = 已掌握的情报词条；
+  /// [reputation] = 当前声望。
+  ///
+  /// 【为什么把判定放在模型层】内容表是 `const`，条件检查是纯函数——
+  /// 既方便 `availableStoryChoices` 统一调用，也方便测试直接构造
+  /// 一个 `StoryChoiceDef` 来验证边界，不必起一局游戏。
+  bool isVisible({
+    required Set<String> flags,
+    Set<String> knowledge = const {},
+    int reputation = 0,
+  }) {
+    // 隐藏优先：说了"有 X 就别显示"，那就不显示，后面条件不再看。
+    if (hideIfFlag != null && flags.contains(hideIfFlag)) return false;
+
+    if (requireFlag != null && !flags.contains(requireFlag)) return false;
+
+    for (final f in requireAllFlags) {
+      if (!flags.contains(f)) return false;
+    }
+
+    if (requireAnyFlags.isNotEmpty &&
+        !requireAnyFlags.any(flags.contains)) {
+      return false;
+    }
+
+    for (final k in requireKnowledge) {
+      if (!knowledge.contains(k)) return false;
+    }
+
+    if (minReputation != null && reputation < minReputation!) return false;
+    if (maxReputation != null && reputation >= maxReputation!) return false;
+
+    return true;
+  }
 }
 
 /// 一步剧情（= 一章里的一个节拍）。
@@ -749,17 +825,28 @@ StoryStepDef? findStoryStepAnywhere(String bookId, String stepId) {
   return null;
 }
 
-/// 当前步可选的分支（按 [StoryChoiceDef.requireFlag] 过滤）。
+/// 当前步可选的分支（按各条选项自己的可见条件过滤）。
 ///
 /// 【兜底规则很重要】过滤后一条都不剩时**退回全部选项**——
 /// 玩家的 flag 状态可能与内容作者预期不一致（改过档、走过特殊分支），
 /// 这时候让他面对一个空的选择列表等于卡死。
+///
+/// 【为什么兜底是"退回全部"而不是"退回无条件的那些"】后者听起来更保守，
+/// 但它会在"所有无条件选项都被 hideIfFlag 挡掉"时重新制造空列表。
+/// 退回全部是唯一能保证非空的策略；代价是特殊情况下玩家会看到本不该
+/// 出现的选项，这远好过卡死。
 List<StoryChoiceDef> availableStoryChoices(
   StoryStepDef step,
-  Set<String> flags,
-) {
+  Set<String> flags, {
+  Set<String> knowledge = const {},
+  int reputation = 0,
+}) {
   final ok = step.choices
-      .where((c) => c.requireFlag == null || flags.contains(c.requireFlag))
+      .where((c) => c.isVisible(
+            flags: flags,
+            knowledge: knowledge,
+            reputation: reputation,
+          ))
       .toList();
   return ok.isEmpty ? List<StoryChoiceDef>.from(step.choices) : ok;
 }

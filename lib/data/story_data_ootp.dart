@@ -1065,6 +1065,26 @@ const List<StoryChapterDef> _ootpChapters = [
           '你踩到了什么软的东西，没敢低头看。',
         ],
         choices: [
+          // 【条件选项】只有先前真的把教育令的条款一条条比对过
+          // （ootp_edict_contradictions，ch2 的情报线）的人，才会知道
+          // 搜查本身不合规——这条出路是对"提前做功课"的回报。
+          StoryChoiceDef(
+            id: 'cite_the_rules',
+            text: '引用教育令的条例，拖住他们几分钟',
+            requireKnowledge: ['ootp_edict_contradictions'],
+            consequence:
+                '你站在门口，一条一条地把教育令念了出来——'
+                '第几条允许抽查，第几条不允许翻私人箱柜。'
+                '领头的那个愣了两秒，这两秒里窗户那边的人全跑干净了。'
+                '你后来才知道，有几十个人是因为这两秒才没被记名字。',
+            effect: StoryEffect(
+              setFlags: ['ootp_da_active', 'ootp_protected_others', 'ootp_rule_lawyer'],
+              addKnowledge: ['ootp_rules_as_shield'],
+              reputation: 4,
+              spirit: 2,
+            ),
+            nextStepId: 'ootp_ch4_raid_after',
+          ),
           StoryChoiceDef(
             id: 'cover_escape',
             text: '拦住门口那一下，给大家多十秒',
@@ -1808,6 +1828,28 @@ const List<StoryChapterDef> _ootpChapters = [
           '你数着时间：一小时、两小时、四小时。',
         ],
         choices: [
+          // 【条件选项】参加过集会、知道那些人是谁的人，这一夜才有
+          // "具体要等谁"的概念；只是在走廊上听说过传闻的人，等的是
+          // 一个模糊的消息，而不是六个具体的人。
+          StoryChoiceDef(
+            id: 'wait_named',
+            text: '把那几个名字在心里默念了一遍又一遍',
+            requireAnyFlags: ['ootp_da_active', 'ootp_cell_structure'],
+            consequence:
+                '你把名字念了一遍：六个。'
+                '念到第三个的时候你才意识到，'
+                '其中有两个你其实没说过几句话——'
+                '但这一年里，你和他们一起练过、跑过、被记过。'
+                '那一夜你等的是六个具体的人，'
+                '不是一条模糊的消息。',
+            effect: StoryEffect(
+              setFlags: ['ootp_kept_vigil', 'ootp_knew_them'],
+              addKnowledge: ['ootp_six_names'],
+              affection: 3,
+              spirit: -2,
+            ),
+            nextStepId: 'ootp_ch6_before_news',
+          ),
           StoryChoiceDef(
             id: 'keep_fire',
             text: '守着火，一夜不让它灭',
@@ -2057,6 +2099,27 @@ const List<StoryChapterDef> _ootpChapters = [
           '公告栏上贴出补课安排，时间表排到了七月中。',
         ],
         choices: [
+          // 【条件选项】这一年在校内已经有份量的人（声望 ≥ 45）才会被
+          // 推举去说这件事；否则这个位置根本轮不到你，选项不显示。
+          StoryChoiceDef(
+            id: 'speak_for_group',
+            text: '被推举去替大家把这一年的账说出来',
+            minReputation: 45,
+            consequence:
+                '他们推你上去，因为你这一年在场的时候最多。'
+                '你说了十二分钟，'
+                '把被停学的、被记过的、被撤掉资格的名字一个个念了出来。'
+                '有人中途鼓掌，也有人一直低着头。'
+                '你说完坐下的时候，手心全是汗。',
+            effect: StoryEffect(
+              setFlags: ['ootp_rebuilt', 'ootp_spoke_for_all'],
+              addKnowledge: ['ootp_the_year_told'],
+              reputation: 5,
+              affection: 3,
+              spirit: 5,
+            ),
+            nextStepId: 'ootp_ch7_goodbye',
+          ),
           StoryChoiceDef(
             id: 'help_rebuild',
             text: '报名参加暑期的球场和教室修缮',

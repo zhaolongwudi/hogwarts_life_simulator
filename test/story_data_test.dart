@@ -234,6 +234,146 @@ void main() {
     });
   });
 
+  group('D2 · 选项条件系统（requireAll/Any/Knowledge/声望/隐藏）', () {
+    /// 造一个含各类条件选项的步，逐个条件单独验证。
+    const step = StoryStepDef(
+      id: 's',
+      chapterId: 'c',
+      setup: 'x',
+      choices: [
+        StoryChoiceDef(id: 'plain', text: '普通', consequence: 'x'),
+        StoryChoiceDef(
+          id: 'and',
+          text: '需要两个 flag',
+          consequence: 'x',
+          requireAllFlags: ['a', 'b'],
+        ),
+        StoryChoiceDef(
+          id: 'or',
+          text: '任一 flag 即可',
+          consequence: 'x',
+          requireAnyFlags: ['c', 'd'],
+        ),
+        StoryChoiceDef(
+          id: 'know',
+          text: '需要情报',
+          consequence: 'x',
+          requireKnowledge: ['k'],
+        ),
+        StoryChoiceDef(
+          id: 'famous',
+          text: '小有名气',
+          consequence: 'x',
+          minReputation: 30,
+        ),
+        StoryChoiceDef(
+          id: 'lowkey',
+          text: '还没出名时才有',
+          consequence: 'x',
+          maxReputation: 30,
+        ),
+        StoryChoiceDef(
+          id: 'hidden',
+          text: '做过就别再显示',
+          consequence: 'x',
+          hideIfFlag: 'done',
+        ),
+      ],
+    );
+
+    Set<String> idsOf({
+      Set<String> flags = const {},
+      Set<String> knowledge = const {},
+      int reputation = 0,
+    }) =>
+        availableStoryChoices(
+          step,
+          flags,
+          knowledge: knowledge,
+          reputation: reputation,
+        ).map((c) => c.id).toSet();
+
+    test('requireAllFlags 是 AND：缺一个就不显示', () {
+      expect(idsOf(flags: {'a'}), isNot(contains('and')));
+      expect(idsOf(flags: {'b'}), isNot(contains('and')));
+      expect(idsOf(flags: {'a', 'b'}), contains('and'));
+    });
+
+    test('requireAnyFlags 是 OR：有一个就显示', () {
+      expect(idsOf(), isNot(contains('or')));
+      expect(idsOf(flags: {'c'}), contains('or'));
+      expect(idsOf(flags: {'d'}), contains('or'));
+    });
+
+    test('requireKnowledge 看的是"你知道什么"，不是"世界变了什么"', () {
+      // flag 里没有 k，但情报里有 → 应该显示
+      expect(idsOf(knowledge: {'k'}), contains('know'));
+      // flag 里有 k 但情报里没有 → 不该显示（两个维度互不替代）
+      expect(idsOf(flags: {'k'}), isNot(contains('know')));
+    });
+
+    test('声望区间：高声望看得到 fame，低声望看得到 lowkey', () {
+      final low = idsOf(reputation: 10);
+      expect(low, contains('lowkey'));
+      expect(low, isNot(contains('famous')));
+
+      final high = idsOf(reputation: 50);
+      expect(high, contains('famous'));
+      expect(high, isNot(contains('lowkey')));
+    });
+
+    test('hideIfFlag：持有该 flag 时选项消失', () {
+      expect(idsOf(), contains('hidden'));
+      expect(idsOf(flags: {'done'}), isNot(contains('hidden')));
+    });
+
+    test('无条件选项在任何处境下都在', () {
+      for (final flags in [<String>{}, {'a', 'b'}, {'done'}]) {
+        expect(idsOf(flags: flags), contains('plain'));
+      }
+    });
+
+    test('多条条件叠加时是"与"关系', () {
+      const combo = StoryChoiceDef(
+        id: 'combo',
+        text: '复合',
+        consequence: 'x',
+        requireFlag: 'f1',
+        requireKnowledge: ['k1'],
+        minReputation: 20,
+      );
+      // 只满足其一 → 不显示
+      expect(
+        combo.isVisible(flags: {'f1'}, knowledge: {'k1'}, reputation: 0),
+        isFalse,
+      );
+      // 三者齐备 → 显示
+      expect(
+        combo.isVisible(flags: {'f1'}, knowledge: {'k1'}, reputation: 20),
+        isTrue,
+      );
+    });
+
+    test('hideIfFlag 优先级最高：即使其他条件都满足也不显示', () {
+      const c = StoryChoiceDef(
+        id: 'x',
+        text: 'x',
+        consequence: 'x',
+        requireFlag: 'f',
+        hideIfFlag: 'blocked',
+      );
+      expect(
+        c.isVisible(flags: {'f'}, knowledge: const {}, reputation: 0),
+        isTrue,
+      );
+      expect(
+        c.isVisible(flags: {'f', 'blocked'}, knowledge: const {}, reputation: 0),
+        isFalse,
+        reason: '隐藏条件应当压过解锁条件',
+      );
+    });
+  });
+
   group('E · 结局判定', () {
     StoryBookDef book() => kStoryBooks['ps']!;
 
