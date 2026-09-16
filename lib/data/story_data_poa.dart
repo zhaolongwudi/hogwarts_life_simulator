@@ -1703,6 +1703,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你去了。他正在给一筐萝卜削皮，动作很慢。'
                 '他说没事，又说"它只是没被礼貌对待过"。'
                 '你要走时他往你兜里塞了几个烤饼。',
+            requireFlag: 'poa_care_creatures',
             effect: StoryEffect(
               setFlags: ['poa_buckbeak_friend'],
               addItems: ['坩埚蛋糕'],
@@ -1718,6 +1719,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你问了三个在场的人，拼出另一版本：'
                 '有人先挑衅，也忘了鞠躬。你把三份说法写在纸上，'
                 '纸很轻，分量却重。',
+            requireAnyFlags: ['poa_read_news', 'poa_studied_reports', 'poa_curious_on_train', 'poa_asked_about_sirius'],
             effect: StoryEffect(
               addItems: ['羊皮纸一包'],
               addKnowledge: ['poa_incident_testimony'],
@@ -1763,6 +1765,8 @@ const List<StoryChapterDef> _poaChapters = [
                 '你把那张纸塞进一个正要进去的学长手里，'
                 '说了句"这个也许有用"。他没答应什么，'
                 '但进门前回头看了你一眼。',
+            requireAllFlags: ['poa_studied_reports', 'poa_took_notes'],
+            hideIfFlag: 'poa_evidence_handed',
             effect: StoryEffect(
               setFlags: ['poa_hearing_witness'],
               addKnowledge: ['poa_evidence_handed'],
@@ -1838,6 +1842,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '敲了一下门就走了。'
                 '后来你一直不知道他有没有看到那句话——'
                 '你在包装纸上写了"不是你的错"。',
+            requireAnyFlags: ['poa_buckbeak_friend', 'poa_care_creatures'],
             effect: StoryEffect(
               setFlags: ['poa_kind_to_hagrid'],
               affection: 4,
@@ -1854,6 +1859,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '然后只说了两句：'
                 '"程序走完了"和"这不是你们能改变的事"。'
                 '你从他脸上看出来，他自己也不认同这个结果。',
+            requireAnyFlags: ['poa_overheard_adults', 'poa_asked_shopkeeper', 'poa_asked_about_sirius'],
             effect: StoryEffect(
               addKnowledge: ['poa_verdict_unjust'],
               setFlags: ['poa_saw_faculty_doubt'],
@@ -1897,6 +1903,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你签了。名字排在中间，很不起眼。'
                 '但你写完抬头时，看见后面还排着三个人——'
                 '你不是最后一个，也不是第一个。',
+            hideIfFlag: 'poa_signed_petition',
             effect: StoryEffect(
               setFlags: ['poa_buckbeak_friend'],
               addItems: ['计划书'],
@@ -1985,6 +1992,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你按自己的节奏过了一遍所有科目，'
                 '安静、有效，也有点孤独。'
                 '成绩出来那天，你发现自己确实考得不错。',
+            maxReputation: 8,
             effect: StoryEffect(
               setFlags: ['poa_exam_ready'],
               addKnowledge: ['poa_solo_study'],
@@ -2059,6 +2067,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你写了七条，拼出了一个大概：'
                 '十二年前有人替别人背了罪，今年夏天被翻了出来。'
                 '你不能证明，但这个版本比"疯子杀人"讲得通。',
+            requireAnyFlags: ['poa_took_notes', 'poa_studied_reports', 'poa_asked_divination', 'poa_divination'],
             effect: StoryEffect(
               addItems: ['羊皮纸一包'],
               addKnowledge: ['poa_truth_fragments'],
@@ -2074,6 +2083,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你问了。那人看了你很久，'
                 '最后只说了一句："有些事，知道的人越少越安全。"'
                 '你没再问——但你知道他其实是在保护你。',
+            requireAnyFlags: ['poa_asked_librarian', 'poa_buried_in_books', 'poa_first_village', 'poa_rosmerta_talk'],
             effect: StoryEffect(
               setFlags: ['poa_truth_heard'],
               addKnowledge: ['poa_protected_silence'],
@@ -2134,6 +2144,7 @@ const List<StoryChapterDef> _poaChapters = [
                 '你不知道那是不是你想的那个人。'
                 '但你记住了那一夜城堡外面的黑——'
                 '那种黑里什么都可能发生。',
+            requireAnyFlags: ['poa_knows_dementor', 'poa_private_fear', 'poa_stayed_calm', 'poa_shared_fear'],
             effect: StoryEffect(
               addKnowledge: ['poa_watch_kept'],
               setFlags: ['poa_saw_the_dark'],

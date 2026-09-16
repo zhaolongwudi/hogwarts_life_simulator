@@ -1358,6 +1358,7 @@ const List<StoryChapterDef> _hbpChapters = [
             consequence:
                 '你排到第三遍的时候，发现有个人的名字出现了两次，而且中间隔了很久。你把这两个时间点圈了起来。',
             nextStepId: '',
+            requireAnyFlags: ['hbp_borrowed_notes', 'hbp_copied_notes', 'hbp_kept_notes', 'hbp_prince_search', 'hbp_rumor_timeline'],
             effect: StoryEffect(addKnowledge: ['hbp_timeline'], setFlags: ['hbp_connected'], spirit: 3),
           ),
           StoryChoiceDef(
@@ -1455,6 +1456,7 @@ const List<StoryChapterDef> _hbpChapters = [
                 '越往下越清楚，也越往下越冷。'
                 '最后你停在一个数字上——'
                 '你希望自己是算错了，但你没有。',
+            requireAnyFlags: ['hbp_asked_around', 'hbp_counted_names', 'hbp_rumor_timeline', 'hbp_watched_changes', 'hbp_watch_rumors'],
             effect: StoryEffect(
               addItems: ['旧书', '神秘符号'],
               addKnowledge: ['hbp_horcrux_count'],
@@ -1658,6 +1660,7 @@ const List<StoryChapterDef> _hbpChapters = [
                 '你坐到离门最近的位置，跟同屋的人有一搭没一搭地说话。'
                 '你说的话自己都不记得了，但他们都安静下来了。'
                 '天亮之后你才知道，那一夜真的出事了。',
+            requireAnyFlags: ['hbp_comforted_peer', 'hbp_checked_friends', 'hbp_owl_kind', 'hbp_train_kind', 'hbp_winter_helped'],
             effect: StoryEffect(
               setFlags: ['hbp_calmed_dorm'],
               reputation: 3,
@@ -1723,6 +1726,7 @@ const List<StoryChapterDef> _hbpChapters = [
             consequence:
                 '你从头看到尾，什么也没做。后来的很多年里，你都还记得那天夜里风的方向。',
             nextStepId: '',
+            requireAnyFlags: ['hbp_kept_watch', 'hbp_timeline', 'hbp_rumor_timeline', 'hbp_watch_plan'],
             effect: StoryEffect(setFlags: ['hbp_witnessed'], spirit: -3),
           ),
         ],

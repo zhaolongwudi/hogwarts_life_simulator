@@ -715,6 +715,7 @@ const List<StoryChapterDef> _gofChapters = [
                 '你记满了两页：谁快、谁稳、谁用了从没见过的咒。'
                 '回宿舍后有人借去看，看完说：'
                 '"你这哪是看比赛，你这是备课。"',
+            requireAnyFlags: ['gof_read_history', 'gof_knows_rules', 'gof_tournament_history', 'gof_focused_study'],
             effect: StoryEffect(
               addItems: ['羊皮纸一包', '新羽毛笔'],
               addKnowledge: ['gof_task_notes'],
@@ -908,6 +909,7 @@ const List<StoryChapterDef> _gofChapters = [
                 '你在露台上遇见一个外校的学生，'
                 '你们用半通不通的英语聊了二十分钟，'
                 '聊的都是废话，却比什么都好——那晚你们都只是学生。',
+            requireAnyFlags: ['gof_greeted_guests', 'gof_host_manners', 'gof_spoke_up', 'gof_stood_up', 'gof_steered'],
             effect: StoryEffect(
               setFlags: ['gof_danced', 'gof_host_manners'],
               reputation: 3,
@@ -1079,6 +1081,7 @@ const List<StoryChapterDef> _gofChapters = [
                 '你记了时间：最长的那个超过了一小时。'
                 '你在纸上写"这不合理"，'
                 '然后有人提醒你，勇士是可以用魔法的。',
+            requireAnyFlags: ['gof_tracks_news', 'gof_focused_study', 'gof_read_history', 'gof_camp_layout'],
             effect: StoryEffect(
               addItems: ['计划书'],
               addKnowledge: ['gof_task_timing'],
@@ -1330,6 +1333,7 @@ const List<StoryChapterDef> _gofChapters = [
                 '你描了张草图，描到第三遍才发现：'
                 '它每天长得都不一样。你把草图撕了——'
                 '有些东西本来就不该被提前算清。',
+            requireAnyFlags: ['gof_sense_wrong', 'gof_fourth_name', 'gof_tournament_doubt', 'gof_cup_omen'],
             effect: StoryEffect(
               addItems: ['全效望远镜'],
               addKnowledge: ['gof_maze_sketch'],
