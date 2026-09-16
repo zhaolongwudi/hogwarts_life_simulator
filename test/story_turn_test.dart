@@ -418,4 +418,158 @@ void main() {
       }
     });
   });
+
+  // ================================================================
+  // H · 剧情 → 项目各功能系统的接线（v2）
+  // ================================================================
+  //
+  // 【为什么单独一组】这一整条链路此前是**断的**，而且没有任何测试覆盖它——
+  // 上游 `_finalizeTurn` 把 `@@story:<stepId>:<choiceId>@@` 这个机器编码
+  // 直接喂给 `updatePlayerImpactScore(action)`，那里判的是
+  // `action.contains('哈利')` / `contains('密室')`，对编码串**永远为假**。
+  // 于是玩家在剧情里跟原著角色互动了几十次，影响力分数里一次都没算过。
+  //
+  // 【为什么原来的测试没抓到】F 组的"回合收尾未丢"只断言了 `recentTurns`，
+  // 没有断言影响力真的动过——测试写成了"函数被调用了"，而不是"结果对"。
+  // 这组测的是**结果**。
+  group('H · 剧情与项目各功能系统的接线', () {
+    test('剧情行动的中文语义进了影响力判定（不再吃机器编码）', () async {
+      final gp = await makeStoryGame();
+      final before = gp.worldState.playerImpactScore;
+
+      // 第一章第一步选"直接问养父母"——选项文案与 consequence 都是中文行动句。
+      final step = findStoryStep('ps', 'ps_ch1', 'ps_ch1_letter')!;
+      final choice = step.choices.first;
+      await gp.processChoice(
+        GameChoice(
+          text: choice.text,
+          action: encodeStoryAction(step.id, choice.id),
+        ),
+      );
+
+      expect(
+        gp.worldState.playerImpactScore,
+        greaterThan(before),
+        reason: '只要玩家做了选择，影响力就必须增长（每回合基础 +0.003）',
+      );
+    });
+
+    test('剧情里与原著角色的互动会被影响力系统看见', () async {
+      // 直接调收尾函数，喂一条含原著角色名的**语义**字符串，
+      // 与喂机器编码的旧行为对照——这是本组要钉死的差异。
+      //
+      // 【为什么必须写全名】影响力系统的判定是 `action.contains(npc.name)`，
+      // 而注册表里的名字是**全名**（`哈利·波特`、`赫敏·格兰杰`），不是昵称。
+      // 写"哈利"命中不了——这也解释了为什么剧情文本里若只写昵称，
+      // 加成同样拿不到。内容层要吃到这条增益，台词里就得出现接近全名的写法。
+      final gp = await makeStoryGame();
+
+      final baseline = gp.worldState.playerImpactScore;
+      gp.updatePlayerImpactScore('@@story:ps_ch1_letter:read_in_room@@');
+      final encoded = gp.worldState.playerImpactScore - baseline;
+
+      final beforeSemantic = gp.worldState.playerImpactScore;
+      gp.updatePlayerImpactScore('你和赫敏·格兰杰一起在图书馆复习了变形术，顺路去看了哈利·波特');
+      final semantic = gp.worldState.playerImpactScore - beforeSemantic;
+
+      expect(
+        encoded,
+        closeTo(0.003, 1e-9),
+        reason: '机器编码命不中任何关键词，只拿每回合基础分',
+      );
+      expect(
+        semantic,
+        greaterThan(encoded),
+        reason: '语义串提到原著角色应比机器编码加更多分——'
+            '这正是修复前一直拿不到的增益',
+      );
+    });
+
+    test('StoryEffect 的新字段确实写进了长期记忆与委托', () async {
+      final gp = await makeStoryGame();
+      final step = findStoryStep('ps', 'ps_ch1', 'ps_ch1_letter')!;
+
+      // 构造一个"什么接线都拉满"的效果，直接走结算路径。
+      const probe = StoryEffect(
+        openLoops: ['probe_loop|一封没写清楚的信到底想说什么'],
+        addWorldEvents: ['探测事件|这是一条用于验证接线的世界大事'],
+        worldEventImportance: 9,
+      );
+      gp.applyStoryEffectForTest(probe);
+
+      expect(
+        gp.memory.openLoops.any((r) => r.id == 'probe_loop' && r.status == 'open'),
+        isTrue,
+        reason: 'openLoops 必须落进 T1 未完结事项',
+      );
+      expect(
+        gp.memory.worldEvents.any((r) => r.id == 'story_探测事件'),
+        isTrue,
+        reason: 'addWorldEvents 必须落进 T3 世界大事层',
+      );
+      expect(
+        gp.memory.keyFacts.isNotEmpty || gp.memory.worldEvents.isNotEmpty,
+        isTrue,
+        reason: '长期记忆不能为空——离线长局的沉淀入口',
+      );
+      // 保证探针没污染剧情游标。
+      expect(gp.storyProgress.stepId, step.id);
+    });
+
+    test('closeLoops 能把开过的悬念了结掉', () async {
+      final gp = await makeStoryGame();
+      gp.applyStoryEffectForTest(
+        const StoryEffect(openLoops: ['probe_close|先开一个待会儿要关的悬念']),
+      );
+      expect(
+        gp.memory.openLoops.firstWhere((r) => r.id == 'probe_close').status,
+        'open',
+      );
+
+      gp.applyStoryEffectForTest(const StoryEffect(closeLoops: ['probe_close']));
+      expect(
+        gp.memory.openLoops.firstWhere((r) => r.id == 'probe_close').status,
+        'done',
+        reason: 'closeLoops 必须把悬念标成已了结',
+      );
+    });
+
+    test('关闭不存在的悬念不报错（内容层改 id 不该崩）', () async {
+      final gp = await makeStoryGame();
+      expect(
+        () => gp.applyStoryEffectForTest(
+          const StoryEffect(closeLoops: ['根本不存在_loop']),
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('精力/饱食进剧情效果链（体力系统不再是法外之地）', () async {
+      final gp = await makeStoryGame();
+      gp.player!.energy = 50;
+      gp.player!.satiety = 50;
+
+      gp.applyStoryEffectForTest(const StoryEffect(energy: -20, satiety: 10));
+
+      expect(gp.player!.energy, 30);
+      expect(gp.player!.satiety, 60);
+    });
+
+    test('解锁 CG 走统一入口且幂等（重复解锁不重复计数）', () async {
+      final gp = await makeStoryGame();
+      final before = gp.player!.cgRecords.length;
+
+      gp.applyStoryEffectForTest(const StoryEffect(unlockCgs: ['CG-002']));
+      final once = gp.player!.cgRecords.length;
+
+      gp.applyStoryEffectForTest(const StoryEffect(unlockCgs: ['CG-002']));
+      expect(
+        gp.player!.cgRecords.length,
+        once,
+        reason: 'unlockCG 内部按 cgRecords 去重，重复解锁必须幂等',
+      );
+      expect(once, greaterThanOrEqualTo(before));
+      expect(gp.player!.cgRecords.containsKey('CG-002'), isTrue);
+    });
+  });
 }

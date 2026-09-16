@@ -1086,10 +1086,59 @@ $kNarrativeWritingRules
   ///     剧情 8 章只该跨几个月，猜出来的时间会让原著节点的月份整体错位；
   ///   · `fastForwardDays` 内部走 `_advanceWorldClock` 全量结算（游戏周/
   ///     学院杯/NPC 位置/学年推进/事件锚点/月度演化），语义比"猜时长"精确得多。
+  /// 把一回合的剧情节拍压成一段**给关键词系统读的中文行动串**。
+  ///
+  /// 【为什么需要它】见 `_finalizeTurn` 里 `semanticAction` 的说明：
+  /// 剧情模式的 action 是机器编码，直接喂给 `updateNPCsFromAction` /
+  /// `updatePlayerImpactScore` 会让关键词判定全部落空。
+  ///
+  /// 【拼装口径】按"信息量从高到低"取三样：
+  ///   1. 玩家选的那句行动（`StoryChoiceDef.text`）——最接近玩家意图；
+  ///   2. 选择结果（`consequence`）——原著 NPC 名字与事件多出现在这里；
+  ///   3. 已解锁的情报 id（`addKnowledge`）——把"知道了密室"这类状态
+  ///      转成关键词可命中的文本（下划线替换成空格）。
+  ///
+  /// 三者按空格拼成一段，不去重也不截断：下游三个函数都只做 `contains`，
+  /// 串长对它们没有性能影响（每回合一次）。
+  ///
+  /// 【跳步场景的兜底】自由插话（`isFreeformInterjection`）与结局回合
+  /// 没有 choice，用玩家原文 + 叙事首段兜底——玩家自己打的字本来就是
+  /// 最真实的行为描述。都没有时回落到 [fallback]（编码 action），
+  /// 保持与改动前完全一致的行为，不会因为本函数让任何路径变差。
+  String _semanticActionOf(StoryBeat beat, String fallback) {
+    final buf = <String>[];
+
+    final freeform = beat.freeActionText;
+    if (freeform != null && freeform.trim().isNotEmpty) {
+      buf.add(freeform.trim());
+    }
+
+    final choice = beat.choice;
+    if (choice != null) {
+      buf.add(choice.text);
+      if (choice.consequence.trim().isNotEmpty) {
+        buf.add(choice.consequence.trim());
+      }
+    }
+
+    final step = beat.step;
+    if (step != null) {
+      // onEnterText 是"进入这一步时世界发生的事"，往往写着原著事件名；
+      // setup 是情境，行长但关键词密度高，同样值得进串。
+      final enter = step.onEnterText;
+      if (enter != null && enter.trim().isNotEmpty) buf.add(enter.trim());
+      if (step.setup.trim().isNotEmpty) buf.add(step.setup.trim());
+    }
+
+    final joined = buf.join(' ').trim();
+    return joined.isEmpty ? fallback : joined;
+  }
+
   void _finalizeTurn(
     String narrative,
     String action, {
     int? storyTimeCostDays,
+    String? semanticAction,
   }) {
     // ⓪ 图鉴收录（见 data/collection_data.dart）：扫描本回合叙事，命中
     // 新条目时把一行提示追加到叙事尾部——放在锚点/摘要**之前**，让收录
@@ -1102,6 +1151,30 @@ $kNarrativeWritingRules
     saveContinuityAnchor(narrative);
     accumulateForSummary(narrative);
     appendRecentTurn(narrative);
+
+    // 【语义行动串：为什么必须换掉 action】
+    //
+    // 剧情模式的 `action` 是 `@@story:<stepId>:<choiceId>@@` 这种**机器编码**
+    // （见 `encodeStoryAction`：这是唯一能穿过存档通道的载体）。可下游有三个
+    // 系统是**按中文关键词**做判断的：
+    //   · `advanceTimeForAction` —— 猜本回合耗时；
+    //   · `updateNPCsFromAction` —— 精力/饱食/精神消耗与恢复；
+    //   · `updatePlayerImpactScore` —— 提及原著 NPC 加分、原著大事关键词加分。
+    // 把编码串喂进去，`action.contains('哈利')` 这类判定**永远为假**：
+    // 玩家在剧情里和赫敏一起复习了十次，影响力分数里一次都没算过。
+    // 剧情模式的时间推进本来就走 `storyTimeCostDays` 绕过关键词，但 NPC 与
+    // 影响力这两条没有旁路，于是整条"剧情 → 世界"的接线是**断的**。
+    //
+    // 【为什么用语义串而不是直接传中文选项文案】
+    // 选项文案（`StoryChoiceDef.text`）本身就是给玩家读的中文行动句
+    // （"夜里循着传闻找到那间教室"），它天然承载了关键词。但**跳过步数的
+    // 场景**（自由插话、结局后行动、自动开新书）没有 choice，回落到 action。
+    // 拼接 consequence 而不是只给 text，是因为 consequence 里才会出现
+    // NPC 名字与事件名（"你和纳威一起…"），这才是加分项的真正来源。
+    final effectAction = (semanticAction != null && semanticAction.trim().isNotEmpty)
+        ? semanticAction
+        : action;
+
     if (storyTimeCostDays != null && storyTimeCostDays > 0) {
       // 【为什么显式转型】`fastForwardDays` 实现在 `GameSystemsMixin`，
       // 本项目实测：即使它已在 `GameProviderBase` 上声明，在
@@ -1111,10 +1184,10 @@ $kNarrativeWritingRules
       // 而不是再造第三种调用方式。
       (this as GameSystemsMixin).fastForwardDays(storyTimeCostDays);
     } else {
-      advanceTimeForAction(action);
+      advanceTimeForAction(effectAction);
     }
-    updateNPCsFromAction(action);
-    updatePlayerImpactScore(action);
+    updateNPCsFromAction(effectAction);
+    updatePlayerImpactScore(effectAction);
   }
 
   /// 扫描一段叙事文本，把新命中的图鉴条目收录进 [collectionUnlocked]，
@@ -1368,6 +1441,17 @@ $kNarrativeWritingRules
   @visibleForTesting
   void injectCanonEventForTest() => _injectCanonEventIntoOfflineNarrative();
 
+  /// 直接落一份剧情效果（测试用）。
+  ///
+  /// 【为什么需要】`_applyStoryEffect` 的新接线字段（openLoops / addQuests /
+  /// addWorldEvents / unlockCgs / energy / satiety）目前只有运行时路径会走到，
+  /// 而运行时路径必须先有内容层声明这些字段——内容层还没铺到那儿时，
+  /// 接线本身就成了"没有测试覆盖的代码"。这个入口让接线可以被**独立**钉死，
+  /// 不必等 102 个节点的内容全部补完。
+  @visibleForTesting
+  void applyStoryEffectForTest(StoryEffect effect) =>
+      _applyStoryEffect(effect);
+
 
   void _injectCanonEventIntoOfflineNarrative() {
     final p = player;
@@ -1494,6 +1578,7 @@ $kNarrativeWritingRules
       currentNarrative,
       action,
       storyTimeCostDays: beat.timeCostDays,
+      semanticAction: _semanticActionOf(beat, action),
     );
 
     // ④ 剧情选项（独立构建器，不进 buildFallbackChoices）。
@@ -1996,6 +2081,16 @@ $kNarrativeWritingRules
       if (effect.spirit != 0) {
         p.spirit = (p.spirit + effect.spirit).clamp(0, 100);
       }
+      // 精力/饱食：剧情推进不再是"体力系统的法外之地"。
+      // 负数消耗、正数恢复，越界一律夹回 [0,100]——与
+      // `updateNPCsFromAction` 的既有口径一致（那里是 max(0,...)，
+      // 这里上下都夹，因为剧情可以给正值）。
+      if (effect.energy != 0) {
+        p.energy = (p.energy + effect.energy).clamp(0, 100);
+      }
+      if (effect.satiety != 0) {
+        p.satiety = (p.satiety + effect.satiety).clamp(0, 100);
+      }
       if (effect.galleons != 0) {
         p.galleons = (p.galleons + effect.galleons).clamp(0, 1 << 30);
       }
@@ -2078,6 +2173,106 @@ $kNarrativeWritingRules
       flags: flags,
       knowledge: knowledge,
     );
+
+    // ================================================================
+    // 与项目各功能系统的接线（v2）
+    // ================================================================
+    // 放在最后：上面已经把 flags/knowledge 收敛进 storyProgress，这里做的
+    // 是"把剧情结论广播给世界"，与 storyProgress 本身无关，顺序上互不影响。
+    _routeEffectToWorld(effect);
+  }
+
+  /// 把剧情效果广播给长期记忆 / 委托 / 图鉴三个系统。
+  ///
+  /// 【为什么单独抽一个函数】`_applyStoryEffect` 已经很长（数值 + 物品 +
+  /// flag + 情报），再接四段接线会把它压垮。这四段的共同点是：
+  /// **都只跟 `effect` 与世界态有关，不碰 `storyProgress`**——边界干净，
+  /// 可以独立读、独立测。
+  ///
+  /// 【为什么全部做了容错】内容层会持续增删（现在 100+ 节点，后面还会加），
+  /// 写错一个 quest id / cg id 不该让玩家的一回合崩掉。三个系统各自的
+  /// 写入口本身也都带幂等去重，重复触发是安全的。
+  void _routeEffectToWorld(StoryEffect effect) {
+    final p = player;
+    if (p == null) return;
+    final now = worldState.time.format();
+
+    // ① 悬念：开启。描述按第一个 `|` 切成 id 与正文。
+    for (final raw in effect.openLoops) {
+      final sep = raw.indexOf('|');
+      if (sep <= 0 || sep >= raw.length - 1) continue;
+      final id = raw.substring(0, sep).trim();
+      final desc = raw.substring(sep + 1).trim();
+      if (id.isEmpty || desc.isEmpty) continue;
+      memory = memory.addOrUpdateOpenLoop(
+        OpenLoopRecord(
+          id: id,
+          description: desc,
+          status: 'open',
+          importance: 6,
+          openedAt: now,
+          openedTurn: turnCount,
+          loopType: 'question',
+        ),
+      );
+    }
+
+    // ② 悬念：了结。找不到就静默跳过（内容层改 id 不该崩）。
+    for (final id in effect.closeLoops) {
+      final idx = memory.openLoops.indexWhere((r) => r.id == id);
+      if (idx < 0) continue;
+      final old = memory.openLoops[idx];
+      if (old.status == 'done') continue;
+      memory = memory.addOrUpdateOpenLoop(
+        OpenLoopRecord(
+          id: old.id,
+          description: old.description,
+          status: 'done',
+          importance: old.importance,
+          openedAt: old.openedAt,
+          closedAt: now,
+          npcIds: old.npcIds,
+          loopType: old.loopType,
+          openedTurn: old.openedTurn,
+        ),
+      );
+    }
+
+    // ③ 委托：复用 `acceptQuestTemplate` —— 它已经带年级门、去重与
+    //    T1「未完结事项」登记（见 mixin_play.dart:1456）。剧情模式只需要
+    //    "触发"，不该把那一整套口径重抄一遍（抄一遍就是两处口径，早晚漂）。
+    //
+    //    【为什么它会在剧情里静默失败】年级不够 / 已接过 / 模板不存在时，
+    //    它走 `_finishLocal` 给一句提示。剧情模式下 `commandResult` 会被
+    //    本回合的叙事覆盖，提示读不到——但委托**确实没发**，这是正确行为：
+    //    内容层把一条超纲委托挂在一年级节点上，本来就该发不出去。
+    for (final qid in effect.addQuests) {
+      acceptQuestTemplate(qid);
+    }
+
+    // ④ 世界大事：写进长期记忆 T3 层，让原著主线跨部留存。
+    for (final raw in effect.addWorldEvents) {
+      final sep = raw.indexOf('|');
+      final title = (sep > 0 ? raw.substring(0, sep) : raw).trim();
+      final desc = sep > 0 ? raw.substring(sep + 1).trim() : '';
+      if (title.isEmpty) continue;
+      memory = memory.addWorldEvent(
+        WorldEventRecord(
+          id: 'story_$title',
+          timestamp: now,
+          title: title,
+          description: desc.isEmpty ? title : desc,
+          importance: effect.worldEventImportance,
+          category: 'wizarding',
+          location: worldState.currentLocation,
+        ),
+      );
+    }
+
+    // ⑤ 图鉴：解锁 CG（`unlockCG` 内部按 cgRecords 幂等）。
+    for (final cgId in effect.unlockCgs) {
+      unlockCG(cgById(cgId));
+    }
   }
 
   /// 剧情模式下原著节点的处理。
@@ -2094,6 +2289,93 @@ $kNarrativeWritingRules
     lastCanonEventTitle = null;
     lastCanonEventDirective = null;
     debugLog('📖 剧情步已讲述原著节点: $ref（${step.id}）');
+
+    // 原著节点 → 长期记忆 / 图鉴。
+    //
+    // 【为什么在这里而不是在内容层逐条写 effect】
+    // `canonRefId` 是"这一步讲述的是哪条原著节点"的**唯一权威声明**，
+    // 已经存在、已经被 102 条节点校验过覆盖度。把沉淀挂在这个既有点上，
+    // 等于给整条七部曲时间线一次性接上长期记忆，不必改一个字节的剧情步。
+    //
+    // 【幂等】剧情模式可能重入同一步（读档、跳章开局），但 `_markCanonForStep`
+    // 上游有 `firedAnchorIds` 语义上的"讲过一次"守卫；即便重入，
+    // `addWorldEvent` 按 id 去重、`unlockCG` 按 cgRecords 去重，
+    // 三层都是幂等的，不会产生重复记录。
+    _sinkCanonNodeToMemory(ref);
+  }
+
+  /// 把一条原著节点的沉淀物（世界大事 / 悬念开启与了结 / CG）广播出去。
+  ///
+  /// 节点上三项都是可选的：没填就是"这条节点不产生长期记忆"，
+  /// 保持与接线前完全一致的行为。
+  void _sinkCanonNodeToMemory(String canonId) {
+    final node = canonEventById(canonId);
+    if (node == null) return;
+    final p = player;
+    if (p == null) return;
+
+    final worldEvent = node.worldEvent;
+    if (worldEvent != null && worldEvent.trim().isNotEmpty) {
+      memory = memory.addWorldEvent(
+        WorldEventRecord(
+          id: 'canon_${node.id}',
+          timestamp: worldState.time.format(),
+          title: node.title,
+          description: worldEvent.trim(),
+          importance: node.worldEventImportance,
+          category: 'wizarding',
+          location: worldState.currentLocation,
+        ),
+      );
+    }
+
+    final open = node.openLoop;
+    if (open != null && open.trim().isNotEmpty) {
+      final sep = open.indexOf('|');
+      if (sep > 0 && sep < open.length - 1) {
+        final id = open.substring(0, sep).trim();
+        final desc = open.substring(sep + 1).trim();
+        if (id.isNotEmpty && desc.isNotEmpty) {
+          memory = memory.addOrUpdateOpenLoop(
+            OpenLoopRecord(
+              id: id,
+              description: desc,
+              status: 'open',
+              importance: 7,
+              openedAt: worldState.time.format(),
+              openedTurn: turnCount,
+              loopType: 'question',
+            ),
+          );
+        }
+      }
+    }
+
+    final close = node.closeLoop;
+    if (close != null && close.trim().isNotEmpty) {
+      final idx = memory.openLoops.indexWhere((r) => r.id == close.trim());
+      if (idx >= 0 && memory.openLoops[idx].status != 'done') {
+        final old = memory.openLoops[idx];
+        memory = memory.addOrUpdateOpenLoop(
+          OpenLoopRecord(
+            id: old.id,
+            description: old.description,
+            status: 'done',
+            importance: old.importance,
+            openedAt: old.openedAt,
+            closedAt: worldState.time.format(),
+            npcIds: old.npcIds,
+            loopType: old.loopType,
+            openedTurn: old.openedTurn,
+          ),
+        );
+      }
+    }
+
+    final cg = node.unlockCg;
+    if (cg != null && cg.trim().isNotEmpty) {
+      unlockCG(cgById(cg.trim()));
+    }
   }
 
   /// 叙事三层拼装：

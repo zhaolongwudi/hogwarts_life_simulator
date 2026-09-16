@@ -70,6 +70,70 @@ class StoryEffect {
   /// 好感作用对象；null = 不加好感（只做数值/物品/flag 变化）。
   final String? targetNpcId;
 
+  // ================================================================
+  // 与项目各功能系统的接线字段（v2 新增）
+  // ================================================================
+  //
+  // 【为什么这些字段必须存在】
+  // 剧情模式此前只能改"数值 + 物品 + flag + 情报"四样，而项目里真正构成
+  // **长期记忆与养成闭环**的四个系统全部接收不到信号：
+  //   · 悬念（openLoops）——"斯内普到底想干什么"这类悬而未决的事，
+  //     是长局里最值钱的东西，却只能靠 AI 摘要间接产生；
+  //   · 委托（quests）——原著事件（"替海格照看诺伯"）本该变成一条可追踪的委托；
+  //   · 日记/世界大事（worldEvents）——剧情里发生的原著大事不写进长期记忆，
+  //     玩家换了部书之后就"忘了"；
+  //   · 图鉴 CG——原著名场面（分院、巨怪、活板门）本该解锁对应画面。
+  // 于是"大量离线剧情 + 少量 AI"的长局里，剧情推进得再远，世界也毫无沉淀。
+  //
+  // 【为什么是 openLoop/closeLoop 而不是一个 bool】
+  // 悬念是**成对**出现的：开启与了结。用两个字段让内容层显式写出
+  // "我把斯内普的举动记成了悬念（第 3 章）"、"第 9 章这个悬念了结了"，
+  // 而不是靠"某条 flag 出现就自动关闭"这种隐式推断——隐式推断在
+  // 102 个节点的长线里必然对不上账。
+
+  /// 本回合**开启**的悬念（写入 `LongTermMemory.openLoops`，status=open）。
+  ///
+  /// 格式：`'loopId|悬念描述'`（描述可含 `|`，只按第一个 `|` 切分）。
+  /// 只写 id 没有描述的话长期记忆里就只剩一个光杆 key，读起来毫无意义。
+  final List<String> openLoops;
+
+  /// 本回合**了结**的悬念 id（对应 [openLoops] 里开过的那条）。
+  ///
+  /// 只关不弃：找不到对应记录时静默跳过，不报错——内容层在
+  /// 中途改 id 不该让玩家的一回合崩掉。
+  final List<String> closeLoops;
+
+  /// 本回合接取的委托 id（查 `questCatalog`，写入 `Player.quests`）。
+  ///
+  /// 用模板 id 而不是内联一份委托数据：委托的奖励/目标/计数口径
+  /// 全在 `quest_data.dart` 里，剧情模式只负责"触发"，不负责"定义"。
+  final List<String> addQuests;
+
+  /// 本回合写进长期记忆世界大事层（`worldEvents`）的原著事件。
+  ///
+  /// 格式：`'标题|描述'`（如 `'密室被打开|学校里有人被石化了，'
+  /// '走廊墙上出现了血字'`）。importance 由 [worldEventImportance] 决定——
+  /// 这个是 **9 分**，属于持久层（见 `kPersistentFactImportance`），
+  /// 七部曲跑完不会因为容量淘汰而丢掉原著主线。
+  final List<String> addWorldEvents;
+
+  /// [addWorldEvents] 的 importance（1~10）。默认 7：够重要但不占持久位。
+  final int worldEventImportance;
+
+  /// 本回合解锁的 CG id（查 `cgById`，写入 `Player.cgRecords`）。
+  ///
+  /// 【为什么用 id 列表而不是布尔】一个原著节点可能同时解锁多张
+  /// （如"魁地奇决赛"解锁胜场 + 合影），且解锁必须**幂等**——
+  /// `unlockCG` 内部按 `cgRecords.containsKey` 去重，重复写不会重复弹提示。
+  final List<String> unlockCgs;
+
+  /// 精力变化（负数=消耗）。剧情推进不必绕开体力系统：
+  /// "在禁林里守了一夜"该掉精力，"假期睡到自然醒"该回精力。
+  final int energy;
+
+  /// 饱食变化（负数=饿）。
+  final int satiety;
+
   const StoryEffect({
     this.affection = 0,
     this.reputation = 0,
@@ -81,6 +145,14 @@ class StoryEffect {
     this.setFlags = const [],
     this.clearFlags = const [],
     this.targetNpcId,
+    this.openLoops = const [],
+    this.closeLoops = const [],
+    this.addQuests = const [],
+    this.addWorldEvents = const [],
+    this.worldEventImportance = 7,
+    this.unlockCgs = const [],
+    this.energy = 0,
+    this.satiety = 0,
   });
 
   /// 无任何变化（用于"自由行动"降级路径与过场步）。
@@ -93,10 +165,17 @@ class StoryEffect {
       housePoints == 0 &&
       spirit == 0 &&
       galleons == 0 &&
+      energy == 0 &&
+      satiety == 0 &&
       addItems.isEmpty &&
       addKnowledge.isEmpty &&
       setFlags.isEmpty &&
-      clearFlags.isEmpty;
+      clearFlags.isEmpty &&
+      openLoops.isEmpty &&
+      closeLoops.isEmpty &&
+      addQuests.isEmpty &&
+      addWorldEvents.isEmpty &&
+      unlockCgs.isEmpty;
 }
 
 /// 一个剧情分支（= 一个分支点的一条出路）。

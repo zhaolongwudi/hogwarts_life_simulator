@@ -59,6 +59,44 @@ class CanonEvent {
   /// 出处标注（如「魔法石」），便于溯源与维护。
   final String bookRef;
 
+  // ================================================================
+  // 与长期记忆 / 图鉴的接线（v2）
+  // ================================================================
+  //
+  // 【为什么挂在 CanonEvent 上而不是逐条写进 StoryStepDef】
+  // 原著节点有 102 条且全部按 (year, month) 精确对位；而"这件事值得写进
+  // 长期记忆"是**节点自身的性质**——密室被打开、伏地魔回归，无论哪个
+  // 剧情步讲述它，都该沉淀下来。写在节点上是一次声明、全局生效；
+  // 写进步骤里则要在 102 个步上各抄一遍，且换步引用时必然漏。
+  //
+  // 【为什么是可选的】不是每个节点都够格进持久层（"对角巷采购日"
+  // 就没有长期记忆价值）。null = 不写，保持默认行为。
+
+  /// 沉进长期记忆 T3 世界大事层的描述；null = 不写。
+  ///
+  /// 写成"纯事实、60 字以内"（与 `WorldEventRecord.description` 的口径
+  /// 一致），不要写第二人称——它会被注入给叙事 AI 当**客观事实**用。
+  final String? worldEvent;
+
+  /// 本节点重要度（1~10）。仅当 [worldEvent] 非空时有意义。
+  ///
+  /// 默认 7（重要事件结论）。原著主线里真正该永不淘汰的少数节点
+  /// （密室、三强争霸、伏地魔回归、邓布利多之死）填 9，
+  /// 走到 `kPersistentFactImportance` 的持久层。
+  final int worldEventImportance;
+
+  /// 本节点**开启**的悬念（`'id|描述'`）；null = 不开启。
+  ///
+  /// 只在"这件事悬而未决"时才填——谜团、威胁、没答案的问题。
+  /// 已了结的事件不填（那属于 [worldEvent]）。
+  final String? openLoop;
+
+  /// 本节点**了结**的悬念 id（对应某个先前 [openLoop] 开的 id）。
+  final String? closeLoop;
+
+  /// 本节点解锁的 CG id（如 `'CG-002'`）；null = 不牵 CG。
+  final String? unlockCg;
+
   const CanonEvent({
     required this.id,
     required this.year,
@@ -68,6 +106,11 @@ class CanonEvent {
     required this.title,
     required this.directive,
     required this.bookRef,
+    this.worldEvent,
+    this.worldEventImportance = 7,
+    this.openLoop,
+    this.closeLoop,
+    this.unlockCg,
   });
 }
 
@@ -99,6 +142,8 @@ const List<CanonEvent> canonEvents = [
         '乘船渡过黑湖，第一次望见山丘上的城堡。大礼堂里四张长桌旁挤满老生，'
         '天花板上是一片星空，新生们一个接一个被叫上前戴上分院帽。'
         '你会在这一夜被分入某个学院，成为这所学校的一部分。',
+    worldEvent: '戴着分院帽的新生逐个上前，帽子当场宣布学院归属。',
+    unlockCg: 'CG-002',
   ),
   CanonEvent(
     id: 'canon_ps_gringotts',
@@ -112,6 +157,8 @@ const List<CanonEvent> canonEvents = [
         '凶手至今在逃，妖精们拒绝对外解释金库里到底存了什么。'
         '对角巷的店铺都在议论这件事——有人说那间金库是空的，也有人说里面「有过东西」。'
         '你可以在开学采购时听到这些传闻，也可以选择不以为意。',
+    worldEvent: '古灵阁金库被闯入，魔法部未公布失窃物品，巫师界议论纷纷。',
+    openLoop: 'loop_ps_vault|古灵阁被闯入的日期与哈利的入学是同一天，那条被严密看守的713号金库到底装着什么',
   ),
   CanonEvent(
     id: 'canon_ps_troll',
@@ -126,6 +173,8 @@ const List<CanonEvent> canonEvents = [
         '邓布利多让各学院级长立刻带队回公共休息室。走廊里到处是乱跑的学生，'
         '你听见低年级生哭喊着说看见「比人还高」的东西。'
         '当晚的消息是：教工把巨怪处理了，没有人受重伤。你可以跟随队伍撤离，也可以趁乱多看一眼。',
+    worldEvent: '万圣节巨怪闯入城堡，被三名一年级学生制服，学校加强戒备。',
+    worldEventImportance: 8,
   ),
   CanonEvent(
     id: 'canon_ps_quidditch_first',
@@ -151,6 +200,7 @@ const List<CanonEvent> canonEvents = [
         '圣诞假期留校生很少。城堡里有传闻说，八楼一间废弃教室里放着一面很古怪的镜子，'
         '「照见的东西会让你不想离开」。管理员费尔奇最近格外频繁地在夜里巡查那一层。'
         '你可以试着找到那间教室，也可以选择遵守熄灯后不得离寝的规定。',
+    openLoop: 'loop_ps_mirror|八楼废弃教室里的那面镜子照见的究竟是什么，为什么费尔奇总在夜里巡查那一层',
   ),
   CanonEvent(
     id: 'canon_ps_forbidden_forest',
@@ -163,6 +213,8 @@ const List<CanonEvent> canonEvents = [
         '有学生在禁林边缘发现了受伤的独角兽，还有人说林子里「有什么东西在喝它的血」。'
         '海格最近几次半夜带着猎犬进林子，回来时脸色不太好看。'
         '教工要求学生近期一律不得独自靠近禁林。你可以向海格打听，也可以远远观望。',
+    worldEvent: '禁林出现独角兽被袭事件，魔法部派员调查。',
+    openLoop: 'loop_ps_forest|是什么东西在禁林里袭击独角兽，为什么它只敢在夜里出来',
   ),
   CanonEvent(
     id: 'canon_ps_year_end',
@@ -177,6 +229,9 @@ const List<CanonEvent> canonEvents = [
         '大礼堂的年终宴会上，四位学院的旗帜悬挂在长桌上方，'
         '邓布利多会在宴会上宣布最终名次并给今年「做出特别贡献」的学生加分。'
         '回顾你自己这一年的成长，教授或同学可能会对你做出具体评价。',
+    worldEvent: '邓布利多宣布学年学院杯归属，并临时大幅调整积分。',
+    closeLoop: 'loop_ps_forest',
+    unlockCg: 'CG-001',
   ),
 
   // ================================================================
@@ -195,6 +250,9 @@ const List<CanonEvent> canonEvents = [
         '走廊的墙上、公告板上出现了用血写的字迹，费尔奇不得不连夜清理。'
         '年纪大的学生开始给新生讲五十年前那桩旧事——据说那次也死过人。'
         '你可以向高年级生打听那段历史，也可以留意走廊里异常的动静。',
+    worldEvent: '密室被重新打开，城堡走廊出现血字，一名学生被石化。',
+    worldEventImportance: 9,
+    openLoop: 'loop_cos_chamber|五十年前死过人的密室被谁打开了，墙上的血字警告的“继承人”是谁',
   ),
   CanonEvent(
     id: 'canon_cos_lockhart',
@@ -209,6 +267,7 @@ const List<CanonEvent> canonEvents = [
         '据说写过一整套自传体畅销书。开学宴上他放了整面墙的移动签名照，'
         '开学第一周书店门口排过抢签名的长队。'
         '你可以试着围观这位「大人物」，也可以早早对那套书保持怀疑。',
+    worldEvent: '洛哈特被揭露为冒名者，记忆咒反噬，黑魔法防御术课程中断。',
   ),
   CanonEvent(
     id: 'canon_cos_petrification',
@@ -222,6 +281,8 @@ const List<CanonEvent> canonEvents = [
         '像是被冻在了一瞬间。庞弗雷夫人说她「没有死，只是被石化了」，'
         '但没人知道怎么解除。随后又有猫与更多学生遇袭，学生们开始结伴行动，'
         '不敢单独走走廊。你可以选择结伴、避开某些楼层，或者去医疗翼打听情况。',
+    worldEvent: '连续发生学生与猫被石化事件，学校人心惶惶。',
+    worldEventImportance: 8,
   ),
   CanonEvent(
     id: 'canon_cos_dueling_club',
@@ -260,6 +321,8 @@ const List<CanonEvent> canonEvents = [
         '学校里流传着一个说法：那本「出事前被人捡到的旧日记」可能和密室有关。'
         '有学生说见过一本能自己写字的本子，也有人认定这只是有人在传谣。'
         '你可以试着追查这条线索，也可以只管做好自己的期末准备。',
+    worldEvent: '一本空白日记本被发现有蛊惑人心之力，已被妥善封存。',
+    openLoop: 'loop_cos_diary|那本日记本为什么能写字回应人，五十年前它属于谁',
   ),
   CanonEvent(
     id: 'canon_cos_hermione_petrified',
@@ -289,6 +352,9 @@ const List<CanonEvent> canonEvents = [
         '学年结束宴上，大礼堂的气氛比一年里任何一天都轻松，'
         '被恐慌拖累的考试重新排上日程。这一年你活下来了——'
         '还学会了在恐惧蔓延时如何自处。',
+    worldEvent: '密室真相查明，蛇怪被击杀，学校恢复正常教学。',
+    worldEventImportance: 9,
+    closeLoop: 'loop_cos_chamber',
   ),
 
   // ================================================================
@@ -319,6 +385,7 @@ const List<CanonEvent> canonEvents = [
         '它们经过时空气会骤然变冷，人会被吸走快乐、想起最糟糕的回忆。'
         '校医提醒学生随身带巧克力以备不适，校长则明确要求所有人不得靠近湖畔的摄魂怪。'
         '你可以开始认真考虑学一个守护神咒，也可以尽量绕开它们的巡逻路线。',
+    worldEvent: '摄魂怪进驻霍格沃茨各入口，多次影响学生健康与魁地奇比赛。',
   ),
   CanonEvent(
     id: 'canon_poa_hogsmeade',
@@ -333,6 +400,7 @@ const List<CanonEvent> canonEvents = [
         '村里到处是巫师店铺：糖果店、酒吧、笑话店、邮局，'
         '还有传闻中「闹鬼」的尖叫棚屋就在村外山坡上。'
         '你可以趁这个周末去村里逛一逛，也可以听同学讲那栋房子当年的故事。',
+    worldEvent: '霍格莫德周末因安全原因加强盘查，部分学生被限制前往。',
   ),
   CanonEvent(
     id: 'canon_poa_buckbeak',
@@ -363,6 +431,8 @@ const List<CanonEvent> canonEvents = [
         '霍格沃茨将与布斯巴顿、德姆斯特朗两校同场竞技。'
         '一条年龄线将被画在火焰杯前——未满十七岁的学生不得报名。'
         '整个城堡的气氛一下子被点燃，人人都在谈论谁会被选中当勇士。',
+    worldEvent: '三强争霸赛正式宣布恢复举办，勇士报名渠道开启。',
+    worldEventImportance: 8,
   ),
   CanonEvent(
     id: 'canon_gof_champions',
@@ -376,6 +446,9 @@ const List<CanonEvent> canonEvents = [
         '火焰杯竟又吐出一张名单，诞生了**第四位**勇士，全场哗然。'
         '两所学校的学生认为霍格沃茨作弊，本校学生也觉得其中有问题。'
         '你可以选择相信官方说法、加入质疑者，或者单纯当一个看客。',
+    worldEvent: '三强争霸赛恢复举办，勇士名单上出现一名年龄不足的参赛者。',
+    worldEventImportance: 9,
+    openLoop: 'loop_gof_tournament|三强争霸赛的杯子里为什么会吐出第四个名字，谁在暗中推动这一切',
   ),
   CanonEvent(
     id: 'canon_gof_yule_ball',
@@ -389,6 +462,8 @@ const List<CanonEvent> canonEvents = [
         '四年级以上学生可以参加，也可以邀请低年级学生作为舞伴。'
         '城堡被装饰得格外隆重，学生们提前几周就在紧张地考虑邀约对象。'
         '你可以试着邀请某人，也可以选择和朋友们一起去看看热闹。',
+    worldEvent: '圣诞舞会照常举行，四校学生齐聚大礼堂。',
+    unlockCg: 'CG-011',
   ),
   CanonEvent(
     id: 'canon_gof_maze',
@@ -421,6 +496,8 @@ const List<CanonEvent> canonEvents = [
         '而学生们私下里更愿意相信另一种说法。'
         '这一年有学生要参加普通巫师等级考试（O.W.L.），课业压力本就沉重，'
         '加上校内外的不确定，整个城堡的气氛与往年很不一样。',
+    worldEvent: '麻瓜街区发生摄魂怪袭击，当事人被迫在校外使用魔法。',
+    openLoop: 'loop_ootp_ministry|魔法部坚持否认伏地魔已经回来，《预言家日报》在替谁说话',
   ),
   CanonEvent(
     id: 'canon_ootp_umbridge',
@@ -434,6 +511,8 @@ const List<CanonEvent> canonEvents = [
         '她一上任就连发数道教育令，禁止学生集会、禁止教师谈论「未经批准」的话题，'
         '并开始逐个听课考核教授。教师们明显不满，但表面上仍要配合。'
         '你可以选择低调行事，也可以暗中继续和同学交流真正有用的东西。',
+    worldEvent: '魔法部派员进驻霍格沃茨，开始审查教师与学生活动。',
+    worldEventImportance: 8,
   ),
   CanonEvent(
     id: 'canon_ootp_da',
@@ -461,6 +540,9 @@ const List<CanonEvent> canonEvents = [
         '甚至有人目击了「神秘人」本人露面——尽管部里起初拒不承认。'
         '随后部里终于公开承认他回来了。你可以去听校长在学期末的说明，'
         '也可以和同学们讨论这一切意味着什么。',
+    worldEvent: '魔法部战斗后公开承认伏地魔已回归，阿兹卡班发生大规模越狱。',
+    worldEventImportance: 9,
+    closeLoop: 'loop_ootp_ministry',
   ),
 
   // ================================================================
@@ -491,6 +573,8 @@ const List<CanonEvent> canonEvents = [
         '校内气氛明显紧绷：有学生家长打算把孩子接走，'
         '也有人注意到几位高年级学生的行为变得反常、频繁出入某些楼层。'
         '你可以留意这些异常，也可以把注意力放回自己的学业与关系上。',
+    worldEvent: '马尔福家族成员在城堡内异常活跃，多处走廊出现可疑布置。',
+    openLoop: 'loop_hbp_plot|德拉科·马尔福这一年到底被派了什么任务，他为什么总在深夜出现在有求必应屋',
   ),
   CanonEvent(
     id: 'canon_hbp_potions_book',
@@ -518,6 +602,9 @@ const List<CanonEvent> canonEvents = [
         '也有人在混乱中看见马尔福被带离。全校陷入震动与哀悼，'
         '学年提前结束，期末考试被取消。你可以参加随后的悼念，'
         '也可以和同学讨论这场灾难会把霍格沃茨带向何方。',
+    worldEvent: '邓布利多在天文塔身亡，城堡当晚被食死徒短暂攻入。',
+    worldEventImportance: 9,
+    closeLoop: 'loop_hbp_plot',
   ),
 
   // ================================================================
@@ -550,6 +637,8 @@ const List<CanonEvent> canonEvents = [
         '麻瓜出身的巫师被要求「证明」自己的家世。'
         '校内成立了告密性质的巡查队，学生们彼此警惕。'
         '这是一个需要你谨慎选择立场与言行的年份。',
+    worldEvent: '魔法部被渗透，麻瓜出身者遭登记与清查，霍格沃茨强制改造。',
+    worldEventImportance: 9,
   ),
   CanonEvent(
     id: 'canon_dh_underground',
@@ -563,6 +652,7 @@ const List<CanonEvent> canonEvents = [
         '收留被追查的同学、传递外界消息、帮忙藏匿。'
         '参与者都知道一旦被发现代价极大。你可以提供帮助、保持沉默，'
         '或者干脆只求保全自己——每条路都会影响你在这个学年里的处境。',
+    worldEvent: '地下电台持续播报真实战况，成为巫师界少数可信消息来源。',
   ),
   CanonEvent(
     id: 'canon_dh_final_battle',
@@ -579,6 +669,8 @@ const List<CanonEvent> canonEvents = [
         '魔法世界在那一刻终结了一场持续多年的战争。'
         '你可以选择参与防守、疏散低年级，或在安全处见证这一切，'
         '但无论如何，这一夜都会成为你霍格沃茨生涯的终点。',
+    worldEvent: '霍格沃茨爆发全面战斗，师生与来援者共同抵抗伏地魔军队。',
+    worldEventImportance: 9,
   ),
 
   // ================================================================
@@ -912,6 +1004,9 @@ const List<CanonEvent> canonEvents = [
         '照片里的男人瘦得脱形，头发又长又乱，正缓慢地转向镜头。'
         '报纸说他是从阿兹卡班逃出来的，是那所监狱有史以来第一个越狱者，'
         '而且他「极度危险」。没有人解释他是怎么做到的。',
+    worldEvent: '阿兹卡班重犯布莱克越狱，魔法部在麻瓜界与巫师界同步通缉。',
+    worldEventImportance: 9,
+    openLoop: 'loop_poa_black|布莱克为什么要越过整片海洋来霍格沃茨，他要找的东西在城堡里吗',
   ),
   CanonEvent(
     id: 'canon_poa_hogsmeade_form',
@@ -1021,6 +1116,8 @@ const List<CanonEvent> canonEvents = [
         '发生了一件没人肯正式记录的事。校方对外的说法是'
         '「一切已按规程处理」。真相只在少数人的记忆里，'
         '而你听到的版本，取决于你那天站在哪条走廊上。',
+    worldEvent: '布莱克一案真相被推翻，但嫌犯脱逃，魔法部公信力受质疑。',
+    closeLoop: 'loop_poa_black',
   ),
 
   // ----------------------------------------------------------------
@@ -1039,6 +1136,9 @@ const List<CanonEvent> canonEvents = [
         '混在一起。比赛本身已经足够精彩，但那一晚结束的方式'
         '让所有人都记了很久——营地被烧、人群四散、'
         '天空上出现了一个很多人这辈子都不想再看到的标记。',
+    worldEvent: '魁地奇世界杯决赛后营地遭黑魔标记袭击，魔法部紧急善后。',
+    worldEventImportance: 8,
+    openLoop: 'loop_gof_mark|世界杯营地上空那个黑魔标记是谁放的，为什么食死徒敢在魔法部眼皮底下集结',
   ),
   CanonEvent(
     id: 'canon_gof_foreign_schools',
@@ -1091,6 +1191,7 @@ const List<CanonEvent> canonEvents = [
         '长高。从看台上只能看到纠缠的树篱尖，偶尔有光闪一下。'
         '没有人知道第三个项目里究竟放了多少东西，'
         '但所有人都知道它不会是走过场。',
+    worldEvent: '三强争霸赛最后一项目在迷宫中进行，观众席彻夜不散。',
   ),
   CanonEvent(
     id: 'canon_gof_second_task_watch',
@@ -1105,6 +1206,7 @@ const List<CanonEvent> canonEvents = [
         '将近一个小时之后，参赛者陆续从水里出来，'
         '衣服结成硬块，脸色是青的。这个项目的规则'
         '比第一个更让人想不通。',
+    worldEvent: '三强争霸赛第二项目在黑湖水下举行。',
   ),
   CanonEvent(
     id: 'canon_gof_rumor_tense',
@@ -1132,6 +1234,9 @@ const List<CanonEvent> canonEvents = [
         '那天夜里发生的事，大多数学生是在第二天早上'
         '从别人的脸色里读出来的：有个人没有回来，'
         '而这件事的意义，要等很多年之后才会被完全理解。',
+    worldEvent: '勇士在终点处被传送走，有人死了，伏地魔已恢复肉身回归。',
+    worldEventImportance: 9,
+    closeLoop: 'loop_gof_tournament',
   ),
 
   // ----------------------------------------------------------------
@@ -1203,6 +1308,7 @@ const List<CanonEvent> canonEvents = [
         '聚会：练习真正有用的防御咒语，而不是照本宣科。'
         '地点由一位成员在会前想清楚它该长什么样。'
         '参加的学生从十几个变成几十个，名单只能在脑子里记。',
+    worldEvent: '学生在城堡内秘密组织黑魔法防御术学习小组。',
   ),
   CanonEvent(
     id: 'canon_ootp_betrayal',
@@ -1366,6 +1472,8 @@ const List<CanonEvent> canonEvents = [
         '期末考试被取消，列车提前发车，返校的时间另行通知。'
         '很多人在站台上才意识到，这可能是自己最后一次'
         '以这所学校的学生的身份站在这里。',
+    worldEvent: '霍格沃茨为邓布利多举行葬礼，学年提前结束。',
+    worldEventImportance: 9,
   ),
 
   // ----------------------------------------------------------------
@@ -1465,6 +1573,7 @@ const List<CanonEvent> canonEvents = [
         '有些是不想回家，有些是回不去。礼堂里依然摆了树和灯，'
         '长桌却空了一半。那天晚上的火鸡很热，'
         '但没有人唱歌。',
+    worldEvent: '留校学生在半空的城堡里度过寒假，外出受到严格限制。',
   ),
   CanonEvent(
     id: 'canon_dh_underground_resistance',
@@ -1517,6 +1626,8 @@ const List<CanonEvent> canonEvents = [
         '密道的入口在哪里、谁能带着低年级走、'
         '哪些东西必须随身带走。没有人公开讨论这些，'
         '但几乎每个人都在心里排了一遍顺序。',
+    worldEvent: '第二次巫师战争结束，战后重建开始，伏地魔时代落幕。',
+    worldEventImportance: 9,
   ),
 ];
 
@@ -1550,6 +1661,19 @@ List<CanonEvent> dueCanonEvents({
 
 /// 该 `id` 是否是原著节点（供存档兼容与调试面板区分来源）。
 bool isCanonEventId(String id) => id.startsWith('canon_');
+
+/// 按 id 找原著节点；找不到返回 null。
+///
+/// 【为什么需要】剧情模式的 `_markCanonForStep` 只拿到一个 `canonRefId`
+/// 字符串，要把它身上挂的 `worldEvent`/`openLoop`/`unlockCg` 取出来
+/// 就必须能反查。线性扫描 102 条 × 每步一次，开销可忽略（内容规模
+/// 再涨一个数量级也不值得为此建索引）。
+CanonEvent? canonEventById(String id) {
+  for (final e in canonEvents) {
+    if (e.id == id) return e;
+  }
+  return null;
+}
 
 /// 原著节点总数（结构性测试用：防止某天有人误删整段）。
 int get canonEventCount => canonEvents.length;

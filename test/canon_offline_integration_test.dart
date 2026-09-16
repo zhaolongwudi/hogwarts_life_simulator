@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/canon_events.dart';
+import 'package:hogwarts_life_simulator/data/cg_data.dart';
+import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider_base.dart';
 
@@ -19,6 +21,9 @@ import 'helpers/test_fixtures.dart';
 /// 就是没连线。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // 本文件后半段要跑**剧情模式**（`enterStoryMode`），而书表是靠这个函数
+  // 注入 `kStoryBooks` 的注册表——漏了它 `enterStoryMode` 会静默失败。
+  setUpAll(registerAllStoryBooks);
 
   group('离线回合会注入原著剧情线', () {
     test('新开局（1991-07 子世代）跑一回合，应触发古灵阁闯入节点', () async {
@@ -147,6 +152,138 @@ void main() {
                   '残留虚词尾巴「$tail」——拼进选项会读成「打听…$topic」的病句');
         }
       }
+    });
+  });
+
+  // ================================================================
+  // 原著节点 → 长期记忆 / 图鉴的沉淀
+  // ================================================================
+  //
+  // 【为什么单独一组】接线之前在剧情模式里走完《魔法石》全书，
+  // `memory.worldEvents` 里**一条原著事件都没有**——故事讲了几十步，
+  // 长期记忆只多了几条 knowledge 转来的 T0 事实。原因是原著节点的
+  // 沉淀物（worldEvent / openLoop / unlockCg）当时根本不存在，
+  // `_markCanonForStep` 只往 `firedAnchorIds` 记一个 id 就结束了。
+  group('原著节点沉淀进长期记忆与图鉴', () {
+    test('数据层：至少 30 个节点声明了沉淀物，且都是合法字段', () {
+      final enriched =
+          canonEvents.where((e) => e.worldEvent != null).toList();
+      expect(
+        enriched.length,
+        greaterThanOrEqualTo(30),
+        reason: '七部曲主线必须够多节点进长期记忆，否则长局依然毫无沉淀',
+      );
+      for (final e in enriched) {
+        expect(
+          e.worldEvent!.trim(),
+          isNotEmpty,
+          reason: '「${e.id}」的 worldEvent 不能是空白串',
+        );
+        expect(
+          e.worldEventImportance,
+          inInclusiveRange(1, 10),
+          reason: '「${e.id}」的 importance 越界',
+        );
+      }
+    });
+
+    test('数据层：openLoop 的格式是 id|描述，且 closeLoop 都能对上', () {
+      final opened = <String>{};
+      for (final e in canonEvents) {
+        final loop = e.openLoop;
+        if (loop == null) continue;
+        final sep = loop.indexOf('|');
+        expect(sep, greaterThan(0),
+            reason: '「${e.id}」的 openLoop 缺 `id|描述` 分隔符：$loop');
+        expect(sep, lessThan(loop.length - 1),
+            reason: '「${e.id}」的 openLoop 有 id 但没描述：$loop');
+        opened.add(loop.substring(0, sep));
+      }
+      expect(opened, isNotEmpty, reason: '至少要有一条悬念，否则 T1 层永远空转');
+
+      for (final e in canonEvents) {
+        final close = e.closeLoop;
+        if (close == null) continue;
+        expect(
+          opened.contains(close),
+          isTrue,
+          reason: '「${e.id}」要关的悬念「$close」没有任何节点开过——'
+              '这是内容层的悬空引用，点了也没反应',
+        );
+      }
+    });
+
+    test('数据层：unlockCg 引用的 CG 都在图鉴表里', () {
+      for (final e in canonEvents) {
+        final cg = e.unlockCg;
+        if (cg == null) continue;
+        expect(
+          cgById(cg),
+          isNotNull,
+          reason: '「${e.id}」引用了不存在的 CG「$cg」',
+        );
+      }
+    });
+
+    test('剧情模式走一步：原著节点真的落进 worldEvents', () async {
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+
+      // 【为什么必须断言起始游标】不注册书表时 `enterStoryMode` 会静默失败
+      // （`stepId` 为空串），后续所有 `processChoice` 都在空转，
+      // 测试会以"没有沉淀"的形态误报——实际原因跟沉淀逻辑毫无关系。
+      // 先钉住前置条件，失败时能一眼看出去哪了。
+      expect(
+        gp.storyProgress.stepId,
+        isNotEmpty,
+        reason: '剧情游标必须有值——为空说明书表没注册（setUpAll 漏了）',
+      );
+
+      final before = gp.memory.worldEvents.length;
+
+      // 一路点第一个选项，跑若干步直到至少有一条 canon 事件沉淀。
+      // 12 步足够走到第二章的「古灵阁」（`ps_ch2_bank`）。
+      var guard = 0;
+      while (gp.memory.worldEvents.length == before && guard < 40) {
+        guard++;
+        if (gp.choices.isEmpty) break;
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+
+      final fresh = gp.memory.worldEvents
+          .where((w) => w.id.startsWith('canon_'))
+          .toList();
+      expect(
+        fresh,
+        isNotEmpty,
+        reason: '跑完 $guard 步之后至少要有一条原著事件进世界大事层',
+      );
+      expect(
+        fresh.first.description.trim(),
+        isNotEmpty,
+        reason: '世界大事的描述不能为空——它是注入给叙事的客观事实',
+      );
+      expect(
+        fresh.first.importance,
+        inInclusiveRange(1, 10),
+        reason: '沉淀的世界大事重要度必须合法',
+      );
+    });
+
+    test('剧情模式的沉淀不消耗 AI（离线红线仍然成立）', () async {
+      final gp = await makeGame(offlineQuickMode: true);
+      gp.openingScene = 'letter';
+      gp.enterStoryMode();
+
+      for (var i = 0; i < 10 && gp.choices.isNotEmpty; i++) {
+        await gp.processChoice(
+          GameChoice(text: 'x', action: gp.choices.first.action),
+        );
+      }
+      expect(gp.apiCalls, 0, reason: '沉淀是纯本地写入，不能碰 AI');
     });
   });
 }
