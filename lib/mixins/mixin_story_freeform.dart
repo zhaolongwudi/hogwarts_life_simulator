@@ -375,3 +375,170 @@ bool storyFreeformUsable({
 
 /// 单次插话允许的最大字符数（UI 输入框与 prompt 双重限长）。
 const int kStoryFreeformMaxInputChars = 200;
+
+/// 单次插话可注入的"玩家历史摘要"总字符上限。
+///
+/// 【为什么必须有上限】`flags` 是**跨部继承**的长期资产，七部跑下来实测
+/// 有 683 个。全塞进 prompt 约 15000 字符，既烧额度又会把当前场景的
+/// `setup` / `ambient` 淹掉——AI 会转头去写往事，而不是写玩家刚做的动作。
+const int kStoryHistoryMaxChars = 600;
+
+/// 单条历史摘要的字符上限（超出截断并补省略号）。
+///
+/// 【为什么是 100】实测 `consequence` 长度分布为
+/// min 30 / p50 57 / p90 95 / max 190。取 100 能保住约九成条目的完整叙事，
+/// 只有极端长的少数会被截。
+const int kStoryHistoryItemMaxChars = 100;
+
+/// 挑选可以注入 AI prompt 的"玩家历史摘要"。
+///
+/// 【它解决什么问题】自由插话层原本是**无记忆**的：只有当前步的
+/// `setup` + `ambient` + 玩家刚说的那句话。玩家写"我把上次那封信拿出来给他看"，
+/// AI 完全不知道"那封信"是什么，只能含糊其辞。这里把玩家已有的长期养成资产
+/// 摘成自然语言，喂进去让它接得上前文。
+///
+/// **这不是放开红线**：注入的全是"已经发生过的事"，
+/// 没有任何"将要发生的事"；系统提示词另有红线禁止 AI 用它预判后续。
+///
+/// 【四趟分层，按素材质量从高到低】
+///   · Pass B —— `chosen` → 反查 `consequence`。**主力来源**。
+///     实测：走 6 步后能直接拿到「你抄满了整整两页纸。抄到第三页时，
+///     某个词突然自己「亮」了一下」这样可直接入 prompt 的句子。
+///   · Pass A —— 当前步**带门槛**的选项，取其 `text`。含义是"你现在能做
+///     这件事，是因为之前做过某件事"。实测 80% 的步零门槛，所以它只是补充。
+///   · Pass C —— `knowledge` 情报词条，本身即中文短语。
+///   · Pass D —— `flags` 兜底，只取**能解析出中文**的，解析不出一律丢弃。
+///
+/// 【为什么不需要 flag → 中文映射表】三条主力路径拿到的本来就已经是
+/// 自然语言（`consequence` / 选项 `text` / 情报词条），映射表是多余的一层
+/// 维护成本。且**永不输出 flag id**——`poa_evidence_handed` 这类 id
+/// 本身就是剧透，对模型也只是噪声。
+///
+/// 【为什么是纯函数】无 IO、不 `notifyListeners`，可被单测直接调用，
+/// 也让"注入了什么"这件事可断言。
+List<String> pickStoryHistoryHighlights({
+  required StoryStepDef? step,
+  required StoryProgress progress,
+  int maxChars = kStoryHistoryMaxChars,
+}) {
+  if (maxChars <= 0) return const [];
+
+  final out = <String>[];
+  final seen = <String>{};
+  var used = 0;
+
+  // 逐条追加；超预算即停。`used` 累计的是实际写进 prompt 的字符数。
+  bool push(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return true;
+    if (!seen.add(s)) return true;
+    if (used + s.length > maxChars) return false;
+    out.add(s);
+    used += s.length;
+    return true;
+  }
+
+  // ---- Pass B（主力）：玩家做过的选择 → 反查它当时写出来的 consequence ----
+  for (final s in _chosenConsequences(progress)) {
+    if (!push(_clipHistoryItem(s))) break;
+  }
+
+  // ---- Pass A：当前步的门槛选项，说明"你为什么拥有这个出路" ----
+  for (final c in step?.choices ?? const <StoryChoiceDef>[]) {
+    if (!_hasGate(c)) continue;
+    if (!push(_clipHistoryItem(c.text))) break;
+  }
+
+  // ---- Pass C：情报词条 ----
+  for (final k in progress.knowledge) {
+    if (!push(_clipHistoryItem(k))) break;
+  }
+
+  // ---- Pass D：flag 兜底，只留能解析出中文的 ----
+  for (final f in progress.flags) {
+    final zh = _hintFromFlagId(f);
+    if (zh == null) continue;
+    if (!push(_clipHistoryItem(zh))) break;
+  }
+
+  return out;
+}
+
+/// 按"章序 → 步序"取出玩家已选分支的 `consequence` 列表。
+///
+/// 【为什么要排序而不是直接用 `chosen` 的迭代顺序】`chosen` 是
+/// `Map<String, String>`，迭代顺序不表达叙事时序。AI 读到的历史若次序凌乱，
+/// 续写容易把因果接反。这里显式按游戏内时序排，并且**用原始下标做 tie-break**
+/// ——Dart 的 `List.sort` 不稳定（项目已在 `long_term_memory.dart` 记过这个坑），
+/// 不给 tie-break 就可能两次调用得到不同顺序，AI 看到的时序随机漂移。
+///
+/// 【跨部继承口径】`chosen` 是**书内游标，换书即重置**（见
+/// `StoryProgress.beginBook`），所以这里天然只覆盖当前这部书内的选择——
+/// 这是正确行为：上一部的选择与当前场景无关。
+List<String> _chosenConsequences(StoryProgress progress) {
+  if (progress.chosen.isEmpty) return const [];
+
+  final hits = <({String text, int chapter, int order})>[];
+  var seq = 0;
+  for (final entry in progress.chosen.entries) {
+    final step = findStoryStepAnywhere(progress.bookId, entry.key);
+    // 存档脏数据（步 id / 选项 id 查不到）一律跳过，绝不抛异常。
+    if (step == null) continue;
+    StoryChoiceDef? picked;
+    for (final c in step.choices) {
+      if (c.id == entry.value) {
+        picked = c;
+        break;
+      }
+    }
+    if (picked == null) continue;
+    final cons = picked.consequence.trim();
+    if (cons.isEmpty) continue;
+    hits.add((
+      text: cons,
+      chapter: _chapterOrdinal(progress.bookId, step.chapterId),
+      order: seq++,
+    ));
+  }
+
+  hits.sort((a, b) {
+    final c = a.chapter.compareTo(b.chapter);
+    if (c != 0) return c;
+    return a.order.compareTo(b.order);
+  });
+  return [for (final h in hits) h.text];
+}
+
+/// 章序（1 起）；查不到时给一个大值，让它排在已知章之后而不是之前。
+int _chapterOrdinal(String bookId, String chapterId) {
+  final ch = findStoryChapter(bookId, chapterId);
+  return ch?.ordinal ?? 9999;
+}
+
+/// 该选项是否带"门槛"（玩家是因为之前的积累才看到这条出路）。
+bool _hasGate(StoryChoiceDef c) =>
+    (c.requireFlag != null && c.requireFlag!.isNotEmpty) ||
+    c.requireAllFlags.isNotEmpty ||
+    c.requireAnyFlags.isNotEmpty ||
+    c.requireKnowledge.isNotEmpty;
+
+/// 单条历史摘要的截断。
+String _clipHistoryItem(String s) {
+  final t = s.trim();
+  if (t.length <= kStoryHistoryItemMaxChars) return t;
+  return '${t.substring(0, kStoryHistoryItemMaxChars)}…';
+}
+
+/// 从 flag id 里勉强解析出一句可读中文；解析不出返回 null。
+///
+/// 【为什么这么保守】flag id 形如 `ps_built_snowman`，是**英文蛇形标识符**，
+/// 没有任何可靠的中文还原方式。这里只做最低限度的兜底：纯 ASCII 的 id 一律
+/// 丢弃（丢给模型也只是噪声，还白占预算）；只有本身就含中文的 id 才留下。
+/// 主力素材始终是 Pass B 的 `consequence`。
+String? _hintFromFlagId(String flagId) {
+  final s = flagId.trim();
+  if (s.isEmpty) return null;
+  final hasCjk = s.runes.any((r) => r >= 0x4E00 && r <= 0x9FFF);
+  if (!hasCjk) return null;
+  return s;
+}
