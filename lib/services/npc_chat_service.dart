@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
 import '../models/world_state.dart';
+import '../data/npc_chat_wordbank.dart';
 import '../providers/app_provider.dart';
 import '../utils/prompt_sanitizer.dart';
 import 'ai_router.dart';
@@ -118,7 +119,7 @@ class NpcChatService {
     List<ChatMessage>? history,
   }) async {
     if (_router == null) {
-      return (_generateLocalResponse(npc, userMessage), true);
+      return (_generateLocalResponse(npc, userMessage, player: player), true);
     }
 
     // 用户输入进入 Prompt 前做注入防御净化
@@ -156,7 +157,7 @@ class NpcChatService {
       // 不进入会让玩家干等的「等待窗口滑出」。判定离线（false）不计数。
       if (_shouldDegradeLocal()) {
         _recordAiCall();
-        return (_generateLocalResponse(npc, safeMessage), true);
+        return (_generateLocalResponse(npc, safeMessage, player: player), true);
       }
       _recordAiCall();
       final response = await _router!.chatComplete(
@@ -171,11 +172,11 @@ class NpcChatService {
           .replaceFirst(RegExp(r'^[\*\[]'), '')
           .trim();
       if (responseText.isEmpty) {
-        return (_generateLocalResponse(npc, safeMessage), true);
+        return (_generateLocalResponse(npc, safeMessage, player: player), true);
       }
       return (responseText, false);
     } catch (e) {
-      return (_generateLocalResponse(npc, safeMessage), true);
+      return (_generateLocalResponse(npc, safeMessage, player: player), true);
     }
   }
 
@@ -267,9 +268,11 @@ class NpcChatService {
   ///
   /// 与 [chatWithNPC] 的离线分支共用同一实现。抽成独立方法并 `@visibleForTesting`
   /// 暴露，让测试无需真正发起网络请求即可断言好感度分档 / 同消息轮转。
+  /// [player] 用于关系历史回声：传入玩家的关系记录，让兜底偶尔引用一段
+  /// 与这个 NPC 的共同经历。
   @visibleForTesting
-  String localResponseFor(NPC npc, String message) =>
-      _generateLocalResponse(npc, message);
+  String localResponseFor(NPC npc, String message, {Player? player}) =>
+      _generateLocalResponse(npc, message, player: player);
 
   /// 本地兜底回复轮转计数（Q14 修复"同消息必同回复"）。
   ///
@@ -284,31 +287,101 @@ class NpcChatService {
   /// 回复千篇一律。现在按好感度分成 冷淡 / 普通 / 友好 三档，每档独立词库，
   /// 搭配每个"人设关键词/学院/教职工"的组合词池，让兜底回复也有人味。
   ///
+  /// P0 续：再叠加三个维度让“话题感知”真正生效——
+  /// ① 话题：命中关键词就切到该话题的专属句（见 `data/npc_chat_wordbank.dart`）；
+  /// ② 性格：按 NPC 性格立场（敢闯/好胜/博学）优先取定制口吻；
+  /// ③ 关系历史：偶尔引用玩家与该 NPC 过往的共同经历。
+  ///
   /// 不顺带做复杂性陷阱：这里的核心目标是"同样的故障下，玩家感觉在跟
   /// 有趣的NPC说话"。池子够大、分档合理即可，不追求真实聊天逻辑。
-  String _generateLocalResponse(NPC npc, String message) {
+  String _generateLocalResponse(NPC npc, String message, {Player? player}) {
     // 好感度分档：< -10 冷淡；> 15 友好；中间普通
     final String tier = npc.affection <= -10
         ? 'cold'
         : (npc.affection >= 15 ? 'warm' : 'neutral');
-
-    // 教职工（无学院归属或未知学院）→ 专属词库
-    final bool isStaff = !{'Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'}
-        .contains(npc.house);
-    final Map<String, List<String>> pool =
-        isStaff ? _staffPool : (_housePool[npc.house] ?? _staffPool);
-
-    // 从对应档位取词库；若该档为空回退到中性档
-    final lines = (pool[tier] != null && pool[tier]!.isNotEmpty)
-        ? pool[tier]!
-        : (pool['neutral'] ?? const ['嗯，你说。']);
 
     // 轮转种子 = 消息 hash + 自增计数：同消息多次问会轮换句子，
     // 不同消息错开，不再"同一句必同回"。
     _localReplyCounter++;
     final seed =
         (message.hashCode & 0x7fffffff) + (_localReplyCounter * 31);
+
+    // 【① 关系历史回声】与这个 NPC 有共同经历且命中轮转时，优先说一段
+    // 只有这段存档才知道的事（只有传入 player 才可能触发）。
+    final historyEcho = _relationshipEcho(player, npc, seed);
+    if (historyEcho != null) return historyEcho;
+
+    // 【②③ 话题 × 性格】命中话题优先按“性格口吻 → 通用话题词库”取句。
+    final topic = detectNpcChatTopic(message);
+    if (topic != null) {
+      final topicLine = _topicLine(topic, tier, npc.personality, seed);
+      if (topicLine != null) return topicLine;
+    }
+
+    // 【兜底】学院 × 档位（既有），性格口吻不覆盖时也走这里。
+    final bool isStaff = !{'Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'}
+        .contains(npc.house);
+    final Map<String, List<String>> pool =
+        isStaff ? _staffPool : (_housePool[npc.house] ?? _staffPool);
+    final lines = (pool[tier] != null && pool[tier]!.isNotEmpty)
+        ? pool[tier]!
+        : (pool['neutral'] ?? const ['嗯，你说。']);
     return lines[seed % lines.length];
+  }
+
+  /// 关系历史回声：玩家与这个 NPC 有 relationship.history 时，约 1/3 轮次
+  /// 引用最近一段共同经历。无历史或未传 player 返回 null。
+  String? _relationshipEcho(Player? player, NPC npc, int seed) {
+    if (player == null) return null;
+    final rel = player.relationships[npc.id];
+    final hist = rel?.history;
+    if (hist == null || hist.isEmpty) return null;
+    if (seed % 3 != 0) return null; // 只在部分轮次插入，避免句句重复同一件事
+    final evt = _shear(hist.last, 26);
+    return '还有，$evt——那件事，我一直记着。';
+  }
+
+  /// 命中话题：优先性格立场定制口吻，其次通用话题词库，最后回退 null。
+  String? _topicLine(String topic, String tier, List<String> personality, int seed) {
+    final stance = npcChatStanceOf(personality);
+    final List<String>? lines = _pick(
+      [[stance, topic], [topic]], tier,
+    );
+    if (lines == null || lines.isEmpty) return null;
+    return lines[seed % lines.length];
+  }
+
+  /// 依次尝试多个池键，取第一个非空命中。
+  ///
+  /// [keys] 空形如 [['bold','forest'], ['forest']]，前者查性格口吻池，后者查通用话题池。
+  List<String>? _pick(List<List<String>> keys, String tier) {
+    for (final key in keys) {
+      if (key.length == 2) {
+        final stanceLines = kNpcStanceTopicPool[key[0]]?[key[1]];
+        final l = _tiered(stanceLines, tier);
+        if (l != null) return l;
+      } else {
+        final l = _tiered(kNpcTopicPool[key[0]], tier);
+        if (l != null) return l;
+      }
+    }
+    return null;
+  }
+
+  /// 从「话题/性格 → 档位 → 句子」里取档位行；档位缺失回退 neutral。
+  List<String>? _tiered(Map<String, List<String>>? byTier, String tier) {
+    if (byTier == null) return null;
+    var l = byTier[tier];
+    if (l == null || l.isEmpty) l = byTier['neutral'];
+    if (l == null || l.isEmpty) return null;
+    return l;
+  }
+
+  /// 截断过长的存档历史文本，避免把回复撑爆。
+  static String _shear(String s, [int max = 26]) {
+    final t = s.trim();
+    if (t.length <= max) return t;
+    return '${t.substring(0, max)}…';
   }
 
   // 各学院 × 好感度档位 的兜底词库（Q14 扩展）：
