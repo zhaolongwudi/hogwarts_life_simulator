@@ -1,3 +1,4 @@
+import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
@@ -168,7 +169,7 @@ class OfflineNarrativeContext {
   static String? _topReputationLabel(Player p) {
     String? topKey;
     var topVal = -1;
-    for (final k in p.playerReputation.dimensions) {
+    for (final k in Reputation.dimensions) {
       final v = p.playerReputation.get(k);
       if (v > topVal) {
         topVal = v;
