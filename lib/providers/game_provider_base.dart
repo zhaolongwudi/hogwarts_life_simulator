@@ -16,6 +16,7 @@ import '../services/deepseek_service.dart';
 import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../data/cg_data.dart';
+import '../narrative/narrative_source_gate.dart';
 
 /// GameProviderBase: 字段承载抽象基类。
 /// 必须放在 `with` 6个Mixin 之前被 6个Mixin 的 `on GameProviderBase` 引用，
@@ -34,6 +35,25 @@ abstract class GameProviderBase extends ChangeNotifier
   SaveService get saveService;
   Random get random;
   NpcChatService get chatService;
+
+  // ====== P1 叙事来源抽象：自动降级开关 ======
+  // 集中决定"当前叙事用 AI 还是本地"，并按连续失败自动降级 / 宽限后自动恢复。
+  final NarrativeSourceGate narrativeSourceGate = NarrativeSourceGate();
+
+  /// 是否具备可用 AI 叙事服务（未配 Key / 未注册路由即为 false）。
+  bool get aiNarrativeAvailable => router?.hasNarrativeService ?? false;
+
+  /// 当前生效的叙事来源（离线 / 无 AI 恒为 local；否则看自动降级态）。
+  NarrativeSource get effectiveNarrativeSource =>
+      narrativeSourceGate.effective(
+        offlineQuickMode: appProvider.offlineQuickMode,
+        aiAvailable: aiNarrativeAvailable,
+      );
+
+  /// 给 UI 展示的当前来源标签。
+  String get narrativeSourceLabel => effectiveNarrativeSource == NarrativeSource.local
+      ? '本地模式'
+      : 'AI 模式';
 
   // ====== 预编译正则（避免循环内重复编译） ======
   static final RegExp reChoiceOption = RegExp(

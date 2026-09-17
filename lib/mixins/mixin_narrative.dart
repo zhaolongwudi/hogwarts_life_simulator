@@ -17,6 +17,7 @@ import '../utils/stagnation_detector.dart';
 import '../utils/confession_reply.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
+import '../narrative/narrative_source_gate.dart';
 import '../data/locations.dart';
 import '../data/attribute_data.dart';
 import '../data/course_data.dart';
@@ -218,8 +219,11 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       return;
     }
 
-    // 主动开启「无 AI 快速模式」：即使配了 Key 也完全走本地生成，不消耗 AI 额度
-    if (appProvider.offlineQuickMode) {
+    // P1 叙事来源判定：主动离线 / 自动降级 → 本地快速回合；否则走 AI。
+    // 替换原先"只看 offlineQuickMode 是否开启"的两段分支——自动降级切入后
+    // 即使没开离线模式也会切到本地，宽限期用尽又自动恢复尝试 AI。
+    if (effectiveNarrativeSource == NarrativeSource.local) {
+      narrativeSourceGate.onLocalTurn();
       _runOfflineQuickTurn(safeAction, causalResult: causalResult);
       return;
     }
@@ -847,6 +851,8 @@ $kNarrativeWritingRules
           );
           currentNarrative = generateFallbackNarrative();
           usedFallbackNarrative = true;
+          // P1：本轮 AI 叙事失败 → 记入降级门（连续失败会自动切本地）。
+          narrativeSourceGate.recordFailure();
           // 兜底叙事是 Dart 代码生成的，不会夹带选项，也没有好感度区块
           // 所以不用再跑 parseNarrativeOnly，也不应用任何 AI 副作用，
           // 但要跑一遍地点同步等后续流程
@@ -877,6 +883,8 @@ $kNarrativeWritingRules
       }
       if (!usedFallbackNarrative) {
         applyNarrativeSideEffects(finalResponseText);
+        // P1：真走了一次可用 AI 叙事 → 通知降级门记录成功（可即时撤销自动降级）。
+        narrativeSourceGate.recordSuccess();
       }
 
       // ====== 信息密度调节器：检测本回合叙事的事件密度 ======
@@ -1012,6 +1020,8 @@ $kNarrativeWritingRules
       // AI 全部提供商不可用时的本地兜底：给出过渡剧情与选项，保证游戏不卡死
       debugLog('❌ 剧情生成失败，启用本地兜底叙事: $e');
       CrashLogger.instance.logHeartbeat('narrative:fallback');
+      // P1：本轮 AI 叙事失败 → 记入降级门（连续失败会自动切本地兜底）。
+      narrativeSourceGate.recordFailure();
       currentNarrative = generateFallbackNarrative();
       // 2026-08-28：统一使用 buildFallbackChoices（基于剧情末尾800字做承接式兜底）
       // 旧代码用 generateContextualFallbackChoices → 返回静态位置MAP选项（"去教室上课"等）
