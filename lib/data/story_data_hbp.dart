@@ -418,6 +418,21 @@ const List<StoryChapterDef> _hbpChapters = [
             effect: StoryEffect(setFlags: ['hbp_followed_rules'], reputation: 1, spirit: 2),
           ),
           StoryChoiceDef(
+            id: 'say_it_out_loud',
+            text: '把心里那点不对劲说出来，不压着',
+            consequence:
+                '你把去年在站台上跟人约好的那句话搬了出来：「觉得不对就说。」'
+                '你说完，周围安静了两秒，然后有三个人点头。'
+                '慌没有消失，但从这一刻起，慌变成了有人一起担着的事。',
+            requireFlag: 'gof_spoke_the_instinct',
+            effect: StoryEffect(
+              setFlags: ['hbp_spoke_up_early'],
+              reputation: 3,
+              spirit: 3,
+            ),
+          ),
+
+          StoryChoiceDef(
             id: 'walk_longer',
             text: '故意绕远路，把校园走一遍',
             consequence:
@@ -485,6 +500,23 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -2,
             ),
           ),
+          StoryChoiceDef(
+            id: 'cross_check_names',
+            text: '把这份名单和去年自己记的那些并排抄一遍',
+            consequence:
+                '你翻出旧本子，把两份名单抄在同一页上。'
+                '抄到第三行时你停住了——有两个名字，去年就出现在'
+                '「今天谁没来上课」那一栏里。你把这一页折了个角。',
+            requireKnowledge: ['gof_knows_own_timeline'],
+            effect: StoryEffect(
+              setFlags: ['hbp_cross_checked'],
+              addKnowledge: ['hbp_knows_repeat_names'],
+              reputation: 3,
+              housePoints: 2,
+              spirit: -1,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -609,6 +641,21 @@ const List<StoryChapterDef> _hbpChapters = [
               spirit: -1,
             ),
           ),
+          StoryChoiceDef(
+            id: 'stay_with_the_scared',
+            text: '不走，留下来陪着那几个明显害怕的低年级生',
+            consequence:
+                '你没说什么大道理，只是坐下来，把自己的事讲给他们听：'
+                '四年级那年的那一夜，你也这么怕过。'
+                '讲到一半，最小的那个不抖了。',
+            requireFlag: 'gof_spoke_for_victim',
+            effect: StoryEffect(
+              setFlags: ['hbp_stayed_with_scared'],
+              reputation: 3,
+              spirit: 5,
+            ),
+          ),
+
         ],
       ),
     ],
@@ -1139,6 +1186,23 @@ const List<StoryChapterDef> _hbpChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['hbp_left_early'], spirit: 1),
           ),
+          StoryChoiceDef(
+            id: 'name_the_year',
+            text: '在心里把这两年的账算一遍，然后写下来',
+            consequence:
+                '四年八月、四年十一月、五年六月、六年十月。'
+                '你把这几个日期写在纸上，中间画了线。'
+                '这条线不是证据，谁也不会因为一张纸改变什么，'
+                '但你知道自己从今往后不会再把这些事当成巧合了。',
+            requireFlag: 'gof_tracked_odds',
+            effect: StoryEffect(
+              setFlags: ['hbp_wrote_the_timeline'],
+              addKnowledge: ['hbp_knows_long_arc'],
+              reputation: 2,
+              spirit: -2,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -1358,7 +1422,8 @@ const List<StoryChapterDef> _hbpChapters = [
             consequence:
                 '你排到第三遍的时候，发现有个人的名字出现了两次，而且中间隔了很久。你把这两个时间点圈了起来。',
             nextStepId: '',
-            requireAnyFlags: ['hbp_borrowed_notes', 'hbp_copied_notes', 'hbp_kept_notes', 'hbp_prince_search', 'hbp_rumor_timeline'],
+            requireAnyFlags: ['hbp_borrowed_notes', 'hbp_copied_notes', 'hbp_kept_notes'],
+            requireKnowledge: ['hbp_prince_search', 'hbp_rumor_timeline'],
             effect: StoryEffect(addKnowledge: ['hbp_timeline'], setFlags: ['hbp_connected'], spirit: 3),
           ),
           StoryChoiceDef(
@@ -1456,7 +1521,8 @@ const List<StoryChapterDef> _hbpChapters = [
                 '越往下越清楚，也越往下越冷。'
                 '最后你停在一个数字上——'
                 '你希望自己是算错了，但你没有。',
-            requireAnyFlags: ['hbp_asked_around', 'hbp_counted_names', 'hbp_rumor_timeline', 'hbp_watched_changes', 'hbp_watch_rumors'],
+            requireAnyFlags: ['hbp_asked_around', 'hbp_counted_names', 'hbp_watch_rumors'],
+            requireKnowledge: ['hbp_rumor_timeline', 'hbp_watched_changes'],
             effect: StoryEffect(
               addItems: ['旧书', '神秘符号'],
               addKnowledge: ['hbp_horcrux_count'],
@@ -1826,7 +1892,8 @@ const List<StoryChapterDef> _hbpChapters = [
             consequence:
                 '你从头看到尾，什么也没做。后来的很多年里，你都还记得那天夜里风的方向。',
             nextStepId: '',
-            requireAnyFlags: ['hbp_kept_watch', 'hbp_timeline', 'hbp_rumor_timeline', 'hbp_watch_plan'],
+            requireAnyFlags: ['hbp_kept_watch'],
+            requireKnowledge: ['hbp_timeline', 'hbp_rumor_timeline', 'hbp_watch_plan'],
             effect: StoryEffect(setFlags: ['hbp_witnessed'], spirit: -3),
           ),
         ],
@@ -1890,6 +1957,21 @@ const List<StoryChapterDef> _hbpChapters = [
             ),
             nextStepId: '',
           ),
+          StoryChoiceDef(
+            id: 'do_what_worked_before',
+            text: '照两年前那晚的办法，坐到人身边，什么都不问',
+            consequence:
+                '你记得那一夜后来是怎么熬过去的——不是靠谁讲道理，'
+                '是靠有人一直在旁边。于是你也只是坐着。'
+                '过了很久，对方说了一句「谢谢」，声音很小。',
+            requireFlag: 'gof_gathered_friends',
+            effect: StoryEffect(
+              setFlags: ['hbp_sat_in_silence'],
+              reputation: 2,
+              spirit: 4,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -2145,6 +2227,22 @@ const List<StoryChapterDef> _hbpChapters = [
             ),
             nextStepId: '',
           ),
+          StoryChoiceDef(
+            id: 'pass_it_on',
+            text: '把自己这两年记的几页纸，抄一份给低年级的学弟',
+            consequence:
+                '你把本子摊开，挑了几页抄给他：哪些时候要结伴走、'
+                '哪些传闻不必当真、出事之后去哪里找谁。'
+                '他收下的时候有点发愣，你说：「两年后你会用得上。」',
+            requireFlag: 'hbp_cross_checked',
+            effect: StoryEffect(
+              setFlags: ['hbp_passed_notes_on'],
+              reputation: 4,
+              housePoints: 4,
+              spirit: 4,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -2175,6 +2273,23 @@ const List<StoryChapterDef> _hbpChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['hbp_accepted_result'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'trust_it_fully',
+            text: '最后定一句：以后再有那种感觉，直接信它',
+            consequence:
+                '你回想这三年——每一次觉得不对，事后都证明你没错过。'
+                '你没有把这件事说成什么天赋，只是给自己立了条规矩：'
+                '不因为别人都说没事，就把自己的判断交出去。'
+                '这条规矩，你后来用了很多年。',
+            requireKnowledge: ['hbp_knows_long_arc'],
+            effect: StoryEffect(
+              setFlags: ['hbp_trusts_instinct'],
+              addKnowledge: ['hbp_knows_own_judgement'],
+              reputation: 4,
+              spirit: 6,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(

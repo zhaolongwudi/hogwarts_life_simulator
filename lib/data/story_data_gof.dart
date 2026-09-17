@@ -715,7 +715,8 @@ const List<StoryChapterDef> _gofChapters = [
                 '你记满了两页：谁快、谁稳、谁用了从没见过的咒。'
                 '回宿舍后有人借去看，看完说：'
                 '"你这哪是看比赛，你这是备课。"',
-            requireAnyFlags: ['gof_read_history', 'gof_knows_rules', 'gof_tournament_history', 'gof_focused_study'],
+            requireAnyFlags: ['gof_read_history', 'gof_knows_rules'],
+            requireKnowledge: ['gof_tournament_history', 'gof_focused_study'],
             effect: StoryEffect(
               addItems: ['羊皮纸一包', '新羽毛笔'],
               addKnowledge: ['gof_task_notes'],
@@ -1081,7 +1082,8 @@ const List<StoryChapterDef> _gofChapters = [
                 '你记了时间：最长的那个超过了一小时。'
                 '你在纸上写"这不合理"，'
                 '然后有人提醒你，勇士是可以用魔法的。',
-            requireAnyFlags: ['gof_tracks_news', 'gof_focused_study', 'gof_read_history', 'gof_camp_layout'],
+            requireAnyFlags: ['gof_tracks_news', 'gof_read_history'],
+            requireKnowledge: ['gof_focused_study', 'gof_camp_layout'],
             effect: StoryEffect(
               addItems: ['计划书'],
               addKnowledge: ['gof_task_timing'],
@@ -1181,6 +1183,22 @@ const List<StoryChapterDef> _gofChapters = [
             ),
             nextStepId: 'gof_ch4_after',
           ),
+          StoryChoiceDef(
+            id: 'trust_the_instinct',
+            text: '不再压着心里那点不对劲，跟身边人说一句',
+            consequence:
+                '你把这几个月里几次「觉得不对」的时刻都说了出来。'
+                '对方没有笑你。他说他也这么想过，只是不敢讲。'
+                '你们约好：以后再觉得不对，就当场说出来，'
+                '哪怕说错了也要说。',
+            requireFlag: 'gof_sense_wrong',
+            effect: StoryEffect(
+              setFlags: ['gof_spoke_the_instinct'],
+              reputation: 3,
+              spirit: 4,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -1431,7 +1449,8 @@ const List<StoryChapterDef> _gofChapters = [
                 '你描了张草图，描到第三遍才发现：'
                 '它每天长得都不一样。你把草图撕了——'
                 '有些东西本来就不该被提前算清。',
-            requireAnyFlags: ['gof_sense_wrong', 'gof_fourth_name', 'gof_tournament_doubt', 'gof_cup_omen'],
+            requireAnyFlags: ['gof_sense_wrong'],
+            requireKnowledge: ['gof_fourth_name', 'gof_tournament_doubt', 'gof_cup_omen'],
             effect: StoryEffect(
               addItems: ['全效望远镜'],
               addKnowledge: ['gof_maze_sketch'],
@@ -1835,6 +1854,21 @@ const List<StoryChapterDef> _gofChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['gof_watched_silently'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'count_from_camp',
+            text: '用世界杯决赛那晚学会的节奏数着时间',
+            consequence:
+                '你想起八月那场决赛，也是这样的夜、这样屏住呼吸的人群。'
+                '你照着当时的办法数拍子：数到第四十下，迷宫里的动静'
+                '换了一次方向。你说不出这代表什么，但你心里比谁都稳。',
+            requireFlag: 'gof_saw_world_cup_final',
+            effect: StoryEffect(
+              setFlags: ['gof_counted_maze'],
+              reputation: 2,
+              spirit: 3,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -1897,6 +1931,23 @@ const List<StoryChapterDef> _gofChapters = [
             ),
             nextStepId: '',
           ),
+          StoryChoiceDef(
+            id: 'recall_maze_guess',
+            text: '把自己在迷宫里猜到的地形，小声讲给身边发慌的人听',
+            consequence:
+                '你把先前对着空场地画的那些推测讲了一遍——哪里是死路、'
+                '哪里绕回来。身边的人不一定听得进去，'
+                '但有人抓住了「你是说这地方本来就复杂」这句话，'
+                '肩膀松下去了一点。',
+            requireFlag: 'gof_guessed_maze',
+            effect: StoryEffect(
+              setFlags: ['gof_shared_maze_guess'],
+              reputation: 3,
+              housePoints: 2,
+              spirit: 2,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -1955,6 +2006,23 @@ const List<StoryChapterDef> _gofChapters = [
               targetNpcId: 'mcgonagall',
             ),
           ),
+          StoryChoiceDef(
+            id: 'find_the_recorder',
+            text: '先去找那位一直在记比分的老巫师',
+            consequence:
+                '你在看台上找到他时，他手里那本册子还摊开着，'
+                '上面记得整整齐齐。你把刚才看到的一字不差地说了一遍，'
+                '他一边听一边写，最后说：「你比前面三个人都说得清楚。」',
+            requireFlag: 'gof_recorded_data',
+            effect: StoryEffect(
+              setFlags: ['gof_found_recorder'],
+              addKnowledge: ['gof_knows_witness_chain'],
+              reputation: 3,
+              housePoints: 3,
+              spirit: 2,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -2036,6 +2104,21 @@ const List<StoryChapterDef> _gofChapters = [
             effect: StoryEffect(setFlags: ['gof_sat_together'], spirit: 2, targetNpcId: 'ginny', affection: 2),
           ),
           StoryChoiceDef(
+            id: 'gather_ball_friends',
+            text: '把舞会那晚坐在一起的那几个人都叫来',
+            consequence:
+                '你在走廊上一个个敲门。他们来得比你想的快，'
+                '有人连外套都没披。你们在楼梯口坐成一圈，'
+                '谁也没说该说什么，但天亮前的这几个小时没那么难熬。',
+            requireFlag: 'gof_friends_at_ball',
+            effect: StoryEffect(
+              setFlags: ['gof_gathered_friends'],
+              reputation: 2,
+              spirit: 5,
+            ),
+          ),
+
+          StoryChoiceDef(
             id: 'go_to_bed',
             text: '回宿舍，把自己关起来',
             consequence:
@@ -2043,6 +2126,23 @@ const List<StoryChapterDef> _gofChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['gof_alone_at_night'], spirit: -3),
           ),
+          StoryChoiceDef(
+            id: 'speak_for_them',
+            text: '主动开口，替那位回不来的同学说两句',
+            consequence:
+                '你说得很短：他做过什么、怎么准备、'
+                '最后一次见他是什么样子。说完之后很久没人动。'
+                '后来有人接了一句，又有人接了一句，'
+                '那个名字被一遍遍说出来，不再是传闻里的一个词。',
+            requireFlag: 'gof_stood_up',
+            effect: StoryEffect(
+              setFlags: ['gof_spoke_for_victim'],
+              reputation: 4,
+              housePoints: 3,
+              spirit: -1,
+            ),
+          ),
+
         ],
       ),
     ],
@@ -2192,6 +2292,23 @@ const List<StoryChapterDef> _gofChapters = [
             ),
             nextStepId: '',
           ),
+          StoryChoiceDef(
+            id: 'show_the_odds',
+            text: '把这一年攒下的记录拿出来，指给同座看',
+            consequence:
+                '你把几页纸摊在小桌板上：八月、十一月、二月、五月。'
+                '同座看了一会儿说：「你以前就知道会出事？」'
+                '你摇头——你只是记了下来。但这两件事，'
+                '在别人眼里已经分不清了。',
+            requireFlag: 'gof_tracked_odds',
+            effect: StoryEffect(
+              setFlags: ['gof_showed_records'],
+              addKnowledge: ['gof_knows_own_timeline'],
+              reputation: 2,
+              spirit: 3,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -2247,6 +2364,22 @@ const List<StoryChapterDef> _gofChapters = [
               targetNpcId: 'hermione',
             ),
           ),
+          StoryChoiceDef(
+            id: 'pack_souvenir',
+            text: '把八月买的那件纪念品也收进箱子',
+            consequence:
+                '你把它从抽屉最底下翻出来。买它的时候你还在为首场'
+                '比赛欢呼，那时候「有个学生死了」这种话还不可能'
+                '和你有什么干系。你把它包好放进去，'
+                '心里想的是：明年谁也别再买这样的东西。',
+            requireFlag: 'gof_bought_souvenir',
+            effect: StoryEffect(
+              setFlags: ['gof_kept_souvenir'],
+              spirit: -2,
+              reputation: 1,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(

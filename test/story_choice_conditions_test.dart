@@ -22,11 +22,6 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/story_data.dart';
-import 'package:hogwarts_life_simulator/data/story_data_dh.dart';
-import 'package:hogwarts_life_simulator/data/story_data_gof.dart';
-import 'package:hogwarts_life_simulator/data/story_data_hbp.dart';
-import 'package:hogwarts_life_simulator/data/story_data_ootp.dart';
-import 'package:hogwarts_life_simulator/data/story_data_poa.dart';
 import 'package:hogwarts_life_simulator/models/story_progress.dart';
 
 /// 从全局书表里取一步（书表由 registerAllStoryBooks 注入）。
@@ -50,6 +45,12 @@ StoryStepDef? _findAny(String stepId) {
 }
 
 /// 该步在某组 flag/knowledge 下可见的选项 id 集合。
+///
+/// 【陷阱：`availableStoryChoices` 有空处境兜底】
+/// 过滤后若**一条都不剩**，它会退回返回**全部**选项（防止玩家撞上空界面）。
+/// 所以"某个选项不在返回集合里"**不能**证明它被门槛挡住了——
+/// 也可能是因为该步所有出路都被挡掉、于是兜底生效、它又回来了。
+/// 需要断言"被门槛挡住"时请用 [isVisibleNow]，别用本函数。
 Set<String> visibleIds(
   String stepId, {
   Set<String> flags = const {},
@@ -63,6 +64,29 @@ Set<String> visibleIds(
     knowledge: knowledge,
     reputation: reputation,
   ).map((c) => c.id).toSet();
+}
+
+/// 某个选项在某组 flag/knowledge 下**是否真的通过门槛**。
+///
+/// 与 [visibleIds] 的区别：这里直接问 `StoryChoiceDef.isVisible`，
+/// 不经过 `availableStoryChoices` 的"空则全给"兜底，所以
+/// **可以**用来断言"被门槛挡住了"。
+bool isVisibleNow(
+  String stepId,
+  String choiceId, {
+  Set<String> flags = const {},
+  Set<String> knowledge = const {},
+  int reputation = 0,
+}) {
+  final c = step(stepId).choices.firstWhere(
+    (x) => x.id == choiceId,
+    orElse: () => throw StateError('$stepId 里找不到 $choiceId'),
+  );
+  return c.isVisible(
+    flags: flags,
+    knowledge: knowledge,
+    reputation: reputation,
+  );
 }
 
 void main() {
@@ -129,26 +153,105 @@ void main() {
     test('HBP：ch2 打听过的人，ch5 才会顺着线索往下查', () {
       const sid = 'hbp_ch5_rumor';
       const cid = 'dig_rumor';
-      expect(visibleIds(sid).contains(cid), isFalse);
+
+      // 【为什么用 isVisibleNow 而不是 visibleIds】这条出路的两半
+      // 都是条件，空处境下它被挡住；但该步其余出路也大多带条件，
+      // 一旦全被挡掉，`availableStoryChoices` 会走"空则全给"兜底，
+      // 于是 visibleIds 里又出现它——那会掩盖门槛的真实状态。
+      expect(isVisibleNow(sid, cid), isFalse);
+
+      // 门槛＝flag 半边 AND 情报半边。"当年打听过"且"手里凑齐两条情报"
+      // 才放行——两半来自同一批更早的章。
+      //
+      // 【为什么情报要给两条】`requireKnowledge` 是**每一项都要满足**的
+      // AND 语义（`isVisible` 里是 `for (k in requireKnowledge) if
+      // (!knowledge.contains(k)) return false;`）。这条出路的
+      // requireKnowledge 实装为 `[hbp_rumor_timeline, hbp_watched_changes]`，
+      // 只给一条**不该**放行——上一条断言正是在验这一点。
       expect(
-        visibleIds(sid, flags: {'hbp_asked_around'}).contains(cid),
+        isVisibleNow(
+          sid,
+          cid,
+          flags: {'hbp_asked_around'},
+          knowledge: {'hbp_rumor_timeline', 'hbp_watched_changes'},
+        ),
         isTrue,
       );
-      // requireAnyFlags 的 OR 语义：另一条路径同样解锁
+      // 只给一半不算数：这正是批次 7-D 修掉的
+      // "门槛看似在跑、其实永远不命中"（情报名被误写进 requireAnyFlags）
       expect(
-        visibleIds(sid, flags: {'hbp_counted_names'}).contains(cid),
-        isTrue,
-        reason: '用另一种方式打听到消息也该解锁，不能只认一条路径',
+        isVisibleNow(
+          sid,
+          cid,
+          flags: {'hbp_asked_around'},
+          knowledge: {'hbp_rumor_timeline'},
+        ),
+        isFalse,
+        reason: 'requireKnowledge 是 AND：只给一半情报，不该解锁这条出路',
       );
+
+      // requireAnyFlags 的 OR 语义：另两条打听路径同样解锁
+      for (final f in ['hbp_counted_names', 'hbp_watch_rumors']) {
+        expect(
+          isVisibleNow(
+            sid,
+            cid,
+            flags: {f},
+            knowledge: {'hbp_rumor_timeline', 'hbp_watched_changes'},
+          ),
+          isTrue,
+          reason: 'requireAnyFlags 是 OR：$f 这条打听路径也该解锁',
+        );
+      }
     });
 
     test('GOF：ch1 读过赛史的人，第一项任务时才会认真记打法', () {
       const sid = 'gof_ch2_first_task';
       const cid = 'take_notes';
-      expect(visibleIds(sid).contains(cid), isFalse);
+      expect(isVisibleNow(sid, cid), isFalse);
+      // 【门槛由 flag + 情报两半组成，必须都给】`requireAnyFlags` 与
+      // `requireKnowledge` 之间是 **AND**（各自内部才是 OR）。
+      // 这条出路要求"读过赛史"（flag）**且**凑齐两条情报
+      // （`[gof_tournament_history, gof_focused_study]`）——两半来自
+      // ch1 的两次不同选择，所以这条出路奖励的是"读赛史 + 也顾学业"的人。
       expect(
-        visibleIds(sid, flags: {'gof_read_history'}).contains(cid),
+        isVisibleNow(
+          sid,
+          cid,
+          flags: {'gof_read_history'},
+          knowledge: {'gof_tournament_history', 'gof_focused_study'},
+        ),
         isTrue,
+        reason: '读过赛史的人应当解锁"认真记打法"这条出路',
+      );
+      // requireKnowledge 是 AND：只给一条情报不放行
+      expect(
+        isVisibleNow(
+          sid,
+          cid,
+          flags: {'gof_read_history'},
+          knowledge: {'gof_tournament_history'},
+        ),
+        isFalse,
+        reason: '情报只凑齐一半，不该解锁——requireKnowledge 内部是 AND',
+      );
+      // 只给 flag、不给情报同样不放行：这正是批次 7-D 修掉的
+      // "门槛看似在跑其实永远不命中"
+      expect(
+        isVisibleNow(sid, cid, flags: {'gof_read_history'}),
+        isFalse,
+        reason: '只知道赛史、没读过报道，凑不齐这条出路',
+      );
+      // requireAnyFlags 的 OR：另一条"守规矩"路径同样解锁
+      expect(
+        isVisibleNow(
+          sid,
+          cid,
+          flags: {'gof_knows_rules'},
+          knowledge: {'gof_tournament_history', 'gof_focused_study'},
+        ),
+        isTrue,
+        reason: 'requireAnyFlags 是 OR：懂规矩的人也该能认真记打法',
       );
     });
   });
@@ -375,7 +478,7 @@ void main() {
         'dh': 40,
       };
 
-      final bookOf = (String stepId) => stepId.split('_').first;
+      String bookOf(String stepId) => stepId.split('_').first;
 
       final produced = <String, Set<String>>{};
       final consumed = <String, Set<String>>{};
@@ -469,98 +572,94 @@ void main() {
     });
 
     test('新增的条件出路都真的走得通（门槛可达 + 空处境不挡路）', () {
-      // 【为什么钉这条】批次 7-A 往 PS/CoS 补了 17 条**条件**出路。
+      // 【为什么钉这条】批次 7-A 起往内容里补了一批**条件**出路。
       // 条件出路有两个容易写坏的地方，两种都不会编译报错：
-      //   ① 引用的 flag 在本书里**根本没有生产者**——这条出路永远是死的；
-      //   ② 引用的 flag 由**更晚**的步产生——理论可达，实战中玩家
-      //      走到这一步时还没拿到，等于死代码。
-      // 所以断言：每一条带 requireFlag 的选项，其 flag 必须由
-      // **同一部书里更早的步**写出。
-      final dead = <String>[];
-      final late = <String>[];
+      //   ① 引用的 flag 在整条时间线里**根本没有生产者**——这条出路永远是死的；
+      //   ② 引用由**更晚**的步产生的 flag——理论可达，实战走到这一步时
+      //      玩家还没拿到，等于死代码。
+      //
+      // 【跨部继承是合法的，别误判】`StoryProgress.beginBook` 明确规定
+      // flags / knowledge **跨部保留**（"七部一场长局"的根基）。
+      // 所以"由《火焰杯》的角色写在《混血王子》里读到"是**正确**写法，
+      // 不是 bug。判据按**全局部序**算：
+      //   · 生产者在**更早的书**里           → 可达
+      //   · 生产者在**同一本书更早的步**里   → 可达
+      //   · 生产者在同一本书更晚的步 / 本书无生产者但更晚的书里有 → 不可达
+      const bookOrder = ['ps', 'cos', 'poa', 'gof', 'ootp', 'hbp', 'dh'];
+      final bookRank = {
+        for (var i = 0; i < bookOrder.length; i++) bookOrder[i]: i,
+      };
 
-      for (final book in kStoryBooks.values) {
-        // 步 id → 它在本书里的全局序号（章序 → 步序）
-        final seq = <String, int>{};
-        final writers = <String, int>{}; // flag → 最早写出它的步序号
+      // 全局 flag / knowledge 生产表：(书序, 步序) —— 取"最早出现"的那次。
+      final flagWriter = <String, (int, int)>{};
+      final knowWriter = <String, (int, int)>{};
+      for (final b in bookOrder) {
+        final book = kStoryBooks[b];
+        if (book == null) continue;
+        final br = bookRank[b]!;
         var i = 0;
         for (final ch in book.chapters) {
           for (final s in ch.steps) {
-            seq[s.id] = i;
             for (final c in s.choices) {
               for (final f in c.effect.setFlags) {
-                writers.putIfAbsent(f, () => i);
+                flagWriter.putIfAbsent(f, () => (br, i));
+              }
+              for (final k in c.effect.addKnowledge) {
+                knowWriter.putIfAbsent(k, () => (br, i));
               }
             }
             i++;
           }
         }
-
-        for (final ch in book.chapters) {
-          for (final s in ch.steps) {
-            final here = seq[s.id]!;
-            for (final c in s.choices) {
-              if (c.requireFlag == null) continue;
-              final f = c.requireFlag!;
-              final w = writers[f];
-              if (w == null) {
-                dead.add('${book.id}/${s.id}/${c.id} → $f（本书无生产者）');
-              } else if (w >= here) {
-                late.add('${book.id}/${s.id}/${c.id} → $f'
-                    '（由更晚的步 #$w 写出，本步是 #$here）');
-              }
-            }
-          }
-        }
       }
 
-      expect(dead, isEmpty, reason: '条件出路引用了没人写的 flag，永远是死的：\n${dead.join('\n')}');
-      expect(late, isEmpty, reason: '条件出路依赖更晚才出现的 flag，实战走不到：\n${late.join('\n')}');
-    });
+      // 该步的全局坐标
+      bool defined(String id) => kStoryBooks[id] != null;
 
-    test('requireKnowledge 的门槛也必须在更早的章被写入', () {
-      // 【为什么单列一条】`requireKnowledge` 是全库**消费率最低**的门槛：
-      // 批次 7-A/B 之前，407 条 knowledge 里只有 1 条被读。7-B 接回 5 条，
-      // 但接法同样容易写错（引用更晚才给的词条 → 这条出路永远不出现）。
-      // 判据与 flag 一致：词条必须由**同一部书里更早的步**写入。
       final dead = <String>[];
       final late = <String>[];
 
-      for (final book in kStoryBooks.values) {
-        final seq = <String, int>{};
-        final writers = <String, int>{};
+      for (final b in bookOrder) {
+        final book = kStoryBooks[b];
+        if (book == null) continue;
+        final br = bookRank[b]!;
         var i = 0;
         for (final ch in book.chapters) {
           for (final s in ch.steps) {
-            seq[s.id] = i;
             for (final c in s.choices) {
-              for (final k in c.effect.addKnowledge) {
-                writers.putIfAbsent(k, () => i);
+              void check(String key, (int, int)? w, String kind) {
+                if (w == null) {
+                  dead.add('$b/${s.id}/${c.id} → $key（整条时间线无生产者）');
+                  return;
+                }
+                final (wr, wi) = w;
+                // 更早的书 → 可达；同书必须严格更早
+                if (wr == br && wi >= i) {
+                  late.add('$b/${s.id}/${c.id} → $key（同书更晚的步 #$wi，'
+                      '本步 #$i）');
+                } else if (wr > br) {
+                  late.add('$b/${s.id}/${c.id} → $key（更晚的书）');
+                }
+              }
+
+              if (c.requireFlag != null) {
+                check(c.requireFlag!, flagWriter[c.requireFlag!], 'flag');
+              }
+              for (final f in [...c.requireAllFlags, ...c.requireAnyFlags]) {
+                check(f, flagWriter[f], 'flag');
+              }
+              for (final k in c.requireKnowledge) {
+                check(k, knowWriter[k], 'knowledge');
               }
             }
             i++;
           }
         }
-
-        for (final ch in book.chapters) {
-          for (final s in ch.steps) {
-            for (final c in s.choices) {
-              for (final k in c.requireKnowledge) {
-                final w = writers[k];
-                if (w == null) {
-                  dead.add('${book.id}/${s.id}/${c.id} → $k（本书无生产者）');
-                } else if (w >= seq[s.id]!) {
-                  late.add('${book.id}/${s.id}/${c.id} → $k'
-                      '（由更晚的步 #$w 写出，本步是 #${seq[s.id]}）');
-                }
-              }
-            }
-          }
-        }
       }
 
-      expect(dead, isEmpty, reason: '情报门槛引用了没人写的词条：\n${dead.join('\n')}');
-      expect(late, isEmpty, reason: '情报门槛依赖更晚才拿到的词条：\n${late.join('\n')}');
+      expect(defined('ps'), isTrue, reason: '书表应当已注册');
+      expect(dead, isEmpty, reason: '条件出路引用了没人写的东西，永远是死的：\n${dead.join('\n')}');
+      expect(late, isEmpty, reason: '条件出路依赖更晚才出现的东西，实战走不到：\n${late.join('\n')}');
     });
 
     test('情报消费率不能归零（当时多留的心眼要在后面兑现）', () {
