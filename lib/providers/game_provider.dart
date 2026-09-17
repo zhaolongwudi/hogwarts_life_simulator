@@ -21,6 +21,7 @@ import '../mixins/mixin_animagus.dart';
 import '../mixins/mixin_death.dart';
 import '../mixins/mixin_career.dart';
 import '../mixins/mixin_story_freeform.dart';
+import '../mixins/mixin_offline_consequences.dart';
 import '../data/balance_constants.dart';
 import '../data/rivalry_data.dart';
 import '../services/save_service.dart';
@@ -56,7 +57,8 @@ class GameProvider extends GameProviderBase
         GameAnimagusMixin,
         GameDeathMixin,
         GameCareerMixin,
-        GameStoryFreeformMixin {
+        GameStoryFreeformMixin,
+        GameOfflineConsequenceMixin {
   @override
   bool markScanIfNew(String narrative) {
     final h = narrative.hashCode;

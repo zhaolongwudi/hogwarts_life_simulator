@@ -1668,6 +1668,25 @@ $kNarrativeWritingRules
     //   3. 每回合最多注入一条，与 _checkEventAnchors 的节流口径一致。
     _injectCanonEventIntoOfflineNarrative();
 
+    // ====== P6 本地行动后果引擎 ======
+    // 在叙事全部成型后结算玩家本回合行动的可见后果（学习/练咒/运动/打工/
+    // 探索/休息/社交），把「【行动结果】…」段追加到叙事末尾。
+    //
+    // 【顺序】放在原著节点注入**之后**：节点是"世界发生了什么"，行动结果是
+    // "你做了什么、世界怎么回应"，后者应当作为本回合的收尾呈现，也正好让
+    // buildFallbackChoices 的承接式选项（读末尾 800 字）感知到行动成果。
+    // 表白回合不受影响：后果段只是追加，不触碰「接受/婉拒」专属选项。
+    {
+      final result = settleOfflineConsequences(action);
+      if (result.lines.isNotEmpty) {
+        currentNarrative = '$currentNarrative\n\n【行动结果】${result.lines.join('')}';
+      }
+      for (final note in result.notes) {
+        notifications.add(note);
+        worldState.addNarrativeEvent(note, turn: turnCount);
+      }
+    }
+
     // 【顺序很关键】兜底选项必须在**原著节点注入之后**才生成。
     // 原先这一行写在 _finalizeTurn 之前，比注入早了两步，导致两个后果：
     //   1. 节点标题还没进 currentNarrative，buildFallbackChoices 拿到的

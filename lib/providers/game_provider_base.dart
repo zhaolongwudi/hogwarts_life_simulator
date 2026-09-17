@@ -17,6 +17,7 @@ import '../services/npc_chat_service.dart';
 import '../services/ai_router.dart';
 import '../data/cg_data.dart';
 import '../narrative/narrative_source_gate.dart';
+import '../narrative/offline_consequence_types.dart';
 
 /// GameProviderBase: 字段承载抽象基类。
 /// 必须放在 `with` 6个Mixin 之前被 6个Mixin 的 `on GameProviderBase` 引用，
@@ -388,9 +389,25 @@ abstract class GameProviderBase extends ChangeNotifier
   List<GameChoice> generateFallbackChoices();
   String generateFallbackNarrative();
   // 统一的「叙事末尾承接型兜底选项」入口：
-  // 当独立选项生成超时/内容不合格时，GameNarrativeMixin 和 GameResponseMixin 都走同一套，
-  // 避免一个走老的简易关键词池、一个走新的末尾800字承接池，造成断链。
+  /// 当独立选项生成超时/内容不合格时，GameNarrativeMixin 和 GameResponseMixin 都走同一套，
+  /// 避免一个走老的简易关键词池、一个走新的末尾800字承接池，造成断链。
   List<GameChoice> buildFallbackChoices(String narrative);
+
+  /// P6 本地行动后果引擎：结算一句行动的可见后果（属性/加隆/物品/好感）。
+  ///
+  /// 【为什么必须放在基类上】触发方在 `GameNarrativeMixin`
+  /// （`_runOfflineQuickTurn` 的沙盒路径），实现在
+  /// `GameOfflineConsequenceMixin`。与上面 `buildFallbackChoices` 同一个
+  /// 原因：Dart 的 mixin 私有成员跨 mixin 不可见，直接调 `_settle...`
+  /// 会报 `undefined_method`。实现在 mixin，基类只做抽象声明。
+  ///
+  /// 【seed】不传时用 `turnCount` 播种（确定性随机），传了则测试可控。
+  /// 只被离线回合调用，AI 路径不经过这里。
+  OfflineConsequenceResult settleOfflineConsequences(
+    String action, {
+    int? seed,
+  });
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====
