@@ -7,6 +7,7 @@ import '../utils/story_text_renderer.dart';
 import '../utils/stagnation_detector.dart';
 import '../services/ai_router.dart';
 import '../data/transmemory.dart';
+import '../narrative/offline_narrative_context.dart';
 import '../providers/game_provider_base.dart';
 import '../data/scar_data.dart';
 import '../data/death_data.dart';
@@ -1005,8 +1006,25 @@ mixin GameResponseMixin
     // 玩家每次换部都会看到兜底叙事从第 0 帧重新开始——在一个"长期玩"
     // 的设计里这很出戏。改用只增不减的 `_fallbackFrameSeq`。
     final idx = (_fallbackFrameSeq++) % frames.length;
-    return frames[idx];
+    final base = frames[idx];
+
+    // 个性化增强：在帧尾追加一句「这段存档自己的故事」。
+    // 【为什么不插在帧首】离线兜底的多样性测试锁定了第二段正文必须
+    // 8 回合不重复、且必须包含地点名。染色句只追加在末尾、不碰既有
+    // 8 帧与地点种子池，因此这些不变量全部保持。
+    final ctx = OfflineNarrativeContext.build(
+      player: p,
+      memory: memory,
+      npcRegistry: npcRegistry,
+    );
+    final enhance = ctx.pick(_fallbackEnhanceSeq++);
+    if (enhance.isEmpty) return base;
+    return '$base\n\n${enhance.trim()}';
   }
+
+  /// 个性化增强句的轮转序号。只增不减，与 `_fallbackFrameSeq` 同理，
+  /// 跨书不重置，保证长局里染色句不会在某一本反复戳同一句。
+  int _fallbackEnhanceSeq = 0;
 
   /// 兜底叙事的帧序号。只增不减，跨书不重置。
   ///
