@@ -10,6 +10,13 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.5.9 — 2026-09-17
+
+**📋 变更说明**
+feat(offline): 叙事来源抽象 + 自动降级开关（P1）
+
+新增 narrative_source_gate.dart：统一判定当前叙事用 AI 还是本地，连续 AI 失败自动降级本地，宽限回合用尽或一次成功自动恢复。GameProviderBase 暴露 effectiveNarrativeSource / narrativeSourceLabel，主叙事回合改走来源判定并上报成功/失败。附 7 个单测。
+
 ### v4.5.8 — 2026-09-17
 
 **📋 变更说明**
