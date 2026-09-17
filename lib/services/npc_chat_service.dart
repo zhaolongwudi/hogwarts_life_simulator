@@ -118,8 +118,16 @@ class NpcChatService {
     required String userMessage,
     List<ChatMessage>? history,
   }) async {
+    // P3：本地兜底回复（含可选 AI 润色）。每个本地返回点都走这里，保证
+    // 润色门控只此一处，不会某些返回点跳过润色。
+    Future<(String, bool)> local() async {
+      final text = _generateLocalResponse(npc, userMessage, player: player);
+      final polished = await _maybePolishLocalReply(npc, text);
+      return (polished, true);
+    }
+
     if (_router == null) {
-      return (_generateLocalResponse(npc, userMessage, player: player), true);
+      return local();
     }
 
     // 用户输入进入 Prompt 前做注入防御净化
@@ -157,7 +165,7 @@ class NpcChatService {
       // 不进入会让玩家干等的「等待窗口滑出」。判定离线（false）不计数。
       if (_shouldDegradeLocal()) {
         _recordAiCall();
-        return (_generateLocalResponse(npc, safeMessage, player: player), true);
+        return local();
       }
       _recordAiCall();
       final response = await _router!.chatComplete(
@@ -172,13 +180,51 @@ class NpcChatService {
           .replaceFirst(RegExp(r'^[\*\[]'), '')
           .trim();
       if (responseText.isEmpty) {
-        return (_generateLocalResponse(npc, safeMessage, player: player), true);
+        return local();
       }
       return (responseText, false);
     } catch (e) {
-      return (_generateLocalResponse(npc, safeMessage, player: player), true);
+      return local();
     }
   }
+
+  /// P3：可选 AI 润色本地兜底回复。门控与叙事润色一致：仅当本地模式开启
+  /// `narrativePolishEnabled` 且 AI 服务可用时，才用一次轻量调用润色措辞；
+  /// 失败/超时/空结果一律保留原文，绝不把润色变成聊天的新断点。
+  Future<String> _maybePolishLocalReply(NPC npc, String text) async {
+    if (!appProvider.narrativePolishEnabled) return text;
+    final router = _router;
+    if (router == null || !router.hasNarrativeService) return text;
+    if (text.trim().isEmpty) return text;
+    try {
+      final result = await router.chatComplete(
+        scene: AiScene.npcChat,
+        temperature: 0.9,
+        maxTokens: 300,
+        prompt: '''
+你是一名哈利·波特世界的对话润色师。下面是本地引擎生成的「${npc.name}」的一句回复。
+请只润色措辞与语气，让句子更像这个人会说的话；不得改变原意、身份设定或新增信息。用简体中文，直接输出润色后的一句回复，不要加引号、点评或前后缀。
+
+【性格】${npc.personality.join('、')}
+【好感】${npc.affection}
+
+【原回复】
+$text
+''',
+      );
+      final polished = result.content.trim();
+      if (polished.isEmpty || polished.length > text.length * 3) return text;
+      return polished;
+    } catch (e) {
+      debugLog('⚠️ ⚠️ NPC 润色失败，保留本地回复: $e');
+      return text;
+    }
+  }
+
+  /// P3 测试别名：供测试直接调用润色逻辑。
+  @visibleForTesting
+  Future<String> polishLocalReplyForTest(NPC npc, String text) =>
+      _maybePolishLocalReply(npc, text);
 
   /// Q11 连发保护判定：滑动窗口内已发起 >= [kMaxRpmWindow] 次 AI 调用。
   ///

@@ -91,4 +91,26 @@ void main() {
           reason: 'Q14:不同好感档回复不该重复');
     });
   });
+
+  group('P3 · NPC 聊天可选 AI 润色门控', () {
+    test('未开启润色开关时,本地兜底回复原文不被改写', () async {
+      final service = makeService();
+      final npcx = npc();
+      final text = '喂,你过来干什么？';
+      // 无 AI router / 未开润色 → 原文返回
+      expect(service.polishLocalReplyForTest(npcx, text),
+          same(text),
+          reason: '门控未开启时不得触发润色调用');
+    });
+
+    test('开启润色但无 AI 服务(未配 Key)时安全回退原文', () async {
+      final app = AppProvider();
+      await app.setNarrativePolishEnabled(true);
+      final service = NpcChatService(appProvider: app);
+      final npcx = npc();
+      final text = '禁林那边,我劝你别去。';
+      expect(service.polishLocalReplyForTest(npcx, text), same(text),
+          reason: '无 AI 服务时润色必须安全回退原文');
+    });
+  });
 }
