@@ -1345,6 +1345,17 @@ $kNarrativeWritingRules
     // ③ 悬而未决的剧情 flag：`ps_`/`cos_` 等前缀的 flag 是"某件事被打开了"，
     //    登记成 T1 未完结事项，让长局里"还没了结的事"有账可查。
     //    只在 flag 数超过阈值时抽最近的一批——逐条登记会让 T1 爆炸。
+    //
+    //    【描述文本：绝不把 flag id 抄给玩家看】原来的写法是
+    //    `'剧情里的「$f」还没了结。'`，于是玩家的「未完结事项」面板里
+    //    会直接出现 `剧情里的「ps_read_letter_first」还没了结。`——一串
+    //    英文蛇形 id，既读不懂，名字本身还在剧透（`ps_family_supportive`
+    //    等于告诉玩家"你和家人的关系是支持性的"这件事被系统记了一笔）。
+    //    flag id 本来就没有中文还原方式（实测 683 个 flag 含中文的为 0），
+    //    所以要靠**同一局里已发生过的中文叙事**来还原它指的是哪件事：
+    //    优先用解锁该 flag 的那个选择写下的 `consequence` 首句，
+    //    退而求其次用情报词条，都没有才回落到"还有一件事没有了结"这种
+    //    不带 id 的泛化说法。宁可说得含糊，也不能把 id 抖出来。
     const flagPrefixes = ['ps_', 'cos_', 'poa_', 'gof_', 'ootp_', 'hbp_', 'dh_'];
     final storyFlags = storyProgress.flags
         .where((f) => flagPrefixes.any(f.startsWith))
@@ -1352,10 +1363,11 @@ $kNarrativeWritingRules
     for (final f in storyFlags.take(3)) {
       final loopId = 'offline_loop_$f';
       if (memory.openLoops.any((r) => r.id == loopId)) continue;
+      final label = _humanizeStoryFlag(f) ?? '有一件在剧情里起了头的事';
       memory = memory.addOrUpdateOpenLoop(
         OpenLoopRecord(
           id: loopId,
-          description: '剧情里的「$f」还没了结。',
+          description: _unresolvedLine(label),
           status: 'open',
           importance: 4,
           openedAt: ts,
@@ -1367,6 +1379,101 @@ $kNarrativeWritingRules
     }
 
     debugLog('🧠 离线本地摘要：消化 ${chunk.length} 字，写入 $wrote 条长期记忆');
+  }
+
+  /// 把一个剧情 flag 还原成"玩家读得懂的中文句子"，还原不出返回 null。
+  ///
+  /// 【为什么能还原】flag 是在玩家做选择时写下的，而那个选择自带一段
+  /// 中文 `consequence`（"你抄满了整整两页纸……"）。所以只要反查
+  /// `storyProgress.chosen` 里哪一次选择置位了这个 flag，就能拿回当时
+  /// 的叙事——这比给 683 个 flag 手写一份中文映射表可靠得多，也不会漂。
+  ///
+  /// 【还原不出就不硬凑】跨部继承的 flag 可能在上一部种下，本部的
+  /// `chosen` 里查不到；这时返回 null，由调用方降级成不含 id 的泛化说法。
+  String? _humanizeStoryFlag(String flag) {
+    // 反查：本局里哪一次选择置位了这个 flag。
+    for (final entry in storyProgress.chosen.entries) {
+      final step = findStoryStepAnywhere(storyProgress.bookId, entry.key);
+      if (step == null) continue;
+      for (final c in step.choices) {
+        if (c.id != entry.value) continue;
+        if (!c.effect.setFlags.contains(flag)) continue;
+        final cons = _firstSentenceOf(c.consequence);
+        if (cons.isNotEmpty) return cons;
+      }
+    }
+    // 退一步：情报词条里若含中文且能对上 flag 名字，也可以当标签用。
+    // （实测 407 条情报全是英文 id，这条分支基本不会命中，留着是防御。）
+    for (final k in storyProgress.knowledge) {
+      if (k.contains(flag)) {
+        final s = _firstSentenceOf(k);
+        if (s.isNotEmpty && s.runes.any((r) => r >= 0x4E00 && r <= 0x9FFF)) {
+          return s;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// 把一句"某件事"写成适合挂在「未完结事项」里的说法。
+  ///
+  /// 【为什么措辞要中立】同一条记录的 `description` 在 `status` 从
+  /// `open` 翻到 `done` 之后**不会重写**（`addOrUpdateOpenLoop` 沿用旧
+  /// description，只换状态）。所以描述里不能写死"至今还没有了结"——
+  /// 了结之后玩家回看这一条，会读到"你把信读完了。至今还没有了结"。
+  /// 描述只陈述**这件事本身**，状态由 `status` 字段表达。
+  ///
+  /// 【为什么要单独一个函数】`_firstSentenceOf` 保留原句末尾的句号
+  /// （"你把门反锁，坐在床沿把信读完。"）。句末是终止标点时原样返回，
+  /// 否则补一个句号，避免出现"读完了，。"这种叠标点。
+  String _unresolvedLine(String label) {
+    final t = label.trim();
+    if (t.isEmpty) return '有一件在剧情里起了头的事。';
+    final last = t.runes.last;
+    const enders = {0x3002, 0xFF01, 0xFF1F, 0x2026}; // 。！？…
+    return enders.contains(last) ? t : '$t。';
+  }
+
+  /// 学年末收口：把积压的 `offline_loop_*` 全部标记为已了结。
+  ///
+  /// 【为什么需要一个"集体了结"的出口】这些事项的 id 锚在剧情 flag 上，
+  /// 而 flag 一旦置位就不会被清除（它们的设计意图是"某件事被打开了"，
+  /// 长期有效）。于是没有人会给它们写 `closeLoops`，
+  /// 它们会一直以 `status: 'open'` 挂在玩家的「未完结事项」面板上。
+  ///
+  /// 【为什么不干脆不登记它们】它们在长局里是有价值的：玩家中途查看
+  /// 「未完结事项」，能想起"哦对，我还揽过这摊事"。有价值的是**进行中**
+  /// 的部分，而不是让七年前的琐事永远占用版面。学年末正是天然的收口点。
+  ///
+  /// 【为什么要写"了结"记忆】和 `_closeLoopIfMatched` 保持一致：了结
+  /// 一件事该在长期记忆里留一笔，否则回看时"它什么时候结束的"无从追溯。
+  /// 这里刻意**不发声望奖励**——学年末一次性收掉好几条，逐条发奖励
+  /// 会让声望在赛季边界上跳一下，看起来像 bug。
+  LongTermMemory _closeStaleOfflineLoops() {
+    final ts = worldState.time.format();
+    var closed = 0;
+    for (final l in List<OpenLoopRecord>.from(memory.openLoops)) {
+      if (l.status == 'done') continue;
+      if (!l.id.startsWith('offline_loop_')) continue;
+      memory = memory.addOrUpdateOpenLoop(
+        OpenLoopRecord(
+          id: l.id,
+          description: l.description,
+          status: 'done',
+          importance: l.importance,
+          openedAt: l.openedAt,
+          closedAt: ts,
+          npcIds: l.npcIds,
+          loopType: l.loopType,
+          openedTurn: l.openedTurn,
+        ),
+      );
+      closed++;
+    }
+    if (closed > 0) {
+      debugLog('📖 学年末收口：了结 $closed 条积压的剧情未完结事项');
+    }
+    return memory;
   }
 
   /// 取一段文本的第一句（给没写 worldEvent 的节点兜底用）。
@@ -2530,6 +2637,19 @@ $kNarrativeWritingRules
           ),
         );
       }
+    }
+
+    // 学年末：把所有 `offline_loop_*` 一并了结。
+    //
+    // 【为什么必须在这里收】`offline_loop_*` 是离线摘要为"起了头但还没
+    // 下文"的剧情 flag 自动登记的（见 `_digestOfflineLocally`）。但 flag
+    // 一旦置位就永远留在 `storyProgress.flags` 里，没有对应的"清除"动作，
+    // 于是这些事项**永远关不掉**——实测跑完七部后，玩家的「未完结事项」
+    // 面板上挂着二十多条已经翻篇几百天的旧事。学年末节点是全书唯一
+    // 可靠的"这一段结束了"信号，在这里收口最合适：既不会提前了一结，
+    // 也不会让旧事无限堆积。
+    if (node.closeLoops.isNotEmpty) {
+      memory = _closeStaleOfflineLoops();
     }
 
     final cg = node.unlockCg;
