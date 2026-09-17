@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../providers/app_provider.dart';
+import '../../narrative/narrative_source_gate.dart';
 import '../../models/player.dart';
 import '../../models/world_state.dart';
 import '../world_map_screen.dart';
@@ -1297,6 +1298,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
                         _buildCommandResultPanel(gp, commandPanel),
                         const SizedBox(height: 12),
                       ],
+                      _buildSourceBadges(gp),
                       _buildLegendPanel(gp),
                       const SizedBox(height: 8),
                       if (bodyNarrative.isNotEmpty)
@@ -1412,6 +1414,77 @@ class _NarrativeTabState extends State<NarrativeTab> {
               height: 1.6,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 来源徽标：告知当前叙事由 AI 还是本地引擎生成，以及是否有 AI 润色。
+  ///
+  /// P4 视觉反馈：本地模式不再「只是一排灰字开关」，而是叙事正文上方一个
+  /// 明确的状态标签——本地模式显示绿色「本地引擎」、AI 模式显示金色「AI 生成」，
+  /// 开启润色时追加「+润色」小标。玩家一眼能看到这条剧情是谁写的。
+  Widget _buildSourceBadges(GameProvider gp) {
+    final isLocal = gp.effectiveNarrativeSource == NarrativeSource.local;
+    final polishOn = gp.appProvider.narrativePolishEnabled;
+    final localColor = AppColors.success;
+    final chipBg = isLocal
+        ? localColor.withValues(alpha: 0.10)
+        : MiuiColors.primary.withValues(alpha: 0.08);
+    final chipColor = isLocal ? localColor : MiuiColors.primary;
+    final IconData icon = isLocal ? Icons.offline_bolt : Icons.auto_awesome;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: chipBg,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 12, color: chipColor),
+                const SizedBox(width: 4),
+                Text(
+                  gp.narrativeSourceLabel,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: chipColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (polishOn) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.brush, size: 12, color: AppColors.gold),
+                  SizedBox(width: 4),
+                  Text(
+                    'AI润色开启',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
