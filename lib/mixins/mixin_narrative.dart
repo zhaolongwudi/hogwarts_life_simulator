@@ -1712,9 +1712,7 @@ $kNarrativeWritingRules
     final source = textOverride ?? currentNarrative;
     if (source.trim().isEmpty) return null;
 
-    final p = player;
-    final loc = p?.currentLocation;
-    final where = loc != null && loc.isNotEmpty ? loc : (worldState.currentLocation ?? '霍格沃茨');
+    final where = worldState.currentLocation ?? '霍格沃茨';
 
     try {
       final result = await router.chatComplete(
