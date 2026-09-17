@@ -21,6 +21,8 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hogwarts_life_simulator/data/canon_events.dart';
+import 'package:hogwarts_life_simulator/data/cg_data.dart';
 import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/models/story_progress.dart';
 
@@ -743,6 +745,125 @@ void main() {
           reason: '$sid 空处境下只剩 ${visibleIds(sid).length} 条出路',
         );
       }
+    });
+  });
+
+  // ================================================================
+  // E · 原著节点接线：剧情步 → canon 节点 → 长期记忆/悬念/图鉴
+  // ================================================================
+  //
+  // 【这一组在防什么】项目里长期记忆的沉淀**不是**走 `StoryEffect`
+  // 的 `addWorldEvents` / `openLoops` / `unlockCgs` 那几个字段，而是走
+  // 「剧情步声明 `canonRefId` → 引擎按该 id 找到原著节点 →
+  // 把节点自己声明的 worldEvent / openLoop / closeLoops / unlockCg
+  // 广播出去」（见 `mixin_narrative.dart` 的 `_markCanonForStep` →
+  // `_sinkCanonNodeToMemory`）。
+  //
+  // 也就是说 `canonRefId` 是这条链路的**唯一权威声明**。它一旦写错
+  // （拼错 id）或者漏写，后果是：这一步在剧情上明明讲的是原著大事，
+  // 但长期记忆、悬念、图鉴**一个都不会收到信号**——而且**没有任何报错**，
+  // 因为 `canonEventById` 查不到就 `return`，静默跳过。
+  //
+  // 这跟批次 7-D 修的"死门槛"是同一类失效：**接线断了但不报错**。
+  // 只能靠断言守住。
+  group('E · 原著节点接线完整（剧情步 → canon → 记忆/悬念/图鉴）', () {
+    test('每个 canonRefId 都能在原著节点表里查到', () {
+      final bad = <String>[];
+      var withRef = 0;
+      for (final book in kStoryBooks.values) {
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            final r = s.canonRefId;
+            if (r == null) continue;
+            withRef++;
+            if (canonEventById(r) == null) bad.add('${s.id} → $r');
+          }
+        }
+      }
+
+      expect(withRef, greaterThan(0),
+          reason: '一条 canonRefId 都没有，长期记忆链路整个是断的');
+      expect(
+        bad,
+        isEmpty,
+        reason: '以下剧情步引用了不存在的原著节点，'
+            '这一步的世界大事/悬念/图鉴都会静默丢失：$bad',
+      );
+    });
+
+    test('原著节点表里没有节点被漏讲（覆盖率不倒退）', () {
+      // 【为什么要求 100%】`canonRefId` 是节点被讲述的唯一声明。
+      // 一个节点没被任何剧情步引用，意味着它的 worldEvent / 悬念
+      // 永远不会被广播——玩家跑完七部也见不到那条原著大事。
+      // 【为什么这条不是"过度约束"】加节点时顺手在剧情步上补一个
+      // `canonRefId` 是内容创作的常规动作；真漏了，这条断言会在
+      // 提交前就拦下来，比玩家玩了三百回合才发现要好。
+      final covered = <String>{};
+      for (final book in kStoryBooks.values) {
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            final r = s.canonRefId;
+            if (r != null) covered.add(r);
+          }
+        }
+      }
+      final uncovered =
+          canonEvents.map((e) => e.id).toSet().difference(covered);
+      expect(
+        uncovered,
+        isEmpty,
+        reason: '以下原著节点没有任何剧情步讲述，其长期记忆/悬念/图鉴'
+            '永远不会触发：${uncovered.toList()..sort()}',
+      );
+    });
+
+    test('悬念成对：开过的都要关（跨 canon 表全局判定）', () {
+      // 【为什么在内容侧再测一遍】`canon_offline_integration_test.dart`
+      // 已有一条同语义断言。这里重测的理由是：那条测的是"canon 表自身
+      // 自洽"，本文件测的是"**能通过剧情步走到的** canon 子集"——
+      // 若某个开启悬念的节点恰好没被任何剧情步引用（上一条断言会挡住），
+      // 该悬念在实战中永远不会开，也就永远不需要关。两处口径不同，
+      // 都值得守。
+      final opened = <String, String>{};
+      final closed = <String>{};
+      for (final e in canonEvents) {
+        final o = e.openLoop;
+        if (o != null && o.trim().isNotEmpty) {
+          final sep = o.indexOf('|');
+          final id = (sep > 0 ? o.substring(0, sep) : o).trim();
+          if (id.isNotEmpty) opened.putIfAbsent(id, () => e.id);
+        }
+        closed.addAll(e.closeLoops.map((x) => x.trim()));
+      }
+
+      expect(opened, isNotEmpty,
+          reason: '一条悬念都没有，长期记忆 T1 层形同虚设');
+
+      final dangling = opened.keys.toSet().difference(closed);
+      expect(
+        dangling,
+        isEmpty,
+        reason: '以下悬念开了却从未了结，玩家会看到一条永远没有下文的'
+            '伏笔，AI 还会把它当仍在推进的线索继续加码：'
+            '${dangling.map((d) => '$d(开启于 ${opened[d]})').toList()..sort()}',
+      );
+    });
+
+    test('图鉴：canon 节点引用的 CG id 都在图鉴表里', () {
+      // `unlockCG(cgById(cgId))`——查不到时 `cgById` 返回 null，
+      // `unlockCG` 对 null 静默忽略。写错一个 CG id 的后果是
+      // "这个名场面永远解不开图鉴"，同样不报错。
+      final bad = <String>[];
+      var cgRefs = 0;
+      for (final e in canonEvents) {
+        final cg = e.unlockCg;
+        if (cg == null) continue;
+        cgRefs++;
+        if (cgById(cg) == null) bad.add('${e.id} → $cg');
+      }
+      expect(cgRefs, greaterThan(0), reason: 'CG 接线一条都没用上');
+      expect(bad, isEmpty,
+          reason: '以下原著节点引用了不存在的 CG id，图鉴永远解不开：$bad');
     });
   });
 }
