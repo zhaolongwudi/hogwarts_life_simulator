@@ -98,7 +98,7 @@ void main() {
       final npcx = npc();
       final text = '喂,你过来干什么？';
       // 无 AI router / 未开润色 → 原文返回
-      expect(service.polishLocalReplyForTest(npcx, text),
+      expect(await service.polishLocalReplyForTest(npcx, text),
           same(text),
           reason: '门控未开启时不得触发润色调用');
     });
@@ -109,7 +109,7 @@ void main() {
       final service = NpcChatService(appProvider: app);
       final npcx = npc();
       final text = '禁林那边,我劝你别去。';
-      expect(service.polishLocalReplyForTest(npcx, text), same(text),
+      expect(await service.polishLocalReplyForTest(npcx, text), same(text),
           reason: '无 AI 服务时润色必须安全回退原文');
     });
   });
