@@ -19,6 +19,7 @@ import '../data/worldline_data.dart';
 import '../prompts/choice_prompts.dart';
 import 'mixin_response_choices.dart';
 import 'mixin_response_affection.dart';
+import 'mixin_play.dart';
 import '../utils/debug_log.dart';
 
 /// 需要从正文中剥离的「结构化区块名」全集。
@@ -1801,8 +1802,17 @@ mixin GameResponseMixin
       fallback.add(defaultD);
     }
 
-    // 保险：裁剪/补齐到 4 条
-    if (fallback.length > 4) fallback.removeRange(4, fallback.length);
+    // ---- P7 玩法入口注入（追加在承接式选项之后）----
+    // 承接式四档保证剧情不断链；玩法入口是**可选的平行出口**，只在
+    // 该玩法此刻确实可玩时出现（门控见 buildGameplayOptions），玩家
+    // 主动选中才会触发完整玩法系统（自动推进按钮会跳过它们）。
+    final gameplayEntries = buildGameplayOptions();
+    if (gameplayEntries.isNotEmpty) {
+      fallback.addAll(gameplayEntries);
+    }
+
+    // 保险：裁剪到 6 条（4 条承接式 + 至多 2 条玩法入口）、补齐至少 4 条
+    if (fallback.length > 6) fallback.removeRange(6, fallback.length);
     if (fallback.length < 4) {
       fallback.add(
         GameChoice(
@@ -1821,6 +1831,78 @@ mixin GameResponseMixin
     }
     return fallback;
   }
+
+  /// P7 玩法入口选项：把当前**确实可玩**的完整玩法系统暴露为选项。
+  ///
+  /// 【为什么放在承接式四档之后】A/B/C/D 四档严格承接剧情末尾，保证剧情
+  /// 不断链；玩法入口是玩家**主动选择的平行出口**——选它才会触发
+  /// （魁地奇/决斗/禁林/宠物），自动推进按钮会跳过它们（见
+  /// [pickAutoAdvanceChoice] 的 `@@gameplay:` 过滤）。
+  ///
+  /// 【上下文门控】只在玩法此刻真的能玩时才出现：有扫帚且本周未赛才给
+  /// 魁地奇；精力/次数达标才给决斗与禁林；有宠物且今日未互动才给宠物。
+  /// 门控与玩法函数内部的拒绝文案判据保持一致，避免把玩家指向一条
+  /// 「点了之后只有拒绝提示」的死路。最多 2 条，保持选项面板清爽。
+  List<GameChoice> buildGameplayOptions() {
+    final p = player;
+    if (p == null) return const [];
+    final out = <GameChoice>[];
+    final energy = p.energy;
+    final atHogwarts = _locationIsHogwarts(worldState.currentLocation ?? '');
+
+    // 1) 魁地奇训练赛：在城堡 + 有扫帚 + 精力足 + 本周未赛。
+    if (atHogwarts &&
+        (p.equipped['broom'] != null) &&
+        energy >= 20 &&
+        p.qLastWeek != gameWeek) {
+      out.add(const GameChoice(
+        text: '去魁地奇球场参加训练赛，为学院争取胜利',
+        action: '${kGameplayActionPrefix}quidditch',
+      ));
+    }
+
+    // 2) 决斗：在城堡 + 精力足 + 今日次数未满。
+    if (atHogwarts && energy >= 15 && canDoDaily('duel')) {
+      out.add(const GameChoice(
+        text: '到决斗场地找一位同学切磋一场巫师决斗',
+        action: '${kGameplayActionPrefix}duel',
+      ));
+    }
+
+    // 3) 禁林探险：在城堡 + 精力足 + 饱食度足 + 今日次数未满。
+    if (atHogwarts &&
+        energy >= 25 &&
+        p.satiety >= 20 &&
+        canDoDaily('forest')) {
+      out.add(const GameChoice(
+        text: '去禁林边缘探险，采集魔法材料',
+        action: '${kGameplayActionPrefix}forest',
+      ));
+    }
+
+    // 4) 宠物互动：有宠物 + 今日还未玩耍/训练。
+    final petName = (p.petName?.isNotEmpty ?? false) ? p.petName! : null;
+    if (petName != null && p.petInteractDay != worldState.time.absoluteDayIndex) {
+      out.add(GameChoice(
+        text: '陪$petName玩耍互动，增进羁绊',
+        action: '${kGameplayActionPrefix}pet_play',
+      ));
+    }
+
+    // 最多两条：与上方上限 6（4 承接 + 2 玩法）对齐。
+    if (out.length > 2) out.removeRange(2, out.length);
+    return out;
+  }
+
+  /// 判断地点是否在霍格沃茨城堡内部（玩法入口门控用，口径与承接式
+  /// 选项的 `atHogwarts` 保持一致）。
+  bool _locationIsHogwarts(String location) =>
+      location.contains('霍格沃茨') ||
+      location.contains('大礼堂') ||
+      location.contains('走廊') ||
+      location.contains('教室') ||
+      location.contains('公共休息室') ||
+      location.contains('特快');
 
   /// 【推进按钮智能选策略】——替代原先的 choices.first，防止剧情回滚
   /// 选择优先级：
@@ -1903,6 +1985,23 @@ mixin GameResponseMixin
       return true;
     });
     if (candidates.isEmpty) candidates = List<GameChoice>.from(choices);
+
+    // P7：玩法入口选项（action 带 `@@gameplay:` 标记）是玩家主动选择的
+    // 玩法出口，不应被「推进」按钮顺手带走——自动推进只承接剧情。
+    // 过滤后再兜底，兜底结果也绝不允许落回玩法入口（面板可能全是玩法选项）。
+    candidates.retainWhere((c) => !c.action.startsWith(kGameplayActionPrefix));
+    if (candidates.isEmpty) {
+      candidates = List<GameChoice>.from(choices)
+        ..retainWhere((c) => !c.action.startsWith(kGameplayActionPrefix));
+    }
+    if (candidates.isEmpty) {
+      candidates = [
+        GameChoice(
+          text: '主动面对眼前状况',
+          action: '不再犹豫，鼓起勇气直接面对当前局面，立刻处理最紧急的那件事',
+        ),
+      ];
+    }
 
     // Step 2: 推进型关键词加分（优先排序）
     candidates.sort((a, b) => score(b).compareTo(score(a)));

@@ -44,6 +44,7 @@ import '../data/parallel_data.dart';
 import '../prompts/narrative_prompts.dart';
 import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
+import 'mixin_play.dart';
 import '../utils/debug_log.dart';
 
 /// 情报 token 归一化：剥掉下划线与所有非文字字符（`_composeCausalText` 用）。
@@ -131,6 +132,20 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     if (storyCmd != null && storyProgress.active) {
       _runOfflineQuickTurn(action, causalResult: null);
       return;
+    }
+
+    // P7 玩法入口标记解析：选项面板生成的玩法选项 action 形如
+    // `@@gameplay:quidditch`。在因果/教职/斜杠解析**之前**把它解析成
+    // 可读自然文本，随后统一走「离线 → tryRouteGameplayIntent 关键词路由
+    // → 完整玩法系统」或「AI → 自然文本进 Prompt」两条路径。
+    // 标记本身绝不出现在叙事、Prompt、存档与记忆里；未知标记剥掉前缀
+    // 后按自由文本处理，一次解析失败不卡死整回合。
+    if (action.startsWith(kGameplayActionPrefix)) {
+      final id = action.substring(kGameplayActionPrefix.length).trim();
+      final text = kGameplayActionToText[id];
+      if (text != null) {
+        action = text;
+      }
     }
 
     // 因果锚点抉择（见 lib/data/worldline_data.dart）：
@@ -1555,6 +1570,29 @@ $kNarrativeWritingRules
     // 这里只做一件事：分流。沙盒路径一个字节都不动。
     if (storyProgress.active) {
       _runStoryTurn(action, causalResult: causalResult);
+      return;
+    }
+
+    // ====== P7 玩法意图路由：自然语言 → 完整玩法系统 ======
+    // 在常规叙事组装**之前**拦截：玩家说「去打魁地奇」「找哈利决斗」时，
+    // 本回合的正文应当就是那场完整的比赛/决斗，而不是一句「你向球场走去」
+    // 的泛化兜底叙事。玩法函数内部已结算时间/精力/奖励、写好叙事与选项
+    // 并落盘（_finishLocal），这里补上回合推进状态保持与正式回合一致。
+    //
+    // 【为什么不进常规叙事管道】玩法函数的叙事是**自成一体**的完整事件
+    // （比分/战果/收获），再叠加兜底叙事只会互相覆盖；斜杠指令路径同样
+    // 不经过叙事组装，两条玩法入口行为天然一致。原著节点注入仍是按
+    // 游戏内日期触发的，下一回合叙事会自动补上，不会因玩法回合丢失。
+    // 用 this. 显式从基类抽象成员解析：GamePlayMixin 覆写实现，
+    // GameNarrativeMixin 自身不定义该方法，不带限定符会被分析器判为未定义。
+    if (this.tryRouteGameplayIntent(action)) {
+      commandResult = causalResult;
+      error = null;
+      turnCount++;
+      lastScannedNarrativeHash = null;
+      lastPlayerAction = action;
+      notifyListeners();
+      unawaited(autoSave());
       return;
     }
 

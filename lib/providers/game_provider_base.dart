@@ -677,6 +677,11 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 今日是否还能进行该活动
   bool canDoDaily(String activity);
 
+  /// P7 玩法意图路由：把自然语言行动路由到完整玩法系统
+  /// （魁地奇/决斗/禁林/宠物）。命中返回 true 且已写好叙事与选项。
+  /// 实现在 GamePlayMixin，离线回合入口（GameNarrativeMixin）调用。
+  bool tryRouteGameplayIntent(String action);
+
   /// 记录一次活动
   void recordDailyActivity(String activity);
   bool purchaseItem(

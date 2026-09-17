@@ -1748,4 +1748,110 @@ mixin GamePlayMixin on GameProviderBase {
     notifications.add('🏆 学院杯学年结算：$myCn 排名第$rank 名');
     _finishLocal(buf.toString());
   }
+
+  // ==================== P7 玩法意图路由 ====================
+
+  /// 把自然语言行动路由到完整玩法系统。
+  ///
+  /// 【它解决什么问题】离线模式下玩家输入「去打魁地奇」「找哈利决斗」这类
+  /// 自然语言时，此前只被 P6 后果引擎归类为「运动/社交」做数值加减，
+  /// 完整的比赛/决斗/禁林/宠物玩法永远触发不了——玩法系统只认斜杠指令。
+  /// 本方法在离线回合入口做意图识别，命中即把整回合交给对应玩法函数
+  /// （时间/精力/奖励/叙事全由玩法系统结算并写好选项）。
+  ///
+  /// 【匹配纪律】只匹配足够独特的关键词（魁地奇/禁林/决斗/宠物互动），
+  /// 宁可漏判落回 P6 数值后果，不可误判把无关行动劫持进玩法系统。
+  /// 选项面板生成的玩法入口（action 带 [kGameplayActionPrefix] 标记）由
+  /// `processChoice` 先解析成自然文本，再走这里的同一套关键词路由——
+  /// 两条入口共用一份判定，行为天然一致。
+  ///
+  /// 【为什么是 public】触发方在 `GameNarrativeMixin._runOfflineQuickTurn`，
+  /// 实现在本 mixin。Dart 的 mixin 私有成员跨 mixin 不可见，因此方法对外
+  /// 可见、但只在离线回合入口调用，AI 路径与斜杠指令路径都不经过这里。
+  @override
+  bool tryRouteGameplayIntent(String action) {
+    final a = action.trim();
+    if (a.isEmpty) return false;
+
+    // 1) 魁地奇：词足够独特，出现即视为参赛意图。
+    if (a.contains('魁地奇')) {
+      playQuidditch();
+      return true;
+    }
+
+    // 2) 禁林：词独一无二，直接进完整探险。
+    if (a.contains('禁林')) {
+      exploreForbiddenForest();
+      return true;
+    }
+
+    // 3) 决斗：决斗/切磋/比试/对练 都是「开打」意图；但「切磋功课/对练咒语」
+    //    这类学习语境不算（交回 P6 后果引擎按学习结算）。
+    //    若行动里点名了已认识 NPC，就挑战那个人，否则随机挑一个在校生。
+    if (_containsAny(a, const ['决斗', '切磋', '比试', '对练']) &&
+        !_containsAny(a, const ['功课', '学习', '复习', '读书', '论文', '作业'])) {
+      duelNpc(_duelTargetFromAction(a));
+      return true;
+    }
+
+    // 4) 宠物互动：已有宠物 + 明确互动意图（喂/玩/训练/逗/陪/撸/抱）。
+    //    购买/商店意图不路由（那是想买宠物，不是和已有宠物互动）。
+    final p = player;
+    final petName = (p?.petName?.isNotEmpty ?? false) ? p!.petName! : null;
+    if (petName != null) {
+      final mentionsPet =
+          a.contains('宠物') || (petName != '宠物' && a.contains(petName));
+      final wantsInteraction =
+          _containsAny(a, const ['喂', '玩', '训练', '逗', '陪', '互动', '撸', '抱']);
+      final isShopping =
+          _containsAny(a, const ['买', '购买', '商店', '挑选', '领养']);
+      if (mentionsPet && wantsInteraction && !isShopping) {
+        if (_containsAny(a, const ['喂', '吃'])) {
+          petInteract('喂食');
+        } else if (_containsAny(a, const ['训练', '练'])) {
+          petInteract('训练');
+        } else {
+          petInteract('玩耍');
+        }
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// 从行动文本里提取决斗目标（已认识的在读 NPC）；没点名返回 null（随机）。
+  String? _duelTargetFromAction(String action) {
+    for (final npc in npcRegistry.values) {
+      if (npc.name.isEmpty) continue;
+      if (action.contains(npc.name)) return npc.name;
+    }
+    return null;
+  }
+
+  static bool _containsAny(String text, List<String> needles) {
+    for (final n in needles) {
+      if (text.contains(n)) return true;
+    }
+    return false;
+  }
 }
+
+/// P7 玩法入口指令前缀（选项面板生成的玩法选项专用标记）。
+///
+/// 选项的 action 形如 `@@gameplay:quidditch`，点击后由 `processChoice`
+/// 在分发之前解析成可读自然文本（见 `kGameplayActionToText`），再走
+/// `tryRouteGameplayIntent` 的同一套关键词路由。标记本身绝不出现在
+/// 叙事 / Prompt / 存档 / 记忆里；`pickAutoAdvanceChoice` 用它把玩法
+/// 入口从「自动推进」候选里排除（玩法是玩家主动选择的出口）。
+const String kGameplayActionPrefix = '@@gameplay:';
+
+/// 玩法入口标记 → 可读自然行动（供 processChoice 解析后当作玩家行动）。
+const Map<String, String> kGameplayActionToText = {
+  'quidditch': '参加魁地奇训练赛，骑着扫帚为学院争取胜利',
+  'duel': '到决斗场地找一位实力相当的同学来一场巫师决斗，点到为止',
+  'forest': '前往禁林边缘探险，小心采集魔法材料',
+  'pet_feed': '拿出食物给宠物喂食，增进与它的羁绊',
+  'pet_play': '陪宠物玩耍互动，增进与它的羁绊',
+  'pet_train': '带宠物做一轮训练，增进与它的羁绊',
+};
