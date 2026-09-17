@@ -462,24 +462,43 @@ class _SettingsBodyState extends State<SettingsBody> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Text('无 AI 快速模式',
+                  const Text('本地模式',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ],
               ),
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('完全离线游玩（不消耗 AI 额度）',
+                title: const Text('完全本地游玩（不消耗 AI 额度）',
                     style: TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: Text(
                   enabled
-                      ? '已开启：所有剧情与选项由本地模板生成，不调用 AI，适合免费额度耗尽或未配置 Key 时保底游玩。'
+                      ? '已开启：所有剧情与选项由本地引擎生成，不调用 AI，适合免费额度耗尽或未配置 Key 时保底游玩。'
                       : '未开启：正常使用 AI 生成剧情。AI 服务不可用或额度耗尽时，仍会自动切换到本地兜底剧情保证不断链。',
                   style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
                 ),
                 value: enabled,
                 activeColor: const Color(0xFF4CAF7D),
                 onChanged: (v) => context.read<AppProvider>().setOfflineQuickMode(v),
+              ),
+              const Divider(height: 24, color: Color(0xFF2A2A4A)),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('本地叙事 + AI 润色',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                subtitle: Text(
+                  enabled
+                      ? '叙事仍由本地引擎生成，但后台会用少量 AI 润色措辞使其更生动（需要已配置 AI Key，失败自动保留原文）。'
+                      : '仅当开启上方「完全本地游玩」后可用：在本地叙事基础上用少量 AI 润色，叙事与选项始终不依赖 AI。',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
+                ),
+                value: enabled && appProvider.narrativePolishEnabled,
+                activeColor: const Color(0xFFD3A625),
+                onChanged: (v) async {
+                  await context
+                      .read<AppProvider>()
+                      .setNarrativePolishEnabled(enabled && v);
+                },
               ),
               const Divider(height: 24, color: Color(0xFF2A2A4A)),
               SwitchListTile(

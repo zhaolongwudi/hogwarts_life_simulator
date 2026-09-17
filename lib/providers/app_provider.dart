@@ -348,6 +348,9 @@ class AppProvider extends ChangeNotifier {
     // Load offline quick mode switch
     _offlineQuickMode = prefs.getBool('offline_quick_mode') ?? false;
 
+    // Load 叙事 AI 润色 preference（缺省 false）
+    _narrativePolishEnabled = prefs.getBool('narrative_polish') ?? false;
+
     // Load story mode switch
     _storyMode = prefs.getBool('story_mode') ?? false;
 
@@ -542,12 +545,29 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 切换「无 AI 快速模式」，同步写入 SharedPreferences 持久化。
+  /// 切换「本地模式」，同步写入 SharedPreferences 持久化。
   Future<void> setOfflineQuickMode(bool value) async {
     _offlineQuickMode = value;
     await PrefsStore.instance.write(
       'offline_quick_mode',
       (prefs) => prefs.setBool('offline_quick_mode', value),
+    );
+    notifyListeners();
+  }
+
+  /// 可选「AI 润色」偏好：仅当本地模式 + AI 可用时才生效。
+  ///
+  /// 核心叙事始终由本地引擎生成（0 AI 是本地模式的红线），这个开关只决定
+  /// 是否在叙事成型后用**少量** AI 调用润色措辞——失败/超时一律回退原文，
+  /// 绝不阻断本地回合。默认 false，与加此功能前的行为一致。
+  bool get narrativePolishEnabled => _narrativePolishEnabled;
+  bool _narrativePolishEnabled = false;
+
+  Future<void> setNarrativePolishEnabled(bool value) async {
+    _narrativePolishEnabled = value;
+    await PrefsStore.instance.write(
+      'narrative_polish',
+      (prefs) => prefs.setBool('narrative_polish', value),
     );
     notifyListeners();
   }

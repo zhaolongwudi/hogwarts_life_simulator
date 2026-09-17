@@ -210,7 +210,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
       if (!appProvider.offlineQuickMode) {
         error =
             '未配置可用的 AI Key，无法生成剧情。请到「设置」配置 AI Key，'
-            '或开启「无 AI 快速模式」完全离线游玩。';
+            '或开启「本地模式」完全本地游玩。';
         loadingStage = '';
         notifyListeners();
         return;
@@ -1686,6 +1686,65 @@ $kNarrativeWritingRules
     isLoading = false;
     notifyListeners();
     unawaited(autoSave());
+
+    // ====== 可选 AI 润色（异步，不阻塞本地回合）======
+    // 本地叙事先成型、先落盘，再在后台用少量 AI 润色措辞；成功才替换展示文本
+    // 并二次落盘，失败/超时/取消一律保留原文，绝不把「润色」变成新的断点。
+    unawaited(_maybePolishLocalNarrative());
+  }
+
+  /// 可选「AI 润色」：对本回合已生成的本地叙事做一次轻量措辞润色。
+  ///
+  /// 【红线】本地模式核心仍是 0 AI——本方法只在 `narrativePolishEnabled`
+  /// 已开启 **且** 当前叙事确实来自本地时才触发；任何异常都静默回退原文。
+  @visibleForTesting
+  Future<String?> polishLocalNarrativeForTest(String text) =>
+      _maybePolishLocalNarrative(textOverride: text);
+
+  Future<String?> _maybePolishLocalNarrative({String? textOverride}) async {
+    final polishEnabled = appProvider.narrativePolishEnabled;
+    if (!polishEnabled) return null;
+    // 主动离线或自动降级到本地时才有润色价值；AI 路径的叙事本身已是 AI 生成。
+    if (effectiveNarrativeSource != NarrativeSource.local) return null;
+    final router = this.router;
+    if (router == null || !router.hasNarrativeService) return null;
+
+    final source = textOverride ?? currentNarrative;
+    if (source.trim().isEmpty) return null;
+
+    final p = player;
+    final loc = p?.currentLocation;
+    final where = loc != null && loc.isNotEmpty ? loc : (worldState.currentLocation ?? '霍格沃茨');
+
+    try {
+      final result = await router.chatComplete(
+        scene: AiScene.narrative,
+        temperature: 0.7,
+        maxTokens: 900,
+        prompt: '''
+你是一名哈利·波特世界的文字润色师。下面是本地引擎生成的一段剧情叙事。
+请只润色措辞、节奏与感染力，让段落更像真人执笔的文学叙事；不得改变情节走向、人物设定、已发生的事实，也不得新增或删减关键信息。用简体中文，直接输出润色后的段落，不要加任何点评或前言。
+
+【地点】$where
+
+【原叙事】
+$source
+''',
+      );
+      final polished = result.content.trim();
+      if (polished.isEmpty) return null;
+      if (textOverride == null) {
+        currentNarrative = polished;
+        notifications.add('✨ 本地叙事已由 AI 润色');
+        error = null;
+        notifyListeners();
+        unawaited(autoSave());
+      }
+      return polished;
+    } catch (e) {
+      debugLog('⚠️ ⚠️ 润色失败，保留本地原文: $e');
+      return null;
+    }
   }
 
   /// 把命中的原著剧情节点融进离线叙事（`_runOfflineQuickTurn` 调用）。

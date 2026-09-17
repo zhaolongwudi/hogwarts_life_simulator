@@ -96,4 +96,22 @@ void main() {
       expect(gp.narrativeSourceGate.isAutoDegraded, isFalse);
     });
   });
+
+  group('P2 · 可选 AI 润色门控', () {
+    test('未开启润色开关时返回 null,绝不触发 AI', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final gp = await makeGame(offlineQuickMode: true);
+      expect(gp.appProvider.narrativePolishEnabled, isFalse);
+      expect(await gp.polishLocalNarrativeForTest('一段本地叙事'), isNull);
+    });
+
+    test('开启润色但无 AI 服务(未配 Key)时安全回退 null', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final gp = await makeGame(offlineQuickMode: true);
+      await gp.appProvider.setNarrativePolishEnabled(true);
+      expect(gp.appProvider.narrativePolishEnabled, isTrue);
+      // makeGame 未注入任何 AI router / key，hasNarrativeService=false
+      expect(await gp.polishLocalNarrativeForTest('一段本地叙事'), isNull);
+    });
+  });
 }
