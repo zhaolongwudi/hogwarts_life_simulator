@@ -79,6 +79,27 @@ void main() {
       // seed 步长跨了不同通用子池 → 句子池不同，长会话不重复
       expect(s10.first, isNot(equals(s0.first)));
     });
+
+    test('规范名(霍格沃茨·礼堂)也能命中专属池,不再落回通用池 (P5)', () {
+      // currentLocation 存的是规范名，池 key 是短名；子串匹配必须让规范名命中。
+      final canonical = GameNarrativeMixin.localEventLinesFor(
+          location: '霍格沃茨·礼堂', hour: 12, seed: 2);
+      final short = GameNarrativeMixin.localEventLinesFor(
+          location: '礼堂', hour: 12, seed: 2);
+      expect(canonical, isNotEmpty);
+      // 规范名与短名命中同一个专属池
+      expect(canonical.first, isNotEmpty);
+      expect(canonical, contains(short.first));
+    });
+
+    test('新增地点池可用:厨房/场地/黑湖/宿舍有专属句子 (P5)', () {
+      const locs = ['霍格沃茨·厨房', '霍格沃茨·场地', '黑湖', '霍格沃茨·宿舍', '霍格沃茨·温室'];
+      for (final loc in locs) {
+        final lines = GameNarrativeMixin.localEventLinesFor(
+            location: loc, hour: 12, seed: 0);
+        expect(lines, isNotEmpty, reason: '$loc 应有专属事件池');
+      }
+    });
   });
 
   group('Q4 摘要前情分层压缩', () {
