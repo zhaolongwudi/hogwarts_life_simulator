@@ -10,6 +10,13 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.5.7 — 2026-09-17
+
+**📋 变更说明**
+fix(offline): 静态成员 dimensions 通过类访问，修复 analyze 报错
+
+Reputation.dimensions 是 static，不能经实例 p.playerReputation 访问（instance_access_to_static_member）。改经类 Reputation.dimensions 访问，并补 game_systems 导入。
+
 ### v4.5.6 — 2026-09-17
 
 **📋 变更说明**
