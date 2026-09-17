@@ -142,6 +142,22 @@ const List<StoryChapterDef> _psChapters = [
             nextStepId: 'ps_ch1_tell',
             effect: StoryEffect(setFlags: ['ps_dismissed_by_neighbor'], spirit: -2),
           ),
+          StoryChoiceDef(
+            id: 'tell_neighbor_truth',
+            text: '跑回家，把信从头到尾念给养父母听',
+            consequence:
+                '你冲进厨房，把信展开在餐桌上，一字不落地念完。'
+                '养父听完只说了句「先吃饭」，但他把报纸折起来放在了一边。'
+                '那天晚上，你听见他们在隔壁压低声音商量了很久。',
+            requireFlag: 'ps_read_letter_first',
+            effect: StoryEffect(
+              setFlags: ['ps_told_family_early'],
+              addKnowledge: ['family_knows_early'],
+              reputation: 2,
+              spirit: 3,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -183,6 +199,22 @@ const List<StoryChapterDef> _psChapters = [
               spirit: -5,
             ),
           ),
+          StoryChoiceDef(
+            id: 'show_letter_as_proof',
+            text: '先把信推过去给他们看，再开口解释',
+            consequence:
+                '你没急着说话，只是把信连着信封一起推过去。'
+                '养母捏着那枚蜡封看了很久，忽然问：「这个图案，'
+                '是不是会动的？」——她其实早就见过一次，只是不敢告诉你。',
+            requireFlag: 'ps_read_letter_first',
+            effect: StoryEffect(
+              setFlags: ['ps_letter_as_proof'],
+              addKnowledge: ['family_had_hint'],
+              reputation: 2,
+              spirit: 3,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -213,6 +245,22 @@ const List<StoryChapterDef> _psChapters = [
             nextStepId: 'ps_ch1_study',
             effect: StoryEffect(setFlags: ['ps_family_heard_list'], spirit: 5),
           ),
+          StoryChoiceDef(
+            id: 'ask_budget',
+            text: '指着清单上的价钱，问家里这笔钱够不够',
+            consequence:
+                '你把清单往养父那边推了推。他拿铅笔算了很久，'
+                '最后说：「够，但你得自己去，学着自己算钱。」'
+                '那张写满数字的纸被他折好收进了口袋。',
+            requireFlag: 'ps_told_family_early',
+            effect: StoryEffect(
+              setFlags: ['ps_asked_budget'],
+              addKnowledge: ['knows_school_cost'],
+              reputation: 2,
+              spirit: 2,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -257,6 +305,22 @@ const List<StoryChapterDef> _psChapters = [
               spirit: 2,
             ),
           ),
+          StoryChoiceDef(
+            id: 'show_letters_to_family',
+            text: '把抄满字母的那两页纸拿给家里人看',
+            consequence:
+                '养母看不懂，但她把那两页纸抚平，贴在了冰箱门上。'
+                '接下来一个月，你每次经过厨房都会看到自己的字——'
+                '它们提醒你，这件事已经不只是你一个人的秘密了。',
+            requireFlag: 'ps_told_family_early',
+            effect: StoryEffect(
+              setFlags: ['ps_family_seen_effort'],
+              addKnowledge: ['knows_letters_shift'],
+              spirit: 5,
+              reputation: 2,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -304,6 +368,22 @@ const List<StoryChapterDef> _psChapters = [
               spirit: 4,
             ),
           ),
+          StoryChoiceDef(
+            id: 'ask_about_war',
+            text: '问那位巫师：信上这枚盾徽，是不是出过什么事',
+            consequence:
+                '他愣了一下，没有立刻回答。过了一会儿他才说：'
+                '「那上面最后一场仗，打完还不到十年。你以后会听到很多说法，'
+                '先别急着信哪一个。」——你没听懂，但把这句话记住了。',
+            requireFlag: 'ps_confronted_family',
+            effect: StoryEffect(
+              setFlags: ['ps_asked_about_past'],
+              addKnowledge: ['knows_recent_war_hint'],
+              spirit: -2,
+              reputation: 1,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -347,6 +427,22 @@ const List<StoryChapterDef> _psChapters = [
               reputation: 1,
             ),
           ),
+          StoryChoiceDef(
+            id: 'write_alone',
+            text: '把门关好，自己一个人写完这张回执',
+            consequence:
+                '你没跟任何人商量，笔尖落下去的时候手很稳。'
+                '写完之后你把回执从头看了一遍，确认每个字母都对——'
+                '这是你第一次替自己的人生签了字。',
+            requireFlag: 'ps_saved_list',
+            effect: StoryEffect(
+              setFlags: ['ps_accepted', 'ps_wrote_it_alone'],
+              addKnowledge: ['will_go_to_hogwarts'],
+              reputation: 2,
+              spirit: 6,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -377,6 +473,21 @@ const List<StoryChapterDef> _psChapters = [
             nextStepId: 'ps_ch1_last_night',
             effect: StoryEffect(setFlags: ['ps_fed_owl'], spirit: 6),
           ),
+          StoryChoiceDef(
+            id: 'tell_family_before',
+            text: '回屋叫上家里人到院子里，一起看它飞走',
+            consequence:
+                '你把养父母都叫了出来。三个人仰着头站在草地上，'
+                '看那只猫头鹰越飞越小。养母小声说了句「它真快」，'
+                '养父没说话，但他一直站到你转身回屋才动。',
+            requireFlag: 'ps_told_family_early',
+            effect: StoryEffect(
+              setFlags: ['ps_family_saw_owl'],
+              reputation: 2,
+              spirit: 6,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -420,6 +531,21 @@ const List<StoryChapterDef> _psChapters = [
               spirit: 4,
             ),
           ),
+          StoryChoiceDef(
+            id: 'reread_letter_once',
+            text: '把枕头下的信再抽出来，就着路灯光读最后一遍',
+            consequence:
+                '你已经能背下大半封了，可还是想再看一遍。读到书单那一段时，'
+                '你注意到自己上个月抄下的那些字母已经认得出来了——'
+                '原来这一个月并没有白过。你把信放回去，很快睡着了。',
+            requireFlag: 'ps_studied_ahead',
+            effect: StoryEffect(
+              setFlags: ['ps_reread_before_departure'],
+              spirit: 5,
+              reputation: 1,
+            ),
+          ),
+
         ],
       ),
     ],
@@ -475,6 +601,23 @@ const List<StoryChapterDef> _psChapters = [
               reputation: 1,
             ),
           ),
+          StoryChoiceDef(
+            id: 'a_owl_office',
+            text: '先去邮局，把信里那张回执寄了',
+            consequence:
+                '你逆着人流走进邮局，把回执递给柜台后那个妖精。'
+                '他扫了一眼蜡封，什么都没多问，只是把回执塞进一只'
+                '标着「霍格沃茨」的木格子里。这件事办完，你才觉得自己'
+                '真的要去上学了。',
+            requireFlag: 'ps_fed_owl',
+            effect: StoryEffect(
+              setFlags: ['ps_posted_reply_first'],
+              addKnowledge: ['knows_school_basics'],
+              reputation: 1,
+              spirit: 4,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -631,6 +774,22 @@ const List<StoryChapterDef> _psChapters = [
               spirit: 5,
             ),
           ),
+          StoryChoiceDef(
+            id: 'a_ask_about_old_wars',
+            text: '试着问店主一句：这些魔杖打过仗吗',
+            consequence:
+                '店主从鼻子上方看了你一眼，说：「每一根都打过。」'
+                '他把一只盒子推过来，补充道：「魔杖不会挑平安的年头，'
+                '它只挑拿得动的人。」你握着那根杖，觉得比刚才沉了一点。',
+            requireKnowledge: ['knows_recent_war_hint'],
+            effect: StoryEffect(
+              addItems: ['标准咒语书'],
+              setFlags: ['ps_wand_grave_talk'],
+              spirit: -1,
+              reputation: 1,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -661,6 +820,21 @@ const List<StoryChapterDef> _psChapters = [
             nextStepId: 'ps_ch2_icecream',
             effect: StoryEffect(addItems: ['标准咒语书'], setFlags: ['ps_quick_shopper'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'pick_letters_reader',
+            text: '专门挑一本字母排得最清楚的书',
+            consequence:
+                '你把几本都摊开比了比，挑了那本行距最宽、字体最端正的。'
+                '店员说这本旧一点，但你没有换——上个月抄字母的滋味你还记得，'
+                '凡是能让眼睛省点力的地方，你都愿意多花一分钟。',
+            requireKnowledge: ['knows_letters_shift'],
+            effect: StoryEffect(
+              addItems: ['标准咒语书'],
+              setFlags: ['ps_picked_easy_read'],
+              spirit: 4,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -691,6 +865,21 @@ const List<StoryChapterDef> _psChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['ps_offered_kindness'], reputation: 2, spirit: 3),
           ),
+          StoryChoiceDef(
+            id: 'piece_together_date',
+            text: '把报纸上的日期和自己收到信的日子对一下',
+            consequence:
+                '你在心里数了一遍：金库被闯是七月底，你收到信也是七月底，'
+                '前后差不了几天。这条巧合你说不出意味着什么，'
+                '但它让你第一次觉得，魔法世界的事也讲究个来龙去脉。',
+            requireKnowledge: ['knows_gringotts_rumor'],
+            effect: StoryEffect(
+              setFlags: ['ps_noted_date_coincidence'],
+              reputation: 2,
+              spirit: 3,
+            ),
+          ),
+
         ],
       ),
     ],
@@ -2918,6 +3107,24 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['cos_observed_changes'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'greet_by_name',
+            text: '叫出那个新生的名字，问他哥哥是不是也在学校',
+            consequence:
+                '你报出名字之后，他整个人明显松了一下——原来被人认出来'
+                '是这么管用的事。他小声说了哥哥的名字，说他收到了信，'
+                '但家里还有点不放心。你说了两句宽心的话，他就笑了。',
+            requireFlag: 'cos_counted_his_names',
+            effect: StoryEffect(
+              setFlags: ['cos_greeted_new', 'cos_called_by_name'],
+              addKnowledge: ['knows_weasley_family'],
+              reputation: 2,
+              spirit: 4,
+              targetNpcId: 'ginny',
+              affection: 3,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -2990,6 +3197,40 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['cos_asked_senior'], spirit: 3),
           ),
+          StoryChoiceDef(
+            id: 'mark_overlap',
+            text: '照着课表把时间重叠的那几节圈出来，自己排一份',
+            consequence:
+                '你把羊皮纸折成两栏，把重叠的课标成三角，又在背面写'
+                '哪些课要带坩埚、哪些课要带护目镜。这张纸后来被同桌'
+                '借去抄了三遍——有人照着它，一整个学期都没迟到过。',
+            requireFlag: 'cos_counted_his_names',
+            effect: StoryEffect(
+              setFlags: ['cos_made_own_plan'],
+              addItems: ['羊皮纸一包'],
+              reputation: 2,
+              housePoints: 2,
+              spirit: 3,
+            ),
+          ),
+
+          StoryChoiceDef(
+            id: 'check_signature',
+            text: '把海报上的签名和书里的字迹对着比一比',
+            consequence:
+                '你从书包里翻出那本课本，就着走廊的光一个字一个字对。'
+                '有几处笔锋确实像，有几处又差得很远。你合上书——'
+                '这大概说明不了什么，但你记住了「他写自己的名字最认真」'
+                '这件事。',
+            requireFlag: 'cos_doubted_lockhart',
+            effect: StoryEffect(
+              setFlags: ['cos_checked_signature'],
+              addKnowledge: ['cos_lockhart_suspect'],
+              spirit: 2,
+              reputation: 1,
+            ),
+          ),
+
         ],
       ),
     ],
@@ -3394,6 +3635,22 @@ const List<StoryChapterDef> _cosChapters = [
             effect: StoryEffect(addKnowledge: ['cos_scene_details'], setFlags: ['cos_observed_scene'], spirit: -2),
           ),
           StoryChoiceDef(
+            id: 'join_lockhart_fans',
+            text: '跟围观的学生一起去看洛哈特教授怎么处理现场',
+            consequence:
+                '人群里的确有人等了很久，可教授到场之后并没有做什么，'
+                '只是让人散开。你听见几个高年级生低声说了句什么，'
+                '语气不太好。你没有跟着喊，但心里那点将信将疑又多了一分。',
+            requireFlag: 'cos_doubted_lockhart',
+            effect: StoryEffect(
+              setFlags: ['cos_watched_lockhart_fail'],
+              addKnowledge: ['cos_lockhart_suspect'],
+              spirit: -2,
+              reputation: 1,
+            ),
+          ),
+
+          StoryChoiceDef(
             id: 'help_crowd',
             text: '帮着把围观的人往后带',
             consequence:
@@ -3467,6 +3724,23 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(addKnowledge: ['cos_knows_routes'], setFlags: ['cos_found_detour'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'write_down_facts',
+            text: '把昨天到今天听到的每一句话都记到本子上',
+            consequence:
+                '你分了左右两栏：左边写「有人说的」，右边写「有人亲口证的」。'
+                '写着写着你就发现，左边那一栏几乎占满了整页，'
+                '右边只有三行——都是庞弗雷夫人和教授说过的话。'
+                '你把本子合上，心里第一次有了点底。',
+            requireFlag: 'cos_observed_scene',
+            effect: StoryEffect(
+              setFlags: ['cos_started_notes'],
+              addKnowledge: ['cos_knows_fact_vs_rumor'],
+              spirit: 3,
+              reputation: 2,
+            ),
+          ),
+
           StoryChoiceDef(
             id: 'stand_watch',
             text: '在绳子外面站一会儿',
@@ -3818,6 +4092,22 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['cos_back_row'], spirit: 1),
           ),
+          StoryChoiceDef(
+            id: 'copy_stance',
+            text: '照着台上两个人的起手式，把手型摆了一遍',
+            consequence:
+                '你没有挥出去，只是把姿势比了比。旁边的同学看了一眼'
+                '说「你手肘太高了」，顺手帮你压平。就这一下，'
+                '后来你在宿舍里照着练，居然真的把那一式练成了形。',
+            requireFlag: 'cos_practice_serious',
+            effect: StoryEffect(
+              setFlags: ['cos_practiced_stance'],
+              addKnowledge: ['cos_knows_duel_basics'],
+              housePoints: 2,
+              spirit: 3,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -3892,6 +4182,22 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['cos_avoided_topic'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'recheck_corridors',
+            text: '沿着那天听说的几条走廊再走一遍，把水渍和墙缝看仔细',
+            consequence:
+                '你走近每一条墙缝，蹲下来看那些还没擦干净的地方。'
+                '有一处的水痕比别处低，像是从更靠下的地方渗上来的。'
+                '你说不出这代表什么，但把位置记在了课表背面。',
+            requireFlag: 'cos_back_row',
+            effect: StoryEffect(
+              setFlags: ['cos_marked_wall'],
+              addKnowledge: ['cos_location_clue'],
+              spirit: -1,
+              reputation: 2,
+            ),
+          ),
+
         ],
       ),
       StoryStepDef(
@@ -3970,6 +4276,20 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['cos_slept_through_wind'], spirit: 2),
           ),
+          StoryChoiceDef(
+            id: 'listen_to_wind',
+            text: '不点灯，就躺着听风里有没有别的声音',
+            consequence:
+                '风声之外，你听见楼梯在响、画像在翻身、远处有人关门。'
+                '这些声音平时听不见，因为白天太吵。你躺着听了很久，'
+                '忽然觉得这座城堡其实一直醒着，只是没人肯听。',
+            requireFlag: 'cos_learned_moves',
+            effect: StoryEffect(
+              setFlags: ['cos_heard_castle'],
+              spirit: 4,
+            ),
+          ),
+
         ],
       ),
     ],
@@ -4135,6 +4455,37 @@ const List<StoryChapterDef> _cosChapters = [
             nextStepId: '',
             effect: StoryEffect(setFlags: ['cos_studied_quiet'], housePoints: 5, spirit: 3),
           ),
+          StoryChoiceDef(
+            id: 'recheck_marked_spot',
+            text: '带着课表背面那张图，去那面墙再看一眼',
+            consequence:
+                '走廊空了，那处水痕还在，而且比上个月往下爬了一指。'
+                '你蹲着看了很久。城堡里结冰的天气它都不干，'
+                '那就说明水的来处还开着——你把这一指宽的变化也记了上去。',
+            requireKnowledge: ['cos_location_clue'],
+            effect: StoryEffect(
+              setFlags: ['cos_tracked_wall'],
+              addKnowledge: ['cos_wall_still_weeping'],
+              reputation: 2,
+              spirit: -1,
+            ),
+          ),
+
+          StoryChoiceDef(
+            id: 'check_on_firstyears',
+            text: '绕到低年级的住处附近，看看那几个新生有没有事',
+            consequence:
+                '你没进去，只在走廊尽头站了一会儿。宿舍里亮着灯，'
+                '有笑声传出来，听起来比上学期安稳。你转身往回走，'
+                '觉得这个圣诞留校也没那么空。',
+            requireKnowledge: ['knows_weasley_family'],
+            effect: StoryEffect(
+              setFlags: ['cos_checked_juniors_winter'],
+              reputation: 2,
+              spirit: 5,
+            ),
+          ),
+
         ],
       ),
     ],

@@ -348,9 +348,10 @@ void main() {
       }
 
       // 总量护栏
-      // 实装值 76（提升前是 53）。下限留出余量但不允许明显倒退。
+      // 实装值 93（批次 7-A 补 17 条条件出路之前是 76）。下限留出余量，
+      // 但不允许明显倒退。
       final total = perChapter.values.fold<int>(0, (a, b) => a + b);
-      expect(total, greaterThanOrEqualTo(72),
+      expect(total, greaterThanOrEqualTo(88),
           reason: '带条件的选项总数掉到 $total，长期养成回馈基本失效');
     });
 
@@ -360,11 +361,13 @@ void main() {
       // "总量护栏"照样通过——因为它只数绝对条数，不看比例。
       // 这里对每部书单独算消费率。
       // 下限按实装值留一点余量。注意这个口径只数 flag（不含
-      // requireKnowledge 那类知识门槛），所以 POA 的实测值 23 与
+      // requireKnowledge 那类知识门槛），所以 POA 的实测值 21 与
       // 上面的 25 会有小差。
+      // 批次 7-A 后实测：ps 29 / cos 30 / poa 20 / gof 9 /
+      // ootp 34 / hbp 16 / dh 45。
       const floors = {
-        'ps': 18,
-        'cos': 20,
+        'ps': 27,
+        'cos': 28,
         'poa': 20,
         'gof': 9,
         'ootp': 28,
@@ -403,6 +406,242 @@ void main() {
           reason: '《${entry.key}》产出 ${p.length} 个 flag，'
               '只有 $hit 个被后续节点读回（下限 ${entry.value}）——'
               '前面攒的东西后面没人问，长期养成的意义就没了',
+        );
+      }
+    });
+
+    test('纯 2 选 1 的步不能超过总步数的一半', () {
+      // 【为什么钉这条】"长期可玩"不只是步数够多，还要求每一步**真的有得选**。
+      // 两步两分支的步玩起来是"二选一的是非题"，点得再多也没有决策感。
+      //
+      // 批次 7-A 之前实测 168/335 步（50%）是纯 2 选 1，PS 与 CoS 最严重
+      // （ps_ch1 9/9、cos_ch10 6/6…），而那正是长局开局——玩家第一小时
+      // 看到的内容最单调。补条件出路之后降到 152/335（45%）。
+      //
+      // 注意：这条**不是**要求每步都有 3 个选项（那既不现实也不必要）。
+      // 它只是一条回退线：谁再把整章写成是非题就撞墙。
+      var twoChoice = 0;
+      var total = 0;
+      final worst = <String, int>{};
+
+      for (final book in kStoryBooks.values) {
+        for (final ch in book.chapters) {
+          var tc = 0;
+          for (final s in ch.steps) {
+            total++;
+            if (s.choices.length == 2) {
+              tc++;
+              twoChoice++;
+            }
+          }
+          if (tc > 0) worst[ch.id] = tc;
+        }
+      }
+
+      expect(
+        twoChoice * 2,
+        lessThanOrEqualTo(total),
+        reason: '纯 2 选 1 的步有 $twoChoice/$total，超过一半——'
+            '玩家会一路点"是非题"，长局的选择密度被稀释',
+      );
+
+      // 单章级护栏：不接受"整章 2 选 1"。批次 7-A 前 PS 有 6 个章、
+      // CoS 有 9 个章整章都是是非题。
+      final allMonotone = worst.entries
+          .where((e) {
+            for (final book in kStoryBooks.values) {
+              for (final ch in book.chapters) {
+                if (ch.id == e.key) return ch.steps.length == e.value;
+              }
+            }
+            return false;
+          })
+          .map((e) => e.key)
+          .toList()
+        ..sort();
+
+      expect(
+        allMonotone.length,
+        lessThanOrEqualTo(12),
+        reason: '整章都是 2 选 1 的章有 ${allMonotone.length} 个：'
+            '$allMonotone——这些章玩家点十几次都没遇到一个三选项',
+      );
+    });
+
+    test('新增的条件出路都真的走得通（门槛可达 + 空处境不挡路）', () {
+      // 【为什么钉这条】批次 7-A 往 PS/CoS 补了 17 条**条件**出路。
+      // 条件出路有两个容易写坏的地方，两种都不会编译报错：
+      //   ① 引用的 flag 在本书里**根本没有生产者**——这条出路永远是死的；
+      //   ② 引用的 flag 由**更晚**的步产生——理论可达，实战中玩家
+      //      走到这一步时还没拿到，等于死代码。
+      // 所以断言：每一条带 requireFlag 的选项，其 flag 必须由
+      // **同一部书里更早的步**写出。
+      final dead = <String>[];
+      final late = <String>[];
+
+      for (final book in kStoryBooks.values) {
+        // 步 id → 它在本书里的全局序号（章序 → 步序）
+        final seq = <String, int>{};
+        final writers = <String, int>{}; // flag → 最早写出它的步序号
+        var i = 0;
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            seq[s.id] = i;
+            for (final c in s.choices) {
+              for (final f in c.effect.setFlags) {
+                writers.putIfAbsent(f, () => i);
+              }
+            }
+            i++;
+          }
+        }
+
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            final here = seq[s.id]!;
+            for (final c in s.choices) {
+              if (c.requireFlag == null) continue;
+              final f = c.requireFlag!;
+              final w = writers[f];
+              if (w == null) {
+                dead.add('${book.id}/${s.id}/${c.id} → $f（本书无生产者）');
+              } else if (w >= here) {
+                late.add('${book.id}/${s.id}/${c.id} → $f'
+                    '（由更晚的步 #$w 写出，本步是 #$here）');
+              }
+            }
+          }
+        }
+      }
+
+      expect(dead, isEmpty, reason: '条件出路引用了没人写的 flag，永远是死的：\n${dead.join('\n')}');
+      expect(late, isEmpty, reason: '条件出路依赖更晚才出现的 flag，实战走不到：\n${late.join('\n')}');
+    });
+
+    test('requireKnowledge 的门槛也必须在更早的章被写入', () {
+      // 【为什么单列一条】`requireKnowledge` 是全库**消费率最低**的门槛：
+      // 批次 7-A/B 之前，407 条 knowledge 里只有 1 条被读。7-B 接回 5 条，
+      // 但接法同样容易写错（引用更晚才给的词条 → 这条出路永远不出现）。
+      // 判据与 flag 一致：词条必须由**同一部书里更早的步**写入。
+      final dead = <String>[];
+      final late = <String>[];
+
+      for (final book in kStoryBooks.values) {
+        final seq = <String, int>{};
+        final writers = <String, int>{};
+        var i = 0;
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            seq[s.id] = i;
+            for (final c in s.choices) {
+              for (final k in c.effect.addKnowledge) {
+                writers.putIfAbsent(k, () => i);
+              }
+            }
+            i++;
+          }
+        }
+
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            for (final c in s.choices) {
+              for (final k in c.requireKnowledge) {
+                final w = writers[k];
+                if (w == null) {
+                  dead.add('${book.id}/${s.id}/${c.id} → $k（本书无生产者）');
+                } else if (w >= seq[s.id]!) {
+                  late.add('${book.id}/${s.id}/${c.id} → $k'
+                      '（由更晚的步 #$w 写出，本步是 #${seq[s.id]}）');
+                }
+              }
+            }
+          }
+        }
+      }
+
+      expect(dead, isEmpty, reason: '情报门槛引用了没人写的词条：\n${dead.join('\n')}');
+      expect(late, isEmpty, reason: '情报门槛依赖更晚才拿到的词条：\n${late.join('\n')}');
+    });
+
+    test('情报消费率不能归零（当时多留的心眼要在后面兑现）', () {
+      // 全库 knowledge 产出约 90 条。批次 7-A/B 之前只有 1 条被读——
+      // 等于"知道了一件事"这个机制基本没接线。7-B 接回 5 条，
+      // 这里的下限就钉在实装值上，防止再掉回去。
+      final produced = <String>{};
+      final consumed = <String>{};
+      for (final book in kStoryBooks.values) {
+        for (final ch in book.chapters) {
+          for (final s in ch.steps) {
+            for (final c in s.choices) {
+              produced.addAll(c.effect.addKnowledge);
+              consumed.addAll(c.requireKnowledge);
+            }
+          }
+        }
+      }
+      final hit = produced.intersection(consumed);
+      expect(
+        hit.length,
+        greaterThanOrEqualTo(6),
+        reason: '全库产出 ${produced.length} 条情报，只有 ${hit.length} 条被读回——'
+            '"玩家知道了什么"这件事在后续剧情里得不到任何体现',
+      );
+    });
+
+    test('批次 7-A 补的条件出路逐条可验证', () {
+      // 抽几个代表逐条验收：门槛满足 → 出现；空处境 → 不出现；
+      // 且该步在空处境下**仍有**至少两条出路（不会被过滤成空界面）。
+      // 【为什么是 (步, 出路) 的列表而不是 Map】同一个步可能被补了不止
+      // 一条出路（`cos_ch2_schedule` 补了 check_signature 与 mark_overlap），
+      // Map 的键会撞掉其中一条。
+      const cases = <(String, String)>[
+        ('ps_ch1_window', 'tell_neighbor_truth'),
+        ('ps_ch1_tell', 'show_letter_as_proof'),
+        ('ps_ch1_list', 'ask_budget'),
+        ('ps_ch1_study', 'show_letters_to_family'),
+        ('ps_ch1_visit', 'ask_about_war'),
+        ('ps_ch1_reply', 'write_alone'),
+        ('ps_ch1_postbox', 'tell_family_before'),
+        ('ps_ch1_last_night', 'reread_letter_once'),
+        ('ps_ch2_arrival', 'a_owl_office'),
+        ('cos_ch2_seat', 'greet_by_name'),
+        ('cos_ch2_schedule', 'check_signature'),
+        ('cos_ch2_schedule', 'mark_overlap'),
+        ('cos_ch4_crowd', 'join_lockhart_fans'),
+        ('cos_ch4_morning_after', 'write_down_facts'),
+        ('cos_ch6_watch_club', 'copy_stance'),
+        ('cos_ch6_after_club', 'recheck_corridors'),
+        ('cos_ch6_wind', 'listen_to_wind'),
+      ];
+
+      for (final (sid, cid) in cases) {
+        final s = step(sid);
+        final c = s.choices.firstWhere(
+          (x) => x.id == cid,
+          orElse: () => throw StateError('$sid 里找不到 $cid'),
+        );
+        final gate = c.requireFlag;
+        expect(gate, isNotNull, reason: '$sid/$cid 应当带门槛');
+
+        // 空处境：这条出路必须**不**出现（否则它就不是"条件出路"）
+        expect(
+          visibleIds(sid).contains(cid),
+          isFalse,
+          reason: '$sid/$cid 在空处境下就可见，门槛没起作用',
+        );
+
+        // 满足门槛：必须出现
+        expect(
+          visibleIds(sid, flags: {gate!}).contains(cid),
+          isTrue,
+          reason: '$sid/$cid 满足 requireFlag=$gate 后仍不可见',
+        );
+
+        // 空处境下必须还有别的出路，否则玩家会撞上空选择界面
+        expect(
+          visibleIds(sid).length,
+          greaterThanOrEqualTo(2),
+          reason: '$sid 空处境下只剩 ${visibleIds(sid).length} 条出路',
         );
       }
     });
