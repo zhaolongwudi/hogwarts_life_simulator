@@ -385,6 +385,17 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 本回合刚触发的原著剧情节点标题（无触发时为 null）。
   String? lastCanonEventTitle;
 
+  /// 触发毕业结算。实现在 GameSystemsMixin。
+  ///
+  /// 【为什么必须放在基类上】触发方在 `GameNarrativeMixin._finishStory`
+  /// （第七部走完 = 毕业），消费方是 `GameSystemsMixin._graduationSettlement`。
+  /// 与上面 `buildFallbackChoices` 同一个原因：Dart 的 mixin 私有成员
+  /// 跨 mixin 不可见，`GameNarrativeMixin` 排在 `GameSystemsMixin` 之前，
+  /// 直接调 `_onPlayerGraduated` 会报 `undefined_method`（本轮实测）。
+  ///
+  /// [oldGrade] 只用于日志，不参与判定。
+  void onPlayerGraduated(int oldGrade);
+
   /// 同上的节点指令原文，用于让选项文本带上事件的关键词。
   String? lastCanonEventDirective;
 

@@ -2274,6 +2274,29 @@ $kNarrativeWritingRules
       ),
     );
 
+    // 最后一部结束 = 毕业。
+    //
+    // 【为什么必须在这里补这一刀】年级推进挂在 `_checkSchoolYearTransition`
+    // 上，而它只在时钟**走进 9 月**时才推进年级。剧情模式的第七部在
+    // 1998 年 7 月就收尾了（`dh` 学年末节点落在 7 月底），玩家此生再也
+    // 走不到 1998 年 9 月——于是：
+    //   · `grade` 停在 7，`newGrade > 7` 那条分支永远不执行；
+    //   · `worldState.graduated` 恒为 false；
+    //   · 「七年之约」成就拿不到，`_graduationSettlement` 的人生目标评估
+    //     与毕业结算报告**一屏都不会出现**。
+    // 实测：七部全跑完（57 章 / 335 步 / 结局已出）之后仍是
+    // `grade=7 graduated=false`，玩家读完七本书却拿不到毕业。
+    //
+    // 剧情模式的时间轴与学年制两条线在这里是对不上的：剧情线是"原著讲到
+    // 哪算哪"，学年线是"九月升级"。既然玩家已经把七部走完，毕业就是唯一
+    // 正确的语义——这比让他卡在七年级等一个永远不会到来的九月强。
+    //
+    // 【为什么用 `nextStoryBookId == null` 判定而不是写死 'dh'】
+    // 书序是引擎语义（`kBookOrder`），将来若加外传/后续，判定自动跟着走。
+    if (nextStoryBookId(finish.bookId) == null && !worldState.graduated) {
+      onPlayerGraduated(player?.grade ?? 7);
+    }
+
     return StoryBeat(
       step: null,
       prevStep: finishedStep,

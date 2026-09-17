@@ -607,11 +607,10 @@ mixin GameSystemsMixin on GameProviderBase {
       _promoteNpcs(yearsPassed);
       settleHouseCup();
       p.grade = 7;
-      worldState.graduated = true;
       // 七年级末的 N.E.W.T（终极巫师等级考试）与最后一次期末考
       _settleExams('Y7');
       _settleExams('NEWT', newt: true);
-      _onPlayerGraduated(oldGrade);
+      onPlayerGraduated(oldGrade);
     } else {
       p.grade = newGrade;
       _promoteNpcs(yearsPassed);
@@ -767,9 +766,24 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   /// 玩家毕业（七年级结束）
+  ///
+  /// 【为什么是公开方法】剧情模式走完第七部时会从 `GameNarrativeMixin`
+  /// 调过来（那条路径触达不到 `_checkSchoolYearTransition` 的九月判定，
+  /// 详见 `_finishStory` 里的说明）。跨 mixin 调用必须经由基类声明，
+  /// 所以这里是 `onPlayerGraduated` 而不是 `_onPlayerGraduated`。
+  ///
+  /// 【为什么把 `graduated = true` 收进来】原先这个置位散在调用点
+  /// （`_checkSchoolYearTransition` 的九月分支里），于是走剧情模式那条
+  /// 新入口时会出现"成就解锁了但 worldState.graduated 还是 false"的
+  /// 半吊子状态——`updateAcademicYearLabel`、教职年结、`/联动` 的时间轴
+  /// 分支都读这个字段，口径必须只有一处。
+  @override
+  void onPlayerGraduated(int oldGrade) {
+    worldState.graduated = true;
+    _settleGraduation(oldGrade);
+  }
 
-  void _onPlayerGraduated(int oldGrade) {
-    final p = player;
+  void _settleGraduation(int oldGrade) {    final p = player;
     if (p == null) return;
     notifications.add('🎓 你从霍格沃茨毕业了！七年的魔法生涯画上句点。');
     worldState.addNarrativeEvent(
