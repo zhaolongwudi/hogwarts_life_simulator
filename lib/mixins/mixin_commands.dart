@@ -24,6 +24,7 @@ import '../data/patronus_data.dart';
 import '../data/attribute_data.dart';
 import '../data/offline_extras_data.dart';
 import '../data/festival_data.dart';
+import '../mixins/mixin_club.dart';
 import '../models/long_term_memory.dart';
 import '../models/player.dart';
 import '../models/story_progress.dart';
@@ -1339,6 +1340,32 @@ mixin GameCommandsMixin on GameProviderBase {
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatFestivalCalendar();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '社团',
+        aliases: ['俱乐部'],
+        group: '学业&成长',
+        helpText: '校园社团：加入/查看/退出社团，长期出力可逐级晋升（/社团 [id]·/社团 退出）',
+        subs: [
+          CommandSub('退出', '退出当前社团'),
+          CommandSub('duel', '加入决斗俱乐部'),
+          CommandSub('potion', '加入魔药部'),
+          CommandSub('broom', '加入魁地奇队'),
+          CommandSub('quip', '加入快讯社'),
+        ],
+        panel: true,
+        handler: (ctx) {
+          final m = ctx.provider as GameClubMixin;
+          if (ctx.parts.isEmpty) {
+            m.currentNarrative = m.formatClubPanel();
+          } else if (ctx.parts.first == '退出') {
+            m.currentNarrative = m.leaveClub();
+          } else {
+            m.currentNarrative = m.joinClub(ctx.parts.first);
+          }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },

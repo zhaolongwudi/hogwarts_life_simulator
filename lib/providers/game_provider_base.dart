@@ -463,6 +463,10 @@ abstract class GameProviderBase extends ChangeNotifier
   /// `信:<id>:<idx>`）。返回需要追加进叙事的回信文块；无待回信返回空串。
   String tryResolveLetterReplyChoice(String action);
 
+  /// P14 校园社团：离线行动对得上所属社团的干系事则积攒积分并可能跨阶晋升。
+  /// 返回需要追加进叙事的社团活动文块；未命中或受门控返回空串。
+  String maybeRunClubActivity(String action);
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====

@@ -1761,6 +1761,19 @@ $kNarrativeWritingRules
       }
     }
 
+    // ====== P14 校园社团活动触发 ======
+    // 紧随行动结果之后：社团活动源自玩家本回合的离线行动（对得上社团干系事），
+    // 自然是「行动结果」的同门收尾。加入的成员若行动里带着社团的干系事，就为
+    // 社团积攒积分、跨阶晋升（候补→活跃→骨干→王牌→传奇）。自带冷却与互斥门控，
+    // 不会被奇遇/羁绊/待回信抢跑，也不会天天刷屏。
+    String? clubScene;
+    if (!confessedThisTurn) {
+      clubScene = this.maybeRunClubActivity(action);
+    }
+    if (clubScene != null && clubScene.isNotEmpty) {
+      currentNarrative = '$currentNarrative\n\n$clubScene';
+    }
+
     // 【顺序很关键】兜底选项必须在**原著节点注入之后**才生成。
     // 原先这一行写在 _finalizeTurn 之前，比注入早了两步，导致两个后果：
     //   1. 节点标题还没进 currentNarrative，buildFallbackChoices 拿到的

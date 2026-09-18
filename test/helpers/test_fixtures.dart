@@ -29,6 +29,9 @@ Future<GameProvider> makeGame({bool offlineQuickMode = false}) async {
   // P13 隔离：猫头鹰来信同理由默认开改为测试关，不给既有确定性用例添加噪音；
   // 来信专项用例（batch42）在各自 fixture 里再打开。
   app.letterEnabled = false;
+  // P14 隔离：校园社团同理由默认开改为测试关，不给既有确定性用例添加噪音；
+  // 社团专项用例（batch43）在各自 fixture 里再打开。
+  app.clubEnabled = false;
   final gp = GameProvider(app);
   if (offlineQuickMode) {
     app.setOfflineQuickMode(true); // 无 AI key 也走本地快速模式（模拟真实回合推进）

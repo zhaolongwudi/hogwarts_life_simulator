@@ -201,6 +201,9 @@ class Player {
   List<String> receivedLetters; // P13：已送到的来信 id（里程碑 once-only）
   String? pendingLetterId; // P13：正待回的信 id（两段式「收信→回信」）
   String? lastLetterSenderId; // P13：上一位寄信人（避免同一人连番刷屏）
+  String? clubId; // P14：当前加入的社团 id（null = 未入社）
+  int clubPoints; // P14：当前社团积分（晋升用）
+  int clubLastTurn; // P14：最近一次为社团出力的回合号（冷却用）
   int qSkill; // 魁地奇技巧（50起步）
   String qPosition; // 位置：找球手/追球手/守门员/击球手
   int qMatches; // 参赛场次
@@ -291,6 +294,9 @@ class Player {
     List<String>? receivedLetters,
     this.pendingLetterId,
     this.lastLetterSenderId,
+    this.clubId,
+    this.clubPoints = 0,
+    this.clubLastTurn = -1,
     this.qSkill = 50,
     this.qPosition = '找球手',
     this.qMatches = 0,
@@ -489,6 +495,9 @@ class Player {
     'received_letters': receivedLetters,
     'pending_letter_id': pendingLetterId,
     'last_letter_sender_id': lastLetterSenderId,
+    'club_id': clubId,
+    'club_points': clubPoints,
+    'club_last_turn': clubLastTurn,
     'q_skill': qSkill,
     'q_position': qPosition,
     'q_matches': qMatches,
@@ -662,6 +671,9 @@ class Player {
     ),
     pendingLetterId: readStringOrNull(json['pending_letter_id']),
     lastLetterSenderId: readStringOrNull(json['last_letter_sender_id']),
+    clubId: readStringOrNull(json['club_id']),
+    clubPoints: readInt(json['club_points'], fallback: 0),
+    clubLastTurn: readInt(json['club_last_turn'], fallback: -1),
     qSkill: readInt(json['q_skill'], fallback: 50),
     qPosition: readString(json['q_position'], fallback: '找球手'),
     qMatches: readInt(json['q_matches']),

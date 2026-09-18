@@ -231,6 +231,21 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// P14 校园社团开关：离线行动对得上社团干系事就积攒积分、逐级晋升。
+  ///
+  /// 默认开启（生产即用）：加入一个社团后，"长期做同一件事"会沉淀为可积累的
+  /// 晋升（候补→活跃→骨干→王牌→传奇）与属性/学院分/声望回报。共享测试夹具
+  /// `makeGame` 显式关闭它，避免扰动确定性用例；社团专项用例（batch43）再开。
+  /// 运行时内存态，不持久化。
+  bool _clubEnabled = true;
+
+  bool get clubEnabled => _clubEnabled;
+  set clubEnabled(bool value) {
+    if (_clubEnabled == value) return;
+    _clubEnabled = value;
+    notifyListeners();
+  }
+
   /// 主线剧情模式：按原著时间线章节推进（离线，0 AI 调用）。
   bool get storyMode => _storyMode;
 
