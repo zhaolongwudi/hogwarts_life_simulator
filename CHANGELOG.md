@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.7.0 — 2026-09-18
+
+**📋 变更说明**
+feat(offline): 奇遇系统——随机发生在「你」身上的两段式小故事，按季节+地点+年级过滤、加权抽取+冷却、触发回合给选项下一回合结算结局（P10）
+
+- happenstance_data.dart：奇遇库数据收口（8 场奇遇 × 2~4 个结局，奖励/声望/好感/物品）
+- mixin_happenstance.dart：过滤+抽取+选择结算三层逻辑，含中性兜底
+- 接入离线回合流程：触发场景浮在日程上方、专属选项覆盖兜底承接
+- world_state 增 pendingHappenstanceId/lastHappenstanceTurn，建档可续
+- app_provider 增奇遇开关；测试夹具默认关避免扰动既有确定性用例
+
 ### v4.6.9 — 2026-09-18
 
 **📋 变更说明**
