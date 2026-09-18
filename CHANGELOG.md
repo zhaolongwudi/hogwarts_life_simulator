@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.8.6 — 2026-09-18
+
+**📋 变更说明**
+ui(refactor): 功能入口清晰化第一批——手机页按系统域分组并接入 P9-P14 玩法入口
+
+- 新增统一组件：FeatureTile/SectionHeader（feature_tile.dart）、PageLoading/EmptyPlaceholder（loading_placeholder.dart）
+- 手机页重构：8宫格+快捷坞 → 系统域分组（魔法校园·玩法/社交·日常/冒险·工具），新增社团/节庆/宠物/来信/档案玩法入口（经 onRunCommand 切回剧情页执行指令面板）
+- GameScreen 新增 _runGameplayCommand 回调
+- 新建 docs/UI重构规范与台账.md（纲领+逐页进度簿）
+- 修复 README 数据账目回归：补回 33 张CG/33 项成就/神奇动物照看员（review_fixes_test 对账）
+
 ### v4.8.5 — 2026-09-18
 
 **📋 变更说明**
