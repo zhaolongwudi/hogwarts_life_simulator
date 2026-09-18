@@ -1628,12 +1628,20 @@ $kNarrativeWritingRules
     // 动作结算这出小戏的结局；action 不匹配时混用第一结局自动收尾。
     final companionResolution = this.tryResolveCompanionChoice(action);
 
+    // ====== P13 回信结算（紧随羁绊之后、叙事组装之前）======
+    // 上一回合收到的「待回信」，本回合用玩家的「信:<id>:<idx>」动作结算回信；
+    // action 不匹配时混用中性兜底（中间项）自动收尾。
+    final letterResolution = this.tryResolveLetterReplyChoice(action);
+
     currentNarrative = generateFallbackNarrative();
     if (companionResolution.isNotEmpty) {
       currentNarrative = '$companionResolution\n\n$currentNarrative';
     }
     if (hpResolution.isNotEmpty) {
       currentNarrative = '$hpResolution\n\n$currentNarrative';
+    }
+    if (letterResolution.isNotEmpty) {
+      currentNarrative = '$letterResolution\n\n$currentNarrative';
     }
 
     // ====== 信息密度调节器：离线模式兜底叙事自动增强 ======
@@ -1800,6 +1808,18 @@ $kNarrativeWritingRules
       currentNarrative = '$currentNarrative\n\n$petScene';
     }
 
+    // ====== P13 猫头鹰来信触发 ======
+    // 紧随宠物之后（宠物是养在身边的小家伙，来信则是"世界那头的朋友"伸来的
+    // 只言片语）。已结识 NPC 偶尔主动寄来一封：友情/敌对/里程碑。带问题的信会
+    // 进入「待回信」，由下面的选项作主。有奇遇/羁绊/待回信时不抢戏；自带冷却。
+    String? letterScene;
+    if (!confessedThisTurn) {
+      letterScene = this.maybeTriggerLetter();
+    }
+    if (letterScene != null && letterScene.isNotEmpty) {
+      currentNarrative = '$currentNarrative\n\n$letterScene';
+    }
+
     if (!confessedThisTurn) {
       choices = buildFallbackChoices(currentNarrative);
       // 优先让「羁绊最终幕」用它的抉择选项覆盖承接选项（它是更个人的一岀戏），
@@ -1811,6 +1831,12 @@ $kNarrativeWritingRules
         final hpChoices = this.happenstanceChoicesForPending();
         if (hpChoices.isNotEmpty) {
           choices = hpChoices;
+        } else {
+          // P13 回信选项优先级最低：一封待回的信，不抢奇遇/羁绊的正戏。
+          final replyChoices = this.letterReplyChoicesForPending();
+          if (replyChoices.isNotEmpty) {
+            choices = replyChoices;
+          }
         }
       }
     }

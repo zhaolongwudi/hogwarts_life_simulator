@@ -26,6 +26,7 @@ import '../mixins/mixin_festival.dart';
 import '../mixins/mixin_happenstance.dart';
 import '../mixins/mixin_companion_arc.dart';
 import '../mixins/mixin_pet_story.dart';
+import '../mixins/mixin_letter.dart';
 import '../data/balance_constants.dart';
 import '../data/rivalry_data.dart';
 import '../services/save_service.dart';
@@ -66,7 +67,8 @@ class GameProvider extends GameProviderBase
         GameFestivalMixin,
         GameHappenstanceMixin,
         GameCompanionArcMixin,
-        GamePetStoryMixin {
+        GamePetStoryMixin,
+        GameLetterMixin {
   @override
   bool markScanIfNew(String narrative) {
     final h = narrative.hashCode;

@@ -216,6 +216,21 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// P13 猫头鹰来信开关：离线日常里「世界那边有人惦记着你」层。
+  ///
+  /// 默认开启（生产即用）：已结识的 NPC 会在离线回合格外地寄来一封猫头鹰信，
+  /// 偶尔给一点好感/声望，个别来信会进入「待回信」由玩家下一回合真正回信。
+  /// 共享测试夹具 `makeGame` 显式关闭它，避免扰动既有的确定性用例；来信专项
+  /// 用例（batch42）再开回来。运行时内存态，不持久化。
+  bool _letterEnabled = true;
+
+  bool get letterEnabled => _letterEnabled;
+  set letterEnabled(bool value) {
+    if (_letterEnabled == value) return;
+    _letterEnabled = value;
+    notifyListeners();
+  }
+
   /// 主线剧情模式：按原著时间线章节推进（离线，0 AI 调用）。
   bool get storyMode => _storyMode;
 

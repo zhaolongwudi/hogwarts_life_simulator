@@ -449,6 +449,20 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 返回需要追加进叙事的场景文块；无事可演返回空串。见 `GamePetStoryMixin`。
   String maybeTriggerPetStory();
 
+  /// P13 猫头鹰来信：离线日常里让已结识 NPC 主动寄来一封（友情 / 敌对 / 里程碑）。
+  /// 返回需要追加进叙事的来信文块；无信可收返回空串。见 `GameLetterMixin`。
+  String maybeTriggerLetter({int? seed});
+
+  /// P13 猫头鹰来信：是否有正待回的信。
+  bool get hasPendingLetter;
+
+  /// P13 猫头鹰来信：当前待回信的专属回信选项（供收信回合覆写兜底选项）。
+  List<GameChoice> letterReplyChoicesForPending();
+
+  /// P13 猫头鹰来信：结算待回的信并按动作解析玩家选择（action 形如
+  /// `信:<id>:<idx>`）。返回需要追加进叙事的回信文块；无待回信返回空串。
+  String tryResolveLetterReplyChoice(String action);
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====
