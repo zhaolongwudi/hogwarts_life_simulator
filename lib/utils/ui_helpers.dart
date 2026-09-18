@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/npc.dart';
 import '../data/house_data.dart';
+import '../theme/miuix_tokens.dart';
 
 /// 全局语义色 token。
 ///
@@ -12,34 +13,34 @@ import '../data/house_data.dart';
 /// 有 6~9 种写法，深色主题里还混着浅色主题残留的卡片底色。新代码一律用
 /// `MiuiColors` 的 token；存量页面按「色板收编映射表」随 UI 打磨逐步替换。
 class AppColors {
-  // ===== 主题金 =====
-  /// 主金：按钮/强调/选中态
-  static const gold = Color(0xFFD3A625);
-  /// 提亮金：深底上的文字/图标
-  static const goldBright = Color(0xFFDDB54A);
-  /// 深金：描边/次级强调
-  static const goldDeep = Color(0xFFB8860B);
+  // ===== 全局语义色（转发到 MiuiColors 单一来源） =====
+  // 原字面量已按 `docs/UI重构规范与台账.md`「色板收编映射表」收归 MiuiColors：
+  // 同值成员直接等价；近似成员收敛到 Miui 统一值（危险红→error、提亮金→primaryVariant、
+  // 文字灰阶→onSurface 系、背景→background、描边→outline），保证全局一致。
+  // 本类保留成员名，仅供存量页面过渡，新代码一律用 MiuiColors。
+  /// 主金
+  static const gold = MiuiColors.primary;
+  /// 提亮金
+  static const goldBright = MiuiColors.primaryVariant;
+  /// 深金
+  static const goldDeep = MiuiColors.primaryContainer;
 
   // ===== 状态色 =====
-  /// 危险/负面/伤害
-  static const danger = Color(0xFFEF4444);
-  /// 成功/正面/升温
-  static const success = Color(0xFF10B981);
-  /// 警告/中性偏负
-  static const warning = Color(0xFFF59E0B);
-  /// 信息/对话蓝
-  static const info = Color(0xFF79C0FF);
+  static const danger = MiuiColors.error;
+  static const success = MiuiColors.success;
+  static const warning = MiuiColors.warning;
+  static const info = MiuiColors.info;
 
   // ===== 文字三灰阶 =====
-  static const textPrimary = Color(0xFFE6EDF3);
-  static const textSecondary = Color(0xFF8B949E);
-  static const textMuted = Color(0xFF6B7280);
+  static const textPrimary = MiuiColors.onSurface;
+  static const textSecondary = MiuiColors.onSurfaceSecondary;
+  static const textMuted = MiuiColors.onSurfaceVariantSummary;
 
-  // ===== 背景体系（GitHub Dark 风格） =====
-  static const bg = Color(0xFF0D1117);
-  static const surface = Color(0xFF161B22);
-  static const card = Color(0xFF21262D);
-  static const border = Color(0xFF30363D);
+  // ===== 背景体系 =====
+  static const bg = MiuiColors.background;
+  static const surface = MiuiColors.surface;
+  static const card = MiuiColors.surfaceContainer;
+  static const border = MiuiColors.outline;
 }
 
 class UiHelpers {

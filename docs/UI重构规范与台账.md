@@ -82,7 +82,8 @@
 
 > 新增统一组件：`lib/widgets/feature_tile.dart`（FeatureTile/SectionHeader）、
 > `lib/widgets/loading_placeholder.dart`（PageLoading/EmptyPlaceholder）。
-> `AppColors↔Miui 色板收敛`（上节 A）本轮未做——改动面广、回归风险高，留到信息层级批次同步推进。
+> `AppColors↔Miui 色板收敛`（上节 A）：**已完成**（见「四·附·D」），
+> `AppColors` 现已改为转发到 `MiuiColors` 的兼容别名，全库单一色源。
 
 ## 四·附·B：加载态归一（PageLoading）
 ✅ 已收编 5 处整块居中 `Center(CircularProgressIndicator())` → `PageLoading`：
@@ -157,6 +158,22 @@
   档案）接入 `onInfo`，新增 `_showSystemGuide` 弹出式说明面板。
 
 > 目的：新玩家一眼知道这些入口是"可持续成长的系统"而非一次点击，契合「所有功能与插件都要清晰」。
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
+## 四·附·D：旧色板 AppColors → MiuiColors 单一色源（完成）
+
+✅ **结构性收敛已落地**：`AppColors` 从"自持字面量"改为**转发到 `MiuiColors` 的兼容别名**
+（`lib/utils/ui_helpers.dart`）。全库 116 处 `AppColors.*` 调用无需逐页改动，即统一到
+`MiuiColors` 单一来源，从根源消除"双色板并存"。
+
+- 同值直接等价：`gold→primary`、`goldDeep→primaryContainer`、`success/warning/info`。
+- 近似→收敛到 Miui 统一值（映射表已批准）：`danger→error`、`goldBright→primaryVariant`、
+  `textPrimary→onSurface`、`textSecondary→onSurfaceSecondary`、`textMuted→onSurfaceVariantSummary`、
+  `bg→background`、`surface→surface`、`card→surfaceContainer`、`border→outline`。
+- 实测：UI 层实际引用的旧成员几乎全为金系/状态色；`surface/card/bg/text*` 在 UI 层几乎无使用，
+  仅 `getAffectionColor` 内部引用 `textMuted`，故视觉影响集中在金系提亮与危险红的轻微统一，整体更一致。
+- 边界不变：页面级专属主题色（`game_play_screens` 蓝紫、world_map 绿系）**不**受本收敛影响。
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
