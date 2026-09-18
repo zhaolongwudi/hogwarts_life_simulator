@@ -147,7 +147,7 @@ class _GameScreenState extends State<GameScreen> {
         tabContent = NarrativeTab(onNarrativeTapChoice: _handleChoice, scrollController: _scrollController, subTab: _subTab, onSubTabChanged: (v) => setState(()=>_subTab = v));
         break;
       case 1:
-        tabContent = PhoneTab(gp: context.watch<GameProvider>());
+        tabContent = PhoneTab(gp: context.watch<GameProvider>(), onRunCommand: _runGameplayCommand);
         break;
       case 2:
         tabContent = WorldTab(gp: context.watch<GameProvider>());
@@ -250,6 +250,14 @@ class _GameScreenState extends State<GameScreen> {
             : null,
       ),
     );
+  }
+
+  /// 从功能入口执行一条玩法/指令（如 /社团、/节庆）：切回剧情页并触发。
+  void _runGameplayCommand(String cmd) {
+    final gp = context.read<GameProvider>();
+    if (gp.isLoading) return;
+    setState(() => _currentTab = 0);
+    gp.processChoice(GameChoice(text: cmd, action: cmd));
   }
 
   /// 退出沉浸模式。

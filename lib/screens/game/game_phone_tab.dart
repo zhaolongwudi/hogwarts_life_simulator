@@ -19,6 +19,7 @@ import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../models/game_systems.dart';
 import '../../widgets/miuix_overlays.dart';
+import '../../widgets/feature_tile.dart';
 
 void _editSignature(BuildContext context) {
   final gp = context.read<GameProvider>();
@@ -59,7 +60,10 @@ void _editSignature(BuildContext context) {
 class PhoneTab extends StatelessWidget {
   final GameProvider gp;
 
-  const PhoneTab({super.key, required this.gp});
+  /// 玩法指令入口回调：由宿主（GameScreen）提供，切回剧情页并执行一条指令。
+  final void Function(String command)? onRunCommand;
+
+  const PhoneTab({super.key, required this.gp, this.onRunCommand});
 
   @override
   Widget build(BuildContext context) {
@@ -99,11 +103,18 @@ class PhoneTab extends StatelessWidget {
               _buildCompactProfile(context, player),
               const SizedBox(height: 18),
 
-              // ===== ③ 应用网格 =====
+              // ===== ③ 魔法校园 · 玩法指令 =====
+              const SectionHeader('魔法校园 · 玩法'),
+              _buildPlaybookSection(context),
+              const SizedBox(height: 18),
+
+              // ===== ④ 社交 & 日常（应用网格） =====
+              const SectionHeader('社交 & 日常'),
               _buildPhoneAppGrid(context),
               const SizedBox(height: 18),
 
-              // ===== ④ 快捷操作坞 =====
+              // ===== ⑤ 冒险 & 工具（快捷操作坞） =====
+              const SectionHeader('冒险 & 工具'),
               _buildBottomQuickRow(context),
               const SizedBox(height: 60),
             ],
@@ -111,6 +122,57 @@ class PhoneTab extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// 玩法类系统入口：社团 / 节庆 / 宠物 / 来信 / 档案。
+  /// 这些是数据驱动的玩法系统（无独立屏幕），点击后经 onRunCommand 回到剧情页执行指令面板。
+  Widget _buildPlaybookSection(BuildContext context) {
+    final Color accent = MiuiColors.primaryVariant;
+    return Column(
+      children: [
+        FeatureTile(
+          icon: Icons.groups_outlined,
+          title: '校园社团',
+          subtitle: '决斗 / 魔药 / 魁地奇 / 快讯四社，行动攒积分、逐级晋升',
+          color: accent,
+          onTap: () => _runCommand('/社团'),
+        ),
+        FeatureTile(
+          icon: Icons.calendar_month_outlined,
+          title: '年度节庆',
+          subtitle: '查看本学年节庆日历：万圣 / 圣诞 / 舞会…（每学年一次）',
+          color: accent,
+          onTap: () => _runCommand('/节庆'),
+        ),
+        FeatureTile(
+          icon: Icons.pets_outlined,
+          title: '宠物生活',
+          subtitle: '查看 / 喂食 / 玩耍 / 训练，亲和跨门槛解锁羁绊小故事',
+          color: accent,
+          onTap: () => _runCommand('/宠物'),
+        ),
+        FeatureTile(
+          icon: Icons.mark_email_read_outlined,
+          title: '猫头鹰来信',
+          subtitle: '查看已结识者的来信与待回信',
+          color: accent,
+          onTap: () => _runCommand('/信'),
+        ),
+        FeatureTile(
+          icon: Icons.book_outlined,
+          title: '角色档案',
+          subtitle: 'NPC 档案与回忆进度一览',
+          color: accent,
+          onTap: () => _runCommand('/档案'),
+        ),
+      ],
+    );
+  }
+
+  void _runCommand(String cmd) {
+    if (onRunCommand != null) {
+      onRunCommand!(cmd);
+    }
   }
 
   /// 玻璃拟态日期时间组件（匹配参考图 Screenshot_00-09-25 风格）
