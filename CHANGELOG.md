@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.8.9 — 2026-09-18
+
+**📋 变更说明**
+ui(refactor): 社交页空态统一——通讯录/论坛空态收编为统一 EmptyPlaceholder
+
+- communication_screen：还没有联系人空态 → EmptyPlaceholder（消 Colors.grey 裸色）
+- forum_screen：player null 与 _emptyState 两处空态 → EmptyPlaceholder（消 Colors.grey 裸色）
+- UI 台账明确色板「收编边界」：页面级主题色（如 game_play_screens 蓝紫体系）不机械收编，避免改观感
+- 回归：flutter analyze 0 error；flutter test 1984 项全绿（两轮全量确认）
+
 ### v4.8.8 — 2026-09-18
 
 **📋 变更说明**
