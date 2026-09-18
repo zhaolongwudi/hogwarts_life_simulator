@@ -10,6 +10,11 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.9.3 — 2026-09-18
+
+**📋 变更说明**
+refactor(ui): npc_chat空态→EmptyPlaceholder, 配额区块加载→PageLoading(compact); 蓝紫主题空卡按边界保留
+
 ### v4.9.2 — 2026-09-18
 
 **📋 变更说明**
