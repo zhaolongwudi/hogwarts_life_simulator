@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/miuix_tokens.dart';
 
 /// 魔法辉光背景层。
 ///
@@ -54,8 +55,8 @@ class _MagicPainter extends CustomPainter {
       final paint = Paint()
         ..shader = RadialGradient(
           colors: [
-            const Color(0xFFD3A625).withValues(alpha: 0.075),
-            const Color(0xFFD3A625).withValues(alpha: 0.02),
+            MiuiColors.primary.withValues(alpha: 0.075),
+            MiuiColors.primary.withValues(alpha: 0.02),
             Colors.transparent,
           ],
           stops: const [0.0, 0.45, 1.0],
@@ -70,8 +71,8 @@ class _MagicPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           Colors.transparent,
-          const Color(0xFFD3A625).withValues(alpha: 0.05),
-          const Color(0xFFB8860B).withValues(alpha: 0.08),
+          MiuiColors.primary.withValues(alpha: 0.05),
+          MiuiColors.primaryContainer.withValues(alpha: 0.08),
         ],
         stops: const [0.0, 0.72, 1.0],
       ).createShader(Rect.fromLTWH(0, h * 0.7, w, h * 0.3));
