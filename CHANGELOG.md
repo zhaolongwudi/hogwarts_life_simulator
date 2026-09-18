@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.9.1 — 2026-09-18
+
+**📋 变更说明**
+ui(refactor): 加载态归一——5 处整块加载态收编为统一 PageLoading
+
+- matchmaker/save_load/settings_crash_section/game_narrative_tab/game_screen 的 Center(CircularProgressIndicator())
+  → PageLoading(带语义文案)，统一加载态视觉层级
+- 行内/按钮小转圈（SizedBox~20）保留（动作态、布局不同）
+- UI 台账记录加载态归一与边界（随批推送）
+- 回归：flutter analyze lib 0 error；flutter test 1984 项全绿
+
 ### v4.9.0 — 2026-09-18
 
 **📋 变更说明**
