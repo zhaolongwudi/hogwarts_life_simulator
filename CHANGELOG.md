@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.9.0 — 2026-09-18
+
+**📋 变更说明**
+ui(refactor): 空态统一第四批——背包/红娘/好感汇总页空态收编为统一 EmptyPlaceholder
+
+- inventory_screen：暂无物品空态 → EmptyPlaceholder
+- matchmaker_screen：暂无匹配空态 → EmptyPlaceholder
+- affection_aggregate_screen：暂无NPC数据空态 → EmptyPlaceholder
+- memory_screen._emptyHint：内嵌区块型空态且已用 theme token，保留（不作无谓统一）
+- UI 台账勾选三页并记录 memory 保留决策（台账随批推送）
+
 ### v4.8.9 — 2026-09-18
 
 **📋 变更说明**
