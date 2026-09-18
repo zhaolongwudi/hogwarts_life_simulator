@@ -202,6 +202,20 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// P12 宠物小插曲开关：离线日常里「宠物偶尔有自己的生活」层。
+  ///
+  /// 默认开启（生产即用）：养的宠物会在离线回合格外地冒出来，偶尔刷一点羁绊。
+  /// 共享测试夹具 `makeGame` 显式关闭它，避免扰动既有的确定性用例；宠物插曲
+  /// 专项用例（batch41）再开回来。运行时内存态，不持久化。
+  bool _petStoryEnabled = true;
+
+  bool get petStoryEnabled => _petStoryEnabled;
+  set petStoryEnabled(bool value) {
+    if (_petStoryEnabled == value) return;
+    _petStoryEnabled = value;
+    notifyListeners();
+  }
+
   /// 主线剧情模式：按原著时间线章节推进（离线，0 AI 调用）。
   bool get storyMode => _storyMode;
 

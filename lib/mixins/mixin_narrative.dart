@@ -1787,6 +1787,19 @@ $kNarrativeWritingRules
       currentNarrative = '$currentNarrative\n\n$companionScene';
     }
 
+    // ====== P12 宠物小插曲触发 ======
+    // 紧随羁绊之后（宠物是被动的一层小点缀，不像奇遇/羁绊那样有玩家抉择）。
+    // 养的宠物偶尔在离线日常里冒出来：门槛低会重播的日常小插曲 + 亲和跨 25/55/85
+    // 各演一次的羁绊里程碑。不结算回合，也没有选项，只让宠物"被看见"。奇遇/羁绊
+    // 有待办时不抢戏；自带冷却，不会刷屏。
+    String? petScene;
+    if (!confessedThisTurn) {
+      petScene = this.maybeTriggerPetStory();
+    }
+    if (petScene != null && petScene.isNotEmpty) {
+      currentNarrative = '$currentNarrative\n\n$petScene';
+    }
+
     if (!confessedThisTurn) {
       choices = buildFallbackChoices(currentNarrative);
       // 优先让「羁绊最终幕」用它的抉择选项覆盖承接选项（它是更个人的一岀戏），

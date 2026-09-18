@@ -445,6 +445,10 @@ abstract class GameProviderBase extends ChangeNotifier
   /// `羁绊:<arcId>:<idx>`）。返回需要追加进叙事的结局文块；无待抉返回空串。
   String tryResolveCompanionChoice(String action);
 
+  /// P12 宠物小插曲：离线日常里让宠物偶尔冒出来一下（日常小插曲 / 羁绊里程碑）。
+  /// 返回需要追加进叙事的场景文块；无事可演返回空串。见 `GamePetStoryMixin`。
+  String maybeTriggerPetStory();
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====

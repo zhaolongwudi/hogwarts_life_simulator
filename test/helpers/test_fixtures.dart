@@ -23,6 +23,9 @@ Future<GameProvider> makeGame({bool offlineQuickMode = false}) async {
   // P11 隔离：羁绊小剧场同理由默认开改为测试关，不给既有确定性用例添加
   // 噪音；羁绊专项用例（batch40）在各自 fixture 里再打开。
   app.companionArcEnabled = false;
+  // P12 隔离：宠物小插曲同理由默认开改为测试关，不给既有确定性用例添加噪音；
+  // 宠物插曲专项用例（batch41）在各自 fixture 里再打开。
+  app.petStoryEnabled = false;
   final gp = GameProvider(app);
   if (offlineQuickMode) {
     app.setOfflineQuickMode(true); // 无 AI key 也走本地快速模式（模拟真实回合推进）
