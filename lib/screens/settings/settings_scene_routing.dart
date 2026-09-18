@@ -154,7 +154,7 @@ class SettingsSceneRouting extends StatelessWidget {
                       color: selected
                           ? MiuiColors.primary
                           : (hasP
-                              ? const Color(0xFF4B5563)
+                              ? MiuiColors.outline
                               : MiuiColors.disabledOnSurface),
                     ),
                   ),

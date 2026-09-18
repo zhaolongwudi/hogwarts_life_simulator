@@ -38,7 +38,7 @@ class _GringottsTabState extends State<GringottsTab> {
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('🏛 古灵阁巫师银行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFDDB54A))),
+                Text('🏛 古灵阁巫师银行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: MiuiColors.primaryVariant)),
                 SizedBox(height: 6),
                 Text(
                   '由妖精运营的千年银行。存款无利息，但绝对安全——没有人敢抢古灵阁。',

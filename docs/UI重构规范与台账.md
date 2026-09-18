@@ -133,6 +133,15 @@
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
+✅ 首批已收编 2 处**映射表内**裸色（页面级专属主题色不收编，沿用"收编边界"）：
+- `gringotts_tab.dart`：金色标题 `0xFFDDB54A` → `MiuiColors.primaryVariant`
+- `settings_scene_routing.dart`：provider 芯片边线 `0xFF4B5563` → `MiuiColors.outline`
+
+> 其余审计发现的裸色（token 统计的蓝/紫系列色、DeepSeek/SenseNova 品牌色、
+> preset 默认格兰芬多红）均属数据系列色 / 品牌专属 / 语义不对应单一 token，**保留**不入表。
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。
