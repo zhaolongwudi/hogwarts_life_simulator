@@ -1617,7 +1617,16 @@ $kNarrativeWritingRules
     // 在离线玩法下永远失效。
     _updateLocationTracking();
 
+    // ====== P10 奇遇结算（先于叙事组装）======
+    // 上一回合触发的奇遇，在本回合用玩家的「奇遇:<id>:<idx>」动作结算结局。
+    // 结算文本作为本回合的开篇，再接常规叙事——玩家先看到"你决定怎么做
+    // 之后发生了什么"，再去过普通的一天。action 不匹配时混用兜底自动收尾。
+    final hpResolution = this.tryResolveHappenstanceChoice(action);
+
     currentNarrative = generateFallbackNarrative();
+    if (hpResolution.isNotEmpty) {
+      currentNarrative = '$hpResolution\n\n$currentNarrative';
+    }
 
     // ====== 信息密度调节器：离线模式兜底叙事自动增强 ======
     {
@@ -1744,8 +1753,28 @@ $kNarrativeWritingRules
     //      选项侧读到的是过时信息。
     // 现在挪到注入之后，玩家能立刻对这个月刚发生的原著事件做出反应。
     // 表白那回合仍不覆盖——它有自己的「接受/婉拒」专属选项。
+
+    // ====== P10 奇遇触发 ======
+    // 放在所有叙事块之后、兜底选项之前：这是本回合最"贴近你"的一件事，
+    // 场景应当浮在日程上方，并用自己的专属选项覆盖兜底承接选项。表白回合
+    // 不触发（避免和「接受/婉拒」抢注意力）。奇遇自带冷却间隔，不会和节庆
+    // 抢戏也不至于连续刷屏。
+    String? hpScene;
+    if (!confessedThisTurn) {
+      hpScene = this.triggerHappenstance();
+    }
+    if (hpScene != null && hpScene.isNotEmpty) {
+      currentNarrative = '$currentNarrative\n\n$hpScene';
+    }
+
     if (!confessedThisTurn) {
       choices = buildFallbackChoices(currentNarrative);
+      // 若本回合新触发了奇遇，用它的专属选项覆盖兜底选项，
+      // 让玩家下回合真正"决定这场奇遇怎么收场"。
+      final hpChoices = this.happenstanceChoicesForPending();
+      if (hpChoices.isNotEmpty) {
+        choices = hpChoices;
+      }
     }
 
     _maybeRunPeriodicSummary();

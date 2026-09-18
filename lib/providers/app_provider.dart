@@ -150,6 +150,13 @@ class AppProvider extends ChangeNotifier {
   bool _aiDebugLogEnabled = false;
   bool _offlineQuickMode = false;
 
+  /// P10 奇遇开关：离线进度中的「随机发生在我身上的小故事」层。
+  ///
+  /// 默认开启（生产即用）：真实跑局会随机遭遇奇遇。共享测试夹具
+  /// `makeGame` 显式关闭它，避免扰动既有的 1900+ 确定性用例；
+  /// 奇遇专项用例（batch39）再开回来。运行时内存态，不持久化。
+  bool _happenstanceEnabled = true;
+
   /// 主线剧情模式：开局选「主线剧情」时置位。
   ///
   /// 【与 offlineQuickMode 的关系】剧情引擎挂在离线分支上（0 AI 调用是硬前提），
@@ -172,6 +179,14 @@ class AppProvider extends ChangeNotifier {
   /// 无 AI 快速模式：整局用本地模板叙事 + 承接式选项，完全不调用 AI。
   /// 免费额度耗尽 / 未配 Key 时保底可玩，防「商业模式反噬」。
   bool get offlineQuickMode => _offlineQuickMode;
+
+  /// P10 奇遇是否开启。真实跑局默认开；测试夹具关闭以免扰动确定用例。
+  bool get happenstanceEnabled => _happenstanceEnabled;
+  set happenstanceEnabled(bool value) {
+    if (_happenstanceEnabled == value) return;
+    _happenstanceEnabled = value;
+    notifyListeners();
+  }
 
   /// 主线剧情模式：按原著时间线章节推进（离线，0 AI 调用）。
   bool get storyMode => _storyMode;

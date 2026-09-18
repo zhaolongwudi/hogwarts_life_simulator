@@ -417,6 +417,20 @@ const List<ItemDef> kItemCatalog = [
     desc: '银白色的独角兽尾毛，杖芯与魔药的上等原料',
   ),
   ItemDef(
+    id: 'silver_scale',
+    name: '银色鳞片',
+    type: '材料',
+    price: 9,
+    desc: '泛着苦艾味、凉意沁人的银鳞，来自禁林某只迷路的实验体',
+  ),
+  ItemDef(
+    id: 'glowing_cobble',
+    name: '会发光的圆石',
+    type: '道具',
+    price: 5,
+    desc: '靠近就亮、握着就暖的小圆石，夜里放枕边睡得格外安稳',
+  ),
+  ItemDef(
     id: 'dragon_blood',
     name: '龙血',
     type: '材料',

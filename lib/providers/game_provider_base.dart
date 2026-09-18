@@ -415,6 +415,22 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 【seed】同回合用 `turnCount` 播种；传了则测试可控。只被离线回合调用。
   String celebrateFestival({int? seed});
 
+  /// P10 奇遇：结算一场进行中的奇遇并按字幕解析玩家选择（action 形如
+  /// `奇遇:<id>:<idx>`）。返回需要追加进叙事的结局文块；无待结算奇遇返回空串。
+  /// 实现在 `GameHappenstanceMixin`；基类只做抽象声明，让 `GameNarrativeMixin`
+  /// 也能通过 `this` 调用。action 不匹配时自动走中性兜底收尾。
+  String tryResolveHappenstanceChoice(String action, {int? seed});
+
+  /// P10 奇遇：在当前回合触发一「场」奇遇（置 pending + 写死专属选项）。
+  /// 返回需要追加进叙事的场景文块；未触发返回空串。见 `GameHappenstanceMixin`。
+  String triggerHappenstance({int? seed});
+
+  /// P10 奇遇：是否有进行中的未结算奇遇。
+  bool get hasPendingHappenstance;
+
+  /// P10 奇遇：当前进行中奇遇的专属选项（供触发回合覆写兜底选项）。
+  List<GameChoice> happenstanceChoicesForPending();
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====

@@ -16,6 +16,10 @@ Future<GameProvider> makeGame({bool offlineQuickMode = false}) async {
   SharedPreferences.setMockInitialValues({});
   final app = AppProvider();
   await app.loadSettings();
+  // P10 隔离：奇遇默认开、会随机改写 choices，既有的 1900+ 确定性用例全都不
+  // 开它（否则一次随机触发就可能撞坏别处对 choices/叙事的断言）。奇遇专项
+  // 用例在各自 fixture 里再 `setHappenstanceEnabled(true)` 打开。
+  app.happenstanceEnabled = false;
   final gp = GameProvider(app);
   if (offlineQuickMode) {
     app.setOfflineQuickMode(true); // 无 AI key 也走本地快速模式（模拟真实回合推进）

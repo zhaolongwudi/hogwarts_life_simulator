@@ -143,6 +143,15 @@ class WorldState {
   // 读起来连不起来。
   final Map<String, String> festivalCelebratedAt;
 
+  // ====== P10 · 奇遇状态 ======
+  // 奇遇是两段式交互：触发回合把场景写进叙事并给出专属选择，下一回合玩家
+  // 选定后结算结局。这里记录「正在进行的那场奇遇」：pendingHappenstanceId
+  // 为当前待结算奇遇的 id（null = 无）；lastHappenstanceTurn 是最近一次
+  // 触发奇遇的回合号，用于冷却（避免连续几回合都在奇遇）。序列化持久化，
+  // 中途退出再进来仍能接着结算。
+  String? pendingHappenstanceId;
+  int lastHappenstanceTurn;
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -179,6 +188,8 @@ class WorldState {
     this.narrativeHouseGainWeek = 0,
     this.narrativeHouseGainWeekKey = 0,
     Map<String, String>? festivalCelebratedAt,
+    this.pendingHappenstanceId,
+    this.lastHappenstanceTurn = 0,
   })  : time = time ?? GameTime(),
         recentEvents = List<NarrativeEvent>.from(recentEvents ?? <NarrativeEvent>[]),
         recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
@@ -304,6 +315,8 @@ class WorldState {
         'narrative_house_gain_week': narrativeHouseGainWeek,
         'narrative_house_gain_week_key': narrativeHouseGainWeekKey,
         'festival_celebrated_at': festivalCelebratedAt,
+        'pending_happenstance_id': pendingHappenstanceId,
+        'last_happenstance_turn': lastHappenstanceTurn,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -365,6 +378,8 @@ class WorldState {
       festivalCelebratedAt: Map<String, String>.from(
           (json['festival_celebrated_at'] as Map<String, dynamic>? ?? const {})
               .map((k, v) => MapEntry(k.toString(), v.toString()))),
+      pendingHappenstanceId: json['pending_happenstance_id'] as String?,
+      lastHappenstanceTurn: json['last_happenstance_turn'] as int? ?? 0,
     );
   }
 
