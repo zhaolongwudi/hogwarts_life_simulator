@@ -307,7 +307,17 @@ jobs:
           # 先删旧 Release 再重建，保证 Release 里的 APK 永远是本次构建产物
           gh release delete "$TAG" --yes 2>/dev/null || true
 
-          gh release create "$TAG" "${{ env.RENAMED_APK }}" \
+          # 额外生成一个「固定名」资产 HogwartLige-latest.apk 并随 Release 上传。
+          # 原因：版本号资产名（HogwartLige-<ver>.apk）每次构建都变，README 无法用它做
+          # 稳定的「最新版」直链；而 nightly.link 又只在「最近一次运行」有这个 artifact
+          # 时才有效——纯文档/测试/CI 的 push（RELEASE_WORTHY=false）不构建 APK、不上传
+          # nightly artifact，会让 nightly.link 直接 404（实测 run 3f9e140 后首页下载断链）。
+          # Releases 保留最近 5 个、latest 永远存在，故固定名资产 + 稳定直链
+          # releases/latest/download/HogwartLige-latest.apk 恒定有效。
+          STABLE_APK="$(dirname "${{ env.RENAMED_APK }}")/HogwartLige-latest.apk"
+          cp "${{ env.RENAMED_APK }}" "$STABLE_APK"
+
+          gh release create "$TAG" "${{ env.RENAMED_APK }}" "$STABLE_APK" \
             --title "HogwartLige v${VERSION}" \
             --notes-file release_notes.md \
             --latest
@@ -337,11 +347,8 @@ jobs:
         run: |
           echo "## 📱 下载地址" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**GitHub Release 最新版（推荐，永久有效）**" >> $GITHUB_STEP_SUMMARY
-          echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**nightly.link（免登录直接下载最新构建）**" >> $GITHUB_STEP_SUMMARY
-          echo "https://nightly.link/zhaolongwudi/hogwarts_life_simulator/workflows/android-build/main/HogwartLige-nightly.zip" >> $GITHUB_STEP_SUMMARY
+          echo "**GitHub Release 最新版（推荐，永久有效，可直接下载 APK）**" >> $GITHUB_STEP_SUMMARY
+          echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest/download/HogwartLige-latest.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**GitHub Releases（保留最近 5 个版本）**" >> $GITHUB_STEP_SUMMARY
           echo "https://github.com/zhaolongwudi/hogwarts_life_simulator/releases" >> $GITHUB_STEP_SUMMARY

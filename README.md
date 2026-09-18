@@ -71,7 +71,7 @@
 ### 📱 下载 APK（推荐）
 | 来源 | 链接 |
 |------|------|
-| 最新版（自动构建） | [nightly.link](https://nightly.link/zhaolongwudi/hogwarts_life_simulator/workflows/android-build/main/HogwartLige-nightly.zip) |
+| 最新版（自动构建） | [直接下载 APK](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest/download/HogwartLige-latest.apk) |
 | 历史版本 | [GitHub Releases](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases) |
 
 ### 🤖 自行构建
