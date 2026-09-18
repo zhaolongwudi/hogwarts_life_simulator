@@ -150,6 +150,16 @@
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
+✅ 第三批 · 新玩家玩法引导（P9-P14 系统可发现性）：
+- `feature_tile.dart`：`FeatureTile` 新增可选 `onInfo` → 横条形态箭头前渲染小问号按钮
+  （独立触发，不抢主 onTap），供宿主弹"系统是什么 / 怎么玩 / 产出"引导。
+- `game_phone_tab.dart`：为「魔法校园·玩法」5 个系统入口（社团 / 节庆 / 宠物 / 来信 /
+  档案）接入 `onInfo`，新增 `_showSystemGuide` 弹出式说明面板。
+
+> 目的：新玩家一眼知道这些入口是"可持续成长的系统"而非一次点击，契合「所有功能与插件都要清晰」。
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。

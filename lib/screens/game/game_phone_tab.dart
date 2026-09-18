@@ -136,6 +136,14 @@ class PhoneTab extends StatelessWidget {
           subtitle: '决斗 / 魔药 / 魁地奇 / 快讯四社，行动攒积分、逐级晋升',
           color: accent,
           onTap: () => _runCommand('/社团'),
+          onInfo: () => _showSystemGuide(
+            context,
+            '校园社团',
+            '决斗 / 魔药 / 魁地奇 / 快讯四家社团，是你在校园里的长期身份系统。\n\n'
+            '怎么玩：进入后选择一个社团的专属行动，每完成一次行动都会为该社团积累积分。\n\n'
+            '产出：积分累积到门槛会自动晋升社团等级，升阶解锁专属称号、行动与奖励；'
+            '四个社团各有进度，可多方参与。',
+          ),
         ),
         FeatureTile(
           icon: Icons.calendar_month_outlined,
@@ -143,6 +151,13 @@ class PhoneTab extends StatelessWidget {
           subtitle: '查看本学年节庆日历：万圣 / 圣诞 / 舞会…（每学年一次）',
           color: accent,
           onTap: () => _runCommand('/节庆'),
+          onInfo: () => _showSystemGuide(
+            context,
+            '年度节庆',
+            '按学年循环的节庆日历，包括万圣节、圣诞、舞会等特殊节日，每学年一次。\n\n'
+            '怎么玩：查看本学年有哪些节庆与日期，到日子即可进入对应的节庆流程。\n\n'
+            '产出：参与节庆获得专属奖励与特殊剧情、氛围加成；错过要等下一学年。',
+          ),
         ),
         FeatureTile(
           icon: Icons.pets_outlined,
@@ -150,6 +165,13 @@ class PhoneTab extends StatelessWidget {
           subtitle: '查看 / 喂食 / 玩耍 / 训练，亲和跨门槛解锁羁绊小故事',
           color: accent,
           onTap: () => _runCommand('/宠物'),
+          onInfo: () => _showSystemGuide(
+            context,
+            '宠物生活',
+            '你的魔法宠物会陪伴你成长，通过日常照料建立羁绊。\n\n'
+            '怎么玩：查看宠物状态，进行喂食、玩耍、训练等互动，每次互动都会提升亲和度。\n\n'
+            '产出：亲和度跨过特定门槛时，解锁专属的羁绊小故事与成长事件。',
+          ),
         ),
         FeatureTile(
           icon: Icons.mark_email_read_outlined,
@@ -157,6 +179,13 @@ class PhoneTab extends StatelessWidget {
           subtitle: '查看已结识者的来信与待回信',
           color: accent,
           onTap: () => _runCommand('/信'),
+          onInfo: () => _showSystemGuide(
+            context,
+            '猫头鹰来信',
+            '你结识的角色会用猫头鹰给你寄来信件，这是推进关系的重要途径。\n\n'
+            '怎么玩：查看收到的来信与待回信列表，及时回复对方。\n\n'
+            '产出：回信推进与对方的关系、触发后续剧情与好感变化。',
+          ),
         ),
         FeatureTile(
           icon: Icons.book_outlined,
@@ -164,8 +193,38 @@ class PhoneTab extends StatelessWidget {
           subtitle: 'NPC 档案与回忆进度一览',
           color: accent,
           onTap: () => _runCommand('/档案'),
+          onInfo: () => _showSystemGuide(
+            context,
+            '角色档案',
+            '记录你遇到过的所有 NPC 的资料、关系与回忆收集进度。\n\n'
+            '怎么玩：浏览已结识角色的档案，查看他对你的态度与你们一起经历的回忆。\n\n'
+            '产出：看清人物关系网络，发现值得深交／攻略的对象。',
+          ),
         ),
       ],
+    );
+  }
+
+  /// 新玩家系统引导：为玩法 tile 的问号入口弹出的说明面板。
+  void _showSystemGuide(BuildContext context, String title, String body) {
+    showMiuixDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.menu_book_outlined, size: 22, color: MiuiColors.primaryVariant),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title)),
+          ],
+        ),
+        content: Text(body, style: const TextStyle(fontSize: 13.5, height: 1.55)),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
     );
   }
 

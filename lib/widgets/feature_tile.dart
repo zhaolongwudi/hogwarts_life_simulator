@@ -21,6 +21,7 @@ class FeatureTile extends StatelessWidget {
     this.color = MiuiColors.primary,
     this.coloredBlock = true,
     this.compact = false,
+    this.onInfo,
   });
 
   /// 入口图标
@@ -39,6 +40,10 @@ class FeatureTile extends StatelessWidget {
   final VoidCallback? onTap;
   /// 宫格式（紧凑）：仅图标 + 名，去掉说明与箭头
   final bool compact;
+
+  /// 可选的「这是什么 / 怎么玩」说明回调：非空时在箭头前渲染一个小问号按钮，
+  /// 点击（不触发主 onTap）由宿主弹出系统引导。用于新玩家识别玩法系统。
+  final VoidCallback? onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +113,25 @@ class FeatureTile extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+          if (onInfo != null)
+            Semantics(
+              button: true,
+              label: '查看说明',
+              child: InkWell(
+                onTap: onInfo,
+                customBorder: const CircleBorder(),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.help_outline,
+                    size: 18,
+                    color: MiuiColors.onSurfaceVariantActions,
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(width: 2),
           const Icon(
             Icons.chevron_right,
             size: 20,
