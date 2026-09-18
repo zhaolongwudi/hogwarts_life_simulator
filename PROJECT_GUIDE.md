@@ -3,7 +3,7 @@
 > **给未来的 AI 助手 / 开发者的一份"维修导航"**。
 > 读完这份文档，你应当能在 5 分钟内定位任何问题的相关文件，
 > 并避开本项目最常踩的坑（源码扫描测试、mixin 组合、版本 CI 机制）。
-> 项目规模：约 5.5 万行 Dart，133+ 文件。当前版本 v3.5.x。
+> 项目规模：约 5.5 万行 Dart，133+ 文件。当前版本 v4.8.4。
 
 ---
 
@@ -15,7 +15,7 @@
 | 世界观 | 哈利·波特（含 5 个可选时代） |
 | 核心循环 | 玩家自由输入 → AI 生成叙事 → 解析状态变化 → 时间推进 → 世界演化 |
 | 技术栈 | Flutter 3.16+ / Dart 3.2+ / Provider / JSON 存档 + secure_storage |
-| 跑测试 | `flutter test`（当前 1254+ 项） |
+| 跑测试 | `flutter test`（当前 1984+ 项） |
 | 跑分析 | `flutter analyze`（门禁：0 error） |
 
 **入口文件**：`lib/main.dart`（主题定义在 `_buildDarkTheme()`）→ `lib/screens/home_screen.dart`（主页）→ `lib/screens/intro_screen.dart`（13 轮角色创建）→ `lib/screens/game_screen.dart`（主游戏）。
@@ -42,6 +42,12 @@ lib/
 │   ├── house_cup_data.dart    #   学院杯
 │   ├── legacy_data.dart       #   传承局（下一代）
 │   ├── ending_review_data.dart#   人生终章报告（EndingFacts/Epithet）
+│   ├── festival_data.dart      #   P9 年度节庆（六节庆数据表）
+│   ├── happenstance_data.dart  #   P10 奇遇库（8 场 × 多结局）
+│   ├── companion_arc_data.dart #   P11 羁绊小剧场（赫敏/罗恩/哈利支线）
+│   ├── pet_story_data.dart     #   P12 宠物小插曲（日常/里程碑）
+│   ├── letter_data.dart        #   P13 猫头鹰来信库
+│   ├── club_data.dart          #   P14 校园社团（四社五阶成长/加成）
 │   └── ...（cg/collectible/goal/wand/castle/worldline/npc_schedule/monthly_event…）
 ├── models/       (5 文件)     # 状态模型（JSON 序列化，老档兼容）
 │   ├── player.dart            #   ★ 玩家全量状态（属性/声望/好感记录/作弊标记/死亡/职业…）
@@ -50,23 +56,30 @@ lib/
 │   ├── game_systems.dart      #   系统结构（GameChoice 等）
 │   └── long_term_memory.dart  #   ★ 长期记忆（KeyFactRecord，T0 永不遗忘层）
 ├── providers/    (3 文件)     # 状态管理与游戏主逻辑组装
-│   ├── game_provider.dart     #   ★ GameProvider = GameProviderBase + 14 个 mixin
+│   ├── game_provider.dart     #   ★ GameProvider = GameProviderBase + 21 个 mixin
 │   ├── game_provider_base.dart#   ★ 抽象基类 + 跨 mixin 调用声明（新跨 mixin 方法在此声明）
 │   └── app_provider.dart      #   应用级状态（API Key/游戏是否开始）
-├── mixins/       (14 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
-│   ├── game_provider_mixins.dart  # barrel：export 所有 mixin（新增 mixin 记得加 export）
+├── mixins/       (21 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
-│   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice（输入判定/指令拦截/AI 调用/并发守卫）
+│   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
 │   ├── mixin_commands.dart    #   ★ 全部指令注册 + _handleXxx 实现（60+ 条）
 │   ├── mixin_response.dart    #   ★ AI 响应解析（parseNarrativeOnly/清洗链/选项校验 BUG-H）
 │   ├── mixin_response_affection.dart # 好感变化提取（正则 → 散行 → 关键词回退）
 │   ├── mixin_response_choices.dart   # 选项生成/清洗
 │   ├── mixin_relations.dart   #   关系/NPC 生成/好感结算/打工
 │   ├── mixin_systems.dart     #   时间推进/学年/事件锚点/学院杯/职业年结/考试结算
-│   ├── mixin_play.dart        #   行动结算（决斗/禁林/使用物品/时间快进）
+│   ├── mixin_play.dart        #   行动结算 + 玩法意图路由（tryRouteGameplayIntent）
 │   ├── mixin_animagus.dart    #   阿尼马格斯
 │   ├── mixin_career.dart      #   毕业后职业
 │   ├── mixin_death.dart       #   死亡判定与终章
+│   ├── mixin_story_freeform.dart # 剧情模式（原著七部自由游历）
+│   ├── mixin_offline_consequences.dart # P6 本地行动后果引擎
+│   ├── mixin_festival.dart    #   P9 年度节庆
+│   ├── mixin_happenstance.dart#   P10 奇遇
+│   ├── mixin_companion_arc.dart # P11 羁绊小剧场
+│   ├── mixin_pet_story.dart   #   P12 宠物小插曲
+│   ├── mixin_letter.dart      #   P13 猫头鹰来信
+│   ├── mixin_club.dart        #   P14 校园社团
 │   └── mixin_narrative_continuity.dart # 叙事连续性/承接
 ├── prompts/      (4 文件)     # Prompt 模板（narrative/choice/summary）
 ├── services/     (7 文件)     # 外部依赖
@@ -96,12 +109,12 @@ lib/
 ## 3. 核心架构约定（改代码前必读）
 
 ### 3.1 Mixin 组合模式（最重要）
-`GameProvider` 通过 `with` 组合了 **14 个 mixin**（见 `lib/providers/game_provider.dart`）。
+`GameProvider` 通过 `with` 组合了 **21 个 mixin**（见 `lib/providers/game_provider.dart`）。
 - **跨 mixin 调用**：必须在 `game_provider_base.dart` 声明抽象方法，实现放具体 mixin。
 - **新增领域系统**（如新的长期玩法）标准流程：
   1. `lib/data/xxx_data.dart` 建数据表
   2. `lib/mixins/mixin_xxx.dart` 建逻辑（`mixin GameXxxMixin on GameProviderBase`）
-  3. `lib/mixins/game_provider_mixins.dart` **加 export**（漏了会编译错）
+  3. `lib/providers/game_provider.dart` 的 **imports + with 列表**加入（barrel 已删除，直接按需导入）
   4. `lib/providers/game_provider.dart` 的 with 列表加入
   5. 需要 Player 存状态 → `player.dart` 加字段 + 构造参数 + toJson + fromJson（**必须有老档缺省值**）
   6. 需要玩家入口 → 在 `mixin_commands.dart` 注册 `CommandDef`（指令中心面板自动出现）
@@ -183,7 +196,7 @@ lib/
 | 存档坏了/读不了 | `save_service.dart`（备份/回滚）→ 模型 fromJson 缺省值 |
 | 颜色不对/对比度低 | `ui_helpers.dart` AppColors → 页面硬编码色值（收敛中） |
 | 死亡/职业/阿尼马格斯/守护神相关 | 对应 `mixin_death/career/animagus.dart` + `data/` 表 |
-| git 握手失败 | `.github/GITHUB_HANDSHAKE_SOLUTION.md`（§8 沙箱恢复三板斧） |
+| 离线「世界在动」各层（节庆/奇遇/羁绊/宠物/来信/社团） | 对应 `mixin_festival/happenstance/companion_arc/pet_story/letter/club.dart` + `data/` 表；叙事拼接与互斥顺序见 `mixin_narrative.dart` |
 | 版本号/CHANGELOG 乱 | §5：pubspec 唯一来源，勿手动写标题 |
 
 ---
@@ -193,7 +206,7 @@ lib/
 | 文件 | 一句话职责 |
 |---|---|
 | `lib/main.dart` | 入口 + 深色主题 |
-| `lib/providers/game_provider.dart` | 14 mixin 组装的主游戏 Provider |
+| `lib/providers/game_provider.dart` | 21 mixin 组装的主游戏 Provider |
 | `lib/providers/game_provider_base.dart` | 抽象基类 + 跨 mixin 调用声明 |
 | `lib/mixins/mixin_narrative.dart` | 主叙事循环（输入判定/并发守卫/AI 调用） |
 | `lib/mixins/mixin_commands.dart` | 60+ 指令注册与实现 |
@@ -206,8 +219,8 @@ lib/
 | `lib/services/ai_router.dart` | AI 路由（多 key/熔断/限流） |
 | `lib/services/save_service.dart` | 存档/迁移/备份 |
 | `lib/data/event_anchors.dart` | 时代事件锚点 |
-| `test/new_systems_test.dart` | 新系统测试的参考风格 |
-| `.github/GITHUB_HANDSHAKE_SOLUTION.md` | git 通道故障恢复 |
+| `.github/archive/框架对照维护台账.md` | 各 P 阶段需求/实现状态对照台账（维护总参考） |
+| `docs/工作思路与后续规划.md` | P1-P14 工作思路 + 后续内容规划（跨阶段运维参考） |
 
 ---
 
