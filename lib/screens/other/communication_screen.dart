@@ -7,6 +7,7 @@ import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../widgets/miuix_overlays.dart';
+import '../../widgets/loading_placeholder.dart';
 
 // ==================== 魔法通讯 ====================
 class CommunicationScreen extends StatefulWidget {
@@ -125,17 +126,10 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.phone_in_talk, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('还没有联系人', style: TextStyle(fontSize: 16)),
-          const SizedBox(height: 8),
-          Text('开始游戏后会自动添加NPC', style: TextStyle(fontSize: 14, color: Colors.grey.withValues(alpha: 0.7))),
-        ],
-      ),
+    return const EmptyPlaceholder(
+      icon: Icons.phone_in_talk,
+      title: '还没有联系人',
+      subtitle: '开始游戏后会自动添加NPC',
     );
   }
 

@@ -73,7 +73,7 @@
 | `game/settings_tab` | ✅ 已复用单一 SettingsBody 并拆分 10+ 子组件，无需大改 |
 | `command_center_panel` | 已较清晰，仅统一组件替换 | ⬜ |
 | `game/top_bar / bottom_input` | 状态摘要与快捷 | ⬜ |
-| `other/communication/forum/diary` 等 | ✅ diary 空态→统一 EmptyPlaceholder（消 Colors.grey 裸色）；communication/forum/… 待续 |
+| `other/communication/forum/diary` 等 | ✅ diary/communication/forum 空态统一为 EmptyPlaceholder |
 | `shop/* , settings/* , world_map/*` | 字体/色板统一 | ⬜ |
 | 其余 20+ 低频页 | 统一组件 + 色值收敛 | ⬜ |
 
@@ -88,6 +88,11 @@
 
 > 规则：新代码只用 `MiuiColors`；存量 `AppColors`/裸色随逐页打磨替换为右侧权威 token。
 > 凡值不同（标注近似→）替换时以右侧值为准，保证全局一致。
+>
+> **收编边界（重要）**：映射表只适用于**与全局语义同类**的裸色（危险红 / 成功绿 / 金系 /
+> 文字灰阶 / 画布背景）。**页面级专属主题色不收编**——如 `game_play_screens.dart` 的蓝紫
+> 深浅体系（`#1A1A2E` 底 / `#5A5A7A`~`#B0B0C8` 文字 / `#2A2A4A` 填充）是各面板自洽的主题
+> 配色，机械收编会把页面从蓝紫改成灰金、等于推倒重做，违背「精修不推倒」原则，故保留。
 
 | AppColors 成员 | 值 | → MiuiColors 权威 token | 说明 |
 |---|---|---|---|

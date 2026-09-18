@@ -7,6 +7,7 @@ import '../../providers/game_provider.dart';
 import '../../models/player.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../widgets/miuix_overlays.dart';
+import '../../widgets/loading_placeholder.dart';
 
 // ==================== 魔法论坛 ====================
 //
@@ -231,7 +232,11 @@ class _ForumBody extends StatelessWidget {
     final selected = selectedCategory;
 
     if (player == null) {
-      return const Center(child: Text('还没有开始游戏'));
+      return const EmptyPlaceholder(
+        icon: Icons.login,
+        title: '还没有开始游戏',
+        subtitle: '创建好角色后，社团的传闻与帖子会出现在这里',
+      );
     }
 
     final rumors = player.rumors;
@@ -308,24 +313,10 @@ class _ForumBody extends StatelessWidget {
   }
 
   Widget _emptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.forum, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('这里还很安静'),
-          const SizedBox(height: 6),
-          Text(
-            '做点值得被议论的事，传闻会出现在这里；\n也可以点右下角自己发一帖。',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-          ),
-        ],
-      ),
+    return const EmptyPlaceholder(
+      icon: Icons.forum,
+      title: '这里还很安静',
+      subtitle: '做点值得被议论的事，传闻会出现在这里；\n也可以点右下角自己发一帖。',
     );
   }
 }
