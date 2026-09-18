@@ -5,6 +5,7 @@ import '../../data/item_data.dart';
 import 'inventory_screen.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../utils/ui_helpers.dart';
+import '../../widgets/loading_placeholder.dart';
 
 class _OwnedBadge extends StatelessWidget {
   final String itemName;
@@ -128,20 +129,10 @@ class _ShopTabState extends State<ShopTab> {
     }
     final items = _sellItems();
     if (items.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.inventory_2_outlined, size: 40, color: MiuiColors.onSurfaceVariantActions),
-              SizedBox(height: 10),
-              Text('背包里没有可出售的东西。\n去禁林采集点材料，或者上课得点奖励。',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: MiuiColors.onSurfaceVariantSummary)),
-            ],
-          ),
-        ),
+      return const EmptyPlaceholder(
+        icon: Icons.inventory_2_outlined,
+        title: '背包里没有可出售的东西',
+        subtitle: '去禁林采集点材料，或者上课得点奖励',
       );
     }
     return _buildShopGrid(items, false);

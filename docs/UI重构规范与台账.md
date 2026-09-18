@@ -119,6 +119,20 @@
 | `border` | `#30363D` | `outline` `#43434F` | 近似→统一描边 |
 | `getHouseColor` | 裸色 | `MiuiColors.gryffindor/slytherin/ravenclaw/hufflepuff/houseNeutral` | 学院色已收敛至 Miui |
 
+## 四·附·C：长尾子页空态收口（EmptyPlaceholder）
+
+> 承接「四·附·B」，逐批把长尾子页**独立成区的空态**（整页/整块主体）收口到
+> `EmptyPlaceholder`。沿用收编边界：**卡片/区块内的一行 hint**（如 parallel_world
+> 的 `_emptyCard`、memory 的 `_emptyHint`、token 面板的「暂无数据」、好感明细
+> 「暂无变动记录」）为内嵌区块空态且已用 theme token，保留不强行套整页空态。
+
+✅ 首批已收编 3 处独立空态：
+- `shop_tab.dart`（出售页全空 → 背包没有可出售物）
+- `story_history_screen.dart`（整页空 → 暂无剧情记录）
+- `job_screen.dart`（岗位列表空 → 暂无岗位 / 搜索无匹配，按关键词切换图标文案）
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。

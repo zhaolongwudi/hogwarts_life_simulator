@@ -8,6 +8,7 @@ import '../data/locations.dart';
 import '../theme/miuix_tokens.dart';
 import '../utils/user_feedback.dart';
 import '../widgets/miuix_overlays.dart';
+import '../widgets/loading_placeholder.dart';
 
 class JobScreen extends StatefulWidget {
   const JobScreen({super.key});
@@ -340,23 +341,12 @@ class _JobScreenState extends State<JobScreen> {
       builder: (context, kw, _) {
         final visible = _visibleJobs;
         if (visible.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(kw.isEmpty ? Icons.work_off : Icons.search_off,
-                    size: 64, color: Theme.of(context).textTheme.bodyMedium!.color),
-                const SizedBox(height: 12),
-                Text(kw.isEmpty ? '暂无岗位' : '没有匹配「$kw」的岗位',
-                    style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium!.color)),
-                const SizedBox(height: 8),
-                Text(kw.isEmpty
-                    ? '让 AI 根据你现在的位置、属性和剧情生成工作机会'
-                    : '换个关键词，或点右上角的 ✕ 清空',
-                    style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
-                    textAlign: TextAlign.center),
-              ],
-            ),
+          return EmptyPlaceholder(
+            icon: kw.isEmpty ? Icons.work_off : Icons.search_off,
+            title: kw.isEmpty ? '暂无岗位' : '没有匹配「$kw」的岗位',
+            subtitle: kw.isEmpty
+                ? '让 AI 根据你现在的位置、属性和剧情生成工作机会'
+                : '换个关键词，或点右上角的 ✕ 清空',
           );
         }
 

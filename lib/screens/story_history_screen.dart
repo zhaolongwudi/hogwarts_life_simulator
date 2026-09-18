@@ -7,6 +7,7 @@ import '../widgets/scaled_rich_text.dart';
 import '../theme/miuix_tokens.dart';
 import '../widgets/miui_magic_backdrop.dart';
 import '../widgets/miuix_components.dart';
+import '../widgets/loading_placeholder.dart';
 
 /// 剧情历史回放界面：查看所有已保存的剧情记录，支持翻页和分享
 class StoryHistoryScreen extends StatefulWidget {
@@ -37,19 +38,10 @@ class _StoryHistoryScreenState extends State<StoryHistoryScreen> {
         appBar: AppBar(
           title: const Text('剧情历史'),
         ),
-        body: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.menu_book_outlined, size: 64, color: MiuiColors.onSurfaceVariantSummary),
-              SizedBox(height: 16),
-              Text(
-                '暂无剧情记录\n开始游戏后会自动保存每回合剧情',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: MiuiColors.onSurfaceVariantSummary, fontSize: 14),
-              ),
-            ],
-          ),
+        body: const EmptyPlaceholder(
+          icon: Icons.menu_book_outlined,
+          title: '暂无剧情记录',
+          subtitle: '开始游戏后会自动保存每回合剧情',
         ),
       );
     }
