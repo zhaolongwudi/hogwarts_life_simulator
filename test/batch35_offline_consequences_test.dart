@@ -314,14 +314,20 @@ void main() {
     });
 
     test('确定性：同一行动同 seed 两局姿态一致', () async {
+      // 开局特质随机抽取（_rollStartingTraits 用未播种 Random）会带来不同的
+      // 属性加成，直接比较两局比会偶发失败（CI 复现 64 vs 52，差恰为 12）。
+      // 本测试想验证的是「同行动同 seed ⇒ 同结果」，所以先把两局的比较属性
+      // 都归一化到同一基线，剔除随机特质这一无关变量，再比对确定性结果。
       final gp = await makeProvider();
       gp.player!.attributes['magic_control'] = 50;
+      gp.player!.attributes['spell_understanding'] = 50;
       gp.settleOfflineConsequences('练习咒语', seed: 20);
       final mc1 = gp.player!.attributes['magic_control']!;
       final su1 = gp.player!.attributes['spell_understanding']!;
 
       final gp2 = await makeProvider();
       gp2.player!.attributes['magic_control'] = 50;
+      gp2.player!.attributes['spell_understanding'] = 50;
       gp2.settleOfflineConsequences('练习咒语', seed: 20);
       expect(gp2.player!.attributes['magic_control']!, mc1);
       expect(gp2.player!.attributes['spell_understanding']!, su1);
