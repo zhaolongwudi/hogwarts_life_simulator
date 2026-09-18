@@ -5,6 +5,7 @@ import '../../models/player.dart';
 import '../../providers/game_provider.dart';
 import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/loading_placeholder.dart';
 
 // ==================== 姻缘一线牵红娘 ====================
 class MatchmakerScreen extends StatefulWidget {
@@ -153,19 +154,10 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.favorite_border,
-              size: 64, color: Colors.grey.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('暂无匹配'),
-          const SizedBox(height: 8),
-          Text('继续游戏以结识更多NPC',
-              style: TextStyle(color: Colors.grey.withValues(alpha: 0.7))),
-        ],
-      ),
+    return const EmptyPlaceholder(
+      icon: Icons.favorite_border,
+      title: '暂无匹配',
+      subtitle: '继续游戏以结识更多NPC',
     );
   }
 

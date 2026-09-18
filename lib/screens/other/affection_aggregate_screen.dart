@@ -5,6 +5,7 @@ import '../../models/npc.dart';
 import '../../providers/game_provider.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/npc_avatar.dart';
+import '../../widgets/loading_placeholder.dart';
 
 /// 好感度汇总（排行榜 + 展开看单个 NPC 的明细）。
 ///
@@ -38,7 +39,11 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
         elevation: 0,
       ),
       body: npcs.isEmpty
-          ? const Center(child: Text('暂无NPC数据'))
+          ? const EmptyPlaceholder(
+              icon: Icons.favorite,
+              title: '暂无NPC数据',
+              subtitle: '先进入游戏并结识NPC',
+            )
           : Column(
               children: [
                 _buildTopChart(npcs),

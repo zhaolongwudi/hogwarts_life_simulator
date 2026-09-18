@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/game_provider.dart';
 import '../../data/item_data.dart';
+import '../../widgets/loading_placeholder.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -239,15 +240,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           Expanded(
             child: filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.inventory_2, size: 64, color: Theme.of(context).textTheme.bodyMedium!.color),
-                        const SizedBox(height: 12),
-                        Text('暂无物品', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium!.color)),
-                      ],
-                    ),
+                ? const EmptyPlaceholder(
+                    icon: Icons.inventory_2,
+                    title: '暂无物品',
+                    subtitle: '去商店逛逛，或完成委托获得道具',
                   )
                 : GridView.builder(
                     padding: const EdgeInsets.all(16),

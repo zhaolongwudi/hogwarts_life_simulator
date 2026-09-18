@@ -73,7 +73,7 @@
 | `game/settings_tab` | ✅ 已复用单一 SettingsBody 并拆分 10+ 子组件，无需大改 |
 | `command_center_panel` | 已较清晰，仅统一组件替换 | ⬜ |
 | `game/top_bar / bottom_input` | 状态摘要与快捷 | ⬜ |
-| `other/communication/forum/diary` 等 | ✅ diary/communication/forum 空态统一为 EmptyPlaceholder |
+| `other/communication/forum/diary` 等 | ✅ diary/communication/forum/matchmaker/affection/inventory 空态→EmptyPlaceholder；memory 的 `_emptyHint` 为内嵌区块空态且已用 theme token，保留 |
 | `shop/* , settings/* , world_map/*` | 字体/色板统一 | ⬜ |
 | 其余 20+ 低频页 | 统一组件 + 色值收敛 | ⬜ |
 
