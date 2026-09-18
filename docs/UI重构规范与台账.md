@@ -84,6 +84,13 @@
 > `lib/widgets/loading_placeholder.dart`（PageLoading/EmptyPlaceholder）。
 > `AppColors↔Miui 色板收敛`（上节 A）本轮未做——改动面广、回归风险高，留到信息层级批次同步推进。
 
+## 四·附·B：加载态归一（PageLoading）
+✅ 已收编 5 处整块居中 `Center(CircularProgressIndicator())` → `PageLoading`：
+`matchmaker`（正在为你牵线…）、`save_load`（正在读取存档…）、
+`settings_crash_section`（正在加载崩溃报告…）、`game_narrative_tab`（加载角色档案…）、
+`game_screen`（正在加载存档...）。
+边界：按钮/行内小转圈（`SizedBox(~20)`）为动作态、布局不同，**不归并**保留。
+
 ## 四·附：色板收编映射表（AppColors → MiuiColors 单一来源）
 
 > 规则：新代码只用 `MiuiColors`；存量 `AppColors`/裸色随逐页打磨替换为右侧权威 token。

@@ -4,6 +4,7 @@ import '../../providers/game_provider.dart';
 import '../../providers/app_provider.dart';
 import '../../narrative/narrative_source_gate.dart';
 import '../../models/player.dart';
+import '../../widgets/loading_placeholder.dart';
 import '../../models/world_state.dart';
 import '../world_map_screen.dart';
 import '../../utils/story_text_renderer.dart';
@@ -1073,7 +1074,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final player = gp.player;
 
     if (player == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const PageLoading(title: '加载角色档案…');
     }
 
     return Column(

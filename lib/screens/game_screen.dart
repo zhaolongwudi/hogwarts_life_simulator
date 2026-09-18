@@ -6,6 +6,7 @@ import '../providers/game_provider.dart';
 import '../providers/app_provider.dart';
 import '../models/game_systems.dart';
 import '../theme/miuix_tokens.dart';
+import '../widgets/loading_placeholder.dart';
 import '../widgets/liquid_glass_nav_bar.dart';
 import '../widgets/miui_magic_backdrop.dart';
 import 'game/game_narrative_tab.dart';
@@ -104,16 +105,7 @@ class _GameScreenState extends State<GameScreen> {
 
     if (gp.isInitializing) {
       return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在加载存档...', style: TextStyle(color: MiuiColors.onSurfaceVariantSummary)),
-            ],
-          ),
-        ),
+        body: PageLoading(title: '正在加载存档...'),
       );
     }
 

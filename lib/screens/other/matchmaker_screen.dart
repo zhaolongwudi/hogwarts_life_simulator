@@ -133,7 +133,7 @@ class _MatchmakerScreenState extends State<MatchmakerScreen> {
         ],
       ),
       body: _isAnalyzing
-          ? const Center(child: CircularProgressIndicator())
+          ? const PageLoading(title: '正在为你牵线…')
           : Column(
               children: [
                 _buildHeader(),

@@ -4,6 +4,7 @@ import '../../utils/crash_logger.dart';
 import '../../utils/ai_debug_logger.dart';
 import '../../utils/ui_helpers.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/loading_placeholder.dart';
 import '../../widgets/miuix_overlays.dart';
 
 class SettingsCrashSection extends StatefulWidget {
@@ -397,7 +398,7 @@ class _LogViewerDialogState extends State<LogViewerDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const PageLoading(title: '正在加载崩溃报告…')
                   : SingleChildScrollView(
                       child: Container(
                         padding: const EdgeInsets.all(8),

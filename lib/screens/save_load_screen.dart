@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../router/app_routes.dart';
+import '../widgets/loading_placeholder.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
 import '../utils/ui_helpers.dart';
@@ -232,7 +233,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 
   Widget _buildLoadPanel() {
     if (_isLoading && _saves.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PageLoading(title: '正在读取存档…');
     }
     if (_saves.isEmpty) {
       return MiuiEmptyState(
