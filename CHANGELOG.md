@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.8.8 — 2026-09-18
+
+**📋 变更说明**
+ui(refactor): 长尾页空态统一——日记页手记空态收编为统一 EmptyPlaceholder
+
+- diary_screen 手记空态：自写 Column + Colors.grey 裸色 → 统一 EmptyPlaceholder（Miui token，消除色板漂移）
+- EmptyPlaceholder 组件首次落地使用
+- UI 台账勾选 diary ✅；memory/forum 等经评估已完善不作无谓改动
+- 回归：flutter analyze 0 error；flutter test 1984 项全绿
+
 ### v4.8.7 — 2026-09-18
 
 **📋 变更说明**
