@@ -135,6 +135,14 @@ class WorldState {
   int narrativeHouseGainWeek; // 本周已通过叙事关键词加的日常分
   int narrativeHouseGainWeekKey; // 记账的游戏周序号，跨周清零
 
+  // ====== P9 · 年度节庆记录 ======
+  // 记录哪几个节庆在这个学年已经庆祝过（节日 id → 学年名如 "1991-1992"）。
+  // 节庆按日期触发、**每学年只庆祝一次**：跨年后下一学年同一天还能再庆祝。
+  // 用学年名（而非绝对天）做键是因为元旦（1月1）等落在学期中段的节日，
+  // 如果按 GameTime.year 去重，12月24 和 1月1 会被当成不同学年各庆祝一次，
+  // 读起来连不起来。
+  final Map<String, String> festivalCelebratedAt;
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -170,6 +178,7 @@ class WorldState {
     this.narrativeHouseGainDayKey = 0,
     this.narrativeHouseGainWeek = 0,
     this.narrativeHouseGainWeekKey = 0,
+    Map<String, String>? festivalCelebratedAt,
   })  : time = time ?? GameTime(),
         recentEvents = List<NarrativeEvent>.from(recentEvents ?? <NarrativeEvent>[]),
         recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
@@ -189,7 +198,9 @@ class WorldState {
         lastNarrativeAnchor = Map<String, String>.from(lastNarrativeAnchor ?? const {}),
         houseCupYearly = Map<String, int>.from(houseCupYearly ?? const {}),
         houseCupYearHistory =
-            Map<String, String>.from(houseCupYearHistory ?? const {});
+            Map<String, String>.from(houseCupYearHistory ?? const {}),
+        festivalCelebratedAt =
+            Map<String, String>.from(festivalCelebratedAt ?? const {});
 
   /// 当前时间戳字符串
   String get timestamp => time.format();
@@ -292,6 +303,7 @@ class WorldState {
         'narrative_house_gain_day_key': narrativeHouseGainDayKey,
         'narrative_house_gain_week': narrativeHouseGainWeek,
         'narrative_house_gain_week_key': narrativeHouseGainWeekKey,
+        'festival_celebrated_at': festivalCelebratedAt,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -350,6 +362,9 @@ class WorldState {
       narrativeHouseGainDayKey: json['narrative_house_gain_day_key'] as int? ?? 0,
       narrativeHouseGainWeek: json['narrative_house_gain_week'] as int? ?? 0,
       narrativeHouseGainWeekKey: json['narrative_house_gain_week_key'] as int? ?? 0,
+      festivalCelebratedAt: Map<String, String>.from(
+          (json['festival_celebrated_at'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k.toString(), v.toString()))),
     );
   }
 

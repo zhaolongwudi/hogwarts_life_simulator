@@ -23,6 +23,7 @@ import '../data/course_data.dart';
 import '../data/patronus_data.dart';
 import '../data/attribute_data.dart';
 import '../data/offline_extras_data.dart';
+import '../data/festival_data.dart';
 import '../models/long_term_memory.dart';
 import '../models/player.dart';
 import '../models/story_progress.dart';
@@ -1325,6 +1326,19 @@ mixin GameCommandsMixin on GameProviderBase {
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m.currentNarrative = m.formatCollectedMemories();
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '节庆',
+        aliases: ['节日', '庆典'],
+        group: '学业&成长',
+        helpText: '霍格沃茨年度节庆日历：本学年已庆祝/待庆祝的节日（/节庆）',
+        panel: true,
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m.currentNarrative = m.formatFestivalCalendar();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -3289,6 +3303,42 @@ $knownRegions
     if (pendingCount > 0) {
       buf.writeln('\n—— 还有 $pendingCount 段回忆等待解锁 ——');
       buf.writeln('多和朋友们聊天，好感达标后他们会主动讲起往事。');
+    }
+    return buf.toString();
+  }
+
+  /// P9：/节庆 —— 霍格沃茨年度节庆日历。
+  /// 列全年节日，标注「已庆祝 / 待庆祝 / 今年已过」，并单独提示下一个待庆祝的节日。
+  String formatFestivalCalendar() {
+    final ws = worldState;
+    final year = ws.academicYear;
+    final todayKey = ws.time.month * 100 + ws.time.day;
+    final buf = StringBuffer('【霍格沃茨节庆 · 本学年 $year】\n');
+    buf.writeln('这些日子年复一年地降临，每个学年只能庆祝一次。');
+    FestivalDef? next;
+    var celebratedCount = 0;
+    for (final f in kFestivals) {
+      final celebrated = ws.festivalCelebratedAt[f.id] == year;
+      if (celebrated) {
+        celebratedCount++;
+      }
+      final String tag;
+      if (celebrated) {
+        tag = '已庆祝';
+      } else if (f.dateKey > todayKey) {
+        tag = '待庆祝';
+        if (next == null) next = f;
+      } else {
+        tag = '今年已过';
+      }
+      buf.writeln('\n${celebrated ? '✅' : '⬜'} ${f.dateLabel} · ${f.name}（$tag）');
+    }
+    buf.writeln('\n\n—— 本学年已庆祝 $celebratedCount/${kFestivals.length} ——');
+    if (next != null) {
+      buf.writeln('下一个节日：${next.dateLabel} · ${next.name}');
+      buf.writeln('到那天做点什么，会有好收获。');
+    } else {
+      buf.writeln('本学年该过的节庆都过完了，期待下一个学年。');
     }
     return buf.toString();
   }

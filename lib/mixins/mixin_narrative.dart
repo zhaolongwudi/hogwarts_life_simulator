@@ -1692,6 +1692,17 @@ $kNarrativeWritingRules
       }
     }
 
+    // ====== P9 年度节庆 ======
+    // 放在世界事件补齐之后、原著节点注入之前：节日是「今天恰好是特别的日子」，
+    // 应当紧接在氛围与月度事件后出现，再让原著大事续在后面。当天命中且本学年
+    // 尚未庆祝过时，追加一段节庆文块并结算奖励、记档去重（详见 mixin_festival）。
+    {
+      final festivalBlock = this.celebrateFestival();
+      if (festivalBlock.isNotEmpty) {
+        currentNarrative = '$currentNarrative\n\n$festivalBlock';
+      }
+    }
+
     // ====== 原著剧情线注入（离线叙事升级）======
     // 离线模式以前只有「地点氛围句 + 学年日历事件」，读起来像在原地打转：
     // 世界不会因为处于 1993 年而提到小天狼星越狱，也不会因为是 1995 年

@@ -408,6 +408,13 @@ abstract class GameProviderBase extends ChangeNotifier
     int? seed,
   });
 
+  /// P9 年度节庆：结算当天命中且本学年未庆祝的节日，返回需要追加进叙事的
+  /// 文块（无节日时返回空串）。实现在 `GameFestivalMixin`；基类只做抽象声明，
+  /// 让 `GameNarrativeMixin` 也能通过 `this` 调用（理由同上方
+  /// `settleOfflineConsequences`——Dart mixin 跨 mixin 直接调用不可见）。
+  /// 【seed】同回合用 `turnCount` 播种；传了则测试可控。只被离线回合调用。
+  String celebrateFestival({int? seed});
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====
