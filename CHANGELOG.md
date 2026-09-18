@@ -10,6 +10,11 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.9.7 — 2026-09-18
+
+**📋 变更说明**
+fix(cd): 修复首页最新版下载断链——nightly.link 只服务最近一次运行、docs-only push 无artifact即404；改为 Release 附带固定名资产 HogwartLige-latest.apk，README/CI 摘要走 releases/latest/download 稳定直链
+
 ### v4.9.6 — 2026-09-18
 
 **📋 变更说明**
