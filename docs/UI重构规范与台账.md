@@ -142,6 +142,14 @@
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
+✅ 第二批（扩面审计后）：
+- 空态：`npc_chat_screen.dart` 消息区全空 → `EmptyPlaceholder`（和 NPC 开始对话吧）
+- 加载态：`settings_quota_window.dart` 配额区块自写小转圈 → `PageLoading(compact: true)`
+- **保留**：`game_play_screens.dart` 委托板/装备栏的 `_emptyCard/_emptyEquipCard` 为
+  页面级蓝紫主题玻璃卡空态（沿用"收编边界"页面主题色不推倒），记档保留。
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。

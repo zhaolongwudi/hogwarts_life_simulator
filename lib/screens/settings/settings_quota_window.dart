@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../providers/app_provider.dart';
 import '../../services/rate_limiter.dart';
 import '../../theme/miuix_tokens.dart';
+import '../../widgets/loading_placeholder.dart';
 
 /// 5 小时配额窗口卡片（Q2）。
 ///
@@ -76,16 +77,7 @@ class _SettingsQuotaWindowState extends State<SettingsQuotaWindow> {
                   TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary)),
           const SizedBox(height: 8),
           if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
+            const PageLoading(compact: true)
           else
             for (final m in (_remaining?.keys ?? const <String>[]))
               _buildRow(m, _used![m] ?? 0, _remaining![m] ?? 0),

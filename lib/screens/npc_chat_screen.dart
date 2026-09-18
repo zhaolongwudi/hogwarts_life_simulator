@@ -6,6 +6,7 @@ import '../services/npc_chat_service.dart';
 import '../utils/ui_helpers.dart';
 import '../theme/miuix_tokens.dart';
 import '../widgets/miuix_overlays.dart';
+import '../widgets/loading_placeholder.dart';
 
 class NpcChatScreen extends StatefulWidget {
   final NPC npc;
@@ -247,15 +248,9 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
-                        const SizedBox(height: 16),
-                        Text('和${npc.name}开始对话吧', style: TextStyle(color: Colors.grey.withValues(alpha: 0.7))),
-                      ],
-                    ),
+                ? EmptyPlaceholder(
+                    icon: Icons.chat_bubble_outline,
+                    title: '和${npc.name}开始对话吧',
                   )
                 : ListView.builder(
                     controller: _scrollController,
