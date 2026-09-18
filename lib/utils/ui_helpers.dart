@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import '../models/npc.dart';
 import '../data/house_data.dart';
 
-/// 全局语义色 token：全项目统一从这里取，杜绝裸色值漂移。
+/// 全局语义色 token。
+///
+/// 已收编：本类语义已由 `MiuiColors`（`lib/theme/miuix_tokens.dart`）统一接管，
+/// 本类保留为**兼容别名**，供存量页面渐进过渡；**新代码一律改用 `MiuiColors`**。
+/// 逐成员映射见 `docs/UI重构规范与台账.md` 的「色板收编映射表」。
 ///
 /// 历史遗留：UI 层散落着 100+ 个硬编码色值，同一语义（危险红/成功绿/强调金）
-/// 有 6~9 种写法，深色主题里还混着浅色主题残留的卡片底色。新代码一律用这里
-/// 的 token；存量页面按审计清单逐步收敛。
+/// 有 6~9 种写法，深色主题里还混着浅色主题残留的卡片底色。新代码一律用
+/// `MiuiColors` 的 token；存量页面按「色板收编映射表」随 UI 打磨逐步替换。
 class AppColors {
   // ===== 主题金 =====
   /// 主金：按钮/强调/选中态

@@ -68,18 +68,44 @@
 |---|---|---|
 | `game/home 四 tab` | 入口平铺，未按系统分组 | ⬜ |
 | `game/phone_tab` | ✅ 8 宫格+快捷坞 → 系统域分组（魔法校园·玩法/社交·日常/冒险·工具），接入 P9-P14 玩法入口 |
-| `game/narrative_tab` | 叙事区 / 选项 / 副 tab | ⬜ |
-| `game/world_tab` | 世界信息层级 | ⬜ |
-| `game/settings_tab` | 设置分组 | ⬜ |
+| `game/narrative_tab` | 叙事区 / 选项 / 副 tab | ⬜ 达标优先 |
+| `game/world_tab` | ✅ 已较成熟：玻璃头+已登场/未登场分区+操作行，无需大改（仅后续顺手色板统一） |
+| `game/settings_tab` | ✅ 已复用单一 SettingsBody 并拆分 10+ 子组件，无需大改 |
 | `command_center_panel` | 已较清晰，仅统一组件替换 | ⬜ |
 | `game/top_bar / bottom_input` | 状态摘要与快捷 | ⬜ |
-| `other/communication/forum/diary` 等 | 信息层级 + 空态 | ⬜ |
-| `shop/* , settings/* , world_map/*` | 组件统一 | ⬜ |
-| 其余 40+ 低频页 | 统一组件 + 色值收敛 | ⬜ |
+| `other/communication/forum/diary` 等 | 信息层级 + 空态（长尾页重点） | ⬜ |
+| `shop/* , settings/* , world_map/*` | 字体/色板统一 | ⬜ |
+| 其余 20+ 低频页 | 统一组件 + 色值收敛 | ⬜ |
+
+> 主页（world/settings/phone）评估：架构已较成熟、色调统一，本轮不再深度重排；
+> 打磨重心应放在**长尾子页的空态/加载态补齐**与色板随页收敛。
 
 > 新增统一组件：`lib/widgets/feature_tile.dart`（FeatureTile/SectionHeader）、
 > `lib/widgets/loading_placeholder.dart`（PageLoading/EmptyPlaceholder）。
 > `AppColors↔Miui 色板收敛`（上节 A）本轮未做——改动面广、回归风险高，留到信息层级批次同步推进。
+
+## 四·附：色板收编映射表（AppColors → MiuiColors 单一来源）
+
+> 规则：新代码只用 `MiuiColors`；存量 `AppColors`/裸色随逐页打磨替换为右侧权威 token。
+> 凡值不同（标注近似→）替换时以右侧值为准，保证全局一致。
+
+| AppColors 成员 | 值 | → MiuiColors 权威 token | 说明 |
+|---|---|---|---|
+| `gold` | `#D3A625` | `primary` | 同值 |
+| `goldBright` | `#DDB54A` | `primaryVariant` `#E0B84A` | 近似→统一 |
+| `goldDeep` | `#B8860B` | `primaryContainer` | 同值 |
+| `danger` | `#EF4444` | `error` `#F12522` | 近似→统一到危险红 |
+| `success` | `#10B981` | `success` | 同值 |
+| `warning` | `#F59E0B` | `warning` | 同值 |
+| `info` | `#79C0FF` | `info` | 同值 |
+| `textPrimary` | `#E6EDF3` | `onSurface` `#F2F2F2` | 近似→统一 |
+| `textSecondary` | `#8B949E` | `onSurfaceSecondary` `#CCFFFFFF` | 近似→统一 |
+| `textMuted` | `#6B7280` | `onSurfaceVariantSummary` `#8FFFFFFF` | 近似→统一 |
+| `bg` | `#0D1117` | `background` `#0A0A0C` | 近似→统一画布 |
+| `surface` | `#161B22` | `surface` | 语义同 |
+| `card` | `#21262D` | `surfaceContainer` | 语义近似 |
+| `border` | `#30363D` | `outline` `#43434F` | 近似→统一描边 |
+| `getHouseColor` | 裸色 | `MiuiColors.gryffindor/slytherin/ravenclaw/hufflepuff/houseNeutral` | 学院色已收敛至 Miui |
 
 ## 五、回归与安全红线
 
