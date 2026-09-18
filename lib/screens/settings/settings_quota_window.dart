@@ -113,7 +113,7 @@ class _SettingsQuotaWindowState extends State<SettingsQuotaWindow> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: exhausted
-                            ? Colors.red
+                            ? MiuiColors.error
                             : MiuiColors.onSurfaceVariantSummary,
                       ),
                     ),
@@ -128,9 +128,9 @@ class _SettingsQuotaWindowState extends State<SettingsQuotaWindow> {
                     backgroundColor: MiuiColors.surfaceContainerHigh,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       exhausted
-                          ? Colors.red
+                          ? MiuiColors.error
                           : (fraction >= 0.8
-                              ? Colors.orange
+                              ? MiuiColors.warning
                               : MiuiColors.success),
                     ),
                   ),

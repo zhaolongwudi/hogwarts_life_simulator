@@ -92,7 +92,7 @@ class _MagicPainter extends CustomPainter {
       final r = 0.4 + rng.next() * 0.9;
       final alpha = 0.16 + rng.next() * 0.3;
       final paint = Paint()
-        ..color = const Color(0xFFF3DFA0).withValues(alpha: alpha);
+        ..color = MiuiColors.onPrimaryVariant.withValues(alpha: alpha);
       canvas.drawCircle(Offset(x, y), r, paint);
     }
   }

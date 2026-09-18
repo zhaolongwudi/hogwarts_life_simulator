@@ -438,7 +438,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: enabled ? const Color(0xFF4CAF7D).withValues(alpha: 0.5) : const Color(0xFF3A3A5C).withValues(alpha: 0.4),
+              color: enabled ? MiuiColors.success.withValues(alpha: 0.5) : const Color(0xFF3A3A5C).withValues(alpha: 0.4),
             ),
           ),
           child: Column(
@@ -451,14 +451,14 @@ class _SettingsBodyState extends State<SettingsBody> {
                     height: 36,
                     decoration: BoxDecoration(
                       color: enabled
-                          ? const Color(0xFF4CAF7D).withValues(alpha: 0.15)
+                          ? MiuiColors.success.withValues(alpha: 0.15)
                           : const Color(0xFF2A2A4A),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       Icons.offline_bolt,
                       size: 18,
-                      color: enabled ? const Color(0xFF4CAF7D) : const Color(0xFF5A5A7A),
+                      color: enabled ? MiuiColors.success : const Color(0xFF5A5A7A),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -478,7 +478,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
                 ),
                 value: enabled,
-                activeColor: const Color(0xFF4CAF7D),
+                activeColor: MiuiColors.success,
                 onChanged: (v) => context.read<AppProvider>().setOfflineQuickMode(v),
               ),
               const Divider(height: 24, color: Color(0xFF2A2A4A)),
@@ -493,7 +493,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
                 ),
                 value: enabled && appProvider.narrativePolishEnabled,
-                activeColor: const Color(0xFFD3A625),
+                activeColor: MiuiColors.primary,
                 onChanged: (v) async {
                   await context
                       .read<AppProvider>()
@@ -514,7 +514,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
                 ),
                 value: appProvider.storyFreeformPreference,
-                activeColor: const Color(0xFFD3A625),
+                activeColor: MiuiColors.primary,
                 onChanged: (v) async {
                   // 两处都要改：
                   //   · AppProvider 的偏好 → 决定"下一局开局时默认开不开"；
@@ -560,10 +560,10 @@ class _SettingsBodyState extends State<SettingsBody> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.15),
+                      color: MiuiColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.bug_report, color: Colors.amber, size: 18),
+                    child: const Icon(Icons.bug_report, color: MiuiColors.warning, size: 18),
                   ),
                   const SizedBox(width: 10),
                   const Text('调试日志',
@@ -576,7 +576,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                 subtitle: const Text('记录每回合 AI 的输入输出到本地文件，用于排查 bug',
                     style: TextStyle(fontSize: 12, color: Color(0xFF8A8AAA))),
                 value: appProvider.aiDebugLogEnabled,
-                activeColor: Colors.amber,
+                activeColor: MiuiColors.warning,
                 onChanged: (v) async {
                   AiDebugLogger.instance.setEnabled(v);
                   if (v) {
@@ -634,7 +634,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                                     );
                                   }
                                 },
-                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE05050)),
+                                style: ElevatedButton.styleFrom(backgroundColor: MiuiColors.error),
                                 child: const Text('清空'),
                               ),
                             ],
@@ -644,8 +644,8 @@ class _SettingsBodyState extends State<SettingsBody> {
                       icon: const Icon(Icons.delete_forever, size: 16),
                       label: const Text('清空'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE05050).withValues(alpha: 0.15),
-                        foregroundColor: const Color(0xFFE05050),
+                        backgroundColor: MiuiColors.error.withValues(alpha: 0.15),
+                        foregroundColor: MiuiColors.error,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         elevation: 0,
@@ -684,7 +684,7 @@ class _SettingsBodyState extends State<SettingsBody> {
           decoration: BoxDecoration(
             color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+            border: Border.all(color: MiuiColors.error.withValues(alpha: 0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -695,14 +695,14 @@ class _SettingsBodyState extends State<SettingsBody> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.15),
+                      color: MiuiColors.error.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                    child: const Icon(Icons.warning_amber_rounded, color: MiuiColors.error, size: 20),
                   ),
                   const SizedBox(width: 10),
                   const Text('危险操作',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MiuiColors.error)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -712,20 +712,20 @@ class _SettingsBodyState extends State<SettingsBody> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
+                    color: MiuiColors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.delete, color: Colors.red, size: 16),
+                  child: const Icon(Icons.delete, color: MiuiColors.error, size: 16),
                 ),
                 title: const Text('清除所有 API Key', style: TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: const Text('删除本地保存的所有 AI 提供商 Key', style: TextStyle(color: Color(0xFF8A8AAA), fontSize: 12)),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.15),
+                    color: MiuiColors.error.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('清除', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: const Text('清除', style: TextStyle(color: MiuiColors.error, fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
                 onTap: () async {
                   final ok = await confirmDangerDialog(
@@ -750,20 +750,20 @@ class _SettingsBodyState extends State<SettingsBody> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: MiuiColors.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.refresh, color: Colors.orange, size: 16),
+                  child: const Icon(Icons.refresh, color: MiuiColors.warning, size: 16),
                 ),
                 title: const Text('开始新游戏', style: TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: const Text('重置当前游戏进度', style: TextStyle(color: Color(0xFF8A8AAA), fontSize: 12)),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.15),
+                    color: MiuiColors.warning.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('重置', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: const Text('重置', style: TextStyle(color: MiuiColors.warning, fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
                 onTap: () {
                   showMiuixDialog(
@@ -780,7 +780,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                             Navigator.pop(context);
                             widget.onAfterNewGame?.call();
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE05050)),
+                          style: ElevatedButton.styleFrom(backgroundColor: MiuiColors.error),
                           child: const Text('确认'),
                         ),
                       ],

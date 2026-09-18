@@ -468,7 +468,7 @@ class PhoneTab extends StatelessWidget {
             _buildAppItem(context, Icons.favorite, '姻缘红娘', const Color(0xFFF43F5E), () {
               pushRoute(context, const MatchmakerScreen());
             }),
-            _buildAppItem(context, Icons.account_balance_wallet, '你的背包', const Color(0xFF10B981), () {
+            _buildAppItem(context, Icons.account_balance_wallet, '你的背包', MiuiColors.success, () {
               pushRoute(context, const InventoryScreen());
             }),
             _buildAppItem(context, Icons.leaderboard, '好感排行', AppColors.warning, () {

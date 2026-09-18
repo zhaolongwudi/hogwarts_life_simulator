@@ -235,7 +235,7 @@ class _NpcChatScreenState extends State<NpcChatScreen> {
                         setState(() => _messages.clear());
                         Navigator.pop(ctx);
                       },
-                      child: const Text('确定', style: TextStyle(color: Colors.red)),
+                      child: const Text('确定', style: TextStyle(color: MiuiColors.error)),
                     ),
                   ],
                 ),

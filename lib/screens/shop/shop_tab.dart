@@ -201,19 +201,19 @@ class _ShopTabState extends State<ShopTab> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.15),
+                      color: MiuiColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('可用', style: TextStyle(fontSize: 10, color: Colors.orange)),
+                    child: const Text('可用', style: TextStyle(fontSize: 10, color: MiuiColors.warning)),
                   ),
                 if (item['equippable'] == true)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.teal.withValues(alpha: 0.15),
+                      color: MiuiColors.success.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('可装备', style: TextStyle(fontSize: 10, color: Colors.teal)),
+                    child: const Text('可装备', style: TextStyle(fontSize: 10, color: MiuiColors.success)),
                   ),
                 const SizedBox(width: 4),
                 _OwnedBadge(itemName: item['name'] as String? ?? ''),
@@ -226,7 +226,7 @@ class _ShopTabState extends State<ShopTab> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                backgroundColor: isBuy ? Theme.of(context).colorScheme.primary : Colors.red,
+                backgroundColor: isBuy ? Theme.of(context).colorScheme.primary : MiuiColors.error,
                 foregroundColor: Colors.white,
               ),
               onPressed: _trading

@@ -117,7 +117,7 @@ class SettingsSceneRouting extends StatelessWidget {
                         const SizedBox(width: 6),
                         if (!hasKey)
                           const Text('未配置Key',
-                              style: TextStyle(fontSize: 11, color: Colors.orange)),
+                              style: TextStyle(fontSize: 11, color: MiuiColors.warning)),
                       ],
                     ),
                     const SizedBox(height: 2),

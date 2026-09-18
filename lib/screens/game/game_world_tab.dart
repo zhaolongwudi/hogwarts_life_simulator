@@ -478,9 +478,9 @@ class WorldTab extends StatelessWidget {
   List<Widget> _buildStatusBadges(bool isNearby, bool hasAppeared, NPC npc) {
     final badges = <Widget>[];
     if (hasAppeared) {
-      badges.add(_buildBadge('已登场', Colors.green));
+      badges.add(_buildBadge('已登场', MiuiColors.success));
     } else {
-      badges.add(_buildBadge('未登场', Colors.grey));
+      badges.add(_buildBadge('未登场', MiuiColors.onSurfaceVariantActions));
     }
     if (isNearby) {
       badges.add(const SizedBox(width: 4));

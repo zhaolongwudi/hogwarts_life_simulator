@@ -383,12 +383,12 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               decoration: BoxDecoration(
                 color: hasKey
                     ? MiuiColors.success.withValues(alpha: 0.15)
-                    : Colors.orange.withValues(alpha: 0.15),
+                    : MiuiColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: hasKey
                       ? MiuiColors.success.withValues(alpha: 0.5)
-                      : Colors.orange.withValues(alpha: 0.5),
+                      : MiuiColors.warning.withValues(alpha: 0.5),
                 ),
               ),
               child: Text(
@@ -396,7 +396,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
-                  color: hasKey ? MiuiColors.success : Colors.orange,
+                  color: hasKey ? MiuiColors.success : MiuiColors.warning,
                 ),
               ),
             ),
@@ -594,7 +594,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               decoration: BoxDecoration(
                 color: (testSuccess ?? false)
                     ? MiuiColors.success.withValues(alpha: 0.15)
-                    : Colors.red.withValues(alpha: 0.15),
+                    : MiuiColors.error.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -604,7 +604,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                     size: 14,
                     color: (testSuccess ?? false)
                         ? MiuiColors.success
-                        : Colors.red,
+                        : MiuiColors.error,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -614,7 +614,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
                         fontSize: 11,
                         color: (testSuccess ?? false)
                             ? MiuiColors.success
-                            : Colors.red,
+                            : MiuiColors.error,
                       ),
                     ),
                   ),
@@ -699,7 +699,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
               onPressed: onDelete,
               icon: const Icon(
                 Icons.remove_circle_outline,
-                color: Colors.red,
+                color: MiuiColors.error,
                 size: 20,
               ),
               tooltip: '删除此 Key',
