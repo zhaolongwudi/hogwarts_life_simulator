@@ -6,6 +6,7 @@ import '../../data/cg_data.dart';
 import '../../models/player.dart';
 import '../../theme/miuix_tokens.dart';
 import '../../widgets/miuix_overlays.dart';
+import '../../widgets/loading_placeholder.dart';
 
 // ==================== 日记 / CG 图鉴 ====================
 //
@@ -327,21 +328,10 @@ class _JournalTab extends StatelessWidget {
     final gp = context.watch<GameProvider>();
     final entries = gp.player?.diary ?? const <DiaryEntry>[];
     if (entries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.menu_book,
-                size: 60, color: Colors.grey.withValues(alpha: 0.45)),
-            const SizedBox(height: 14),
-            const Text('还没有手记'),
-            const SizedBox(height: 8),
-            Text(
-              '点击右下角，记下今天发生的事',
-              style: TextStyle(color: Colors.grey.withValues(alpha: 0.7)),
-            ),
-          ],
-        ),
+      return const EmptyPlaceholder(
+        icon: Icons.menu_book,
+        title: '还没有手记',
+        subtitle: '点击右下角，记下今天发生的事',
       );
     }
     return ListView.builder(

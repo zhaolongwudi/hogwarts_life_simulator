@@ -73,7 +73,7 @@
 | `game/settings_tab` | ✅ 已复用单一 SettingsBody 并拆分 10+ 子组件，无需大改 |
 | `command_center_panel` | 已较清晰，仅统一组件替换 | ⬜ |
 | `game/top_bar / bottom_input` | 状态摘要与快捷 | ⬜ |
-| `other/communication/forum/diary` 等 | 信息层级 + 空态（长尾页重点） | ⬜ |
+| `other/communication/forum/diary` 等 | ✅ diary 空态→统一 EmptyPlaceholder（消 Colors.grey 裸色）；communication/forum/… 待续 |
 | `shop/* , settings/* , world_map/*` | 字体/色板统一 | ⬜ |
 | 其余 20+ 低频页 | 统一组件 + 色值收敛 | ⬜ |
 
