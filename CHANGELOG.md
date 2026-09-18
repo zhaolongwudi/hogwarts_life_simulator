@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.8.7 — 2026-09-18
+
+**📋 变更说明**
+ui(refactor): 色板收编基座 + 主页层级评估落地
+
+- AppColors 声明收编：改由 MiuiColors（miuix_tokens.dart）统一接管，本类降级为兼容别名；新代码一律用 MiuiColors
+- UI 台账新增「色板收编映射表」：AppColors 14 成员 + getHouseColor → MiuiColors 权威 token，逐页打磨時据此改色
+- UI 台账更新：主页（world/settings/phone）评估已较成熟无需大改；标记长尾子页为打磨重心
+- 回归：flutter analyze 0 error；flutter test 1984 项全绿（含第一批改动）
+
 ### v4.8.6 — 2026-09-18
 
 **📋 变更说明**
