@@ -6,6 +6,7 @@ import '../models/npc.dart';
 import '../models/player.dart';
 import '../models/world_state.dart';
 import '../data/npc_chat_wordbank.dart';
+import '../data/offline_extras_data.dart';
 import '../providers/app_provider.dart';
 import '../utils/prompt_sanitizer.dart';
 import 'ai_router.dart';
@@ -109,7 +110,37 @@ class NpcChatService {
     _conversationCache.clear();
   }
 
-  /// NPC 聊天返回 (回复文本, 是否离线兜底)。
+  /// P8：NPC 回忆支线解锁。好感达标且未收集的回忆，在聊天回复末尾追加
+  /// 一段回忆叙事，并结算好感/加隆奖励。入口统一在 [chatWithNPC] 的
+  /// 本地兜底与 AI 回复两条路径之后调用，保证离线/在线行为一致。
+  /// 返回「已追加回忆的回复文本」；无新回忆时原样返回。
+  ///
+  /// 奖励好感直接写回 npc.affection（与聊天屏每轮 updateNpcAffection 的
+  /// 落盘路径不冲突——解锁本身就是「聊出来的关系进展」）。
+  String withUnlockedMemories(NPC npc, Player player, String reply) {
+    final pending = pendingMemoriesFor(
+      npc.id,
+      npc.affection,
+      player.collectedMemories.toSet(),
+    );
+    if (pending.isEmpty) return reply;
+    final buf = StringBuffer(reply);
+    for (final m in pending) {
+      player.collectedMemories.add(m.id);
+      npc.affection = (npc.affection + m.rewardAffection).clamp(-100, 100).toInt();
+      if (m.rewardGalleons > 0) player.galleons += m.rewardGalleons;
+      buf.writeln();
+      buf.writeln();
+      buf.writeln('—— ${npc.name}讲起了一段往事 ——');
+      buf.writeln('【回忆】${m.title}');
+      buf.writeln(m.text);
+      final rewards = <String>['好感 +${m.rewardAffection}'];
+      if (m.rewardGalleons > 0) rewards.add('${m.rewardGalleons} 加隆');
+      buf.writeln('（已收入回忆册 · $m.title：${rewards.join('、')}）');
+    }
+    return buf.toString();
+  }
+
   /// AI 调用失败或返回空内容时，离线位为 true，回复为本地模板。
   Future<(String, bool)> chatWithNPC({
     required NPC npc,
@@ -123,7 +154,8 @@ class NpcChatService {
     Future<(String, bool)> local() async {
       final text = _generateLocalResponse(npc, userMessage, player: player);
       final polished = await _maybePolishLocalReply(npc, text);
-      return (polished, true);
+      // P8：本地兜底同样走回忆解锁，离线/在线行为一致
+      return (withUnlockedMemories(npc, player, polished), true);
     }
 
     if (_router == null) {
@@ -182,7 +214,8 @@ class NpcChatService {
       if (responseText.isEmpty) {
         return local();
       }
-      return (responseText, false);
+      // P8：AI 回复同样走回忆解锁，保证在线/离线行为一致
+      return (withUnlockedMemories(npc, player, responseText), false);
     } catch (e) {
       return local();
     }

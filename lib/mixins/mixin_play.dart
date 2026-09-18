@@ -12,6 +12,7 @@ import '../data/collectible_data.dart';
 import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
 import '../data/balance_constants.dart';
+import '../data/offline_extras_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -950,21 +951,80 @@ mixin GamePlayMixin on GameProviderBase {
     buf.writeln(posDetail);
     buf.writeln('\n最终比分：$myHouseCn $myScore — $oppScore $opp');
 
+    // P8：位置专属时刻（低概率点缀，不与赛果段叠加）
+    if (random.nextInt(100) < 30) {
+      final moment = kQuidditchPositionMoments[p.qPosition];
+      if (moment != null) {
+        buf.writeln();
+        buf.writeln(
+          fillQuidditchTemplate(
+            moment.text,
+            myHouse: myHouseCn,
+            opp: opp,
+            score: myScore,
+            oppScore: oppScore,
+            broom: broom,
+          ),
+        );
+      }
+    }
+
+    // P8：赛果变体——胜负各 3 套叙事，替代固定句式
+    final variant = kQuidditchResultVariants[random.nextInt(kQuidditchResultVariants.length)];
     if (win) {
       p.qWins++;
       p.playerReputation.add('combat', 6);
       p.playerReputation.add('social', 4);
       addHouseCupPoints(30, '魁地奇取胜');
       p.galleons += 15;
-      buf.writeln('\n欢呼声如浪涌来，你为$myHouseCn 赢下了这一场！');
+      buf.writeln();
+      buf.writeln(
+        fillQuidditchTemplate(
+          variant.winBody,
+          myHouse: myHouseCn,
+          opp: opp,
+          score: myScore,
+          oppScore: oppScore,
+          broom: broom,
+        ),
+      );
       buf.writeln('战斗声望 +6 · 社交声望 +4 · 学院杯积分 +30 · 队内奖金 15 加隆');
       unlockAchievement('first_quidditch_win');
     } else {
       addHouseCupPoints(5, '魁地奇惜败');
       p.galleons += 5;
       p.playerReputation.add('social', 2);
-      buf.writeln('\n对方守住了最后的攻势，$myHouseCn 惜败。队友拍了拍你的肩：下周赢回来。');
+      buf.writeln();
+      buf.writeln(
+        fillQuidditchTemplate(
+          variant.lossBody,
+          myHouse: myHouseCn,
+          opp: opp,
+          score: myScore,
+          oppScore: oppScore,
+          broom: broom,
+        ),
+      );
       buf.writeln('虽败犹荣：社交声望 +2 · 学院杯积分 +5 · 辛苦费 5 加隆');
+    }
+
+    // P8：赛后事件（低概率收尾，给同一场胜负不同的余韵）
+    if (random.nextInt(100) < 35) {
+      final after = kQuidditchAfterEvents[random.nextInt(kQuidditchAfterEvents.length)];
+      if (after.energyCost > 0) {
+        p.energy = (p.energy - after.energyCost).clamp(0, 100);
+      }
+      buf.writeln();
+      buf.writeln(
+        fillQuidditchTemplate(
+          after.text,
+          myHouse: myHouseCn,
+          opp: opp,
+          score: myScore,
+          oppScore: oppScore,
+          broom: broom,
+        ),
+      );
     }
     buf.writeln('\n魁地奇技巧 +1~2（当前 ${p.qSkill}）');
     _finishLocal(buf.toString());
@@ -1180,6 +1240,40 @@ mixin GamePlayMixin on GameProviderBase {
     final grade = p.grade ?? 1;
     final rollValue = random.nextInt(100);
     final buf = StringBuffer('【禁林探险】\n');
+
+    // P8：特殊遭遇——按年级门控解锁的剧情事件（人马/独角兽/巨蛛巢等）。
+    // 15% 概率命中；只挑当前年级可解锁的事件，同一次探险至多触发一条。
+    final specials = kForestSpecialEncounters
+        .where((e) => grade >= e.minGrade)
+        .toList();
+    if (specials.isNotEmpty && rollValue < 15) {
+      final ev = specials[random.nextInt(specials.length)];
+      buf.writeln(ev.text);
+      // 剧情遭遇附带的战利品：人马尾鬃 / 月长石花 / 凤凰羽毛 入背包
+      switch (ev.id) {
+        case 'forest_centaur':
+          _gainItem('月长石粉');
+          buf.writeln('\n【收获】月长石粉 已收入背包');
+        case 'forest_golden_flower':
+          _gainItem('曼德拉草叶');
+          buf.writeln('\n【收获】曼德拉草叶 已收入背包');
+        case 'forest_phoenix_feather':
+          _gainItem('凤羽');
+          buf.writeln('\n【收获】凤羽 已收入背包');
+        case 'forest_treasure':
+          final coins = 8 + random.nextInt(15);
+          p.galleons += coins;
+          _gainItem('夜骐尾羽');
+          buf.writeln('\n【收获】$coins 加隆 · 夜骐尾羽 已收入背包');
+      }
+      if (grade >= 3) {
+        p.playerReputation.add('explore', 2);
+        buf.writeln('探索声望 +2（你在这片林子里越来越游刃有余了）');
+      }
+      buf.writeln('\n禁林入口的风从你身后吹来，你决定先返回城堡。');
+      _finishLocal(buf.toString());
+      return;
+    }
 
     // 可遭遇生物：按年级限制危险度上限（防崩坏）
     final maxDanger = grade >= 5

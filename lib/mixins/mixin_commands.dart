@@ -22,6 +22,7 @@ import '../data/exam_data.dart';
 import '../data/course_data.dart';
 import '../data/patronus_data.dart';
 import '../data/attribute_data.dart';
+import '../data/offline_extras_data.dart';
 import '../models/long_term_memory.dart';
 import '../models/player.dart';
 import '../models/story_progress.dart';
@@ -1311,6 +1312,19 @@ mixin GameCommandsMixin on GameProviderBase {
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           m._handlePlan(ctx.parts);
+          m.choices = [GameChoice(text: '返回', action: '继续')];
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '回忆册',
+        aliases: ['回忆'],
+        group: '学业&成长',
+        helpText: 'NPC 回忆收集进度：好感达标后聊天解锁（/回忆册）',
+        panel: true,
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          m.currentNarrative = m.formatCollectedMemories();
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
         },
@@ -3250,6 +3264,33 @@ $knownRegions
   初始天赋：${p.initialTalent ?? '未设定'}
   性格特质：${p.personalityTraits.isEmpty ? '未设定' : p.personalityTraits.join('、')}
   当前目标：${p.currentGoal ?? '无'}''';
+  }
+
+  /// P8：NPC 回忆册——已收集的回忆支线（好感达标后聊天自动解锁）。
+  String formatCollectedMemories() {
+    final p = player;
+    if (p == null) return '【回忆册】暂无数据。';
+    final collected = p.collectedMemories.toSet();
+    if (collected.isEmpty) {
+      return '【回忆册 · 0/${kNpcMemories.length}】\n'
+          '与朋友深聊（提升好感），他们会在合适的时机讲起自己的往事。\n\n'
+          '提示：好感越高、聊得越多，解锁的回忆越多。';
+    }
+    final buf = StringBuffer('【回忆册】已收集 ${collected.length}/${kNpcMemories.length}\n');
+    for (final m in kNpcMemories) {
+      final npc = npcRegistry[m.npcId];
+      final owner = npc?.name ?? m.npcId;
+      if (collected.contains(m.id)) {
+        buf.writeln('\n◈ $owner ·《${m.title}》');
+        buf.writeln(m.text);
+      }
+    }
+    final pendingCount = kNpcMemories.length - collected.length;
+    if (pendingCount > 0) {
+      buf.writeln('\n—— 还有 $pendingCount 段回忆等待解锁 ——');
+      buf.writeln('多和朋友们聊天，好感达标后他们会主动讲起往事。');
+    }
+    return buf.toString();
   }
 
   /// P2#11：/档案 回忆 —— 人生大事记。

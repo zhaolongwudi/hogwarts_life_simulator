@@ -200,6 +200,7 @@ class Player {
   int qMatches; // 参赛场次
   int qWins; // 获胜场次
   int qLastWeek; // 本周是否已比赛（周数去重）
+  List<String> collectedMemories; // P8：已收集的 NPC 回忆 id（好感支线）
 
   Player({
     String? id,
@@ -298,6 +299,7 @@ class Player {
     this.careerYears = 0,
     Map<String, String>? cheatOrientationBackup,
     List<String>? cheatModifiedPairs,
+    List<String>? collectedMemories,
     Map<String, Map<String, String>>? examRecords,
   }) : id = id ?? _uuid.v4(),
        personalityTraits = List<String>.from(personalityTraits ?? const []),
@@ -344,6 +346,7 @@ class Player {
          cheatOrientationBackup ?? const {},
        ),
        cheatModifiedPairs = List<String>.from(cheatModifiedPairs ?? const []),
+       collectedMemories = List<String>.from(collectedMemories ?? const []),
        examRecords = (examRecords ?? const {}).map(
          (k, v) => MapEntry(k, Map<String, String>.from(v)),
        );
@@ -486,6 +489,7 @@ class Player {
     'career_years': careerYears,
     'cheat_orientation_backup': cheatOrientationBackup,
     'cheat_modified_pairs': cheatModifiedPairs,
+    'collected_memories': collectedMemories,
     'exam_records': examRecords,
   };
 
@@ -650,6 +654,10 @@ class Player {
     ),
     cheatModifiedPairs: readStringList(
       json['cheat_modified_pairs'],
+      fallback: const [],
+    ),
+    collectedMemories: readStringList(
+      json['collected_memories'],
       fallback: const [],
     ),
     examRecords: (json['exam_records'] as Map<String, dynamic>? ?? const {})

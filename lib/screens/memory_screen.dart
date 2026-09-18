@@ -6,6 +6,7 @@ import 'other/diary_screen.dart';
 import '../providers/game_provider.dart';
 import '../data/collectible_data.dart';
 import '../data/cg_data.dart';
+import '../data/offline_extras_data.dart';
 import '../models/world_state.dart';
 import '../theme/miuix_tokens.dart';
 import '../theme/miuix_typography.dart';
@@ -67,10 +68,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
   }
 
   Widget _buildTabs() {
+    final memories = context.watch<GameProvider>().player?.collectedMemories.length ?? 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 16, 28, 12),
       child: MiuiSegmented<int>(
-        segments: const {0: '大事记', 1: '收藏', 2: 'CG画廊'},
+        segments: {0: '大事记', 1: '收藏', 2: 'CG画廊', 3: '回忆($memories)'},
         selected: _tab,
         onChanged: (v) => setState(() => _tab = v),
       ),
@@ -84,9 +86,63 @@ class _MemoryScreenState extends State<MemoryScreen> {
       case 2:
         final gp = context.watch<GameProvider>();
         return CgGalleryTab(recs: gp.player?.cgRecords ?? const {});
+      case 3:
+        return _buildMemoriesView();
       default:
         return _buildChronicleView();
     }
+  }
+
+  // ==================== NPC 回忆册（P8） ====================
+
+  Widget _buildMemoriesView() {
+    final gp = context.watch<GameProvider>();
+    final p = gp.player;
+    if (p == null) return const SizedBox.shrink();
+    final collected = p.collectedMemories.toSet();
+    if (collected.isEmpty) {
+      return _emptyHint('还没有收集到任何回忆。\n'
+          '多和朋友们聊天、提升好感，他们会在合适的时机讲起自己的往事。');
+    }
+    final cs = Theme.of(context).colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('NPC 回忆册',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('已收集 ${collected.length} 段 · 好感达标后聊天自动解锁',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).textTheme.bodySmall?.color)),
+          const SizedBox(height: 12),
+          for (final m in kNpcMemories) ...[
+            if (collected.contains(m.id)) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Theme.of(context).dividerTheme.color!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('◈ ${gp.npcRegistry[m.npcId]?.name ?? m.npcId} ·《${m.title}》',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(m.text, style: const TextStyle(fontSize: 13, height: 1.5)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ],
+      ),
+    );
   }
 
   // ==================== 大事记 ====================
