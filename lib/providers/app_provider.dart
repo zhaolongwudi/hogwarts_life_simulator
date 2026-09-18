@@ -188,6 +188,20 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// P11 羁绊小剧场开关：离线进度中「与亲近之人的跨回合小戏」层。
+  ///
+  /// 默认开启（生产即用）：真实跑局会在好感跨过门槛后慢慢把这出戏演完。
+  /// 共享测试夹具 `makeGame` 显式关闭它，避免扰动既有的 1900+ 确定性用例；
+  /// 羁绊专项用例（batch40）再开回来。运行时内存态，不持久化。
+  bool _companionArcEnabled = true;
+
+  bool get companionArcEnabled => _companionArcEnabled;
+  set companionArcEnabled(bool value) {
+    if (_companionArcEnabled == value) return;
+    _companionArcEnabled = value;
+    notifyListeners();
+  }
+
   /// 主线剧情模式：按原著时间线章节推进（离线，0 AI 调用）。
   bool get storyMode => _storyMode;
 

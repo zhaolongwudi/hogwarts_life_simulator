@@ -1,4 +1,5 @@
 import 'game_systems.dart';
+import 'companion_arc.dart';
 import '../utils/json_read.dart';
 
 class NarrativeEvent {
@@ -152,6 +153,15 @@ class WorldState {
   String? pendingHappenstanceId;
   int lastHappenstanceTurn;
 
+  // ====== P11 · 羁绊小剧场状态 ======
+  // 羁绊小剧场是一场跨多回合、靠好感解锁的 NPC 专属小戏：前幕自动推进，
+  // 最终幕两段式抉择。这里按 npcId 记录每人的进度（`companionArcs`，
+  // nextBeat/pendingClimax/completed），以及最近一次演戏的回合号
+  // `lastCompanionArcTurn`（冷却，避免连续几回合都在演）。序列化持久化，
+  // 中途退出仍能接着把一场戏演完。
+  final Map<String, CompanionArcProgress> companionArcs;
+  int lastCompanionArcTurn;
+
   WorldState({
     this.academicYear = '1991-1992',
     this.term = 'first',
@@ -190,7 +200,11 @@ class WorldState {
     Map<String, String>? festivalCelebratedAt,
     this.pendingHappenstanceId,
     this.lastHappenstanceTurn = 0,
+    Map<String, CompanionArcProgress>? companionArcs,
+    this.lastCompanionArcTurn = 0,
   })  : time = time ?? GameTime(),
+        companionArcs = Map<String, CompanionArcProgress>.from(
+            companionArcs ?? const {}),
         recentEvents = List<NarrativeEvent>.from(recentEvents ?? <NarrativeEvent>[]),
         recentNarrativeEvents = List<NarrativeEvent>.from(recentNarrativeEvents ?? <NarrativeEvent>[]),
         specialMarkers = List<String>.from(specialMarkers ?? const []),
@@ -317,6 +331,9 @@ class WorldState {
         'festival_celebrated_at': festivalCelebratedAt,
         'pending_happenstance_id': pendingHappenstanceId,
         'last_happenstance_turn': lastHappenstanceTurn,
+        'companion_arcs': companionArcs
+            .map((k, v) => MapEntry(k.toString(), v.toJson())),
+        'last_companion_arc_turn': lastCompanionArcTurn,
       };
 
   factory WorldState.fromJson(Map<String, dynamic> json) {
@@ -380,6 +397,10 @@ class WorldState {
               .map((k, v) => MapEntry(k.toString(), v.toString()))),
       pendingHappenstanceId: json['pending_happenstance_id'] as String?,
       lastHappenstanceTurn: json['last_happenstance_turn'] as int? ?? 0,
+      companionArcs: Map<String, CompanionArcProgress>.from(
+          (json['companion_arcs'] as Map<String, dynamic>? ?? const {})
+              .map((k, v) => MapEntry(k.toString(), CompanionArcProgress.fromJson(v)))),
+      lastCompanionArcTurn: json['last_companion_arc_turn'] as int? ?? 0,
     );
   }
 

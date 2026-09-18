@@ -431,6 +431,27 @@ const List<ItemDef> kItemCatalog = [
     desc: '靠近就亮、握着就暖的小圆石，夜里放枕边睡得格外安稳',
   ),
   ItemDef(
+    id: 'hermione_bookmark',
+    name: '手叠旧书签',
+    type: '道具',
+    price: 0,
+    desc: '赫敏亲手叠的旧书签，纸角写着一行小小的"别累着自己"',
+  ),
+  ItemDef(
+    id: 'ron_courage_brooch',
+    name: '勇气撞球',
+    type: '道具',
+    price: 0,
+    desc: '握得发亮的旧撞球，上面浮着罗恩·韦斯莱自己的名字',
+  ),
+  ItemDef(
+    id: 'harry_guard_stone',
+    name: '灰色护身石',
+    type: '道具',
+    price: 0,
+    desc: '一块温润的灰色小石，据说是你在最难的那晚塞进他掌心的',
+  ),
+  ItemDef(
     id: 'dragon_blood',
     name: '龙血',
     type: '材料',

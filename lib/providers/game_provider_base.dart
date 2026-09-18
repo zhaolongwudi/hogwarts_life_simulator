@@ -431,6 +431,20 @@ abstract class GameProviderBase extends ChangeNotifier
   /// P10 奇遇：当前进行中奇遇的专属选项（供触发回合覆写兜底选项）。
   List<GameChoice> happenstanceChoicesForPending();
 
+  /// P11 羁绊：推进/开演一场羁绊小剧场（前幕自动推进、最终幕记待抉择），
+  /// 返回需要追加进叙事的场景文块；无事可演返回空串。见 `GameCompanionArcMixin`。
+  String maybeTriggerCompanion();
+
+  /// P11 羁绊：是否有待抉择的最终幕。
+  bool get hasPendingCompanionClimax;
+
+  /// P11 羁绊：当前待抉择最终幕的抉择选项（供触发回合覆写兜底选项）。
+  List<GameChoice> companionChoicesForPending();
+
+  /// P11 羁绊：结算待抉择的最终幕并按动作解析玩家选择（action 形如
+  /// `羁绊:<arcId>:<idx>`）。返回需要追加进叙事的结局文块；无待抉返回空串。
+  String tryResolveCompanionChoice(String action);
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====

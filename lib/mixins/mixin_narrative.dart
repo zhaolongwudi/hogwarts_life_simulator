@@ -1623,7 +1623,15 @@ $kNarrativeWritingRules
     // 之后发生了什么"，再去过普通的一天。action 不匹配时混用兜底自动收尾。
     final hpResolution = this.tryResolveHappenstanceChoice(action);
 
+    // ====== P11 羁绊最终幕结算（紧随奇遇之后、叙事组装之前）======
+    // 上一回合让玩家做抉择的最终幕，本回合用玩家的「羁绊:<arcId>:<idx>」
+    // 动作结算这出小戏的结局；action 不匹配时混用第一结局自动收尾。
+    final companionResolution = this.tryResolveCompanionChoice(action);
+
     currentNarrative = generateFallbackNarrative();
+    if (companionResolution.isNotEmpty) {
+      currentNarrative = '$companionResolution\n\n$currentNarrative';
+    }
     if (hpResolution.isNotEmpty) {
       currentNarrative = '$hpResolution\n\n$currentNarrative';
     }
@@ -1767,13 +1775,30 @@ $kNarrativeWritingRules
       currentNarrative = '$currentNarrative\n\n$hpScene';
     }
 
+    // ====== P11 羁绊触发 ======
+    // 紧随奇遇之后（奇遇为"落在我头上的小事"，羁绊为"我与某人的一岀戏"）。
+    // 好感跨过门槛后这岀戏会跨回合慢慢演：前幕自动推进、最终幕记待抉择。
+    // 奇遇进行中不抢戏；自带冷却，不会和节庆/奇遇连续刷屏。
+    String? companionScene;
+    if (!confessedThisTurn) {
+      companionScene = this.maybeTriggerCompanion();
+    }
+    if (companionScene != null && companionScene.isNotEmpty) {
+      currentNarrative = '$currentNarrative\n\n$companionScene';
+    }
+
     if (!confessedThisTurn) {
       choices = buildFallbackChoices(currentNarrative);
-      // 若本回合新触发了奇遇，用它的专属选项覆盖兜底选项，
-      // 让玩家下回合真正"决定这场奇遇怎么收场"。
-      final hpChoices = this.happenstanceChoicesForPending();
-      if (hpChoices.isNotEmpty) {
-        choices = hpChoices;
+      // 优先让「羁绊最终幕」用它的抉择选项覆盖承接选项（它是更个人的一岀戏），
+      // 其次才是奇遇的专属选项。玩家下回合据此真正"决定这场戏怎么收场"。
+      final companionChoices = this.companionChoicesForPending();
+      if (companionChoices.isNotEmpty) {
+        choices = companionChoices;
+      } else {
+        final hpChoices = this.happenstanceChoicesForPending();
+        if (hpChoices.isNotEmpty) {
+          choices = hpChoices;
+        }
       }
     }
 

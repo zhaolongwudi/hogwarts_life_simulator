@@ -20,6 +20,9 @@ Future<GameProvider> makeGame({bool offlineQuickMode = false}) async {
   // 开它（否则一次随机触发就可能撞坏别处对 choices/叙事的断言）。奇遇专项
   // 用例在各自 fixture 里再 `setHappenstanceEnabled(true)` 打开。
   app.happenstanceEnabled = false;
+  // P11 隔离：羁绊小剧场同理由默认开改为测试关，不给既有确定性用例添加
+  // 噪音；羁绊专项用例（batch40）在各自 fixture 里再打开。
+  app.companionArcEnabled = false;
   final gp = GameProvider(app);
   if (offlineQuickMode) {
     app.setOfflineQuickMode(true); // 无 AI key 也走本地快速模式（模拟真实回合推进）
