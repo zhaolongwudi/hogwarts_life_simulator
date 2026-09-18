@@ -44,36 +44,24 @@ class AppColors {
 }
 
 class UiHelpers {
+  /// 学院色（唯一来源）：统一收敛到 `MiuiColors` 的学院 token（亮色版，暗底可读）。
+  ///
+  /// 历史遗留：本方法曾用深品牌色（gryffindor#740001 / slytherin#1A472A / ravenclaw#0E1A40），
+  /// 且 `game_world_tab` 自带另一套金/琥珀 switch（大小写敏感匹配），三方色值各不相同。
+  /// 现已全部收口到 `MiuiColors` 单一来源，并顺带修正大小写匹配不到的问题。
+  /// 未知/教职工统一用 `houseNeutral`。
   static Color getHouseColor(String house) {
-    final key = house.toLowerCase();
-    switch (key) {
-      case 'gryffindor':
-        return const Color(0xFF740001);
-      case 'slytherin':
-        return const Color(0xFF1A472A);
-      case 'ravenclaw':
-        return const Color(0xFF0E1A40);
-      case 'hufflepuff':
-        return const Color(0xFFECB939);
-      default:
-        return const Color(0xFF8B949E);
-    }
-  }
-
-  /// 学院色（亮色版）：深色主题下文字/头像边框可读性更好的学院色。
-  /// 深色学院（斯莱特林绿/拉文克劳蓝）提亮，其余保持品牌色。
-  static Color getHouseColorBright(String house) {
     switch (house.toLowerCase()) {
       case 'gryffindor':
-        return const Color(0xFFD3A625); // 金红 → 金色（深红在暗底太暗）
+        return MiuiColors.gryffindor;
       case 'slytherin':
-        return const Color(0xFF4CAF7D); // 深绿 → 亮绿
+        return MiuiColors.slytherin;
       case 'ravenclaw':
-        return const Color(0xFF5B8DEF); // 深蓝 → 亮蓝
+        return MiuiColors.ravenclaw;
       case 'hufflepuff':
-        return const Color(0xFFECB939);
+        return MiuiColors.hufflepuff;
       default:
-        return const Color(0xFFD3A625);
+        return MiuiColors.houseNeutral;
     }
   }
 

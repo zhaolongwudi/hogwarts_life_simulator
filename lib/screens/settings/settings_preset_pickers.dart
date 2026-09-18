@@ -9,7 +9,7 @@ class ModeOption {
   final String desc;
   final IconData? icon;
   final Color? color;
-  const ModeOption(this.value, {required this.label, this.icon, this.color, required this.desc});
+  const ModeOption(this.value, {required this.label, required this.desc, this.icon, this.color});
 }
 
 class EraOption {
@@ -19,7 +19,104 @@ class EraOption {
   const EraOption(this.label, this.value, this.desc);
 }
 
+/// 「显示模式」与「穿越时代」两个选择器的共用卡片渲染。
+///
+/// 两选择器的卡片结构（Material → InkWell → Container → Row[前导 + 标题/说明]）
+/// 与选中态配色完全一致，历史上一份 copies 成两份、各自长了不同的边角
+/// （标题色、图标强调差异）。此处抽成单一实现：
+/// - icon 非空 → 前导为「强调图标块」；否则为「单选圆点」；
+/// - accent 为该项品牌强调色（可空，空则回落主题金）。
+///
+/// 注意：选中底仍用历史遗留的 `0xFF740001 @ 20%` 半透明红（见 [_selectedBackdrop]），
+/// 这是既有外观约定，不在本次重构中改变。
 class SettingsPresetPickers {
+  /// 选中卡片底色。历史遗留硬编码 `0xFF740001` 的 20% 透明（== 0x33 alpha）。
+  /// 仅当选项未携带品牌强调色时使用；带强调色时用该色的淡色底。
+  static const Color _selectedBackdrop = Color(0x33740001);
+
+  /// 单个选择项的卡片。
+  static Widget _optionCard({
+    required bool isSelected,
+    required bool isDisabled,
+    required IconData? icon,
+    required Color? accent,
+    required String title,
+    required String desc,
+    required VoidCallback? onTap,
+  }) {
+    // 前导强调：图标模式下为该项品牌色（空→选中用主题金、未选中用灰）；单选模式下用 hl.
+    final fg = accent ?? MiuiColors.primary;
+    final iconItemColor =
+        accent ?? (isSelected ? MiuiColors.primary : MiuiColors.onSurfaceVariantSummary);
+    final backdrop = accent != null ? accent.withValues(alpha: 0.2) : _selectedBackdrop;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: isSelected ? backdrop : MiuiColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: isDisabled ? null : onTap,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? fg : MiuiColors.outline,
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: iconItemColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 20, color: iconItemColor),
+                  ),
+                  const SizedBox(width: 12),
+                ] else ...[
+                  Icon(
+                    isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                    color: isSelected ? fg : MiuiColors.onSurfaceVariantSummary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isDisabled ? MiuiColors.disabledOnSurface : Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        desc,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: MiuiColors.onSurfaceVariantSummary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   static Widget buildModePicker(
     String current, {
     List<ModeOption>? modes,
@@ -34,71 +131,14 @@ class SettingsPresetPickers {
     return Column(
       children: items.map((m) {
         final isDisabled = disabled?.contains(m.value) ?? false;
-        final isSelected = current == m.value;
-        final itemColor = m.color ?? (isSelected ? MiuiColors.primary : MiuiColors.onSurfaceVariantSummary);
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Material(
-            color: isSelected
-                ? (m.color?.withValues(alpha: 0.2) ?? const Color(0xFF740001).withValues(alpha: 0.2))
-                : MiuiColors.surfaceContainer,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: isDisabled ? null : () => onSelect?.call(m.value),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? (m.color ?? MiuiColors.primary) : MiuiColors.outline,
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    if (m.icon != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: itemColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(m.icon, size: 20, color: itemColor),
-                      ),
-                      const SizedBox(width: 12),
-                    ] else
-                      Icon(
-                        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                        color: isSelected ? (m.color ?? MiuiColors.primary) : MiuiColors.onSurfaceVariantSummary,
-                        size: 20,
-                      ),
-                    if (m.icon == null) const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            m.label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: isDisabled ? MiuiColors.disabledOnSurface : Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            m.desc,
-                            style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        return _optionCard(
+          isSelected: current == m.value,
+          isDisabled: isDisabled,
+          icon: m.icon,
+          accent: m.color,
+          title: m.label,
+          desc: m.desc,
+          onTap: isDisabled ? null : () => onSelect?.call(m.value),
         );
       }).toList(),
     );
@@ -120,76 +160,41 @@ class SettingsPresetPickers {
     return Column(
       children: eras.map((e) {
         final isSelected = current == e.value;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Material(
-            color: isSelected ? const Color(0xFF740001).withValues(alpha: 0.2) : MiuiColors.surfaceContainer,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                if (onSelect != null) {
-                  onSelect(e.value);
-                } else {
-                  if (e.value == 'dumbledore') {
-                    context.read<AppProvider>().setEra(Era.dumbledore);
-                  } else if (e.value == 'marauders') {
-                    context.read<AppProvider>().setEra(Era.marauders);
-                  } else if (e.value == 'first_war') {
-                    context.read<AppProvider>().setEra(Era.first_war);
-                  } else if (e.value == 'harry_same') {
-                    context.read<AppProvider>().setEra(Era.harry_same);
-                  } else if (e.value == 'post_war') {
-                    context.read<AppProvider>().setEra(Era.post_war);
-                  } else {
-                    context.read<AppProvider>().setEra(Era.random);
-                  }
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? MiuiColors.primary : MiuiColors.outline,
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: isSelected ? MiuiColors.primary : MiuiColors.onSurfaceVariantSummary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            e.label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : MiuiColors.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            e.desc,
-                            style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        return _optionCard(
+          isSelected: isSelected,
+          isDisabled: false,
+          icon: null,
+          accent: null,
+          title: e.label,
+          desc: e.desc,
+          onTap: () {
+            if (onSelect != null) {
+              onSelect(e.value);
+            } else {
+              _applyEra(context, e.value);
+            }
+          },
         );
       }).toList(),
     );
+  }
+
+  /// 无 onSelect 时直接写时代设置（旧行为，AppProvider.setEra 按枚举赋值）。
+  static void _applyEra(BuildContext context, String value) {
+    final app = context.read<AppProvider>();
+    switch (value) {
+      case 'dumbledore':
+        app.setEra(Era.dumbledore);
+      case 'marauders':
+        app.setEra(Era.marauders);
+      case 'first_war':
+        app.setEra(Era.first_war);
+      case 'harry_same':
+        app.setEra(Era.harry_same);
+      case 'post_war':
+        app.setEra(Era.post_war);
+      default:
+        app.setEra(Era.random);
+    }
   }
 }

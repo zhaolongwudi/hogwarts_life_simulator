@@ -508,20 +508,12 @@ class WorldTab extends StatelessWidget {
   }
 
   Color _getHouseColor(String house) {
-    switch (house) {
-      case 'Gryffindor':
-        return const Color(0xFFB8860B);
-      case 'Slytherin':
-        return const Color(0xFF2D6A4F);
-      case 'Ravenclaw':
-        return const Color(0xFF3B82F6);
-      case 'Hufflepuff':
-        return const Color(0xFFD97706);
-      case 'staff':
-        return MiuiColors.onSurfaceVariantActions;
-      default:
-        return const Color(0xFF5A6B4A);
+    // 教职工保持中性弱化；其余学院色统一收口到 UiHelpers.getHouseColor（→ MiuiColors
+    // 学院 token），移除这里原先那套色值不同、且大小写敏感匹配不到的金/琥珀 switch。
+    if (house.toLowerCase() == 'staff') {
+      return MiuiColors.onSurfaceVariantActions;
     }
+    return UiHelpers.getHouseColor(house);
   }
 
   Color _getAffectionColor(int affection) =>

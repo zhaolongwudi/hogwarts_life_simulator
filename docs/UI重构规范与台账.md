@@ -177,6 +177,24 @@
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
+## 四·附·E：学院色单源化 + 选项卡片去重（完成）
+
+✅ **学院色统一到 MiuiColors**（Task A）：
+- `UiHelpers.getHouseColor`（`utils/ui_helpers.dart`）原为深品牌色（gryffindor#740001/
+  slytherin#1A472A/ravenclaw#0E1A40），现收口到 `MiuiColors` 学院 token（亮色版、暗底可读）。
+- `game_world_tab._getHouseColor` 原为第三套金/琥珀 switch（#B8860B/#3B82F6…，且大小写
+  敏感匹配不到），已删，改为委托 `UiHelpers.getHouseColor` + 保留 `staff` 特例；同时删掉 4 处
+  页面裸色 `Color(0xFF...)`，符合「不在页面裸写色值」约定。
+- 删除死代码 `UiHelpers.getHouseColorBright`（定义后无任何调用）。
+- `PROJECT_GUIDE.md` §3.5 已同步更新为 `MiuiColors` 为准、`AppColors` 兼容别名。
+
+✅ **设置页两个选择器去重**（Task B）：`settings_preset_pickers.dart` 的 `buildModePicker` /
+  `buildEraPicker` 原本各持一份几乎相同（后又各自跑偏）的卡片脚手架（~70 行 x2），
+  抽为私有 `_optionCard` 单一实现（选中底保留历史 `0xFF740001@20%` 外观）；仅统一 era 标题色
+  为 mode 规则（onSurface→white，肉眼无差）。经查调用方均未使用 `icon/color` 分支，行为不变。
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。

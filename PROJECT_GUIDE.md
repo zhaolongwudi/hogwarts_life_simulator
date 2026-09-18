@@ -147,7 +147,9 @@ lib/
 - `/` 开头的自由文本会被当指令；想发 `/` 内容用 `//` 前缀。
 
 ### 3.5 主题与颜色
-- 全局语义色一律用 `AppColors`（`utils/ui_helpers.dart`）：gold/danger(#EF4444)/success(#10B981)/warning(#F59E0B)/三灰阶文本。
+- 全局语义色一律用 `MiuiColors`（`lib/theme/miuix_tokens.dart`）：primary(gold#D3A625)/error(#F12522)/success(#10B981)/warning(#F59E0B)/info(#79C0FF)/表面层级/描边。
+- 旧 `AppColors`（`utils/ui_helpers.dart`）已是转发到 `MiuiColors` 的**兼容别名**，仅存量过渡用，新代码一律用 `MiuiColors`。
+- 学院色唯一来源 `UiHelpers.getHouseColor` → `MiuiColors` 学院 token（gryffindor/slytherin/ravenclaw/hufflepuff/houseNeutral）；教职工统一 `houseNeutral`。
 - **不要**在页面里裸写新的 `Color(0xFF...)`（历史遗留 ~700 处正在收敛中，新代码不许增加）。
 - 好感色映射统一 `UiHelpers.getAffectionColor`（8 档，别在页面里另写）。
 
