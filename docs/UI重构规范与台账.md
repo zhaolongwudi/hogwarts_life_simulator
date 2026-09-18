@@ -195,6 +195,38 @@
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
+## 四·附·F：语义状态色批量收敛到 MiuiColors + 设计专用色板边界（完成）
+
+✅ **宣称一批「与 token 同值」的裸色去重**（零风险一致性漏洞）：
+- `settings_body` 两处 Switch 激活金 `0xFFD3A625`→`primary`；
+- `game_phone_tab` 背包图标 `0xFF10B981`→`success`；
+- `miui_magic_backdrop` 星尘色 `0xFFF3DFA0`→`onPrimaryVariant`（光斑已→`primary/primaryContainer`）。
+
+✅ **语义状态色收敛**（仅改「与语义同类」的裸色；提交 `745b7b5`）：
+- 错误红→`error`：`settings_body` 危险操作（清 Key，8 处）与危险按钮 `0xFFE05050`（3 处）、
+  `settings_provider_card` 连接测试失败/删除图标、`settings_quota_window` 额度耗尽、
+  `npc_chat_screen` 清空确认、`shop_tab` 出售/失败按钮。
+- 警告橙→`warning`：`settings_body` 调试日志 amber+重置橙（7 处）、`provider_card` 未配置徽章、
+  `scene_routing`、`quota_window` 高占用、`shop_tab` 可用。
+- 成功绿→`success`：`settings_body` 本地模式 `0xFF4CAF7D`（4 处）、`shop_tab` 可装备 teal。
+- 状态徽章：`game_world_tab` 登场→`success`、未登场→`onSurfaceVariantActions`。
+
+> **收编边界（此处继续沿用）**：下列属**设计专用色板/页面主题**，**不适用**语义映射，勿误改：
+> - 物品稀有度色板（`inventory_screen` 的 brown/green/amber/purple/blue/… 按品质区分）；
+> - 好感热力与关系色（`matchmaker` 粉色浪漫系、`affection_aggregate` 橙/绿/蓝三档、
+>   `communication` 好感/离场色）——按数值档位编码、非常规"成败"语义；
+> - `map_area_painter` 地形/水系/建筑色、`game_narrative_tab` 高亮槽位图例与快捷入口色；
+> - `_providerColor` 厂商品牌色（DeepSeek/SenseNova/Anthropic/OpenAI 各持本色）；
+> - `settings_body` 分区标题彩色强调（蓝/紫/绿/金分节）。
+
+⚠️ **已知残留（偏蓝旧子主题，下一步单独小步处理，勿强收语义）**：
+- `settings_body` / `game_play_screens` 的 `0xFF1A1A2E`→`0xFF0D0D1A` 背景渐变及
+  `0xFF8A8AAA`/`0xFF3A3A5C`/`0xFF2A2A4A`/`0xFF5A5A7A`/`0xFFB0B0C8`/`0xFF6A6A8A` 等灰阶，
+  与全库金/中性色板不一致、属历史主题残留；因其成体系、一次性收敛会大范围改变观感，
+  需先在本台账更新边界说明再小步替换（对应日志「下一步方向 1」）。
+
+门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。
