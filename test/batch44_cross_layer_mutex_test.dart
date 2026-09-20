@@ -103,7 +103,7 @@ void main() {
           reason: '羁绊最终幕待抉择时来信不应送达');
     });
 
-    test('待回信时：宠物/社团让路，但羁绊仍可开演（更高优先级）', () async {
+    test('待回信时：社团让路，但羁绊/宠物不受影响（设计契约）', () async {
       final gp = await makeAllEligible();
       // 待回信（player.pendingLetterId 非空）
       gp.player!.pendingLetterId = 'letter_dawdle';
@@ -112,9 +112,13 @@ void main() {
       gp.worldState.lastCompanionArcTurn = -100;
 
       expect(gp.maybeRunClubActivity('与人切磋对练'), '',
-          reason: '有待回信时社团不应抢戏');
-      expect(gp.maybeTriggerPetStory(), '',
-          reason: '有待回信时宠物不应抢戏');
+          reason: '有待回信时社团不应抢戏（社团排在信中游，让更高优先级的正戏先讲完）');
+      // 宠物是「家里的小点缀」：只让路奇遇/羁绊最终幕，不参与待回信排队——
+      // 待回信是「世界那头的朋友」，宠物插曲是「身边的日常」，互不冲突。
+      // 该条钉住实现事实：宠物插曲不被待回信压制。
+      expect(gp.maybeTriggerPetStory(), isNot(''),
+          reason: '宠物插曲不应被待回信压制（设计如此，本层优先级最低但要能兜底露脸）');
+      // 羁绊优先级高于待回信：有待回信时羁绊仍可开演（更高优先级）。
       final c = gp.maybeTriggerCompanion();
       expect(c, isNot(''), reason: '有待回信时羁绊仍可开演（更高优先级）');
     });
@@ -134,6 +138,9 @@ void main() {
     test('有进行中奇遇时，玩家走任意行动 → 奇遇被中性结算并清 pending', () async {
       final gp = await makeAllEligible();
       gp.worldState.pendingHappenstanceId = 'wandering_note';
+      // 阻断本回合结算后再触发新奇遇（否则冷却已过、抽中会立刻叠一场新的，
+      // pendingHappenstanceId 又被填上，测不到「结算清空」这一行为）。
+      gp.worldState.lastHappenstanceTurn = 999999999;
 
       await gp.processChoice(const GameChoice(
           text: '在城堡随便走走', action: '在城堡随便走走'));
@@ -147,6 +154,9 @@ void main() {
     test('待回信时走任意行动 → 应被中性回信结算并清待回信', () async {
       final gp = await makeAllEligible();
       gp.player!.pendingLetterId = 'letter_dawdle';
+      // 阻断本回合再触发新信（否则结算后 maybeTriggerLetter 冷却已过、
+      // 好感 80 会再收到一封里程碑信覆盖 pendingLetterId，测不到结算清空）。
+      gp.player!.letterLastTurn = 999999999;
 
       await gp.processChoice(const GameChoice(
           text: '在城堡随便走走', action: '在城堡随便走走'));
@@ -164,6 +174,9 @@ void main() {
         beatIndex: 2,
         pendingClimax: true,
       );
+      // 阻断本回合结算后再开新羁绊戏（结算会 _recordCompleted 并清冷却，
+      // 若再开新戏，companionArcs 里 hermione 可能被新进度覆盖，断言不稳）。
+      gp.worldState.lastCompanionArcTurn = 999999999;
 
       await gp.processChoice(const GameChoice(
           text: '在城堡随便走走', action: '在城堡随便走走'));
