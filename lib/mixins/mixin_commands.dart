@@ -1365,9 +1365,9 @@ mixin GameCommandsMixin on GameProviderBase {
           } else if (ctx.parts.first == '退出') {
             m.currentNarrative = m.leaveClub();
           } else if (ctx.parts.first == '任务') {
-            final sub = ctx.parts.length > 1 ? ctx.parts[1] : '';
-            if (sub == '接取' && ctx.parts.length > 2) {
-              m.currentNarrative = m.acceptClubTask(ctx.parts[2]);
+            final sub = ctx.arg(0) ?? '';
+            if (sub == '接取' && ctx.arg(1) != null) {
+              m.currentNarrative = m.acceptClubTask(ctx.arg(1)!);
             } else if (sub == '完成') {
               m.currentNarrative = m.claimClubTask();
             } else if (sub == '放弃') {

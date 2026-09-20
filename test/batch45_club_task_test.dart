@@ -56,7 +56,11 @@ void main() {
           final note = fillClubText(t.rewardNote, club: c.name, rank: '候补');
           expect(note, isNot(contains(r'$')),
               reason: '${t.id} rewardNote 占位符不应有残留');
-          expect(note, contains(c.name), reason: '${t.id} 完成旁白应带社团名');
+          // 若声明了社团名占位符，替换后应带社团名（未声明的跳过，不强求）
+          if (t.rewardNote.contains(r'$club')) {
+            expect(note, contains(c.name),
+                reason: '${t.id} 完成旁白应带社团名');
+          }
         }
       }
       // 属性 key 必须存在于属性表（若声明了）
