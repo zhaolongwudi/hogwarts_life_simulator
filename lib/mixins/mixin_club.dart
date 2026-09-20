@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import '../data/attribute_data.dart';
 import '../data/club_data.dart';
 import '../data/house_data.dart';
+import '../models/npc.dart';
 import '../models/player.dart';
 import '../providers/game_provider_base.dart';
 
@@ -234,6 +235,22 @@ mixin GameClubMixin on GameProviderBase {
             '· 声望（${_repLabel(b.reputationDim!)}）+${b.reputationValue}');
       }
     }
+    // P16 社团晋升回访信：晋升到「王牌」或「传奇」时，同好里已结识的 NPC
+    // 会寄来一封回访信（只入叙事，不落存档信箱，避免信件膨胀）。
+    if (rankIndex >= 3) {
+      final visitor = _pickFriendForRankUp(club);
+      if (visitor != null) {
+        buf.writeln();
+        buf.writeln('🦉 一只猫头鹰落在你肩头，衔着一封「${visitor.name}」的信：');
+        final note = switch (rankIndex) {
+          3 => '「我在会堂里听到你的名字被大家喊起来了。说实话，我早就知道你会走到这一步——'
+              '只是没想到会这么快。改天一起喝一杯黄油啤酒，庆祝你成了${club.name}的王牌。」',
+          _ => '「今晚${club.name}的会堂为你点了灯，我这封信代表所有同好：你值得。'
+              '多年以后的新人翻开社史，会读到你的名字——而我，会告诉他们我认识你。」',
+        };
+        buf.writeln(note);
+      }
+    }
     return buf.toString();
   }
 
@@ -241,6 +258,25 @@ mixin GameClubMixin on GameProviderBase {
   void _gainAttr(Player player, String key, int gain) {
     player.attributes[key] =
         ((player.attributes[key] ?? 50) + gain).clamp(0, 100);
+  }
+
+  /// P16：从社团同好里挑一位「已结识且在世」的 NPC 作为晋升回访信的寄信人。
+  /// 无人可选返回 null（回访信不出现，不影响晋升本身）。
+  NPC? _pickFriendForRankUp(ClubDef club) {
+    final introduced = npcRegistry.values
+        .where((n) => n.introduced && n.isAlive && !n.graduated)
+        .toList();
+    for (final name in club.attendees) {
+      for (final n in introduced) {
+        if (n.name == name) return n;
+      }
+    }
+    // 同好无人登场 → 从已结识 NPC 里随便挑一位关系好的凑数（保持归属感）。
+    if (introduced.isNotEmpty) {
+      introduced.sort((a, b) => b.affection.compareTo(a.affection));
+      return introduced.first;
+    }
+    return null;
   }
 
   // ==================== P15 跨回合社团任务 ====================

@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hogwarts_life_simulator/data/club_data.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
+import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
@@ -239,6 +240,36 @@ void main() {
           reason: '离线回合应推进任务进度');
       expect(gp.currentNarrative, contains('社团任务'),
           reason: '任务进度提示应出现在叙事里');
+    });
+  });
+
+  group('P16 · 社团晋升回访信', () {
+    test('晋升王牌/传奇时同好回访信出现（已结识同好优先）', () async {
+      final gp = await makeEnabled();
+      final p = gp.player!;
+      // 摆一位已结识的同好（决斗社同好：西莫/弗雷德/乔治）
+      gp.npcRegistry['fred'] = NPC(
+        id: 'fred', name: '弗雷德', affection: 60, introduced: true);
+      // 跨阶到王牌（duel 王牌门槛 250）
+      p.clubPoints = 245;
+      p.clubLastTurn = -100;
+      final s = gp.maybeRunClubActivity('在会堂与人切磋对练');
+      expect(s, contains('猫头鹰'), reason: '晋升王牌应有回访信');
+      expect(s, contains('弗雷德'), reason: '已结识同好应作为寄信人');
+      expect(s, contains('王牌'), reason: '回访信应点明晋升的阶');
+    });
+
+    test('无已结识同好时回访信不出现（不阻塞晋升）', () async {
+      final gp = await makeEnabled();
+      final p = gp.player!;
+      // 清空 NPC 注册表，确保「无任何已结识 NPC」的场景
+      gp.npcRegistry.clear();
+      p.clubPoints = 245;
+      p.clubLastTurn = -100;
+      final s = gp.maybeRunClubActivity('在会堂与人切磋对练');
+      // 无任何已结识 NPC → 无回访信，但晋升仍发生
+      expect(s, contains('王牌'), reason: '晋升不受影响');
+      expect(s, isNot(contains('猫头鹰')), reason: '无同好可写信时不出现回访');
     });
   });
 }
