@@ -457,8 +457,7 @@ const List<ClubTaskDef> kClubTasks = [
     id: 'duel_ten_spars',
     clubId: 'duel',
     title: '十场切磋，站稳脚跟',
-    desc: '会长要看看新人是不是三分钟热度。连续多日用切磋/对练在会堂里露面，
-        攒够出力回合，证明你属于这里。',
+    desc: '会长要看看新人是不是三分钟热度。连续多日用切磋/对练在会堂里露面，攒够出力回合，证明你属于这里。',
     rewardNote: '会长当众点你的名：「这小子（姑娘）是块料。」\n你为 $club 拿下一笔可观的积分，魔杖握得也更稳了。',
     requiredRounds: 4,
     clubPointsReward: 40,
@@ -492,8 +491,7 @@ const List<ClubTaskDef> kClubTasks = [
     id: 'potion_stable_pot',
     clubId: 'potion',
     title: '一锅稳定的药剂',
-    desc: '部长说：魔药不在乎天赋，在乎「每一锅都一个样」。连续多日用熬制/研磨
-        沉下心，把稳定性熬出来。',
+    desc: '部长说：魔药不在乎天赋，在乎「每一锅都一个样」。连续多日用熬制/研磨沉下心，把稳定性熬出来。',
     rewardNote: '你端出的药剂成色稳定得像从同一只坩埚倒出来的。\n部长难得点了点头：「$club 要的就是这种手。」',
     requiredRounds: 4,
     clubPointsReward: 40,
