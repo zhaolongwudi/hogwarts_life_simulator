@@ -293,18 +293,19 @@ class GameBottomInput extends StatelessWidget {
                         }
                       },
                 borderRadius: BorderRadius.circular(15),
-                child: Ink(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: a.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: a.color.withValues(alpha: 0.3),
-                      width: MiuiSpace.dividerThickness,
-                    ),
-                  ),
+                child: ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 76),
-                  child: Row(
+                  child: Ink(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: a.color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: a.color.withValues(alpha: 0.3),
+                        width: MiuiSpace.dividerThickness,
+                      ),
+                    ),
+                    child: Row(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -319,6 +320,7 @@ class GameBottomInput extends StatelessWidget {
                         ),
                       ),
                     ],
+                    ),
                   ),
                 ),
               ),
