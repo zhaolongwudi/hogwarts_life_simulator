@@ -48,17 +48,11 @@ class ProviderDefault {
 
 const Map<String, ProviderDefault> kProviderDefaults = {
   'deepseek': ProviderDefault(
-    displayName: 'DeepSeek',
-    tagline: '付费 · 高质量长文本',
-    model: 'deepseek-v4-flash',
-    models: [
-      'deepseek-v4-flash',
-      'deepseek-v4-pro',
-      'deepseek-chat',
-      'deepseek-reasoner',
-    ],
-    baseUrl: 'https://api.deepseek.com',
-    balancePath: '/user/balance',
+    displayName: 'Atria',
+    tagline: '付费 · Atria Dawn 预览',
+    model: 'Atria-Dawn-Preview',
+    models: ['Atria-Dawn-Preview'],
+    baseUrl: 'https://api.atria-asi.ai',
   ),
   'agnes': ProviderDefault(
     displayName: 'Agnes',

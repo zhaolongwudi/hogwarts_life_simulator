@@ -274,7 +274,7 @@ class _SettingsProviderCardState extends State<SettingsProviderCard> {
   /// SenseNova 模型配额标注（1500/500 次每 5 小时）；其他提供商返回 null。
   ///
   /// 只给 SenseNova 标注：Agnes 是 20 RPM 维度（卡片说明区已写）、
-  /// DeepSeek 按量计费无限流。数字从限流闸门取，杜绝两处维护。
+  /// Atria 按量计费无限流闸门。数字从限流闸门取，杜绝两处维护。
   String? _quotaHintFor(AiProvider p, String model) {
     if (p != AiProvider.sensenova) return null;
     return '${SenseNovaQuotaManager.quotaForModel(model)}次/5h';

@@ -198,7 +198,7 @@ class DeepSeekService {
         await SenseNovaQuotaManager.instance.waitForQuota(config.model);
         break;
       case AiProvider.deepseek:
-        // DeepSeek 按量计费，无限流闸门
+        // Atria 按量计费，不接本地限流闸门（服务端账号级 60 RPM 自会返回 429）
         break;
     }
   }

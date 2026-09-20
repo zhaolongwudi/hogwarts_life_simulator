@@ -22,7 +22,7 @@ enum AiProvider { deepseek, agnes, sensenova }
 
 // 场景 → 提供商名 的默认路由
 // 策略：SenseNova（商汤日日新）用于主剧情/摘要/选项（免费、剧情质量最好、Token效率高），
-//       Agnes 用于 NPC 聊天（免费、响应最快）；DeepSeek 为付费模型，仅个别场景手动选用，不进默认路由与自动回退。
+//       Agnes 用于 NPC 聊天（免费、响应最快）；Atria 为付费模型，仅个别场景手动选用，不进默认路由与自动回退。
 // 用户可通过设置页面自定义路由覆盖默认值
 const Map<AiScene, String> kDefaultRoute = {
   AiScene.narrative: 'sensenova',
@@ -36,16 +36,16 @@ const Map<AiScene, String> kSceneDescriptions = {
   AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。默认使用 SenseNova（商汤日日新，剧情质量最好）。',
   AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。默认使用 SenseNova（Token效率最高，省60%）。',
   AiScene.npcChat:
-      'NPC聊天：与游戏中角色的独立对话。默认使用 Agnes（免费、响应最快），仅在需要更强长文本能力时手动改用 DeepSeek。',
+      'NPC聊天：与游戏中角色的独立对话。默认使用 Agnes（免费、响应最快），仅在需要更强长文本能力时手动改用 Atria。',
   AiScene.choice: '选项生成：独立于主剧情的选项生成，使用更强模型保证选项质量。默认使用 SenseNova。',
 };
 
 // 提供商简介（含优缺点与限制，帮助用户选择）
 const Map<AiProvider, String> kProviderDescriptions = {
   AiProvider.deepseek:
-      '付费模型。高质量长文本叙事，中文表现优秀。\n'
-      '✅ 优点：推理能力强，支持思考模式，1M上下文\n'
-      '⚠️ 限制：付费按量计费，无免费额度\n'
+      '付费模型。Atria Dawn Preview，高质量长文本叙事。\n'
+      '✅ 优点：推理能力强，256K上下文，兼容 Chat Completions / Messages / Responses 接口\n'
+      '⚠️ 限制：付费按量计费，无免费额度，账号级 60 RPM 限流\n'
       '🎯 推荐：复杂推理、代码审计等高质量场景',
   AiProvider.agnes:
       '免费模型。Agnes-2.5-flash，响应速度最快（<1s首字）。\n'
@@ -552,7 +552,8 @@ class AppProvider extends ChangeNotifier {
   List<String> freeModelsFor(AiProvider provider) {
     switch (provider) {
       case AiProvider.deepseek:
-        return ['deepseek-chat'];
+        // Atria 按量计费，无免费额度
+        return const [];
       case AiProvider.agnes:
         return ['agnes-2.5-flash', 'agnes-2.5-turbo'];
       case AiProvider.sensenova:
@@ -569,7 +570,7 @@ class AppProvider extends ChangeNotifier {
   List<String> popularPaidModelsFor(AiProvider provider) {
     switch (provider) {
       case AiProvider.deepseek:
-        return ['deepseek-v4-pro', 'deepseek-reasoner'];
+        return ['Atria-Dawn-Preview'];
       case AiProvider.agnes:
         return ['agnes-2.5-pro', 'agnes-2.5'];
       case AiProvider.sensenova:
