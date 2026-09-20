@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
@@ -110,12 +111,21 @@ class HomePage extends StatelessWidget {
           width: MiuiSpace.dividerThickness,
         ),
       ),
-      child: Text(
-        'v1.0.0+100 · HyperOS Edition',
-        textAlign: TextAlign.center,
-        style: MiuiType.footnote2.copyWith(
-          color: MiuiColors.onSurfaceVariantSummary.withValues(alpha: 0.7),
-        ),
+      child: FutureBuilder<PackageInfo>(
+        future: PackageInfo.fromPlatform(),
+        builder: (context, snapshot) {
+          final info = snapshot.data;
+          final versionText = info == null
+              ? '…'
+              : 'v${info.version}+${info.buildNumber} · HyperOS Edition';
+          return Text(
+            versionText,
+            textAlign: TextAlign.center,
+            style: MiuiType.footnote2.copyWith(
+              color: MiuiColors.onSurfaceVariantSummary.withValues(alpha: 0.7),
+            ),
+          );
+        },
       ),
     );
   }
