@@ -204,6 +204,10 @@ class Player {
   String? clubId; // P14：当前加入的社团 id（null = 未入社）
   int clubPoints; // P14：当前社团积分（晋升用）
   int clubLastTurn; // P14：最近一次为社团出力的回合号（冷却用）
+  String? clubTaskId; // P15：当前接取的社团任务 id（null = 未接取）
+  int clubTaskProgress; // P15：当前社团任务进度（已为社团出力的回合数）
+  int clubTaskIssuedTurn; // P15：接取任务的回合号（用于展示接取时长）
+  bool clubTaskClaimed; // P15：本次任务是否已领奖（领奖后清空接取）
   int qSkill; // 魁地奇技巧（50起步）
   String qPosition; // 位置：找球手/追球手/守门员/击球手
   int qMatches; // 参赛场次
@@ -297,6 +301,10 @@ class Player {
     this.clubId,
     this.clubPoints = 0,
     this.clubLastTurn = -1,
+    this.clubTaskId,
+    this.clubTaskProgress = 0,
+    this.clubTaskIssuedTurn = -1,
+    this.clubTaskClaimed = false,
     this.qSkill = 50,
     this.qPosition = '找球手',
     this.qMatches = 0,
@@ -498,6 +506,10 @@ class Player {
     'club_id': clubId,
     'club_points': clubPoints,
     'club_last_turn': clubLastTurn,
+    'club_task_id': clubTaskId,
+    'club_task_progress': clubTaskProgress,
+    'club_task_issued_turn': clubTaskIssuedTurn,
+    'club_task_claimed': clubTaskClaimed,
     'q_skill': qSkill,
     'q_position': qPosition,
     'q_matches': qMatches,
@@ -674,6 +686,10 @@ class Player {
     clubId: readStringOrNull(json['club_id']),
     clubPoints: readInt(json['club_points'], fallback: 0),
     clubLastTurn: readInt(json['club_last_turn'], fallback: -1),
+    clubTaskId: readStringOrNull(json['club_task_id']),
+    clubTaskProgress: readInt(json['club_task_progress'], fallback: 0),
+    clubTaskIssuedTurn: readInt(json['club_task_issued_turn'], fallback: -1),
+    clubTaskClaimed: readBool(json['club_task_claimed']),
     qSkill: readInt(json['q_skill'], fallback: 50),
     qPosition: readString(json['q_position'], fallback: '找球手'),
     qMatches: readInt(json['q_matches']),

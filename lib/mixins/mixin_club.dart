@@ -242,4 +242,158 @@ mixin GameClubMixin on GameProviderBase {
     player.attributes[key] =
         ((player.attributes[key] ?? 50) + gain).clamp(0, 100);
   }
+
+  // ==================== P15 跨回合社团任务 ====================
+
+  /// 当前接取的任务模板；未接取返回 null。
+  @visibleForTesting
+  ClubTaskDef? currentClubTask() {
+    final p = player;
+    if (p == null || p.clubTaskId == null) return null;
+    return clubTaskById(p.clubTaskId!);
+  }
+
+  /// /社团 任务 面板：列出当前社团的任务，展示接取状态与进度。
+  String clubTaskPanel() {
+    final p = player;
+    if (p == null) return '还没有可归属的人生——先创建角色吧。';
+    final club = memberClub();
+    if (club == null) return '你还没有加入任何社团，先「/社团 <id>」入社吧。';
+    final tasks = clubTasksFor(club.id);
+    if (tasks.isEmpty) return '${club.name} 暂时没有任务可接。';
+    final buf = StringBuffer('【${club.icon} ${club.name} · 社团任务】');
+    final current = currentClubTask();
+    for (final t in tasks) {
+      buf.writeln();
+      buf.writeln('—— ${t.title} ——');
+      buf.writeln(t.desc);
+      buf.writeln('要求：为社团出力 ${t.requiredRounds} 回合 · '
+          '奖励：社团积分 +${t.clubPointsReward}'
+          '${t.attrKey != null && t.attrValue > 0 ? ' · ${attributeLabel(t.attrKey!)} +${t.attrValue}' : ''}');
+      if (current?.id == t.id) {
+        buf.writeln('【进行中】进度 ${p.clubTaskProgress}/${t.requiredRounds}'
+            '（接于第 ${p.clubTaskIssuedTurn} 回合）');
+        if (p.clubTaskProgress >= t.requiredRounds) {
+          buf.writeln('✔ 已完成！用「/社团 任务 完成」领奖。');
+        } else {
+          buf.writeln('多做与干系事相符的行动即可推进。');
+        }
+      } else {
+        buf.writeln('用「/社团 任务 接取 ${t.id}」接下这条。');
+      }
+    }
+    buf.writeln('\n（同一时间只能进行一条任务；换任务用「/社团 任务 接取 <id>」，'
+        '进度会清零。）');
+    return buf.toString();
+  }
+
+  /// 接取一条社团任务。返回面板文本；非法 id / 未入社 / 任务不属于本社时提示。
+  String acceptClubTask(String rawId) {
+    final p = player;
+    if (p == null) return '还没有可归属的人生——先创建角色吧。';
+    final club = memberClub();
+    if (club == null) return '你还没有加入任何社团，先「/社团 <id>」入社吧。';
+    final t = clubTaskById(rawId);
+    if (t == null || t.clubId != club.id) {
+      return '没有叫「$rawId」的社团任务。当前 ${club.name} 可选：'
+          '${clubTasksFor(club.id).map((x) => x.id).join('、')}。';
+    }
+    final prev = currentClubTask();
+    if (prev?.id == t.id && p.clubTaskProgress > 0) {
+      return '你已经在进行「${t.title}」了（进度 ${p.clubTaskProgress}/${t.requiredRounds}）。';
+    }
+    p.clubTaskId = t.id;
+    p.clubTaskProgress = 0;
+    p.clubTaskIssuedTurn = -1; // -1 = 尚未推进过（接取当回合即可推进）
+    p.clubTaskClaimed = false;
+    notifications.add('📋 社团任务接取：${t.title}');
+    final buf = StringBuffer('【接取任务 · ${t.title}】')
+      ..writeln(t.desc)
+      ..writeln('要求：为社团出力 ${t.requiredRounds} 回合。')
+      ..writeln('此后每回合的离线行动只要与干系事相符，任务进度就会 +1。')
+      ..writeln('攒够后回来用「/社团 任务 完成」领奖。');
+    return buf.toString().trim();
+  }
+
+  /// 由离线管线在 P14 段调用：玩家本回合行动命中社团干系事时推进任务进度。
+  /// 与日常记分（maybeRunClubActivity）相互独立——日常记分有 6 回合冷却，
+  /// 任务推进**每回合最多 +1**（clubTaskIssuedTurn 记录上次推进回合），
+  /// 这样任务不至于被冷却卡死，也不会一回合猛刷。
+  /// 返回一段进度提示文本；无进行中任务 / 行动不匹配 / 已完成未领奖时不推进。
+  String advanceClubTaskForAction(String action) {
+    final p = player;
+    final club = memberClub();
+    final t = currentClubTask();
+    if (p == null || club == null || t == null || t.clubId != club.id) {
+      return '';
+    }
+    if (!club.activityKeywords.any(action.contains)) return '';
+    // 有在等的奇遇/羁绊/回信先处理完，不让任务提示抢正戏（与日常记分同门控）。
+    if (hasPendingHappenstance) return '';
+    if (hasPendingCompanionClimax) return '';
+    if (hasPendingLetter) return '';
+    if (p.clubTaskProgress >= t.requiredRounds) {
+      // 已完成未领奖：不再推进，但提示领奖。
+      return '📋 社团任务「${t.title}」已完成！用「/社团 任务 完成」领奖。';
+    }
+    // 任务推进冷却：同一条任务每回合最多推进 1 次（按上次推进回合判断）。
+    if (p.clubTaskIssuedTurn >= 0 && turnCount - p.clubTaskIssuedTurn < 1) {
+      return '';
+    }
+    p.clubTaskProgress++;
+    p.clubTaskIssuedTurn = turnCount;
+    if (p.clubTaskProgress >= t.requiredRounds) {
+      return '📋 社团任务「${t.title}」进度达成！用「/社团 任务 完成」领奖。';
+    }
+    return '📋 社团任务「${t.title}」进度 ${p.clubTaskProgress}/${t.requiredRounds}。';
+  }
+
+  /// 领取已完成任务的奖励。返回领奖文本；未完成 / 未接取时提示。
+  String claimClubTask() {
+    final p = player;
+    if (p == null) return '还没有可归属的人生——先创建角色吧。';
+    final club = memberClub();
+    if (club == null) return '你还没有加入任何社团。';
+    final t = currentClubTask();
+    if (t == null) return '当前没有进行中的社团任务，用「/社团 任务」查看可接任务。';
+    if (p.clubTaskProgress < t.requiredRounds) {
+      return '「${t.title}」还没完成（进度 ${p.clubTaskProgress}/${t.requiredRounds}），'
+          '再多做几回合与干系事相符的行动吧。';
+    }
+    // 结算奖励：大额社团积分（不触发跨阶发奖——日常记分已带晋升逻辑，这里只加数值）。
+    p.clubPoints += t.clubPointsReward;
+    if (t.attrKey != null && t.attrValue > 0) {
+      _gainAttr(p, t.attrKey!, t.attrValue);
+    }
+    p.clubTaskClaimed = true;
+    // 领奖后清空接取，回到可接新任务状态。
+    p.clubTaskId = null;
+    p.clubTaskProgress = 0;
+    p.clubTaskIssuedTurn = -1;
+    final house = houseDisplayName(p.house ?? '', fallback: '霍格沃茨');
+    final buf = StringBuffer('【任务完成 · ${club.icon} ${t.title}】')
+      ..writeln(fillClubText(t.rewardNote, club: club.name, rank: club.ranks.first.name))
+      ..writeln()
+      ..writeln('社团积分 +${t.clubPointsReward}（当前 ${p.clubPoints}）');
+    if (t.attrKey != null && t.attrValue > 0) {
+      buf.writeln('${attributeLabel(t.attrKey!)} +${t.attrValue}');
+    }
+    buf.writeln('为 $house 添了脸面，也为自己挣了口气。');
+    notifications.add('🏰 社团任务完成：${t.title}');
+    return buf.toString().trim();
+  }
+
+  /// 放弃当前任务（进度清零，回到可接新任务）。
+  String abandonClubTask() {
+    final p = player;
+    if (p == null) return '还没有可归属的人生——先创建角色吧。';
+    final t = currentClubTask();
+    if (t == null) return '当前没有进行中的社团任务。';
+    p.clubTaskId = null;
+    p.clubTaskProgress = 0;
+    p.clubTaskIssuedTurn = -1;
+    p.clubTaskClaimed = false;
+    notifications.add('📋 社团任务放弃：${t.title}');
+    return '你搁下了「${t.title}」。社长没有多问——任务栏空着，随时可以换一条。';
+  }
 }

@@ -403,3 +403,192 @@ const int kClubCooldownTurns = 6;
 
 /// 入社引导用的默认社团 id（/社团 无参数且未入社时第一个展示）。
 const String kDefaultClubId = 'duel';
+/// ==================== P15 跨回合社团任务 ====================
+///
+/// 让社团从「被动攒分」升级为「有目标地出力」：接取一条任务后，之后的离线
+/// 回合只要做了与社团干系事相符的行动，任务进度就随之为社团出力而积累；
+/// 攒够所需回合数后可回社团领奖（大额积分 + 属性奖励，不占用日常记分冷却）。
+/// 每社 3 条任务，覆盖各自干系词的日常高频动作，接取后可随时放弃重选。
+
+/// 社团任务模板。
+class ClubTaskDef {
+  final String id;
+  final String clubId; // 所属社团 id
+  final String title;
+  final String desc; // 接取引导文案
+  /// 完成后追加的一句旁白（可带 `$club` 占位）。
+  final String rewardNote;
+  /// 需要「为社团出力」的回合数（每次匹配干系事的行动推进 1 回合进度）。
+  final int requiredRounds;
+  /// 任务完成奖励：一次性大额社团积分（不触发跨阶发奖，直接入账）。
+  final int clubPointsReward;
+  /// 属性奖励（key + 值），null 表示无属性奖励。
+  final String? attrKey;
+  final int attrValue;
+  const ClubTaskDef({
+    required this.id,
+    required this.clubId,
+    required this.title,
+    required this.desc,
+    required this.rewardNote,
+    required this.requiredRounds,
+    required this.clubPointsReward,
+    this.attrKey,
+    this.attrValue = 0,
+  });
+}
+
+/// 查询某社团的任务模板列表（按 id 稳定顺序）。
+List<ClubTaskDef> clubTasksFor(String clubId) =>
+    kClubTasks.where((t) => t.clubId == clubId).toList();
+
+/// 按 id 查任务模板；未知返回 null。
+ClubTaskDef? clubTaskById(String id) {
+  for (final t in kClubTasks) {
+    if (t.id == id) return t;
+  }
+  return null;
+}
+
+/// 全部社团任务模板。
+const List<ClubTaskDef> kClubTasks = [
+  // ============ 决斗俱乐部 ============
+  ClubTaskDef(
+    id: 'duel_ten_spars',
+    clubId: 'duel',
+    title: '十场切磋，站稳脚跟',
+    desc: '会长要看看新人是不是三分钟热度。连续多日用切磋/对练在会堂里露面，
+        攒够出力回合，证明你属于这里。',
+    rewardNote: '会长当众点你的名：「这小子（姑娘）是块料。」\n你为 $club 拿下一笔可观的积分，魔杖握得也更稳了。',
+    requiredRounds: 4,
+    clubPointsReward: 40,
+    attrKey: 'reaction_time',
+    attrValue: 5,
+  ),
+  ClubTaskDef(
+    id: 'duel_newcomer_mentor',
+    clubId: 'duel',
+    title: '带新人对练',
+    desc: '前辈把你叫到一边：给刚入社的几个新手喂招，让他们见识见识什么叫真正的对决。',
+    rewardNote: '你带的新人在例行集会上赢下了人生第一场。\n他们喊你「师傅」时，你忽然懂了 $club 为什么愿意把接力棒交到你手上。',
+    requiredRounds: 5,
+    clubPointsReward: 55,
+    attrKey: 'courage',
+    attrValue: 6,
+  ),
+  ClubTaskDef(
+    id: 'duel_rep',
+    clubId: 'duel',
+    title: '为社团正名',
+    desc: '外院的嘴碎到你头上：说决斗俱乐部只会花架子。去，用一场场硬仗让质疑闭嘴。',
+    rewardNote: '你赢得漂亮。从此再没人敢说 $club 是花架子——\n你的名字，成了会堂里的一根标杆。',
+    requiredRounds: 6,
+    clubPointsReward: 70,
+    attrKey: 'dda',
+    attrValue: 8,
+  ),
+  // ============ 魔药部 ============
+  ClubTaskDef(
+    id: 'potion_stable_pot',
+    clubId: 'potion',
+    title: '一锅稳定的药剂',
+    desc: '部长说：魔药不在乎天赋，在乎「每一锅都一个样」。连续多日用熬制/研磨
+        沉下心，把稳定性熬出来。',
+    rewardNote: '你端出的药剂成色稳定得像从同一只坩埚倒出来的。\n部长难得点了点头：「$club 要的就是这种手。」',
+    requiredRounds: 4,
+    clubPointsReward: 40,
+    attrKey: 'potions',
+    attrValue: 5,
+  ),
+  ClubTaskDef(
+    id: 'potion_rare_brew',
+    clubId: 'potion',
+    title: '试炼一味稀有配方',
+    desc: '部里的一味稀有配方没人敢碰——火候差一点就废。你来，用耐心把它熬出来。',
+    rewardNote: '配方成了。\n那晚 $club 的坩埚边围满了人，你亲手熬出的那锅药，成了部里的传说。',
+    requiredRounds: 5,
+    clubPointsReward: 55,
+    attrKey: 'observation',
+    attrValue: 6,
+  ),
+  ClubTaskDef(
+    id: 'potion_herb_run',
+    clubId: 'potion',
+    title: '药材大采购',
+    desc: '温室和药材商那里的货参差不齐。接下这门跑腿的活，把部里缺的药材备齐。',
+    rewardNote: '药材齐了，部里接下来一个月的熬制都有了底气。\n你为 $club 攒下的不只是分，还有一屋子人的人情。',
+    requiredRounds: 6,
+    clubPointsReward: 70,
+    attrKey: 'herbology',
+    attrValue: 8,
+  ),
+  // ============ 魁地奇队 ============
+  ClubTaskDef(
+    id: 'broom_daily_drill',
+    clubId: 'broom',
+    title: '风雨无阻的训练',
+    desc: '队长说：状态是练出来的，不是等出来的。连续多日用练球/飞行训练打卡。',
+    rewardNote: '队长在训练表上给你画了一排勾。\n「$club 要的就是这种自觉。」他说。天空不会辜负准时起飞的人。',
+    requiredRounds: 4,
+    clubPointsReward: 40,
+    attrKey: 'flying',
+    attrValue: 5,
+  ),
+  ClubTaskDef(
+    id: 'broom_catch_drill',
+    clubId: 'broom',
+    title: '追球手特训',
+    desc: '找球手/追球手该有的眼力和手感，靠一次次扑球、追球磨出来。',
+    rewardNote: '你在一次对抗里抓到了那颗「根本不可能抓到」的金探子。\n更衣室里，全队都朝你看过来。这一刻，你属于 $club 的天空。',
+    requiredRounds: 5,
+    clubPointsReward: 55,
+    attrKey: 'reaction_time',
+    attrValue: 6,
+  ),
+  ClubTaskDef(
+    id: 'broom_team_combo',
+    clubId: 'broom',
+    title: '与队友的默契',
+    desc: '单人再强也赢不了比赛。连续多日跟队合练，把默契磨到不用喊也知道往哪飞。',
+    rewardNote: '一场配合行云流水的训练赛后，队长拍了拍你的背：\n「$club 的战术版上，永远有你的位置。」',
+    requiredRounds: 6,
+    clubPointsReward: 70,
+    // 领导力不入属性表：本任务以「战术后勤」为主题，奖励走大额积分 + 逻辑层补声望
+    attrKey: null,
+    attrValue: 0,
+  ),
+  // ============ 快讯社 ============
+  ClubTaskDef(
+    id: 'quip_first_report',
+    clubId: 'quip',
+    title: '第一篇署名热稿',
+    desc: '主编丢给你一张任务卡：连续多日采访/写稿，攒出一篇真正的热稿。',
+    rewardNote: '你的稿件贴在快讯栏最显眼的位置，署名加粗。\n整个城堡都在传你写的那件事。$club 的主编冲你扬了扬下巴。',
+    requiredRounds: 4,
+    clubPointsReward: 40,
+    attrKey: 'social',
+    attrValue: 5,
+  ),
+  ClubTaskDef(
+    id: 'quip_fact_check',
+    clubId: 'quip',
+    title: '戳穿谣言',
+    desc: '城堡里谣传满天飞。接下这个选题：连续多日做记录/调查，把真相挖出来。',
+    rewardNote: '你的稿子让全校都在传的谣言一夜熄火。\n「事实重于热闹」这行字，主编第一次把它讲给别人听时，讲的是你。',
+    requiredRounds: 5,
+    clubPointsReward: 55,
+    attrKey: 'logic',
+    attrValue: 6,
+  ),
+  ClubTaskDef(
+    id: 'quip_exclusive',
+    clubId: 'quip',
+    title: '独家头条',
+    desc: '城堡里就要出大事了——你闻到了独家头条的味道。连续多日蹲守采访，把它拿下。',
+    rewardNote: '独家头条，你的署名，全校都在读。\n主编说：$club 的传奇只有一种写法——把别人都写不出来的事，写好。',
+    requiredRounds: 6,
+    clubPointsReward: 70,
+    attrKey: 'creativity',
+    attrValue: 8,
+  ),
+];

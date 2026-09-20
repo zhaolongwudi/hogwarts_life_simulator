@@ -1348,9 +1348,10 @@ mixin GameCommandsMixin on GameProviderBase {
         primary: '社团',
         aliases: ['俱乐部'],
         group: '学业&成长',
-        helpText: '校园社团：加入/查看/退出社团，长期出力可逐级晋升（/社团 [id]·/社团 退出）',
+        helpText: '校园社团：加入/查看/退出社团，长期出力可逐级晋升；社团任务跨回合推进（/社团 [id]·/社团 退出·/社团 任务）',
         subs: [
           CommandSub('退出', '退出当前社团'),
+          CommandSub('任务', '查看社团任务（接取/完成领奖）'),
           CommandSub('duel', '加入决斗俱乐部'),
           CommandSub('potion', '加入魔药部'),
           CommandSub('broom', '加入魁地奇队'),
@@ -1363,6 +1364,17 @@ mixin GameCommandsMixin on GameProviderBase {
             m.currentNarrative = m.formatClubPanel();
           } else if (ctx.parts.first == '退出') {
             m.currentNarrative = m.leaveClub();
+          } else if (ctx.parts.first == '任务') {
+            final sub = ctx.parts.length > 1 ? ctx.parts[1] : '';
+            if (sub == '接取' && ctx.parts.length > 2) {
+              m.currentNarrative = m.acceptClubTask(ctx.parts[2]);
+            } else if (sub == '完成') {
+              m.currentNarrative = m.claimClubTask();
+            } else if (sub == '放弃') {
+              m.currentNarrative = m.abandonClubTask();
+            } else {
+              m.currentNarrative = m.clubTaskPanel();
+            }
           } else {
             m.currentNarrative = m.joinClub(ctx.parts.first);
           }

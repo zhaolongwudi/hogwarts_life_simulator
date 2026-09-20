@@ -1801,6 +1801,14 @@ $kNarrativeWritingRules
     if (clubScene != null && clubScene.isNotEmpty) {
       currentNarrative = '$currentNarrative\n\n$clubScene';
     }
+    // P15 跨回合社团任务：行动命中干系事时推进任务进度（独立于日常积分冷却）。
+    // 紧接社团活动后：任务进度提示是「你为社团出力」的延伸，自然收在同一段。
+    if (!confessedThisTurn) {
+      final taskNote = this.advanceClubTaskForAction(action);
+      if (taskNote.isNotEmpty) {
+        currentNarrative = '$currentNarrative\n\n$taskNote';
+      }
+    }
 
     // 【顺序很关键】兜底选项必须在**原著节点注入之后**才生成。
     // 原先这一行写在 _finalizeTurn 之前，比注入早了两步，导致两个后果：
