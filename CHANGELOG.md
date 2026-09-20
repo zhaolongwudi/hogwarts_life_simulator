@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.0.0 — 2026-09-20
+
+**📋 变更说明**
+fix(ci): 删除死代码 BubbleTail，恢复界面可达性门禁
+
+progression_fix_test 的「没有哪个界面是自己文件里自嗨的死代码」
+扫描出 BubbleTail 在整个仓库没有任何引用：
+- 真正的聊天气泡是 narrative_visuals.dart 里的 DialogueBubble，
+  用的是左侧学院色强调条，不需要三角尾巴；
+- BubbleTail 与其私有的 _TrianglePainter 从未被任何文件 import，
+
 ### v4.9.9 — 2026-09-20
 
 **📋 变更说明**
