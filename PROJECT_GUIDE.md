@@ -3,7 +3,7 @@
 > **给未来的 AI 助手 / 开发者的一份"维修导航"**。
 > 读完这份文档，你应当能在 5 分钟内定位任何问题的相关文件，
 > 并避开本项目最常踩的坑（源码扫描测试、mixin 组合、版本 CI 机制）。
-> 项目规模：约 5.5 万行 Dart，133+ 文件。当前版本 v4.8.4。
+> 项目规模：约 9.8 万行 Dart，193 文件。当前版本 v5.0.2。
 
 ---
 
@@ -14,8 +14,8 @@
 | 类型 | AI 驱动的人生模拟器（Flutter 移动应用） |
 | 世界观 | 哈利·波特（含 5 个可选时代） |
 | 核心循环 | 玩家自由输入 → AI 生成叙事 → 解析状态变化 → 时间推进 → 世界演化 |
-| 技术栈 | Flutter 3.16+ / Dart 3.2+ / Provider / JSON 存档 + secure_storage |
-| 跑测试 | `flutter test`（当前 1984+ 项） |
+| 技术栈 | Flutter 3.44+ / Dart 3.12+ / Provider / JSON 存档 + secure_storage |
+| 跑测试 | `flutter test`（当前 1910+ 项） |
 | 跑分析 | `flutter analyze`（门禁：0 error） |
 
 **入口文件**：`lib/main.dart`（主题定义在 `_buildDarkTheme()`）→ `lib/screens/home_screen.dart`（主页）→ `lib/screens/intro_screen.dart`（13 轮角色创建）→ `lib/screens/game_screen.dart`（主游戏）。
