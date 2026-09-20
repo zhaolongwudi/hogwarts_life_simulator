@@ -21,13 +21,13 @@ enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
 enum AiProvider { deepseek, agnes, sensenova }
 
 // 场景 → 提供商名 的默认路由
-// 策略：SenseNova（商汤日日新）用于主剧情/摘要/选项（免费、剧情质量最好、Token效率高），
-//       Agnes 用于 NPC 聊天（免费、响应最快）；Atria 为付费模型，仅个别场景手动选用，不进默认路由与自动回退。
+// 策略：SenseNova（商汤日日新）用于全部四个场景（免费、剧情质量最好、Token效率高），
+//       主力模型为 deepseek-v4-flash；Atria 为付费模型，仅个别场景手动选用，不进默认路由与自动回退。
 // 用户可通过设置页面自定义路由覆盖默认值
 const Map<AiScene, String> kDefaultRoute = {
   AiScene.narrative: 'sensenova',
   AiScene.summary: 'sensenova',
-  AiScene.npcChat: 'agnes',
+  AiScene.npcChat: 'sensenova',
   AiScene.choice: 'sensenova',
 };
 
@@ -36,7 +36,7 @@ const Map<AiScene, String> kSceneDescriptions = {
   AiScene.narrative: '主剧情：生成每回合的叙事文本、分支选择和行动反馈。默认使用 SenseNova（商汤日日新，剧情质量最好）。',
   AiScene.summary: '剧情摘要：每10回合自动压缩历史剧情为摘要。默认使用 SenseNova（Token效率最高，省60%）。',
   AiScene.npcChat:
-      'NPC聊天：与游戏中角色的独立对话。默认使用 Agnes（免费、响应最快），仅在需要更强长文本能力时手动改用 Atria。',
+      'NPC聊天：与游戏中角色的独立对话。默认使用 SenseNova（deepseek-v4-flash），需要更快响应时可手动改用 Agnes。',
   AiScene.choice: '选项生成：独立于主剧情的选项生成，使用更强模型保证选项质量。默认使用 SenseNova。',
 };
 
@@ -559,8 +559,8 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.sensenova:
         // 公测期间全部免费，按调用次数限流（每5小时重置）
         return [
-          'sensenova-6.8-flash-lite', // 最新多模态智能体；公测已改积分制（60,000积分/滚动5h）
-          'deepseek-v4-flash', // 500次/5h
+          'deepseek-v4-flash', // 500次/5h（主力）
+          'sensenova-6.8-flash-lite', // 多模态智能体；公测已改积分制（60,000积分/滚动5h）
           'glm-5.2', // 500次/5h，1M上下文
         ];
     }

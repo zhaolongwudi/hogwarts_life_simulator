@@ -69,10 +69,10 @@ const Map<String, ProviderDefault> kProviderDefaults = {
   'sensenova': ProviderDefault(
     displayName: 'SenseNova',
     tagline: '免费 · 剧情质量最佳',
-    model: 'sensenova-6.8-flash-lite',
+    model: 'deepseek-v4-flash',
     models: [
-      'sensenova-6.8-flash-lite', // 最新：多模态智能体；公测已改积分制（60,000积分/滚动5h）
-      'deepseek-v4-flash', // DeepSeek对话模型，500次/5h
+      'deepseek-v4-flash', // DeepSeek对话模型，500次/5h（主力）
+      'sensenova-6.8-flash-lite', // 多模态智能体；公测已改积分制（60,000积分/滚动5h）
       'glm-5.2', // 智谱旗舰：1M上下文，500次/5h
       'sensenova-u1-fast', // 信息图生成专用（非chat场景）
     ],

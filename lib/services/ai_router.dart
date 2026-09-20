@@ -22,7 +22,7 @@ class AiRouterConfig {
   const AiRouterConfig({
     this.narrativeProvider = AiProvider.sensenova,
     this.summaryProvider = AiProvider.sensenova,
-    this.npcChatProvider = AiProvider.agnes,
+    this.npcChatProvider = AiProvider.sensenova,
     this.choiceProvider = AiProvider.sensenova,
     this.fallbackOrder = const [AiProvider.sensenova, AiProvider.agnes],
   });

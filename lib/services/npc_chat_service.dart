@@ -55,9 +55,8 @@ class NpcChatService {
 
   /// 近 1 分钟内的 AI 调用时间戳（Q11 连发保护）。
   ///
-  /// 默认 npcChat → Agnes（免费版 18 RPM 本地闸门）。玩家连续快速发消息时，
-  /// 每星期 3 秒/条，约 1 分钟后第 18 条起每次都会卡在「等待窗口滑出」最多
-  /// 30s。与其干等，不如在计数接近上限时直接降级本地模板——对玩家是
+  /// 近 1 分钟连发保护（本地闸门，与具体提供商无关）。默认 npcChat → SenseNova，
+  /// 玩家连续快速发消息时，计数接近上限后直接降级本地模板——对玩家是
   /// 「回答变快但略显模板化」，远好于「一句话卡半分钟」。
   static const int kMaxRpmWindow = 18;
   static const Duration kRpmWindow = Duration(minutes: 1);
