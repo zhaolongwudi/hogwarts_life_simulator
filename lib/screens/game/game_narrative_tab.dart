@@ -1631,9 +1631,9 @@ class _NarrativeTabState extends State<NarrativeTab> {
   Widget _buildStoryParagraph(StoryParagraph p) {
     switch (p.kind) {
       case ParagraphKind.dialogue:
-        // 对话段：聊天气泡风格（参考图 chat bubble 样式）
-        // 提取说话人名称显示在气泡上方
-        return _buildDialogueBubble(p);
+        // 对话段：小说式排版（说话人标签 + 左侧色条衬底），
+        // 不再使用聊天气泡方框——方框在长文阅读里切断节奏感。
+        return _buildDialogueParagraph(p);
       case ParagraphKind.innerVoice:
         // 内心独白：斜体浅紫，跟随系统缩放
         return ScaledRichText(
@@ -1667,63 +1667,39 @@ class _NarrativeTabState extends State<NarrativeTab> {
     }
   }
 
-  /// 聊天气泡构建：提取说话人标签 + 气泡容器
-  Widget _buildDialogueBubble(StoryParagraph p) {
+  /// 对话段小说式排版：说话人标签 + 左侧色条衬底。
+  /// 保留说话人高亮与台词着色（parseParagraphStyled），
+  /// 仅用左侧竖条锚定"这是对话"，替代原气泡方框。
+  Widget _buildDialogueParagraph(StoryParagraph p) {
     final speaker = _extractDialogueSpeaker(p.text);
     final hasSpeaker = speaker != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (hasSpeaker)
-          Padding(
-            padding: const EdgeInsets.only(left: 6, bottom: 5),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFC87A).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    speaker,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFFFC87A),
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const BubbleTail(),
-              ],
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: MiuiColors.info.withValues(alpha: 0.55),
+            width: 3,
           ),
-        // 聊天气泡本体
-        Container(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-          decoration: BoxDecoration(
-            color: MiuiColors.info.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.only(
-              topLeft: hasSpeaker
-                  ? const Radius.circular(4)
-                  : const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: const Radius.circular(16),
-              bottomRight: const Radius.circular(16),
+        ),
+      ),
+      padding: const EdgeInsets.only(left: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasSpeaker) ...[
+            Text(
+              speaker,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFFFC87A),
+                letterSpacing: 0.3,
+              ),
             ),
-            border: Border.all(
-              color: MiuiColors.info.withValues(alpha: 0.25),
-              width: MiuiSpace.dividerThickness,
-            ),
-          ),
-          child: ScaledRichText(
+            const SizedBox(height: 3),
+          ],
+          ScaledRichText(
             text: TextSpan(
               children: StoryTextRenderer.parseParagraphStyled(
                 p,
@@ -1731,8 +1707,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1743,17 +1719,28 @@ class _NarrativeTabState extends State<NarrativeTab> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return null;
 
-    // 找第一个冒号，且后面紧跟引号/括号
+    // 找第一个冒号（说话人：台词）
     final colonIdx = trimmed.indexOf(RegExp(r'[：:]'));
     if (colonIdx <= 0 || colonIdx >= trimmed.length - 1) return null;
 
     final afterColon = trimmed.substring(colonIdx + 1).trim();
-    // 确认冒号后是引号开头
-    if (!RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon)) return null;
-
     final candidate = trimmed.substring(0, colonIdx).trim();
     if (candidate.isEmpty || candidate.length > 12) return null;
 
+    // 冒号后紧跟引号 -> 强对话信号，直接认定说话人
+    if (RegExp(r'^[\s]*["「『“‘]').hasMatch(afterColon)) return candidate;
+
+    // 无引号场景（赫敏：我们去图书馆吧。）：
+    // 说话人须像人名（2-6 字），并排除状态标签/位置/目标等叙述冒号，
+    // 与 StoryTextRenderer._looksLikeNarrationPhrase 的口径保持一致。
+    if (candidate.length < 2 || candidate.length > 6) return null;
+    const narrationHints = [
+      '位置', '时间', '地点', '状态', '目标', '任务', '进度',
+      '天气', '血量', '魔法', '金币', '等级', '声望', '好感',
+    ];
+    for (final h in narrationHints) {
+      if (candidate.contains(h)) return null;
+    }
     return candidate;
   }
 

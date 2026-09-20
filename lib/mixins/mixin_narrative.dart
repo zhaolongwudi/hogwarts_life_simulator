@@ -58,6 +58,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
   double _lastNarrativeDensity = 0.0;
 
+  /// 事件类指令（/决斗 /禁林 探险 等非面板指令）执行前的剧情快照，
+  /// 供「回到剧情」选项恢复。仅事件指令覆盖剧情时写入；未命中为 null。
+  ({String narrative, List<GameChoice> choices})? _storyBackup;
+
   /// 上一回合的叙事信息密度（只读）。
   ///
   /// 保留这个出口是为了让"密度"这个只在内部算过的数有被观察到的机会：
@@ -128,6 +132,19 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     // 显式排在最前，是让"剧情指令优先"成为**结构性保证**而非巧合。
     //
     // 命中后直接进剧情回合，不走 AI 路径也不走沙盒兜底。
+    // 问题4：「回到剧情」——恢复事件类指令执行前的剧情快照。
+    // 不消耗回合、不触发 AI、不加 turnCount（直接 return）。
+    if (action == '@@resume_story@@') {
+      final backup = _storyBackup;
+      if (backup != null) {
+        currentNarrative = backup.narrative;
+        choices = List<GameChoice>.from(backup.choices);
+        commandResult = null;
+        _storyBackup = null;
+      }
+      notifyListeners();
+      return;
+    }
     final storyCmd = parseStoryCommand(action);
     if (storyCmd != null && storyProgress.active) {
       _runOfflineQuickTurn(action, causalResult: null);
@@ -188,6 +205,13 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         } else {
           // 事件类指令（/计划 /快进 /新NPC 生成 等）正常替换剧情，同时关闭旧面板
           commandResult = null;
+          // 问题4：记录事件执行前的剧情快照，并追加「回到剧情」选项，
+          // 让玩家从事件结果剧情（如决斗结算 / 禁林探险）回到事件发生前。
+          _storyBackup = (narrative: prevNarrative, choices: prevChoices);
+          choices = [
+            ...choices,
+            GameChoice(text: '回到剧情', action: '@@resume_story@@'),
+          ];
         }
         notifyListeners();
         unawaited(autoSave());

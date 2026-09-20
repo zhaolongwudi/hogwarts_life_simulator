@@ -28,7 +28,7 @@ class WorldTab extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFF5F0E8), Color(0xFFEDE6D8)],
+          colors: [MiuiColors.background, MiuiColors.surfaceVariant],
         ),
       ),
       child: SafeArea(

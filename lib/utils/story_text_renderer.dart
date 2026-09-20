@@ -1783,9 +1783,28 @@ class StoryTextRenderer {
     cleaned = _stripChoiceBlocks(cleaned);
     cleaned = _promoteAffectionLines(cleaned);
 
-    return splitParagraphs(cleaned).map((para) {
+    return splitParagraphs(cleaned).expand((para) {
+      return _splitDialogueLines(para);
+    }).map((para) {
       return StoryParagraph(_classifyParagraph(para), para);
     }).toList();
+  }
+
+  /// 多对话行拆分：段落内若每个非空行都是独立对话行
+  /// （说话人：台词，复用 _extractLineDialogue 口径），按行拆成多个段落。
+  /// 解决 AI 用单换行连写多个对话（赫敏：…\n罗恩：…）时被粘成一整段、
+  /// 整段糊进一个对话块的问题；叙述混合段保持原样不拆。
+  static List<String> _splitDialogueLines(String para) {
+    if (!para.contains('\n')) return [para];
+    final lines = para
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.length < 2) return [para];
+    final allDialogue = lines.every((l) => _extractLineDialogue(l) != null);
+    if (!allDialogue) return [para];
+    return lines;
   }
 
   static ParagraphKind _classifyParagraph(String para) {
@@ -1816,17 +1835,13 @@ class StoryTextRenderer {
         para.contains('“')) {
       return ParagraphKind.dialogue;
     }
-    // 5) 行首「说话人：」+ 台词（复用冒号检测口径）
+    // 5) 行首「说话人：」+ 台词。复用行级对话提取 _extractLineDialogue：
+    //    无需冒号后紧跟引号（赫敏：我们去图书馆吧。）也可识别，
+    //    与 inline 高亮层（parse/_splitNarration）保持同一套判定口径；
+    //    时钟冒号、好感裸行、状态标签、叙述短语等误判已在该函数内排除。
     for (final line in para.split('\n')) {
-      final colon = _findDialogueColon(line, 0, line.length);
-      if (colon > 0) {
-        final rest = line.substring(colon + 1).trimLeft();
-        if (rest.startsWith('"') ||
-            rest.startsWith('「') ||
-            rest.startsWith('“') ||
-            rest.startsWith('『')) {
-          return ParagraphKind.dialogue;
-        }
+      if (_extractLineDialogue(line) != null) {
+        return ParagraphKind.dialogue;
       }
     }
     // 6) 其余

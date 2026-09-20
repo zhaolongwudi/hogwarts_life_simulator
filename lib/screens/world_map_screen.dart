@@ -153,7 +153,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     return Scaffold(
       extendBody: true,
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFF3E5B4A),
+      backgroundColor: MiuiColors.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -231,7 +231,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       builder: (ctx) {
         return Container(
           decoration: const BoxDecoration(
-            color: Color(0xFF20402F),
+            color: MiuiColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
@@ -426,7 +426,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                               GestureDetector(
                                 onTap: () => _backToParent(),
                                 child: Text(_parentArea ?? '',
-                                    style: const TextStyle(fontSize: 16, color: Color(0xFF3E5B4A), fontWeight: FontWeight.w500)),
+                                    style: const TextStyle(fontSize: 16, color: MiuiColors.onSurfaceContainerVariant, fontWeight: FontWeight.w500)),
                               ),
                               const Icon(Icons.chevron_right, size: 18, color: MiuiColors.onSurfaceVariantSummary),
                             ],
@@ -453,7 +453,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           // subtitle 用更深的中绿，提高白底可读性
                           style: TextStyle(
                             fontSize: 13,
-                            color: const Color(0xFF3E5B4A).withValues(alpha: 0.95),
+                            color: MiuiColors.onSurfaceContainerVariant,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -881,13 +881,13 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: (isBranch ? AppColors.warning : const Color(0xFF3E5B4A))
+                        color: (isBranch ? AppColors.warning : MiuiColors.primary)
                             .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         isBranch ? Icons.subdirectory_arrow_right : loc['icon'] as IconData,
-                        color: isBranch ? AppColors.warning : const Color(0xFF3E5B4A),
+                        color: isBranch ? AppColors.warning : MiuiColors.primary,
                         size: 24,
                       ),
                     ),
@@ -916,7 +916,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(loc['desc'] as String,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF5A6B4A)),
+                              style: const TextStyle(fontSize: 13, color: MiuiColors.secondaryContainer),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis),
                         ],
@@ -945,12 +945,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(isBranch ? Icons.map : Icons.flag, size: 18, color: isBranch ? AppColors.warning : const Color(0xFF4CAF7D)),
+                      Icon(isBranch ? Icons.map : Icons.flag, size: 18, color: isBranch ? AppColors.warning : MiuiColors.primary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           isBranch ? '点击进入子地图探索更多地点' : '前往此地并开始你的冒险',
-                          style: TextStyle(fontSize: 13, color: isBranch ? AppColors.warning : const Color(0xFF3E5B4A)),
+                          style: TextStyle(fontSize: 13, color: isBranch ? AppColors.warning : MiuiColors.onSurfaceContainerVariant),
                         ),
                       ),
                     ],
@@ -964,8 +964,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         height: 46,
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF3E5B4A),
-                            side: const BorderSide(color: Color(0xFF3E5B4A), width: 1.5),
+                            foregroundColor: MiuiColors.secondary,
+                            side: const BorderSide(color: MiuiColors.secondary, width: 1.5),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: () => setState(() => _selectedLocation = null),
@@ -1070,7 +1070,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.95),
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF3E5B4A).withValues(alpha: 0.5), width: 1.5),
+              border: Border.all(color: MiuiColors.primary.withValues(alpha: 0.5), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.18),
@@ -1082,7 +1082,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             child: Icon(
               _isInSubArea ? Icons.subdirectory_arrow_left : Icons.arrow_back,
               size: 24,
-              color: const Color(0xFF2C4A3A),
+              color: MiuiColors.primary,
             ),
           ),
         ),

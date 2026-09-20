@@ -79,7 +79,7 @@ class GameBottomInput extends StatelessWidget {
                       // 输入框
                       Expanded(
                         child: Container(
-                          height: 40,
+                          height: 44,
                           decoration: BoxDecoration(
                             color: MiuiColors.surfaceContainer.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(22),
@@ -126,14 +126,14 @@ class GameBottomInput extends StatelessWidget {
                                 child: GestureDetector(
                                   onTap: gp.isLoading ? null : onHandleFreeAction,
                                   child: Container(
-                                    margin: const EdgeInsets.only(right: 4),
-                                    width: 32,
-                                    height: 32,
+                                    margin: const EdgeInsets.only(right: 2),
+                                    width: 38,
+                                    height: 38,
                                     decoration: BoxDecoration(
                                       color: gp.isLoading
                                           ? MiuiColors.disabledSecondary
                                           : MiuiColors.primary,
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(19),
                                       boxShadow: [
                                         if (!gp.isLoading)
                                           BoxShadow(
@@ -303,8 +303,10 @@ class GameBottomInput extends StatelessWidget {
                       width: MiuiSpace.dividerThickness,
                     ),
                   ),
+                  constraints: const BoxConstraints(minWidth: 76),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(a.icon, size: 14, color: a.color),
                       const SizedBox(width: 5),
