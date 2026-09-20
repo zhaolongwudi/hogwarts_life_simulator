@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v4.9.8 — 2026-09-20
+
+**📋 变更说明**
+feat(ai): 付费提供商由 DeepSeek 切换为 Atria API
+
+- 出厂默认 baseUrl → https://api.atria-asi.ai，默认模型 → Atria-Dawn-Preview
+- 可选模型清单收敛为 Atria-Dawn-Preview（Atria 目前仅此一个模型）
+- 移除 Atria 不支持的 /user/balance 余额查询，展示名与简介同步为 Atria
+- 免费/付费预设清单同步调整，保持为出厂模型列表子集
+
 ### v4.9.7 — 2026-09-18
 
 **📋 变更说明**
