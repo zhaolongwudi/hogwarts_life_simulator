@@ -7,9 +7,9 @@
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v5.0.1-E3B341?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.0.4-E3B341?style=flat-square" />
   <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
-  <img alt="测试" src="https://img.shields.io/badge/tests-1984%2B%20passed-10B981?style=flat-square" />
+  <img alt="测试" src="https://img.shields.io/badge/tests-1994%2B%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
 </p>
 
@@ -61,7 +61,7 @@
 
 | 系统 | 说明 |
 |---|---|
-| 🏆 **校园社团** | 决斗/魔药/魁地奇/快讯四社；行动对上社团干系事就攒积分，候补→活跃→骨干→王牌→传奇五阶晋升，跨阶得属性/学院分/声望 |
+| 🏆 **校园社团** | 决斗/魔药/魁地奇/快讯四社；行动对上社团干系事就攒积分，候补→活跃→骨干→王牌→传奇五阶晋升，跨阶得属性/学院分/声望；社团任务跨回合推进（接取→出力→领奖），晋升王牌/传奇时同好回访信 |
 | 🍂 **年度节庆** | 万圣节/圣诞/元旦/情人节/春季寻宝/学年舞会，按日期触发、每学年一次，`/节庆 日历` 查看 |
 | ✨ **奇遇** | 随机落在你身上的两段式小故事，触发回合给选项、下回合结算结局 |
 | 💞 **羁绊小剧场** | 好感跨过门槛后，与亲近之人的跨回合小戏，最终幕由你抉择 |
@@ -190,7 +190,7 @@ Flutter 3.44+ / Dart 3.12+ · Provider 状态管理 · JSON 存档 + secure_stor
 
 推送 `main` 后 GitHub Actions（[android-build.yml](.github/workflows/android-build.yml)）自动执行：
 
-1. **质量门禁**：`flutter analyze`（0 error）→ 全量测试回归（1984+ 项）
+1. **质量门禁**：`flutter analyze`（0 error）→ 全量测试回归（1994+ 项）
 2. **版本与产物**：触达 App 关键路径时 bump 版本 → 构建 Release APK → 同步 CHANGELOG → 发布 GitHub Release（保留最近 5 个）
 3. **依赖巡检**：Dependabot 每周扫描依赖更新
 
