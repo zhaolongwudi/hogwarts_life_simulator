@@ -233,6 +233,8 @@ class NpcChatService {
         scene: AiScene.npcChat,
         temperature: 0.9,
         maxTokens: 300,
+        // 润色失败不写 Key 熔断：可选增强不该把健康 Key 记上冷却（审批 3.1）。
+        trackCircuit: false,
         prompt: '''
 你是一名哈利·波特世界的对话润色师。下面是本地引擎生成的「${npc.name}」的一句回复。
 请只润色措辞与语气，让句子更像这个人会说的话；不得改变原意、身份设定或新增信息。用简体中文，直接输出润色后的一句回复，不要加引号、点评或前后缀。

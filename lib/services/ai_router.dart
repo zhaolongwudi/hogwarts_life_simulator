@@ -127,7 +127,7 @@ class AiRouter {
   /// 2 次，真实最坏序列是 35+2+35+4+35 = 111s —— 预算公式与自己要估的东西
   /// 差了 2.7 倍，据此倒推的全局超时（60s）根本容不下（第八次审查 P1-D）。
   /// 现在公式与 [globalTimeoutFor] 用同一个参数算，两者不会再各说各话。
-  static Duration perKeyBudgetFor(int keyCount) {
+  static Duration perKeyBudgetFor() {
     final perCall = _maxPerCallTimeout;
     final calls = _maxRetriesPerService + 1;
     final backoff = Duration(
@@ -143,12 +143,12 @@ class AiRouter {
   /// 全局超时就先炸，后面的 Key 一次都轮不到，_recordFailure 也记不满 3 次，
   /// 熔断阈值永远达不到——加熔断时忘了删全局超时，熔断被自己人架空。
   ///
-  /// 现在按 keyCount 给预算（每个 Key 一份 _perKeyBudget + 尾部余量），
+  /// 现在按 keyCount 给预算（每个 Key 一份 perKeyBudgetFor() + 尾部余量），
   /// 再按场景 clamp 到上下限：玩家最多等 ceil 秒，但健康 Key 一定能轮到。
   static Duration globalTimeoutFor(AiScene scene, int keyCount) {
     final keys = keyCount < 1 ? 1 : keyCount;
     final raw =
-        const Duration(seconds: 5) + perKeyBudgetFor(keys) * keys;
+        const Duration(seconds: 5) + perKeyBudgetFor() * keys;
     final floor = switch (scene) {
       AiScene.narrative => const Duration(seconds: 60),
       AiScene.choice => const Duration(seconds: 50),
@@ -268,6 +268,9 @@ class AiRouter {
     String? systemPrompt,
     double temperature = 0.8,
     int maxTokens = 2500,
+    // 润色等「可选增强」类调用传 false：失败不写 Key 熔断，避免把健康 Key
+    // 记上 60 秒冷却（审批 3.1：可选润色失败不该污染正式链路的熔断器）。
+    bool trackCircuit = true,
   }) async {
     // F7：全库此前一处 assert 都没有。这里是最值得断言的入口 ——
     // 这几个条件被破坏时不会立刻崩，而是变成"AI 返回空/半截内容"这种极难定位
@@ -309,6 +312,7 @@ class AiRouter {
         primary: primary,
         sceneLabel: sceneLabel,
         keyCount: _attemptedKeyCount(primary),
+        trackCircuit: trackCircuit,
       );
     } finally {
       // 调用链结束（无论成败/取消）都要摘掉活动令牌，
@@ -335,6 +339,7 @@ class AiRouter {
     required AiProvider primary,
     required String sceneLabel,
     required int keyCount,
+    required bool trackCircuit,
   }) async {
     final future = _callWithFallback(
       primary: primary,
@@ -347,6 +352,7 @@ class AiRouter {
       callId: callId,
       cancelToken: cancelToken,
       cancelBridge: bridge,
+      trackCircuit: trackCircuit,
     );
 
     // 全局超时按「实际会尝试的 Key 数」动态算，而不是写死一个值——
@@ -400,6 +406,7 @@ class AiRouter {
     String? callId,
     CancelToken? cancelToken,
     _CancelBridge? cancelBridge,
+    bool trackCircuit = true,
   }) async {
     // 缓存键必须带上「生成者身份」（provider + model）：否则玩家在设置页把模型
     // 从 A 换成 B 之后，5 分钟 TTL 内同一 prompt 会命中 A 的输出——
@@ -616,7 +623,7 @@ class AiRouter {
             // 后冷却还在，白等。
             final isEmptyResponse = e is AiEmptyRetryableException;
             lastError = e;
-            if (!isEmptyResponse) {
+            if (!isEmptyResponse && trackCircuit) {
               _recordFailure(service);
             }
 

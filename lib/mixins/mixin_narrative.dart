@@ -58,6 +58,10 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
   double _lastNarrativeDensity = 0.0;
 
+  /// 上次执行润色的回合（节流用）。润色是「可选增强」，不该每回合都打 AI：
+  /// 与主叙事/摘要共用同一把 Key，频繁触发只会稀释省 Key 的意义（审批 3.1）。
+  int _lastPolishTurn = -1;
+
   /// 事件类指令（/决斗 /禁林 探险 等非面板指令）执行前的剧情快照，
   /// 供「回到剧情」选项恢复。仅事件指令覆盖剧情时写入；未命中为 null。
   ({String narrative, List<GameChoice> choices})? _storyBackup;
@@ -1910,6 +1914,15 @@ $kNarrativeWritingRules
     final source = textOverride ?? currentNarrative;
     if (source.trim().isEmpty) return null;
 
+    // 节流：距上次润色至少间隔 5 回合（测试直调 textOverride 时绕过）。
+    // 润色是后台可选增强，逐回合触发只会把「省 Key 的本地模式」重新变成
+    // 悄悄烧 Key（审批 3.1）。
+    if (textOverride == null && turnCount - _lastPolishTurn < 5) return null;
+
+    // 会话纪元 + 回合双校验：润色是异步的，期间玩家可能已读完档重开
+    // 或推进了下一回合——旧回合的润色结果不得覆盖当前叙事（审批 3.1）。
+    final int epoch = sessionEpoch;
+    final int polishTurn = turnCount;
     final where = worldState.currentLocation ?? '霍格沃茨';
 
     try {
@@ -1917,6 +1930,8 @@ $kNarrativeWritingRules
         scene: AiScene.narrative,
         temperature: 0.7,
         maxTokens: 900,
+        // 润色失败不写叙事 Key 熔断：可选增强不该把健康 Key 记上冷却（审批 3.1）。
+        trackCircuit: false,
         prompt: '''
 你是一名哈利·波特世界的文字润色师。下面是本地引擎生成的一段剧情叙事。
 请只润色措辞、节奏与感染力，让段落更像真人执笔的文学叙事；不得改变情节走向、人物设定、已发生的事实，也不得新增或删减关键信息。用简体中文，直接输出润色后的段落，不要加任何点评或前言。
@@ -1930,7 +1945,10 @@ $source
       final polished = result.content.trim();
       if (polished.isEmpty) return null;
       if (textOverride == null) {
+        // 返回时若会话已重开（epoch 变化）或回合已推进，丢弃这次润色结果。
+        if (epoch != sessionEpoch || polishTurn != turnCount) return null;
         currentNarrative = polished;
+        _lastPolishTurn = turnCount;
         notifications.add('✨ 本地叙事已由 AI 润色');
         error = null;
         notifyListeners();

@@ -111,7 +111,7 @@ final router = AiRouter(
 | `void dispose()` | 释放资源 |
 | `bool get hasNarrativeService` | 是否至少有一个可用 provider |
 | `static Duration perCallTimeoutFor(AiProvider)` | 单次调用预算 |
-| `static Duration perKeyBudgetFor(int keyCount)` | 一个坏 Key 最多吃掉多少预算 |
+| `static Duration perKeyBudgetFor()` | 一个坏 Key 最多吃掉多少预算 |
 | `static Duration globalTimeoutFor(AiScene, int keyCount)` | 全局超时 |
 | `String getProviderLabel(AiProvider)` | 中文展示名 |
 

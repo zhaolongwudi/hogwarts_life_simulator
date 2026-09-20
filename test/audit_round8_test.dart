@@ -335,7 +335,7 @@ void main() {
       for (final scene in AiScene.values) {
         expect(
           AiRouter.globalTimeoutFor(scene, 1),
-          greaterThanOrEqualTo(AiRouter.perKeyBudgetFor(1)),
+          greaterThanOrEqualTo(AiRouter.perKeyBudgetFor()),
           reason: '$scene：全局超时必须容得下单个 Key 走完它的完整序列，'
               '否则第一个坏 Key 就能吃光预算，后面的 Key 轮不到',
         );
