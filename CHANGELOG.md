@@ -10,6 +10,11 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.0.1 — 2026-09-20
+
+**📋 变更说明**
+chore: SenseNova default model -> deepseek-v4-flash; route npcChat -> sensenova
+
 ### v5.0.0 — 2026-09-20
 
 **📋 变更说明**
