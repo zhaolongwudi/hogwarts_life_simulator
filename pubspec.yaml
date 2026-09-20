@@ -29,7 +29,9 @@ dependencies:
   # 升 10.x 前必须先确认 minSdk 与 EncryptedSharedPreferences 的行为变化。
   flutter_secure_storage: '>=9.0.0 <10.0.0'
   # 首页/设置页版本号运行时读取（package_info_plus），不再硬编码。
-  package_info_plus: '>=10.0.0 <11.0.0'
+  # 注意：必须用 9.x —— 10.x 传递依赖 win32 ^6，与 flutter_secure_storage 9.x 的
+  # win32 ^5 冲突，CI 的 flutter pub get 会直接失败（2026-09-20 三连红根因）。
+  package_info_plus: '>=9.0.0 <10.0.0'
 
 dev_dependencies:
   flutter_test:
