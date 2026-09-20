@@ -1,16 +1,31 @@
-# ⚡ 霍格沃兹人生模拟器 · Hogwarts Life Simulator
+# ⚡ 霍格沃茨人生模拟器 · Hogwarts Life Simulator
 
-> **一个 AI 驱动的魔法世界人生模拟器** — 你不是"大难不死的男孩"，只是这个世界里一个普通又独一无二的人。
+> **一个由 AI 驱动的魔法世界人生模拟器** —— 你不是「大难不死的男孩」，只是这个世界里一个普通又独一无二的人。
 
 在魔法世界里活一次：去霍格沃茨上学，结识朋友与恋人，加入社团，从事喜欢的职业，选择自己的立场。**没有强制主线，没有主角光环，世界自己在运转，你只需要做你自己。**
 
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v4.8.4-E3B341?style=flat-square" />
-  <img alt="测试" src="https://img.shields.io/badge/tests-1984%20passed-10B981?style=flat-square" />
-  <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.0.1-E3B341?style=flat-square" />
+  <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
+  <img alt="测试" src="https://img.shields.io/badge/tests-1984%2B%20passed-10B981?style=flat-square" />
+  <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
 </p>
+
+---
+
+## 📑 目录
+
+- [✨ 核心特色](#-核心特色)
+- [🎮 玩法与系统](#-玩法与系统)
+- [🚀 快速开始](#-快速开始)
+- [🧠 配置 AI 引擎](#-配置-ai-引擎首次使用必看)
+- [📖 游戏指令](#-游戏指令60)
+- [🛡️ 隐私说明](#️-隐私说明)
+- [📝 更新日志](#-更新日志)
+- [👨‍💻 开发相关](#-开发相关)
+- [📜 开源说明](#-开源说明)
 
 ---
 
@@ -26,15 +41,16 @@
 每个角色有自己的性格、日程、目标和人际关系。教授按课表出现在教室，魁地奇队长在球场训练，有人主动追求你，也有人因你的背叛而永远记恨。还能写信、看他们之间的八卦传闻。
 
 ### 🏰 度过"漫长的离线日常"
-不连 AI 也不无聊——离线模式里世界继续运转：年度节庆如约而至，奇遇随机落在你身上，羁绊好友跨好感门槛与你演一场小戏，宠物有自己的小插曲，旧友寄来回信，而你加入的社团在一点点记下你的付出。
+不连 AI 也不无聊——离线模式里世界继续运转：年度节庆如约而至，奇遇随机落在你身上，羁绊好友跨好感门槛与你演一场小戏，宠物有自己的小插曲，旧友寄来回信，而你加入的社团在一点点记下你的付出。**全程 0 次 AI 调用，但记忆照常沉淀**——离线期间的长期记忆由纯本地结构化摘要接管，切回在线时 AI 依然接得上。
 
 ---
 
 ## 🎮 玩法与系统
 
 ### 📖 五个时代可选
-| 时代 | 年份 | 氛围 |
-|------|------|------|
+
+| 时代 | 起始年份 | 氛围 |
+|------|---------|------|
 | 邓布利多时代 | 1892 | 魔法世界的黄金年代 |
 | 亲世代 | 1971 | 掠夺者们的校园时光 |
 | 一战末期 | 1976 | 战争阴影下的人人自危 |
@@ -42,6 +58,7 @@
 | 战后重建 | 2020 | 和平年代的新生活 |
 
 ### 🧬 深度人生系统
+
 | 系统 | 说明 |
 |---|---|
 | 🏆 **校园社团** | 决斗/魔药/魁地奇/快讯四社；行动对上社团干系事就攒积分，候补→活跃→骨干→王牌→传奇五阶晋升，跨阶得属性/学院分/声望 |
@@ -59,9 +76,11 @@
 | 🗂️ **收藏与图鉴** | **33 张 CG** 收集与 **33 项成就** 解锁，解锁路径可追溯；图鉴里的角色档案随羁绊与来信不断丰富 |
 
 ### 🧪 扩展玩法
+
 物品真实可用 · 宠物互动 · 装备四槽位 · 魁地奇每周一场（胜场为学院赢分）· 巫师决斗 · 禁林探险 · 魔法生物图鉴 · 支线委托板 · 学院杯学年结算 · 传承局（下一代接管你的故事）· 拉郎配撮合 · 世界八卦传闻系统（30 天自然衰减）
 
 ### 🎈 开局稀有特质
+
 创建角色时抽取稀有度不同的开局特质（软保底），影响属性加成与叙事走向。
 
 ---
@@ -69,39 +88,48 @@
 ## 🚀 快速开始
 
 ### 📱 下载 APK（推荐）
+
 | 来源 | 链接 |
 |------|------|
-| 最新版（自动构建） | [直接下载 APK](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest/download/HogwartLige-latest.apk) |
+| 最新版（Release 稳定直链） | [HogwartLige-latest.apk](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest/download/HogwartLige-latest.apk) |
 | 历史版本 | [GitHub Releases](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases) |
 
+> 每次推送触达 App 关键路径时，CI 会自动 bump 版本、构建 Release APK 并发布到 Releases（保留最近 5 个版本）；仅文档/测试/CI 变更不会触发构建。
+
 ### 🤖 自行构建
+
 ```bash
 git clone https://github.com/zhaolongwudi/hogwarts_life_simulator.git
 cd hogwarts_life_simulator
 flutter pub get
-flutter run
+flutter run          # 直接跑
+# 或构建 Release APK
+flutter build apk --release
 ```
+
+**环境要求**：Flutter 3.44+ / Dart 3.12+（Android minSdk ≥ 23）。
 
 ---
 
 ## 🧠 配置 AI 引擎（首次使用必看）
 
-剧情由大语言模型实时生成，需要准备一个 API Key。支持 4 家服务商：
+剧情由大语言模型实时生成，需要准备一个 API Key。支持多家服务商：
 
 | 服务商 | 说明 |
 |--------|------|
+| **Atria** | 默认付费提供商（Atria-Dawn-Preview），出厂默认 |
 | **DeepSeek** | 剧情生成质量好，价格便宜 |
-| **智谱 AI** | 有免费额度，适合新手（glm-4.7-flash） |
+| **智谱 GLM** | 有免费额度，适合新手（glm-4.7-flash） |
 | **Agnes** | 响应快，适合 NPC 聊天（agnes-2.5-flash 有免费） |
-| **SenseNova 商汤** | 稳定，适合摘要与轻量任务 |
+| **SenseNova 商汤** | 稳定，默认模型 deepseek-v4-flash，适合摘要与轻量任务 |
 
-配置步骤：游戏内「设置」→ 选提供商 → 填 API Key（加密存本机）→ 可按场景绑定不同模型 → 支持多 Key 负载均衡、限流熔断。
+**配置步骤**：游戏内「设置」→ 选提供商 → 填 API Key（加密存本机）→ 可按场景绑定不同模型 → 支持多 Key 负载均衡、限流熔断、失败自动切换提供商。
 
-> 没配 Key 也能玩：离线「本地模式」把世界在动的部分照常推进。
+> 💡 **没配 Key 也能玩**：离线「本地模式」把世界在动的部分照常推进。本地模式还提供「AI 润色」选项——本地先成型、先落盘，AI 异步润色措辞，失败静默回退原文，绝不变成新的断点（润色走独立熔断，不影响主链路的健康 Key）。
 
 ---
 
-## 🎮 游戏指令（60+）
+## 📖 游戏指令（60+）
 
 剧情输入框可直接输入指令。全部指令收纳在**指令中心面板**（底部终端按钮 `>_` 打开），按分组展示、实时搜索、一键执行，作弊默认折叠。
 
@@ -122,7 +150,7 @@ flutter run
 
 ## 🛡️ 隐私说明
 
-- **所有数据都在本地**：API Key 加密存储，存档自动备份 + 损坏回滚
+- **所有数据都在本地**：API Key 加密存储（secure_storage），存档自动备份 + 损坏回滚
 - **不收集任何用户数据**，无远程上报、无后台统计
 - 用户输入自动做 **Prompt 注入净化**（含历史回放二次净化），防越狱
 - AI 服务费由你选择的提供商收取（多数有免费额度）
@@ -131,14 +159,17 @@ flutter run
 
 ## 📝 更新日志
 
-完整历史见 [CHANGELOG.md](./CHANGELOG.md)。**最近更新：**
+完整历史见 [CHANGELOG.md](./CHANGELOG.md)（由 CI 自动同步）。**最近更新：**
 
 | 版本 | 概要 |
 |------|------|
-| **v4.8.4** | 校园社团：四社五阶成长，行动对得上干系事攒积分、跨阶回禀（P14） |
-| **v4.8.0** | 羁绊小剧场：好感跨门槛后的跨回合小戏（P11）；宠物小插曲与羁绊里程碑（P12）；猫头鹰来信与待回信（P13） |
-| **v4.7.0** | 奇遇系统：随机落在你身上的两段式小故事（P10） |
-| **v4.6.x** | 离线主轴：本地行动后果引擎（P6）· 玩法意图路由（P7）· 魁地奇变体/禁林遭遇/NPC回忆（P8）· 年度节庆（P9） |
+| **v5.0.1** | SenseNova 默认模型切至 deepseek-v4-flash；NPC 聊天路由至 SenseNova |
+| **v5.0.0** | 删除死代码 BubbleTail，恢复界面可达性门禁 |
+| **v4.9.9** | 本地模式改为互斥单选组：AI 游玩 / 完全本地 / 本地+AI 润色 |
+| **v4.9.8** | 默认付费提供商切换为 Atria API（Atria-Dawn-Preview） |
+| **v4.9.7** | 修复首页下载断链：Release 附固定名资产 `HogwartLige-latest.apk` |
+| **v4.8.4** | 校园社团：四社五阶成长，行动对得上干系事攒积分、跨阶回禀 |
+| **v4.8.0** | 羁绊小剧场（P11）；宠物小插曲与羁绊里程碑（P12）；猫头鹰来信与待回信（P13） |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
@@ -147,24 +178,28 @@ flutter run
 ## 👨‍💻 开发相关
 
 > 📘 项目结构与维修导航：[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)
-> 🗺 迭代思路与后续规划（P1~P14 + roadmap）：[docs/工作思路与后续规划.md](./docs/工作思路与后续规划.md)
-> 🏛 架构全景与 ADR：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+> 🗺️ 迭代思路与后续规划（P1~P14 + roadmap）：[docs/工作思路与后续规划.md](./docs/工作思路与后续规划.md)
+> 🏛️ 架构全景与 ADR：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 > 🔌 AI 服务对接：[docs/AI_SERVICE_API.md](./docs/AI_SERVICE_API.md)
 
 ### 技术栈
-Flutter 3.44+ / Dart 3.12+ · Provider 状态管理 · JSON 存档 + secure_storage 加密 · DeepSeek / 智谱 / Agnes / SenseNova
+
+Flutter 3.44+ / Dart 3.12+ · Provider 状态管理 · JSON 存档 + secure_storage 加密 · Atria / DeepSeek / 智谱 / Agnes / SenseNova
 
 ### 构建与 CI
-```bash
-flutter build apk --release
-```
-推送到 `main` 后 GitHub Actions 自动执行：`flutter analyze`（0 error 门禁）→ 全量测试回归（1984+ 项）→ 构建 Release APK 并上传 nightly.link 与 GitHub Releases。依赖由 Dependabot 每周一扫描。
+
+推送 `main` 后 GitHub Actions（[android-build.yml](.github/workflows/android-build.yml)）自动执行：
+
+1. **质量门禁**：`flutter analyze`（0 error）→ 全量测试回归（1984+ 项）
+2. **版本与产物**：触达 App 关键路径时 bump 版本 → 构建 Release APK → 同步 CHANGELOG → 发布 GitHub Release（保留最近 5 个）
+3. **依赖巡检**：Dependabot 每周扫描依赖更新
 
 ### 存档兼容
+
 存档 JSON 含 `save_version` 版本号（`lib/services/save_service.dart` 全局唯一），模型 `fromJson` 一律给老档缺省值，旧档不丢。
 
 ---
 
 ## 📜 开源说明
 
-本项目仅供学习和交流使用。以《哈利·波特》原著七部小说为世界观正典。
+本项目仅供学习和交流使用。以《哈利·波特》原著七部小说为世界观正典，同人创作内容与 J.K. Rowling 及华纳兄弟无关。
