@@ -426,7 +426,14 @@ class _SettingsBodyState extends State<SettingsBody> {
   }
 
   Widget _buildOfflineModeCard(BuildContext context, AppProvider appProvider) {
-    final enabled = appProvider.offlineQuickMode;
+    // 叙事来源派生单选态：由两个持久化 bool 唯一映射，天然互斥。
+    //   ai          => offlineQuickMode=false（走 AI）
+    //   local       => offlineQuickMode=true,  narrativePolish=false
+    //   localPolish => offlineQuickMode=true,  narrativePolish=true
+    final String source = !appProvider.offlineQuickMode
+        ? 'ai'
+        : (appProvider.narrativePolishEnabled ? 'localPolish' : 'local');
+    final bool enabled = appProvider.offlineQuickMode;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: BackdropFilter(
@@ -438,7 +445,9 @@ class _SettingsBodyState extends State<SettingsBody> {
             color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: enabled ? MiuiColors.success.withValues(alpha: 0.5) : const Color(0xFF3A3A5C).withValues(alpha: 0.4),
+              color: enabled
+                  ? MiuiColors.success.withValues(alpha: 0.5)
+                  : const Color(0xFF3A3A5C).withValues(alpha: 0.4),
             ),
           ),
           child: Column(
@@ -467,60 +476,43 @@ class _SettingsBodyState extends State<SettingsBody> {
                 ],
               ),
               const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('完全本地游玩（不消耗 AI 额度）',
-                    style: TextStyle(color: Colors.white, fontSize: 14)),
-                subtitle: Text(
-                  enabled
-                      ? '已开启：所有剧情与选项由本地引擎生成，不调用 AI，适合免费额度耗尽或未配置 Key 时保底游玩。'
-                      : '未开启：正常使用 AI 生成剧情。AI 服务不可用或额度耗尽时，仍会自动切换到本地兜底剧情保证不断链。',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
-                ),
-                value: enabled,
-                activeColor: MiuiColors.success,
-                onChanged: (v) => context.read<AppProvider>().setOfflineQuickMode(v),
+              // ---- 单选组：叙事来源三选一（互斥） ----
+              _buildSourceRadio(
+                value: 'ai',
+                groupValue: source,
+                title: 'AI 游玩',
+                desc: '正常调用 AI 生成剧情；AI 服务不可用或额度耗尽时，仍会自动切换到本地兜底剧情保证不断链。',
+                onChanged: () => _setNarrativeSource(offline: false, polish: false),
+              ),
+              _buildSourceRadio(
+                value: 'local',
+                groupValue: source,
+                title: '完全本地游玩（不消耗 AI 额度）',
+                desc: '所有剧情与选项由本地引擎生成，不调用 AI，适合免费额度耗尽或未配置 Key 时保底游玩。',
+                onChanged: () => _setNarrativeSource(offline: true, polish: false),
+              ),
+              _buildSourceRadio(
+                value: 'localPolish',
+                groupValue: source,
+                title: '本地叙事 + AI 润色',
+                desc: '叙事仍由本地引擎生成，但后台会用少量 AI 润色措辞使其更生动（需要已配置 AI Key，失败自动保留原文）。',
+                onChanged: () => _setNarrativeSource(offline: true, polish: true),
               ),
               const Divider(height: 24, color: Color(0xFF2A2A4A)),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('本地叙事 + AI 润色',
-                    style: TextStyle(color: Colors.white, fontSize: 14)),
-                subtitle: Text(
-                  enabled
-                      ? '叙事仍由本地引擎生成，但后台会用少量 AI 润色措辞使其更生动（需要已配置 AI Key，失败自动保留原文）。'
-                      : '仅当开启上方「完全本地游玩」后可用：在本地叙事基础上用少量 AI 润色，叙事与选项始终不依赖 AI。',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
-                ),
-                value: enabled && appProvider.narrativePolishEnabled,
-                activeColor: MiuiColors.primary,
-                onChanged: (v) async {
-                  await context
-                      .read<AppProvider>()
-                      .setNarrativePolishEnabled(enabled && v);
-                },
-              ),
-              const Divider(height: 24, color: Color(0xFF2A2A4A)),
+              // ---- 独立子开关：剧情 + AI 自由发挥（不参与上方单选组） ----
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('剧情 + AI 自由发挥',
                     style: TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: Text(
                   appProvider.storyFreeformPreference
-                      ? '已开启：剧情主线仍由本地原著剧情表驱动（不跑偏），'
-                            '但在每个剧情步之间你可以自由打字行动，AI 会在原著框架内续写细节。'
-                      : '未开启：剧情模式为纯本地——只有剧情选项可以点，'
-                            '自由输入不会调用 AI。',
+                      ? '已开启：剧情主线仍由本地原著剧情表驱动（不跑偏），但在每个剧情步之间你可以自由打字行动，AI 会在原著框架内续写细节。'
+                      : '未开启：剧情模式为纯本地——只有剧情选项可以点，自由输入不会调用 AI。',
                   style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
                 ),
                 value: appProvider.storyFreeformPreference,
                 activeColor: MiuiColors.primary,
                 onChanged: (v) async {
-                  // 两处都要改：
-                  //   · AppProvider 的偏好 → 决定"下一局开局时默认开不开"；
-                  //   · 当前局的 StoryProgress → 决定"现在这一局立刻生效"。
-                  // 只改前者的话，玩家在游戏中途打开开关会发现毫无变化
-                  // （因为正在跑的这一局读的是存档里的值）。
                   await context
                       .read<AppProvider>()
                       .setStoryFreeformPreference(v);
@@ -537,6 +529,70 @@ class _SettingsBodyState extends State<SettingsBody> {
       ),
     );
   }
+
+  /// 单选组单行：Radio 圆点 + 标题/说明（沿用项目既有单选视觉语言）。
+  Widget _buildSourceRadio({
+    required String value,
+    required String groupValue,
+    required String title,
+    required String desc,
+    required VoidCallback onChanged,
+  }) {
+    final selected = value == groupValue;
+    final fg = selected ? MiuiColors.success : MiuiColors.onSurfaceVariantSummary;
+    return InkWell(
+      onTap: onChanged,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 20,
+                color: fg,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    desc,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 把用户选中的叙事来源落成两个持久化 bool（互斥单选，顺序 await 确保终态一致）。
+  Future<void> _setNarrativeSource({
+    required bool offline,
+    required bool polish,
+  }) async {
+    final app = context.read<AppProvider>();
+    await app.setOfflineQuickMode(offline);
+    await app.setNarrativePolishEnabled(polish);
+  }
+
 
   Widget _buildDebugLogCard(BuildContext context, AppProvider appProvider) {
     return ClipRRect(
