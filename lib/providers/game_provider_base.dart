@@ -467,6 +467,10 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 返回需要追加进叙事的社团活动文块；未命中或受门控返回空串。
   String maybeRunClubActivity(String action);
 
+  /// P15 校园社团任务：离线行动命中社团干系事时推进任务进度（独立于日常积分
+  /// 冷却，每回合最多 +1）。返回一段进度提示文本；未接取/不匹配/已完成不推进。
+  String advanceClubTaskForAction(String action);
+
   void generateNewNPC();
 
   /// ===== 原著剧情节点 ↔ 兜底选项 的共享通道 =====
