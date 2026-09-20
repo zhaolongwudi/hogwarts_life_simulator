@@ -151,6 +151,13 @@ mixin GameHappenstanceMixin on GameProviderBase {
       buf.writeln();
       buf.writeln('（这场奇遇，你带走了${notes.join('、')}）');
     }
+    // P17 奇遇结果沉淀：结算完成即写入「人生回忆」事件流（/档案 回忆 可回看），
+    // 让奇遇不再是一次性数值——它是这段人生里真正发生过的一段切片。
+    worldState.addNarrativeEvent(
+      '✨ 奇遇「${h.title}」：${outcome.title}'
+      '${notes.isNotEmpty ? '（带走${notes.join('、')}）' : ''}',
+      turn: turnCount,
+    );
     return buf.toString().trim();
   }
 

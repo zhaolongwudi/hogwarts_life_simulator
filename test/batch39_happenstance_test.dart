@@ -205,6 +205,22 @@ void main() {
       final gp = await makeEnabled();
       expect(gp.tryResolveHappenstanceChoice('随便走走'), isEmpty);
     });
+
+    test('结算后奇遇沉淀进「人生回忆」事件流（P17）', () async {
+      final gp = await makeEnabled();
+      gp.player!.grade = 5;
+      gp.worldState.currentLocation = '天文台';
+      gp.worldState.time.month = 12; // 冬季
+      gp.worldState.lastHappenstanceTurn = -100;
+      final block = gp.triggerHappenstance(seed: 3);
+      expect(block, isNotEmpty);
+      final res = gp.tryResolveHappenstanceChoice('奇遇:winter_frost_window:0', seed: 3);
+      expect(res, isNotEmpty);
+      // P17：奇遇标题应出现在 recentNarrativeEvents（/档案 回忆 可回看）
+      final events = gp.worldState.recentNarrativeEvents;
+      expect(events.any((e) => e.text.contains('奇遇「窗玻璃上的名字」')), isTrue,
+          reason: '奇遇结算后应写入人生回忆事件流');
+    });
   });
 
   group('P10 · 离线回合接入', () {
