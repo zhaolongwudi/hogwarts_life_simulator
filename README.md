@@ -95,6 +95,8 @@
 | 最新构建（自动构建） | [nightly.link](https://nightly.link/zhaolongwudi/hogwarts_life_simulator/workflows/android-build/main/HogwartLige-nightly.zip) |
 | 历史版本 | [GitHub Releases](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases) |
 
+> nightly.link 指向最近一次**成功构建**的产物；若最近一次推送仅含文档/测试（未触发构建），该链接可能暂不可用，请用上方的 Release 稳定直链。
+
 > 每次推送触达 App 关键路径时，CI 会自动 bump 版本、构建 Release APK 并发布到 Releases（保留最近 5 个版本）；仅文档/测试/CI 变更不会触发构建。
 
 ### 🤖 自行构建
@@ -164,13 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
-| **v5.0.1** | SenseNova 默认模型切至 deepseek-v4-flash；NPC 聊天路由至 SenseNova |
-| **v5.0.0** | 删除死代码 BubbleTail，恢复界面可达性门禁 |
-| **v4.9.9** | 本地模式改为互斥单选组：AI 游玩 / 完全本地 / 本地+AI 润色 |
-| **v4.9.8** | 默认付费提供商切换为 Atria API（Atria-Dawn-Preview） |
-| **v4.9.7** | 修复首页下载断链：Release 附固定名资产 `HogwartLige-latest.apk` |
-| **v4.8.4** | 校园社团：四社五阶成长，行动对得上干系事攒积分、跨阶回禀 |
-| **v4.8.0** | 羁绊小剧场（P11）；宠物小插曲与羁绊里程碑（P12）；猫头鹰来信与待回信（P13） |
+| **v5.0.6** | feat(offline): 社团 x 学院杯联动（P18）—— 为社团出力 +1 学院分，社团任务完成 +3 学院分（来源进明细，/… |
+| **v5.0.5** | feat(offline): 奇遇结果沉淀进人生回忆（P17）—— 结算后写入 recentNarrativeEvents，/档案 回… |
+| **v5.0.4** | feat(offline): 社团晋升回访信（P16）—— 晋升王牌/传奇时，已结识同好寄来一封回访信（只入叙事不落信箱，无人可写信时… |
+| **v5.0.3** | fix: /社团 任务 handler 改用 ctx.arg() 取参（禁 parts[1] 下标）；batch45 数据断言不强求无… |
+| **v5.0.2** | fix(build): package_info_plus 降至 9.x —— 10.x 与 flutter_secure_stora… |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
