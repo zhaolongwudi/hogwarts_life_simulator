@@ -195,10 +195,6 @@ class DeepSeekService {
         await AgnesRateLimiter.instance.waitForSlot(_keyHash);
         break;
       case AiProvider.sensenova:
-        // 先过「每分钟」限流（按 Key 分桶）——429 的主要来源是 RPM 而非 5h
-        // 总量：deepseek-v4-flash ≈ 1.67 次/分钟，一回合「叙事+选项」两发
-        // 就会撞服务端 429，而 5h 总量闸门要到 500 次才动。
-        await SenseNovaRateLimiter.instance.waitForSlot(_keyHash, config.model);
         await SenseNovaQuotaManager.instance.waitForQuota(config.model);
         break;
       case AiProvider.deepseek:

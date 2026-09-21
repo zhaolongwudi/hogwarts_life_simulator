@@ -306,7 +306,6 @@ mixin GameInitMixin on GameProviderBase {
     // 清除速率限制器状态
     AgnesRateLimiter.instance.reset();
     SenseNovaQuotaManager.instance.reset();
-    SenseNovaRateLimiter.instance.reset();
     // 销毁旧路由器（清除响应缓存、已注册的服务实例）
     router = null;
     // 清除 NPC 聊天缓存（对话历史、路由器）
