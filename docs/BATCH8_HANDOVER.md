@@ -7,13 +7,13 @@
 - ✅ Batch 6 · Issue #8（selectYearGoal 加权随机 + 关联主线）- commit `eb12ce1`
 - ✅ Batch 7 · Issue #11（论坛评论只 +1 数字无文本 → 写真实评论实体）- commit `0078cd0` + `77ba437`
 - ✅ Batch 8 · Issue #12（传闻生成缺去重 → 加近 7 天去重 + 每日 1 条节流 + 已被传闻化标记）- commit `0be5ecf` + `1d0fe37`
+- ✅ Batch 8 · Issue #15（foreshadow 实体一致性放行通道：NPC 全名/别名 + 物品名 token 双命中即放行）- commit `e535761`
+- ✅ Batch 8 · Issue #16（scene_illustration Color 显式豁免 + 遗留 CI 红修复）- commit `4deedb1` + `e2d493b`
 
 **当前任务（按优先级排）：**
 
 ### 🔨 Batch 8 剩余（AI 生成侧治理）
-- Issue #15 foreshadow 实体一致性放行通道（人名 token + 物件名 token 双命中即放行）
-- Issue #16 scene_illustration Data Color(0xFF...) 收敛或显式豁免
-- Issue #17 narrative_prompts 分级（T0 常挂/T1 抽样/T2 动态）
+- Issue #17 narrative_prompts 分级（T0 常挂/T1 抽样/T2 动态）——**已调研**：`narrative_prompts.dart` 127 行含 `buildOpeningNarrativePrompt` + `kNarrativeWritingRules`（超长常量，常挂进 narrative prompt，见 `mixin_narrative.dart:727`）；方案：拆 T0（铁律：时间/场景推进/格式约束）/T1（质量类：多样性/文风）/T2（动态按需），新增 `buildNarrativeRules(level)` 按场景拼装；测试 `test/batch8_narrative_prompts_test.dart`
 - Issue #18 长期记忆落库时按事件类型微调 importance
 
 ### 🔨 Batch 9 · 数值打磨（可后置）
@@ -159,5 +159,5 @@ bash pull.sh  # 拉取最新代码
 **交接人：** 当前对话
 **接收人：** 下一个对话
 
-**当前 HEAD：** `a6694c1`（docs: mark Batch 8 Issue #12 CI passed）
-**CI 状态：** 全绿（run 35568720758）
+**当前 HEAD：** `24b52d9`（docs: mark Batch 8 Issue #15 & #16 done，已 rebase CI changelog v5.1.2）
+**CI 状态：** 全绿（Issue #15/16 所在 run 35572952394 success，2066 tests passed）
