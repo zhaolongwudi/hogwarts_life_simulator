@@ -2,6 +2,8 @@
 /// 玩家可通过 /目标 指令设定一条人生主线目标，AI 将据此牵引剧情走向，
 /// 但玩家仍可自由行动——目标只是方向，不是强制任务。
 
+import 'dart:math';
+
 /// 目标毕业条件（数值化）
 /// 满足全部条件视为"目标达成"，影响毕业结局评价。
 class GoalRequirement {
@@ -272,6 +274,11 @@ class SubGoal {
   /// 关联的人生目标 id（空字符串表示通用）
   final String relatedGoalId;
 
+  /// 职业线亲和度（Batch 6 · Issue #8）：key 是 LifeGoal.id，value 是权重倍数。
+  /// 例如 `{'auror': 1.5}` 表示当玩家主线目标是傲罗时，这个子目标权重 ×1.5。
+  /// 空 map 表示与任何主线都无特殊关联（权重恒为 1.0）。
+  final Map<String, double> careerAffinity;
+
   /// 建议的 AI 注入提示
   final String steeringHint;
 
@@ -281,17 +288,20 @@ class SubGoal {
     required this.label,
     required this.description,
     this.relatedGoalId = '',
+    this.careerAffinity = const {},
     this.steeringHint = '',
   });
 }
 
 /// 学年目标池（每学年抽取 1~2 个作为该学年的"记忆锚点"）
+/// Batch 6 · Issue #8：每个目标带 careerAffinity，让主线职业能牵引学年方向。
 const List<SubGoal> yearGoalPool = [
   SubGoal(
     id: 'yr_first_friend',
     tier: GoalTier.year,
     label: '结交第一位挚友',
     description: '在这个学年里，找到一位真正信任的朋友。',
+    careerAffinity: {'minister': 1.5, 'healer': 1.5},
     steeringHint: '本学年主线：社交与友谊，安排一次与同学深入交流的机会。',
   ),
   SubGoal(
@@ -299,6 +309,7 @@ const List<SubGoal> yearGoalPool = [
     tier: GoalTier.year,
     label: '赢得一位教授的赏识',
     description: '让某位教授注意到你的特别之处。',
+    careerAffinity: {'potion_master': 1.5, 'auror': 1.3},
     steeringHint: '本学年主线：学术表现，安排一次课堂出彩或课后交流的机会。',
   ),
   SubGoal(
@@ -306,6 +317,7 @@ const List<SubGoal> yearGoalPool = [
     tier: GoalTier.year,
     label: '为学院杯贡献力量',
     description: '为学院赢得加分，在学年末的学院杯上留下你的名字。',
+    careerAffinity: {'quidditch': 1.5},
     steeringHint: '本学年主线：学院荣誉，安排一次为学院争光的机会。',
   ),
   SubGoal(
@@ -313,6 +325,7 @@ const List<SubGoal> yearGoalPool = [
     tier: GoalTier.year,
     label: '精通一门魔法技艺',
     description: '在某一门魔法课程上达到出类拔萃的水平。',
+    careerAffinity: {'potion_master': 1.5, 'auror': 1.3},
     steeringHint: '本学年主线：技艺精进，安排一次技艺突破或展示的机会。',
   ),
   SubGoal(
@@ -320,6 +333,7 @@ const List<SubGoal> yearGoalPool = [
     tier: GoalTier.year,
     label: '发现一座城堡的秘密',
     description: '霍格沃茨藏着无数秘密——找到其中一个。',
+    careerAffinity: {'auror': 1.5},
     steeringHint: '本学年主线：探索与发现，安排一次探索城堡隐藏区域的机会。',
   ),
   SubGoal(
@@ -327,6 +341,7 @@ const List<SubGoal> yearGoalPool = [
     tier: GoalTier.year,
     label: '在关键时刻挺身而出',
     description: '当有人需要帮助时，你没有退缩。',
+    careerAffinity: {'auror': 1.5, 'minister': 1.3},
     steeringHint: '本学年主线：勇气与担当，安排一次需要玩家做出道德抉择的场景。',
   ),
 ];
@@ -438,9 +453,57 @@ const List<SubGoal> monthGoalPool = [
 ];
 
 /// 根据学年号抽取学年目标
-SubGoal selectYearGoal(int schoolYear, {int seed = 0}) {
-  final index = (schoolYear - 1 + seed) % yearGoalPool.length;
-  return yearGoalPool[index];
+///
+/// Batch 6 · Issue #8：从"取模轮转"改为"加权随机 + 排除近期已用 + 关联主线"。
+/// - `recentGoalIds`：近期已选过的学年目标 id，会被排除（避免连续重复）；
+///   若排除后候选为空则回退到全池（保证不抛异常）。
+/// - `currentGoalName`：玩家当前人生目标名称（`Player.currentGoal` 存的是 name 不是 id），
+///   会反查 `lifeGoalCatalog` 拿到 id，再按 `SubGoal.careerAffinity` 加权。
+/// - `seed`：随机种子，保证同一 seed 结果可复现（测试友好）。
+SubGoal selectYearGoal(
+  int schoolYear, {
+  int seed = 0,
+  String? currentGoalName,
+  List<String> recentGoalIds = const [],
+}) {
+  // 1. 过滤近期已选；若过滤后为空则回退到全池
+  final candidates = yearGoalPool
+      .where((g) => !recentGoalIds.contains(g.id))
+      .toList();
+  final pool = candidates.isEmpty ? yearGoalPool : candidates;
+
+  // 2. 反查主线目标 id（currentGoal 存的是 name）
+  String? goalId;
+  if (currentGoalName != null && currentGoalName.isNotEmpty) {
+    for (final lg in lifeGoalCatalog) {
+      if (lg.name == currentGoalName) {
+        goalId = lg.id;
+        break;
+      }
+    }
+  }
+
+  // 3. 计算权重（无亲和度时恒为 1.0）
+  final weights = pool.map((g) {
+    if (goalId == null) return 1.0;
+    return g.careerAffinity[goalId] ?? 1.0;
+  }).toList();
+
+  // 4. 加权随机
+  final totalWeight = weights.fold(0.0, (a, b) => a + b);
+  final random = Random(seed);
+  final threshold = random.nextDouble() * totalWeight;
+
+  double cumulative = 0.0;
+  for (int i = 0; i < pool.length; i++) {
+    cumulative += weights[i];
+    if (threshold <= cumulative) {
+      return pool[i];
+    }
+  }
+
+  // 兜底：浮点误差导致没命中时返回第一个
+  return pool.first;
 }
 
 /// 根据学期号抽取学期目标

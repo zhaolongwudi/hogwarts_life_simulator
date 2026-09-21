@@ -705,7 +705,20 @@ mixin GameSystemsMixin on GameProviderBase {
     // 学年子目标：从 SubGoal 池抽一条作为本学年的记忆锚点（此前整个池是死数据）。
     // 注入 AI 指令让这一年有方向感，但不强制——玩家仍可自由行动。
     try {
-      final sub = selectYearGoal(newGrade, seed: turnCount);
+      final sub = selectYearGoal(
+        newGrade,
+        seed: turnCount,
+        currentGoalName: player?.currentGoal,
+        recentGoalIds: player?.recentYearGoalIds ?? const [],
+      );
+      // 记录到近期已选列表（FIFO，最多 3 个），供下次排除
+      final p = player;
+      if (p != null) {
+        p.recentYearGoalIds.add(sub.id);
+        if (p.recentYearGoalIds.length > 3) {
+          p.recentYearGoalIds.removeAt(0);
+        }
+      }
       if (sub.steeringHint.isNotEmpty) {
         pendingAnchorDirective = (pendingAnchorDirective ?? '').isEmpty
             ? sub.steeringHint

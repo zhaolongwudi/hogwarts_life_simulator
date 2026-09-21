@@ -25,6 +25,12 @@ class Player {
   String? currentGoal;
   double worldLineDeviation;
 
+  /// 近期已选过的学年目标 id（Batch 6 · Issue #8）。
+  /// 每次 `selectYearGoal` 抽中后追加到队尾，保持最多 3 个（FIFO）。
+  /// 用于让 `selectYearGoal` 排除近期已用目标，避免连续重复。
+  /// 老存档缺省回退到空列表。
+  List<String> recentYearGoalIds;
+
   // ====== 毕业后留校任教（lib/data/faculty_data.dart）======
   /// 当前教职等级 id（'assistant' / 'lecturer' / 'professor' / 'head'）；
   /// null = 从未任教。存 id 而不是枚举下标，以后加档不会串档。
@@ -234,6 +240,7 @@ class Player {
     Map<String, Relationship>? relationships,
     this.currentGoal,
     this.worldLineDeviation = 0.0,
+    List<String>? recentYearGoalIds,
     this.facultyRankId,
     this.facultySubject,
     this.facultyServiceYears = 0,
@@ -382,7 +389,8 @@ class Player {
       receivedLetters = List<String>.from(receivedLetters ?? const []),
        examRecords = (examRecords ?? const {}).map(
          (k, v) => MapEntry(k, Map<String, String>.from(v)),
-       );
+       ),
+       recentYearGoalIds = List<String>.from(recentYearGoalIds ?? const []);
 
   /// 是否为合法属性键。
   ///
@@ -439,6 +447,7 @@ class Player {
     'relationships': relationships.map((k, v) => MapEntry(k, v.toJson())),
     'current_goal': currentGoal,
     'world_line_deviation': worldLineDeviation,
+    'recent_year_goal_ids': recentYearGoalIds,
     'faculty_rank_id': facultyRankId,
     'faculty_subject': facultySubject,
     'faculty_service_years': facultyServiceYears,
@@ -570,6 +579,7 @@ class Player {
         {},
     currentGoal: readStringOrNull(json['current_goal']),
     worldLineDeviation: readDouble(json['world_line_deviation'], fallback: 0.0),
+    recentYearGoalIds: readStringList(json['recent_year_goal_ids']),
     facultyRankId: readStringOrNull(json['faculty_rank_id']),
     facultySubject: readStringOrNull(json['faculty_subject']),
     facultyServiceYears: readInt(json['faculty_service_years']),
