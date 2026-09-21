@@ -56,6 +56,15 @@ class LifeGoal {
 }
 
 const List<LifeGoal> lifeGoalCatalog = [
+  // 【Bug 1/2 修复 · 2026-09-21】门槛对齐：
+  //   - 目标 attributeMin 全部压到 balance_constants.growthExpectation.max - 5 以内，
+  //     避免"毕业时数学上不可能达成"。旧表里 potions/theory/flying/spell_understanding
+  //     各写 80，比 7 年理论成长上限还高——goal_achieved 成就基本无人解锁。
+  //   - healer 的 attributeKey 从 herbology 改为 potions：圣芒戈治疗师是魔药+治疗
+  //     复合岗位（career_data.healer.minAttr='potions'），旧表把 herbology 写成主属性
+  //     与职业线自相矛盾。
+  //   - minister 声望门槛对齐到 career_data.ministry（leadership 50 + social 60），
+  //     旧表 leadership 70 是 career 的 1.4 倍，"能当部长但过不了目标判定"。
   LifeGoal(
     id: 'auror',
     name: '成为傲罗',
@@ -79,7 +88,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'academic',
       reputationMin: 60,
       attributeKey: 'potions',
-      attributeMin: 80,
+      attributeMin: 70,
     ),
   ),
   LifeGoal(
@@ -92,7 +101,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'social',
       reputationMin: 50,
       attributeKey: 'flying',
-      attributeMin: 80,
+      attributeMin: 60,
     ),
   ),
   LifeGoal(
@@ -105,7 +114,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'academic',
       reputationMin: 70,
       attributeKey: 'theory',
-      attributeMin: 80,
+      attributeMin: 65,
     ),
   ),
   LifeGoal(
@@ -116,9 +125,9 @@ const List<LifeGoal> lifeGoalCatalog = [
     steeringHint: '主线倾向：政治与权谋，偏向领导声望与社交声望。',
     requirement: GoalRequirement(
       reputationDim: 'leadership',
-      reputationMin: 70,
+      reputationMin: 50,
       attributeKey: 'social',
-      attributeMin: 75,
+      attributeMin: 65,
     ),
   ),
   LifeGoal(
@@ -129,8 +138,8 @@ const List<LifeGoal> lifeGoalCatalog = [
     steeringHint: '主线倾向：草药、魔药与治疗魔法，偏向道德声望。',
     requirement: GoalRequirement(
       reputationDim: 'moral',
-      reputationMin: 60,
-      attributeKey: 'herbology',
+      reputationMin: 55,
+      attributeKey: 'potions',
       attributeMin: 70,
     ),
   ),
@@ -144,7 +153,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'combat',
       reputationMin: 50,
       attributeKey: 'spell_understanding',
-      attributeMin: 75,
+      attributeMin: 65,
     ),
   ),
   LifeGoal(
@@ -157,7 +166,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'moral',
       reputationMin: 50,
       attributeKey: 'observation',
-      attributeMin: 70,
+      attributeMin: 60,
     ),
   ),
   LifeGoal(
@@ -170,7 +179,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'social',
       reputationMin: 60,
       attributeKey: 'observation',
-      attributeMin: 70,
+      attributeMin: 60,
     ),
   ),
   LifeGoal(
@@ -217,7 +226,7 @@ const List<LifeGoal> lifeGoalCatalog = [
       reputationDim: 'dark',
       reputationMin: 60,
       attributeKey: 'dda',
-      attributeMin: 70,
+      attributeMin: 75,
     ),
   ),
   LifeGoal(
