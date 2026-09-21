@@ -120,26 +120,33 @@ void main() {
   });
 
   group('P15 · 推进', () {
-    test('命中干系事的行动推进任务进度 +1（独立于日常积分冷却）', () async {
+    test('命中干系事的行动推进任务进度 +1（独立于日常记分预算）', () async {
       final gp = await makeEnabled();
       final p = gp.player!;
       gp.acceptClubTask('duel_ten_spars'); // requiredRounds: 4
-      p.clubLastTurn = -100; // 消除日常记分冷却
       final before = p.clubPoints;
-      // 任务推进是独立方法：即使日常记分在冷却内也能推进
+      // Batch 5 · Issue #7 后：任务推进门槛改为每日预算（club_task: 3），
+      // 同一回合内多次命中仍可推进，只要当日预算未尽。
       final s = gp.advanceClubTaskForAction('在会堂与人切磋对练');
       expect(s, contains('进度 1/4'), reason: '首次命中应推进到 1/4');
       expect(p.clubTaskProgress, 1);
-      // 同一回合重复调用不重复推进（每回合最多 1 次）
-      expect(gp.advanceClubTaskForAction('继续切磋对练'), '');
-      expect(p.clubTaskProgress, 1);
-      // 日常记分照常独立工作（冷却已消 → 应记分）
-      final s2 = gp.maybeRunClubActivity('在会堂与人切磋对练');
+      // 同一回合再次命中：日预算未尽，仍可推进
+      final s2 = gp.advanceClubTaskForAction('继续切磋对练');
+      expect(s2, contains('进度 2/4'), reason: '日预算未尽时应继续推进');
+      expect(p.clubTaskProgress, 2);
+      // 手动充满当日 club_task 预算后应被拦住
+      while (gp.canDoDaily('club_task')) {
+        gp.recordDailyActivity('club_task');
+      }
+      expect(gp.advanceClubTaskForAction('再次切磋'), '',
+          reason: '日预算已尽时应返回空串');
+      expect(p.clubTaskProgress, 2, reason: '预算尽后不应再推进');
+      // 日常记分照常独立工作（当日 club_activity 预算未尽 → 应记分）
+      final s3 = gp.maybeRunClubActivity('在会堂与人切磋对练');
       expect(p.clubPoints, greaterThan(before), reason: '日常记分照常入账');
-      expect(s2, isNotEmpty);
+      expect(s3, isNotEmpty);
       // 未接取任务时不推进
       final gp2 = await makeEnabled();
-      gp2.player!.clubLastTurn = -100;
       expect(gp2.advanceClubTaskForAction('与人切磋对练'), '',
           reason: '未接取时不出现任务提示');
     });
