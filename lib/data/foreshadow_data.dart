@@ -34,8 +34,21 @@
 ///
 /// 中文里二字组比单字有区分度："斯内普的信" 和 "斯内普的坩埚"
 /// 单字重合很高，二字组只剩一个「斯内」，会被正确判为不相关。
-
+///
+/// ## Batch 8 Issue #15：实体一致性放行通道
+///
+/// 纯 bigram 重合度有两个盲区：
+///
+///   1. **漏关**——两段措辞差异大但确实是同一件事（"小天狼星把活点地图
+///      留给主角" → "主角靠着那张地图找到了密道"），bigram 覆盖太少被误杀；
+///   2. **误关的孪生问题**——实体名不一致时（AI 换了叫法），比例被稀释。
+///
+/// 所以这里加一条**放行通道**：两段文本**同时命中 ≥ 2 个实体 token**
+/// （NPC 全名/别名 + 物品名），就算 bigram 分数不够，也认为是同一件事。
+/// 双命中门槛保证只靠撞一个人名（"斯内普的信" vs "斯内普的坩埚"）不会放行。
 import '../models/long_term_memory.dart';
+import 'npc_data.dart';
+import 'item_data.dart';
 
 /// 去掉标点、空白与数字，只留汉字与字母——标点是噪声，
 /// 留着它会让两条毫不相关的文本因为都用了几个逗号而"变熟"。
@@ -97,12 +110,63 @@ const double kLoopMatchThreshold = 0.30;
 /// 会被判为不相干——很可惜，但比误关一条还没做的事安全得多。
 const int kLoopMatchMinShared = 4;
 
+/// ## Batch 8 Issue #15：实体一致性放行通道
+///
+/// 纯 bigram 重合度的盲区是**措辞差异大的同一件事**会被漏关：
+/// "小天狼星把活点地图留给主角" → "主角靠着那张地图找到了密道"，
+/// 两者几乎不共享二字组，但显然是同一件事。
+///
+/// 这里用**实体 token 双命中**补一条放行通道：NPC 全名/别名 + 物品名
+/// 同时出现在伏笔描述与了结文本里，就算 bigram 分数不够也放行。
+/// 门槛是 **≥ 2 个不同实体**——只撞一个人名（"斯内普的信" vs "斯内普的坩埚"）
+/// 不会放行，避免把两件不同的事误关成一件。
+
+/// 构建实体 token 集：NPC 全名 + 别名 + 物品名。
+///
+/// 过滤规则：
+///   - 长度 < 2 的 token 直接丢弃（单字无区分度）；
+///   - 排除通用称谓（"教授""院长""管理员"等，见 [kLoopGenericEntityTokens]）；
+///   - NPC 别名里混着"妹妹""叛徒"这类普通名词，不能当实体。
+///     [story_text_renderer] 维护了一份 `_aliasesTooGeneric`，这里复用它。
+///
+/// 静态构建一次，运行时只读。
+final Set<String> _entityTokens = _buildEntityTokens();
+Set<String> _buildEntityTokens() {
+  final out = <String>{};
+  for (final npc in kAllNpcSeeds) {
+    if (npc.name.length >= 2) out.add(npc.name);
+    for (final a in npc.aliases) {
+      if (a.length >= 2 && !kLoopGenericEntityTokens.contains(a)) out.add(a);
+    }
+  }
+  for (final item in kItemCatalog) {
+    if (item.name.length >= 2) out.add(item.name);
+  }
+  return out;
+}
+
+/// 通用称谓黑名单：这些词出现在别名里但不是实体（"教授""院长""管理员"…）。
+/// 与 [story_text_renderer] 的 `_aliasesTooGeneric` 思路一致，独立维护以免循环依赖。
+const Set<String> kLoopGenericEntityTokens = {
+  '教授', '院长', '管理员', '看门人', '校医', '护士长', '级长',
+  '追球手', '解说员', '妹妹', '叛徒', '教父', '双胞胎', '蝎子',
+  '校长', '副校长', '院长助理',
+};
+
+/// 两段文本各自命中的实体 token 的交集（去重后）。
+Set<String> sharedEntityTokens(String a, String b) {
+  final inA = _entityTokens.where(a.contains).toSet();
+  final inB = _entityTokens.where(b.contains).toSet();
+  return inA.intersection(inB);
+}
+
 /// 这两段话说的是不是同一件事。
 bool isSameLoop(
   String a,
   String b, {
   double threshold = kLoopMatchThreshold,
   int minShared = kLoopMatchMinShared,
+  int minEntityShared = kLoopEntityMinShared,
 }) {
   final ta = a.replaceAll(_noiseRe, '');
   final tb = b.replaceAll(_noiseRe, '');
@@ -112,9 +176,18 @@ bool isSameLoop(
   if (ta.length >= 6 && tb.contains(ta)) return true;
   if (tb.length >= 6 && ta.contains(tb)) return true;
 
+  // 实体双命中放行通道（Batch 8 Issue #15）。
+  final sharedEntities = sharedEntityTokens(a, b);
+  if (sharedEntities.length >= minEntityShared) return true;
+
   final m = _overlap(a, b);
   return m.shared >= minShared && m.ratio >= threshold;
 }
+
+/// 实体双命中放行的门槛：两段文本至少共享这么多个不同实体 token。
+/// 2 个是为了「同一件事」的可信度——同一个 NPC 出现在两条伏笔里太常见了，
+/// 但 NPC+物品/两个 NPC 同时对上，基本就是同一件事。
+const int kLoopEntityMinShared = 2;
 
 /// 一次匹配的结果
 class LoopClosureMatch {
@@ -138,6 +211,7 @@ LoopClosureMatch? pickLoopToClose(
   int currentTurn = 0,
   double threshold = kLoopMatchThreshold,
   int minAgeTurns = 2,
+  int minEntityShared = kLoopEntityMinShared,
 }) {
   final probe = bigramsOf(closedText);
   if (probe.isEmpty) return null;
@@ -146,7 +220,10 @@ LoopClosureMatch? pickLoopToClose(
   for (final l in candidates) {
     if (l.status != 'open') continue;
     if (l.openedTurn > 0 && currentTurn - l.openedTurn < minAgeTurns) continue;
-    if (!isSameLoop(closedText, l.description, threshold: threshold)) continue;
+    if (!isSameLoop(closedText, l.description,
+        threshold: threshold, minEntityShared: minEntityShared)) {
+      continue;
+    }
     final score = loopMatchScore(closedText, l.description);
     if (best == null || score > best.score) {
       best = LoopClosureMatch(loop: l, score: score);
