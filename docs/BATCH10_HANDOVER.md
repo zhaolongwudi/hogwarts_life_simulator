@@ -1,6 +1,6 @@
 # 任务交接文档 - Batch 10 剩余 + Batch 9
 
-## 当前状态（HEAD: c1e0ed3，已全量 push，CI 全绿）
+## 当前状态（HEAD: 7f53702，已全量 push，CI 全绿 run 35620792907）
 
 **已完成（CI 全绿）：**
 - ✅ Batch 5 · Issue #7（P14 频次口径统一）
@@ -15,6 +15,11 @@
   - `658905c` 首次提交，CI 红（自检用例正则匹配不到 `commentList.add`）
   - `faaeb94` 修复：`_entityWritePattern` 正则从 `\.\w*(List|Entries|Items|Records)\s*\.(add|insert)` 放宽为 `\.\w+\s*\.(add|insert)`，并同步改断言用例 → CI 全绿
   - `c1e0ed3` 台账标记完成
+- ✅ Batch 10 · Issue #19（story_data 五书时间单调性静态校验）
+  - `7f53702` 新增 `test/batch10_story_data_monotonic_test.dart`（246 行）
+  - 覆盖：书锚点全局单调（七部逐年递增 + 后书锚点严格晚于前书，防衔接倒流）/书内时间戳严格递增/跨书衔接不重叠（每书完成日 ≤ 下一书锚点）/每书完成日落学年尾 6~8 月/每书总天数 [200,420] sanity/源码静态存在性（六文件 + 七书注册 + 无幽灵书）
+  - 实测七书数据核算通过：ps 结束 1992-07-02 → cos 锚点 1992-07-25 → … → dh 结束 1998-07-20，全部衔接 OK
+  - 台账 `docs/设计审查_2026-09-21.md` 已同步标记完成
 
 **Issue #4 已核实，建议「不采纳」（同 Issue #22）：**
 - 实测旧分段映射 0~40 全表：已单调不减、无跳变 >1、上限 ±10 守住。
@@ -24,12 +29,13 @@
 
 ## 待做清单（按优先级，一批一改一推）
 
-### 🔨 Batch 10 · 工程基建（推荐先做 Issue #19）
-1. **Issue #19** story_data 五书时间单调性静态校验（532KB 原著当前零审查，推荐）
-   - 文件：`lib/data/story_data.dart` + `story_data_poa.dart` + `story_data_gof.dart` + `story_data_ootp.dart` + `story_data_hbp.dart` + `story_data_dh.dart`
-   - 测试：新增 `test/batch10_story_data_monotonic_test.dart`
-2. Issue #13 CI 全开 smoke 套件
-3. Issue #14 文档纳入 CI 同步流程
+### 🔨 Batch 10 · 工程基建（剩余两个）
+1. **Issue #13** CI 全开 smoke 套件
+   - 背景：默认关掉全部新系统保证 1900+ 既有用例稳定，代价是默认配置与测试配置完全不同，线上问题无法用现有测试复现。
+   - 建议：CI 加一份「全开 smoke」套件（`.github/workflows/` 新增或复用 android-build.yml 加 job），全开新系统跑一版核心冒烟。
+2. **Issue #14** 文档纳入 CI 同步流程
+   - 背景：文档漂移（PROJECT_GUIDE v5.0.2 / 规划文档基线 v4.8.4 / README 滞后）。
+   - 建议：文档纳入 CI 同步流程（校验版本号一致/文档与代码同步）。
 
 ### ⚪ Issue #4 压缩函数（建议跳过，见上）
 
@@ -55,13 +61,19 @@
     TOKEN=$(grep -o 'github_pat_[A-Za-z0-9_]*' ~/.git-credentials | head -1)
     curl -s -H "Authorization: Bearer $TOKEN" 'https://api.github.com/repos/zhaolongwudi/hogwarts_life_simulator/actions/runs?per_page=5'
     ```
+11. **⚠️ 网络：github.com 直连 DNS 常失效** - 若 push 报 `Failed to connect to github.com port 443`，先测 `curl -sI https://api.github.com`（api 通代表网络可用）与 `getent hosts github.com`（若解析出 20.205.x.x 亚太段则大概率连不上）；修法是把可用 IP（如 140.82.112.3，实测 200）写进 /etc/hosts：
+    ```bash
+    echo '140.82.112.3 github.com' >> /etc/hosts
+    ```
+    然后重试 push。
 
 ## 文件位置速查
 - `lib/data/balance_constants.dart` - 平衡常量（含 compressAffectionDelta，Issue #4）
-- `lib/data/story_data.dart` + `story_data_{poa,gof,ootp,hbp,dh}.dart` - 主线剧情数据（Issue #19）
+- `lib/data/story_data.dart` + `story_data_{poa,gof,ootp,hbp,dh}.dart` - 主线剧情数据（Issue #19 已完成）
 - `lib/models/story_progress.dart` - 剧情进度/书序
 - `lib/mixins/mixin_systems.dart` - 系统逻辑
 - `test/batch10_counter_entity_test.dart` - Batch 10 Issue #23 静态扫描测试（已就位）
+- `test/batch10_story_data_monotonic_test.dart` - Batch 10 Issue #19 时间单调测试（已就位）
 - `docs/设计审查_2026-09-21.md` - 设计审查台账（必须每批更新）
 
 ## 开始工作前请执行
@@ -74,4 +86,4 @@ bash pull.sh  # 拉取最新代码
 **交接时间：** 2026-09-21
 **交接人：** 当前对话
 **接收人：** 下一个对话
-**当前 HEAD：** `c1e0ed3`（docs: Batch 10 Issue #23 CI 全绿，台账标记完成）
+**当前 HEAD：** `7f53702`（test(batch10): Issue #19 story_data 五书时间单调性静态校验，CI run 35620792907 全绿）
