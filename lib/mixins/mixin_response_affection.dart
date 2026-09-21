@@ -77,6 +77,24 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     return true;
   }
 
+  /// 判断本轮该行是否应当豁免连续互动衰减：
+  /// 只要 [NPC.majorEventDate] 距今不超过 [Balance.majorEventImmunityDays] 天
+  /// 就视作仍在「重大事件窗口」内——包括本次刚刚触发的情形。
+  bool _shouldBypassSocialCost(NPC npc) {
+    final d = npc.majorEventDate;
+    if (d == null) return false;
+    final elapsed = worldState.time.absoluteDayIndex - d;
+    return elapsed >= 0 && elapsed <= Balance.majorEventImmunityDays;
+  }
+
+  /// 走衰减旁路：仍然推进计数器（保证同一回合多次命中不会无限续命），
+  /// 但不乘以衰减系数——保持压缩后的原值。
+  int _bypassSocialCost(String npcId, int compressedDelta) {
+    final consecutiveTurns = _consecutiveInteractionTurns[npcId] ?? 0;
+    _consecutiveInteractionTurns[npcId] = consecutiveTurns + 1;
+    return compressedDelta;
+  }
+
   void parseAffectionChanges(String text) {
     if (npcRegistry.isEmpty) return;
 
@@ -169,12 +187,20 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
         final rawDelta = delta;
         delta = Balance.compressAffectionDelta(delta);
 
-        // 应用社交成本——连续互动衰减，对压缩后的好感值进行衰减
-        delta = _applySocialCost(npc.id, delta);
-
-        // 检查是否触发重大事件免疫衰减
+        // 理由文本：括号里的话是 AI 给的理由；没有就用默认占位。
         final reasonText = (remark == null || remark.isEmpty) ? '剧情互动' : remark;
+
+        // 【Bug 20 修复】重大事件免疫必须发生在衰减**之前**——否则衰减已经把
+        // 「救命之恩 +20」压成一坨，后面的 immunity 标记只是留档不改数，功能残缺。
+        // 判定条件两条其一即豁免（见 _shouldBypassSocialCost）：
+        //   (a) 本次就是新触发的重大事件（_checkMajorEventImmunity 返回 true，同时写入日期）；
+        //   (b) npc 仍在旧事件留下的 majorEventImmunityDays 窗口内。
+        // 两种情况都走 _bypassSocialCost：不乘衰减系数、原值落地，但仍然推进计数器，
+        // 避免同一回合反复触发导致无限续命。
         _checkMajorEventImmunity(npc, rawDelta, reasonText);
+        delta = _shouldBypassSocialCost(npc)
+            ? _bypassSocialCost(npc.id, delta)
+            : _applySocialCost(npc.id, delta);
 
         try {
           // 热路径：这几条日志每回合、每个好感行都要写一次，release 版照样
