@@ -467,6 +467,12 @@ mixin GameSystemsMixin on GameProviderBase {
     unawaited(autoSave());
   }
 
+  /// 论坛帖子点赞切换。
+  ///
+  /// **仅计数的展示指标**（Batch 10 · Issue #23 豁免）：
+  /// 点赞是玩家与帖子之间的二元关系（`post.liked` 已记录当前玩家是否点赞），
+  /// 不引入独立实体（如 `LikeEntry`）。若未来需要展示"谁点了赞"或"点赞时间线"，
+  /// 再升级为实体列表。当前 `likes` 字段仅用于 UI 数字展示。
   void toggleForumPostLike(String id) {
     final p = player;
     if (p == null) return;
