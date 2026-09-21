@@ -2,6 +2,7 @@ import 'dart:async';
 import '../data/item_data.dart';
 import '../data/house_data.dart';
 import '../data/house_cup_data.dart';
+import '../data/club_data.dart';
 import '../data/bestiary_data.dart';
 import '../data/quest_data.dart';
 import '../data/pet_data.dart';
@@ -1836,6 +1837,33 @@ mixin GamePlayMixin on GameProviderBase {
       p.playerReputation.add('social', 2);
       buf.writeln('\n$myCn 与学院杯失之交臂。队长拍拍你的肩：明年把金色奖杯搬回来。');
       buf.writeln('奖励：社交声望 +2');
+    }
+    // ===== Batch 11 · 社团 × 学院杯反向半环 =====
+    // 本学年为社团挣的学院分（houseCupSources 里「社团·/社团任务·」前缀的
+    // 正分）在结算时单独拎出来按档位追加「社团荣光」叙事与奖励。
+    // 让「你属于什么」反过来成为学院杯里看得见的分量（规划第一梯队）。
+    final clubCupContributed = clubContributedCupPoints(p.houseCupSources);
+    if (clubCupContributed > 0) {
+      final tier = clubCupTierFor(clubCupContributed);
+      if (tier != null) {
+        // 不依赖 memberClub（跨 mixin 非抽象成员不可见），直接查 clubId。
+        final club = p.clubId == null ? null : clubById(p.clubId!);
+        final clubName = club?.name ?? '你的社团';
+        p.galleons += tier.galleons;
+        p.houseReputation += tier.houseReputation;
+        final note = tier.note
+            .replaceAll(r'$club', clubName)
+            .replaceAll(r'$points', '$clubCupContributed');
+        buf.writeln();
+        buf.writeln('【社团荣光 · $clubName】$note');
+        if (tier.galleons > 0 || tier.houseReputation > 0) {
+          final parts = <String>[
+            if (tier.galleons > 0) '${tier.galleons} 加隆',
+            if (tier.houseReputation > 0) '学院声望 +${tier.houseReputation}',
+          ];
+          buf.writeln('奖励：${parts.join(' · ')}');
+        }
+      }
     }
     p.houseCupPoints = 0;
     p.houseCupSources.clear();

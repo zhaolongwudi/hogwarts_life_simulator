@@ -177,3 +177,85 @@ const int kHouseCupBaseScore = 130;
 /// 其他三院每个上学日自然增长的分数区间（含，均匀随机）。
 const int kHouseRivalDailyMin = 1;
 const int kHouseRivalDailyMax = 2;
+// ==================== Batch 11 · 社团 × 学院杯反向半环 ====================
+//
+// P18 已实现「社团 → 学院杯」单向：为社团出力（maybeRunClubActivity +1、
+// 晋升王牌/传奇 +5/+10、社团任务完成 +3）都会写进 addHouseCupPoints 的来源
+// 明细（key 以「社团·」或「社团任务·」开头）。
+//
+// 本段补上反向半环：学年结算 settleHouseCup 时，从 houseCupSources 里把
+// 「本学年为社团挣的学院分」单独拎出来，按档位追加「社团荣光」叙事与奖励，
+// 让「你属于什么」也反过来成为学院杯里看得见的分量（规划文档第一梯队：
+// 社团排名反过来影响校园叙事与特产奖励）。
+//
+// 为什么用 houseCupSources 归因而不用 clubPoints：clubPoints 是终身累计、
+// 跨学年不清零，无法区分「本学年贡献」；而 houseCupSources 每年结算时清零，
+// 天然就是「本学年」的账本。零新增存档字段，老档兼容。
+/// houseCupSources 里社团来源的 key 前缀（为社团出力 / 晋升 / 社团任务）。
+const List<String> kClubCupSourcePrefixes = ['社团·', '社团任务·'];
+
+/// 从本学年学院分来源明细里统计「为社团挣到的学院分」。
+///
+/// 只认正分（扣分不会因为加入社团而少扣，也不该抵消社团贡献）。
+int clubContributedCupPoints(Map<String, int> sources) {
+  var sum = 0;
+  for (final e in sources.entries) {
+    if (e.value <= 0) continue;
+    for (final prefix in kClubCupSourcePrefixes) {
+      if (e.key.startsWith(prefix)) {
+        sum += e.value;
+        break;
+      }
+    }
+  }
+  return sum;
+}
+
+/// 社团贡献的学年结算奖励档（按 [clubContributedCupPoints] 命中最高档）。
+///
+/// - points：本学年为社团挣到的最低学院分（含）
+/// - galleons / houseReputation：奖励
+/// - note：追加进学年结算文本的「社团荣光」旁白（可带 `$club`、`$points` 占位）
+class ClubCupBonusTier {
+  final int points;
+  final int galleons;
+  final int houseReputation;
+  final String note;
+  const ClubCupBonusTier({
+    required this.points,
+    this.galleons = 0,
+    this.houseReputation = 0,
+    required this.note,
+  });
+}
+
+/// 从低到高排列。命中时取最后一个（分数 ≥ points）的档。
+///
+/// 档位设计（对照 P18 实际产出量级）：
+/// - 纯日常出力一年可攒 1/日 × ~100 上学日 → 常态贡献在 10~20 分；
+/// - 加入社团但几乎不行动 → 可能只有入社/晋升那几笔，2~4 分；
+/// - 所以第一档 4 分（「入过社、出过力」），第二档 12 分（「社团骨干」）。
+const List<ClubCupBonusTier> kClubCupBonusTiers = [
+  ClubCupBonusTier(
+    points: 4,
+    houseReputation: 2,
+    note: '这一年，你为 \$club 出的力也化成了 \$points 学院分——'
+        '会堂里的人记得，你的学院也记得。',
+  ),
+  ClubCupBonusTier(
+    points: 12,
+    galleons: 10,
+    houseReputation: 4,
+    note: '\$club 的名字因你而响亮——本学年你为它挣了 \$points 学院分，'
+        '社长在结算会上特意提了你一句：学院的功劳簿上，有你的一笔。',
+  ),
+];
+
+/// 按本学年社团贡献分取奖励档；不足最低档返回 null。
+ClubCupBonusTier? clubCupTierFor(int contributed) {
+  ClubCupBonusTier? hit;
+  for (final tier in kClubCupBonusTiers) {
+    if (contributed >= tier.points) hit = tier;
+  }
+  return hit;
+}
