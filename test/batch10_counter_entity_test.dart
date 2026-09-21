@@ -39,7 +39,7 @@ const List<String> kExemptionMarkers = <String>[
 /// 实体写入的识别模式（任一命中即视为配套实体）。
 /// 匹配形如 `xxxList.add(...)`、`xxxEntries.add(...)`、`xxxList.insert(...)`。
 final RegExp _entityWritePattern = RegExp(
-  r'\.\w*(List|Entries|Items|Records)\s*\.(add|insert)\s*\(',
+  r'\.\w+\s*\.(add|insert)\s*\(',
 );
 
 /// 计数增量识别模式：`xxx += 1` / `xxx++` / `xxx -= 1` / `xxx--`。
@@ -205,9 +205,14 @@ void main() {
 
     test('实体写入识别模式可匹配 commentList.add', () {
       expect(_entityWritePattern.hasMatch('post.commentList.add(ForumComment(...))'), isTrue);
-      expect(_entityWritePattern.hasMatch('list.insert(0, item)'), isTrue);
+      expect(_entityWritePattern.hasMatch('post.entries.insert(0, item)'), isTrue);
+      expect(_entityWritePattern.hasMatch('post.list.insert(0, item)'), isTrue);
       expect(_entityWritePattern.hasMatch('obj.likes += 1'), isFalse,
           reason: '纯计数增量不应被误判为实体写入');
+      expect(_entityWritePattern.hasMatch('obj.likes++'), isFalse,
+          reason: '纯计数增量不应被误判为实体写入');
+      expect(_entityWritePattern.hasMatch('obj.score = 10'), isFalse,
+          reason: '普通赋值不应被误判为实体写入');
     });
 
     test('计数增量识别模式可匹配所有追踪字段', () {
