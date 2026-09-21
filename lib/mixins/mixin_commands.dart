@@ -31,6 +31,7 @@ import '../models/story_progress.dart';
 import '../providers/game_provider_base.dart';
 import 'mixin_systems.dart';
 import '../utils/debug_log.dart';
+import '../data/memory_importance_config.dart';
 
 mixin GameCommandsMixin on GameProviderBase {
   // ================ R1：注册命令到注册表（初始化时调用一次即可） ================
@@ -1866,7 +1867,7 @@ mixin GameCommandsMixin on GameProviderBase {
       KeyFactRecord(
         id: 'cheat_secret_${DateTime.now().millisecondsSinceEpoch}',
         fact: '主角已得知一个秘密：$secret。',
-        importance: 9,
+        importance: kImportanceCheatSecret,
         timestamp: ts,
         category: 'secret',
       ),

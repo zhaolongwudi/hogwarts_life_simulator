@@ -21,6 +21,7 @@ import 'mixin_response_choices.dart';
 import 'mixin_response_affection.dart';
 import 'mixin_play.dart';
 import '../utils/debug_log.dart';
+import '../data/memory_importance_config.dart';
 
 /// 需要从正文中剥离的「结构化区块名」全集。
 /// AI 输出的选项块标题并不总是【可选行动】——不同 prompt 版本会写成
@@ -542,7 +543,7 @@ mixin GameResponseMixin
         KeyFactRecord(
           id: 'rival_ended_${dead.id}',
           fact: rivalEndedFactFor(dead.name),
-          importance: 7,
+          importance: kImportanceRivalEnded,
           timestamp: ts,
           category: 'rivalry',
           npcIds: {dead.id},

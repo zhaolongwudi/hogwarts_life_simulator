@@ -36,6 +36,7 @@ import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
 import '../utils/debug_log.dart';
 import 'mixin_narrative.dart';
+import '../data/memory_importance_config.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
   /// 缓存：上次构建的 systemPrompt 和玩家状态哈希（用于检测是否需要重建）
@@ -396,7 +397,7 @@ mixin GameSystemsMixin on GameProviderBase {
       KeyFactRecord(
         id: 'whatif_${s.createdAt}_${s.title.hashCode}',
         fact: adoptedFactFor(s),
-        importance: 6,
+        importance: kImportanceWhatIf,
         timestamp: worldState.time.format(),
         category: 'what_if',
       ),

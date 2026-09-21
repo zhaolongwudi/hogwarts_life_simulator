@@ -26,6 +26,7 @@ import '../prompts/narrative_prompts.dart';
 import '../data/npc_schedule_rules.dart';
 import '../utils/debug_log.dart';
 import 'mixin_narrative.dart';
+import '../data/memory_importance_config.dart';
 
 mixin GameInitMixin on GameProviderBase {
   String buildSystemPrompt() {
@@ -811,7 +812,7 @@ mixin GameInitMixin on GameProviderBase {
         timestamp: ts,
         title: '结识${npc.name}',
         description: '主角初次结识了${npc.name}',
-        importance: 5,
+        importance: kImportanceMeetNpc,
         category: 'personal',
         npcIds: {npc.id},
       ),

@@ -12,6 +12,7 @@
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../providers/game_provider_base.dart';
+import '../data/memory_importance_config.dart';
 
 mixin GameDeathMixin on GameProviderBase {
   /// 伤害结算后调用：health ≤ 0 且未死亡时触发死亡流程。
@@ -42,7 +43,7 @@ mixin GameDeathMixin on GameProviderBase {
       KeyFactRecord(
         id: 'player_death',
         fact: '主角于$ts死亡，死因为$cause。',
-        importance: 10,
+        importance: kImportancePlayerDeath,
         timestamp: ts,
         category: 'identity',
       ),
@@ -148,7 +149,7 @@ mixin GameDeathMixin on GameProviderBase {
       KeyFactRecord(
         id: 'player_imprisoned',
         fact: '主角于$ts因黑魔法罪行被判入阿兹卡班，人生就此改道。',
-        importance: 10,
+        importance: kImportancePlayerImprisoned,
         timestamp: ts,
         category: 'identity',
       ),

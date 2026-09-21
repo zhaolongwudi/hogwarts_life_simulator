@@ -19,6 +19,7 @@ import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
 import '../providers/game_provider_base.dart';
 import '../utils/debug_log.dart';
+import '../data/memory_importance_config.dart';
 
 /// 新玩法 Mixin（v1.10）：物品使用 / 宠物互动 / 装备穿戴 / 魁地奇 / 决斗 /
 /// 禁林探险 / 魔法生物图鉴 / 支线委托板 / 学院杯积分。
@@ -1579,7 +1580,7 @@ mixin GamePlayMixin on GameProviderBase {
         description:
             '接取委托「${t.title}」：需收集${t.target}×${t.targetCount}，奖励${t.rewardGalleons}加隆+${t.rewardHousePoints}分',
         status: 'open',
-        importance: 5,
+        importance: kImportanceQuestOpen,
         openedAt: ts,
         loopType: 'quest',
         openedTurn: turnCount,
@@ -1623,7 +1624,7 @@ mixin GamePlayMixin on GameProviderBase {
         description:
             '完成委托「${q.title}」：收集${q.target}×${q.targetCount}，获得${q.rewardGalleons}加隆+${q.rewardHousePoints}分',
         status: 'done',
-        importance: 5,
+        importance: kImportanceQuestDone,
         openedAt: worldState.time.format(),
         closedAt: worldState.time.format(),
         loopType: 'quest',
@@ -1637,7 +1638,7 @@ mixin GamePlayMixin on GameProviderBase {
         title: '完成委托',
         description:
             '主角完成委托「${q.title}」，获得${q.rewardGalleons}加隆与${q.rewardHousePoints}学院分',
-        importance: 4,
+        importance: kImportanceQuestDoneEvent,
         category: 'personal',
       ),
     );

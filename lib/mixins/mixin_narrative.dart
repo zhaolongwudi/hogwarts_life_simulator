@@ -46,6 +46,7 @@ import '../prompts/summary_prompts.dart';
 import 'mixin_narrative_continuity.dart';
 import 'mixin_play.dart';
 import '../utils/debug_log.dart';
+import '../data/memory_importance_config.dart';
 
 /// 情报 token 归一化：剥掉下划线与所有非文字字符（`_composeCausalText` 用）。
 ///
@@ -1365,7 +1366,7 @@ ${buildNarrativeRules(turn: turnCount)}
               : _firstSentenceOf(node.directive),
           importance: node.worldEvent?.isNotEmpty == true
               ? node.worldEventImportance
-              : 6,
+              : kImportanceOfflineWorldEvent,
           category: 'wizarding',
           location: worldState.currentLocation,
         ),
@@ -1386,7 +1387,7 @@ ${buildNarrativeRules(turn: turnCount)}
         KeyFactRecord(
           id: 'offline_npc_${npc.id}',
           fact: '这段时间你和${npc.name}有过直接往来。',
-          importance: 5,
+          importance: kImportanceOfflineNpcRelation,
           timestamp: ts,
           category: 'relationship',
           npcIds: {npc.id},
@@ -1422,7 +1423,7 @@ ${buildNarrativeRules(turn: turnCount)}
           id: loopId,
           description: _unresolvedLine(label),
           status: 'open',
-          importance: 4,
+          importance: kImportanceOfflineFlagLoop,
           openedAt: ts,
           openedTurn: turnCount,
           loopType: 'question',
@@ -2246,7 +2247,7 @@ $source
         timestamp: worldState.time.format(),
         title: '新篇章开启',
         description: '《${nextBook.title}》的剧情开始了。',
-        importance: 8,
+        importance: kImportanceStoryBegin,
         category: 'personal',
       ),
     );
@@ -2560,7 +2561,7 @@ $source
         timestamp: worldState.time.format(),
         title: '剧情结局',
         description: ending?.title ?? '结局',
-        importance: 9,
+        importance: kImportanceStoryEnding,
         category: 'personal',
       ),
     );
@@ -2782,7 +2783,7 @@ $source
           id: id,
           description: desc,
           status: 'open',
-          importance: 6,
+          importance: kImportanceStoryEffectLoop,
           openedAt: now,
           openedTurn: turnCount,
           loopType: 'question',
@@ -2914,7 +2915,7 @@ $source
               id: id,
               description: desc,
               status: 'open',
-              importance: 7,
+              importance: kImportanceAiExtractedLoop,
               openedAt: worldState.time.format(),
               openedTurn: turnCount,
               loopType: 'question',
@@ -3258,7 +3259,7 @@ $source
         timestamp: worldState.time.format(),
         title: '主线剧情开始',
         description: '你开始按原著时间线经历这一学年。',
-        importance: 7,
+        importance: kImportanceStoryStart,
         category: 'personal',
       ),
     );
@@ -3859,7 +3860,7 @@ $source
               id: loopId,
               description: loop.length > 100 ? loop.substring(0, 100) : loop,
               status: 'open',
-              importance: 6,
+              importance: kImportanceAiForeshadowLoop,
               openedAt: ts,
               loopType: 'foreshadow',
               openedTurn: turnCount,
@@ -3914,7 +3915,7 @@ $source
             timestamp: ts,
             title: title.length > 12 ? title.substring(0, 12) : title,
             description: desc.length > 60 ? desc.substring(0, 60) : desc,
-            importance: 6,
+            importance: kImportanceAiWorldEvent,
             category: 'wizarding',
           ),
         );
