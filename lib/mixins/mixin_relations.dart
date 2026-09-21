@@ -1101,11 +1101,18 @@ mixin GameRelationsMixin on GameProviderBase {
       final correct = random.nextBool();
       if (correct) {
         p.playerReputation.add('academic', 2);
+        // 【Bug 3 修复 · 2026-09-21】原来 classroomInteraction 完全不给学院杯加分，
+        // 导致 table 里写的 "课堂 +3/+8" 只是纸上数字——玩家七年累计的学院分永远
+        // 追不上 rival 按天累加的 baseline。这里把「教授点头」这一类正向结果接上
+        // Balance.houseCupActivityPoints['classroom'] 的实际加分路径。仅给成功分支
+        // 加分；答错不奖、意外也不奖——保留稀有回报的价值感。
+        final classPts = Balance.houseCupActivityPoints['classroom'] ?? 0;
+        if (classPts > 0) addHouseCupPoints(classPts, '课堂·教授赞赏');
         result =
             '【课堂互动 · 教授提问】\n'
             '教授的目光扫过教室，最后停在你身上，抛出一个刁钻的问题。\n'
             '你略一思索，给出了答案。教室里响起几声低低的惊叹，教授罕见地点了点头。\n'
-            '\n学术声望 +2';
+            '\n学术声望 +2　·　${houseDisplayName(p.house ?? '', fallback: '霍格沃茨')} $classPts 分';
       } else {
         result =
             '【课堂互动 · 教授提问】\n'
@@ -1125,10 +1132,13 @@ mixin GameRelationsMixin on GameProviderBase {
       final skill = skills[random.nextInt(skills.length)];
       final attr = skillAttrs[skill]!;
       p.attributes[attr] = ((p.attributes[attr] ?? 50) + 1).clamp(0, 100);
+      // 【Bug 3 修复】同一策略：实操成功也归学院杯（稳定积累型）。
+      final classPts = Balance.houseCupActivityPoints['classroom'] ?? 0;
+      if (classPts > 0) addHouseCupPoints(classPts, '课堂·实操出色');
       result =
           '【课堂互动 · 实践操作】\n'
           '你握紧魔杖，全神贯注地练习$skill。魔杖尖端的光芒稳定而流畅，眼前的材料随着你的咒语乖巧地变化。\n'
-          '\n$skill 熟练度 +1';
+          '\n$skill 熟练度 +1　·　${houseDisplayName(p.house ?? '', fallback: '霍格沃茨')} $classPts 分';
     } else if (roll < 90) {
       // 同桌互动：影响 NPC 好感
       final alive = npcRegistry.values.where((n) => n.isAlive).toList();

@@ -152,12 +152,25 @@ abstract final class Balance {
   // ===== 学院分来源平衡 =====
 
   /// 各活动的学院分贡献系数
+  // ===== 学院分来源平衡 =====
+  /// 各活动的学院分贡献系数。
+  ///
+  /// 【Bug 3 修复 · 2026-09-21】原表高频低奖（classroom 3）+ 低频高奖
+  /// （quidditch_win 30）错配——玩家每周上课是日常主力，rival 学院却按天累加
+  /// 240~360 分/年，导致"追不上 rival"成为体验主线。这里把 classroom 提权到
+  /// 与 duel_win 同档，同时把 quidditch_win 微调下来保持"爆发型"定位但不失控。
+  ///
+  /// ⚠️ **注意**：本表现在仅作为展示口径使用（/学院杯 面板、mixin_play.dart:1745），
+  /// 实际的加分调用点（addHouseCupPoints(...)）在 mixin_play/mixin_narrative 等处都是
+  /// 硬编码字面量，没有回读这张表。要把这份校准真正落地到游戏数值，还需要一次
+  /// 「接线改造」——把所有 addHouseCupPoints(N, reason) 里的 N 改为查
+  /// Balance.houseCupActivityPoints[key]。本轮只做数值表校准，接线留待后续 PR。
   static const Map<String, int> houseCupActivityPoints = {
-    'quidditch_win': 30,      // 魁地奇胜场
-    'duel_win': 5,            // 决斗胜场
-    'classroom': 3,           // 课堂表现优异
-    'forbidden_forest': 8,    // 禁林探险成功
-    'quest_complete': 5,      // 委托完成
-    'exam_top': 15,           // 年级前十
+    'quidditch_win': 22,      // 魁地奇胜场（原 30 → 22，仍是最高一档但不再碾压）
+    'duel_win': 8,            // 决斗胜场（原 5 → 8，跟课堂看齐）
+    'classroom': 8,           // 课堂表现优异（原 3 → 8，累计型主力，与 duel_win 并列）
+    'forbidden_forest': 10,   // 禁林探险成功（原 8 → 10，稀缺但仍中等）
+    'quest_complete': 8,      // 委托完成（原 5 → 8，中等回报的稳定项）
+    'exam_top': 20,           // 年级前十（原 15 → 20，一次性里程碑奖励）
   };
 }
