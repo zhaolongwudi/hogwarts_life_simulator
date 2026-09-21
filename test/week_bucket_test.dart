@@ -104,10 +104,10 @@ void main() {
     test('首周好感上限常量在 gameWeek=1 时是可用的分支', () async {
       final gp = await makeGame();
       expect(gp.gameWeek, 1);
-      // weekOneAffectionCap 的分支条件是 gameWeek <= 1，必须能被走到。
+      // firstWeekAffectionCap 的分支条件是 gameWeek <= 1，必须能被走到。
       expect(gp.gameWeek <= 1, isTrue,
           reason: '若 gameWeek 一开局就是 35，这个分支永远为假，'
-              'weekOneAffectionCap / monthOneAffectionCap 成为死代码');
+              'firstWeekAffectionCap / monthlyAffectionCap 成为死代码');
       expect(kPersistentFactImportance, isPositive);
     });
   });

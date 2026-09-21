@@ -32,14 +32,14 @@ void main() {
       final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
       final limit = npc.getAffectionGainLimit(2);
       // 第2周不再"无上限"，仍受首月+50约束（修复原常量未被应用的问题）
-      expect(limit, Balance.monthOneAffectionCap);
+      expect(limit, Balance.monthlyAffectionCap);
     });
 
     test('好感沉淀第三周受首月上限约束', () {
       final npc = NPC(id: 'test', name: '测试', house: 'Gryffindor');
       npc.affectionGainedThisMonth = 30;
       final limit = npc.getAffectionGainLimit(3);
-      expect(limit, Balance.monthOneAffectionCap - 30);
+      expect(limit, Balance.monthlyAffectionCap - 30);
     });
 
     test('好感沉淀第四周之后恢复正常上限', () {

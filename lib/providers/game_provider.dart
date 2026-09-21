@@ -306,7 +306,7 @@ class GameProvider extends GameProviderBase
       final cap = npc.getAffectionGainLimit(gameWeek);
       if (cap <= 0) {
         actualChange = 0;
-        if (npc.affectionGainedThisWeek == Balance.weekOneAffectionCap) {
+        if (npc.affectionGainedThisWeek == Balance.firstWeekAffectionCap) {
           notifications.add('📊 ${npc.name}的好感本周已达上限，无法继续提升');
           worldState.addNarrativeEvent(
             '📊 ${npc.name}的好感本周已达上限，无法继续提升',

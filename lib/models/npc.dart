@@ -407,11 +407,11 @@ class NPC {
   int getAffectionGainLimit(int gameWeek) {
     int remainingWeek = Balance.affectionMax;
     if (gameWeek <= 1) {
-      remainingWeek = Balance.weekOneAffectionCap - affectionGainedThisWeek;
+      remainingWeek = Balance.firstWeekAffectionCap - affectionGainedThisWeek;
     }
     int remainingMonth = Balance.affectionMax;
     if (gameWeek <= 4) {
-      remainingMonth = Balance.monthOneAffectionCap - affectionGainedThisMonth;
+      remainingMonth = Balance.monthlyAffectionCap - affectionGainedThisMonth;
     }
     final remaining = remainingWeek < remainingMonth ? remainingWeek : remainingMonth;
     return remaining > 0 ? remaining : 0;

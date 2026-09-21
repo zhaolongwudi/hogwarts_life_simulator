@@ -87,7 +87,7 @@ ${castleBriefForPrompt()}
 
 ━━━ 核心系统 ━━━
 【好感度系统】${Balance.affectionMin}至+${Balance.affectionMax}
-- 第一周上限+${Balance.weekOneAffectionCap}，第一个月上限+${Balance.monthOneAffectionCap}（好感沉淀）
+- 第一周上限+${Balance.firstWeekAffectionCap}，第一个月上限+${Balance.monthlyAffectionCap}（好感沉淀）
 - ${Balance.trustLockThreshold}级解锁"共享秘密"，${Balance.romanceLockThreshold}级解锁"浪漫事件"
 - NPC记住背叛/欺骗/伤害，不会清零
 - 关系需要维系：一个月以上不互动会自然转淡（信任锁以上的老朋友与恋人不受影响）
@@ -222,7 +222,7 @@ const String kWorldRulesFusedCompact =
 邓布利多时代(1892)｜亲世代(1971)｜子世代(1991)｜现代(2020+)
 
 【好感系统】${Balance.affectionMin}至+${Balance.affectionMax}
-- 第一周上限+${Balance.weekOneAffectionCap}，首月上限+${Balance.monthOneAffectionCap}
+- 第一周上限+${Balance.firstWeekAffectionCap}，首月上限+${Balance.monthlyAffectionCap}
 - ${Balance.trustLockThreshold}级解锁秘密，${Balance.romanceLockThreshold}级解锁浪漫
 - NPC记仇也记恩；一个月以上不互动关系会自然转淡（信任锁与恋人除外）
 - 表白由NPC主动发起（需≥${Balance.confessionMinAffection}好感+暧昧≥${Balance.confessionCrushMatureDays ~/ 7}周）

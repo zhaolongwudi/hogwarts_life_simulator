@@ -12,10 +12,10 @@ abstract final class Balance {
 
   // ===== 好感沉淀（防速通） =====
   /// 第一周（第1周）单周好感增益上限
-  static const int weekOneAffectionCap = 30;
+  static const int firstWeekAffectionCap = 30;
 
   /// 第一个月好感增益上限（保留，后续月度结算可复用）
-  static const int monthOneAffectionCap = 50;
+  static const int monthlyAffectionCap = 50;
 
   // ===== 好感锁阈值 =====
   /// 好感达到该值解锁「信任锁」（共享秘密）
@@ -140,7 +140,11 @@ abstract final class Balance {
     'social': {'min': 40, 'max': 70, 'graduate': 55},
   };
 
-  /// 每学年属性自然增长量（上课 + 事件 + 练习的综合期望）
+  /// 每学年属性自然增长量（上课 + 事件 + 练习的综合期望）。
+  ///
+  /// 【Bug 10 · 2026-09-21】本常量目前**不参与任何运行时判定**——只有 growthExpectation
+  /// 那张表被代码读（用于毕业条件/技能解锁门槛的校准），这里的 8 只是它的一份人话总结。
+  /// 保留在这里是为了让调参者一眼看到「预期每年 +8」这条主线索，别把它当成长曲线实现入口。
   static const int attrGrowthPerYear = 8;
 
   /// 单次上课/练习/事件对属性的增益区间
