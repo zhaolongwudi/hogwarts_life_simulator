@@ -258,7 +258,7 @@
   → `MiuiColors.onPrimary`（金底上的规范深字，与 MiuiTokens 一致）。
 - `game_play_screens.dart` 卸下按钮的裸色 `0xFFE05050` / `Colors.red` → `MiuiColors.error`。
 
-门禁：`flutter analyze` 0 error；`flutter test` 全绿（由 GitHub Actions CI 验证，本机无 Flutter）。
+门禁：`flutter analyze` 0 error；`flutter test` 全绿（GitHub Actions CI run 35652424135 全绿，2026-09-21 已确认）。
 
 ## 五、回归与安全红线
 

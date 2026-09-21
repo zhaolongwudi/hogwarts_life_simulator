@@ -3,7 +3,9 @@
 > 交接时间：本次对话结束前
 > 交接人：当前对话（UI 大幅优化第一批）
 > 接收人：下一个对话
-> 状态：**代码已改完并写入磁盘，但 `git commit` 尚未落地**（终端会话卡在 git 命令上无响应，HEAD 仍停在 `c43a731`）
+> 状态：**已完成提交推送 + CI 全绿**（commit `dd8d640` 已 push 到 origin/main，
+> GitHub Actions run 35652424135 全绿）。原「commit 未落地」是终端会话读取缓存
+> 导致的误判，实际早前已提交并推送成功。
 
 ---
 
@@ -41,28 +43,29 @@
 
 ---
 
-## 三、待办事项（新对话接手后立即执行）
+## 三、待办事项（已完成，供记录）
 
-1. **提交并推送**（终端恢复后）：
-   ```bash
-   cd /root/hogwarts_life_simulator
-   bash push.sh "fix(ui): 世界地图错位/覆盖/对比度修复+金底深字语义色收敛"
-   ```
-   - 注意：`bash push.sh` 会 `git add -A && git commit && git push origin main`。
-   - 若 push 报 `Failed to connect to github.com port 443`，按 `BATCH10_HANDOVER.md` 第 11 条修 /etc/hosts（`140.82.112.3 github.com`）。
+1. ✅ **提交并推送**：已落地 commit `dd8d640`
+   `fix(ui): 世界地图几何错位/覆盖/对比度修复+金底深字语义色收敛`，并 push 到 origin/main。
 
-2. **等 CI**（GitHub Actions，约 3-5 分钟）：`flutter analyze` 0 error + `flutter test` 全绿。
+2. ✅ **CI 全绿**：GitHub Actions run 35652424135（build job 106507770823）已 success，
+   `flutter analyze` 0 error + `flutter test` 全绿（completed_at 2026-09-21T20:45:14Z）。
 
-3. **同步台账**：`docs/UI重构规范与台账.md` 的「四·附·G」已写，但门禁行里的「flutter test 全绿」需在 CI 绿后确认（当前写的是「由 CI 验证，本机无 Flutter」）。
+3. ✅ **台账同步**：`docs/UI重构规范与台账.md` 的「四·附·G」门禁行已确认 CI 全绿。
+
+> 后续若需继续「下一步 UI 优化方向」（色板统一 / 世界地图白底弹卡玻璃化 / 主界面 Dock 核对），
+> 请直接在新对话从「五、下一步 UI 优化方向」的清单开始，无需再处理提交推送。
 
 ---
 
-## 四、终端异常说明（重要）
+## 四、终端异常说明（已澄清，无需处理）
 
-- 执行 `bash push.sh` 后终端会话持续 `timedOut`（每个 `super_admin:terminal` 调用都无输出）。
-- `git status` 显示：工作区有 4 个文件的未提交改动（world_map_screen / settings_body / game_play_screens / UI重构规范与台账），HEAD 仍是 `c43a731`。
-- 可能是 `git push` 卡在 GitHub 网络（交接文档记录过 github.com DNS 常失效），也可能只是会话超时。
-- **磁盘上的代码改动是确定且完整的**（已用 `read_file` 复核 `world_map_screen.dart` 的 Stack 顺序、标题色、headerOffset/bottomOffset 全部就位）。
+- 之前记录"终端无响应 / commit 未落地"是**误判**：终端实际卡在 `git diff` 的分页器
+  （less 分页输出挡住了 shell），`terminal` 前台读不到输出被误报为 timeout。
+- 新对话用 `terminal_getscreen` 看屏 + 发送 Ctrl+C / `q` 退出分页器后确认：
+  终端其实早已恢复，commit `dd8d640` 与 push 均已完成（`git status` clean，
+  HEAD 与 origin/main 一致）。
+- **结论**：无需任何修复动作，磁盘与远端已完全一致。
 
 ---
 
