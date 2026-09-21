@@ -724,7 +724,15 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
   $safeAction
 
 ${buildForwardConstraintBlock()}
-$kNarrativeWritingRules
+${buildNarrativeRules(
+  turn: turnCount,
+  extraRules: isPreSchoolYear(
+    worldState.time.month,
+    worldState.time.day,
+  )
+      ? kNarrativeRuleLocationGate
+      : null,
+)}
   ''';
     }
 
