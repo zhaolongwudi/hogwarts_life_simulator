@@ -283,7 +283,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gold,
-                      foregroundColor: const Color(0xFF1A1A2E),
+                      foregroundColor: MiuiColors.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       elevation: 0,
@@ -384,7 +384,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.gold,
-                    foregroundColor: const Color(0xFF1A1A2E),
+                    foregroundColor: MiuiColors.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
@@ -676,10 +676,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.15),
+                      color: MiuiColors.error.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text('卸下', style: TextStyle(fontSize: 12, color: Color(0xFFE05050), fontWeight: FontWeight.w600)),
+                    child: const Text('卸下', style: TextStyle(fontSize: 12, color: MiuiColors.error, fontWeight: FontWeight.w600)),
                   ),
                 ),
             ],
@@ -752,7 +752,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.gold,
-                    foregroundColor: const Color(0xFF1A1A2E),
+                    foregroundColor: MiuiColors.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,

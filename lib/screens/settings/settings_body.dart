@@ -520,7 +520,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   label: const Text('打开剧情回放'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.gold,
-                    foregroundColor: const Color(0xFF1A1A2E),
+                    foregroundColor: MiuiColors.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
@@ -774,7 +774,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                       label: const Text('查看日志'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.gold,
-                        foregroundColor: const Color(0xFF1A1A2E),
+                        foregroundColor: MiuiColors.onPrimary,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         elevation: 0,

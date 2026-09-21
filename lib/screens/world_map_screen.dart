@@ -161,14 +161,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           SafeArea(
             child: Stack(
               children: [
-                _buildTopHeader(player, gp),
+                // 标记滚动区放在最底层，浮层（标题卡/返回键/图例/切区）都盖在它上面，
+                // 避免标记滚动时盖住顶部标题卡（Stack 后绘制者在上层）。
                 _buildLocationMarkers(),
+                _buildTopHeader(player, gp),
                 _buildBranchIndicators(),
                 _buildRegionNav(),
-                if (_selectedLocation != null) _buildLocationCard(gp),
                 _buildBackButton(),
                 _buildMapLegend(),
                 _buildQuickAreaSwitch(),
+                if (_selectedLocation != null) _buildLocationCard(gp),
               ],
             ),
           ),
@@ -433,14 +435,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                             Flexible(
                               child: Text(
                                 _displayHeaderName(context),
-
-                                // 第16轮E：用户反馈地图上方标题看不清——
-                                // 原样式无 color，跟随 Theme 在白底卡片上对比度低。
-                                // 改为深色高对比（与 subtitle 区分层级）
+                                // 标题卡是深灰底（surfaceContainerHigh），
+                                // 标题必须用亮色，不能用深灰 surfaceContainer（深底配深字看不见）。
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: MiuiColors.surfaceContainer,
+                                  color: MiuiColors.onSurface,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -551,8 +551,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         final mapWidth = constraints.maxWidth;
         final mapHeight = constraints.maxHeight;
 
-        final headerOffset = 110.0;
-        final bottomOffset = 420.0;
+        // 顶部预留匹配标题卡实际高度（padding top 56 + 卡片 ~68 + 底部 16），
+        // 标记从标题卡下方开始，不再钻到标题卡底下。
+        // 底部预留只给底部切区按钮 + 图例，不再多留 300px，
+        // 否则 usableHeight 被压到 300+，标记全被切成"小圆点 compact 模式"。
+        final headerOffset = 140.0;
+        final bottomOffset = 150.0;
         final usableHeight = mapHeight - headerOffset - bottomOffset;
 
         // 空间不够时切成紧凑标记（只留圆点，去掉文字气泡）
@@ -1175,7 +1179,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   Widget _buildMapLegend() {
     return Positioned(
       left: 12,
-      bottom: 280,
+      // 贴紧底部切区按钮上方，避免悬浮在地图中央遮挡标记文字
+      bottom: 68,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: BackdropFilter(

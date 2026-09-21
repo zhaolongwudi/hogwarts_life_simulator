@@ -227,6 +227,39 @@
 
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
+## 四·附·G：世界地图几何错位 / 覆盖 / 对比度修复（完成）
+
+用户反馈「面板多处错位 / 被莫名其妙的东西覆盖」的核心重灾区是 `world_map_screen.dart`。
+本批定位并修复三处**有代码证据**的问题，其余仅做零风险语义色收敛：
+
+✅ **标记盖住顶部标题卡**（覆盖问题）：
+- `build()` 的 `SafeArea > Stack` 里，`_buildLocationMarkers()` 原排在 `_buildTopHeader()` 之后
+  —— Flutter 的 Stack 后绘制者在上层，标记滚动时会盖在标题卡上。
+- 已把标记滚动区移到 Stack 最底层，浮层（标题卡/返回键/图例/切区按钮）全部盖在它上面。
+
+✅ **顶部标题深底配深字看不清**（对比度问题）：
+- 标题卡是深灰 `surfaceContainerHigh` 底，标题却用了更深的 `surfaceContainer` 深灰字，
+  对比度几乎为零（第16轮E 曾把无 color 改成深灰，反而更糟）。
+- 已改为 `MiuiColors.onSurface`（亮色），深底配亮字可读。
+
+✅ **标记区几何预留错乱**（错位问题）：
+- `headerOffset=110` 小于标题卡实际高度（padding top 56 + 卡片 ~68 + 底部 16 ≈ 140），
+  标记会钻到标题卡底下被遮。
+- `bottomOffset=420` 过大（多留 300px），把 `usableHeight` 压到 300+，
+  导致标记几乎全被切成「小圆点 compact 模式」，名字不显示。
+- 已调整为 `headerOffset=140` / `bottomOffset=150`。
+
+✅ **图例悬浮在地图中央遮挡标记**（覆盖问题）：
+- `_buildMapLegend` 原 `bottom:280`，悬浮在地图中央，会遮住标记文字。
+- 已改为 `bottom:68`，贴紧底部切区按钮上方。
+
+✅ **零风险语义色收敛**（金底深字 + 危险红）：
+- `settings_body.dart` 2 处、`game_play_screens.dart` 3 处金底按钮 `foregroundColor: 0xFF1A1A2E`
+  → `MiuiColors.onPrimary`（金底上的规范深字，与 MiuiTokens 一致）。
+- `game_play_screens.dart` 卸下按钮的裸色 `0xFFE05050` / `Colors.red` → `MiuiColors.error`。
+
+门禁：`flutter analyze` 0 error；`flutter test` 全绿（由 GitHub Actions CI 验证，本机无 Flutter）。
+
 ## 五、回归与安全红线
 
 - 每一批改动后跑 `flutter analyze`（0 error）与 `flutter test`（全绿）。
