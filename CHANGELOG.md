@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.1.1 — 2026-09-21
+
+**📋 变更说明**
+fix(batch6-issue8): selectYearGoal 加权随机 + 排除近期已用 + 关联主线
+
+- SubGoal 加 careerAffinity 字段（key=LifeGoal.id, value=权重倍数）
+- yearGoalPool 6 个目标各配职业亲和度（auror/potion_master/quidditch/minister/healer）
+- selectYearGoal 签名加 currentGoalName/recentGoalIds 参数：
+  * 反查 lifeGoalCatalog 把 name 转 id
+  * 按 careerAffinity 加权随机（无亲和度时权重恒 1.0）
+
 ### v5.1.0 — 2026-09-21
 
 **📋 变更说明**
