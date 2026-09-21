@@ -144,16 +144,35 @@ mixin GameSystemsMixin on GameProviderBase {
   }
 
   /// 从近期世界事件中自动生成一条传闻（约 20% 概率）
+  ///
+  /// Batch 8 · Issue #12：加近 7 天去重 + 「已被传闻化」标记 + 每日 1 条节流。
+  /// 旧实现只靠 addRumor 的精确文本去重，但 prefix 随机导致同一事件生成不同
+  /// 文本，绕过精确去重——同一事件可被反复传闻化。
   void _maybeGenerateRumor() {
     final p = player;
     if (p == null) return;
     final rand = random;
+
+    // 1. 每日节流：一天最多生成 1 条传闻
+    if (!canDoDaily('rumor')) return;
+
+    // 2. 概率门槛（保留原 20%）
     if (rand.nextDouble() > 0.2) return;
 
-    final recentEvents = worldState.recentEvents;
+    final recentEvents = worldState.recentNarrativeEvents;
     if (recentEvents.isEmpty) return;
 
-    final event = recentEvents[rand.nextInt(recentEvents.length)];
+    // 3. 排除近 7 天内已传闻化的事件
+    final today = worldState.time.absoluteDayIndex;
+    final candidates = recentEvents
+        .where((e) {
+          final lastDay = rumoredEventDays[e.text];
+          return lastDay == null || (today - lastDay) >= 7;
+        })
+        .toList();
+    if (candidates.isEmpty) return;
+
+    final event = candidates[rand.nextInt(candidates.length)];
     final text = event.text;
 
     final rumorPrefixes = [
@@ -174,6 +193,10 @@ mixin GameSystemsMixin on GameProviderBase {
 
     final rumor = '$prefix$cleanText';
     addRumor(rumor);
+    // 4. 标记该事件已被传闻化（记录当天，供 7 天去重判定）
+    rumoredEventDays[text] = today;
+    // 5. 记录每日节流计数
+    recordDailyActivity('rumor');
   }
 
   void advanceTimeForAction(String action) {
@@ -242,6 +265,11 @@ mixin GameSystemsMixin on GameProviderBase {
     // P15 club task progress: per-day push cap. requiredRounds is usually
     // 4~10, so 3 pushes/day completes a short task in ~3-4 days.
     'club_task': 3,
+    // Batch 8 · Issue #12：传闻生成节流。
+    // 旧实现每天 20% 概率触发，无近 N 天去重、无「已被传闻化」标记、无总量护栏——
+    // 同一事件可被反复传闻化（prefix 随机导致同一事件生成不同文本，绕过 addRumor 的精确去重）。
+    // 现改为：每天最多 1 条 + 同一事件 7 天内不重复 + 总量 20 条上限（addRumor 已有）。
+    'rumor': 1,
   };
 
   /// 今日该活动已进行的次数（跨天自动归零）。
@@ -2864,6 +2892,7 @@ mixin GameSystemsMixin on GameProviderBase {
     'daily_activity_count': dailyActivityCount,
     'activity_date': activityDate,
     'last_duel_opponent_id': lastDuelOpponentId,
+    'rumored_event_days': rumoredEventDays,
     'quest_board_ids': questBoardIds,
     'quest_board_week': questBoardWeek,
     'npc_generated_this_school_year': npcGeneratedThisSchoolYear,
@@ -2966,6 +2995,7 @@ mixin GameSystemsMixin on GameProviderBase {
       dailyActivityCount.clear();
       activityDate = '';
       lastDuelOpponentId = null;
+      rumoredEventDays.clear();
       questBoardIds = [];
       questBoardWeek = 0;
       npcGeneratedThisSchoolYear = 0;
@@ -3027,6 +3057,14 @@ mixin GameSystemsMixin on GameProviderBase {
       }
       activityDate = extraData['activity_date'] as String? ?? activityDate;
       lastDuelOpponentId = extraData['last_duel_opponent_id'] as String?;
+      // Batch 8 · Issue #12：读档 rumoredEventDays（老档没有这个键，保持空 map）
+      final savedRumored =
+          extraData['rumored_event_days'] as Map<String, dynamic>?;
+      if (savedRumored != null) {
+        savedRumored.forEach((k, v) {
+          if (v is int) rumoredEventDays[k] = v;
+        });
+      }
       questBoardIds =
           (extraData['quest_board_ids'] as List<dynamic>?)
               ?.map((e) => e.toString())

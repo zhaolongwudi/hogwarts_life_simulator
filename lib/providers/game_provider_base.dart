@@ -206,6 +206,12 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 上一场决斗的对手 id（同一天不能连着挑战同一个人）。
   String? lastDuelOpponentId;
 
+  /// 已被传闻化的事件文本 → 传闻化当天的 absoluteDayIndex（Batch 8 · Issue #12）。
+  /// 用于让 `_maybeGenerateRumor` 排除近 7 天内已传闻化的事件，避免同一事件
+  /// 被反复传闻化（旧实现只靠 addRumor 的精确文本去重，但 prefix 随机导致
+  /// 同一事件生成不同文本，绕过精确去重）。
+  final Map<String, int> rumoredEventDays = {};
+
   /// 场景停滞检测：记录玩家当前地点已停留的回合数
   /// （public 化以供 mixin_narrative 跨文件访问，与其他核心字段一致）
   String? lastTrackedLocation;
