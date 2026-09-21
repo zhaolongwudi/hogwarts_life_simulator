@@ -92,6 +92,7 @@
 | 来源 | 链接 |
 |------|------|
 | 最新版（Release 稳定直链） | [HogwartLige-latest.apk](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases/latest/download/HogwartLige-latest.apk) |
+| 最新构建（自动构建） | [nightly.link](https://nightly.link/zhaolongwudi/hogwarts_life_simulator/workflows/android-build/main/HogwartLige-nightly.zip) |
 | 历史版本 | [GitHub Releases](https://github.com/zhaolongwudi/hogwarts_life_simulator/releases) |
 
 > 每次推送触达 App 关键路径时，CI 会自动 bump 版本、构建 Release APK 并发布到 Releases（保留最近 5 个版本）；仅文档/测试/CI 变更不会触发构建。
