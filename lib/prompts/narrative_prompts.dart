@@ -70,6 +70,7 @@ const String kNarrativeRulesCore = '''【重要规则】
 - ❌ 严禁原地打转：不要让玩家在同一个房间反复施法、反复探索同一个神秘现象、反复做梦。
 - 如果玩家已在同一地点超过2回合，本回合必须引入场景转换契机（有人来敲门、时间到了该出发、窗外发生新事件等）。
 - 开局路线参考：收到信→准备出发→九又四分之三站台→霍格沃茨特快→分院仪式→正式上课。不要在开局地点停留超过3回合。
+- 【地点合法性·开学前】当前剧情若仍处于"收到信→准备出发"的开局阶段（开学日 9 月 1 日之前），所有剧情地点只能是「家中 / 伦敦 / 对角巷」一带；❌ 严禁把场景写到霍格沃茨城堡（任何房间）、国王十字车站、九又四分之三站台、霍格沃茨特快列车上——这些都要 9 月 1 日开学当天才发生。提前写会导致剧情时间与日历对不上，系统也会强制驳回该地点并保留上一合法地点。
 
 【写作要求】
 - 叙事:600-800字精练正文，每段必须推动剧情，拒绝注水
@@ -140,12 +141,6 @@ const String kNarrativeRulesQuality = '''【叙事多样性规则】
 - ✅ 如果【前情回顾】中连续多回合都是平静日常，本回合应引入一点小小的波澜——哪怕只是"一封意外的信"或"走廊里听到的奇怪对话"，避免叙事陷入平淡。
 ''';
 
-// -------------------- T2 动态规则（按场景按需追加） --------------------
-/// 开学前地点合法性：当前剧情仍处于"收到信→准备出发"阶段时，
-/// 所有剧情地点只能是「家中 / 伦敦 / 对角巷」一带。
-const String kNarrativeRuleLocationGate = '''【地点合法性·开学前】当前剧情若仍处于"收到信→准备出发"的开局阶段（开学日 9 月 1 日之前），所有剧情地点只能是「家中 / 伦敦 / 对角巷」一带；❌ 严禁把场景写到霍格沃茨城堡（任何房间）、国王十字车站、九又四分之三站台、霍格沃茨特快列车上——这些都要 9 月 1 日开学当天才发生。提前写会导致剧情时间与日历对不上，系统也会强制驳回该地点并保留上一合法地点。
-''';
-
 // -------------------- 向后兼容别名 --------------------
 /// 向后兼容别名：指向 T0 铁律。
 /// 新代码请用 [buildNarrativeRules] 按场景拼装，不要直接引用此别名。
@@ -159,36 +154,13 @@ const String kNarrativeWritingRules = kNarrativeRulesCore;
 bool shouldInjectQualityRules(int turn) => turn % 3 == 0;
 
 // -------------------- 拼装入口 --------------------
-/// 按场景拼装叙事规则：T0 铁律 + T1 质量类（抽样）+ T2 动态（按需）。
+/// 按场景拼装叙事规则：T0 铁律（每回合必注入）+ T1 质量类（抽样）。
 ///
 /// [turn] 当前回合数，用于 T1 抽样判定。
-/// [extraRules] 调用方按需追加的动态规则（T2），如开学前地点合法性。
-String buildNarrativeRules({
-  required int turn,
-  String? extraRules,
-}) {
+String buildNarrativeRules({required int turn}) {
   final buf = StringBuffer()..write(kNarrativeRulesCore);
   if (shouldInjectQualityRules(turn)) {
     buf.write(kNarrativeRulesQuality);
   }
-  if (extraRules != null && extraRules.isNotEmpty) {
-    buf.write(extraRules);
-  }
   return buf.toString();
-}
-
-// -------------------- T2 判定辅助 --------------------
-/// 判断当前是否处于"开学前"阶段（9 月 1 日之前）。
-///
-/// 用于决定是否注入 [kNarrativeRuleLocationGate]。
-/// 学年跨年时（如 1991 年 12 月 → 1992 年 1 月）也能正确处理。
-bool isPreSchoolYear(int month, int day) {
-  // 开学日：9 月 1 日
-  if (month < 9) return true;
-  if (month == 9 && day < 1) return true;
-  if (month == 9 && day == 1) return false;
-  // 9 月 1 日之后到 12 月 31 日：学期中
-  if (month >= 10) return false;
-  // 1 月到 8 月：暑假/开学前
-  return true;
 }

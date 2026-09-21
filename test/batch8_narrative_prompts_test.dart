@@ -3,12 +3,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/prompts/narrative_prompts.dart';
 
-/// Issue #17：narrative_prompts 分级（T0 常挂 / T1 抽样 / T2 动态）
+/// Issue #17：narrative_prompts 分级（T0 常挂 / T1 抽样）
 ///
 /// 设计审查发现的问题：`kNarrativeWritingRules` 是一个超长常量，
 /// 每回合都完整注入 prompt，token 消耗高且注意力被稀释。
-/// 修法：拆成 T0（铁律，必注入）/ T1（质量类，抽样注入）/ T2（动态按需），
-/// 通过 `buildNarrativeRules` 按场景拼装。
+/// 修法：拆成 T0（铁律，每回合必注入）/ T1（质量类，抽样注入），
+/// 通过 `buildNarrativeRules` 拼装。
+///
+/// 注意：地点合法性（开学前）属于场景推进铁律的一部分，归入 T0 常挂
+/// （review 原文要求 T0 包含「时序/在场/场景合法性」），不做动态按需追加。
 void main() {
   // ==================== T0 铁律：每回合必注入 ====================
   group('T0 铁律必注入', () {
@@ -25,6 +28,11 @@ void main() {
     test('T0 包含场景推进铁律', () {
       expect(kNarrativeRulesCore, contains('场景推进铁律'));
       expect(kNarrativeRulesCore, contains('严禁原地打转'));
+    });
+
+    test('T0 包含地点合法性（场景合法性归 T0 常挂）', () {
+      expect(kNarrativeRulesCore, contains('地点合法性·开学前'));
+      expect(kNarrativeRulesCore, contains('霍格沃茨城堡'));
     });
 
     test('T0 包含反玛丽苏/反天选', () {
@@ -48,10 +56,6 @@ void main() {
 
     test('T0 不包含 T1 质量类内容（多样性规则应在 T1）', () {
       expect(kNarrativeRulesCore, isNot(contains('叙事多样性规则')));
-    });
-
-    test('T0 不包含 T2 动态内容（地点合法性应在 T2）', () {
-      expect(kNarrativeRulesCore, isNot(contains('地点合法性·开学前')));
     });
   });
 
@@ -85,48 +89,11 @@ void main() {
     });
 
     test('shouldInjectQualityRules 是确定性的（同一 turn 结果一致）', () {
-      for (var t = 0; t < 100; t++) {
+      for (var t = 0; t &lt; 100; t++) {
         final a = shouldInjectQualityRules(t);
         final b = shouldInjectQualityRules(t);
         expect(a, b, reason: 'turn=$t 结果不一致');
       }
-    });
-  });
-
-  // ==================== T2 动态规则：按场景按需追加 ====================
-  group('T2 动态规则', () {
-    test('T2 地点合法性规则包含关键约束', () {
-      expect(kNarrativeRuleLocationGate, contains('地点合法性·开学前'));
-      expect(kNarrativeRuleLocationGate, contains('9 月 1 日'));
-      expect(kNarrativeRuleLocationGate, contains('霍格沃茨城堡'));
-    });
-
-    test('isPreSchoolYear 7 月 31 日（开学前）', () {
-      expect(isPreSchoolYear(7, 31), isTrue);
-    });
-
-    test('isPreSchoolYear 8 月 31 日（开学前最后一天）', () {
-      expect(isPreSchoolYear(8, 31), isTrue);
-    });
-
-    test('isPreSchoolYear 9 月 1 日（开学当天，不算开学前）', () {
-      expect(isPreSchoolYear(9, 1), isFalse);
-    });
-
-    test('isPreSchoolYear 9 月 2 日（学期中）', () {
-      expect(isPreSchoolYear(9, 2), isFalse);
-    });
-
-    test('isPreSchoolYear 12 月 31 日（学期末）', () {
-      expect(isPreSchoolYear(12, 31), isFalse);
-    });
-
-    test('isPreSchoolYear 1 月 1 日（寒假，算开学前）', () {
-      expect(isPreSchoolYear(1, 1), isTrue);
-    });
-
-    test('isPreSchoolYear 6 月 30 日（暑假结束前）', () {
-      expect(isPreSchoolYear(6, 30), isTrue);
     });
   });
 
@@ -149,35 +116,15 @@ void main() {
       expect(rules, contains('叙事多样性规则'));
     });
 
-    test('extraRules 非空时追加到末尾', () {
-      final rules = buildNarrativeRules(
-        turn: 1,
-        extraRules: kNarrativeRuleLocationGate,
-      );
-      expect(rules, contains('地点合法性·开学前'));
-      // extraRules 在 T1 之后（T1 缺席时也在 T0 之后）
-      final coreIdx = rules.indexOf('选项将由独立步骤生成');
-      final extraIdx = rules.indexOf('地点合法性·开学前');
-      expect(extraIdx, greaterThan(coreIdx));
-    });
-
-    test('extraRules 为空时不追加', () {
-      final rules = buildNarrativeRules(turn: 1, extraRules: '');
-      expect(rules, isNot(contains('地点合法性')));
-    });
-
-    test('extraRules 为 null 时不追加', () {
-      final rules = buildNarrativeRules(turn: 1);
-      expect(rules, isNot(contains('地点合法性')));
-    });
-
-    test('T0 铁律永远存在（无论 turn 和 extraRules）', () {
-      for (var t = 0; t < 10; t++) {
+    test('T0 铁律永远存在（无论 turn）', () {
+      for (var t = 0; t &lt; 10; t++) {
         final rules = buildNarrativeRules(turn: t);
         expect(rules, contains('选项将由独立步骤生成'),
             reason: 'turn=$t 缺少 T0 铁律');
         expect(rules, contains('时间只能向前推进'),
             reason: 'turn=$t 缺少时间铁律');
+        expect(rules, contains('地点合法性·开学前'),
+            reason: 'turn=$t 缺少地点合法性（场景合法性应常挂）');
       }
     });
   });
@@ -208,12 +155,6 @@ void main() {
               '应改用 buildNarrativeRules 按场景拼装');
     });
 
-    test('mixin_narrative.dart 按开学前判定注入 T2 地点合法性', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
-      expect(src.contains('isPreSchoolYear('), isTrue);
-      expect(src.contains('kNarrativeRuleLocationGate'), isTrue);
-    });
-
     test('mixin_narrative.dart 传递 turnCount 给 buildNarrativeRules', () {
       final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
       expect(src.contains('turn: turnCount'), isTrue);
@@ -222,16 +163,6 @@ void main() {
 
   // ==================== token 节省验证 ====================
   group('token 节省', () {
-    test('T0 比旧版 kNarrativeWritingRules 短（T1/T2 被拆出）', () {
-      // 旧版 kNarrativeWritingRules 包含 T0 + T1 + T2 全部内容
-      // 新版 T0 只含铁律，T1/T2 被拆出
-      // 这里验证 T0 确实比 T0+T1+T2 的总和短
-      final total = kNarrativeRulesCore.length +
-          kNarrativeRulesQuality.length +
-          kNarrativeRuleLocationGate.length;
-      expect(kNarrativeRulesCore.length, lessThan(total));
-    });
-
     test('T1 抽样时每 3 回合节省一次 T1 token', () {
       // turn=0: T0 + T1
       // turn=1: T0 only
