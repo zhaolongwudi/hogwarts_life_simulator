@@ -1,6 +1,11 @@
-# 任务交接文档 - Batch 10 剩余 + Batch 9
-## 当前状态（HEAD: ba3235f，已全量 push，CI 全绿 run 35626737192）
-**已完成（CI 全绿）：**
+# 任务交接文档 - Batch 11 完成 + Batch 10 回顾
+## 当前状态（HEAD: 0999bf5，已全量 push，CI 全绿 run 35636420159）
+**Batch 11 · 社团 × 学院杯反向半环（✅ 完成，CI 全绿）：**
+- `3b4b009` `feat(batch11): 社团×学院杯反向半环（学年结算社团荣光）`：lib/data/house_cup_data.dart +82 行（kClubCupSourcePrefixes / clubContributedCupPoints / ClubCupBonusTier / kClubCupBonusTiers 两档 / clubCupTierFor）；lib/mixins/mixin_play.dart +27 行（import club_data + settleHouseCup 内插入「社团荣光」块）；test/batch11_club_cup_test.dart 新建（四组 13 用例）
+- 首跑 CI 红 `35635683640`（Run tests with coverage 失败）：根因是 `_ensureHouseCupYearly` 把玩家学院分设为 `130 + houseCupPoints`，测试 14 分 → 格兰芬多 144 排第一 → rank==1 排名奖励（+50 加隆+15 学院声望）与社团奖励叠加污染断言
+- `0999bf5` `fix(batch11): 测试预置四院榜单`：makeSettled 预置 houseCupYearly（格兰芬多 130 / 其余三院 999），玩家稳定排第 4（else 分支仅社交+2，不碰加隆/学院声望）→ CI 全绿 `35636420159`
+- 台账 `docs/设计审查_2026-09-21.md` 与规划 `docs/工作思路与后续规划.md` 均已同步标记完成
+**已完成回顾（Batch 5-10，CI 全绿）：**
 - ✅ Batch 5 · Issue #7（P14 频次口径统一）
 - ✅ Batch 6 · Issue #8（selectYearGoal 加权随机 + 关联主线）
 - ✅ Batch 7 · Issue #11（论坛评论写真实评论实体）
@@ -9,7 +14,7 @@
 - ✅ Batch 8 · Issue #16（scene_illustration Color 显式豁免）
 - ✅ Batch 8 · Issue #17（narrative_prompts 分级 T0/T1/T2）
 - ✅ Batch 8 · Issue #18（长期记忆 importance 按事件类型集中配置）
-- ✅ Batch 10 · Issue #23（CI 静态扫描纯计数增量必须配套实体）
+- ✅ Batch 10 · Issue #13/#14/#19/#23（详见下方）
   - `658905c` 首次提交，CI 红（自检用例正则匹配不到 `commentList.add`）
   - `faaeb94` 修复：`_entityWritePattern` 正则从 `\.\w*(List|Entries|Items|Records)\s*\.(add|insert)` 放宽为 `\.\w+\s*\.(add|insert)`，并同步改断言用例 → CI 全绿
   - `c1e0ed3` 台账标记完成
@@ -73,21 +78,24 @@
 
 ## 文件位置速查
 - `lib/data/balance_constants.dart` - 平衡常量（含 compressAffectionDelta，Issue #4）
+- `lib/data/house_cup_data.dart` - 学院杯数据（Batch 11 新增社团荣光：kClubCupSourcePrefixes / clubContributedCupPoints / kClubCupBonusTiers / clubCupTierFor）
+- `lib/mixins/mixin_play.dart` - 学院杯结算（settleHouseCup 内含 Batch 11「社团荣光」块）
 - `lib/data/story_data.dart` + `story_data_{poa,gof,ootp,hbp,dh}.dart` - 主线剧情数据（Issue #19 已完成）
 - `lib/models/story_progress.dart` - 剧情进度/书序
 - `lib/mixins/mixin_systems.dart` - 系统逻辑
+- `test/batch11_club_cup_test.dart` - Batch 11 社团×学院杯反向半环测试（四组 13 用例，已就位）
 - `test/batch10_counter_entity_test.dart` - Batch 10 Issue #23 静态扫描测试（已就位）
 - `test/batch10_story_data_monotonic_test.dart` - Batch 10 Issue #19 时间单调测试（已就位）
 - `docs/设计审查_2026-09-21.md` - 设计审查台账（必须每批更新）
+- `docs/工作思路与后续规划.md` - 规划文档（第一梯队「社团 × 学院杯联动」已标记 Batch 11 完成）
 
 ## 开始工作前请执行
 ```bash
 cd /root/hogwarts_life_simulator
 bash pull.sh  # 拉取最新代码
 ```
-
 ---
-**交接时间：** 2026-09-21
+**交接时间：** 2026-09-22
 **交接人：** 当前对话
 **接收人：** 下一个对话
-**当前 HEAD：** `7f53702`（test(batch10): Issue #19 story_data 五书时间单调性静态校验，CI run 35620792907 全绿）
+**当前 HEAD：** `0999bf5`（fix(batch11): 测试预置四院榜单，CI run 35636420159 全绿）
