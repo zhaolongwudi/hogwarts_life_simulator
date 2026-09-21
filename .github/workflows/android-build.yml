@@ -182,7 +182,8 @@ jobs:
 
       - name: Build APK
         id: build
-        if: steps.check.outputs.RELEASE_WORTHY == 'true'
+        # 任何 push 都构建（不再限 release-worthy）：
+        # 保证 HogwartLige-nightly 永远有货，nightly.link 通道不 404。
         run: |
           flutter build apk --release 2>&1 | tee build_output.log
           APK_PATH=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
@@ -199,9 +200,8 @@ jobs:
             echo "BUILD_EXIT_CODE=1" > build_result.txt
           fi
         timeout-minutes: 20
-
       - name: Upload build logs
-        if: always() && steps.check.outputs.RELEASE_WORTHY == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-${{ steps.bump.outputs.VERSION_NAME || github.sha }}
@@ -209,10 +209,8 @@ jobs:
             build_output.log
             build_result.txt
           retention-days: 30
-
       - name: Check build result and locate APK
         id: apk
-        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           EXIT_CODE=$(grep BUILD_EXIT_CODE build_result.txt | cut -d= -f2)
           if [ "$EXIT_CODE" != "0" ]; then
@@ -222,15 +220,17 @@ jobs:
           fi
           APK_PATH=$(grep APK_PATH build_result.txt | cut -d= -f2)
           echo "APK_PATH=$APK_PATH" >> "$GITHUB_OUTPUT"
-
       - name: Rename APK
-        if: steps.check.outputs.RELEASE_WORTHY == 'true'
         run: |
           APK_PATH="${{ steps.apk.outputs.APK_PATH }}"
           APK_DIR=$(dirname "$APK_PATH")
-          cp "$APK_PATH" "$APK_DIR/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk"
-          echo "RENAMED_APK=$APK_DIR/HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}.apk" >> "$GITHUB_ENV"
-
+          if [ "${{ steps.check.outputs.RELEASE_WORTHY }}" = "true" ]; then
+            NAME="HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}"
+          else
+            NAME="HogwartLige-nightly-${GITHUB_SHA:0:8}"
+          fi
+          cp "$APK_PATH" "$APK_DIR/$NAME.apk"
+          echo "RENAMED_APK=$APK_DIR/$NAME.apk" >> "$GITHUB_ENV"
       - name: Upload APK
         if: steps.check.outputs.RELEASE_WORTHY == 'true'
         uses: actions/upload-artifact@v4
@@ -238,14 +238,13 @@ jobs:
           name: HogwartLige-${{ steps.bump.outputs.VERSION_NAME }}
           path: ${{ env.RENAMED_APK }}
           retention-days: 30
-
       - name: Upload APK (nightly)
-        if: steps.check.outputs.RELEASE_WORTHY == 'true'
+        # 无条件上传 + 保留 90 天：nightly.link 需要最近一次成功 run 里有 HogwartLige-nightly
         uses: actions/upload-artifact@v4
         with:
           name: HogwartLige-nightly
           path: ${{ env.RENAMED_APK }}
-          retention-days: 7
+          retention-days: 90
 
       # ================================================================
       # P1-5：版本 bump + CHANGELOG sync + push 移到全部验证之后。
