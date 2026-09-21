@@ -122,12 +122,15 @@ mixin GameClubMixin on GameProviderBase {
     final newRank = club.rankIndexFor(p.clubPoints);
 
     final house = houseDisplayName(p.house ?? '', fallback: '霍格沃茨');
+    // P18 社团 × 学院杯联动：为社团出力也为学院挣 1 分（「你属于什么」也有
+    // 让学院骄傲的分量）。来源写入 houseCupSources，/学院杯 来源明细可见。
+    addHouseCupPoints(1, '社团·${club.name}');
     final buf = StringBuffer();
     if (newRank > prevRank) {
       // 跨过了一阶甚至多阶：逐阶发奖与旁白。
       buf.writeln('———————🏰 社团动向 · ${club.icon} ${club.name} 🏰———————');
       buf.writeln('你为 ${club.name} 出力，社团积分 +$gain '
-          '（${p.clubPoints}）。这一笔，正好把你在社团里的分量顶了上去。');
+          '（${p.clubPoints}）。为 $house 挣得 1 学院分。这一笔，正好把你在社团里的分量顶了上去。');
       for (var r = prevRank + 1; r <= newRank; r++) {
         buf.writeln();
         buf.writeln(_rankBonusLines(club, r));
@@ -141,7 +144,7 @@ mixin GameClubMixin on GameProviderBase {
           : null;
       buf.writeln('———————🏰 社团活动 · ${club.icon} ${club.name} 🏰———————');
       buf.writeln('你把今天的${club.activityKeywords.first}尽心做了，'
-          '为 ${club.name} 攒下 $gain 积分。');
+          '为 ${club.name} 攒下 $gain 积分，也为 $house 挣得 1 学院分。');
       if (next != null) {
         final remain = next.points - p.clubPoints,
             total = next.points;
@@ -401,6 +404,8 @@ mixin GameClubMixin on GameProviderBase {
     if (t.attrKey != null && t.attrValue > 0) {
       _gainAttr(p, t.attrKey!, t.attrValue);
     }
+    // P18 社团 × 学院杯联动：任务完成也为学院挣 3 分（社团的荣光也是学院的）。
+    addHouseCupPoints(3, '社团任务·${t.title}');
     p.clubTaskClaimed = true;
     // 领奖后清空接取，回到可接新任务状态。
     p.clubTaskId = null;
@@ -414,7 +419,7 @@ mixin GameClubMixin on GameProviderBase {
     if (t.attrKey != null && t.attrValue > 0) {
       buf.writeln('${attributeLabel(t.attrKey!)} +${t.attrValue}');
     }
-    buf.writeln('为 $house 添了脸面，也为自己挣了口气。');
+    buf.writeln('为 $house 挣得 3 学院分，也为自己挣了口气。');
     notifications.add('🏰 社团任务完成：${t.title}');
     return buf.toString().trim();
   }

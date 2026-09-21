@@ -272,4 +272,27 @@ void main() {
       expect(s, isNot(contains('猫头鹰')), reason: '无同好可写信时不出现回访');
     });
   });
+
+  group('P18 · 社团 x 学院杯联动', () {
+    test('为社团出力时同步为学院杯 +1', () async {
+      final gp = await makeEnabled();
+      final p = gp.player!;
+      p.clubLastTurn = -100;
+      final before = p.houseCupPoints;
+      gp.maybeRunClubActivity('在会堂与人切磋对练');
+      expect(p.houseCupPoints, before + 1, reason: '社团出力应为学院杯 +1');
+      expect(p.houseCupSources.containsKey('社团·决斗俱乐部'), isTrue,
+          reason: '学院杯来源明细应记录社团');
+    });
+
+    test('社团任务完成时同步为学院杯 +3', () async {
+      final gp = await makeEnabled();
+      final p = gp.player!;
+      gp.acceptClubTask('duel_ten_spars');
+      p.clubTaskProgress = 4;
+      final before = p.houseCupPoints;
+      gp.claimClubTask();
+      expect(p.houseCupPoints, before + 3, reason: '社团任务完成应为学院杯 +3');
+    });
+  });
 }
