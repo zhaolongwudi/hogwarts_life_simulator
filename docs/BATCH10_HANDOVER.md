@@ -1,7 +1,5 @@
 # 任务交接文档 - Batch 10 剩余 + Batch 9
-
-## 当前状态（HEAD: 7f53702，已全量 push，CI 全绿 run 35620792907）
-
+## 当前状态（HEAD: ba3235f，已全量 push，CI 全绿 run 35626737192）
 **已完成（CI 全绿）：**
 - ✅ Batch 5 · Issue #7（P14 频次口径统一）
 - ✅ Batch 6 · Issue #8（selectYearGoal 加权随机 + 关联主线）
@@ -20,6 +18,11 @@
   - 覆盖：书锚点全局单调（七部逐年递增 + 后书锚点严格晚于前书，防衔接倒流）/书内时间戳严格递增/跨书衔接不重叠（每书完成日 ≤ 下一书锚点）/每书完成日落学年尾 6~8 月/每书总天数 [200,420] sanity/源码静态存在性（六文件 + 七书注册 + 无幽灵书）
   - 实测七书数据核算通过：ps 结束 1992-07-02 → cos 锚点 1992-07-25 → … → dh 结束 1998-07-20，全部衔接 OK
   - 台账 `docs/设计审查_2026-09-21.md` 已同步标记完成
+- ✅ Batch 10 · Issue #13（CI 全开 smoke 套件）
+  - `efa960b` 新增 `test/batch10_smoke_all_on_test.dart`（150 行）：①P10~P14 生产默认全开断言（绕过 makeGame 夹具、直接构造 AppProvider）②全开 30 回合长局不崩/时钟前进/叙事非空 ③存档→读档往返（真实 SaveService）④剧情模式+全开共存跑 5 步
+  - 首跑 CI 红 `35623112412`（2133 passed / 2 failed）：剧情模式测试因 kStoryBooks 显式注册制、makeGame 不注册书表 → storyStartStepFor 返回 null「剧情内容未加载」；存档往返测试因 path_provider 无原生插件实现抛 MissingPluginException
+  - `ba3235f` 修复：setUpAll 补 `registerAllStoryBooks` + mock path_provider MethodChannel 指向系统临时目录 → CI 全绿 `35626737192`
+  - 台账 `docs/设计审查_2026-09-21.md` 已同步标记完成
 
 **Issue #4 已核实，建议「不采纳」（同 Issue #22）：**
 - 实测旧分段映射 0~40 全表：已单调不减、无跳变 >1、上限 ±10 守住。
@@ -29,10 +32,8 @@
 
 ## 待做清单（按优先级，一批一改一推）
 
-### 🔨 Batch 10 · 工程基建（剩余两个）
-1. **Issue #13** CI 全开 smoke 套件
-   - 背景：默认关掉全部新系统保证 1900+ 既有用例稳定，代价是默认配置与测试配置完全不同，线上问题无法用现有测试复现。
-   - 建议：CI 加一份「全开 smoke」套件（`.github/workflows/` 新增或复用 android-build.yml 加 job），全开新系统跑一版核心冒烟。
+### 🔨 Batch 10 · 工程基建（剩余一个）
+1. **Issue #13** ✅ **已完成**：test/batch10_smoke_all_on_test.dart（150 行）生产默认全开 smoke 套件，覆盖 ①P10~P14 生产默认全开断言 ②全开 30 回合长局不崩 ③存档→读档往返 ④剧情模式+全开共存。首跑 CI 红（2133 passed/2 failed）已修：剧情书显式注册（setUpAll registerAllStoryBooks）+ path_provider mock（MethodChannel 指向系统临时目录）；commit `ba3235f`，CI run 35626737192 全绿。
 2. **Issue #14** 文档纳入 CI 同步流程
    - 背景：文档漂移（PROJECT_GUIDE v5.0.2 / 规划文档基线 v4.8.4 / README 滞后）。
    - 建议：文档纳入 CI 同步流程（校验版本号一致/文档与代码同步）。
