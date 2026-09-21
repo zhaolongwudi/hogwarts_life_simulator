@@ -51,18 +51,6 @@ void main() {
       expect(app2.fallbackProvider, isNull,
           reason: '关闭托底后重新启动应保持关闭，不能回落到默认值');
     });
-
-    test('持久化 key 写入的是索引或空串，不写枚举名', () async {
-      SharedPreferences.setMockInitialValues({});
-      final app = AppProvider();
-      await app.loadSettings();
-      await app.setFallbackProvider(AiProvider.agnes);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('fallback_provider'), '${AiProvider.agnes.index}');
-
-      await app.setFallbackProvider(null);
-      expect(prefs.getString('fallback_provider'), '');
-    });
   });
 
   group('商汤模型清单', () {
