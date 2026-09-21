@@ -992,6 +992,40 @@ class ParallelScenario {
       );
 }
 
+/// 论坛帖子里的一条回复（Batch 7 · Issue #11）。
+///
+/// 旧实现 `addForumPostComment` 只把 `post.comments += 1`，玩家写的回复文本
+/// 直接丢弃——评论栏永远只有数字没有字。现在每条回复都落成实体随存档走。
+class ForumComment {
+  final String id;
+  final String author;
+  final String content;
+
+  /// 回复时刻的游戏内时间戳文案（如"1991年9月3日 傍晚"）。
+  final String timeLabel;
+
+  ForumComment({
+    required this.id,
+    required this.author,
+    required this.content,
+    required this.timeLabel,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'author': author,
+    'content': content,
+    'time_label': timeLabel,
+  };
+
+  factory ForumComment.fromJson(Map<String, dynamic> json) => ForumComment(
+    id: json['id'] as String? ?? '',
+    author: json['author'] as String? ?? '匿名巫师',
+    content: json['content'] as String? ?? '',
+    timeLabel: json['time_label'] as String? ?? '',
+  );
+}
+
 /// 玩家在「魔法论坛」里发的一帖。
 ///
 /// 旧实现把整个论坛做成了 Widget 里的硬编码常量：五条署名赫敏/纳威的样板帖，
@@ -1010,6 +1044,11 @@ class ForumPost {
   int comments;
   bool liked;
 
+  /// 回复实体列表（Batch 7 · Issue #11）。
+  /// 旧档缺省回退空列表；`comments` 计数保留用于兼容旧 UI 展示，
+  /// 新逻辑以 `commentList.length` 为准。
+  List<ForumComment> commentList;
+
   ForumPost({
     required this.id,
     required this.category,
@@ -1019,7 +1058,8 @@ class ForumPost {
     this.likes = 0,
     this.comments = 0,
     this.liked = false,
-  });
+    List<ForumComment>? commentList,
+  }) : commentList = List<ForumComment>.from(commentList ?? const []);
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -1030,6 +1070,7 @@ class ForumPost {
     'likes': likes,
     'comments': comments,
     'liked': liked,
+    'comment_list': commentList.map((c) => c.toJson()).toList(),
   };
 
   factory ForumPost.fromJson(Map<String, dynamic> json) => ForumPost(
@@ -1041,6 +1082,9 @@ class ForumPost {
     likes: json['likes'] as int? ?? 0,
     comments: json['comments'] as int? ?? 0,
     liked: json['liked'] as bool? ?? false,
+    commentList: (json['comment_list'] as List<dynamic>? ?? const [])
+        .map((e) => ForumComment.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList(),
   );
 }
 

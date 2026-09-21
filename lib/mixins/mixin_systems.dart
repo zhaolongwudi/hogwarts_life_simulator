@@ -450,12 +450,24 @@ mixin GameSystemsMixin on GameProviderBase {
     unawaited(autoSave());
   }
 
-  void addForumPostComment(String id) {
+  void addForumPostComment(String id, {required String text}) {
     final p = player;
     if (p == null) return;
     final post = p.forumPosts.where((e) => e.id == id).firstOrNull;
     if (post == null) return;
-    post.comments += 1;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    // Batch 7 · Issue #11：回复落成实体，不再只 +1 计数
+    post.commentList.add(
+      ForumComment(
+        id: 'fc_${DateTime.now().microsecondsSinceEpoch}',
+        author: p.name,
+        content: trimmed,
+        timeLabel: worldState.timestamp,
+      ),
+    );
+    // 同步计数（兼容旧 UI 展示）
+    post.comments = post.commentList.length;
     notifyListeners();
     unawaited(autoSave());
   }

@@ -64,7 +64,11 @@ class _ForumScreenState extends State<ForumScreen> {
             onPressed: () {
               final text = controller.text.trim();
               if (text.isNotEmpty) {
-                context.read<GameProvider>().addForumPostComment(post.id);
+                // Batch 7 · Issue #11：把回复文本传给 provider，落成实体
+                context.read<GameProvider>().addForumPostComment(
+                      post.id,
+                      text: text,
+                    );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('回复已发布：$text')),
@@ -422,6 +426,68 @@ class _PostCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(post.content, style: const TextStyle(fontSize: 14, height: 1.5)),
+            // Batch 7 · Issue #11：展示回复实体列表（旧实现只有数字没有字）
+            if (post.commentList.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '回复 · ${post.commentList.length}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final c in post.commentList) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  c.author,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  c.timeLabel,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: MiuiColors.onSurfaceVariantSummary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              c.content,
+                              style: const TextStyle(fontSize: 13, height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [
