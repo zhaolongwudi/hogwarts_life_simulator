@@ -69,9 +69,8 @@ void main() {
         ],
       );
       final json = post.toJson();
-      expect(json['comment_list'], isA<List<dynamic>>().having(
-        length, 'length', 2,
-      ));
+      final commentListJson = json['comment_list'] as List<dynamic>;
+      expect(commentListJson.length, 2);
 
       final post2 = ForumPost.fromJson(json);
       expect(post2.commentList.length, 2);
