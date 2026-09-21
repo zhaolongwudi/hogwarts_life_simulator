@@ -1,5 +1,21 @@
-# 任务交接文档 - Batch 11 完成 + Batch 10 回顾
-## 当前状态（HEAD: 0999bf5，已全量 push，CI 全绿 run 35636420159）
+# 任务交接文档 - Batch 44 完成 + 历史回顾
+## 当前状态（HEAD: 64452a5，已全量 push，CI 全绿 run 35645170252）
+**Batch 44 · AI 配置重构（✅ 完成，CI 全绿）：**
+- 目标：参考 Operit 现有模型地址/模型名/多 Key 轮换方案，重构项目内 AI 配置与功能分配；Operit 的功能绑定（CHAT/SUMMARY 等）不参考（不同系统）。
+- `47ea14b` `feat(batch44): AI配置重构——多Key托底备用模型+商汤deepseek-v4-pro+设置页分区导航`：
+  - `lib/data/provider_defaults.dart`：商汤 models 补 `deepseek-v4-pro`（复杂推理，500次/5h）
+  - `lib/providers/app_provider.dart`：新增 `_fallbackProvider` 字段（全局托底备用模型，默认 Atria=deepseek 枚举，可空=关闭）+ getter `fallbackProvider` + setter `setFallbackProvider`（持久化 key `fallback_provider`，存枚举索引/空串）+ loadSettings 读取 + freeModelsFor 补 deepseek-v4-pro
+  - `lib/providers/game_provider.dart`：`updateClient` 里 `_buildFallbackOrder()` 动态算 fallbackOrder（托底提供商排最前，其余按枚举顺序补全），传给 AiRouterConfig
+  - `lib/screens/settings/settings_body.dart`：设置页改「顶部分区导航」（3 个 tab：AI 服务/游戏/系统），把原先一拉到底的 13 板块收成三段
+  - `lib/screens/settings/settings_scene_routing.dart`：新增「🛟 托底备用模型」选择行（关闭托底 + 各提供商可选，未配 Key 的加锁）
+  - `test/batch44_ai_fallback_test.dart` 新建（fallbackProvider 默认值/改选/关闭 + deepseek-v4-pro 进列表）
+- 首跑 CI 红 `35643239833`（2157 passed / 1 failed）：失败点是测试里「裸读 SharedPreferences.getInstance() 断言底层存储值」——mock 环境下 PrefsStore 单例缓存与 setMockInitialValues 重置产生实例分裂读到旧值。该断言脆弱且与前两条持久化往返断言重复。
+- `64452a5` `fix(batch44): 移除脆弱的底层存储断言测试`：删除该重复断言 → CI 全绿 `35645170252`
+- **多 Key 轮换 + 托底语义（已落地）**：路由层 `AiRouter._callWithFallback` 先试 primary 的所有 Key（轮询 + 单 Key 熔断 3 次/60s + 超时切下一 Key），全部失效后按 fallbackOrder 切托底提供商（再走同样轮换），最后枚举顺序兜底。设置页可改/可关托底。
+
+---
+## 历史状态（Batch 11 完成 + Batch 10 回顾）
+## 历史 HEAD：0999bf5，CI 全绿 run 35636420159
 **Batch 11 · 社团 × 学院杯反向半环（✅ 完成，CI 全绿）：**
 - `3b4b009` `feat(batch11): 社团×学院杯反向半环（学年结算社团荣光）`：lib/data/house_cup_data.dart +82 行（kClubCupSourcePrefixes / clubContributedCupPoints / ClubCupBonusTier / kClubCupBonusTiers 两档 / clubCupTierFor）；lib/mixins/mixin_play.dart +27 行（import club_data + settleHouseCup 内插入「社团荣光」块）；test/batch11_club_cup_test.dart 新建（四组 13 用例）
 - 首跑 CI 红 `35635683640`（Run tests with coverage 失败）：根因是 `_ensureHouseCupYearly` 把玩家学院分设为 `130 + houseCupPoints`，测试 14 分 → 格兰芬多 144 排第一 → rank==1 排名奖励（+50 加隆+15 学院声望）与社团奖励叠加污染断言
