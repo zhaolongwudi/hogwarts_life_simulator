@@ -126,6 +126,19 @@ void main() {
       gp.player!.houseCupSources = Map<String, int>.from(sources);
       gp.player!.houseReputation = houseReputation;
       gp.player!.galleons = galleons;
+      // 【为什么预置四院榜单】_ensureHouseCupYearly 会把玩家学院分设为
+      // kHouseCupBaseScore(130) + houseCupPoints；测试若设 houseCupPoints=14，
+      // 格兰芬多 144 分 > 其余三院 130 → 触发 rank==1 排名奖励（+50 加隆
+      // +15 学院声望），与社团奖励叠加导致断言失败。这里把其余三院垫到 999，
+      // 让玩家稳定排第 4（else 分支只加社交+2，不碰加隆/学院声望）。
+      gp.worldState.houseCupYearly
+        ..clear()
+        ..addAll({
+          '格兰芬多': 130,
+          '斯莱特林': 999,
+          '拉文克劳': 999,
+          '赫奇帕奇': 999,
+        });
       // 触发学年结算（settleHouseCup 由学年切换调用；这里直接调以隔离测试）
       gp.settleHouseCup();
       return gp;
