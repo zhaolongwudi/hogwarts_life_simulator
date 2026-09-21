@@ -15,6 +15,7 @@ import '../data/balance_constants.dart';
 import '../utils/npc_lookup.dart';
 import '../utils/inventory_ops.dart';
 import '../data/gift_rules.dart';
+import '../data/house_data.dart';
 import '../data/item_data.dart';
 import '../data/attribute_data.dart';
 import '../data/wand_data.dart';
