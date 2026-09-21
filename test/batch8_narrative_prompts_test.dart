@@ -89,7 +89,7 @@ void main() {
     });
 
     test('shouldInjectQualityRules 是确定性的（同一 turn 结果一致）', () {
-      for (var t = 0; t &lt; 100; t++) {
+      for (var t = 0; t < 100; t++) {
         final a = shouldInjectQualityRules(t);
         final b = shouldInjectQualityRules(t);
         expect(a, b, reason: 'turn=$t 结果不一致');
@@ -117,7 +117,7 @@ void main() {
     });
 
     test('T0 铁律永远存在（无论 turn）', () {
-      for (var t = 0; t &lt; 10; t++) {
+      for (var t = 0; t < 10; t++) {
         final rules = buildNarrativeRules(turn: t);
         expect(rules, contains('选项将由独立步骤生成'),
             reason: 'turn=$t 缺少 T0 铁律');
