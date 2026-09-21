@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.0.8 — 2026-09-21
+
+**📋 变更说明**
+fix(bug): Batch1 目标/职业门槛对齐 (Issue #1 + #2)
+
+- goal_data.dart requirement 全部下调到 growthExpectation.max - 5 以内（旧表 potions/theory/flying/spell_understanding 各写 80，比 7 年理论上限还高，goal_achieved 基本无人解锁）。
+
+- healer.attributeKey: herbology → potions（与 career_data.healer.minAttr='potions' 一致）；minister.reputationMin: leadership 70→50 + social 75→65（对齐 career_data.ministry）；dark_power dda 70→75；magizoologist/journalist/curse_breaker observation/spell_understanding 全部压到 max-5。
+
+详见 docs/设计审查_2026-09-21.md 头部修复进度台账。
+
 ### v5.0.7 — 2026-09-21
 
 **📋 变更说明**
