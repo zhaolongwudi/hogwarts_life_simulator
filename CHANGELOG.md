@@ -10,6 +10,13 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.0.9 — 2026-09-21
+
+**📋 变更说明**
+fix(ci): Batch2 补漏 — mixin_relations 缺 house_data.dart import
+
+上一 commit 里用了 houseDisplayName()，但文件原本没 import '../data/house_data.dart'——CI Analyze 报“The method 'houseDisplayName' isn't defined”。加一行 import。
+
 ### v5.0.8 — 2026-09-21
 
 **📋 变更说明**
