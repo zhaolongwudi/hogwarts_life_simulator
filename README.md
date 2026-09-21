@@ -7,7 +7,7 @@
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v5.0.4-E3B341?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.1.3-E3B341?style=flat-square" />
   <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
   <img alt="测试" src="https://img.shields.io/badge/tests-1994%2B%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />

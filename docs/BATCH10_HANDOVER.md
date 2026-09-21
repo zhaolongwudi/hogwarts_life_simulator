@@ -23,6 +23,11 @@
   - 首跑 CI 红 `35623112412`（2133 passed / 2 failed）：剧情模式测试因 kStoryBooks 显式注册制、makeGame 不注册书表 → storyStartStepFor 返回 null「剧情内容未加载」；存档往返测试因 path_provider 无原生插件实现抛 MissingPluginException
   - `ba3235f` 修复：setUpAll 补 `registerAllStoryBooks` + mock path_provider MethodChannel 指向系统临时目录 → CI 全绿 `35626737192`
   - 台账 `docs/设计审查_2026-09-21.md` 已同步标记完成
+- ✅ Batch 10 · Issue #14（文档纳入 CI 同步流程）
+  - 新增 `scripts/check_docs_version.sh`（文档版本一致性门禁）：校验 README badge / PROJECT_GUIDE 当前版本与 pubspec.yaml 一致，漂移 exit 1
+  - 新增 `scripts/sync_docs_version.sh`（幂等同步）：把 README badge + PROJECT_GUIDE 当前版本刷成 pubspec 真实版本
+  - `android-build.yml`：新增「Check docs version consistency (Issue #14)」步骤（全量门禁）；Sync changelog 步骤追加调用 sync_docs_version.sh，并把 PROJECT_GUIDE.md 纳入自动提交范围
+  - 当前仓库漂移已修复：README v5.0.4→v5.1.3、PROJECT_GUIDE v5.0.2→v5.1.3
 
 **Issue #4 已核实，建议「不采纳」（同 Issue #22）：**
 - 实测旧分段映射 0~40 全表：已单调不减、无跳变 >1、上限 ±10 守住。
@@ -32,11 +37,9 @@
 
 ## 待做清单（按优先级，一批一改一推）
 
-### 🔨 Batch 10 · 工程基建（剩余一个）
+### 🔨 Batch 10 · 工程基建（已完成）
 1. **Issue #13** ✅ **已完成**：test/batch10_smoke_all_on_test.dart（150 行）生产默认全开 smoke 套件，覆盖 ①P10~P14 生产默认全开断言 ②全开 30 回合长局不崩 ③存档→读档往返 ④剧情模式+全开共存。首跑 CI 红（2133 passed/2 failed）已修：剧情书显式注册（setUpAll registerAllStoryBooks）+ path_provider mock（MethodChannel 指向系统临时目录）；commit `ba3235f`，CI run 35626737192 全绿。
-2. **Issue #14** 文档纳入 CI 同步流程
-   - 背景：文档漂移（PROJECT_GUIDE v5.0.2 / 规划文档基线 v4.8.4 / README 滞后）。
-   - 建议：文档纳入 CI 同步流程（校验版本号一致/文档与代码同步）。
+2. **Issue #14** ✅ **已完成**：文档纳入 CI 同步流程。新增 scripts/check_docs_version.sh（门禁）+ scripts/sync_docs_version.sh（同步）；android-build.yml 加门禁步骤 + Sync changelog 追加文档同步；漂移已修复（README/PROJECT_GUIDE → v5.1.3）。
 
 ### ⚪ Issue #4 压缩函数（建议跳过，见上）
 

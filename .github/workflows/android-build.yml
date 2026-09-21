@@ -37,6 +37,17 @@ jobs:
       # 34402831753）该 payload 在本 workflow 下提取为空导致门禁误判
       # skip 了含 lib/android 改动的提交。git diff 不依赖事件结构，可靠。
       # ================================================================
+      # ================================================================
+      # Issue #14：文档版本一致性门禁。
+      # 在 bump 之前校验 README badge / PROJECT_GUIDE 当前版本与
+      # pubspec.yaml 一致，漂移直接标红（提示先跑 sync_docs_version.sh）。
+      # 幂等：一致时零成本通过；仅文档/测试/CI 提交也执行（全量门禁）。
+      # ================================================================
+      - name: Check docs version consistency (Issue #14)
+        run: |
+          chmod +x scripts/check_docs_version.sh
+          bash scripts/check_docs_version.sh
+
       - name: Check release-worthy changes
         id: check
         run: |
@@ -248,7 +259,9 @@ jobs:
         run: |
           chmod +x scripts/sync_changelog.sh
           bash scripts/sync_changelog.sh
-          git add CHANGELOG.md pubspec.yaml README.md
+          # Issue #14：同步 README badge / PROJECT_GUIDE 当前版本到新版本号
+          bash scripts/sync_docs_version.sh
+          git add CHANGELOG.md pubspec.yaml README.md PROJECT_GUIDE.md
           if git diff --cached --quiet; then
             echo "No changes to commit"
             echo "SYNCED=false" >> "$GITHUB_OUTPUT"
