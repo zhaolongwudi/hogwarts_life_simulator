@@ -17,9 +17,14 @@
 /// 配置下整体可玩」的回归基线（真实随机节奏下的长局不炸）。两者互补。
 library;
 
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
@@ -28,6 +33,30 @@ import 'helpers/test_fixtures.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // 【为什么 mock path_provider】SaveService 走真实文件系统（path_provider
+  // 的 getApplicationDocumentsDirectory），测试环境无原生插件实现，不 mock
+  // 会在存档写入时抛 MissingPluginException（CI 实测 2133 passed/2 failed
+  // 就是被它和剧情书未注册一起打红的）。这里把文档目录指到系统临时目录，
+  // 让存档→读档往返走真实 File 读写（比纯内存 mock 更接近线上行为）。
+  //
+  // 【为什么注册剧情书】kStoryBooks 是显式注册制（registerAllStoryBooks），
+  // makeGame→initializeGame 不会替你注册；剧情模式测试若不注册书表，
+  // storyStartStepFor 查到 null 会打「剧情内容未加载」并保持 inactive。
+  // 所有既有剧情测试（story_book_progression / canon_* 等）都在 setUpAll
+  // 里注册，这里保持一致。
+  setUpAll(() async {
+    registerAllStoryBooks();
+    final tmpDir = await Directory.systemTemp.createTemp('smoke_saves_');
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'getApplicationDocumentsDirectory') {
+        return tmpDir.path;
+      }
+      return null;
+    });
+  });
 
   group('Batch 10 · Issue #13：生产默认全开 smoke', () {
     test('生产默认：P10~P14 全部默认开启（与 AppProvider 一致）', () async {
