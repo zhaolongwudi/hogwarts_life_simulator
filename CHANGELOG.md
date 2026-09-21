@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.0.7 — 2026-09-21
+
+**📋 变更说明**
+fix(bug): 修 Bug20/21 — 重大事件免疫真正豁免衰减 + 社团关键词扩容 + 传奇门槛 400→260
+
+- A (Bug 20): _checkMajorEventImmunity 提前到 _applySocialCost 之前调用，
+  并新增 _shouldBypassSocialCost / _bypassSocialCost —— npc 在 majorEventDate
+  后的 7 天窗口内不再被连续互动衰减吞掉，救命之恩之类的 raw=+20 不再被压成小数值。
+- B (Bug 21): 四个社团 activityKeywords 各补 8~10 个同义入口（较量/单挑/炼药/调汤/
+  合练/上飞行课/报道/专题…），子串匹配命中率提升。
+
 ### v5.0.6 — 2026-09-21
 
 **📋 变更说明**

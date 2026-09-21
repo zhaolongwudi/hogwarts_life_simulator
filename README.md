@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
+| **v5.0.7** | fix(bug): 修 Bug20/21 — 重大事件免疫真正豁免衰减 + 社团关键词扩容 + 传奇门槛 400→260 |
 | **v5.0.6** | feat(offline): 社团 x 学院杯联动（P18）—— 为社团出力 +1 学院分，社团任务完成 +3 学院分（来源进明细，/… |
 | **v5.0.5** | feat(offline): 奇遇结果沉淀进人生回忆（P17）—— 结算后写入 recentNarrativeEvents，/档案 回… |
 | **v5.0.4** | feat(offline): 社团晋升回访信（P16）—— 晋升王牌/传奇时，已结识同好寄来一封回访信（只入叙事不落信箱，无人可写信时… |
 | **v5.0.3** | fix: /社团 任务 handler 改用 ctx.arg() 取参（禁 parts[1] 下标）；batch45 数据断言不强求无… |
-| **v5.0.2** | fix(build): package_info_plus 降至 9.x —— 10.x 与 flutter_secure_stora… |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
