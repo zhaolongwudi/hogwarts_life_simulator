@@ -1510,8 +1510,19 @@ mixin GameRelationsMixin on GameProviderBase {
       n.isConsideringConfession = false;
     }
 
-    // 融合版条件：好感≥85 + 关系阶段为"暧昧" + 浪漫事件≥2次 + 持续≥2周
-    // 使用 absoluteDayIndex（跨年单调递增），避免 dayOfYear 跨年相减为负
+    // 【Bug 6 修复 · 2026-09-21】原来「好感≥85 + 暧昧阶段 + romanticEvents≥2 + crushMatureDays≥14」
+    // 是**五个 AND 全满足**才进入掷骰——30 天无互动起走 affectionDriftPerWeekMin~Max 衰减 1~2/周，
+    // 攒 85 的过程中断联就掉；即使不断联，也要精确命中两次"浪漫事件"关键词才算通过。
+    // 「努力几十小时仍被前置卡死」正是原报告 Bug 6 描述的挫败感来源。
+    //
+    // 现在的策略：
+    //   - 硬门槛只留两条真稀缺：affection ≥ 85 + stage ∈ {暧昧, 亲密}
+    //     （这两条已经足够保证 NPC 不会随便向玩家表白）
+    //   - romanticEvents 改为**软门槛**：不再一票否决，而是作为掷骰时的**概率乘数**
+    //     ——0 次 ×0.3 / 1 次 ×0.7 / ≥2 次 ×1.0。玩家能感觉"关系越深表白越早落地"，
+    //     但不会被"我明明已经很努力了却凑不够 2 次浪漫事件"这种数字陷阱挡住。
+    //   - crushMatureDays 同样保持软行为（沿用旧逻辑：只有 currentCrushName==n.name
+    //     时才强校验窗口，否则视为已成熟）。
     final currentDay = worldState.time.absoluteDayIndex;
     final candidates = npcRegistry.values.where((n) {
       if (!n.isAlive ||
@@ -1527,18 +1538,15 @@ mixin GameRelationsMixin on GameProviderBase {
       )) {
         return false;
       }
-      // 检查关系阶段
+      // 检查关系阶段（真正的稀缺门槛之一）
       final stage = p.loveState.stageFor(n.name);
       if (stage != '暧昧' && stage != '亲密') return false;
-      // 检查浪漫事件计数
-      if (p.loveState.romanticEventsFor(n.name) <
-          Balance.confessionMinRomanticEvents)
-        return false;
-      // 检查暧昧持续时间
+      // crushMatureDays 仅在明确挂着这条 crush 线时强校验窗口
       if (p.loveState.currentCrushName == n.name &&
           !p.loveState.isCrushMature(currentDay)) {
         return false;
       }
+      // 【Bug 6 修复】romanticEvents 从硬门槛降级为概率乘数（在下方使用）
       return true;
     }).toList();
 
@@ -1552,6 +1560,15 @@ mixin GameRelationsMixin on GameProviderBase {
         triggerProb += Balance.confessionHighAffectionBonus;
       }
     }
+    // 【Bug 6 修复】romanticEvents 概率乘数：关系深度直接反映在触发概率上。
+    // 旧的硬门槛会让"零浪漫事件但高好感"永远进不了候选池；现在只是概率打对折。
+    final romEvents = p.loveState.romanticEventsFor(candidates.first.name);
+    final romanceMultiplier = romEvents >= Balance.confessionMinRomanticEvents
+        ? 1.0
+        : (romEvents == 1
+            ? 0.7
+            : 0.3); // 0 次：0.3（还允许偶发表白，不至于堵死）
+    triggerProb *= romanceMultiplier;
     triggerProb = triggerProb.clamp(0.0, Balance.confessionMaxProbability);
 
     if (random.nextDouble() > triggerProb) {
