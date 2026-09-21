@@ -1573,7 +1573,7 @@ void _saveLoadGroup() {
       //      这几项不入档时「打满 3 场 → 存档 → 读档」又能打 3 场。
       // +1 = story_progress（主线剧情进度，models/story_progress.dart）。
       // +1 = collection（魔法世界图鉴已收录 id，data/collection_data.dart）。
-      expect(written, hasLength(20), reason: '存档字段数变了，读取侧要同步检查');
+      expect(written, hasLength(21), reason: '存档字段数变了，读取侧要同步检查');
       for (final key in written) {
         expect(load!.group(1)!, contains("extraData['$key']"),
             reason: '存档写了 $key，读档没读它——存了等于没存');

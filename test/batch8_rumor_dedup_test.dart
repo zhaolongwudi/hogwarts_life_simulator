@@ -11,7 +11,6 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 import 'helpers/test_fixtures.dart';
 
 void main() {
