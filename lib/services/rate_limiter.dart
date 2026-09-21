@@ -94,6 +94,77 @@ class AgnesRateLimiter {
   }
 }
 
+/// SenseNova 每分钟限流器（按 Key 独立统计 RPM）。
+///
+/// 【为什么需要】[SenseNovaQuotaManager] 只做「5 小时总量」闸门，对「每分钟
+/// 发多少请求」零拦截。而 deepseek-v4-flash / glm-5.2 等托管模型 RPM 极低
+/// （约 1.67 次/分钟），一回合「叙事 + 选项」两发请求直接撞服务端 429。
+/// 5 小时总量闸门要到 500 次才动，根本没机会拦——429 的正反馈（限流 → 重试
+/// → 再限流）就是这么来的。
+///
+/// 【为什么按 Key 分桶】RPM 是服务商按账号（Key）限的——多个 Key 轮换必须
+/// 各自拥有独立的 RPM 桶，才能真正摊薄；按 model 分桶会让所有 Key 共享一个
+/// 桶，多 Key 轮换对 RPM 型限流毫无意义（此前 429 的根因之一）。
+class SenseNovaRateLimiter {
+  static const Duration _window = Duration(seconds: 60);
+
+  /// deepseek / glm 托管模型：500 次/5h ≈ 1.67 次/分钟，保守取 1 次/分钟。
+  static const int _rpmManaged = 1;
+
+  /// sensenova 自研模型：1500 次/5h ≈ 5 次/分钟，留余量取 4。
+  static const int _rpmNative = 4;
+
+  final Map<String, List<DateTime>> _timesByKey = {};
+
+  SenseNovaRateLimiter._privateConstructor();
+  static final SenseNovaRateLimiter instance =
+      SenseNovaRateLimiter._privateConstructor();
+
+  /// 该模型每分钟（单个 Key）允许的请求数。
+  static int rpmForModel(String model) {
+    if (model.startsWith('sensenova-')) return _rpmNative;
+    return _rpmManaged;
+  }
+
+  List<DateTime> _timesForKey(String keyHash) =>
+      _timesByKey.putIfAbsent(keyHash, () => []);
+
+  /// 精确等待该 Key 的每分钟名额（与 [AgnesRateLimiter.waitForSlot] 同构）。
+  /// 超时抛 [AiGateTimeoutException]，由上层路由切下一个 Key。
+  Future<void> waitForSlot(
+    String keyHash,
+    String model, {
+    Duration timeout = kGateWaitTimeout,
+  }) async {
+    final max = rpmForModel(model);
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final now = DateTime.now();
+      final times = _timesForKey(keyHash);
+      times.removeWhere((t) => now.difference(t) > _window);
+      if (times.length < max) {
+        times.add(DateTime.now());
+        return;
+      }
+      if (now.isAfter(deadline)) {
+        throw AiGateTimeoutException(
+          'SenseNova($model) 本地每分钟限流等待超时（${timeout.inSeconds}秒），跳过该 Key',
+        );
+      }
+      final waitMs = _window.inMilliseconds -
+          now.difference(times.first).inMilliseconds +
+          50;
+      final untilDeadline = deadline.difference(now).inMilliseconds;
+      final sleepMs = waitMs.clamp(50, untilDeadline < 50 ? 50 : untilDeadline);
+      await Future.delayed(Duration(milliseconds: sleepMs.toInt()));
+    }
+  }
+
+  void reset() {
+    _timesByKey.clear();
+  }
+}
+
 /// SenseNova配额管理器（按模型区分，每5小时重置）
 ///
 /// 商汤平台不同模型配额不同（参考 https://platform.sensenova.cn/docs，2026-08）：

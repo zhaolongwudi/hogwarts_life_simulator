@@ -2818,13 +2818,15 @@ mixin GameSystemsMixin on GameProviderBase {
       effectiveSystemPrompt = systemPrompt ?? '';
     }
     // 2026-08-24：maxTokens 按场景精细化分配
-    //   narrative 主剧情：1600（v5 复查 P3 收紧；600-800 字精练叙事实际约需 ≤1100 token，
-    //                      收窄避免模型一次憋出超长冗余，缓解长线局单次延迟）
+    //   narrative 主剧情：2000（600-800 字精练正文 ≈ 1100~1600 token，再叠加
+    //                      【好感度变化】【声望变化】两个区块，1600 偏紧会截断
+    //                      触发 BUG-H 重试 → 越截断越重试、越重试越打 AI，放大 429。
+    //                      提到 2000 给区块留足余量，减少「截断→重试」的负反馈）
     //   choice 选项：500（只输出 4 行 ABCD ≈ 300 tokens，留余量给思考型模型的推理过程）
     //   summary 摘要：3000（输出 800-2400 字摘要 + 结构化记忆块）
     //   npcChat NPC聊天：500（对话场景不需要太长）
     int maxTokens = switch (scene) {
-      AiScene.narrative => 1600,
+      AiScene.narrative => 2000,
       AiScene.choice => 500,
       AiScene.summary => 3000,
       AiScene.npcChat => 500,
@@ -2834,7 +2836,11 @@ mixin GameSystemsMixin on GameProviderBase {
     // 累积事实/摘要缓冲膨胀，前 ~20 回合就会误触「后期」降额；改为按回合数
     // 判定真实进度，并豁免 summary（摘要是结构化长期记忆的唯一生产者，
     // 降额截断会丢【了结】/【世界事件】记忆块）。
-    if (scene != AiScene.summary) {
+    //
+    // 注意：narrative 也不降额——600-800 字是 T0 铁律写死的硬要求，后期把
+    // 1600 砍到 960 会让正文写不满被 parseNarrativeOnly 判成「返回选项」
+    // 触发重试，省下的 token 反而变成多打的几次请求（429 的正反馈）。
+    if (scene != AiScene.summary && scene != AiScene.narrative) {
       if (turnCount > 150) {
         maxTokens = (maxTokens * 0.6).floor(); // 后期：降低 40%
       } else if (turnCount > 80) {
