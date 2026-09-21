@@ -10,6 +10,15 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.1.3 — 2026-09-21
+
+**📋 变更说明**
+feat(batch8-issue18): 长期记忆 importance 按事件类型集中配置
+
+- 新建 lib/data/memory_importance_config.dart，定义 19 个命名常量（4-10 级）
+- 替换 7 个文件中 19 处硬编码 importance 值为命名常量
+- 新增 test/batch8_memory_importance_test.dart 覆盖常量值/分级单调性/无残留硬编码/接线检查/配置文件完整性
+
 ### v5.1.2 — 2026-09-21
 
 **📋 变更说明**

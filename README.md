@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
+| **v5.1.3** | feat(batch8-issue18): 长期记忆 importance 按事件类型集中配置 |
 | **v5.1.2** | fix(batch8-issue16): 豁免声明措辞避免误触 Color 越界检查（遗留 CI 红） |
 | **v5.1.1** | fix(batch6-issue8): selectYearGoal 加权随机 + 排除近期已用 + 关联主线 |
 | **v5.1.0** | fix(bug): Batch4 命名消歧 + 死常量标注 (Issue #9+#10) |
 | **v5.0.9** | fix(ci): Batch2 补漏 — mixin_relations 缺 house_data.dart import |
-| **v5.0.8** | fix(bug): Batch1 目标/职业门槛对齐 (Issue #1 + #2) |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
