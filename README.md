@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
+| **v5.1.0** | fix(bug): Batch4 命名消歧 + 死常量标注 (Issue #9+#10) |
 | **v5.0.9** | fix(ci): Batch2 补漏 — mixin_relations 缺 house_data.dart import |
 | **v5.0.8** | fix(bug): Batch1 目标/职业门槛对齐 (Issue #1 + #2) |
 | **v5.0.7** | fix(bug): 修 Bug20/21 — 重大事件免疫真正豁免衰减 + 社团关键词扩容 + 传奇门槛 400→260 |
 | **v5.0.6** | feat(offline): 社团 x 学院杯联动（P18）—— 为社团出力 +1 学院分，社团任务完成 +3 学院分（来源进明细，/… |
-| **v5.0.5** | feat(offline): 奇遇结果沉淀进人生回忆（P17）—— 结算后写入 recentNarrativeEvents，/档案 回… |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 

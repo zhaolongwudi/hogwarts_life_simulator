@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.1.0 — 2026-09-21
+
+**📋 变更说明**
+fix(bug): Batch4 命名消歧 + 死常量标注 (Issue #9+#10)
+
+- Issue #9: balance_constants.firstWeekAffectionCap/monthlyAffectionCap 取代 weekOneAffectionCap/monthOneAffectionCap——“One”后缀易与“唯一/第一个”混淆，改 first/monthly 后语义直白。全仓库 7 处调用点同步更新（lib/data/world_rules.dart, lib/models/npc.dart, lib/providers/game_provider.dart, test/week_bucket_test.dart, test/unit_test.dart）。
+
+- Issue #10 核实修正：review §四.10 判 consecutiveInteractionThreshold 疑似死常量不准——它在 Balance.consecutiveInteractionDecay() 内被使用两次（属于内部使用），是正常设计参考参数。只有 attrGrowthPerYear 是真的只在定义处出现，加了【Bug 10 · 2026-09-21】标注说明它不参与运行时判定。
+
+详见 docs/设计审查_2026-09-21.md 头部修复进度台账。
+
 ### v5.0.9 — 2026-09-21
 
 **📋 变更说明**
