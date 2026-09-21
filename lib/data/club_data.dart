@@ -414,7 +414,12 @@ const List<ClubDef> kClubs = [
   ),
 ];
 
-/// 社团活动默认冷却（回合）：不会每个回合都因同一件事被反复点亮。
+/// [DEPRECATED Batch 5 · Issue #7] 旧的社团活动冷却常量（每 N 回合）。
+/// **已从 maybeRunClubActivity 中下线**：现改用 `kDailyActivityLimits['club_activity']`
+/// 作为每日预算，与其它高频活动（duel/classroom/job...）共享同一套"以日为颗粒度"
+/// 的门槛口径。本常量保留以避免拆难于修建中包的 API能力；如果你在新代码里见到它，
+/// 那就是一个遗留的 bug。
+@Deprecated('Batch 5 Issue #7: use Balance.kDailyActivityLimits["club_activity"] instead')
 const int kClubCooldownTurns = 6;
 
 /// 入社引导用的默认社团 id（/社团 无参数且未入社时第一个展示）。

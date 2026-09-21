@@ -109,16 +109,19 @@ mixin GameClubMixin on GameProviderBase {
     if (hasPendingHappenstance) return '';
     if (hasPendingCompanionClimax) return '';
     if (hasPendingLetter) return '';
-    // 冷却：同一处干系事不会每个回合都被点亮。
-    if (turnCount - p.clubLastTurn < kClubCooldownTurns) return '';
+    // 门控顺序：先关键词命中再扣日预算（未命中的探索不该消耗次数）。
     if (!club.activityKeywords.any(action.contains)) return '';
+    // Batch 5 · Issue #7 统一口径：以"每日剩余次数"替代旧的 6 回合冷却；
+    // 数值见 kDailyActivityLimits['club_activity']。
+    if (!canDoDaily('club_activity')) return '';
 
     final rnd = Random(turnCount);
     final gain = 10 + rnd.nextInt(6); // 10~15，确定性随机
     final beforePoints = p.clubPoints;
     final prevRank = club.rankIndexFor(beforePoints);
     p.clubPoints += gain;
-    p.clubLastTurn = turnCount;
+    recordDailyActivity('club_activity');
+    p.clubLastTurn = turnCount; // deprecated since Batch 5 · Issue #7；仅为存档兼容。
     final newRank = club.rankIndexFor(p.clubPoints);
 
     final house = houseDisplayName(p.house ?? '', fallback: '霍格沃茨');
@@ -355,9 +358,10 @@ mixin GameClubMixin on GameProviderBase {
   }
 
   /// 由离线管线在 P14 段调用：玩家本回合行动命中社团干系事时推进任务进度。
-  /// 与日常记分（maybeRunClubActivity）相互独立——日常记分有 6 回合冷却，
-  /// 任务推进**每回合最多 +1**（clubTaskIssuedTurn 记录上次推进回合），
-  /// 这样任务不至于被冷却卡死，也不会一回合猛刷。
+  /// 与日常记分（maybeRunClubActivity）共享 "以日为颗粒度" 的预算口径：
+  /// 任务推进计入 `kDailyActivityLimits['club_task']`，日常记分计入
+  /// `kDailyActivityLimits['club_activity']`。两条链路各自预算互不占用，
+  /// 所以同一次命中可以既推进任务也拿日常分——但每天都不能无限量刷。
   /// 返回一段进度提示文本；无进行中任务 / 行动不匹配 / 已完成未领奖时不推进。
   String advanceClubTaskForAction(String action) {
     final p = player;
@@ -375,11 +379,11 @@ mixin GameClubMixin on GameProviderBase {
       // 已完成未领奖：不再推进，但提示领奖。
       return '📋 社团任务「${t.title}」已完成！用「/社团 任务 完成」领奖。';
     }
-    // 任务推进冷却：同一条任务每回合最多推进 1 次（按上次推进回合判断）。
-    if (p.clubTaskIssuedTurn >= 0 && turnCount - p.clubTaskIssuedTurn < 1) {
-      return '';
-    }
+    // 任务推进的日预算门槛（Batch 5 · Issue #7 统一口径）。旧字段
+    // `clubTaskIssuedTurn` 已不再用于判定，仅保留展示接取时长用途。
+    if (!canDoDaily('club_task')) return '';
     p.clubTaskProgress++;
+    recordDailyActivity('club_task');
     p.clubTaskIssuedTurn = turnCount;
     if (p.clubTaskProgress >= t.requiredRounds) {
       return '📋 社团任务「${t.title}」进度达成！用「/社团 任务 完成」领奖。';

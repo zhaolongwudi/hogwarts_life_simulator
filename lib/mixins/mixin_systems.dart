@@ -235,6 +235,13 @@ mixin GameSystemsMixin on GameProviderBase {
     'spell': 3,
     // 学新咒每天一个：咒语一共 26 个，一天全学会就没得玩了。
     'learn_spell': 1,
+    // P14 社团日常记分（Batch 5 · Issue #7 统一口径）：一天之内
+    // 能靠离线行动点亮几次属于本社团的活动。原为 6 回合冷却
+    // ≈ 6 天，现改为 1 次/日 ——对齐已有断言『同一处干系事不会每个回合被点亮』。
+    'club_activity': 1,
+    // P15 club task progress: per-day push cap. requiredRounds is usually
+    // 4~10, so 3 pushes/day completes a short task in ~3-4 days.
+    'club_task': 3,
   };
 
   /// 今日该活动已进行的次数（跨天自动归零）。

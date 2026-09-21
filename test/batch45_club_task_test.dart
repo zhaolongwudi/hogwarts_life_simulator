@@ -33,9 +33,9 @@ void main() {
     gp.appProvider.companionArcEnabled = false;
     gp.appProvider.petStoryEnabled = false;
     gp.appProvider.letterEnabled = false;
+    gp.activityDate = ''; // Batch 5 Issue #7: reset per-day budget before each test
     if (joinedDuel) {
       gp.joinClub('duel');
-      gp.player!.clubLastTurn = -100;
     }
     return gp;
   }

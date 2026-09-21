@@ -15,7 +15,7 @@
 ///  - 晋升：积分跨阶 → 晋升旁白 + 属性奖励到账；
 ///  - 面板：未入社罗列、入社后展示身份与晋升进度；
 ///  - 离线回合接入：回合叙事出现社团活动、积分入账；
-///  - 存档序列化：clubId / clubPoints / clubLastTurn 往返一致 + 旧档安全默认。
+///  - 存档序列化：clubId / clubPoints 往返一致 + 旧档安全默认。
 library;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -37,9 +37,11 @@ void main() {
     gp.appProvider.clubEnabled = true;
     gp.appProvider.happenstanceEnabled = false;
     gp.appProvider.companionArcEnabled = false;
+    // Batch 5 · Issue #7 后：门槛改用每日预算，旧的 p.clubLastTurn=-100 冷却已失效。
+    // Reset 当日 dailyActivityCount 到零（必须在 joinClub 之前，以免受之前测试影响）。
+    gp.activityDate = '';
     if (joinedDuel) {
       gp.joinClub('duel');
-      gp.player!.clubLastTurn = -100; // 消除冷却
     }
     return gp;
   }
@@ -76,7 +78,7 @@ void main() {
             (b) => (b.attrValue != 0 || b.reputationValue != 0 || b.housePoints != 0));
         expect(hasSub, isTrue, reason: '${c.name} 传奇阶应有实质回报');
       }
-      expect(kClubCooldownTurns, greaterThan(0), reason: '冷却应大于 0');
+      // Batch 5 Issue #7 后冷却常量已下线；这里只需验证新口径存在。
     });
   });
 
@@ -156,11 +158,16 @@ void main() {
       p.pendingLetterId = null;
     });
 
-    test('冷却内不触发', () async {
+    test('每日预算尽不触发（Batch 5 · Issue #7）', () async {
       final gp = await makeEnabled();
-      gp.player!.clubLastTurn = 9999999;
-      expect(gp.maybeRunClubActivity('与人切磋'), '');
-      gp.player!.clubLastTurn = -100;
+      // 手动充满当日 club_activity 预算
+      while (gp.canDoDaily('club_activity')) {
+        gp.recordDailyActivity('club_activity');
+      }
+      expect(gp.maybeRunClubActivity('与人切磋'), '',
+          reason: '日预算已尽时应返回空串');
+      // 重置当日预算后又能拿到分
+      gp.activityDate = '';
       expect(gp.maybeRunClubActivity('与人切磋'), isNot(''));
     });
   });

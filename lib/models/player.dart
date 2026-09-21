@@ -203,10 +203,15 @@ class Player {
   String? lastLetterSenderId; // P13：上一位寄信人（避免同一人连番刷屏）
   String? clubId; // P14：当前加入的社团 id（null = 未入社）
   int clubPoints; // P14：当前社团积分（晋升用）
-  int clubLastTurn; // P14：最近一次为社团出力的回合号（冷却用）
+  /// P14 旧冷却销号。**Batch 5 · Issue #7 统一口径后已不再用于门槛判定**：
+  /// `maybeRunClubActivity` 改用 `kDailyActivityLimits['club_activity']`。仅保留展示/存档。
+  @Deprecated('Batch 5 Issue #7: use kDailyActivityLimits["club_activity"] instead')
+  int clubLastTurn;
   String? clubTaskId; // P15：当前接取的社团任务 id（null = 未接取）
   int clubTaskProgress; // P15：当前社团任务进度（已为社团出力的回合数）
-  int clubTaskIssuedTurn; // P15：接取任务的回合号（用于展示接取时长）
+  /// P15 接取任务的回合号。**Batch 5 · Issue #7 后不再用于任务推进门槛判定**：
+  /// `advanceClubTaskForAction` 改用 `kDailyActivityLimits['club_task']`。仍用于面板展示接取时长。
+  int clubTaskIssuedTurn;
   bool clubTaskClaimed; // P15：本次任务是否已领奖（领奖后清空接取）
   int qSkill; // 魁地奇技巧（50起步）
   String qPosition; // 位置：找球手/追球手/守门员/击球手
