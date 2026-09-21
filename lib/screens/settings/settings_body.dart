@@ -55,6 +55,10 @@ class _SettingsBodyState extends State<SettingsBody> {
   final _testResults = <AiProvider, String>{};
   final _testSuccess = <AiProvider, bool>{};
 
+  /// 顶部分区导航当前选中项：0=AI 服务，1=游戏，2=系统。
+  /// 把原先 13 个板块收进 3 个分区，首屏只显示一个分区，避免「从上拉到下」。
+  int _activeSection = 0;
+
   @override
   void initState() {
     super.initState();
@@ -205,139 +209,244 @@ class _SettingsBodyState extends State<SettingsBody> {
           colors: [const Color(0xFF1A1A2E), const Color(0xFF0D0D1A)],
         ),
       ),
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, widget.bottomPadding),
+      child: Column(
         children: [
-          _buildGroupHeader(
-            icon: Icons.smart_toy_outlined,
-            title: 'AI 服务配置',
-            subtitle: '选择并配置您的 AI 提供商',
-          ),
-          const SizedBox(height: 12),
-          ...AiProvider.values.map((p) => SettingsProviderCard(
-                provider: p,
-                appProvider: appProvider,
-                keyController: _keyControllers[p]!,
-                modelController: _modelControllers[p]!,
-                testing: _testing,
-                testResult: _testResults[p],
-                testSuccess: _testSuccess[p],
-                onSave: () => _saveKeyAndModel(p),
-                onTest: () => _testConnection(p),
-                onModelPresetSelected: (m) {
-                  context.read<AppProvider>().setModelForProvider(p, m);
-                  setState(() {});
-                },
-              )),
-          const SizedBox(height: 16),
-          SettingsSceneRouting(
-            appProvider: appProvider,
-            onSceneRouteChanged: (scene, provider) {
-              appProvider.setSceneRoute(scene, provider);
-              context.read<GameProvider>().refreshClient();
-            },
-          ),
-          const SizedBox(height: 16),
-          _buildOfflineModeCard(context, appProvider),
-          const SizedBox(height: 16),
-          const SettingsQuotaWindow(),
-          const SizedBox(height: 16),
-          SettingsTokenUsage(
-            gameProvider: gp,
-            onReset: () {
-              gp.resetTokenUsage();
-              setState(() {});
-            },
-          ),
-          const SizedBox(height: 16),
-          const SettingsCrashSection(),
-          const SizedBox(height: 20),
-          _buildGroupHeader(
-            icon: Icons.desktop_windows_outlined,
-            title: '显示模式',
-            subtitle: '选择游戏界面的显示风格',
-            color: const Color(0xFF60A5FA),
-          ),
-          const SizedBox(height: 12),
-          SettingsPresetPickers.buildModePicker(
-            appProvider.displayMode.name,
-            disabled: appProvider.identityMode == IdentityMode.transmigration
-                ? const {'magazine'}
-                : null,
-            onSelect: (v) {
-              context.read<AppProvider>().setDisplayMode(DisplayMode.values.byName(v));
-            },
-          ),
-          const SizedBox(height: 24),
-          _buildGroupHeader(
-            icon: Icons.badge_outlined,
-            title: '身份模式',
-            subtitle: '穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场(纯血/维护传统/光明/黑暗/中立)已移到下方「当前角色政治立场」快捷开关',
-            color: const Color(0xFFA78BFA),
-          ),
-          const SizedBox(height: 12),
-          Consumer<GameProvider>(builder: (ctx, _, __) => SettingsPresetPickers.buildModePicker(
-                appProvider.identityMode.name,
-                modes: const [
-                  ModeOption('pure', label: '原住民（默认）', desc: '对命运走向一无所知，只凭判断与本能行事'),
-                  ModeOption('transmigration', label: '穿越者', desc: '对原作剧情留有隐约记忆，引用未来信息需克制'),
-                  ModeOption('bone_mode', label: '骨科模式(隐藏)', desc: '解锁血缘亲属的恋爱与CG线路'),
-                ],
-                disabled: appProvider.displayMode == DisplayMode.magazine
-                    ? const {'transmigration'}
-                    : null,
-                onSelect: (v) {
-                  ctx.read<AppProvider>().setIdentityMode(IdentityMode.values.byName(v));
-                },
-              )),
-          if (appProvider.displayMode == DisplayMode.magazine)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '使用「魔法手账」显示模式时，无法选用「穿越者」身份',
-                style: TextStyle(color: const Color(0xFF8A8AAA), fontSize: 12),
-              ),
+          _buildSectionNav(),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, widget.bottomPadding),
+              children: [
+                if (_activeSection == 0) ..._buildAiSection(appProvider, gp),
+                if (_activeSection == 1) ..._buildGameSection(context, appProvider),
+                if (_activeSection == 2) ..._buildSystemSection(context, appProvider),
+              ],
             ),
-          const SizedBox(height: 24),
-          _buildSimpleSectionHeader('当前角色政治立场', '修改当前存档的主角政治立场（与开局第11轮的选项一致）；未开新游戏时不生效。'),
-          const SizedBox(height: 12),
-          Consumer<GameProvider>(builder: (ctx, gp, _) {
-            final p = gp.player;
-            final current = p?.politicalTendency ?? kDefaultPoliticalStance;
-            final disabled =
-                p == null ? Set<String>.from(kPoliticalStanceNames) : null;
-            return SettingsPresetPickers.buildModePicker(
-              current,
-              modes: stanceModeOptions,
-              disabled: disabled,
-              onSelect: (v) async {
-                gp.player?.politicalTendency = v;
-                setState(() {});
-                await gp.quickSave();
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                    content: Text('🔱 政治立场已切换为：$v（下回合 AI 起生效）'),
-                    duration: MiuiDuration.snackbarMedium,
-                  ));
-                }
-              },
-            );
-          }),
-          const SizedBox(height: 24),
-          _buildSimpleSectionHeader('时代背景', '选择游戏开始的时代'),
-          const SizedBox(height: 12),
-          SettingsPresetPickers.buildEraPicker(context, appProvider.era.name),
-          const SizedBox(height: 24),
-          if (widget.showStoryReplay) ...[
-            _buildStoryReplayCard(context),
-            const SizedBox(height: 24),
-          ],
-          _buildDebugLogCard(context, appProvider),
-          _buildDangerCard(context, appProvider),
-          const SizedBox(height: 30),
+          ),
         ],
       ),
     );
+  }
+
+  /// 顶部分区导航：3 个可点 tab，把长页收成三段，避免「从上拉到下」。
+  Widget _buildSectionNav() {
+    const icons = [
+      Icons.smart_toy_outlined,
+      Icons.videogame_asset_outlined,
+      Icons.settings_outlined,
+    ];
+    const labels = ['AI 服务', '游戏', '系统'];
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF3A3A5C).withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _activeSection = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: _activeSection == i
+                        ? AppColors.gold.withValues(alpha: 0.18)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        icons[i],
+                        size: 15,
+                        color: _activeSection == i
+                            ? AppColors.gold
+                            : const Color(0xFF8A8AAA),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        labels[i],
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: _activeSection == i
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: _activeSection == i
+                              ? AppColors.gold
+                              : const Color(0xFF8A8AAA),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 分区 0：AI 服务（provider 卡 + 场景路由 + 离线模式 + 配额 + Token）。
+  List<Widget> _buildAiSection(AppProvider appProvider, GameProvider gp) {
+    return [
+      _buildGroupHeader(
+        icon: Icons.smart_toy_outlined,
+        title: 'AI 服务配置',
+        subtitle: '配置提供商、模型与场景路由',
+      ),
+      const SizedBox(height: 12),
+      ...AiProvider.values.map((p) => SettingsProviderCard(
+            provider: p,
+            appProvider: appProvider,
+            keyController: _keyControllers[p]!,
+            modelController: _modelControllers[p]!,
+            testing: _testing,
+            testResult: _testResults[p],
+            testSuccess: _testSuccess[p],
+            onSave: () => _saveKeyAndModel(p),
+            onTest: () => _testConnection(p),
+            onModelPresetSelected: (m) {
+              context.read<AppProvider>().setModelForProvider(p, m);
+              setState(() {});
+            },
+          )),
+      const SizedBox(height: 16),
+      SettingsSceneRouting(
+        appProvider: appProvider,
+        onSceneRouteChanged: (scene, provider) {
+          appProvider.setSceneRoute(scene, provider);
+          context.read<GameProvider>().refreshClient();
+        },
+        onFallbackChanged: (provider) async {
+          await appProvider.setFallbackProvider(provider);
+          if (!mounted) return;
+          context.read<GameProvider>().refreshClient();
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildOfflineModeCard(context, appProvider),
+      const SizedBox(height: 16),
+      const SettingsQuotaWindow(),
+      const SizedBox(height: 16),
+      SettingsTokenUsage(
+        gameProvider: gp,
+        onReset: () {
+          gp.resetTokenUsage();
+          setState(() {});
+        },
+      ),
+      const SizedBox(height: 20),
+    ];
+  }
+
+  /// 分区 1：游戏（显示模式 + 身份 + 政治立场 + 时代 + 剧情回放）。
+  List<Widget> _buildGameSection(BuildContext context, AppProvider appProvider) {
+    return [
+      _buildGroupHeader(
+        icon: Icons.desktop_windows_outlined,
+        title: '显示模式',
+        subtitle: '选择游戏界面的显示风格',
+        color: const Color(0xFF60A5FA),
+      ),
+      const SizedBox(height: 12),
+      SettingsPresetPickers.buildModePicker(
+        appProvider.displayMode.name,
+        disabled: appProvider.identityMode == IdentityMode.transmigration
+            ? const {'magazine'}
+            : null,
+        onSelect: (v) {
+          context.read<AppProvider>().setDisplayMode(DisplayMode.values.byName(v));
+        },
+      ),
+      const SizedBox(height: 24),
+      _buildGroupHeader(
+        icon: Icons.badge_outlined,
+        title: '身份模式',
+        subtitle: '穿越者/骨科/原住民：影响整个App的AI叙事口吻。注：政治立场已移到下方「当前角色政治立场」快捷开关',
+        color: const Color(0xFFA78BFA),
+      ),
+      const SizedBox(height: 12),
+      Consumer<GameProvider>(builder: (ctx, _, __) => SettingsPresetPickers.buildModePicker(
+            appProvider.identityMode.name,
+            modes: const [
+              ModeOption('pure', label: '原住民（默认）', desc: '对命运走向一无所知，只凭判断与本能行事'),
+              ModeOption('transmigration', label: '穿越者', desc: '对原作剧情留有隐约记忆，引用未来信息需克制'),
+              ModeOption('bone_mode', label: '骨科模式(隐藏)', desc: '解锁血缘亲属的恋爱与CG线路'),
+            ],
+            disabled: appProvider.displayMode == DisplayMode.magazine
+                ? const {'transmigration'}
+                : null,
+            onSelect: (v) {
+              ctx.read<AppProvider>().setIdentityMode(IdentityMode.values.byName(v));
+            },
+          )),
+      if (appProvider.displayMode == DisplayMode.magazine)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '使用「魔法手账」显示模式时，无法选用「穿越者」身份',
+            style: TextStyle(color: const Color(0xFF8A8AAA), fontSize: 12),
+          ),
+        ),
+      const SizedBox(height: 24),
+      _buildSimpleSectionHeader('当前角色政治立场', '修改当前存档的主角政治立场（与开局第11轮的选项一致）；未开新游戏时不生效。'),
+      const SizedBox(height: 12),
+      Consumer<GameProvider>(builder: (ctx, gp, _) {
+        final p = gp.player;
+        final current = p?.politicalTendency ?? kDefaultPoliticalStance;
+        final disabled =
+            p == null ? Set<String>.from(kPoliticalStanceNames) : null;
+        return SettingsPresetPickers.buildModePicker(
+          current,
+          modes: stanceModeOptions,
+          disabled: disabled,
+          onSelect: (v) async {
+            gp.player?.politicalTendency = v;
+            setState(() {});
+            await gp.quickSave();
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                content: Text('🔱 政治立场已切换为：$v（下回合 AI 起生效）'),
+                duration: MiuiDuration.snackbarMedium,
+              ));
+            }
+          },
+        );
+      }),
+      const SizedBox(height: 24),
+      _buildSimpleSectionHeader('时代背景', '选择游戏开始的时代'),
+      const SizedBox(height: 12),
+      SettingsPresetPickers.buildEraPicker(context, appProvider.era.name),
+      const SizedBox(height: 24),
+      if (widget.showStoryReplay) ...[
+        _buildStoryReplayCard(context),
+        const SizedBox(height: 24),
+      ],
+    ];
+  }
+
+  /// 分区 2：系统（调试日志 + 崩溃日志 + 危险操作）。
+  List<Widget> _buildSystemSection(BuildContext context, AppProvider appProvider) {
+    return [
+      _buildGroupHeader(
+        icon: Icons.settings_outlined,
+        title: '系统与日志',
+        subtitle: '调试、崩溃日志与危险操作',
+        color: const Color(0xFF60A5FA),
+      ),
+      const SizedBox(height: 12),
+      _buildDebugLogCard(context, appProvider),
+      const SizedBox(height: 12),
+      const SettingsCrashSection(),
+      const SizedBox(height: 16),
+      _buildDangerCard(context, appProvider),
+      const SizedBox(height: 30),
+    ];
   }
 
   Widget _buildSimpleSectionHeader(String title, String subtitle) {

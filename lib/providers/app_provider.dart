@@ -147,6 +147,14 @@ class AppProvider extends ChangeNotifier {
   Map<String, String> _baseUrls = {};
   Map<String, String> _models = {};
   Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
+
+  /// 全局「托底备用模型」：当前场景主模型的所有 Key 全部失效后，切到这个
+  /// 提供商的模型继续生成（若它也配了多个 Key，同样按 Key 轮换 + 熔断）。
+  ///
+  /// 默认指向 Atria（AiProvider.deepseek 枚举）——付费、独立供应商、最稳定，
+  /// 适合做最后一道防线；用户可在设置页改选其他提供商，也可关闭（null = 无
+  /// 托底，回退到旧行为：按 [AiProvider.values] 顺序把其他配了 Key 的兜底）。
+  AiProvider? _fallbackProvider = AiProvider.deepseek;
   bool _aiDebugLogEnabled = false;
   bool _offlineQuickMode = false;
 
@@ -268,6 +276,9 @@ class AppProvider extends ChangeNotifier {
 
   Map<String, String> get models => Map.unmodifiable(_models);
   String providerModel(AiProvider p) => _models[p.name] ?? _defaultModel(p);
+
+  /// 全局「托底备用模型」提供商（可为 null = 关闭托底）。
+  AiProvider? get fallbackProvider => _fallbackProvider;
 
   AiProvider providerForScene(AiScene scene) {
     final name = _sceneRoute[scene] ?? kDefaultRoute[scene]!;
@@ -415,6 +426,17 @@ class AppProvider extends ChangeNotifier {
       }
     }
 
+    // Load 全局托底备用模型（可关闭 = 空字符串）
+    final savedFallback = prefs.getString('fallback_provider');
+    if (savedFallback != null && savedFallback.isEmpty) {
+      _fallbackProvider = null;
+    } else if (savedFallback != null && savedFallback.isNotEmpty) {
+      final idx = int.tryParse(savedFallback);
+      if (idx != null && idx >= 0 && idx < AiProvider.values.length) {
+        _fallbackProvider = AiProvider.values[idx];
+      }
+    }
+
     // Load AI debug log switch
     _aiDebugLogEnabled = prefs.getBool('ai_debug_log_enabled') ?? false;
 
@@ -539,6 +561,19 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 设置全局托底备用模型提供商；传 null 表示关闭托底。
+  Future<void> setFallbackProvider(AiProvider? provider) async {
+    _fallbackProvider = provider;
+    await PrefsStore.instance.write(
+      'fallback_provider',
+      (prefs) => prefs.setString(
+        'fallback_provider',
+        provider == null ? '' : '${provider.index}',
+      ),
+    );
+    notifyListeners();
+  }
+
   Future<void> setModelForProvider(AiProvider provider, String model) async {
     _models[provider.name] = model;
     await PrefsStore.instance.write(
@@ -559,7 +594,8 @@ class AppProvider extends ChangeNotifier {
       case AiProvider.sensenova:
         // 公测期间全部免费，按调用次数限流（每5小时重置）
         return [
-          'deepseek-v4-flash', // 500次/5h（主力）
+          'deepseek-v4-flash', // 500次/5h（主力，轻量快速）
+          'deepseek-v4-pro', // 500次/5h（复杂推理）
           'sensenova-6.8-flash-lite', // 多模态智能体；公测已改积分制（60,000积分/滚动5h）
           'glm-5.2', // 500次/5h，1M上下文
         ];

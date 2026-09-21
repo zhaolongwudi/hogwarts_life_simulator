@@ -7,11 +7,13 @@ import '../../theme/miuix_tokens.dart';
 class SettingsSceneRouting extends StatelessWidget {
   final AppProvider appProvider;
   final void Function(AiScene scene, AiProvider provider)? onSceneRouteChanged;
+  final void Function(AiProvider? provider)? onFallbackChanged;
 
   const SettingsSceneRouting({
     super.key,
     required this.appProvider,
     this.onSceneRouteChanged,
+    this.onFallbackChanged,
   });
 
   String _sceneInfo(AiScene scene) {
@@ -58,6 +60,8 @@ class SettingsSceneRouting extends StatelessWidget {
           const SizedBox(height: 10),
           ...AiScene.values.map((scene) => _buildSceneRow(scene, appProvider, context)),
           const SizedBox(height: 8),
+          _buildFallbackRow(appProvider),
+          const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -79,6 +83,134 @@ class SettingsSceneRouting extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary, height: 1.4)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 全局「托底备用模型」选择行：主模型全部 Key 失效后切到这里的提供商。
+  Widget _buildFallbackRow(AppProvider appProvider) {
+    final fallback = appProvider.fallbackProvider;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: MiuiColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: MiuiColors.primary.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.safety_check, color: MiuiColors.warning, size: 16),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text('🛟 托底备用模型',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            '当前场景主模型的所有 Key 全部失效后，自动切到这个提供商继续生成（多 Key 同样轮换 + 熔断）。',
+            style: TextStyle(
+                fontSize: 10.5,
+                color: MiuiColors.onSurfaceVariantSummary,
+                height: 1.35),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            children: [
+              // 「关闭托底」选项
+              GestureDetector(
+                onTap: () => onFallbackChanged?.call(null),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: fallback == null
+                        ? MiuiColors.warning.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: fallback == null
+                          ? MiuiColors.warning
+                          : MiuiColors.outline,
+                    ),
+                  ),
+                  child: Text(
+                    '关闭托底',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: fallback == null
+                          ? MiuiColors.warning
+                          : MiuiColors.onSurfaceVariantSummary,
+                      fontWeight: fallback == null
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+              // 每个提供商一个选项
+              ...AiProvider.values.map((p) {
+                final selected = fallback == p;
+                final hasP = appProvider.hasKey(p);
+                return GestureDetector(
+                  onTap: () {
+                    if (hasP) onFallbackChanged?.call(p);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? MiuiColors.primary.withValues(alpha: 0.2)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: selected
+                            ? MiuiColors.primary
+                            : (hasP
+                                ? MiuiColors.outline
+                                : MiuiColors.disabledOnSurface),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          providerNameLabel(p),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: selected
+                                ? MiuiColors.primary
+                                : (hasP
+                                    ? Colors.white
+                                    : MiuiColors.onSurfaceVariantActions),
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        if (!hasP) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.lock,
+                              size: 11,
+                              color: MiuiColors.onSurfaceVariantActions),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
           ),
         ],
       ),

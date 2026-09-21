@@ -243,6 +243,11 @@ class GameProvider extends GameProviderBase
       summaryProvider: appProvider.providerForScene(AiScene.summary),
       npcChatProvider: appProvider.providerForScene(AiScene.npcChat),
       choiceProvider: appProvider.providerForScene(AiScene.choice),
+      // 托底备用模型优先：主 provider 的所有 Key 全部失效后，先切到用户配置的
+      // 托底提供商（默认 Atria），再按枚举顺序把其余有 Key 的提供商兜底。
+      // AiRouter._callWithFallback 会先尝试 primary，再按 fallbackOrder 去重，
+      // 没配 Key 的会被自动跳过。
+      fallbackOrder: _buildFallbackOrder(),
     );
     // Dio 泄漏修复：重建前先释放旧 router 的连接池
     router?.dispose();
@@ -257,6 +262,17 @@ class GameProvider extends GameProviderBase
       }
     }
     router = newRouter;
+  }
+
+  /// 计算全局 fallback 顺序：用户配置的托底提供商排最前，其余按枚举顺序补全。
+  List<AiProvider> _buildFallbackOrder() {
+    final order = <AiProvider>[];
+    final fallback = appProvider.fallbackProvider;
+    if (fallback != null) order.add(fallback);
+    for (final p in AiProvider.values) {
+      if (!order.contains(p)) order.add(p);
+    }
+    return order;
   }
 
   @override
