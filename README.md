@@ -7,7 +7,7 @@
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v5.1.5-E3B341?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.1.6-E3B341?style=flat-square" />
   <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
   <img alt="测试" src="https://img.shields.io/badge/tests-1994%2B%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
+| **v5.1.6** | fix(S1): CI Analyze 修复——同步 chatComplete 新增的 onDelta 参数 |
 | **v5.1.5** | revert: 撤回SenseNova RPM限流 保留叙事maxTokens2000 |
 | **v5.1.4** | fix(ui): 世界地图几何错位/覆盖/对比度修复+金底深字语义色收敛 |
 | **v5.1.3** | feat(batch8-issue18): 长期记忆 importance 按事件类型集中配置 |
 | **v5.1.2** | fix(batch8-issue16): 豁免声明措辞避免误触 Color 越界检查（遗留 CI 红） |
-| **v5.1.1** | fix(batch6-issue8): selectYearGoal 加权随机 + 排除近期已用 + 关联主线 |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 

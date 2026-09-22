@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.1.6 — 2026-09-22
+
+**📋 变更说明**
+fix(S1): CI Analyze 修复——同步 chatComplete 新增的 onDelta 参数
+
+e269bd6 的 Analyze 报 5 个 error，均为「新增可选命名参数后签名未同步」：
+- lib/providers/game_provider_base.dart: callDeepSeek 抽象声明补 stream 参数
+  （mixin_systems 的实现已有，接口没跟上 → undefined_named_parameter）
+- lib/screens/game/game_narrative_tab.dart: _StreamingCaret 补 const 构造函数
+  （调用处用了 const _StreamingCaret()）
+
 ### v5.1.5 — 2026-09-21
 
 **📋 变更说明**
