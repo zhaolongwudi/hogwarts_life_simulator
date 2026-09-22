@@ -276,6 +276,8 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
     // 玩家得看见变动率跳了多少、或者自己到底签了什么。
     commandResult = causalResult;
     error = null; // 新一轮开始前清掉上一次的失败提示
+    // S1：上一回合的流式预览（若有残留）不能带进新一轮。
+    clearStreamingPreview();
     isLoading = true;
     turnCount++;
     lastScannedNarrativeHash = null;
@@ -765,7 +767,7 @@ ${buildNarrativeRules(turn: turnCount)}
         needsRetry = false;
         narrativeParseInvalid = false;
         try {
-          response = (await callDeepSeek(currentPrompt)).content;
+          response = (await callDeepSeek(currentPrompt, stream: true)).content;
         } on AiNonRetryableException {
           rethrow;
         } on AiCanceledException {
@@ -775,10 +777,13 @@ ${buildNarrativeRules(turn: turnCount)}
           loadingStage = '请求失败，正在重试...';
           notifyListeners();
           await Future.delayed(const Duration(milliseconds: 500));
+          // S1：这次尝试已作废，先丢掉它吐出的半截正文，再重来。
+          clearStreamingPreview();
+          notifyListeners();
           // 重试前强化指令：要求直接输出纯正文，禁止空行/前言/解释
           currentPrompt =
               '$prompt\n\n⚠️【重试指令】上一轮返回为空或不合规，请直接输出当前回合的剧情正文（中文纯文本），不要任何前言、解释、空行、Markdown 或代码块标记。';
-          response = (await callDeepSeek(currentPrompt)).content;
+          response = (await callDeepSeek(currentPrompt, stream: true)).content;
         }
 
         loadingStage = '正在解析剧情...';
@@ -1093,6 +1098,11 @@ ${buildNarrativeRules(turn: turnCount)}
       // 兜底：无论 try 正常完成、catch 兜底，还是 catch 内部自身抛了二次异常，
       // 都保证 isLoading 重置、UI 退出 loading 状态。
       // 否则玩家看到的就是"正在生成剧情..."转圈无限卡死（之前的 UI 反馈 bug）。
+      //
+      // S1：流式预览也必须在这里清掉。正文已定稿（写进 currentNarrative），
+      // 预览若留着，UI 会先渲染一遍半截文本再切到定稿版——看起来像闪一下。
+      // 放在 finally 里，取消 / 兜底 / 异常路径同样干净。
+      clearStreamingPreview();
       loadingStage = '';
       if (isLoading) {
         isLoading = false;

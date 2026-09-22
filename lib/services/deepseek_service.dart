@@ -95,6 +95,13 @@ class AiEmptyRetryableException extends AiRetryableException {
   AiEmptyRetryableException(super.message);
 }
 
+/// 流式增量回调。
+///
+/// [reset] 为 true 表示「此前累积的预览作废」：路由层换 Key、上层重试、或
+/// 新一轮生成开始时调用，UI 据此清空已显示的半截文本，避免两次尝试的内容
+/// 被拼在一起。为 false 时 [delta] 是本次新增的正文片段。
+typedef AiStreamCallback = void Function(String delta, {bool reset});
+
 class DeepSeekService {
   final AiConfig config;
   final Dio _dio;
@@ -209,6 +216,7 @@ class DeepSeekService {
     double temperature = 0.8,
     int maxTokens = 4096,
     CancelToken? cancelToken,
+    AiStreamCallback? onDelta,
   }) async {
     try {
       await _acquireSlot();
@@ -217,58 +225,27 @@ class DeepSeekService {
       if (cancelToken?.isCancelled == true) {
         throw AiCanceledException('请求已取消');
       }
-      final response = await _dio.post(
-        normalizePath(config.chatPath),
-        data: jsonEncode({
-          'model': config.model,
-          'messages': [
-            if (systemPrompt.isNotEmpty)
-              {'role': 'system', 'content': systemPrompt},
-            {'role': 'user', 'content': prompt},
-          ],
-          'temperature': temperature,
-          'max_tokens': maxTokens,
-          'stream': false,
-        }),
+      // 只有调用方显式传了 onDelta 才走流式（原因见 _chatCompleteStream 的
+      // 注释：全仓 7 个测试文件用非流式 JSON 覆盖异常路径，stream 不能无
+      // 条件打开）。不传时走 _chatCompleteOnce —— 就是改动前的请求体，
+      // 字节级不变。
+      if (onDelta != null) {
+        return await _chatCompleteStream(
+          prompt: prompt,
+          systemPrompt: systemPrompt,
+          temperature: temperature,
+          maxTokens: maxTokens,
+          cancelToken: cancelToken,
+          onDelta: onDelta,
+        );
+      }
+      return await _chatCompleteOnce(
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        temperature: temperature,
+        maxTokens: maxTokens,
         cancelToken: cancelToken,
       );
-
-      // 任何畸形响应都归一为 AiRetryableException，让路由层能正常重试/切 Key
-      // （详见 _decodePayload 的注释）。
-      final payload = _decodePayload(response.data);
-      final choices = payload['choices'];
-      final first = (choices is List && choices.isNotEmpty) ? choices[0] : null;
-      final message = (first is Map) ? first['message'] : null;
-      final content = (message is Map) ? (message['content'] as String? ?? '') : '';
-      Map<String, dynamic>? usageData;
-      final rawUsage = payload['usage'];
-      if (rawUsage is Map) {
-        usageData = rawUsage.cast<String, dynamic>();
-      }
-      final usage = TokenUsage.fromJson(usageData ?? const {});
-
-      // 空响应同样要可重试：模型偶发空输出是高频事件，不该被放大成「Key 失效」。
-      // Q9：连续空响应达到阈值 → 抛 AiEmptyResponseException，让路由层跳过
-      // 整个提供商并提示换稳定模型；偶发空响应抛 AiEmptyRetryableException
-      //（可重试，且不记 Key 熔断——空响应是模型质量问题，不是 Key 问题）。
-      if (content.isEmpty) {
-        final providerName = config.provider.name;
-        final degraded = EmptyResponseMonitor.instance
-            .recordEmpty(providerName, config.model);
-        if (degraded) {
-          throw AiEmptyResponseException(
-            providerName,
-            config.model,
-            '模型 ${config.model} 连续${EmptyResponseMonitor.degradeThreshold}次返回空响应，'
-            '已判定不稳定；建议在设置页更换稳定模型',
-          );
-        }
-        throw AiEmptyRetryableException('AI 返回了空响应，请重试');
-      }
-      // 成功响应清零连续空响应计数（Q9：该模型恢复稳定）
-      EmptyResponseMonitor.instance.recordSuccess(
-          config.provider.name, config.model);
-      return ChatResult(content: content, usage: usage);
     } on DioException catch (e) {
       _handleError(e);
       rethrow;
@@ -285,6 +262,201 @@ class DeepSeekService {
       throw AiRetryableException('AI 响应解析失败: $e');
     }
   }
+
+  /// 非流式单次请求 —— 改动前的 `chatComplete` 主体，逐字保留。
+  ///
+  /// 抽成独立方法只是为了让流式与非流式共用同一套错误语义（_handleError、
+  /// 空响应归类、可重试归一），而不是把 `'stream'` 一开了之。
+  Future<ChatResult> _chatCompleteOnce({
+    required String prompt,
+    required String systemPrompt,
+    required double temperature,
+    required int maxTokens,
+    required CancelToken? cancelToken,
+  }) async {
+    final response = await _dio.post(
+      normalizePath(config.chatPath),
+      data: jsonEncode({
+        'model': config.model,
+        'messages': [
+          if (systemPrompt.isNotEmpty)
+            {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': temperature,
+        'max_tokens': maxTokens,
+        'stream': false,
+      }),
+      cancelToken: cancelToken,
+    );
+
+    // 任何畸形响应都归一为 AiRetryableException，让路由层能正常重试/切 Key
+    // （详见 _decodePayload 的注释）。
+    final payload = _decodePayload(response.data);
+    final choices = payload['choices'];
+    final first = (choices is List && choices.isNotEmpty) ? choices[0] : null;
+    final message = (first is Map) ? first['message'] : null;
+    final content = (message is Map) ? (message['content'] as String? ?? '') : '';
+    Map<String, dynamic>? usageData;
+    final rawUsage = payload['usage'];
+    if (rawUsage is Map) {
+      usageData = rawUsage.cast<String, dynamic>();
+    }
+    final usage = TokenUsage.fromJson(usageData ?? const {});
+
+    // 空响应同样要可重试：模型偶发空输出是高频事件，不该被放大成「Key 失效」。
+    if (content.isEmpty) {
+      _throwEmptyResponse();
+    }
+    // 成功响应清零连续空响应计数（Q9：该模型恢复稳定）
+    EmptyResponseMonitor.instance.recordSuccess(
+        config.provider.name, config.model);
+    return ChatResult(content: content, usage: usage);
+  }
+
+  /// 空响应归类（Q9）—— 非流式与流式共用同一套判定。
+  ///
+  /// 连续空响应达到阈值 → [AiEmptyResponseException]，路由层据此跳过该提供商
+  /// **全部** Key 并提示换稳定模型；偶发空响应 → [AiEmptyRetryableException]，
+  /// 可重试且**不记 Key 熔断**（空响应是模型质量问题，不是 Key 问题）。
+  Never _throwEmptyResponse() {
+    final providerName = config.provider.name;
+    final degraded = EmptyResponseMonitor.instance
+        .recordEmpty(providerName, config.model);
+    if (degraded) {
+      throw AiEmptyResponseException(
+        providerName,
+        config.model,
+        '模型 ${config.model} 连续${EmptyResponseMonitor.degradeThreshold}次返回空响应，'
+        '已判定不稳定；建议在设置页更换稳定模型',
+      );
+    }
+    throw AiEmptyRetryableException('AI 返回了空响应，请重试');
+  }
+
+  /// 流式生成（SSE）。仅在调用方传入 [onDelta] 时启用。
+  ///
+  /// 【为什么是「按调用方选择开启」而不是直接把 stream 打开】
+  /// 全仓有 7 个测试文件用本地 HTTP 服务喂**非流式** JSON 来覆盖异常路径
+  /// （HTML 错误页、连接超时、空响应、取消……）。一旦无条件 `'stream': true`，
+  /// 这些用例读到的就是 SSE 文本，`choices[0].message` 恒为空 → 全红。
+  /// 所以流式是一条**新增**通道：不传 onDelta 时一个字节都不变。
+  ///
+  /// 【降级策略】流式失败分两类，处理方式不同：
+  ///  - **一个 SSE 帧都没收到**（网关不转发、提供商不认 stream_options 而返
+  ///    400、响应体不是流）→ 自动退回一次非流式请求。结果是「没提速」，
+  ///    而不是「功能坏了」。
+  ///  - **已经吐过字**才失败 → 如实上抛，由路由层换 Key / 上层重试，并把
+  ///    预览重置（onDelta 的 reset 语义），避免两次尝试的半截文本拼一起。
+  Future<ChatResult> _chatCompleteStream({
+    required String prompt,
+    required String systemPrompt,
+    required double temperature,
+    required int maxTokens,
+    required CancelToken? cancelToken,
+    required AiStreamCallback onDelta,
+  }) async {
+    // 区分「通道不通」与「模型空答」：前者降级重发，后者直接走空响应归类。
+    var sawFrame = false; // 收到过任意 data: 帧
+    final buffer = StringBuffer();
+    var usage = const TokenUsage(
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+    );
+
+    Future<ChatResult> degradeToNonStream() => _chatCompleteOnce(
+          prompt: prompt,
+          systemPrompt: systemPrompt,
+          temperature: temperature,
+          maxTokens: maxTokens,
+          cancelToken: cancelToken,
+        );
+
+    try {
+      final response = await _dio.post(
+        normalizePath(config.chatPath),
+        data: jsonEncode({
+          'model': config.model,
+          'messages': [
+            if (systemPrompt.isNotEmpty)
+              {'role': 'system', 'content': systemPrompt},
+            {'role': 'user', 'content': prompt},
+          ],
+          'temperature': temperature,
+          'max_tokens': maxTokens,
+          'stream': true,
+          // OpenAI 兼容实现只在显式要求时，才在最后一个 chunk 里回 usage。
+          // 不认这个字段的服务商返 400 —— 由「无帧即降级」兜住。
+          'stream_options': {'include_usage': true},
+        }),
+        options: Options(responseType: ResponseType.stream),
+        cancelToken: cancelToken,
+      );
+      final raw = response.data;
+      if (raw is! ResponseBody) {
+        throw AiRetryableException('流式响应体类型异常（${raw.runtimeType}）');
+      }
+      // utf8.decoder 会缓冲跨块的多字节字符、LineSplitter 会缓冲不完整的行，
+      // 所以中文正文不会因为分块位置而乱码或截断。
+      final lines = raw.stream
+          .cast<List<int>>()
+          .transform(utf8.decoder)
+          .transform(const LineSplitter());
+      await for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty || !trimmed.startsWith('data:')) continue;
+        final dataPart = trimmed.substring(5).trim();
+        if (dataPart.isEmpty) continue;
+        sawFrame = true;
+        if (dataPart == '[DONE]') break;
+        Map<String, dynamic> chunk;
+        try {
+          final decoded = jsonDecode(dataPart);
+          if (decoded is! Map) continue;
+          chunk = decoded.cast<String, dynamic>();
+        } catch (_) {
+          // 单个畸形 chunk 不该毁掉整段生成：跳过继续读。
+          continue;
+        }
+        final rawUsage = chunk['usage'];
+        if (rawUsage is Map) {
+          usage = TokenUsage.fromJson(rawUsage.cast<String, dynamic>());
+        }
+        final choices = chunk['choices'];
+        if (choices is! List || choices.isEmpty) continue;
+        final first = choices[0];
+        if (first is! Map) continue;
+        final delta = first['delta'];
+        if (delta is! Map) continue;
+        final piece = delta['content'];
+        if (piece is! String || piece.isEmpty) continue;
+        buffer.write(piece);
+        onDelta(piece, reset: false);
+      }
+    } on DioException catch (e) {
+      if (!sawFrame) return await degradeToNonStream();
+      _handleError(e);
+      rethrow;
+    } on AiRetryableException {
+      if (!sawFrame) return await degradeToNonStream();
+      rethrow;
+    }
+
+    // 一个帧都没收到（端点直接返回普通 JSON 或空体）：同「通道不通」处理。
+    if (!sawFrame) return await degradeToNonStream();
+
+    final content = buffer.toString();
+    if (content.isEmpty) {
+      // 通道是通的（收到过帧），只是模型没吐正文 → 走同一套空响应归类，
+      // 不再降级重发，避免把「模型空答」放大成两次请求。
+      _throwEmptyResponse();
+    }
+    EmptyResponseMonitor.instance.recordSuccess(
+        config.provider.name, config.model);
+    return ChatResult(content: content, usage: usage);
+  }
+
 
   /// 区分服务商 429 的两种常见语义（Q16），给出可行动的文案：
   /// - 配额耗尽（quota / insufficient / 额度 / 次数用尽）→ 需要等 5 小时窗口重置

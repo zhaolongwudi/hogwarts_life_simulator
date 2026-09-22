@@ -2786,6 +2786,7 @@ mixin GameSystemsMixin on GameProviderBase {
   Future<ChatResult> callDeepSeek(
     String prompt, {
     AiScene scene = AiScene.narrative,
+    bool stream = false,
   }) async {
     if (router == null) throw Exception('AI 服务未初始化');
     // BUG-FIX: 检查与使用之间存在 await 间隙（buildSystemPrompt），
@@ -2853,6 +2854,9 @@ mixin GameSystemsMixin on GameProviderBase {
       systemPrompt: effectiveSystemPrompt,
       temperature: 0.85,
       maxTokens: maxTokens,
+      // S1：只有叙事路径开流式（选项/摘要/闲聊输出短，提前看到半句没有价值，
+      // 却要多付一次 SSE 解析与逐帧 notify 的成本）。
+      onDelta: stream ? handleNarrativeDelta : null,
     );
     // Q9：模型连续空响应触发降级（成功走了备用提供商）时，把「已切换备用
     // 模型 + 建议换稳定模型」的提示追加到通知栏，只提示一次。失败路径由

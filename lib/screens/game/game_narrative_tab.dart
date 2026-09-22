@@ -1244,6 +1244,17 @@ class _NarrativeTabState extends State<NarrativeTab> {
     // 命令面板独立显示 + 剧情正文 + 选项同时存在；不要求 narrative 非空
     // （加载中的一回合可能 narrative 为空，但 choices 可能有历史残留）
     final affectionSections = gp.lastAffectionSections;
+    // S1 流式预览：正在生成、尚未定稿的正文。
+    //
+    // 【为什么只在 currentNarrative 为空时才用】定稿后 currentNarrative 有值，
+    // 此时预览只是同一段文字的半截版本——继续渲染它会让正文在定稿瞬间
+    // 从「预览版」跳成「定稿版」并重排一次。所以有定稿就一律以定稿为准，
+    // 预览退场（finally 里也会清掉）。
+    final streaming = gp.isLoading &&
+            gp.streamingPreview.trim().isNotEmpty &&
+            narrative.trim().isEmpty
+        ? gp.streamingPreview
+        : null;
     // 沉浸模式（框架2 §10：尽量隐藏精确关系/好感）不渲染好感变化卡片——
     // 数值是"上帝视角"信息，沉浸模式应该让关系变化只通过故事本身呈现
     final immersive =
@@ -1302,7 +1313,12 @@ class _NarrativeTabState extends State<NarrativeTab> {
                       _buildSourceBadges(gp),
                       _buildLegendPanel(gp),
                       const SizedBox(height: 8),
-                      if (bodyNarrative.isNotEmpty)
+                      if (streaming != null)
+                        // 流式预览：纯文本直出，不跑 StoryTextRenderer 分段
+                        // （段落分类要靠完整文本判断对话/独白，半截文本会误判，
+                        //  导致同一段在预览与定稿之间反复改变排版）。
+                        _buildStreamingPreviewCard(streaming),
+                      if (streaming == null && bodyNarrative.isNotEmpty)
                         _buildBodyCard(
                           bodyNarrative,
                           affections: affectionSections.isNotEmpty && !immersive
@@ -1554,6 +1570,53 @@ class _NarrativeTabState extends State<NarrativeTab> {
     );
   }
 
+  /// S1 流式预览卡片：正文正在生成时的实时渲染。
+  ///
+  /// 【为什么不用 _buildBodyCard】它内部走 `StoryTextRenderer.classifyParagraphs`
+  /// 把段落分成叙述/对话/独白并各自排版。半截文本会让分类结果在生成过程中
+  /// 反复翻转（同一段先被判成叙述、补全引号后又被判成对话），玩家会看到
+  /// 排版自己跳动。预览阶段一律用最朴素的正文样式，定稿后再交给正式卡片。
+  ///
+  /// 【光标】尾部挂一个闪烁方块，明示「还在写」。这不只是装饰——没有它时
+  /// 玩家会以为这段就是最终结果，然后困惑于它为什么又变了。
+  Widget _buildStreamingPreviewCard(String text) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: MiuiColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: MiuiColors.outline.withValues(alpha: 0.55),
+          width: MiuiSpace.dividerThickness,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              // 用 ScaledRichText 而非 Text：本文件所有正文都走它，
+              // 才能跟随系统字体缩放（弱视玩家调大字号时预览不会变小）。
+              child: ScaledRichText(
+                text: TextSpan(
+                  text: text,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.7,
+                    color: MiuiColors.onSurface,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            const _StreamingCaret(),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 正文卡：小说式分段渲染。
   ///
   /// 600~800 字的剧情按空行拆段、逐段分类（叙述/对话/内心独白/时间戳），
@@ -1782,6 +1845,46 @@ class _NarrativeTabState extends State<NarrativeTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// S1 流式预览的尾部光标：一个缓慢闪烁的竖条。
+///
+/// 用 `AnimationController` 而非 `Timer` 是为了让它在页面不可见时自动停摆
+/// （`TickerMode`），不会在后台白烧帧。repeat(reverse: true) 让明暗平滑过渡，
+/// 比硬切换更不刺眼。
+class _StreamingCaret extends StatefulWidget {
+  @override
+  State<_StreamingCaret> createState() => _StreamingCaretState();
+}
+
+class _StreamingCaretState extends State<_StreamingCaret>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.15, end: 0.85).animate(_controller),
+      child: Container(
+        width: 2.5,
+        height: 17,
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: MiuiColors.primary,
+          borderRadius: BorderRadius.circular(1.5),
+        ),
+      ),
     );
   }
 }

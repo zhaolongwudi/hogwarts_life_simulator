@@ -3263,6 +3263,7 @@ $knownRegions
     isLoading = true;
     loadingStage = '正在书写你的终章…';
     currentNarrative = '';
+    clearStreamingPreview();
     choices = [];
     notifyListeners();
     unawaited(generateEnding());

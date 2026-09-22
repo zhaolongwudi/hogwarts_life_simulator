@@ -140,6 +140,17 @@ abstract class GameProviderBase extends ChangeNotifier
   }
 
   String currentNarrative = '';
+  /// S1 流式预览：本回合正在生成、**尚未定稿**的正文片段。
+  ///
+  /// 与 [currentNarrative] 严格分离，这是刻意的：
+  ///  - `currentNarrative` 只在解析/校验/重试全部通过后才写入，UI 的选项、
+  ///    存档、连续性锚点、摘要累积都读它；
+  ///  - `streamingPreview` 只服务「让玩家早点看到字」，随时可被清空，
+  ///    不落盘、不参与任何结算。
+  ///
+  /// 分开的直接原因：叙事有 2 次重试（critical 违规 / BUG-H），一旦把流式
+  /// 内容直接写进 `currentNarrative`，被驳回的那次就会污染锚点与存档。
+  String streamingPreview = '';
   String narrativeSummary = '';
   String pendingSummary = '';
   final List<String> recentTurns = [];
@@ -182,6 +193,42 @@ abstract class GameProviderBase extends ChangeNotifier
     final s = narrativeExpectedWaitSeconds;
     if (s <= 0) return '';
     return '预计最坏 $s 秒';
+  }
+
+  /// S1 流式增量 → [streamingPreview] 的唯一写入点。
+  ///
+  /// 【为什么节流】模型每秒能吐几十个 chunk，逐帧 `notifyListeners()` 会让
+  /// 整棵 widget 树每秒重建几十次——而正文区里还挂着长列表与横幅动画。
+  /// 按 [_kStreamNotifyIntervalMs] 合并通知，人眼已看不出差别，重建次数降一个
+  /// 数量级。**内容本身不节流**：每次都写进缓冲，只是渲染通知被合并，
+  /// 所以不会丢字。
+  ///
+  /// [reset] = true 表示「作废此前累积」（路由层换 Key / 上层重试时调用）：
+  /// 必须立刻清空并通知，否则两段不同尝试的正文会被拼成一段。
+  static const int _kStreamNotifyIntervalMs = 80;
+  int _streamNotifyAtMs = 0;
+
+  void handleNarrativeDelta(String delta, {bool reset = false}) {
+    if (reset) {
+      _streamNotifyAtMs = 0;
+      if (streamingPreview.isEmpty) return;
+      streamingPreview = '';
+      notifyListeners();
+      return;
+    }
+    if (delta.isEmpty) return;
+    streamingPreview += delta;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _streamNotifyAtMs < _kStreamNotifyIntervalMs) return;
+    _streamNotifyAtMs = now;
+    notifyListeners();
+  }
+
+  /// 清空流式预览（定稿、取消、失败、重置都要走这里，保证 UI 不会停在半截）。
+  void clearStreamingPreview() {
+    _streamNotifyAtMs = 0;
+    if (streamingPreview.isEmpty) return;
+    streamingPreview = '';
   }
 
   final List<String> notifications = [];

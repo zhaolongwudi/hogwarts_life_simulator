@@ -271,6 +271,9 @@ class AiRouter {
     // 润色等「可选增强」类调用传 false：失败不写 Key 熔断，避免把健康 Key
     // 记上 60 秒冷却（审批 3.1：可选润色失败不该污染正式链路的熔断器）。
     bool trackCircuit = true,
+    // S1 流式输出：只有叙事路径传它。传了就代表调用方接受「内容可能分片到达」
+    // ——返回值仍然是完整正文，预览只是给 UI 提前看的。
+    AiStreamCallback? onDelta,
   }) async {
     // F7：全库此前一处 assert 都没有。这里是最值得断言的入口 ——
     // 这几个条件被破坏时不会立刻崩，而是变成"AI 返回空/半截内容"这种极难定位
@@ -313,6 +316,7 @@ class AiRouter {
         sceneLabel: sceneLabel,
         keyCount: _attemptedKeyCount(primary),
         trackCircuit: trackCircuit,
+        onDelta: onDelta,
       );
     } finally {
       // 调用链结束（无论成败/取消）都要摘掉活动令牌，
@@ -340,6 +344,7 @@ class AiRouter {
     required String sceneLabel,
     required int keyCount,
     required bool trackCircuit,
+    AiStreamCallback? onDelta,
   }) async {
     final future = _callWithFallback(
       primary: primary,
@@ -353,6 +358,7 @@ class AiRouter {
       cancelToken: cancelToken,
       cancelBridge: bridge,
       trackCircuit: trackCircuit,
+      onDelta: onDelta,
     );
 
     // 全局超时按「实际会尝试的 Key 数」动态算，而不是写死一个值——
@@ -407,6 +413,7 @@ class AiRouter {
     CancelToken? cancelToken,
     _CancelBridge? cancelBridge,
     bool trackCircuit = true,
+    AiStreamCallback? onDelta,
   }) async {
     // 缓存键必须带上「生成者身份」（provider + model）：否则玩家在设置页把模型
     // 从 A 换成 B 之后，5 分钟 TTL 内同一 prompt 会命中 A 的输出——
@@ -505,6 +512,10 @@ class AiRouter {
           // 路径（第八次审查 P0）。
           final callToken = CancelToken();
           cancelBridge?.attach(callToken);
+          // S1：每次尝试（含换 Key / 重试）开始前先让 UI 丢掉上一次的半截预览，
+          // 否则「Key A 吐了 200 字失败 → Key B 重来」会把两段拼成一段。
+          // 只有真正会流式的调用才付这个通知成本。
+          onDelta?.call('', reset: true);
           try {
             // 限流闸门在 DeepSeekService.chatComplete 内部（_acquireSlot），
             // 这里不要再加一层，否则同一个 Key 会被两道互不知情的闸门串着等。
@@ -516,6 +527,7 @@ class AiRouter {
                   temperature: temperature,
                   maxTokens: maxTokens,
                   cancelToken: callToken,
+                  onDelta: onDelta,
                 )
                 .timeout(
                   perCallTimeout,
