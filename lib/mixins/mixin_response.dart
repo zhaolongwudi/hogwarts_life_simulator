@@ -2124,7 +2124,16 @@ mixin GameResponseMixin
           .reversed
           .toList();
 
-      final picked = <KeyFactRecord>[...identity.take(5), ...recent.take(9)];
+      // S12 减法：选项端 T0 从 identity 5 + recent 9 = 14 条降到 identity 4 +
+      // recent 5 = 9 条。
+      //
+      // 【为什么不是全删】审查报告建议「叙事端已注入过一次，选项端不必重发」，
+      // 但叙事与选项是**两次独立 API 调用**，模型不共享上下文——选项端看不到
+      // 叙事端那份 T0。全删会直接复活这批事实要防的 bug：
+      // 「向刚被你杀了他兄弟的 NPC 求助」「向已订婚对象再表白一次」。
+      // 所以只削冗余：身份层留 4 条（足够钉住「你是谁」），
+      // 近期层留 5 条（足够钉住「刚发生了什么」）。
+      final picked = <KeyFactRecord>[...identity.take(4), ...recent.take(5)];
       if (picked.isEmpty) return '（暂无）';
       return picked.map((f) => '· ${f.fact}').join('\n');
     }

@@ -16,8 +16,10 @@ void main() {
   // ==================== T0 铁律：每回合必注入 ====================
   group('T0 铁律必注入', () {
     test('T0 包含选项禁令', () {
+      // S2 减法：T0 内部原先第 1 行与末尾各说一遍「不生成选项」，语义重复。
+      // 保留开头那一句（它在最前面，权重更高），删掉末尾重复句。
       expect(kNarrativeRulesCore, contains('选项将由独立步骤生成'));
-      expect(kNarrativeRulesCore, contains('不需要生成选项'));
+      expect(kNarrativeRulesCore, contains('本回合只需生成叙事和好感变化'));
     });
 
     test('T0 包含时间铁律', () {

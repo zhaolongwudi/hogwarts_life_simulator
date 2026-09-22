@@ -469,8 +469,12 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
         memory.worldEvents,
       ).where((e) => ts - e.absoluteDay > 60).toList()..sort(_t3Cmp);
       final t3 = <WorldEventRecord>[
-        ...recentEvents.take(30),
-        ...oldEvents.take(10),
+        // S3 减法：原先 近期 30 + 旧 10 = 40 条，每回合注入约 800~1500 token，
+        // 而其中绝大多数对「本回合该怎么写」零信息量（自动提取的事件 importance
+        // 恒为 6，同分堆叠）。降到 近期 12 + 旧 3 = 15 条：保留「最近发生了什么」
+        // 的骨架，把预算让给 T0 事实与在场人物。
+        ...recentEvents.take(12),
+        ...oldEvents.take(3),
       ];
       if (t3.isNotEmpty) {
         contextBuffer.writeln('【T3 世界事件银行（近期优先，按重要性+新鲜度排序）】');
@@ -590,7 +594,9 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
             final k = e.replaceAll(_anchorIconPrefix, '').trim();
             if (!alreadyAnchors.add(k)) continue;
             worldAnchors.add(e);
-            if (worldAnchors.length >= 12) break;
+            // S3 减法：锚点总量 12+16=28 上限 → 合计 6 条。锚点是「硬锚」，
+            // 6 条足以钉住世界线主干；再多只是把 T3 已经说过的事换个说法重述。
+            if (worldAnchors.length >= 6) break;
           }
         }
         if (ws.recentNarrativeEvents.isNotEmpty) {
@@ -605,7 +611,7 @@ mixin GameNarrativeMixin on GameProviderBase, GameNarrativeContinuityMixin {
             final k = e.replaceAll(_anchorIconPrefix, '').trim();
             if (!alreadyAnchors.add(k)) continue;
             worldAnchors.add('剧情锚：$e');
-            if (worldAnchors.length >= 16) break;
+            if (worldAnchors.length >= 6) break;
           }
         }
         if (worldAnchors.isNotEmpty) {
