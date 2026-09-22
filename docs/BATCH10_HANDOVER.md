@@ -320,3 +320,22 @@ bash pull.sh  # 拉取最新代码
 3. 去掉独立 generateChoicesSeparately 调用，保留质量检查/本地专属选项优先级/入口守卫
 4. 完整回归（重点 BUG-H/BUG-L 相关测试），CI 全绿后推送
 **前置条件**：测试稳定性判定（≥10 轮无停止）完成后，作为测试结束后的项目批次推进。
+
+### 🚧 Git Data API 推送进度（本对话最后状态，2026-09-22 补录）
+**落库指令已执行但 push 未成功**：用户 #2 发「落库，落库。」，本地两个 commit 已创建，远端 main 仍 = **458c99a**：
+- commit1 `9e82516` feat(batch-c)：功能代码组 8 文件 +891/-76（mixin_club 同好注入/mixin_play 训练加成/game_systems 成就补录/player+mixin_commands 批次AB遗留/club_minigames_data）
+- commit2 `dd25c72` docs：文档脚本组 15 文件 +1234（台账、UI重构台账、10 份设计文档、3 个 scripts）
+**推送路径**：`git push origin main` 直连 github.com 两次超时（环境已知问题）→ 改走 **Git Data API 绕过**（台账 b35037a1 曾用此法推 f9022e8 成功）。
+**脚本现状**：`scripts/gitdata_push.py`（v3，181 行，本对话新建，**未跟踪未提交**）。已修复 3 个 bug：
+1. 中文文件名 quotepath 转义 → `git -c core.quotepath=false ls-tree -z`（NUL 分隔原样 UTF-8，已验证 14 个中文文件解析正确）
+2. 探测远端对象改用 **HEAD**（GET /blobs 会下载整个 body 触发 IncompleteRead）
+3. PATCH /git/refs/{ref} 的 ref 不带 refs/ 前缀（heads/main）
+**三次运行均未完成**：`python3 scripts/gitdata_push.py dd25c72` 日志 /tmp/gitdata_push{1,2,3}.log。前两次卡 HEAD 探测（IncompleteRead / DNS getaddrinfo 卡死），第三次已深入 POST /trees 但 **TCP connect 到 api.github.com 间歇性卡死**被 KeyboardInterrupt（300s/600s 工具超时杀进程）。远端 main 三次验证均未变。
+**已固化**：/etc/hosts 追加 `20.205.243.168 api.github.com`（治 DNS 卡顿）；脚本已识别 2 个待推 commit 正确、中文路径解析正确。
+**下次续接指引（新对话）**：
+1. 重跑 `python3 scripts/gitdata_push.py dd25c72`，建议 **background=true 后台跑 + terminal_wait**（避开工具 5-10 分钟硬超时），或给脚本加网络重试（urllib retry，connect 失败自动重试 3-5 次）
+2. 成功标志：日志出现 `ref heads/main -> dd25c72...` 与 `DONE`；随后 `git fetch origin && git rev-parse origin/main` 应 = dd25c72
+3. 成功后**补提交** `scripts/gitdata_push.py`（当前未跟踪）；台账本次补录内容一并 commit
+4. 若 API 网络持续卡死：备选 `git bundle` + 手动 HTTP 上传（更大工程，见上）
+5. 落库完成后回到测试主线：方向 B（RPM 60→30、并发 3→1）生效后 **≥10 轮无停止**稳定性观测未完成，是下一个判定节点
+6. 方案 B（合并叙事+选项）为测试结束后独立批次（见上文 5abd662d 接力结论）
