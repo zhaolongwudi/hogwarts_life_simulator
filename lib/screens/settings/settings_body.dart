@@ -187,7 +187,7 @@ class _SettingsBodyState extends State<SettingsBody> {
             subtitle,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF8A8AAA),
+              color: MiuiColors.onSurfaceSecondary,
               height: 1.6,
             ),
           ),
@@ -206,7 +206,7 @@ class _SettingsBodyState extends State<SettingsBody> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [const Color(0xFF1A1A2E), const Color(0xFF0D0D1A)],
+          colors: [MiuiColors.surfaceContainer, MiuiColors.background],
         ),
       ),
       child: Column(
@@ -239,9 +239,9 @@ class _SettingsBodyState extends State<SettingsBody> {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
+        color: MiuiColors.surfaceContainer.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF3A3A5C).withValues(alpha: 0.4)),
+        border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -266,7 +266,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                         size: 15,
                         color: _activeSection == i
                             ? AppColors.gold
-                            : const Color(0xFF8A8AAA),
+                            : const MiuiColors.onSurfaceSecondary,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -278,7 +278,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                               : FontWeight.w400,
                           color: _activeSection == i
                               ? AppColors.gold
-                              : const Color(0xFF8A8AAA),
+                              : const MiuiColors.onSurfaceSecondary,
                         ),
                       ),
                     ],
@@ -390,7 +390,7 @@ class _SettingsBodyState extends State<SettingsBody> {
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             '使用「魔法手账」显示模式时，无法选用「穿越者」身份',
-            style: TextStyle(color: const Color(0xFF8A8AAA), fontSize: 12),
+            style: TextStyle(color: const MiuiColors.onSurfaceSecondary, fontSize: 12),
           ),
         ),
       const SizedBox(height: 24),
@@ -468,7 +468,7 @@ class _SettingsBodyState extends State<SettingsBody> {
         const SizedBox(height: 10),
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
         const SizedBox(height: 4),
-        Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF8A8AAA), height: 1.5)),
+        Text(subtitle, style: const TextStyle(fontSize: 13, color: MiuiColors.onSurfaceSecondary, height: 1.5)),
       ],
     );
   }
@@ -481,7 +481,7 @@ class _SettingsBodyState extends State<SettingsBody> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
+            color: MiuiColors.surfaceContainer.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
           ),
@@ -507,7 +507,7 @@ class _SettingsBodyState extends State<SettingsBody> {
               const SizedBox(height: 10),
               Text(
                 '查看最近 ${GameProviderBase.maxRecentTurns} 回合的完整剧情记录，包含场景插图、对话气泡和详细叙事',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
+                style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceSecondary),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -551,12 +551,12 @@ class _SettingsBodyState extends State<SettingsBody> {
           margin: const EdgeInsets.only(bottom: 20),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
+            color: MiuiColors.surfaceContainer.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: enabled
                   ? MiuiColors.success.withValues(alpha: 0.5)
-                  : const Color(0xFF3A3A5C).withValues(alpha: 0.4),
+                  : MiuiColors.outline.withValues(alpha: 0.4),
             ),
           ),
           child: Column(
@@ -570,13 +570,13 @@ class _SettingsBodyState extends State<SettingsBody> {
                     decoration: BoxDecoration(
                       color: enabled
                           ? MiuiColors.success.withValues(alpha: 0.15)
-                          : const Color(0xFF2A2A4A),
+                          : MiuiColors.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       Icons.offline_bolt,
                       size: 18,
-                      color: enabled ? MiuiColors.success : const Color(0xFF5A5A7A),
+                      color: enabled ? MiuiColors.success : const MiuiColors.onSurfaceVariantSummary,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -607,7 +607,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                 desc: '叙事仍由本地引擎生成，但后台会用少量 AI 润色措辞使其更生动（需要已配置 AI Key，失败自动保留原文）。',
                 onChanged: () => _setNarrativeSource(offline: true, polish: true),
               ),
-              const Divider(height: 24, color: Color(0xFF2A2A4A)),
+              const Divider(height: 24, color: MiuiColors.surfaceContainerHighest),
               // ---- 独立子开关：剧情 + AI 自由发挥（不参与上方单选组） ----
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -617,7 +617,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   appProvider.storyFreeformPreference
                       ? '已开启：剧情主线仍由本地原著剧情表驱动（不跑偏），但在每个剧情步之间你可以自由打字行动，AI 会在原著框架内续写细节。'
                       : '未开启：剧情模式为纯本地——只有剧情选项可以点，自由输入不会调用 AI。',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
+                  style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceSecondary),
                 ),
                 value: appProvider.storyFreeformPreference,
                 activeColor: MiuiColors.primary,
@@ -681,7 +681,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   const SizedBox(height: 2),
                   Text(
                     desc,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF8A8AAA)),
+                    style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceSecondary),
                   ),
                 ],
               ),
@@ -712,9 +712,9 @@ class _SettingsBodyState extends State<SettingsBody> {
           margin: const EdgeInsets.only(bottom: 20),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
+            color: MiuiColors.surfaceContainer.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF3A3A5C).withValues(alpha: 0.4)),
+            border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.4)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,7 +739,7 @@ class _SettingsBodyState extends State<SettingsBody> {
               SwitchListTile(
                 title: const Text('启用 AI 调用日志', style: TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: const Text('记录每回合 AI 的输入输出到本地文件，用于排查 bug',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF8A8AAA))),
+                    style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceSecondary)),
                 value: appProvider.aiDebugLogEnabled,
                 activeColor: MiuiColors.warning,
                 onChanged: (v) async {
@@ -822,13 +822,13 @@ class _SettingsBodyState extends State<SettingsBody> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A4A).withValues(alpha: 0.6),
+                    color: MiuiColors.surfaceContainerHighest.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF3A3A5C).withValues(alpha: 0.3)),
+                    border: Border.all(color: MiuiColors.outline.withValues(alpha: 0.3)),
                   ),
                   child: const Text(
                     '日志文件保存在应用文档目录下的 ai_debug_logs 文件夹\n可用于分析上下文污染、路由错误等问题',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF6A6A8A)),
+                    style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceVariantSummary),
                   ),
                 ),
               ],
@@ -847,7 +847,7 @@ class _SettingsBodyState extends State<SettingsBody> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.6),
+            color: MiuiColors.surfaceContainer.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: MiuiColors.error.withValues(alpha: 0.3)),
           ),
@@ -883,7 +883,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   child: const Icon(Icons.delete, color: MiuiColors.error, size: 16),
                 ),
                 title: const Text('清除所有 API Key', style: TextStyle(color: Colors.white, fontSize: 14)),
-                subtitle: const Text('删除本地保存的所有 AI 提供商 Key', style: TextStyle(color: Color(0xFF8A8AAA), fontSize: 12)),
+                subtitle: const Text('删除本地保存的所有 AI 提供商 Key', style: TextStyle(color: MiuiColors.onSurfaceSecondary, fontSize: 12)),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -908,7 +908,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   setState(() {});
                 },
               ),
-              const Divider(color: Color(0xFF3A3A5C), height: 1),
+              const Divider(color: MiuiColors.outline, height: 1),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -921,7 +921,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   child: const Icon(Icons.refresh, color: MiuiColors.warning, size: 16),
                 ),
                 title: const Text('开始新游戏', style: TextStyle(color: Colors.white, fontSize: 14)),
-                subtitle: const Text('重置当前游戏进度', style: TextStyle(color: Color(0xFF8A8AAA), fontSize: 12)),
+                subtitle: const Text('重置当前游戏进度', style: TextStyle(color: MiuiColors.onSurfaceSecondary, fontSize: 12)),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(

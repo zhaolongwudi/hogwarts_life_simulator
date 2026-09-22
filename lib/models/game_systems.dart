@@ -670,6 +670,10 @@ const List<Achievement> achievementCatalog = [
   Achievement(id: 'married', name: '誓言与戒指', description: '与心爱的人结婚'),
   Achievement(id: 'first_child', name: '新的啼哭', description: '迎来第一个孩子'),
   Achievement(id: 'matchmaker', name: '红娘', description: '撮合的一对NPC羁绊达到60'),
+  // 框架2 新玩法成就：魁地奇队训练（16b）+ 快讯社头版（16c）
+  // 解锁点：lib/mixins/mixin_play.dart trainQuidditch 累计 10 次 / reportHeadline 首次报道
+  Achievement(id: 'training_master', name: '训练大师', description: '累计完成 10 次魁地奇队训练'),
+  Achievement(id: 'headline_reporter', name: '快讯记者', description: '完成第一次快讯社头版报道'),
 ];
 
 // ==================== 信件 ====================

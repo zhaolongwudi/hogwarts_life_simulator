@@ -23,6 +23,7 @@ import '../data/house_data.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
 import '../providers/game_provider_base.dart';
+import '../utils/npc_lookup.dart';
 
 /// P14 社团 mixin。挂在 [GameProviderBase] 上。
 mixin GameClubMixin on GameProviderBase {
@@ -61,6 +62,17 @@ mixin GameClubMixin on GameProviderBase {
     p.clubId = club.id;
     p.clubPoints = 0; // 换社清零
     p.clubLastTurn = -1;
+    // 批次 C（16d）同好注入·注入点 A：入社即与社团成员结下同好之谊（一次性）。
+    // 只对新社 attendees 生效——换社时旧社此前已加过，不重复叠加。
+    // 走 updateNpcAffection 统一入口（game_provider_base.dart:809），
+    // 周/月好感上限与衰减由既有数值层统一兜底，零新增字段零迁移。
+    final incomingGains = <String>[];
+    for (final attendeeName in club.attendees) {
+      final attendee = findNpcByKeyword(npcRegistry.values, attendeeName);
+      if (attendee == null) continue;
+      updateNpcAffection(attendee.id, 5, reason: '加入${club.name}，与同好结谊');
+      incomingGains.add(attendee.name);
+    }
     final rank = club.ranks.first;
     final buf = StringBuffer()
       ..writeln('【加入社团 · ${club.icon} ${club.name}】')
@@ -69,6 +81,12 @@ mixin GameClubMixin on GameProviderBase {
       ..writeln()
       ..writeln('你签下了名字，成为${club.attendees.join('、')}的同好，'
           '以「${rank.name}」之身入社。');
+    // 批次 C（16d）同好注入·旁白补充：入社把同好关系织进叙事。
+    if (incomingGains.isNotEmpty) {
+      buf.writeln();
+      buf.writeln('入社之谊已记下——${incomingGains.join('、')}对你的亲近感，'
+          '因这同好之名悄然加深（好感 +5/人）。');
+    }
     // 入社即落地「候补」阶的欢迎加成（属性/学院分/声望）。
     final welcome = _rankBonusLines(club, 0);
     if (welcome.isNotEmpty) buf.writeln('\n$welcome');
@@ -121,6 +139,15 @@ mixin GameClubMixin on GameProviderBase {
     final prevRank = club.rankIndexFor(beforePoints);
     p.clubPoints += gain;
     recordDailyActivity('club_activity');
+    // 批次 C（16d）同好注入·注入点 B：周常为社团出力，与同好们的情谊细水长流。
+    // 每次 +1（周上限 2），上限由 updateNpcAffection 数值层（getAffectionGainLimit
+    // + affectionGainedThisWeek）自动兜底——超出即截断为 0，无需新增字段。
+    // 放在 recordDailyActivity 之后：天然跟随「每日社团活动次数」门控。
+    for (final attendeeName in club.attendees) {
+      final attendee = findNpcByKeyword(npcRegistry.values, attendeeName);
+      if (attendee == null) continue;
+      updateNpcAffection(attendee.id, 1, reason: '与${club.name}同好共事');
+    }
     p.clubLastTurn = turnCount; // deprecated since Batch 5 · Issue #7；仅为存档兼容。
     final newRank = club.rankIndexFor(p.clubPoints);
 

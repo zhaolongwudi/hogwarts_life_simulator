@@ -147,7 +147,38 @@ class Player {
   /// 考试成绩记录：key = 'Y1'~'Y7'（学年期末）、'OWL'、'NEWT'；
   /// value = Map<科目id, 成绩等级>。见 lib/data/exam_data.dart。
   final Map<String, Map<String, String>> examRecords;
-
+  /// 本学期头版报道标记（防重复，学期切换重置）。0 = 本学期未报道。
+  int headlineSeason;
+  /// 累计头版报道次数（成就依据，跨学期累计）。
+  int headlineCount;
+  // ====== 决斗社季度赛（框架2 新增 · 批次A 数据层） ======
+  /// 本赛季决斗积分（赛季结束/学期切换重置）。
+  int duelSeasonPoints;
+  /// 本赛季胜场（学期切换重置）。
+  int duelSeasonWins;
+  /// 累计总胜场（跨赛季保留，成就依据）。
+  int duelSeasonWinsTotal;
+  /// 已领最高档位（0=未领，跳档只补差额）。
+  int duelSeasonClaimedTier;
+  /// 赛季所属学期标识（如 'first-1991-1992'），用于赛季重置判定。
+  String duelSeasonTerm;
+  // ====== 魔药部限时配方（框架2 新增 · 批次A 数据层） ======
+  /// 各配方累计酿造次数（成就依据）。key = 配方 id。
+  Map<String, int> potionBrewCounts;
+  /// 已酿造过的配方 id 集合（防重复/成就）。
+  Set<String> potionBrewed;
+  /// 当前窗口奖励领取标记（记档防重，复用节庆模式）。
+  int potionWindowReward;
+  // ====== 魁地奇队训练（框架2 新增 · 批次A 数据层） ======
+  /// 本周已训练次数（周内去重，比赛加成依据）。
+  int qTrainWeek;
+  /// 上次训练所在周（gameWeek），用于周一重置 qTrainWeek 计数。
+  int qTrainLastWeek;
+  /// 累计训练次数（成就依据）。
+  int qTrainTotal;
+  // ====== 奇遇长期痕迹（框架2 新增 · 批次A 数据层） ======
+  /// 已完成奇遇的流水记录（上限 50 条，超出删最旧）。
+  List<HappenstanceLogEntry> happenstanceLog;
   // ====== 阿尼马格斯（框架2 第67条 · 困难且长期的魔法道路） ======
   /// 阿尼马格斯状态。null = 从未开始。
   /// {
@@ -339,6 +370,20 @@ class Player {
     List<String>? cheatModifiedPairs,
     List<String>? collectedMemories,
     Map<String, Map<String, String>>? examRecords,
+    this.headlineSeason = 0,
+    this.headlineCount = 0,
+    this.duelSeasonPoints = 0,
+    this.duelSeasonWins = 0,
+    this.duelSeasonWinsTotal = 0,
+    this.duelSeasonClaimedTier = 0,
+    this.duelSeasonTerm = '',
+    Map<String, int>? potionBrewCounts,
+    Set<String>? potionBrewed,
+    this.potionWindowReward = 0,
+    this.qTrainWeek = 0,
+    this.qTrainLastWeek = 0,
+    this.qTrainTotal = 0,
+    List<HappenstanceLogEntry>? happenstanceLog,
   }) : id = id ?? _uuid.v4(),
        personalityTraits = List<String>.from(personalityTraits ?? const []),
        attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
@@ -389,6 +434,11 @@ class Player {
       receivedLetters = List<String>.from(receivedLetters ?? const []),
        examRecords = (examRecords ?? const {}).map(
          (k, v) => MapEntry(k, Map<String, String>.from(v)),
+       ),
+       potionBrewCounts = Map<String, int>.from(potionBrewCounts ?? const {}),
+       potionBrewed = Set<String>.from(potionBrewed ?? const {}),
+       happenstanceLog = List<HappenstanceLogEntry>.from(
+         happenstanceLog ?? const [],
        ),
        recentYearGoalIds = List<String>.from(recentYearGoalIds ?? const []);
 
@@ -546,6 +596,20 @@ class Player {
     'cheat_modified_pairs': cheatModifiedPairs,
     'collected_memories': collectedMemories,
     'exam_records': examRecords,
+    'headline_season': headlineSeason,
+    'headline_count': headlineCount,
+    'duel_season_points': duelSeasonPoints,
+    'duel_season_wins': duelSeasonWins,
+    'duel_season_wins_total': duelSeasonWinsTotal,
+    'duel_season_claimed_tier': duelSeasonClaimedTier,
+    'duel_season_term': duelSeasonTerm,
+    'potion_brew_counts': potionBrewCounts,
+    'potion_brewed': potionBrewed.toList(),
+    'potion_window_reward': potionWindowReward,
+    'q_train_week': qTrainWeek,
+    'q_train_last_week': qTrainLastWeek,
+    'q_train_total': qTrainTotal,
+    'happenstance_log': happenstanceLog.map((e) => e.toJson()).toList(),
   };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -742,9 +806,72 @@ class Player {
             Map<String, String>.from((v as Map).cast<String, dynamic>()),
           ),
         ),
+    headlineSeason: readInt(json['headline_season'], fallback: 0),
+    headlineCount: readInt(json['headline_count'], fallback: 0),
+    duelSeasonPoints: readInt(json['duel_season_points'], fallback: 0),
+    duelSeasonWins: readInt(json['duel_season_wins'], fallback: 0),
+    duelSeasonWinsTotal: readInt(json['duel_season_wins_total'], fallback: 0),
+    duelSeasonClaimedTier: readInt(
+      json['duel_season_claimed_tier'],
+      fallback: 0,
+    ),
+    duelSeasonTerm: readString(json['duel_season_term'], fallback: ''),
+    potionBrewCounts: Map<String, int>.from(
+      (json['potion_brew_counts'] as Map<String, dynamic>?) ?? const {},
+    ),
+    potionBrewed: Set<String>.from(
+      readStringList(json['potion_brewed'], fallback: const []),
+    ),
+    potionWindowReward: readInt(json['potion_window_reward'], fallback: 0),
+    qTrainWeek: readInt(json['q_train_week'], fallback: 0),
+    qTrainLastWeek: readInt(json['q_train_last_week'], fallback: 0),
+    qTrainTotal: readInt(json['q_train_total'], fallback: 0),
+    happenstanceLog: (json['happenstance_log'] as List<dynamic>? ?? const [])
+        .map(
+          (e) => HappenstanceLogEntry.fromJson(
+            (e as Map).cast<String, dynamic>(),
+          ),
+        )
+        .toList(),
   );
 }
-
+/// 奇遇长期痕迹记录（框架2 新增 · 批次A 数据层）。
+///
+/// 每次完成一次奇遇结局后在结算处追加一条；上限 50 条（超出删最旧，
+/// 同来信 50 上限口径）。仅供展示/终章引用，不参与结算数值。
+class HappenstanceLogEntry {
+  final String id; // 奇遇 id
+  final String title; // 奇遇标题
+  final String outcomeTitle; // 玩家选择的结局按钮文案
+  final String outcomeText; // 结局叙事（可截断，如前 100 字）
+  final int week; // 完成周数（gameWeek）
+  final String term; // 完成学期（first/second/summer）
+  const HappenstanceLogEntry({
+    required this.id,
+    required this.title,
+    required this.outcomeTitle,
+    required this.outcomeText,
+    this.week = 0,
+    this.term = '',
+  });
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'outcome_title': outcomeTitle,
+    'outcome_text': outcomeText,
+    'week': week,
+    'term': term,
+  };
+  factory HappenstanceLogEntry.fromJson(Map<String, dynamic> json) =>
+      HappenstanceLogEntry(
+        id: readString(json['id'], fallback: ''),
+        title: readString(json['title'], fallback: ''),
+        outcomeTitle: readString(json['outcome_title'], fallback: ''),
+        outcomeText: readString(json['outcome_text'], fallback: ''),
+        week: readInt(json['week'], fallback: 0),
+        term: readString(json['term'], fallback: ''),
+      );
+}
 /// 子女记录。
 ///
 /// CG-021（第一个孩子的啼哭）此前不可解锁：整个项目里没有任何

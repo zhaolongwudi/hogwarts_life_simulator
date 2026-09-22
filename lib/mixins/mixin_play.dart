@@ -14,6 +14,8 @@ import '../data/rivalry_data.dart';
 import '../data/wand_data.dart';
 import '../data/balance_constants.dart';
 import '../data/offline_extras_data.dart';
+import '../data/club_minigames_data.dart';
+import '../data/happenstance_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -146,6 +148,17 @@ mixin GamePlayMixin on GameProviderBase {
   void useItem(String name) {
     final p = player;
     if (p == null) return;
+    // 魔药部酿造药水兜底：酿造产出不进 kItemCatalog（商店买不到红线），
+    // 这里按配方 effectKey/effectValue 直接生效，复用 /使用 药水链路。
+    final recipe = potionRecipeByProduct(name);
+    if (recipe != null) {
+      final buf = StringBuffer('【使用 · $name】\n');
+      buf.writeln('你拧开瓶塞，把这瓶魔药一饮而尽。温热的药力顺着喉咙蔓延开。');
+      _applyEffects(p, {recipe.effectKey: recipe.effectValue}, buf);
+      _removeItem(name);
+      _finishLocal(buf.toString());
+      return;
+    }
     final def = itemDefByName(name);
     if (def == null || !def.usable) {
       _finishLocal('「$name」无法使用。\n\n${formatItemUseHelp()}');
@@ -928,7 +941,10 @@ mixin GamePlayMixin on GameProviderBase {
         p.qSkill +
         ((_attr('flying') - 50) ~/ 3) +
         ((_attr('reaction_time') - 50) ~/ 5) +
-        (itemDefByName(broom)?.statBonus['flying'] ?? 0);
+        (itemDefByName(broom)?.statBonus['flying'] ?? 0) +
+        // 本周训练加成：每次训练 +3 实力（上限 2 次 → +6），
+        // 兑现 docs/魁地奇队训练设计.md 的「训练→比赛联动」闭环（16b/16k 遗留断点）
+        p.qTrainWeek * 3;
     final opponents = kHouseNames;
     final myHouseCn = houseDisplayName(p.house, fallback: '对手');
     // 修复：对手池必须排除自己学院，避免"格兰芬多 对 格兰芬多"的荒谬叙事
@@ -1171,7 +1187,21 @@ mixin GamePlayMixin on GameProviderBase {
         this.updateNpcAffection(opponent.id, 2, reason: '决斗获胜');
         _maybeRivalFromDuel(opponent, margin: myScore - oppScore);
       }
-      buf.writeln('\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
+      buf.writeln('\\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
+      // 决斗社季度赛（框架2）：胜利 +10 赛季积分（连胜第 2 场起 +2 加成，上限 +18），
+      // 赛季积分与 clubPoints 独立存储、互不转换——季度赛是专属玩法。
+      // 赛季重置判定在面板/领奖时统一做（见 showDuelSeasonPanel）。
+      if (p.duelSeasonTerm != _currentDuelSeason) {
+        p.duelSeasonTerm = _currentDuelSeason;
+        p.duelSeasonPoints = 0;
+        p.duelSeasonWins = 0;
+        p.duelSeasonClaimedTier = 0;
+      }
+      final seasonWinPoints = 10 + (p.duelSeasonWins >= 1 ? 2 : 0);
+      p.duelSeasonPoints += seasonWinPoints;
+      p.duelSeasonWins += 1;
+      p.duelSeasonWinsTotal += 1;
+      buf.writeln('赛季积分 +$seasonWinPoints（当前 ${p.duelSeasonPoints}）');
       buf.writeln(
         '胜利：战斗声望 +$repGain · 道德声望 +2 · 学院杯 +${(10 * decay).round().clamp(1, 10)} · 赌注 $reward 加隆',
       );
@@ -1183,7 +1213,15 @@ mixin GamePlayMixin on GameProviderBase {
       p.health = (p.health - 12 - random.nextInt(14)).clamp(0, 100);
       _pendingDeathCause = '决斗落败，伤势过重';
       p.playerReputation.add('combat', 2 + random.nextInt(3));
-      buf.writeln('\n你被${opponent.name}的咒语击中，好在只是擦伤。对方收杖向你点了点头。');
+      // 决斗社季度赛：落败 +2 参与分（鼓励继续打，不鼓励刷——有每日上限兜底）
+      if (p.duelSeasonTerm != _currentDuelSeason) {
+        p.duelSeasonTerm = _currentDuelSeason;
+        p.duelSeasonPoints = 0;
+        p.duelSeasonWins = 0;
+        p.duelSeasonClaimedTier = 0;
+      }
+      p.duelSeasonPoints += 2;
+      buf.writeln('赛季积分 +2（当前 ${p.duelSeasonPoints}）');
       buf.writeln('落败：战斗声望 +2~4 · 你受了些轻伤（生命 ${p.health}/100）');
     }
     _finishLocal(buf.toString());
@@ -1198,19 +1236,359 @@ mixin GamePlayMixin on GameProviderBase {
     final day = worldState.time.absoluteDayIndex;
     // 已经有仇的不再叠加：一场胜利不该直接把人顶到死敌
     if (opponent.rivalryTier(day) != RivalryTier.none) return;
-
     // 本来就不待见你的人更容易记仇；输得太难看也更难咽下
     var chance = opponent.affection < 20 ? 0.55 : 0.3;
     if (margin > 25) chance += 0.15;
     if (random.nextDouble() > chance) return;
-
     opponent.addGrudge(causeKeyFor(RivalryCause.outshone), '你在决斗里当众赢了他', day);
     opponent.tickRivalry(day);
     final line = '🙄 ${opponent.name}输得不太好看，这事儿他记住了';
     notifications.add(line);
     worldState.addNarrativeEvent(line, turn: turnCount);
   }
-
+  // ==================== 决斗社 · 季度赛（框架2 新增） ====================
+  /// 当前赛季标识：'first-1991-1992' / 'second-1991-1992' / 'summer-1992-1993'。
+  String get _currentDuelSeason => '${worldState.term}-${worldState.academicYear}';
+  /// /决斗 赛季 面板：查看本赛季积分/胜场/档位 + 领奖。
+  void showDuelSeasonPanel() {
+    final p = player;
+    if (p == null) return;
+    // 赛季重置判定：duelSeasonTerm 与当前赛季不符 → 清空本赛季数据（保留累计胜场）
+    if (p.duelSeasonTerm != _currentDuelSeason) {
+      p.duelSeasonTerm = _currentDuelSeason;
+      p.duelSeasonPoints = 0;
+      p.duelSeasonWins = 0;
+      p.duelSeasonClaimedTier = 0;
+    }
+    final seasonLabel = p.duelSeasonTerm.startsWith('first')
+        ? '秋季赛'
+        : p.duelSeasonTerm.startsWith('second')
+            ? '春季赛'
+            : '暑期赛';
+    final buf = StringBuffer('【决斗社 · $seasonLabel】\n');
+    buf.writeln('赛季：${p.duelSeasonTerm}');
+    buf.writeln('赛季积分：${p.duelSeasonPoints} · 本赛季胜场：${p.duelSeasonWins}');
+    buf.writeln('累计总胜场：${p.duelSeasonWinsTotal}（跨赛季保留）');
+    buf.writeln('\n档位奖励（达标即可领，跳档只补差额）：');
+    const tiers = [
+      (points: 40, label: '新锐'),
+      (points: 90, label: '精英'),
+      (points: 150, label: '冠军'),
+    ];
+    for (final t in tiers) {
+      final claimed = p.duelSeasonClaimedTier >= t.points;
+      final unlocked = p.duelSeasonPoints >= t.points;
+      buf.writeln(
+        '· ${t.label}（${t.points} 分）'
+        '${unlocked ? (claimed ? ' — 已领取 ✅' : ' — 可领取！输入 /决斗 赛季 领奖') : ''}',
+      );
+    }
+    if (p.duelSeasonPoints >= 150 && p.duelSeasonClaimedTier < 150) {
+      buf.writeln('\n输入 /决斗 赛季 领奖 领取当前最高档位奖励。');
+    }
+    _finishLocal(buf.toString());
+  }
+  /// /决斗 赛季 领奖：按当前积分领取最高可领档位（跳档只补差额）。
+  void claimDuelSeasonReward() {
+    final p = player;
+    if (p == null) return;
+    if (p.duelSeasonTerm != _currentDuelSeason) {
+      p.duelSeasonTerm = _currentDuelSeason;
+      p.duelSeasonPoints = 0;
+      p.duelSeasonWins = 0;
+      p.duelSeasonClaimedTier = 0;
+    }
+    const tiers = [
+      (points: 40, label: '新锐', club: 30, attr: 'reaction_time', attrGain: 3, cup: 2, rep: 0),
+      (points: 90, label: '精英', club: 50, attr: 'courage', attrGain: 5, cup: 4, rep: 1),
+      (points: 150, label: '冠军', club: 80, attr: 'spell_understanding', attrGain: 6, cup: 6, rep: 2),
+    ];
+    // 找最高可领且未领的档位
+    int? claimIdx;
+    for (var i = tiers.length - 1; i >= 0; i--) {
+      if (p.duelSeasonPoints >= tiers[i].points &&
+          p.duelSeasonClaimedTier < tiers[i].points) {
+        claimIdx = i;
+        break;
+      }
+    }
+    if (claimIdx == null) {
+      _finishLocal('【决斗社赛季】目前没有可领取的新档位。继续赢得决斗累积赛季积分吧！');
+      return;
+    }
+    final t = tiers[claimIdx];
+    p.duelSeasonClaimedTier = t.points;
+    p.clubPoints += t.club;
+    final attrNow = (_attr(t.attr) + t.attrGain).clamp(0, 100);
+    p.attributes[t.attr] = attrNow;
+    addHouseCupPoints(t.cup, '决斗社·$seasonLabelOf(p.duelSeasonTerm)');
+    if (t.rep > 0) p.playerReputation.add('combat', t.rep);
+    if (t.label == '冠军') {
+      p.collection.add('duel_season_champion'); // 收藏品「决斗赛季冠军」
+    }
+    final buf = StringBuffer('【决斗社赛季 · 领奖】\n');
+    buf.writeln('你领取了「${t.label}」档位奖励！');
+    buf.writeln('· 社团积分 +${t.club}（当前 ${p.clubPoints}）');
+    buf.writeln('· ${t.attr} +${t.attrGain}');
+    buf.writeln('· 学院杯 +${t.cup}');
+    if (t.rep > 0) buf.writeln('· 战斗声望 +${t.rep}');
+    if (t.label == '冠军') buf.writeln('· 收藏品「决斗赛季冠军」已入册');
+    if (p.duelSeasonClaimedTier < 150 && p.duelSeasonPoints >= 150) {
+      buf.writeln('\n你已达标「冠军」档，输入 /决斗 赛季 领奖 可继续领取。');
+    }
+    _finishLocal(buf.toString());
+  }
+  /// 赛季中文名（'first' → 秋季赛 …）。
+  String seasonLabelOf(String term) {
+    if (term.startsWith('first')) return '秋季赛';
+    if (term.startsWith('second')) return '春季赛';
+    return '暑期赛';
+  }
+  // ==================== 魔药部 · 限时配方（框架2 新增） ====================
+  /// 当前限时窗口（按世界月份判定，无则 null）。
+  PotionWindow? _currentPotionWindow() => potionWindowForMonth(worldState.time.month);
+  /// /魔药 配方：查看当前窗口可用配方（含材料消耗）。
+  void showPotionRecipes() {
+    final p = player;
+    if (p == null) return;
+    final win = _currentPotionWindow();
+    if (win == null) {
+      _finishLocal('【魔药部 · 配方】\n本月（${worldState.time.month}月）没有限时配方窗口。'
+          '\n窗口期：开学季（9月）/ 圣诞季（12月）/ 冲刺季（5月）。'
+          '\n\n窗口开启时输入 /魔药 配方 查看当期配方，/魔药 酿造 <配方id> 开始酿造。');
+      return;
+    }
+    final list = potionRecipesInWindow(kPotionWindows.indexOf(win));
+    if (list.isEmpty) {
+      _finishLocal('【魔药部 · 配方】\n「${win.name}」（${win.month}月）窗口暂无配方。');
+      return;
+    }
+    final buf = StringBuffer('【魔药部 · ${win.name}配方】\n');
+    buf.writeln('本月是 ${win.name}（${win.month}月），以下配方限时开放：\n');
+    for (final r in list) {
+      final mats = r.materials.entries.map((e) => '${e.key}×${e.value}').join(' + ');
+      buf.writeln('· ${r.id}｜${r.name} → ${r.productName}');
+      buf.writeln('  材料：$mats｜10 精力｜30 分钟');
+    }
+    buf.writeln('\n输入 /魔药 酿造 <配方id> 开始酿造（成功率与魔药学熟练度相关）。');
+    buf.writeln('酿造产出为一次性药水，进背包后用 /使用 生效，商店买不到。');
+    _finishLocal(buf.toString());
+  }
+  /// 魔药学熟练度对应的酿造成功率分档（设计 3.4）。
+  int _brewSuccessRate(int potions) {
+    if (potions >= 70) return 90;
+    if (potions >= 50) return 75;
+    return 60;
+  }
+  /// /魔药 酿造 <配方id>：消耗材料 + 10 精力 + 30 分钟，按成功率判定产出。
+  void brewPotion(String recipeId) {
+    final p = player;
+    if (p == null) return;
+    final win = _currentPotionWindow();
+    if (win == null) {
+      _finishLocal('【魔药部】本月没有限时配方窗口，坩埚闲着也是闲着，等窗口期再来吧。');
+      return;
+    }
+    PotionRecipeDef? recipe;
+    for (final r in kPotionRecipes) {
+      if (r.id == recipeId && r.windowIndex == kPotionWindows.indexOf(win)) {
+        recipe = r;
+        break;
+      }
+    }
+    if (recipe == null) {
+      showPotionRecipes();
+      return;
+    }
+    // 材料检查
+    for (final e in recipe.materials.entries) {
+      if (!_hasItem(e.key)) {
+        _finishLocal('【魔药部 · 酿造】\n材料不足：还缺「${e.key}」×${e.value}。\n'
+            '去禁林采集（材料只能禁林获取），凑齐材料再来。');
+        return;
+      }
+    }
+    if (p.energy < 10) {
+      _finishLocal('你的精力所剩无几（${p.energy}/100），坩埚都端不稳，先休息吧。');
+      return;
+    }
+    // 扣材料、扣精力、推进 30 分钟
+    for (final e in recipe.materials.entries) {
+      for (var i = 0; i < e.value; i++) {
+        _removeItem(e.key);
+      }
+    }
+    p.energy = (p.energy - 10).clamp(0, 100);
+    advanceTimeForAction('魔药酿造');
+    // 成功率判定
+    final rate = _brewSuccessRate(_attr('potions'));
+    final success = random.nextInt(100) < rate;
+    final buf = StringBuffer('【魔药部 · 酿造 ${recipe.name}】\n');
+    if (success) {
+      _addItem(recipe.productName, type: '药水',
+          desc: '魔药部限时配方「${recipe.name}」酿造产出，/使用 生效，商店买不到。');
+      p.potionBrewCounts[recipe.id] = (p.potionBrewCounts[recipe.id] ?? 0) + 1;
+      p.potionBrewed.add(recipe.id);
+      buf.writeln('你把材料依次投入沸腾的坩埚，火候拿捏得恰到好处。');
+      buf.writeln('药液由浑浊渐渐变得澄澈——${recipe.productName} 酿成了！');
+      buf.writeln('\n· 产出「${recipe.productName}」已放入背包（/使用 生效）');
+      buf.writeln('· 该配方累计酿造 ${p.potionBrewCounts[recipe.id]} 次');
+    } else {
+      p.potionBrewCounts[recipe.id] = (p.potionBrewCounts[recipe.id] ?? 0) + 1;
+      buf.writeln('药液在最后一刻泛起可疑的泡沫，颜色也偏了。');
+      buf.writeln('这一锅失败了——材料搭进去了，但你对火候的理解又深了一分。');
+      buf.writeln('\n· 魔药学经验 +5（失败也有收获）');
+      p.attributes['potions'] = ((p.attributes['potions'] ?? 50) + 5).clamp(0, 100);
+    }
+    buf.writeln('\n（消耗 10 精力，推进 30 分钟）');
+    _finishLocal(buf.toString());
+  }
+  // ==================== 魁地奇队 · 训练（框架2 新增） ====================
+  /// 周重置判定：本周（gameWeek）首次训练时清零 qTrainWeek 计数。
+  void _ensureTrainWeekReset() {
+    final p = player;
+    if (p == null) return;
+    if (p.qTrainLastWeek != gameWeek) {
+      p.qTrainLastWeek = gameWeek;
+      p.qTrainWeek = 0;
+    }
+  }
+  /// /魁地奇 训练：位置专项训练，每周上限 2 次。
+  void trainQuidditch() {
+    final p = player;
+    if (p == null) return;
+    _ensureTrainWeekReset();
+    if (p.qTrainWeek >= 2) {
+      _finishLocal('本周你已经训练 2 次了（${p.qTrainWeek}/2）。'
+          '教练说贪多嚼不烂，下周再来吧。');
+      return;
+    }
+    if (p.energy < 10) {
+      _finishLocal('你的精力所剩无几（${p.energy}/100），扫帚都握不太稳，先休息吧。');
+      return;
+    }
+    final pos = p.qPosition;
+    final moments = kQuidditchTrainMoments[pos];
+    if (moments == null || moments.isEmpty) {
+      _finishLocal('【魁地奇训练】当前没有「$pos」的训练项目，先 /魁地奇 位置 换个位置吧。');
+      return;
+    }
+    p.energy = (p.energy - 10).clamp(0, 100);
+    advanceTimeForAction('魁地奇训练');
+    p.qTrainWeek++;
+    p.qTrainTotal++;
+    p.qSkill = (p.qSkill + 1).clamp(0, 100);
+    final attrKey = quidditchTrainAttrOf(pos);
+    p.attributes[attrKey] = ((p.attributes[attrKey] ?? 50) + 1).clamp(0, 100);
+    final moment = moments[random.nextInt(moments.length)].text;
+    final buf = StringBuffer('【魁地奇 · 位置训练 · $pos】\n');
+    buf.writeln(moment);
+    buf.writeln('\n· 魁地奇技巧 +1（${p.qSkill}/100）');
+    buf.writeln('· ${_attrLabelZh(attrKey)} +1（${p.attributes[attrKey]}/100）');
+    buf.writeln('· 本周训练 ${p.qTrainWeek}/2 次（每次为本周比赛 +3 实力，可叠加）');
+    buf.writeln('· 累计训练 ${p.qTrainTotal} 次');
+    if (p.qTrainTotal >= 10 && !p.collection.contains('training_master')) {
+      unlockAchievement('training_master');
+      buf.writeln('\n🏆 成就解锁：训练大师（累计训练 10 次）！');
+    }
+    _finishLocal(buf.toString());
+  }
+  // ==================== 快讯社 · 头版事件（框架2 新增） ====================
+  /// 当前学期内已完成奇遇（happenstanceLog 中 term 匹配当前学期）。
+  List<HappenstanceLogEntry> _headlineCandidates() {
+    final p = player;
+    if (p == null) return const [];
+    return p.happenstanceLog
+        .where((e) => e.term == worldState.term)
+        .toList();
+  }
+  /// /快讯 头版：查看本学期可报道的候选素材。
+  void showHeadlineBoard() {
+    final p = player;
+    if (p == null) return;
+    final cands = _headlineCandidates();
+    final buf = StringBuffer('【快讯社 · 头版选题】\n');
+    buf.writeln('学期：${_seasonLabelOfTerm(worldState.term)}');
+    if (cands.isEmpty) {
+      buf.writeln('\n本学期还没有可报道的奇遇经历。');
+      buf.writeln('多在城堡里走走、触发并完成奇遇，学期末它们会成为头版素材。');
+      buf.writeln('（本学期已报道 ${p.headlineCount} 次）');
+      _finishLocal(buf.toString());
+      return;
+    }
+    buf.writeln('\n可选素材（来自你本学期的真实经历）：\n');
+    for (var i = 0; i < cands.length; i++) {
+      final c = cands[i];
+      buf.writeln('· ${i + 1}.「${c.title}」');
+      buf.writeln('  结局：${c.outcomeTitle}｜${c.outcomeText}');
+    }
+    buf.writeln('\n输入 /快讯 报道 <序号> <角度> 完成报道。');
+    buf.writeln('角度：现场直击 / 深度调查 / 人情故事');
+    if (p.headlineSeason == worldState.academicYear.hashCode) {
+      buf.writeln('\n（本学年已报道过，学期末才有下一次头版机会。）');
+    }
+    _finishLocal(buf.toString());
+  }
+  /// /快讯 报道 <序号> <角度>：选定素材 + 角度结算效果。
+  void reportHeadline(int index, String angle) {
+    final p = player;
+    if (p == null) return;
+    final cands = _headlineCandidates();
+    if (cands.isEmpty) {
+      _finishLocal('【快讯社】本学期还没有可报道的素材。先触发并完成一场奇遇吧。');
+      return;
+    }
+    if (index < 0 || index >= cands.length) {
+      showHeadlineBoard();
+      return;
+    }
+    if (p.headlineSeason == worldState.academicYear.hashCode) {
+      _finishLocal('【快讯社】本学年你已经发过一次头版了，等下一学期再抢头条吧。');
+      return;
+    }
+    final cand = cands[index];
+    const angles = ['现场直击', '深度调查', '人情故事'];
+    if (!angles.contains(angle)) {
+      _finishLocal('【快讯社】报道角度可选：现场直击 / 深度调查 / 人情故事。');
+      return;
+    }
+    // 赛季结算（设计 3.4）：按角度给不同奖励
+    p.headlineSeason = worldState.academicYear.hashCode;
+    p.headlineCount++;
+    final buf = StringBuffer('【快讯社 · 头版报道】\n');
+    buf.writeln('你伏在案前，把「${cand.title}」写成一份头版报道。');
+    switch (angle) {
+      case '现场直击':
+        p.clubPoints += 20;
+        p.attributes['social'] = ((p.attributes['social'] ?? 50) + 2).clamp(0, 100);
+        buf.writeln('\n· 现场直击：快讯社积分 +20，社交 +2');
+        break;
+      case '深度调查':
+        p.clubPoints += 35;
+        p.attributes['logic'] = ((p.attributes['logic'] ?? 50) + 3).clamp(0, 100);
+        p.playerReputation.add('social', 3);
+        buf.writeln('\n· 深度调查：快讯社积分 +35，逻辑 +3，社交声望 +3');
+        break;
+      case '人情故事':
+        p.clubPoints += 35;
+        p.attributes['social'] = ((p.attributes['social'] ?? 50) + 3).clamp(0, 100);
+        p.playerReputation.add('social', 2);
+        buf.writeln('\n· 人情故事：快讯社积分 +35，社交 +3，社交声望 +2');
+        break;
+    }
+    buf.writeln('（累计头版报道 ${p.headlineCount} 次）');
+    if (p.headlineCount >= 1 && !p.collection.contains('headline_reporter')) {
+      unlockAchievement('headline_reporter');
+      buf.writeln('\n🏆 成就解锁：快讯记者（完成第一次头版报道）！');
+    }
+    _finishLocal(buf.toString());
+  }
+  /// 学期英文 key → 中文名。
+  String _seasonLabelOfTerm(String term) {
+    if (term == 'first') return '第一学期';
+    if (term == 'second') return '第二学期';
+    return '暑期';
+  }
   // ==================== 6. 禁林探险 ====================
 
   void exploreForbiddenForest() {

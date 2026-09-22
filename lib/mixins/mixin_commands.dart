@@ -873,15 +873,18 @@ mixin GameCommandsMixin on GameProviderBase {
       CommandDef(
         primary: '魁地奇',
         group: '玩法&活动',
-        helpText: '魁地奇：/魁地奇 比赛·/魁地奇 位置 <位置>',
+        helpText: '魁地奇：/魁地奇 比赛·/魁地奇 训练·/魁地奇 位置 <位置>',
         subs: [
           CommandSub('比赛', '参加魁地奇比赛'),
+          CommandSub('训练', '位置专项训练（每周2次，为比赛+实力）'),
           CommandSub('位置', '查看/更换场上位置', argHint: '位置'),
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
           if (ctx.parts.length >= 1 && ctx.arg(0) == '比赛') {
             m.playQuidditch();
+          } else if (ctx.parts.length >= 1 && ctx.arg(0) == '训练') {
+            m.trainQuidditch();
           } else if (ctx.parts.length >= 2 && ctx.arg(0) == '位置') {
             m.setQuidditchPosition(ctx.arg(1)!);
           } else {
@@ -892,13 +895,63 @@ mixin GameCommandsMixin on GameProviderBase {
         },
       ),
       CommandDef(
-        primary: '决斗',
+        primary: '魔药',
         group: '玩法&活动',
-        helpText: '与NPC巫师决斗：/决斗 [NPC名]（空参随机）',
+        helpText: '魔药部限时配方：/魔药 配方·/魔药 酿造 <配方id>',
+        subs: [
+          CommandSub('配方', '查看当前窗口配方'),
+          CommandSub('酿造', '酿造配方药水', argHint: '配方id'),
+        ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          final arg = ctx.parts.isNotEmpty ? ctx.tailFrom(0) : null;
-          m.duelNpc(arg);
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '配方') {
+            m.showPotionRecipes();
+          } else if (ctx.parts.length >= 2 && ctx.arg(0) == '酿造') {
+            m.brewPotion(ctx.arg(1)!);
+          } else {
+            m.showPotionRecipes();
+          }
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '快讯',
+        group: '玩法&活动',
+        helpText: '快讯社头版：/快讯 头版·/快讯 报道 <序号> <角度>',
+        subs: [
+          CommandSub('头版', '查看本学期可报道素材'),
+          CommandSub('报道', '选定素材报道', argHint: '序号 角度'),
+        ],
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '头版') {
+            m.showHeadlineBoard();
+          } else if (ctx.parts.length >= 3 && ctx.arg(0) == '报道') {
+            final idx = int.tryParse(ctx.arg(1) ?? '') ?? -1;
+            m.reportHeadline(idx - 1, ctx.arg(2)!);
+          } else {
+            m.showHeadlineBoard();
+          }
+          return true;
+        },
+      ),
+      CommandDef(
+        primary: '决斗',
+        group: '玩法&活动',
+        helpText: '与NPC巫师决斗：/决斗 [NPC名]（空参随机）·/决斗 赛季（赛季面板与领奖）',
+        subs: [CommandSub('赛季', '查看决斗赛季积分与档位奖励')],
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '赛季') {
+            if (ctx.parts.length >= 2 && ctx.arg(1) == '领奖') {
+              m.claimDuelSeasonReward();
+            } else {
+              m.showDuelSeasonPanel();
+            }
+          } else {
+            final arg = ctx.parts.isNotEmpty ? ctx.tailFrom(0) : null;
+            m.duelNpc(arg);
+          }
           return true;
         },
       ),
