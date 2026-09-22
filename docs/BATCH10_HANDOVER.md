@@ -1,5 +1,5 @@
 # 任务交接文档 - 当前 Batch 45 状态 + 历史回顾
-## 当前状态（HEAD: 6d0ed04，已全量 push，CI 全绿 run 35774061430 验证中）
+## 当前状态（HEAD: cf357d8，已全量 push，CI 全绿 run 35776821066）
 **Batch 45 · SenseNova 429 限流治理（✅ 已回退，保留叙事 maxTokens 放宽）：**
 - `c4626e7` `fix(batch45): SenseNova补每分钟限流治429 + 叙事maxTokens放宽防截断重试`：新增 lib/services/rate_limiter.dart（71 行）+ lib/mixins/mixin_init.dart 接入 + deepseek_service 每分钟限流；lib/mixins/mixin_systems.dart 叙事 maxTokens 放宽；test/batch45_sensenova_rpm_test.dart（67 行）→ CI run 628 ❌ failure
 - `c8689c2` `revert: 撤回SenseNova RPM限流 保留叙事maxTokens2000`：删除 rate_limiter.dart 全部 71 行 + mixin_init 接入行 + deepseek_service 限流 4 行 + batch45 测试 67 行；保留 mixin_systems 叙事 maxTokens 放宽 → CI run 629 ✅ success
@@ -71,6 +71,25 @@
 2. **Issue #14** ✅ **已完成**：文档纳入 CI 同步流程。新增 scripts/check_docs_version.sh（门禁）+ scripts/sync_docs_version.sh（同步）；android-build.yml 加门禁步骤 + Sync changelog 追加文档同步；漂移已修复（README/PROJECT_GUIDE → v5.1.3）。
 
 ### ⚪ Issue #4 压缩函数（建议跳过，见上）
+
+### ✅ AI 链路审查 15 批次（2026-09-22/23 完成，全部 CI 全绿）
+> 依据 docs/AI链路审查与优化交接.md（§6 执行表）。最终 HEAD `cf357d8`。
+> 详细执行状态见 docs/AI链路审查与优化交接.md「执行状态（2026-09-23 更新）」小节。
+
+| 批次 | commit | 内容 |
+|---|---|---|
+| S1 | `62449d1` | 流式输出（SSE + streamingPreview 独立字段 + 降级重试） |
+| S2+S3+S12 | `bedd7d3` | 减法三连：规则去重 + T3 40→15 + 选项端 T0 14→9 |
+| S4+S7 | `f5fd35a` | 睡眠语义两表对齐（120 分钟昼寝级）+ 魁地奇训练 30 分钟 |
+| S5 | `b62369a` | 奇遇结算写 happenstanceLog（上限 50，快讯社复活） |
+| S6+S13 | `1bb0a53` | 决斗跳档逐档补发 + 四社专项测试 9 用例 |
+| S8+S9+S10+S11 | `6d0ed04` | 赛季积分递减 + 银色鳞片进八眼巨蛛掉落 + 快讯学期口径 + 魁地奇周重置 |
+| S14 | `e3e8a14` | 文档同步：5 设计文档状态行 + README 命令表 + 台账批次 B/C + BATCH10 HEAD |
+| S15 标记 | `cf357d8` | **评估后搁置**（见 AI链路审查文档「执行状态」小节理由） |
+
+**S15 搁置结论**：合并叙事+选项调用涉及 generateChoicesSeparately（476 行），
+历史 BUG-H/BUG-L 复发风险高；S1 流式已解决反应慢主因；与减法优先方向相悖。
+若执行需单独一批充分测试。
 
 ## 工作流规则（必须遵守）
 1. **每批修复前先重新核实该问题确实存在**（grep 源码确认）
