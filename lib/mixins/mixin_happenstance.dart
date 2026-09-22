@@ -138,7 +138,20 @@ mixin GameHappenstanceMixin on GameProviderBase {
     index ??= h.outcomes.length ~/ 2; // 中性兜底：中间项
     final outcome = h.outcomes[index];
     _applyHappenstanceEffect(h, outcome);
-
+    // S5：奇遇完成即写入 happenstanceLog（此前全库只有 fromJson 会构造
+    // HappenstanceLogEntry，业务层从不写入 → 快讯社 _headlineCandidates()
+    // 永远空、奇遇完成记录丢失）。上限 50 条，超长截断最旧。
+    player?.happenstanceLog.add(HappenstanceLogEntry(
+      id: h.id,
+      title: h.title,
+      outcomeTitle: outcome.title,
+      outcomeText: fillHappenstanceText(outcome.text, house: houseDisplayName(player?.house ?? '', fallback: '霍格沃茨')),
+      week: gameWeek,
+      term: worldState.term,
+    ));
+    if ((player?.happenstanceLog.length ?? 0) > 50) {
+      player!.happenstanceLog.removeRange(0, player!.happenstanceLog.length - 50);
+    }
     worldState.pendingHappenstanceId = null;
 
     final house = houseDisplayName(player?.house ?? '', fallback: '霍格沃茨');

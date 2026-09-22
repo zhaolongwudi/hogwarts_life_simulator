@@ -221,6 +221,30 @@ void main() {
       expect(events.any((e) => e.text.contains('奇遇「窗玻璃上的名字」')), isTrue,
           reason: '奇遇结算后应写入人生回忆事件流');
     });
+    test('S5：结算后写入 happenstanceLog，快讯社候选可见', () async {
+      final gp = await makeEnabled();
+      gp.player!.grade = 5;
+      gp.worldState.currentLocation = '天文台';
+      gp.worldState.time.month = 12; // 冬季
+      gp.worldState.lastHappenstanceTurn = -100;
+      gp.triggerHappenstance(seed: 3);
+      expect(gp.player!.happenstanceLog, isEmpty,
+          reason: '结算前日志应为空');
+      gp.tryResolveHappenstanceChoice('奇遇:winter_frost_window:0', seed: 3);
+      expect(gp.player!.happenstanceLog, hasLength(1),
+          reason: '结算后应写入一条奇遇记录');
+      final entry = gp.player!.happenstanceLog.first;
+      expect(entry.id, 'winter_frost_window');
+      expect(entry.title, '窗玻璃上的名字');
+      expect(entry.outcomeTitle, isNotEmpty);
+      expect(entry.outcomeText, isNotEmpty);
+      expect(entry.term, gp.worldState.term);
+      expect(entry.week, gp.gameWeek);
+      // 快讯社头版应能看到这条奇遇（showHeadlineBoard 是公开入口）
+      gp.showHeadlineBoard();
+      expect(gp.currentNarrative, contains('窗玻璃上的名字'),
+          reason: '快讯社头版候选应包含刚完成的奇遇');
+    });
   });
 
   group('P10 · 离线回合接入', () {
