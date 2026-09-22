@@ -1,5 +1,13 @@
-# 任务交接文档 - Batch 44 完成 + 历史回顾
-## 当前状态（HEAD: 64452a5，已全量 push，CI 全绿 run 35645170252）
+# 任务交接文档 - 当前 Batch 45 状态 + 历史回顾
+## 当前状态（HEAD: c8689c2，已全量 push，CI 全绿 run 629）
+**Batch 45 · SenseNova 429 限流治理（✅ 已回退，保留叙事 maxTokens 放宽）：**
+- `c4626e7` `fix(batch45): SenseNova补每分钟限流治429 + 叙事maxTokens放宽防截断重试`：新增 lib/services/rate_limiter.dart（71 行）+ lib/mixins/mixin_init.dart 接入 + deepseek_service 每分钟限流；lib/mixins/mixin_systems.dart 叙事 maxTokens 放宽；test/batch45_sensenova_rpm_test.dart（67 行）→ CI run 628 ❌ failure
+- `c8689c2` `revert: 撤回SenseNova RPM限流 保留叙事maxTokens2000`：删除 rate_limiter.dart 全部 71 行 + mixin_init 接入行 + deepseek_service 限流 4 行 + batch45 测试 67 行；保留 mixin_systems 叙事 maxTokens 放宽 → CI run 629 ✅ success
+- **结论**：SenseNova 每分钟限流方案实测引发回归失败，已整体回退；只保留「叙事 maxTokens 放宽防截断」的正面收益。429 问题后续如需再治，改走「多 Key 轮换 + 熔断」而非新增限流器。
+
+---
+## 历史状态（Batch 44 完成 + Batch 11 回顾）
+## 历史 HEAD（Batch 44）：64452a5，CI 全绿 run 35645170252
 **Batch 44 · AI 配置重构（✅ 完成，CI 全绿）：**
 - 目标：参考 Operit 现有模型地址/模型名/多 Key 轮换方案，重构项目内 AI 配置与功能分配；Operit 的功能绑定（CHAT/SUMMARY 等）不参考（不同系统）。
 - `47ea14b` `feat(batch44): AI配置重构——多Key托底备用模型+商汤deepseek-v4-pro+设置页分区导航`：
@@ -115,3 +123,50 @@ bash pull.sh  # 拉取最新代码
 **交接人：** 当前对话
 **接收人：** 下一个对话
 **当前 HEAD：** `0999bf5`（fix(batch11): 测试预置四院榜单，CI run 35636420159 全绿）
+
+---
+
+## 📋 附录：长对话「无提示停止」极限测试计划（2026-09-22 起）
+
+> 本附录由测试专用对话维护，**禁止删除**；测试结束后保留观察结论，供后续对话参考。
+
+### 测试目标
+定位"对话无提示停止"的真实触发机制，判断能否回调上下文压缩设置。
+
+### 配置基线（测试前，2026-09-22 记录）
+- CHAT：summary_token_threshold=0.35 / summary_message_count_threshold=8 / context_length=48 / max_context_length=128（enable_max_context_mode=true）
+- 工作流 ed134977「自动交接巡检」：Input tokens > 500万 → 建新对话+停旧对话+通知；**定时触发已关**（测试期间保持关闭，仅场景4 临时开）
+- 注意：max_context_length 是从 512 降下来的（0.34 事件副作用），若停止发生在 ~128 水位优先怀疑 max_context_length 先触发
+
+### 场景设计
+1. 场景1 · 基线观测（20-30 轮）：正常推进，记录水位变化 🟡/🔴、AI 是否主动总结、总结后是否忘早期细节
+2. 场景2 · 长消息压缩观测：发 1 条 3000-5000 字长文本，观察是否立即触发总结；总结后追问早期细节验证丢内容程度
+3. 场景3 · 长对话极限测试（核心）：持续工作任务推进，每 10 轮记录一次，观察何时"无提示停止"
+4. 场景4 · 工作流联动（仅 3 没停时做）：开工作流逼近 500万，验证超限行为
+
+### 判定表
+- 停止时水位远低于 128 → 疑模型窗口/网络/Operit 限制，与 500万 无关
+- 停止时水位≈128 → max_context_length 先触发，工作流兜不住 → 需回调 128 或改判据
+- 停止时 Input tokens≈500万 → 工作流阈值触发，可放心回调压缩设置
+- 全程无停止 → 白天正常，保持现状即可
+
+### 回调建议（测完对照执行）
+- 压缩过频致丢内容 + 停止点=500万：0.35→0.5~0.6、message_count 8→12~16、context_length 48→128~192、max_context_length 128→256~512（分档回调）
+- max_context_length 128 先触发：优先回调 max_context_length，工作流阈值下调或改"按窗口比例"判据
+- 无停止：不动
+
+### 测试进度台账（每轮/每 10 轮更新）
+| 轮次 | 水位 | 是否总结 | 是否停止 | 停止前最后现象 | 备注 |
+|------|------|----------|----------|----------------|------|
+| 1 | ●○○○ | 否 | 否 | - | 测试计划写入本文档（防丢失锚点） |
+| 2-6 | ●○○○ | 否 | 否 | - | 场景1基线：同步交接文档头部至 Batch45 真实状态(c8689c2/run629 全绿)；确认 CI 公开 API 可查 |
+
+### 场景1观察速记（持续累积）
+- 已确认：交接文档头部过期（64452a5 → 实际 c8689c2），已修正
+- 已确认：Batch45 限流方案 c4626e7 引发 CI failure(run 628)，已 revert 至 c8689c2(run 629 全绿)，仅保留叙事 maxTokens 放宽
+- 已确认：GitHub Actions CI 可走公开 API 查询（无需 token），run_number 629 为最新全绿
+
+### 测试安全规则
+- 🔴 时准备手动开新对话兜底
+- 工作流仅在场景4 临时开启，测完恢复关闭
+- 测试期间重要结论随时回写本附录
