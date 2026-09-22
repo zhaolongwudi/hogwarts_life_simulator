@@ -26,6 +26,7 @@ class _GateTimeoutService extends DeepSeekService {
     double temperature = 0.8,
     int maxTokens = 4096,
     CancelToken? cancelToken,
+    AiStreamCallback? onDelta,
   }) async {
     throw AiGateTimeoutException('Agnes(xxx) 本地限流等待超时（30秒），跳过该 Key');
   }

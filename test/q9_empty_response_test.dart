@@ -113,6 +113,7 @@ class _EmptyDegradeService extends DeepSeekService {
     double temperature = 0.8,
     int maxTokens = 4096,
     CancelToken? cancelToken,
+    AiStreamCallback? onDelta,
   }) async {
     throw AiEmptyResponseException(
         config.provider.name, config.model, '连续空响应');
@@ -135,6 +136,7 @@ class _OkService extends DeepSeekService {
     double temperature = 0.8,
     int maxTokens = 4096,
     CancelToken? cancelToken,
+    AiStreamCallback? onDelta,
   }) async {
     return ChatResult(
       content: '备用叙事内容',

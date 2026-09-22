@@ -1855,6 +1855,8 @@ class _NarrativeTabState extends State<NarrativeTab> {
 /// （`TickerMode`），不会在后台白烧帧。repeat(reverse: true) 让明暗平滑过渡，
 /// 比硬切换更不刺眼。
 class _StreamingCaret extends StatefulWidget {
+  const _StreamingCaret();
+
   @override
   State<_StreamingCaret> createState() => _StreamingCaretState();
 }

@@ -394,6 +394,7 @@ abstract class GameProviderBase extends ChangeNotifier
   Future<ChatResult> callDeepSeek(
     String prompt, {
     AiScene scene = AiScene.narrative,
+    bool stream = false,
   });
   void checkAffectionAchievements(NPC npc);
   CgDef? cgById(String id);

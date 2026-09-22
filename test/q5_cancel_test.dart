@@ -116,6 +116,7 @@ class _BlockingService extends DeepSeekService {
     double temperature = 0.8,
     int maxTokens = 4096,
     CancelToken? cancelToken,
+    AiStreamCallback? onDelta,
   }) {
     final completer = Completer<ChatResult>();
     _pendings.add(completer);
