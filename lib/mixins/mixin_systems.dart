@@ -2377,17 +2377,28 @@ mixin GameSystemsMixin on GameProviderBase {
       p.satiety = min(100, p.satiety + 30);
       p.energy = min(100, p.energy + 5); // 吃饭也恢复少量精力
     }
+    // S4：睡眠语义与时间表（time_cost_rules）对齐。原表 9 个词里
+    // 「放松」「回房」不是睡眠动作，却在 30 分钟档（时间表不认它们）
+    // 给满额 +50 精力——「放松一下」「回房拿东西」都能无限刷。
+    // 现在满额组只保留真正的睡眠/休息语义（与时间表 120 分钟档一致），
+    // 「放松」降为小恢复（散步级）。「回房」单独出现不恢复。
     if (action.contains('睡觉') ||
         action.contains('休息') ||
         action.contains('睡') ||
         action.contains('歇') ||
         action.contains('躺') ||
-        action.contains('养') ||
-        action.contains('放松') ||
-        action.contains('回房') ||
+        action.contains('疗养') ||
+        action.contains('休养') ||
+        action.contains('养神') ||
+        action.contains('小憩') ||
+        action.contains('打盹') ||
+        action.contains('躺下') ||
+        action.contains('回房睡') ||
+        action.contains('歇一会') ||
+        action.contains('闭目养神') ||
         action.contains('回宿舍') ||
-        action.contains('睡觉') ||
-        action.contains('小憩')) {
+        action.contains('就寝') ||
+        action.contains('睡大觉')) {
       p.energy = min(100, p.energy + 50); // 从40提升到50
       p.spirit = min(100, p.spirit + 30); // 从20提升到30
       p.satiety = min(100, p.satiety + 5);

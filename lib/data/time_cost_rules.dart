@@ -20,9 +20,19 @@ class TimeCostRule {
 
 const List<TimeCostRule> timeCostRules = [
   // ====== 高优先级（长尾/特殊行为，先匹配以防被通用项先吃掉）======
+  // S4：睡觉语义统一。原表只有「睡觉/休息/就寝」，而精力恢复表
+  // （mixin_systems.updateNPCsFromAction）认 睡/歇/躺/养/小憩/回宿舍 等，
+  // 玩家说「回宿舍躺下」→ 恢复 +50 却只扣 30 分钟，一天无限刷。
+  // 这里把「睡眠系」统一到 120 分钟（昼寝/午休级，非整夜 480）：
+  // 恢复满额就该花 2 小时，堵住高频刷。480 分钟的整夜留给「就寝/睡大觉」。
   TimeCostRule(
-    patterns: ['睡觉', '休息', '就寝'],
+    patterns: ['睡大觉', '就寝'],
     minutes: 480,
+    priority: 110,
+  ),
+  TimeCostRule(
+    patterns: ['睡觉', '睡', '休息', '小憩', '打盹', '躺下', '回房睡', '歇一会', '闭目养神', '回宿舍', '躺', '歇', '疗养', '休养', '养神'],
+    minutes: 120,
     priority: 100,
   ),
   TimeCostRule(
@@ -42,6 +52,17 @@ const List<TimeCostRule> timeCostRules = [
     patterns: ['决斗'],
     minutes: 60,
     priority: 95,
+  ),
+  // S7：魁地奇训练 120 → 30 分钟（设计文档 `docs/魁地奇队训练设计.md:51`
+  // 承诺「消耗 10 精力 + 30 分钟」）。注意不能直接改下面那条通用
+  // ['魁地奇','训练'] 规则——`playQuidditch()` 的「魁地奇比赛」也命中它，
+  // 比赛一场 120 分钟是合理的；且通用规则是 any 语义（含「训练」即命中），
+  // 在这里放裸「训练」会把所有训练类动作降到 30，超出 S7 授权范围。
+  // 因此只收窄到「魁地奇训练」与「训练赛」两个明确训练动作。
+  TimeCostRule(
+    patterns: ['魁地奇训练', '训练赛'],
+    minutes: 30,
+    priority: 80,
   ),
 
   // ====== 中优先级（明确动作）======
