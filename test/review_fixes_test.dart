@@ -247,9 +247,9 @@ void main() {
           reason: 'README 写 33 张 CG，实际应为 33（6+6+6+3+3+6+3）');
     });
 
-    test('成就总数与 README 一致（33）', () {
-      expect(achievementCatalog.length, 33,
-          reason: 'README 写 33 项成就，实际应为 33');
+    test('成就总数与 README 一致（35）', () {
+      expect(achievementCatalog.length, 35,
+          reason: 'README 写 35 项成就，实际应为 35（33 原有 + 训练大师/快讯记者）');
     });
 
     test('README 岗位列表与 jobCatalog 一致（神奇动物照看员，无圣芒戈护工）', () {
@@ -263,8 +263,8 @@ void main() {
 
     test('README 文本里写的数字与数据表一致', () {
       final readme = File('README.md').readAsStringSync();
-      // 成就与 CG 均为 33，且岗位文案用「神奇动物照看员」
-      expect(readme, contains('33 项成就'));
+      // 成就 35（批次C 增训练大师/快讯记者）、CG 仍 33，岗位文案用「神奇动物照看员」
+      expect(readme, contains('35 项成就'));
       expect(readme, contains('33 张 CG'));
       expect(readme, contains('神奇动物照看员'));
       expect(readme, isNot(contains('28 项成就')));
