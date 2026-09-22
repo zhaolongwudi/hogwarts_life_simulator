@@ -225,6 +225,69 @@
   与全库金/中性色板不一致、属历史主题残留；因其成体系、一次性收敛会大范围改变观感，
   需先在本台账更新边界说明再小步替换（对应日志「下一步方向 1」）。
 
+---
+
+## 四·附·H：蓝紫旧子主题收敛边界与映射（2026-09-22 更新）
+
+> 承接「四·附·F 已知残留」，补全边界说明，作为小步替换的依据。
+
+### 背景与判定
+- `game_play_screens.dart`（委托板/装备栏/社交面板）与 `settings_body.dart`（设置页下半区）
+  沿用了早期"蓝紫深浅子主题"：`0xFF1A1A2E` 深底（渐变至 `0xFF0D0D1A`）、
+  `0xFF8A8AAA`（次级文字）、`0xFF3A3A5C`/`0xFF2A2A4A`（卡片/填充）、
+  `0xFF5A5A7A`/`0xFFB0B0C8`/`0xFF6A6A8A`（图标/三级文字/徽章）。
+- 与全库金/中性液态玻璃基调不一致，但**自成体系**（背景-卡片-文字三级自洽），
+  机械收编到 Miui 语义 token 会整体改变观感 → 需**小步分批替换**，每批跑 analyze + test。
+
+### 收敛映射（仅对「与全局语义同类」的裸色生效）
+| 旧裸色 | 语义 | → MiuiColors 权威 token |
+|---|---|---|
+| `0xFF1A1A2E`（深底） | 卡片/面板背景 | `surfaceContainer`（或页面主题容器，视上下文） |
+| `0xFF0D0D1A`（渐变底） | 渐变深底 | `background` / `surfaceContainerHigh` |
+| `0xFF8A8AAA` | 次级文字 | `onSurfaceSecondary` |
+| `0xFFB0B0C8` | 次级文字偏亮 | `onSurfaceSecondary` |
+| `0xFF5A5A7A` | 图标/占位 | `onSurfaceVariantSummary`（占位/图标语义，56% 白；无独立 onSurfaceVariant token） |
+| `0xFF6A6A8A` | 三级文字/徽章 | `onSurfaceVariantSummary` |
+| `0xFF3A3A5C`（描边） | 卡片描边 | `outline` |
+| `0xFF2A2A4A`（填充） | 选中/填充底 | `surfaceContainerHighest` |
+
+### 替换边界（重要）
+1. **只替换"语义同类"裸色**：危险红/成功绿/金系/文字灰阶/画布背景等与全局语义可对应的；
+   **不替换**页面级专属强调色（如具体面板的自洽主题强调、品牌色、数据系列色）。
+2. **每批小步**：建议按「一个文件 → 一个语义族」推进（如先 `0xFF8A8AAA→onSurfaceSecondary`），
+   避免一次性大范围观感突变。
+3. **行为不变**：只改颜色字面量，不动布局/回调/方法名；改动后跑 `flutter analyze`（0 error）
+   与 `flutter test`（全绿）。
+4. **回归红线**：涉及源码扫描测试断言的方法/结构不更名。
+
+### 进度（持续累积）
+- 2026-09-22：边界与映射落盘（本段落），待分批执行。第一批建议从 `settings_body.dart` 的
+  `0xFF8A8AAA`（次级文字，语义最明确）开始。
+- 2026-09-22：**第一批执行完成**——`settings_body.dart` 全量 11 处 `0xFF8A8AAA` →
+  `MiuiColors.onSurfaceSecondary`（次级文字语义，文件已 import miuix_tokens.dart）。
+  待 CI（flutter analyze + test）验证；继续下一语义族（0xFF1A1A2E 底 / 0xFF3A3A5C 描边）时
+  沿用本映射表。注意 `0xFF5A5A7A` 映射到 `onSurfaceVariantSummary`（无独立 onSurfaceVariant token，
+  已修正映射表）。
+- 2026-09-22：**第二批执行完成**——`game_play_screens.dart` 次级文字 9 处
+  （`0xFF8A8AAA`×6 + `0xFFB0B0C8`×3）→ `MiuiColors.onSurfaceSecondary`。
+- 2026-09-22：**第三批执行完成**——图标/占位/弱化灰阶收编：`game_play_screens.dart` 的
+  `0xFF5A5A7A`×8 与 `0xFF6A6A8A`×2、`settings_body.dart` 的 `0xFF5A5A7A`×1 与 `0xFF6A6A8A`×1
+  全部 → `MiuiColors.onSurfaceVariantSummary`（56% 白）。
+- **状态**：文字/图标灰阶族已全部收编（12 处 8A8AAA + 3 处 B0B0C8 + 9 处 5A5A7A + 3 处 6A6A8A）。
+  剩余**背景/描边/填充族**（`0xFF1A1A2E` 底 / `0xFF0D0D1A` 渐变 / `0xFF3A3A5C` 描边 /
+  `0xFF2A2A4A` 填充）观感影响大，留待下一批单独处理（建议从描边 3A3A5C→outline 开始，风险最低）。
+- 2026-09-22：**第四批执行完成**——描边族：`game_play_screens.dart`×6 + `settings_body.dart`×5
+  的 `0xFF3A3A5C`（带 alpha 0.4/0.3 保留）→ `MiuiColors.outline.withValues(alpha: ...)`；
+  Divider 1 处 → `outline`。
+- 2026-09-22：**第五批执行完成**——填充族：两文件 `0xFF2A2A4A`×5（含 Divider、alpha 0.6 保留）
+  → `MiuiColors.surfaceContainerHighest`。
+- 2026-09-22：**第六批执行完成**——背景族：两文件 `0xFF1A1A2E`×18（含渐变起点 3 处）→
+  `MiuiColors.surfaceContainer`（保留 alpha 0.95~0.45）；渐变深底 `0xFF0D0D1A`×3 → `MiuiColors.background`。
+- **✅ 蓝紫旧子主题全族收编完成**（2026-09-22）：`settings_body.dart` + `game_play_screens.dart`
+  两文件的 8 类旧裸色（1A1A2E/0D0D1A/3A3A5C/2A2A4A/8A8AAA/B0B0C8/5A5A7A/6A6A8A）共 42 处
+  全部映射到 MiuiColors 语义 token，**零残留**。剩 `world_map_screen.dart` 的绿系主题未动
+  （不属于蓝紫族，且世界地图已有专属主题收编边界）。待 CI（flutter analyze + test）验证。
+
 门禁：`flutter analyze` 0 error；`flutter test` 1984 全绿。
 
 ## 四·附·G：世界地图几何错位 / 覆盖 / 对比度修复（完成）
