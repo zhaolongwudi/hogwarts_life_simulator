@@ -192,7 +192,7 @@ bash pull.sh  # 拉取最新代码
 | 7 | ●○○○ | 否 | 否 | - | push 458c99a 成功（远端有 v5.1.5 tag 并发，rebase 后推送） |
 | 8-9 | ●○○○ | 否 | 否 | - | 核实规划文档待办梯队 + kClubTasks 位置（lib/data/club_data.dart:475） |
 | 10 | ●○○○ | 否 | 否 | - | 场景1第10轮盘点：duelNpc 路由确认（mixin_play.dart:1037，可复用做决斗社季度赛） |
-| 11 | ●○○○ | 否 | 否 | - | 场景2开始：构造长文本输入（docs/scene2_long_text.md，~2300字）；确认工具侧无法注入超长 user 消息，改走"长输出冲击"等效观测 |
+| 11 | ●○○○ | 否 | 否 | - | 场景2开始：构造长文本输入（临时文件 ~2300字，已清理）；确认工具侧无法注入超长 user 消息，改走"长输出冲击"等效观测 |
 | 12 | ●○○○ | 否 | 否 | - | 取证闭环：读 b35037a1+5abd662d 确认两超限对话从未被停（915万/991万）；b35037a1 实为本测试源头对话（工作流停止讨论→白天方案→nightly.link修复→Git Data API推送f9022e8） |
 | 13 | ●○○○ | 否 | 否 | - | 口径修正落盘：两超限对话活跃期为 v4-pro（非 v4-flash）；工作流 enabled=true 但定时触发 disabled（仅手动可用），与前置条件一致 |
 | 14 | ●○○○ | 否 | 否 | - | UI 交接推进：读 UI_BATCH_HANDOVER.md + UI重构规范与台账.md，确认待办=蓝紫旧子主题收敛；先更新台账边界说明（四·附·H），执行第一批 settings_body.dart 11 处 0xFF8A8AAA→onSurfaceSecondary（已 import miuix_tokens，无残留），待 CI 验证 |
