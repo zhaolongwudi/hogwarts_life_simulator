@@ -1303,36 +1303,38 @@ mixin GamePlayMixin on GameProviderBase {
       (points: 90, label: '精英', club: 50, attr: 'courage', attrGain: 5, cup: 4, rep: 1),
       (points: 150, label: '冠军', club: 80, attr: 'spell_understanding', attrGain: 6, cup: 6, rep: 2),
     ];
-    // 找最高可领且未领的档位
-    int? claimIdx;
-    for (var i = tiers.length - 1; i >= 0; i--) {
-      if (p.duelSeasonPoints >= tiers[i].points &&
-          p.duelSeasonClaimedTier < tiers[i].points) {
-        claimIdx = i;
-        break;
+    // S6：跳档补发。旧实现只取最高档且 claimedTier 直接跳到该档，
+    // 首次领奖时积分 150 → 直接发冠军，新锐+精英两档奖励永久丢失。
+    // 改为从低到高逐档发放，claimedTier 累加（已领过的档不再重复发）。
+    final claimed = <(int, String)>[];
+    for (final t in tiers) {
+      if (p.duelSeasonPoints >= t.points && p.duelSeasonClaimedTier < t.points) {
+        p.duelSeasonClaimedTier = t.points;
+        p.clubPoints += t.club;
+        final attrNow = (_attr(t.attr) + t.attrGain).clamp(0, 100);
+        p.attributes[t.attr] = attrNow;
+        addHouseCupPoints(t.cup, '决斗社·$seasonLabelOf(p.duelSeasonTerm)');
+        if (t.rep > 0) p.playerReputation.add('combat', t.rep);
+        if (t.label == '冠军') {
+          p.collection.add('duel_season_champion'); // 收藏品「决斗赛季冠军」
+        }
+        claimed.add((t.points, t.label));
       }
     }
-    if (claimIdx == null) {
+    if (claimed.isEmpty) {
       _finishLocal('【决斗社赛季】目前没有可领取的新档位。继续赢得决斗累积赛季积分吧！');
       return;
     }
-    final t = tiers[claimIdx];
-    p.duelSeasonClaimedTier = t.points;
-    p.clubPoints += t.club;
-    final attrNow = (_attr(t.attr) + t.attrGain).clamp(0, 100);
-    p.attributes[t.attr] = attrNow;
-    addHouseCupPoints(t.cup, '决斗社·$seasonLabelOf(p.duelSeasonTerm)');
-    if (t.rep > 0) p.playerReputation.add('combat', t.rep);
-    if (t.label == '冠军') {
-      p.collection.add('duel_season_champion'); // 收藏品「决斗赛季冠军」
-    }
     final buf = StringBuffer('【决斗社赛季 · 领奖】\n');
-    buf.writeln('你领取了「${t.label}」档位奖励！');
-    buf.writeln('· 社团积分 +${t.club}（当前 ${p.clubPoints}）');
-    buf.writeln('· ${t.attr} +${t.attrGain}');
-    buf.writeln('· 学院杯 +${t.cup}');
-    if (t.rep > 0) buf.writeln('· 战斗声望 +${t.rep}');
-    if (t.label == '冠军') buf.writeln('· 收藏品「决斗赛季冠军」已入册');
+    for (final (pts, label) in claimed) {
+      final t = tiers.firstWhere((e) => e.points == pts);
+      buf.writeln('你领取了「${t.label}」档位奖励！');
+      buf.writeln('· 社团积分 +${t.club}（当前 ${p.clubPoints}）');
+      buf.writeln('· ${t.attr} +${t.attrGain}');
+      buf.writeln('· 学院杯 +${t.cup}');
+      if (t.rep > 0) buf.writeln('· 战斗声望 +${t.rep}');
+      if (t.label == '冠军') buf.writeln('· 收藏品「决斗赛季冠军」已入册');
+    }
     if (p.duelSeasonClaimedTier < 150 && p.duelSeasonPoints >= 150) {
       buf.writeln('\n你已达标「冠军」档，输入 /决斗 赛季 领奖 可继续领取。');
     }
