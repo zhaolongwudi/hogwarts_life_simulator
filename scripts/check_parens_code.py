@@ -106,6 +106,7 @@ def main():
         'lib/data/club_minigames_data.dart',
         'lib/models/player.dart',
         'lib/models/game_systems.dart',
+        'lib/mixins/mixin_club.dart',
     ]
     allok = True
     for f in files:

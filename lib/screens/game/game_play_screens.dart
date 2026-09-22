@@ -161,7 +161,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
           ),
           child: Column(
             children: [
-              Icon(Icons.inbox_outlined, size: 36, color: const MiuiColors.onSurfaceVariantSummary),
+              Icon(Icons.inbox_outlined, size: 36, color: MiuiColors.onSurfaceVariantSummary),
               const SizedBox(height: 10),
               Text(title, style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
@@ -177,7 +177,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
     final claimed = q.status == 'claimed';
     final done = q.isDone && !claimed;
     final statusColor = claimed
-        ? const MiuiColors.onSurfaceVariantSummary
+        ? MiuiColors.onSurfaceVariantSummary
         : done
             ? AppColors.gold
             : AppColors.goldBright;
@@ -360,7 +360,7 @@ class _QuestBoardScreenState extends State<QuestBoardScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        Icon(Icons.flag, size: 14, color: const MiuiColors.onSurfaceVariantSummary),
+                        Icon(Icons.flag, size: 14, color: MiuiColors.onSurfaceVariantSummary),
                         const SizedBox(width: 4),
                         Text('目标：${t.target} ×${t.targetCount}',
                             style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceSecondary)),
@@ -646,7 +646,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   slot == 'broom' ? Icons.flight :
                   Icons.diamond,
                   size: 18,
-                  color: name != null ? AppColors.gold : const MiuiColors.onSurfaceVariantSummary,
+                  color: name != null ? AppColors.gold : MiuiColors.onSurfaceVariantSummary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -660,7 +660,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: name == null ? const MiuiColors.onSurfaceVariantSummary : Colors.white,
+                          color: name == null ? MiuiColors.onSurfaceVariantSummary : Colors.white,
                         )),
                   ],
                 ),

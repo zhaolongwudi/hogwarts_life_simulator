@@ -855,6 +855,20 @@ abstract class GameProviderBase extends ChangeNotifier
   void refreshQuestBoard();
   void settleHouseCup();
   void setQuidditchPosition(String pos);
+  /// 魁地奇队训练：每周 2 次训练，训练→比赛联动（本周每训 +3 实力）。实现在 GamePlayMixin。
+  void trainQuidditch();
+  /// 魔药部限时配方：展示当前窗口配方列表。实现在 GamePlayMixin。
+  void showPotionRecipes();
+  /// 魔药部限时配方：酿造指定配方药水（按魔药学成功率档位）。实现在 GamePlayMixin。
+  void brewPotion(String recipeId);
+  /// 快讯社头版：展示本学期可报道素材（回顾/猎取双通道）。实现在 GamePlayMixin。
+  void showHeadlineBoard();
+  /// 快讯社头版：按角度报道指定素材。实现在 GamePlayMixin。
+  void reportHeadline(int index, String angle);
+  /// 决斗社赛季：展示赛季积分与三档奖励面板。实现在 GamePlayMixin。
+  void showDuelSeasonPanel();
+  /// 决斗社赛季：领取已达档位的赛季奖励。实现在 GamePlayMixin。
+  void claimDuelSeasonReward();
   void unequipItem(String slot);
   void useItem(String name);
 

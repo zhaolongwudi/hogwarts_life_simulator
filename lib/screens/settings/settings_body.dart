@@ -266,7 +266,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                         size: 15,
                         color: _activeSection == i
                             ? AppColors.gold
-                            : const MiuiColors.onSurfaceSecondary,
+                            : MiuiColors.onSurfaceSecondary,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -278,7 +278,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                               : FontWeight.w400,
                           color: _activeSection == i
                               ? AppColors.gold
-                              : const MiuiColors.onSurfaceSecondary,
+                              : MiuiColors.onSurfaceSecondary,
                         ),
                       ),
                     ],
@@ -390,7 +390,7 @@ class _SettingsBodyState extends State<SettingsBody> {
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             '使用「魔法手账」显示模式时，无法选用「穿越者」身份',
-            style: TextStyle(color: const MiuiColors.onSurfaceSecondary, fontSize: 12),
+            style: TextStyle(color: MiuiColors.onSurfaceSecondary, fontSize: 12),
           ),
         ),
       const SizedBox(height: 24),
@@ -576,7 +576,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                     child: Icon(
                       Icons.offline_bolt,
                       size: 18,
-                      color: enabled ? MiuiColors.success : const MiuiColors.onSurfaceVariantSummary,
+                      color: enabled ? MiuiColors.success : MiuiColors.onSurfaceVariantSummary,
                     ),
                   ),
                   const SizedBox(width: 10),

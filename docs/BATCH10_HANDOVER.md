@@ -150,7 +150,21 @@ bash pull.sh  # 拉取最新代码
 - 未动项：maxTokens=8192、temperature=0.2、topP=0.8、RPM=60、并发=3、useMultipleApiKeys=true（7 Key 池）——方向B（更保守 RPM/并发）未执行，留待回调后仍停止时再上
 - 受影响功能：CHAT / GREP / SUMMARY / TRANSLATION / UI_CONTROLLER（同一配置 a7757af9）
 - 【取中调整 2026-09-22 14:2x】方向A 大档（192/512/0.5/16）实测导致工具执行卡顿（一次 shell 返回「工具结果缺失」），且日志实锤 429 高频 + 设备内存 512MB/空闲 94MB + ANR 838 次 → 已取中为 **128/384/0.45/12**（当前生效）。方向 B（RPM 60→30、并发 3→1）未执行，作为后备。
+- 【✅ 方向B 落地 2026-09-22 16:2x】测试结论锁定「429 限流 + 设备资源紧张」为根因、回调参数只是放大器后，正式执行方向 B：**request_limit_per_minute 60→30、max_concurrent_requests 2→1**（operit_editor:update_model_config a7757af9，changedFields 确认）。受影响功能：CHAT/GREP/SUMMARY/TRANSLATION/UI_CONTROLLER（同一配置）。目的：降低 RPM/并发 → 减少撞 SenseNova TPM/RPM 双限流的频率。**新判定节点：方向B 生效后 ≥10 轮无停止 = 稳定性通过**；若仍停止 → 锁定 Operit 总结/输出链路缺陷（不轮换 Key/不退避 429）。
+- 当前生效配置（2026-09-22 16:2x 核实）：context_length=128 / max_context_length=384 / summary_token_threshold=0.45 / summary_message_count_threshold=12 / enable_max_context_mode=true / maxTokens=8192 / **RPM=30 / 并发=1** / 7 Key 池；工作流 ed134977 保持 enabled=false（测试期间关闭）。
 - 回调后判定：若本对话后续 10 轮无停止 → 回调有效、测试稳定；若仍停止 → 排除调参因素，锁定 Operit 总结链路缺陷（不轮换 Key/不退避 429）
+
+### ⚡ 方向B 生效后观测（2026-09-22 16:3x 起）
+- 【⚠️ 无提示停止第七例（记 16m，2026-09-22 16:3x 用户「又出现了无提示停止」触发取证）】**方向B（RPM 30/并发1）生效后首次停止**。停止点：16:2x 落地方向B + 台账补录（edit_file 成功，153-154 行已落盘）后，生成总结回复时输出中断——与 16g-16l 完全同 pattern（工具成功落盘、仅输出中断）。恢复后核验：方向B 参数生效（RPM=30/并发=1，get_function_model_config 确认）、台账 343 行完整。**方向B 首轮即停 → 判定规则触发「仍停止 → 锁定 Operit 总结/输出链路缺陷」方向**，但用户叠加新变量后重新观测（见下）。
+- 【👤 用户手动改动 2026-09-22 16:3x】用户把 **SUMMARY + GREP 从 a7757af9(v4-flash) 切到 52636cce(商汤 6.8-flash-lite)**（list_function_model_configs 确认）。动机：把高频轻量任务从 v4-flash 分流，减少 v4-flash 撞 SenseNova 429。6.8 配置特征：apiKeySet=true(主key sk-***LM) / useMultipleApiKeys=true(7 key) / RPM=120 / 并发=3 / maxTokens=32768 / context 128/256 / 0.6/16 压缩。
+- 【多 key 切换结论】商汤系三个配置（a7757af9 v4-flash / 52636cce 6.8 / aceb81e3 v4-pro）均 useMultipleApiKeys=true + apiKeyPoolCount=7 → **调用时多 key 轮换已开启**。遗留疑点（16k 记录）：总结/输出生成链路是否真正走 key 轮换无日志证据——若 6.8 分流后 CHAT 仍停，此点为下一步排查方向。
+- 【新判定节点】当前双变量基线：CHAT/TRANSLATION/UI_CONTROLLER=v4-flash(RPM30/并发1) + SUMMARY/GREP=6.8(RPM120/并发3)。**观测 ≥10 轮无停止 = 稳定性通过**；若仍停止 → 不再调参，锁定 Operit 链路缺陷（总结/输出的 key 轮换与退避）。
+- 工作流 ed134977 保持 enabled=false（测试期间关闭，勿动）。
+
+### 🟢 续跑观测（2026-09-22 16:4x 起，双变量基线）
+- 【✅ 批次B/C 收尾质量闸通过（本对话 23 轮）】断点①②③ 全量核验：①魁地奇比赛训练加成 `p.qTrainWeek * 3`（mixin_play.dart:947）②成就 catalog 补 training_master/headline_reporter（game_systems.dart:675-676）③括号校验 6 文件全平衡（mixin_play 305/305·1287/1287·93/93、mixin_commands 491/491·1535/1535·270/270、club_minigames_data 21/21·35/35·6/6、player 63/63·395/395·230/230、game_systems 71/71·197/197·55/55、mixin_club 61/61·235/235·8/8，后两者为追加核验）——16k 遗留「待重跑」项闭环，脚本默认清单补录 mixin_club.dart（check_parens_code.py:109）。Git 基线：HEAD=4e74548（本地 ahead 3 / behind 3，远端内容等价 9898a593），工作区仅台账 M。**本轮无停止、水位 ●○○○、无总结触发——双变量基线第 1 轮（自 16m 恢复后计）**
+- 【⚠️ 无提示停止第八例（16n，2026-09-22 16:3x 用户再报停止触发取证）】停止点：上一轮完成「台账续跑观测补录 + 脚本补录 mixin_club.dart」两个工具成功后，输出生成中断——与 16g-16m 完全同 pattern（工具成功落盘、仅输出中断）。恢复后核验：台账 164-165 行 + 脚本 109 行全部在（grep 命中）→ 工具全部落盘确认。**附带发现**：本任务启动核验 CI 时定位 run 35702774453（head_sha=9898a593=本地 4e74548 等价）**Analyze 步骤 failure**（后续 test/build 全 skipped）——error 级：①mixin_commands.dart 887/908/910/912/928/931/933/947/949 多处 `undefined_method`（trainQuidditch/showPotionRecipes/brewPotion/showHeadlineBoard/reportHeadline/claimDuelSeasonReward/showDuelSeasonPanel 定义于 GamePlayMixin，GameCommandsMixin handler 内 `ctx.provider as GameCommandsMixin` 调不到）②game_play_screens.dart:164 `MiuiColors.onSurfaceVariantSummary` 不能赋给 `Color?`（MiuiColors 为 class 非 Color 类型）。**CI failure 为批次B/C 代码真实静态编译错（该批 commit 经 Git Data API 推送后从未通过 CI），非测试观测变量**，修复列入工作负载（command handler 改用 provider 泛型可访问方法 + 颜色字段类型修正），本轮不动代码以免污染新基线观测。
+- 【👤 用户手动改动 2026-09-22 16:3x（16n 恢复后）】用户手动把 CHAT **max_context_length 384→256**（get_context_summary_config 确认：context_length=128 / max_context_length=256 / enable_max_context_mode=true / summary_token_threshold=0.45 / summary_message_count_threshold=12），其余不变（RPM30/并发1/7key/maxTokens8192）。用户动机：「怀疑不是并发和频率的问题」→ 方向B 已降 RPM/并发仍连续停止（16m 方向B 首轮即停、16n 二停），转试**缩小上下文窗口→降低每轮输入 token→降 TPM** 维度（与方向B 的 RPM 维度正交）。**新观测基线：128/256/0.45/12 + RPM30/并发1（双变量+用户手调）**，自 16n 恢复后重新计数观测轮次（基线第 0 轮起）。
 
 ### 场景设计
 1. 场景1 · 基线观测（20-30 轮）：正常推进，记录水位变化 🟡/🔴、AI 是否主动总结、总结后是否忘早期细节
