@@ -917,6 +917,10 @@ mixin GamePlayMixin on GameProviderBase {
   void playQuidditch() {
     final p = player;
     if (p == null) return;
+    // S11：周训练加成必须在本周比赛前先做周重置，否则跨周直接比赛
+    // 仍享受上周训练加成（qTrainWeek 未清零 → 实力 +6）。设计承诺
+    // 「训练加成仅限本周比赛；下周清零」（docs/魁地奇队训练设计.md:65）。
+    _ensureTrainWeekReset();
     final broom = p.equipped['broom'];
     if (broom == null) {
       _finishLocal('你还没有飞天扫帚！对角巷的「飞天扫帚·横扫」或「飞天扫帚·彗星」可以购买，买到后 /装备 即可参赛。');
@@ -1197,7 +1201,11 @@ mixin GamePlayMixin on GameProviderBase {
         p.duelSeasonWins = 0;
         p.duelSeasonClaimedTier = 0;
       }
-      final seasonWinPoints = 10 + (p.duelSeasonWins >= 1 ? 2 : 0);
+      // S8：赛季积分也纳入每日递减——当天第 2 场起衰减到 60%/30%，
+      // 与加隆/声望/学院杯的防刷口径一致，堵住「一天狂打赛季积分」
+      // 的最优策略（旧实现赛季积分恒定 +10/+12，与递减设计意图相反）。
+      final seasonWinPoints =
+          ((10 + (p.duelSeasonWins >= 1 ? 2 : 0)) * decay).round().clamp(1, 18);
       p.duelSeasonPoints += seasonWinPoints;
       p.duelSeasonWins += 1;
       p.duelSeasonWinsTotal += 1;
@@ -1249,6 +1257,18 @@ mixin GamePlayMixin on GameProviderBase {
   // ==================== 决斗社 · 季度赛（框架2 新增） ====================
   /// 当前赛季标识：'first-1991-1992' / 'second-1991-1992' / 'summer-1992-1993'。
   String get _currentDuelSeason => '${worldState.term}-${worldState.academicYear}';
+  /// S10：快讯社头版防重标记，改用「学期」稳定编码（弃用 String.hashCode）。
+  ///
+  /// 旧实现存 `academicYear.hashCode`：一学年 3 个 term 只能报道 1 次（语义
+  /// 降级），且 Dart String.hashCode 不保证跨进程/跨版本稳定，落盘为 int 后
+  /// App 重启可能算出不同值 → 防重标记静默失效。
+  /// 新实现用 term 的固定整数编码（first=1/second=2/summer=3）：每学期变化、
+  /// 跨重启稳定、保持 int 字段类型兼容老存档。
+  int get _headlineSeasonKey => switch (worldState.term) {
+        'second' => 2,
+        'summer' => 3,
+        _ => 1,
+      };
   /// /决斗 赛季 面板：查看本赛季积分/胜场/档位 + 领奖。
   void showDuelSeasonPanel() {
     final p = player;
@@ -1526,8 +1546,8 @@ mixin GamePlayMixin on GameProviderBase {
     }
     buf.writeln('\n输入 /快讯 报道 <序号> <角度> 完成报道。');
     buf.writeln('角度：现场直击 / 深度调查 / 人情故事');
-    if (p.headlineSeason == worldState.academicYear.hashCode) {
-      buf.writeln('\n（本学年已报道过，学期末才有下一次头版机会。）');
+    if (p.headlineSeason == _headlineSeasonKey) {
+      buf.writeln('\n（本学期已报道过，下学期才有下一次头版机会。）');
     }
     _finishLocal(buf.toString());
   }
@@ -1544,8 +1564,8 @@ mixin GamePlayMixin on GameProviderBase {
       showHeadlineBoard();
       return;
     }
-    if (p.headlineSeason == worldState.academicYear.hashCode) {
-      _finishLocal('【快讯社】本学年你已经发过一次头版了，等下一学期再抢头条吧。');
+    if (p.headlineSeason == _headlineSeasonKey) {
+      _finishLocal('【快讯社】本学期你已经发过一次头版了，下学期再抢头条吧。');
       return;
     }
     final cand = cands[index];
@@ -1555,7 +1575,7 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     // 赛季结算（设计 3.4）：按角度给不同奖励
-    p.headlineSeason = worldState.academicYear.hashCode;
+    p.headlineSeason = _headlineSeasonKey;
     p.headlineCount++;
     final buf = StringBuffer('【快讯社 · 头版报道】\n');
     buf.writeln('你伏在案前，把「${cand.title}」写成一份头版报道。');
