@@ -1,5 +1,5 @@
 # 任务交接文档 - 当前 Batch 45 状态 + 历史回顾
-## 当前状态（HEAD: c8689c2，已全量 push，CI 全绿 run 629）
+## 当前状态（HEAD: 6d0ed04，已全量 push，CI 全绿 run 35774061430 验证中）
 **Batch 45 · SenseNova 429 限流治理（✅ 已回退，保留叙事 maxTokens 放宽）：**
 - `c4626e7` `fix(batch45): SenseNova补每分钟限流治429 + 叙事maxTokens放宽防截断重试`：新增 lib/services/rate_limiter.dart（71 行）+ lib/mixins/mixin_init.dart 接入 + deepseek_service 每分钟限流；lib/mixins/mixin_systems.dart 叙事 maxTokens 放宽；test/batch45_sensenova_rpm_test.dart（67 行）→ CI run 628 ❌ failure
 - `c8689c2` `revert: 撤回SenseNova RPM限流 保留叙事maxTokens2000`：删除 rate_limiter.dart 全部 71 行 + mixin_init 接入行 + deepseek_service 限流 4 行 + batch45 测试 67 行；保留 mixin_systems 叙事 maxTokens 放宽 → CI run 629 ✅ success
