@@ -68,6 +68,12 @@ class LetterDef {
   /// NPC 通道（含 reunion 放开 graduated）。
   final String? senderLabel;
 
+  /// 仅在该月份可投递（1-12）；null = 任意月份。
+  ///
+  /// 用于魔法部公函等「学期节点」信（如 O.W.L.s 报名只在 5 月、禁林警告只在
+  /// 9 月开学季），让机构信低频、不抢日常来信的戏。
+  final int? month;
+
   /// 寄信人对你的好感下限（友情/里程碑用）。
   final int minAffection;
 
@@ -90,6 +96,7 @@ class LetterDef {
     required this.kind,
     this.senderId,
     this.senderLabel,
+    this.month,
     this.minAffection = 0,
     this.maxAffection,
     this.onceOnly = false,
@@ -376,6 +383,7 @@ const List<LetterDef> kLetters = [
     id: 'letter_ministry_owls',
     kind: LetterKind.ministry,
     senderLabel: '魔法部·考试管理局',
+    month: 5,
     onceOnly: true,
     scene:
         '一只系着靛蓝封印的猫头鹰穿过蒙蒙晨雾，把一封印着魔法部纹章的公函丢在你面前：\n'
@@ -405,6 +413,7 @@ const List<LetterDef> kLetters = [
     id: 'letter_ministry_forbidden',
     kind: LetterKind.ministry,
     senderLabel: '魔法部·神奇动物管理控制司',
+    month: 9,
     onceOnly: true,
     scene:
         '一支深绿色的猫头鹰信使在你窗台上站定，落下一封印着「禁林」字样的公函：\n'

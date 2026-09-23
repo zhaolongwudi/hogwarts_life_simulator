@@ -132,9 +132,13 @@ mixin GameLetterMixin on GameProviderBase {
       if (sender != null) return _deliver(p, l, sender);
     }
 
-    // 2) 魔法部公函：未收过的机构信，按学期节点低频投递（不抢羁绊缘分）。
+    // 2) 魔法部公函：未收过的机构信，仅在学期节点月份投递（不抢日常来信的戏）。
+    final nowMonth = worldState.time.month;
     final ministries = kLetters
-        .where((l) => l.kind == LetterKind.ministry && !received.contains(l.id))
+        .where((l) =>
+            l.kind == LetterKind.ministry &&
+            !received.contains(l.id) &&
+            (l.month == null || l.month == nowMonth))
         .toList()
       ..shuffle(rnd);
     for (final l in ministries) {

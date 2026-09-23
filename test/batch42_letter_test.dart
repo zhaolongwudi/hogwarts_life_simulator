@@ -172,11 +172,18 @@ void main() {
     test('里程碑演过不重播：再触发改走友情来信', () async {
       final gp = await makeEnabled(friendAffection: 85);
       final p = gp.player!;
-      // 先把所有里程碑标记为已收到
-      p.receivedLetters = kLetters
-          .where((l) => l.kind == LetterKind.milestone)
-          .map((l) => l.id)
-          .toList();
+      // 先把所有里程碑标记为已收到（机构/匿名信也预收，防新类型抢戏，专测友情兜底）
+      p.receivedLetters = [
+        ...kLetters
+            .where((l) => l.kind == LetterKind.milestone)
+            .map((l) => l.id),
+        ...kLetters
+            .where((l) => l.kind == LetterKind.ministry)
+            .map((l) => l.id),
+        ...kLetters
+            .where((l) => l.kind == LetterKind.mystery)
+            .map((l) => l.id),
+      ];
       p.pendingLetterId = null;
       p.letterLastTurn = -100;
       final s = gp.maybeTriggerLetter();
@@ -186,6 +193,18 @@ void main() {
 
     test('没有足够友好的朋友时，落到敌对来信', () async {
       final gp = await makeEnabled(enemy: true);
+      final p = gp.player!;
+      // 预收机构/匿名信，防新类型抢戏（专测敌对兜底）
+      p.receivedLetters = [
+        ...kLetters
+            .where((l) => l.kind == LetterKind.ministry)
+            .map((l) => l.id),
+        ...kLetters
+            .where((l) => l.kind == LetterKind.mystery)
+            .map((l) => l.id),
+      ];
+      p.pendingLetterId = null;
+      p.letterLastTurn = -100;
       final s = gp.maybeTriggerLetter();
       expect(s, contains('🦉'));
       expect(s, contains('德拉科'));
