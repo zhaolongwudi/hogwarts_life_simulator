@@ -156,8 +156,27 @@ mixin GameLetterMixin on GameProviderBase {
       }
     }
 
+    // 3.5) 社长邀请信（来信→社团）：未入该社 + 对应社长好感达标才投递。
+    // 优先级在里程碑/公函/神秘之后、日常友情之前——牵线机会不抢重头戏，
+    // 但先于泛泛暖场。已入社（含换社后）自动跳过；clubId 非空的信只投未入社玩家。
+    if (p.clubId == null) {
+      final clubInvites = kLetters
+          .where((l) => l.clubId != null && !received.contains(l.id))
+          .toList()
+        ..shuffle(rnd);
+      for (final l in clubInvites) {
+        // 未入该社 + 社长（senderId）已结识且好感达标，才投这封邀请信。
+        if (l.clubId == null || p.clubId == l.clubId) continue;
+        final sender = letterSenderFor(l);
+        if (sender != null) return _deliver(p, l, sender);
+      }
+    }
+
     // 4) 友情来信：随机一封可落款的（会重播，靠好感门槛兜手感）。
-    final friends = kLetters.where((l) => l.kind == LetterKind.friendship).toList()
+    // 排除 clubId 非空的社长邀请信（那些走 3.5 专属分支，已入社后不再投）。
+    final friends = kLetters
+        .where((l) => l.kind == LetterKind.friendship && l.clubId == null)
+        .toList()
       ..shuffle(rnd);
     for (final l in friends) {
       final sender = letterSenderFor(l);
@@ -277,6 +296,17 @@ mixin GameLetterMixin on GameProviderBase {
     } else {
       _applyLetterEffectAnonymous(reply.effect, reason: '回信·${def.id}');
     }
+    // 社长邀请信：「好，我加入<社团>」选项 → 直接入社（复用 joinClub 链路，
+    // 内部已含同好注入 A：入社即与 attendees 结谊 +5）。入社结果追加进回信文本。
+    final clubJoinBuf = StringBuffer();
+    if (def.clubId != null && p.clubId != def.clubId) {
+      final title = reply.title;
+      if (title.startsWith('好，我加入')) {
+        final joined = joinClub(def.clubId!);
+        clubJoinBuf.writeln();
+        clubJoinBuf.writeln(joined);
+      }
+    }
     p.pendingLetterId = null;
 
     final house = houseDisplayName(p.house ?? '', fallback: '霍格沃茨');
@@ -285,6 +315,9 @@ mixin GameLetterMixin on GameProviderBase {
     buf.writeln('【你回信道】${reply.title}');
     buf.writeln(
         fillLetterText(reply.text, player: p.name, sender: sign, house: house));
+    if (clubJoinBuf.isNotEmpty) {
+      buf.write(clubJoinBuf.toString());
+    }
     return buf.toString().trim();
   }
 

@@ -73,6 +73,11 @@ class LetterDef {
   /// 用于魔法部公函等「学期节点」信（如 O.W.L.s 报名只在 5 月、禁林警告只在
   /// 9 月开学季），让机构信低频、不抢日常来信的戏。
   final int? month;
+  /// 关联的社团 id（社长邀请信用；null = 与社团无关）。
+  ///
+  /// 非空时：① `maybeTriggerLetter` 只在玩家**未入该社**且对应社长好感达标时
+  /// 投递；② 回信「好，我加入」选项会触发 `joinClub(clubId)` 直接入社。
+  final String? clubId;
 
   /// 寄信人对你的好感下限（友情/里程碑用）。
   final int minAffection;
@@ -97,6 +102,7 @@ class LetterDef {
     this.senderId,
     this.senderLabel,
     this.month,
+    this.clubId,
     this.minAffection = 0,
     this.maxAffection,
     this.onceOnly = false,
@@ -494,6 +500,186 @@ const List<LetterDef> kLetters = [
             '「那就好。你那边风吹雨打的，记得照顾好自己——'
             '我的门，永远给你留着。」',
         effect: LetterEffect(senderAffection: 1),
+      ),
+    ],
+  ),
+  // ====== 社长邀请信（来信→社团，friendship + clubId；未入社且好感达标才投） ======
+  LetterDef(
+    id: 'letter_club_duel_invite',
+    kind: LetterKind.friendship,
+    senderId: 'seamus',
+    clubId: 'duel',
+    minAffection: 20,
+    scene:
+        '一只猫头鹰衔着皱巴巴的羊皮纸落在你肩头，展开一看是 \$sender 的笔迹，'
+        '字迹里带着决斗场上的那股爽利：\n'
+        '「\$player！听弗雷德说你也爱把自己推到对面那根魔杖面前——'
+        '这话我爱听。决斗俱乐部从来不分出身，只看你敢不敢站上来。'
+        '下周四晚，会堂见。赢了咱们喝黄油啤酒，输了咱再练。'
+        '——你要是没想好，先来观战也成。」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '好，我加入决斗俱乐部',
+        text: '\$sender 收到你的回信，高兴得当场和人比了一场：'
+            '「我就知道你没看走眼！会堂的门永远给你开着——'
+            '来，先跟我过两招，让你试试手感。」',
+        effect: LetterEffect(senderAffection: 5),
+      ),
+      LetterReply(
+        title: '我再想想',
+        text: '\$sender 的回信没有半分催促：'
+            '「成，不着急。会堂的门一直开着，你什么时候想来，我都备着好魔杖。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_club_potion_invite',
+    kind: LetterKind.friendship,
+    senderId: 'hermione',
+    clubId: 'potion',
+    minAffection: 20,
+    scene:
+        '一封写得整整齐齐的信躺在你窗台，信封角压着一点干燥的月长石粉，'
+        '是 \$sender 的笔迹：\n'
+        '「\$player：魔药部这周要熬一锅缓和剂，正好缺个稳得住火候的搭档。'
+        '你上次在课堂上坩埚搅得又稳又准，我记着呢。'
+        '地下教室，周四下午。来之前把《高级魔药制作》第三章翻一遍，'
+        '我保证不会让你帮倒忙——这话也只对你说。」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '好，我加入魔药部',
+        text: '\$sender 的回信带着一丝藏不住的雀跃：'
+            '「太好了！我这就把本周的配方抄一份给你——'
+            '放心，跟着我熬，不会让你炸坩埚的。」',
+        effect: LetterEffect(senderAffection: 5),
+      ),
+      LetterReply(
+        title: '我再想想',
+        text: '\$sender 的回信依旧不急不缓：'
+            '「也好，不勉强。坩埚的盖子我给你留着——哪天想来，提前说一声就行。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_club_broom_invite',
+    kind: LetterKind.friendship,
+    senderId: 'wood',
+    clubId: 'broom',
+    minAffection: 20,
+    scene:
+        '一只气势十足的猫头鹰把信用力丢在你桌上，展开是 \$sender 那龙飞凤舞的字：\n'
+        '「\$player！我看过你在飞行课上的表现——追上那记游走球的样子，'
+        '像个天生的找球手。魁地奇队最近在招新人，风里雨里，我只要敢飞的。'
+        '周六清晨，球场，别迟到。要是怕早，我带你认认扫帚。」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '好，我加入魁地奇队',
+        text: '\$sender 的回信短而有力：'
+            '「说定了！周六六点，球场。队里多了个敢抓飞贼的，'
+            '我这个队长脸上也有光。」',
+        effect: LetterEffect(senderAffection: 5),
+      ),
+      LetterReply(
+        title: '我再想想',
+        text: '\$sender 的回信依旧干脆：'
+            '「不急。球场一直在那儿，你什么时候想飞，我都在。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_club_quip_invite',
+    kind: LetterKind.friendship,
+    senderId: 'luna',
+    clubId: 'quip',
+    minAffection: 20,
+    scene:
+        '一封画着歪歪扭扭猫头鹰的信，叠成纸飞机的形状落在你手心，'
+        '是 \$sender 的笔迹：\n'
+        '「\$player，你知道吗，快讯社缺一个能把城堡里那些小秘密写成头条的人。'
+        '我总觉得你能看见别人看不见的东西——那种感觉，比新闻更重要。'
+        '要是你愿意，墨水瓶和羽毛笔我都给你备好了。信写得好不好不重要，'
+        '重要的是你愿意看见。」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '好，我加入快讯社',
+        text: '\$sender 的回信轻快得像风：'
+            '「我就知道你会来。从今天起，城堡里那些被忽略的小事，'
+            '都有人把它们写下来了。」',
+        effect: LetterEffect(senderAffection: 5),
+      ),
+      LetterReply(
+        title: '我再想想',
+        text: '\$sender 的回信依旧轻盈：'
+            '「没关系，世界不会因此少一个看见它的人——'
+            '你什么时候想写，笔都在。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  // ====== 羁绊预热信（来信→羁绊，milestone；好感接近 P11 门槛时触发） ======
+  LetterDef(
+    id: 'letter_warmup_hermione',
+    kind: LetterKind.milestone,
+    senderId: 'hermione',
+    minAffection: 15,
+    onceOnly: true,
+    scene:
+        '深夜，一只猫头鹰轻轻落在你床头，留下一封字迹工整的信：\n'
+        '「\$player：说来奇怪，今天整理旧书的时候，翻到我们去年在图书馆那次'
+        '为了一道变形术争到闭馆的笔记。那页纸角还留着你的涂鸦。'
+        '有时候我会想，一个人能记得另一个人多久呢？'
+        '——大概像我记得你这么久。\n'
+        '                          \$sender」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '回信说「我也记得」',
+        text: '\$sender 读罢你的回信，隔天在走廊遇见你时，'
+            '破天荒没有谈功课，只轻轻说了句：「那页笔记，我夹在最喜欢的书里了。」',
+        effect: LetterEffect(senderAffection: 3),
+      ),
+      LetterReply(
+        title: '回信说「别说这么肉麻的话」',
+        text: '\$sender 的回信带着一点恼：'
+            '「我那是陈述事实，不是肉麻。……不过，收到你的信，我还是高兴的。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_warmup_harry',
+    kind: LetterKind.milestone,
+    senderId: 'harry',
+    minAffection: 20,
+    onceOnly: true,
+    scene:
+        '黄昏时，一只灰色猫头鹰把信塞进你窗缝。字迹有点潦草，'
+        '像赶着写下的：\n'
+        '「\$player：今天训练完在球场边坐了一会儿，突然想起你上次'
+        '和我们一起躲在走廊转角，躲过费尔奇那次——你笑得比我们还大声。'
+        '说实话，在霍格沃茨，能让你真正笑出来的人不多。'
+        '我想，你是其中一个。\n'
+        '                          \$sender」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '回信说「那次确实好笑」',
+        text: '\$sender 的回信简短，却透着熟悉的热乎劲儿：'
+            '「对吧！下次费尔奇巡楼，还带你一个。」',
+        effect: LetterEffect(senderAffection: 3),
+      ),
+      LetterReply(
+        title: '回信说「有空一起去球场坐坐」',
+        text: '\$sender 的回信干脆利落：'
+            '「说定了。周六下午，球场看台。我带黄油啤酒。」',
+        effect: LetterEffect(senderAffection: 2),
       ),
     ],
   ),

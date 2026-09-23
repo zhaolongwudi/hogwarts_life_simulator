@@ -919,6 +919,10 @@ abstract class GameProviderBase extends ChangeNotifier
   void claimDuelSeasonReward();
   void unequipItem(String slot);
   void useItem(String name);
+  /// 加入一个社团（含换社）；[rawId] 为社团 id，未知时返回提示面板文本。
+  /// 实现在 GameClubMixin（mixin_club.dart）。供来信串联「社长邀请信」回信
+  /// 「好，我加入」选项调用（GameLetterMixin）。
+  String joinClub(String rawId);
 
   // ====== 通用工具 ======
 
