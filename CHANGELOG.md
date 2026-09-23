@@ -10,6 +10,16 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.2.1 — 2026-09-23
+
+**📋 变更说明**
+fix(batch48): 社长信3.5分支补minAffection校验（letterSenderFor对senderId精确匹配不检查好感）
+
+- 根因：letterSenderFor对指定senderId的信只检查NPC是否在pool（introduced+alive+!graduated），不检查好感达标
+- 3.5分支在letterSenderFor返回非null后额外校验sender.affection >= l.minAffection
+- 修掉batch48测试unused_local_variable warning（p未使用）
+- CI失败测试：R2「社长好感未达标→暂不投」seamus好感10但letter_club_duel_invite仍被投递
+
 ### v5.2.0 — 2026-09-22
 
 **📋 变更说明**
