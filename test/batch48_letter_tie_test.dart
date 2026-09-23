@@ -135,11 +135,10 @@ void main() {
 
     test('社长好感未达标 → 暂不投（无戏则不抢分支）', () async {
       final gp = await makeEnabled(npc: {'seamus': ('西莫', 10)});
-      final p = gp.player!;
       final s = gp.maybeTriggerLetter(seed: 7);
-      // seamus 好感 10 < 20 → 3.5 分支无人可选；且无其他日常信 → 返回空串
+      // seamus 好感 10 < 20 → 3.5 分支跳过；且无其他日常信 → 返回空串
       expect(s, isEmpty, reason: '好感未达标且无其他来信源时不应投信');
-      expect(p.pendingLetterId, isNull);
+      expect(gp.player!.pendingLetterId, isNull);
     });
   });
 

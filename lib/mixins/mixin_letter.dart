@@ -160,6 +160,8 @@ mixin GameLetterMixin on GameProviderBase {
     // 优先级在里程碑/公函/神秘之后、日常友情之前——牵线机会不抢重头戏，
     // 但先于泛泛暖场。已入社（含换社后）自动跳过；clubId 非空的信只投未入社玩家。
     // 仅在社团系统开启时投递（clubEnabled=false 的测试环境不干扰既有用例）。
+    // 注意：letterSenderFor 对指定 senderId 的信只检查 NPC 是否在 pool（introduced
+    // + alive + !graduated），不检查好感达标——这里需额外校验 minAffection。
     if (p.clubId == null && appProvider.clubEnabled) {
       final clubInvites = kLetters
           .where((l) => l.clubId != null && !received.contains(l.id))
@@ -169,7 +171,10 @@ mixin GameLetterMixin on GameProviderBase {
         // 未入该社 + 社长（senderId）已结识且好感达标，才投这封邀请信。
         if (l.clubId == null || p.clubId == l.clubId) continue;
         final sender = letterSenderFor(l);
-        if (sender != null) return _deliver(p, l, sender);
+        if (sender == null) continue;
+        // letterSenderFor 对 senderId 精确匹配不检查好感，这里补校验。
+        if (sender.affection < l.minAffection) continue;
+        return _deliver(p, l, sender);
       }
     }
 
