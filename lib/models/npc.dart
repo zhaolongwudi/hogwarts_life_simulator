@@ -95,6 +95,12 @@ class NPC {
   bool introduced; // 是否已经在剧情中登场/被玩家认识
   bool graduated; // 在校生是否已毕业离校
 
+  /// 宿舍归属（'gryffindor_boys' / 'slytherin_girls' 等）。
+  /// null = 无宿舍归属（教师/幽灵/校外 NPC）。
+  /// 用于室友系统：同 dormId 的 NPC 即「室友」。
+  /// 老存档缺省 null = 无宿舍归属，零迁移。
+  String? dormId;
+
   /// /cheat 固定好感：锁定后好感不随任何系统变动（含衰减/背叛/送礼）。
   /// 作弊项，存档兼容老档（缺省 false）。
   bool affectionLocked;
@@ -156,6 +162,7 @@ class NPC {
     this.pendingSpite = 0,
     this.introduced = false,
     this.graduated = false,
+    this.dormId,
   })  : forbiddenActions =
             forbiddenActions ?? _autoDeriveForbiddenActions(personality, name, bloodSupremacist),
         reputation = reputation ?? Reputation(),
@@ -466,6 +473,7 @@ class NPC {
         'pending_spite': pendingSpite,
         'introduced': introduced,
         'graduated': graduated,
+        'dorm_id': dormId,
         'affection_locked': affectionLocked,
       };
 
@@ -527,6 +535,7 @@ class NPC {
         pendingSpite: _asInt(json['pending_spite'], 0),
         introduced: json['introduced'] ?? false,
         graduated: json['graduated'] ?? false,
+        dormId: _asStringOrNull(json['dorm_id']),
         affectionLocked: json['affection_locked'] ?? false,
       );
 }

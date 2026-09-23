@@ -179,6 +179,11 @@ class Player {
   // ====== 奇遇长期痕迹（框架2 新增 · 批次A 数据层） ======
   /// 已完成奇遇的流水记录（上限 50 条，超出删最旧）。
   List<HappenstanceLogEntry> happenstanceLog;
+  // ====== 室友系统（框架2 §31 · 批次A 数据层） ======
+  /// 玩家宿舍标识（'gryffindor_boys' / 'slytherin_girls' 等）。
+  /// null = 尚未进宿舍（入学前/毕业后）。进宿舍时惰性赋值。
+  /// 老存档缺省 null = 零迁移。
+  String? dormId;
   // ====== 阿尼马格斯（框架2 第67条 · 困难且长期的魔法道路） ======
   /// 阿尼马格斯状态。null = 从未开始。
   /// {
@@ -384,6 +389,7 @@ class Player {
     this.qTrainLastWeek = 0,
     this.qTrainTotal = 0,
     List<HappenstanceLogEntry>? happenstanceLog,
+    this.dormId,
   }) : id = id ?? _uuid.v4(),
        personalityTraits = List<String>.from(personalityTraits ?? const []),
        attributes = Map<String, int>.from(attributes ?? _defaultAttributes),
@@ -610,6 +616,7 @@ class Player {
     'q_train_last_week': qTrainLastWeek,
     'q_train_total': qTrainTotal,
     'happenstance_log': happenstanceLog.map((e) => e.toJson()).toList(),
+    'dorm_id': dormId,
   };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -833,6 +840,7 @@ class Player {
           ),
         )
         .toList(),
+    dormId: readStringOrNull(json['dorm_id']),
   );
 }
 /// 奇遇长期痕迹记录（框架2 新增 · 批次A 数据层）。
