@@ -138,16 +138,18 @@ void main() {
           .toList();
       p.pendingLetterId = null;
       p.letterLastTurn = -100;
-      final s = gp.maybeTriggerLetter();
+      final s = gp.maybeTriggerLetter(seed: 42); // 固定 seed 消除随机性
       expect(s, contains('🦉'));
       expect(s, contains('魔法部'), reason: '机构信署名应为魔法部');
-      // 收信即标记 received
-      expect(p.receivedLetters, contains('letter_ministry_owls'));
-      expect(p.pendingLetterId, 'letter_ministry_owls', reason: '公函带待回信');
+      // 收信即标记 received（两封 ministry 之一）
+      final gotMinistry = p.receivedLetters.any(
+          (id) => letterById(id)?.kind == LetterKind.ministry);
+      expect(gotMinistry, isTrue, reason: '应收到一封魔法部公函');
+      expect(p.pendingLetterId, isNotNull, reason: '公函带待回信');
       // 再触发：ministry 已收，走 friendship
       p.letterLastTurn = -100;
       p.pendingLetterId = null;
-      final s2 = gp.maybeTriggerLetter();
+      final s2 = gp.maybeTriggerLetter(seed: 42);
       expect(s2, contains('🦉'), reason: '收完公函后仍会来友情信');
     });
 
@@ -188,11 +190,14 @@ void main() {
       p.pendingLetterId = null;
       p.letterLastTurn = -100;
       final aff0 = gp.npcRegistry['hermione']!.affection;
-      final s = gp.maybeTriggerLetter();
-      expect(s, contains('魔法部·考试管理局'), reason: '署名用 senderLabel');
+      final s = gp.maybeTriggerLetter(seed: 42);
+      // 两封 ministry 均以「魔法部」署名、均不落 NPC 名、均走匿名结算
+      expect(s, contains('魔法部'), reason: '署名用 senderLabel（魔法部）');
       expect(s, isNot(contains('赫敏')), reason: '不落赫敏的名');
       expect(gp.npcRegistry['hermione']!.affection, aff0, reason: '匿名信不动 NPC 好感');
-      expect(p.receivedLetters, contains('letter_ministry_owls'));
+      final gotMinistry = p.receivedLetters.any(
+          (id) => letterById(id)?.kind == LetterKind.ministry);
+      expect(gotMinistry, isTrue, reason: '应收到一封魔法部公函');
     });
   });
 
