@@ -46,13 +46,27 @@ class LetterReply {
   });
 }
 
-enum LetterKind { friendship, rivalry, milestone }
+enum LetterKind {
+  friendship,
+  rivalry,
+  milestone,
+  ministry,
+  mystery,
+  reunion,
+}
 
 /// 一封信。
 class LetterDef {
   final String id;
   final LetterKind kind;
   final String? senderId; // 指定寄信人；null = 按品格从已结识 NPC 里挑一位
+
+  /// 无 NPC 寄信人时的署名标签（魔法部/匿名等）；null = 用 NPC 名。
+  ///
+  /// `senderId == null && senderLabel != null` → 机构/匿名信（不查 NPC pool，
+  /// 直接按冷却投递）；`senderId != null && senderLabel == null` → 走现有
+  /// NPC 通道（含 reunion 放开 graduated）。
+  final String? senderLabel;
 
   /// 寄信人对你的好感下限（友情/里程碑用）。
   final int minAffection;
@@ -75,6 +89,7 @@ class LetterDef {
     required this.id,
     required this.kind,
     this.senderId,
+    this.senderLabel,
     this.minAffection = 0,
     this.maxAffection,
     this.onceOnly = false,
@@ -351,6 +366,124 @@ const List<LetterDef> kLetters = [
         title: '回信说「激将法对我没用」',
         text: '你的冷静让 \$sender 一时语塞。他在回信里憋了半天，只挤出一句：'
             '「……行吧，你还有点意思。」虽然是挑事的开头，倒也算认识了个不打不相识。',
+        effect: LetterEffect(senderAffection: 1),
+      ),
+    ],
+  ),
+
+  // ====== 魔法部公函（机构来信，无 NPC 落款，按学期节点各一次） ======
+  LetterDef(
+    id: 'letter_ministry_owls',
+    kind: LetterKind.ministry,
+    senderLabel: '魔法部·考试管理局',
+    onceOnly: true,
+    scene:
+        '一只系着靛蓝封印的猫头鹰穿过蒙蒙晨雾，把一封印着魔法部纹章的公函丢在你面前：\n'
+        '「\$player：经霍格沃茨魔法学校教务处转呈，兹通知你——'
+        '本学年 O.W.L.s 普通巫师等级考试报名将于近期截止。'
+        '请你尽快与你的院长确认报名科目，逾期不候。'
+        '（考试成绩将载入个人魔法档案。）\n'
+        '——魔法部·考试管理局」',
+    effect: LetterEffect(housePoints: 5),
+    replies: [
+      LetterReply(
+        title: '回函确认报名',
+        text: '你当天就把回函交给了院长。几天后，一封盖章的公函又落到你桌上：'
+            '「已收到你的报名确认。预祝你取得好成绩。」——信封里还夹着一张考试须知，'
+            '墨水未干，透着公事公办的温度。',
+        effect: LetterEffect(housePoints: 3),
+      ),
+      LetterReply(
+        title: '先收起来，回头再看',
+        text: '你把公函夹进课本里。魔法部的猫头鹰没再追着问——'
+            '但那份须知上的截止日期，像只不紧不慢的猫头鹰，总会在最恰当的时候想起来。',
+        effect: LetterEffect(reputationDim: 'academic', reputationValue: 1),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_ministry_forbidden',
+    kind: LetterKind.ministry,
+    senderLabel: '魔法部·神奇动物管理控制司',
+    onceOnly: true,
+    scene:
+        '一支深绿色的猫头鹰信使在你窗台上站定，落下一封印着「禁林」字样的公函：\n'
+        '「\$player：近期禁林边缘多次出现未经申报的夜游活动。'
+        '为保障师生安全，禁林夜间通行需提前申报。情节严重者，本司将致函学校处理。'
+        '\n——魔法部·神奇动物管理控制司」',
+    replies: [
+      LetterReply(
+        title: '回信说「我会注意的」',
+        text: '你给魔法部回了一封简短而礼貌的信。对方没有再多说——'
+            '但打那以后，禁林边巡逻的脚步声，似乎听得更清楚了。',
+        effect: LetterEffect(reputationDim: 'moral', reputationValue: 1),
+      ),
+      LetterReply(
+        title: '把信叠好收进抽屉',
+        text: '你没有回信，只把公函收进抽屉。那张警告沉甸甸地压在纸堆底下，'
+            '像一扇未上锁的门，等你某天自己决定要不要推开。',
+        effect: LetterEffect(reputationDim: 'dark', reputationValue: 1),
+      ),
+    ],
+  ),
+
+  // ====== 神秘信件（匿名，低概率彩蛋，onceOnly） ======
+  LetterDef(
+    id: 'letter_mystery_riddle',
+    kind: LetterKind.mystery,
+    senderLabel: '匿名的寄信人',
+    onceOnly: true,
+    scene:
+        '深夜，一只羽毛漆黑的猫头鹰无声无息地落在窗台，留下一封没有署名的信，'
+        '纸角微微发黄，墨迹却像是刚写下：\n'
+        '「\$player：\n'
+        '  当你读到这行字时，我在某个你看不见的地方。\n'
+        '  城堡没有秘密，只有还没被发现的走廊。\n'
+        '  别告诉任何人你收到过这封信。\n'
+        '  ——一个知道你在找什么的人」',
+    replies: [
+      LetterReply(
+        title: '回信问「你是谁」',
+        text: '你的回信寄出后，石沉大海。只是在三天后的夜里，窗台上又多了张字条，'
+            '只有一句话：「名字不重要。重要的是——你还在找吗？」',
+        effect: LetterEffect(reputationDim: 'dark', reputationValue: 2),
+      ),
+      LetterReply(
+        title: '把信烧掉，当作没看见',
+        text: '火苗舔过纸角，那行字在灰烬里蜷成一只模糊的猫头鹰形状。'
+            '你在烟雾里愣了两秒，随即把它抛到脑后——可那句话，总在你不经意时浮起来。',
+        effect: LetterEffect(reputationDim: 'observant', reputationValue: 1),
+      ),
+    ],
+  ),
+
+  // ====== 毕业旧友重联（reunion，可重播，需有已毕业 NPC） ======
+  LetterDef(
+    id: 'letter_reunion_old_friend',
+    kind: LetterKind.reunion,
+    minAffection: 10,
+    scene:
+        '一只腿上绑着旧式信筒的猫头鹰落在你窗边，落款是那个早已毕业、'
+        '去了远方的人：\n'
+        '「\$player：\n'
+        '  我在遥远的城市安顿下来了，窗台上养了一盆家乡的草药，'
+        '  每次给它浇水，都会想起霍格沃茨温室里那股潮湿的泥土味。'
+        '  听说你还在城堡里。真好。\n'
+        '  要是哪天你路过，记得写信告诉我，你过得怎么样。\n'
+        '  ——\$sender」',
+    replies: [
+      LetterReply(
+        title: '回一封信，说说近况',
+        text: '你的回信寄出没多久，\$sender 的信又追了过来，字里行间藏不住的欢喜：'
+            '「你还记得我家的邮编？太好了——这封信够我高兴半个月。」'
+            '隔着山川，友谊的线重新接上了。',
+        effect: LetterEffect(senderAffection: 3),
+      ),
+      LetterReply(
+        title: '简短回一句「我挺好的」',
+        text: '\$sender 的回信同样简短，却透着踏实：'
+            '「那就好。你那边风吹雨打的，记得照顾好自己——'
+            '我的门，永远给你留着。」',
         effect: LetterEffect(senderAffection: 1),
       ),
     ],

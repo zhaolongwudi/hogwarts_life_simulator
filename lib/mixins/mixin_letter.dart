@@ -50,11 +50,16 @@ mixin GameLetterMixin on GameProviderBase {
   /// 指定了 [LetterDef.senderId] 的必须就是这位（且已结识）；未指定时：
   ///  - friendship/milestone：选好感最高、且不低于该信 minAffection 的朋友；
   ///  - rivalry：选怨气最重的对手（好感不高于 maxAffection）。
+  ///  - reunion：好感达标且**已毕业**的旧友（毕业后仍可来信）。
   /// 尽量避开上一位寄信人，免得同一人连番刷屏。
+  /// 机构/匿名信（`senderLabel` 非空）不查 NPC pool，直接返回 null 由上层走哨兵。
   @visibleForTesting
   NPC? letterSenderFor(LetterDef def) {
-    final pool = npcRegistry.values
-        .where((n) => n.introduced && n.isAlive && !n.graduated)
+    if (def.senderLabel != null) return null; // 机构/匿名信：无需 NPC 落款
+    final base = npcRegistry.values.where((n) => n.introduced && n.isAlive);
+    final pool = (def.kind == LetterKind.reunion
+            ? base.where((n) => n.graduated).toList()
+            : base.where((n) => !n.graduated).toList())
         .toList();
     if (def.senderId != null) {
       for (final n in pool) {
@@ -87,7 +92,9 @@ mixin GameLetterMixin on GameProviderBase {
   }
 
   /// 落款一位已结识 NPC：先解析回寄人，若寄信人已淡出则取存档里的寄信人。
+  /// 机构/匿名信（senderLabel 非空）无 NPC 落款，一律返回 null。
   NPC? _senderOf(LetterDef def) {
+    if (def.senderLabel != null) return null; // 机构/匿名信：无 NPC 可落款
     final from = letterSenderFor(def);
     if (from != null) return from;
     final id = player?.lastLetterSenderId;
@@ -125,7 +132,27 @@ mixin GameLetterMixin on GameProviderBase {
       if (sender != null) return _deliver(p, l, sender);
     }
 
-    // 2) 友情来信：随机一封可落款的（会重播，靠好感门槛兜手感）。
+    // 2) 魔法部公函：未收过的机构信，按学期节点低频投递（不抢羁绊缘分）。
+    final ministries = kLetters
+        .where((l) => l.kind == LetterKind.ministry && !received.contains(l.id))
+        .toList()
+      ..shuffle(rnd);
+    for (final l in ministries) {
+      if (senderLabelReady(l)) return _deliver(p, l, null);
+    }
+
+    // 3) 神秘信件：未收过的匿名彩蛋，低概率（不抢主线）。
+    final mysteries = kLetters
+        .where((l) => l.kind == LetterKind.mystery && !received.contains(l.id))
+        .toList()
+      ..shuffle(rnd);
+    for (final l in mysteries) {
+      if (rnd.nextDouble() < 0.15 && senderLabelReady(l)) {
+        return _deliver(p, l, null);
+      }
+    }
+
+    // 4) 友情来信：随机一封可落款的（会重播，靠好感门槛兜手感）。
     final friends = kLetters.where((l) => l.kind == LetterKind.friendship).toList()
       ..shuffle(rnd);
     for (final l in friends) {
@@ -133,7 +160,15 @@ mixin GameLetterMixin on GameProviderBase {
       if (sender != null) return _deliver(p, l, sender);
     }
 
-    // 3) 敌对来信：有怨气对手在时随机一封。
+    // 5) 毕业旧友重联：有已毕业 NPC 在时随机一封（靠冷却兜手感）。
+    final reunions = kLetters.where((l) => l.kind == LetterKind.reunion).toList()
+      ..shuffle(rnd);
+    for (final l in reunions) {
+      final sender = letterSenderFor(l);
+      if (sender != null) return _deliver(p, l, sender);
+    }
+
+    // 6) 敌对来信：有怨气对手在时随机一封。
     final rivals = kLetters.where((l) => l.kind == LetterKind.rivalry).toList()
       ..shuffle(rnd);
     for (final l in rivals) {
@@ -144,9 +179,15 @@ mixin GameLetterMixin on GameProviderBase {
     return '';
   }
 
-  String _deliver(Player p, LetterDef def, NPC sender) {
+  /// 机构/匿名信（senderLabel 非空）是否具备投递条件（纯数据检查）。
+  bool senderLabelReady(LetterDef def) =>
+      def.senderLabel != null && def.senderLabel!.isNotEmpty;
+
+  String _deliver(Player p, LetterDef def, NPC? sender) {
+    // 署名：机构/匿名信用 senderLabel；其余用寄信人 NPC 名。
+    final sign = sender?.name ?? def.senderLabel ?? '未知的寄信人';
     p.letterLastTurn = turnCount;
-    p.lastLetterSenderId = sender.id;
+    if (sender != null) p.lastLetterSenderId = sender.id;
     if (def.onceOnly && !p.receivedLetters.contains(def.id)) {
       p.receivedLetters = List<String>.from(p.receivedLetters)..add(def.id);
     }
@@ -154,20 +195,35 @@ mixin GameLetterMixin on GameProviderBase {
       p.pendingLetterId = def.id; // 进入「待回信」
     }
     // 结收入信效果。
-    _applyLetterEffect(sender, def.effect, reason: '来信·${def.id}');
+    if (sender != null) {
+      _applyLetterEffect(sender, def.effect, reason: '来信·${def.id}');
+    } else {
+      _applyLetterEffectAnonymous(def.effect, reason: '来信·${def.id}');
+    }
     // 固化进存档信箱（/信 读 可回看）。
-    _archiveLetter(sender: sender.name, def: def);
+    _archiveLetter(sender: sign, def: def);
 
     final house = houseDisplayName(p.house ?? '', fallback: '霍格沃茨');
     final buf = StringBuffer();
-    buf.writeln('———————🦉 猫头鹰来信 · ${sender.name} 🦉———————');
+    buf.writeln('———————🦉 猫头鹰来信 · $sign 🦉———————');
     buf.writeln(
-        fillLetterText(def.scene, player: p.name, sender: sender.name, house: house));
+        fillLetterText(def.scene, player: p.name, sender: sign, house: house));
     if (def.replies.isNotEmpty) {
       buf.writeln();
       buf.writeln('（信末留着一句等你回信的话——下一回合，你可以真正回一封。）');
     }
     return buf.toString().trim();
+  }
+
+  /// 机构/匿名信的效果结算（无好感维度，只给加隆/学院分/声望）。
+  void _applyLetterEffectAnonymous(LetterEffect e, {required String reason}) {
+    final p = player;
+    if (p == null) return;
+    if (e.galleons > 0) p.galleons += e.galleons;
+    if (e.housePoints > 0) addHouseCupPoints(e.housePoints, reason);
+    if (e.reputationDim != null && e.reputationValue != 0) {
+      p.playerReputation.add(e.reputationDim!, e.reputationValue);
+    }
   }
 
   /// 生成本回合「待回信」的专属选项。
@@ -197,11 +253,9 @@ mixin GameLetterMixin on GameProviderBase {
       p.pendingLetterId = null;
       return '';
     }
+    // 落款：有 NPC 用 NPC；机构/匿名信用 senderLabel 兜底。
     final sender = _senderOf(def);
-    if (sender == null) {
-      p.pendingLetterId = null;
-      return '';
-    }
+    final sign = sender?.name ?? def.senderLabel ?? '未知的寄信人';
     int? index;
     if (action.startsWith(kLetterActionPrefix)) {
       final parts = action.split(':');
@@ -214,15 +268,19 @@ mixin GameLetterMixin on GameProviderBase {
     }
     index ??= def.replies.length ~/ 2; // 中性兜底：中间项
     final reply = def.replies[index];
-    _applyLetterEffect(sender, reply.effect, reason: '回信·${def.id}');
+    if (sender != null) {
+      _applyLetterEffect(sender, reply.effect, reason: '回信·${def.id}');
+    } else {
+      _applyLetterEffectAnonymous(reply.effect, reason: '回信·${def.id}');
+    }
     p.pendingLetterId = null;
 
     final house = houseDisplayName(p.house ?? '', fallback: '霍格沃茨');
     final buf = StringBuffer();
-    buf.writeln('———————🦉 你的回信 · 给 ${sender.name} 🦉———————');
+    buf.writeln('———————🦉 你的回信 · 给 $sign 🦉———————');
     buf.writeln('【你回信道】${reply.title}');
     buf.writeln(
-        fillLetterText(reply.text, player: p.name, sender: sender.name, house: house));
+        fillLetterText(reply.text, player: p.name, sender: sign, house: house));
     return buf.toString().trim();
   }
 
@@ -272,6 +330,12 @@ mixin GameLetterMixin on GameProviderBase {
         return '敌对来信';
       case LetterKind.milestone:
         return '羁绊来信';
+      case LetterKind.ministry:
+        return '魔法部公函';
+      case LetterKind.mystery:
+        return '神秘来信';
+      case LetterKind.reunion:
+        return '旧友来信';
     }
   }
 }
