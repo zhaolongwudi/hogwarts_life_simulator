@@ -1,12 +1,16 @@
-# 任务交接文档 - 当前 Batch 45 状态 + 历史回顾
-## 当前状态（HEAD: cf357d8，已全量 push，CI 全绿 run 35776821066）
-**Batch 45 · SenseNova 429 限流治理（✅ 已回退，保留叙事 maxTokens 放宽）：**
-- `c4626e7` `fix(batch45): SenseNova补每分钟限流治429 + 叙事maxTokens放宽防截断重试`：新增 lib/services/rate_limiter.dart（71 行）+ lib/mixins/mixin_init.dart 接入 + deepseek_service 每分钟限流；lib/mixins/mixin_systems.dart 叙事 maxTokens 放宽；test/batch45_sensenova_rpm_test.dart（67 行）→ CI run 628 ❌ failure
-- `c8689c2` `revert: 撤回SenseNova RPM限流 保留叙事maxTokens2000`：删除 rate_limiter.dart 全部 71 行 + mixin_init 接入行 + deepseek_service 限流 4 行 + batch45 测试 67 行；保留 mixin_systems 叙事 maxTokens 放宽 → CI run 629 ✅ success
-- **结论**：SenseNova 每分钟限流方案实测引发回归失败，已整体回退；只保留「叙事 maxTokens 放宽防截断」的正面收益。429 问题后续如需再治，改走「多 Key 轮换 + 熔断」而非新增限流器。
+# 任务交接文档 - 当前 Batch 47 状态 + 历史回顾
+## 当前状态（HEAD: 395b511，已全量 push，CI 全绿 run 35819549202）
+**Batch 47 · 更多来信类型（✅ 完成，CI 全绿）：**
+- 设计来源：docs/更多来信类型设计.md（2026-09-22 预研，第 8 份设计文档）。
+- `90ec275` `feat(batch47): 更多来信类型——魔法部公函/神秘信件/毕业旧友重联`：LetterKind 扩展 3 值（ministry/mystery/reunion）；LetterDef 增 senderLabel（机构/匿名署名）+ month（学期节点月份）；mixin_letter 触发优先级 6 分支（milestone→ministry→mystery→friendship→reunion→rivalry）+ senderLabelReady 哨兵 + _applyLetterEffectAnonymous 匿名结算；test/batch47_letter_types_test.dart 新建
+- `6c440e2` `fix(batch47): 消除测试随机性——固定seed + ministry断言改为任一公函`：固定 seed 消除随机性，断言放宽
+- `a07d042` `fix(batch47): ministry信绑学期节点月份(5月O.W.L.s/9月禁林) + batch42适配预收新类型`：letter_ministry_owls.month=5（O.W.L.s 报名）、letter_ministry_forbidden.month=9（禁林警告）；batch42 测试预收 ministry/mystery 防新类型抢戏
+- **CI 红（run 35817159522，2202 passed / 2 failed）**：batch47 两个测试断言「收到魔法部公函」实际收到赫敏友情信。根因：makeGame 默认 letter 起点=7月31日（worldState.time.month==7），两封 ministry 信分别绑定 5/9 月，7 月一封都投不出 → ministry 分支空转落到 friendship。
+- `395b511` `fix(batch47): 测试固定5月(魔法部公函投递月)`：batch47 makeEnabled 里 `gp.worldState.time.month = 5; gp.worldState.time.day = 7;` → ministry 必命中 letter_ministry_owls → CI 全绿 `35819549202`
+- **当前状态**：HEAD=395b511、origin/main=395b511、工作区干净；batch47 三型来信（魔法部公函/神秘信件/毕业旧友重联）全部落地，CI 全绿。
 
 ---
-## 历史状态（Batch 44 完成 + Batch 11 回顾）
+## 历史状态（Batch 45 完成 + Batch 44 回顾）
 ## 历史 HEAD（Batch 44）：64452a5，CI 全绿 run 35645170252
 **Batch 44 · AI 配置重构（✅ 完成，CI 全绿）：**
 - 目标：参考 Operit 现有模型地址/模型名/多 Key 轮换方案，重构项目内 AI 配置与功能分配；Operit 的功能绑定（CHAT/SUMMARY 等）不参考（不同系统）。
