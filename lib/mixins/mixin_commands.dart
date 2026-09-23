@@ -3465,10 +3465,40 @@ $knownRegions
         buf.writeln('· ${when.isEmpty ? '' : '[$when] '}${e.text}');
       }
     }
+    // 奇遇痕迹小节（设计文档 3.4.1：/档案 回忆 追加奇遇小节，
+    // 按时间倒序列出已沉淀奇遇 title + outcomeTitle + 周数）。
+    final happenstances = p.happenstanceLog;
+    if (happenstances.isNotEmpty) {
+      buf.writeln('\n—— 奇遇回忆 ——');
+      final recent = happenstances.reversed.take(10).toList();
+      for (final h in recent) {
+        final termLabel = h.term == 'first'
+            ? '第一学期'
+            : h.term == 'second'
+                ? '第二学期'
+                : '暑期';
+        buf.writeln(
+          '· [第${h.week}周·$termLabel] 「${h.title}」→ ${h.outcomeTitle}',
+        );
+      }
+      if (happenstances.length > 10) {
+        buf.writeln('……等共 ${happenstances.length} 场奇遇');
+      }
+    }
     // 一眼可见的积累
     buf.writeln('\n—— 一路走来 ——');
     buf.writeln('· 收藏：${p.collection.length} 件');
     buf.writeln('· 成就：${p.achievements.length} 项');
+    // 奇遇声望展示注入（设计文档 3.5：纯展示性注入，不改声望数值）
+    final hCount = p.happenstanceLog.length;
+    if (hCount >= 15) {
+      buf.writeln('· 奇遇经历：$hCount 场——城堡的每个角落都认得你');
+    } else if (hCount >= 5) {
+      buf.writeln(
+        '· 奇遇经历：$hCount 场——你有 $hCount 段不期而遇的经历，'
+        '它们塑造了你的行事风格',
+      );
+    }
     final love = p.loveState;
     if (love.status != '单身') {
       buf.writeln('· 感情：${love.status}（${love.partnerName ?? '?'}）');
