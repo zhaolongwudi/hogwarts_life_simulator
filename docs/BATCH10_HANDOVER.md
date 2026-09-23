@@ -1,5 +1,15 @@
-# 任务交接文档 - 当前 Batch 47 状态 + 历史回顾
-## 当前状态（HEAD: 395b511，已全量 push，CI 全绿 run 35819549202）
+# 任务交接文档 - 当前 Batch 48 状态 + 历史回顾
+## 当前状态（HEAD: e598346，已全量 push，CI 全绿 run 35827501756）
+**Batch 48 · 来信串联（✅ 完成，CI 全绿）：**
+- 设计来源：docs/来信串联设计.md（2026-09-22 预研，第二梯队首项）。
+- `e0ccb2e` `feat(batch48): 来信串联——社长邀请信(来信→社团) + 羁绊预热信(来信→羁绊)`：LetterDef 增 clubId 可选字段（零迁移）；kLetters 新增 6 封信（4 社长邀请 duel/potion/broom/quip + 2 羁绊预热 hermione/harry）；maybeTriggerLetter 新增 3.5 分支（未入社+社长好感达标→投社长信，优先级 milestone→ministry→mystery→社长邀请→friendship→reunion→rivalry）；friendship 分支排除 clubId 非空；tryResolveLetterReplyChoice 回信「好，我加入」→ joinClub(clubId) 直接入社（含同好注入 A +5）；GameProviderBase 补 joinClub 抽象声明；test/batch48_letter_tie_test.dart 新建（5 组 11 用例）
+- `ee1b5ad` `fix(batch48): 社长邀请信分支加 clubEnabled 门控`：3.5 分支条件从 `p.clubId==null` 改为 `p.clubId==null && appProvider.clubEnabled`（不干扰 clubEnabled=false 的既有测试）；batch48 fixture 开 clubEnabled=true
+- `e598346` `fix(batch48): 社长信3.5分支补minAffection校验`：根因——letterSenderFor 对指定 senderId 的信只检查 NPC 是否在 pool（introduced+alive+!graduated），不检查好感达标；3.5 分支在 letterSenderFor 返回非 null 后额外校验 `sender.affection >= l.minAffection`；修掉 batch48 测试 unused_local_variable warning
+- **当前状态**：HEAD=e598346、origin/main=e598346、工作区干净；batch48 来信串联（社长邀请信+羁绊预热信）全部落地，CI 全绿。
+
+---
+## 历史状态（Batch 47 完成 + Batch 44 回顾）
+## 历史 HEAD（Batch 47）：395b511，CI 全绿 run 35819549202
 **Batch 47 · 更多来信类型（✅ 完成，CI 全绿）：**
 - 设计来源：docs/更多来信类型设计.md（2026-09-22 预研，第 8 份设计文档）。
 - `90ec275` `feat(batch47): 更多来信类型——魔法部公函/神秘信件/毕业旧友重联`：LetterKind 扩展 3 值（ministry/mystery/reunion）；LetterDef 增 senderLabel（机构/匿名署名）+ month（学期节点月份）；mixin_letter 触发优先级 6 分支（milestone→ministry→mystery→friendship→reunion→rivalry）+ senderLabelReady 哨兵 + _applyLetterEffectAnonymous 匿名结算；test/batch47_letter_types_test.dart 新建
