@@ -47,6 +47,7 @@ void main() {
       ]}) async {
     final gp = await makeGame(offlineQuickMode: true);
     gp.appProvider.letterEnabled = true;
+    gp.appProvider.clubEnabled = true;
     gp.appProvider.happenstanceEnabled = false;
     gp.appProvider.companionArcEnabled = false;
     gp.npcRegistry.clear();

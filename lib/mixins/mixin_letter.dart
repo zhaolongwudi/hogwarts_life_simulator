@@ -159,7 +159,8 @@ mixin GameLetterMixin on GameProviderBase {
     // 3.5) 社长邀请信（来信→社团）：未入该社 + 对应社长好感达标才投递。
     // 优先级在里程碑/公函/神秘之后、日常友情之前——牵线机会不抢重头戏，
     // 但先于泛泛暖场。已入社（含换社后）自动跳过；clubId 非空的信只投未入社玩家。
-    if (p.clubId == null) {
+    // 仅在社团系统开启时投递（clubEnabled=false 的测试环境不干扰既有用例）。
+    if (p.clubId == null && appProvider.clubEnabled) {
       final clubInvites = kLetters
           .where((l) => l.clubId != null && !received.contains(l.id))
           .toList()
