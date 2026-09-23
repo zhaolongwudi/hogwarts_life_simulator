@@ -53,6 +53,12 @@ void main() {
     final p = gp.player!;
     // 消除冷却：让第一回合即可收到信
     p.letterLastTurn = -100;
+    // 固定为 5 月（O.W.L.s 报名月）：让魔法部公函（letter_ministry_owls.month=5）
+    // 必能命中投递分支。makeGame 默认 letter 起点是 7 月 31 日
+    // （worldState.time.month == 7），两封 ministry 信分别绑定 5 月/9 月，
+    // 7 月一封都投不出 → ministry 分支空转落到友情信，断言会失败。
+    gp.worldState.time.month = 5;
+    gp.worldState.time.day = 7;
     return gp;
   }
 
