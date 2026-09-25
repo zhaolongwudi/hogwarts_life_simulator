@@ -2446,7 +2446,9 @@ mixin GameRelationsMixin on GameProviderBase {
     final houseKey = normalizeHouseKey(p.house!);
     if (houseKey == null) return null;
     final genderKey = (p.gender == '男') ? 'boys' : 'girls';
-    return '${houseKey}_$genderKey';
+    // dormId 统一小写（'gryffindor_boys'）：与 _generateRoommateNpc 的
+    // switch 小写 houseKey、测试预置 NPC 的小写 dormId 保持同一套格式。
+    return '${houseKey.toLowerCase()}_$genderKey';
   }
 
   /// 同 dormId 的 NPC 即「室友」（不含玩家自己）。
