@@ -1716,7 +1716,7 @@ ${buildNarrativeRules(turn: turnCount)}
               ? '下午'
               : '傍晚';
           final eventSeed = turnCount;
-          final eventLines = localEventLinesFor(
+          final eventLines = localEventLinesWithRoommates(
             location: location,
             hour: hour,
             seed: eventSeed,
@@ -3058,7 +3058,7 @@ $source
       if (p != null) {
         final location = worldState.currentLocation ?? '霍格沃茨';
         final hour = worldState.time.hour;
-        final lines = localEventLinesFor(
+        final lines = localEventLinesWithRoommates(
           location: location,
           hour: hour,
           seed: storyProgress.stepTurnSeed,
@@ -3298,7 +3298,6 @@ $source
   }) {
     final isNight = hour < 6 || hour >= 21;
     if (isNight) return _nightEventLines;
-
     // 地点池精确匹配失败时退化为「子串双向匹配」：
     // currentLocation 存的是规范名（如「霍格沃茨·礼堂」），而池 key 是短名
     // （如「礼堂」）——只做 `_locationEventLines[location]` 精确查找的话，
@@ -3313,6 +3312,31 @@ $source
       }
     }
     return _genericEventLines[(seed ~/ 3) % _genericEventLines.length];
+  }
+  /// 实例版地点氛围池：在 [localEventLinesFor] 基础上叠加室友系统——
+  /// 玩家在宿舍且存在室友时，优先取「室友互动小剧场池」（seed 轮换），
+  /// 并把 `$roommate` 占位替换为实际室友名；无室友则退回原地点池。
+  /// 供离线回合/沙盒两处实例调用（1719/3061），保持 static 版本不动
+  /// 以免破坏既有静态调用测试（batch33_offline_ux_test）。
+  List<String> localEventLinesWithRoommates({
+    required String location,
+    required int hour,
+    required int seed,
+  }) {
+    final lines = localEventLinesFor(
+      location: location,
+      hour: hour,
+      seed: seed,
+    );
+    if (!location.contains('宿舍')) return lines;
+    final rms = roommates();
+    if (rms.isEmpty) return lines;
+    final roommateName = rms[seed % rms.length].name;
+    if (_roommateSceneLines.isNotEmpty) {
+      final scene = _roommateSceneLines[seed % _roommateSceneLines.length];
+      return [scene.replaceAll('\$roommate', roommateName)];
+    }
+    return lines.map((l) => l.replaceAll('\$roommate', roommateName)).toList();
   }
 
   /// 深夜专属事件池（熄灯后的霍格沃茨氛围）。

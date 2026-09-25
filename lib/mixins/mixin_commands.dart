@@ -1133,9 +1133,30 @@ mixin GameCommandsMixin on GameProviderBase {
           return true;
         },
       ),
+      CommandDef(
+        primary: '室友',
+        group: '关系&情感',
+        helpText: '室友互动：/室友（列表）·/室友 聊天·/室友 早起',
+        panel: true,
+        subs: [
+          CommandSub('聊天', '和室友聊聊（好感 +1，冷却 3 回合）'),
+          CommandSub('早起', '让室友叫你起床（概率性，精力 +1）'),
+        ],
+        handler: (ctx) {
+          final m = ctx.provider as GameCommandsMixin;
+          if (ctx.parts.length >= 1 && ctx.arg(0) == '聊天') {
+            m.currentNarrative = m.roommateChat();
+          } else if (ctx.parts.length >= 1 && ctx.arg(0) == '早起') {
+            m.currentNarrative = m.roommateWakeUp();
+          } else {
+            m.currentNarrative = m.formatRoommatePanel();
+            m.choices = [GameChoice(text: '返回', action: '继续')];
+          }
+          return true;
+        },
+      ),
     ]);
   }
-
   // —— 信件 & 目标 & 世界 & 结局 ——
   void _registerWorldCommands(CommandRegistry registry) {
     registry.registerAll([

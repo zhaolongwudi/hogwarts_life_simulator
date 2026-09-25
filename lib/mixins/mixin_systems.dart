@@ -2701,6 +2701,10 @@ mixin GameSystemsMixin on GameProviderBase {
       lastTrackedLocation = normalized;
       turnsAtSameLocation = 0;
     }
+    // 室友系统：进入宿舍（首次，player.dormId 为空）时惰性补室友。
+    if (normalized.contains('宿舍') || normalized == kDormLocation) {
+      ensureRoommateNpcs();
+    }
     notifyListeners();
   }
 

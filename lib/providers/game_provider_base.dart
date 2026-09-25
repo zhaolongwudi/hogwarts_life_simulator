@@ -162,6 +162,8 @@ abstract class GameProviderBase extends ChangeNotifier
   bool isSummarizing = false;
   String? error;
   int turnCount = 0;
+  /// 室友聊天冷却（3 回合）：上次 /室友 聊天回合号，-1 = 从未聊过。
+  int lastRoommateChatTurn = -1;
   String lastPlayerAction = '';
   String? systemPrompt;
   String loadingStage = '';
@@ -923,6 +925,19 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 实现在 GameClubMixin（mixin_club.dart）。供来信串联「社长邀请信」回信
   /// 「好，我加入」选项调用（GameLetterMixin）。
   String joinClub(String rawId);
+
+  // ====== 室友系统（GameRelationsMixin，mixin_relations.dart）======
+  /// 入舍时惰性补室友：首次进入宿舍（player.dormId 为空）时按学院+性别
+  /// 生成 1~2 位同宿舍 NPC 并赋 dormId（老档零迁移，进宿舍才触发）。
+  void ensureRoommateNpcs();
+  /// 同 dormId 的 NPC 即「室友」（不含玩家自己）。
+  List<NPC> roommates();
+  /// /室友 列表：显示同宿舍室友 + 好感/状态。
+  String formatRoommatePanel();
+  /// /室友 聊天：随机一段深夜小剧场，好感 +1（冷却 3 回合）。
+  String roommateChat();
+  /// /室友 早起：室友催起（概率性），早起 +1 精力。
+  String roommateWakeUp();
 
   // ====== 通用工具 ======
 
