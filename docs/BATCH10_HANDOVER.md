@@ -1,5 +1,28 @@
-# 任务交接文档 - 当前 Batch 48 状态 + 历史回顾
-## 当前状态（HEAD: e598346，已全量 push，CI 全绿 run 35827501756）
+# 任务交接文档 - 当前 Batch 51 状态 + 历史回顾
+## 当前状态（HEAD: f920109，已全量 push，CI 全绿 run 36168478209）
+**Batch 51 · 室友系统逻辑层（✅ 完成，CI 全绿）：**
+- 前置：Batch 50 `89eb6e2`（数据层：NPC.dormId + Player.dormId + 宿舍池人物句 + 小剧场池）；Batch 49 `fef2cbd`（奇遇痕迹展示层）。
+- `04b1524` `feat(batch51): 室友系统逻辑层——playerDormId推导+入舍惰性补室友+室友面板/聊天/早起命令+宿舍小剧场替换`：
+  - `mixin_relations.dart`：`playerDormId` getter（学院+性别→宿舍标识）、`roommates()`（同 dormId 活 NPC 即室友）、`ensureRoommateNpcs()`（首次进宿舍惰性补 1~2 位）、`_generateRoommateNpc()`（按学院/性别生成，好感 30 起步）、`formatRoommatePanel()`（/室友 列表）、`roommateChat()`（好感 +1 + 冷却 3 回合）、`roommateWakeUp()`（概率早起 +1 精力）
+  - `mixin_commands.dart`：`/室友` 命令注册（列表/聊天/早起三分支，1136-1157）
+  - `mixin_narrative.dart`：`localEventLinesWithRoommates()`（宿舍+有室友→优先小剧场池+替换 $roommate 占位，否则退回原池）+ `_roommateSceneLines` 8 条小剧场池
+  - `mixin_systems.dart`：`travelTo` 挂钩进宿舍触发 `ensureRoommateNpcs`
+  - `game_provider_base.dart`：`lastRoommateChatTurn` 字段 + 5 个抽象声明
+  - `test/batch51_roommate_test.dart` 新建（R1-R5 共 5 组 11 用例）
+- `fccf8a0` `fix(batch51): R4 group 标题 $roommate 转义`：Dart 单引号字符串里 `$roommate` 触发变量插值→undefined_identifier error（analyze 红）。修复后 analyze 绿。
+- `f920109` `fix(batch51): playerDormId 统一小写`：根因——`normalizeHouseKey` 返回大写权威 key（'Gryffindor'）→ dormId 拼成 'Gryffindor_boys'，与测试/生成逻辑的小写 'gryffindor_boys' 不一致，导致 7 个测试失败（R1×1/R2×2/R3×3/R4×1，全是 roommates() 匹配不上）。修复：`houseKey.toLowerCase()`。**CI 全绿 run 36168478209**（Analyze ✅ + tests ✅ + APK ✅ + Release ✅）。
+- **当前状态**：HEAD=f920109、origin/main=f920109、工作区干净；batch51 室友系统（数据层+逻辑层+命令层+叙事注入+测试）全部落地，CI 全绿。
+
+---
+## 历史状态（Batch 50 完成 + Batch 48 回顾）
+## 历史 HEAD（Batch 50）：89eb6e2，CI 全绿 run 36163043024
+**Batch 50 · 室友系统数据层（✅ 完成，CI 全绿）：**
+- `89eb6e2` `feat(batch50): 室友系统数据层——NPC.dormId + Player.dormId + 宿舍池人物句 + 小剧场池`：NPC/Player 模型增 `dormId`（序列化 dorm_id，零迁移）；宿舍池人物句带 $roommate 占位；_roommateSceneLines 小剧场池 8 条。CI run 36163043024 success。
+- **当前状态**：HEAD=89eb6e2、origin/main=89eb6e2、工作区干净；batch50 数据层落地。
+
+---
+## 历史状态（Batch 48 完成 + Batch 47 回顾）
+## 历史 HEAD（Batch 48）：e598346，CI 全绿 run 35827501756
 **Batch 48 · 来信串联（✅ 完成，CI 全绿）：**
 - 设计来源：docs/来信串联设计.md（2026-09-22 预研，第二梯队首项）。
 - `e0ccb2e` `feat(batch48): 来信串联——社长邀请信(来信→社团) + 羁绊预热信(来信→羁绊)`：LetterDef 增 clubId 可选字段（零迁移）；kLetters 新增 6 封信（4 社长邀请 duel/potion/broom/quip + 2 羁绊预热 hermione/harry）；maybeTriggerLetter 新增 3.5 分支（未入社+社长好感达标→投社长信，优先级 milestone→ministry→mystery→社长邀请→friendship→reunion→rivalry）；friendship 分支排除 clubId 非空；tryResolveLetterReplyChoice 回信「好，我加入」→ joinClub(clubId) 直接入社（含同好注入 A +5）；GameProviderBase 补 joinClub 抽象声明；test/batch48_letter_tie_test.dart 新建（5 组 11 用例）
