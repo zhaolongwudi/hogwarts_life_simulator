@@ -140,7 +140,7 @@ void main() {
     });
   });
 
-  group('R4 · 宿舍池人物句与 $roommate 替换', () {
+  group('R4 · 宿舍池人物句与 \$roommate 替换', () {
     test('宿舍有室友：命中室友互动小剧场并替换占位', () async {
       final gp = await makeRoommateGame(withRoommateNpcs: true);
       final lines = gp.localEventLinesWithRoommates(
