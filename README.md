@@ -7,7 +7,7 @@
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v5.2.2-E3B341?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.2.3-E3B341?style=flat-square" />
   <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
   <img alt="测试" src="https://img.shields.io/badge/tests-1994%2B%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
+| **v5.2.3** | feat(batch50): 室友系统数据层——NPC.dormId + Player.dormId + 宿舍池人物句 + 小剧场池 |
 | **v5.2.2** | feat(batch49): 奇遇痕迹展示层——/档案 回忆 追加奇遇小节 + 声望展示注入 |
 | **v5.2.1** | fix(batch48): 社长信3.5分支补minAffection校验（letterSenderFor对senderId精确匹配不… |
 | **v5.2.0** | fix(S8/S9/S10/S11): 决斗递减、银色鳞片、快讯学期口径、魁地奇周重置 |
 | **v5.1.9** | fix(S6/S13): 决斗赛季跳档补发 + 四社小玩法专项测试 |
-| **v5.1.8** | fix(S4/S7): 睡眠语义两表对齐 + 魁地奇训练 30 分钟 |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
