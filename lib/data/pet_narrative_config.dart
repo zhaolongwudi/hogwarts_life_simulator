@@ -7,6 +7,7 @@
 ///   - mixin_play.dart（化人形触发门槛）
 ///
 /// 现在把这些配置下沉到 PetNarrativeConfig，新增一只「特殊宠物」只加数据。
+library;
 
 import '../models/long_term_memory.dart';
 

@@ -262,7 +262,7 @@ void main() {
 
   // ==================== 3. 路由层：连续空响应降级 ====================
   group('Q9 路由层降级', () {
-    AiRouter _routerWith({
+    AiRouter routerWith({
       required _FakeAiServer sensenova,
       required _FakeAiServer agnes,
     }) {
@@ -300,7 +300,7 @@ void main() {
       );
       addTearDown(sensenova.close);
       addTearDown(agnes.close);
-      final router = _routerWith(sensenova: sensenova, agnes: agnes);
+      final router = routerWith(sensenova: sensenova, agnes: agnes);
 
       for (var i = 0; i < 3; i++) {
         final result = await router.chatComplete(

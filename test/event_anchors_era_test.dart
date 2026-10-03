@@ -124,7 +124,7 @@ void main() {
         final hit = kDarkRisingAnchors
             .map((id) => byId[id]!)
             .where((a) => a.grade == grade);
-        expect(hit, isNotEmpty, reason: '${grade}年级没有子世代专属锚点');
+        expect(hit, isNotEmpty, reason: '$grade年级没有子世代专属锚点');
       }
     });
 

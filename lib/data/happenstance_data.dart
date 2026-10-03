@@ -107,7 +107,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你顺着纸条去了那间空教室。窗台下面压着一个裹着旧报纸的小包，'
             '里面是几块巧克蛙和一张"谢谢"的便签。第二天，你在桌上发现一枚'
             '崭新的加隆，压在一角。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 2, galleons: 6),
       ),
       HappenstanceOutcomeDef(
@@ -115,7 +115,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '你想了想，把纸条按原样放回地上——别人的秘密不该由你来拆。'
             '第二天它不见了。你莫名觉得，这样做是对的。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 3, energy: 4),
       ),
     ],
@@ -135,7 +135,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你把它收进笔袋。这支笔划字极稳，写东西再没歪过角度，'
             '连魔药课笔记都工整了一截——虽然它偶尔会在你走神时，'
             '悄悄在页角画一朵花。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'academic', reputationValue: 3, energy: 4),
       ),
       HappenstanceOutcomeDef(
@@ -143,7 +143,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '你抬手问了一圈，邻座的拉文克劳学姐认领走了它，连声道谢。'
             r'晚上，$house 的公共休息室里多了一碟对方送来的糖霜饼干。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'social',
             reputationValue: 3,
             npcAffection: 2),
@@ -164,7 +164,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '你把坠饰交到失物招领处。傍晚，一只沾着煤灰的猫头鹰落到你肩头，'
             '腿上的小袋里装着三颗亮晶晶的石头，算是答谢。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             galleons: 5, reputationDim: 'moral', reputationValue: 2),
       ),
       HappenstanceOutcomeDef(
@@ -172,7 +172,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '红绳绕上手腕的一瞬，你感到一丝凉意顺着腕骨爬上来。'
             '之后几天运气似乎不错——连魔药课那种容易炸的坩埚都平安无事。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'dark', reputationValue: 2, housePoints: 4, energy: 5),
       ),
     ],
@@ -197,7 +197,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你捧着青蛙送回温室，斯拉格霍恩教授（或当值药剂师）朝你点点头，'
             '把一罐松脂香的精油塞进你手里。这只青蛙后来成了你课上的常客，'
             '见到你就眨眼睛。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 3, galleons: 4, npcAffection: 2),
       ),
       HappenstanceOutcomeDef(
@@ -206,7 +206,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你把它放回林子深处。它一跳老远，回头看了你一眼，钻进蕨丛不见了。'
             '走出禁林时，你衣袋里多了一片不知怎么进去的银色鳞片，'
             '凉凉的，带着一点苦艾的味道。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'dark', reputationValue: 2, energy: 3, itemName: '银色鳞片'),
       ),
       HappenstanceOutcomeDef(
@@ -215,7 +215,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你蹲下来，用草叶逗它。它不认生，绕着你的靴子蹦了几圈，'
             '又在你鞋带上蹲了半天。等它跳走，你才想起自己只是出来采风，'
             '却一点也不觉得累。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'social', reputationValue: 2, energy: 3),
       ),
     ],
@@ -236,7 +236,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '圆石在口袋里一直微温。夜里你把它放在枕边，睡得出奇安稳，'
             '第二天精神格外好——连那段绕了八遍的咒语都一遍过了。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'academic', reputationValue: 2, energy: 6, itemName: '会发光的圆石'),
       ),
       HappenstanceOutcomeDef(
@@ -244,7 +244,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '你轻轻把圆石放回原处，它又暗下去，像从未亮过。走出禁林时'
             '风正好吹过树梢，你莫名觉得，有些东西遇到了就够了，不必带走。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 3, galleons: 3),
       ),
     ],
@@ -268,7 +268,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你擦掉水草，认出那是三年前某届学生会主席的纪念徽章。'
             '你把它送去失物招领，结果负责人一头雾水——那届早毕业了。'
             '他让你留着：现在它该有个新主人了。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'social', reputationValue: 3, housePoints: 5),
       ),
       HappenstanceOutcomeDef(
@@ -276,7 +276,7 @@ const List<HappenstanceDef> kHappenstances = [
         text:
             '你没有碰那枚徽章，只是看着暮色沉进湖里。风把涟漪一层层'
             '推远，好像今晚的黑湖什么都不想让你带走，只想让你站到天黑。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 2, energy: 4),
       ),
     ],
@@ -299,7 +299,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你从口袋里翻出半块肉馅饼。它先是僵着不动，随后小口小口'
             '吃完了，用头顶了顶你的手，才迈着步子跟了你半截走廊。'
             '那天晚上，你总觉得哪只猫都会记得你的气味。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 3, housePoints: 4),
       ),
       HappenstanceOutcomeDef(
@@ -308,7 +308,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你把它抱到公共休息室的炉火边。它窝在你腿上睡了一觉，'
             '醒来已经不怕人了。那天夜里你还口齿不清地摸出一瓶温牛奶，'
             '精灵们在你书架底下多放了两颗太妃糖。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'social', reputationValue: 3, npcAffection: 2, energy: 3),
       ),
     ],
@@ -331,7 +331,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你在那行模糊的字迹下面，用自己的字补了一句。'
             '后来每年的第一场雪，你都会来看它一次——玻璃上的颜色每次'
             '都淡一点，像心事被慢慢化开，你却觉得它更清楚了。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'academic', reputationValue: 2, energy: 5),
       ),
       HappenstanceOutcomeDef(
@@ -340,7 +340,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你辨不清那行字，只觉写出它的人大概很冷、也很平静。'
             '你没有添字，只是替它把窗关严了些，就下了塔。'
             '楼道里回响的脚步声，比你上来时轻很多。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 3, galleons: 4),
       ),
     ],
@@ -364,7 +364,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你撬开铜扣——里面只有一截旧蜡烛、三颗干豆子和一张字条：'
             '"还给活下去的人。"你合上盖子，把它放回墙边。走出很远，'
             '仍觉得那句话是写给某个还没出现的人。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'dark', reputationValue: 2, galleons: 5, energy: 4),
       ),
       HappenstanceOutcomeDef(
@@ -373,7 +373,7 @@ const List<HappenstanceDef> kHappenstances = [
             '你看了看那行字，终究没有弯腰。箱子在你身后静静躺着，'
             '这一次墙没有把它收回去。你走出走廊那一刻才明白：'
             '有些门，打开了就再难关上——而你没有开门的准备。',
-        effect: const HappenstanceEffectDef(
+        effect: HappenstanceEffectDef(
             reputationDim: 'moral', reputationValue: 3, housePoints: 4),
       ),
     ],

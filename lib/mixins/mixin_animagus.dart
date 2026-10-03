@@ -8,6 +8,7 @@
 ///   attempts: 尝试次数
 ///   registered: 是否已在魔法部登记
 ///   failedReason: 失败原因描述
+library;
 
 import '../data/animagus_data.dart';
 import '../models/player.dart';
@@ -82,6 +83,7 @@ mixin GameAnimagusMixin on GameProviderBase {
   }
 
   /// 处理 /阿尼马格斯 子命令（指令注册在 mixin_commands.dart）
+  @override
   void handleAnimagusCommand(List<String> parts) {
     final p = player;
     if (p == null) return;
@@ -125,7 +127,7 @@ mixin GameAnimagusMixin on GameProviderBase {
     if (grade < 5) {
       currentNarrative = '你翻开了《阿尼马格斯：从入门到入狱》，但书里的内容远超你目前的变形术水平。'
           '阿尼马格斯是高年级才有资格触碰的领域——至少五年级，你的魔力与心智才足够稳定。\n\n'
-          '（当前 ${grade}年级，需五年级起）';
+          '（当前 $grade年级，需五年级起）';
       return;
     }
     final potions = p.attributes['potions'] ?? 50;

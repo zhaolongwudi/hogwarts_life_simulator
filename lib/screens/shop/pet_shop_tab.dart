@@ -105,7 +105,7 @@ class PetShopTab extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '${pet.species}',
+                      pet.species,
                       style: TextStyle(
                         fontSize: 11,
                         color: Theme.of(context).textTheme.bodyMedium!.color,

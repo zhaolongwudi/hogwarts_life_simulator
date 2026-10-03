@@ -47,6 +47,7 @@ mixin GameClubMixin on GameProviderBase {
 
   /// 加入一个社团（含换社）。返回需要写入面板的文本。
   /// rawId 为社团 id；未知 id 时回到无参面板并提示。
+  @override
   String joinClub(String rawId) {
     final club = clubById(rawId);
     if (club == null) {
@@ -390,6 +391,7 @@ mixin GameClubMixin on GameProviderBase {
   /// `kDailyActivityLimits['club_activity']`。两条链路各自预算互不占用，
   /// 所以同一次命中可以既推进任务也拿日常分——但每天都不能无限量刷。
   /// 返回一段进度提示文本；无进行中任务 / 行动不匹配 / 已完成未领奖时不推进。
+  @override
   String advanceClubTaskForAction(String action) {
     final p = player;
     final club = memberClub();

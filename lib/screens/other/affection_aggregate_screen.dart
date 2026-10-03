@@ -473,7 +473,7 @@ class _AffectionAggregateScreenState extends State<AffectionAggregateScreen> {
                 _buildStatItem('当前', '${npc.affection}', UiHelpers.getAffectionColor(npc.affection)),
                 _buildStatItem('最高', '${npc.maxAffectionReached}', const Color(0xFFEC4899)),
                 _buildStatItem('本周+', '${npc.affectionGainedThisWeek}', Colors.blue),
-                _buildStatItem('有锁', '${npc.hasGrudge ? '是' : '否'}',
+                _buildStatItem('有锁', npc.hasGrudge ? '是' : '否',
                     npc.hasGrudge ? Colors.orange : Colors.green),
               ],
             ),

@@ -35,6 +35,7 @@ mixin GameHappenstanceMixin on GameProviderBase {
   bool get _happenstanceOn => appProvider.happenstanceEnabled;
 
   /// 是否有进行中的未结算奇遇。
+  @override
   bool get hasPendingHappenstance =>
       worldState.pendingHappenstanceId != null;
 
@@ -89,6 +90,7 @@ mixin GameHappenstanceMixin on GameProviderBase {
   /// 触发一「场」奇遇：置 pending、写死专属选项。返回需要追加进叙事的场景文块；
   /// 未触发返回空串。触发后 [worldState.pendingHappenstanceId] 与
   /// [worldState.lastHappenstanceTurn] 即为本轮状态，便于下回合/存档接续。
+  @override
   String triggerHappenstance({int? seed}) {
     final h = happenstanceDueToday(seed: seed);
     if (h == null) return '';
@@ -103,6 +105,7 @@ mixin GameHappenstanceMixin on GameProviderBase {
   }
 
   /// 生成本回合奇遇专属选项（供触发回合覆写兜底选项）。
+  @override
   List<GameChoice> happenstanceChoicesForPending() {
     final id = worldState.pendingHappenstanceId;
     final h = id == null ? null : happenstanceById(id);
@@ -116,6 +119,7 @@ mixin GameHappenstanceMixin on GameProviderBase {
   /// 若 pending 存在、但玩家本回合做了别的事，则按该奇遇的「中性兜底选项」
   /// （取中间项）收尾，避免奇遇永远悬着。返回需要追加进叙事的结局文块；无
   /// pending 时返回空串。
+  @override
   String tryResolveHappenstanceChoice(String action, {int? seed}) {
     final pendingId = worldState.pendingHappenstanceId;
     if (pendingId == null) return '';

@@ -10,6 +10,7 @@
 ///  P0-2 好感维系衰减（集邮式社交）
 ///  P0-3 节拍器概率化（见 director_beat_test.dart，已同步改写）
 ///  P1   记忆关键词补漏 + 特质豁免条款
+library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

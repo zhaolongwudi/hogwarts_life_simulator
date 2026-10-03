@@ -292,7 +292,9 @@ void main() {
           final l = lines[i];
           if (!l.contains('houseCupPoints +=') &&
               !(l.contains('houseCupPoints =') &&
-                  !l.contains('houseCupPoints =='))) continue;
+                  !l.contains('houseCupPoints =='))) {
+            continue;
+          }
           // 允许的例外：统一入口内部、学年结算清零
           if (l.contains('p.houseCupPoints += amount')) continue;
           if (l.contains('p.houseCupPoints = 0;')) continue;

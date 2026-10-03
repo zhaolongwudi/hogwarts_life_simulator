@@ -298,7 +298,7 @@ class _CommandCenterPanelState extends State<_CommandCenterPanel> {
                       color: MiuiColors.onSurfaceVariantSummary,
                       letterSpacing: 0.4),
                 ),
-                if (commands.length > 0 && !isCheat)
+                if (commands.isNotEmpty && !isCheat)
                   Text(' ${commands.length}',
                       style: const TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantActions)),
                 const Spacer(),

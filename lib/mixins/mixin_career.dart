@@ -8,12 +8,14 @@
 ///
 /// 年结：每年九月（与教职同一节点）发年薪 + 按服务年限晋升。
 /// 玩家七年攒下的 O.W.L/N.E.W.T 成绩、核心属性与声望在此兑现为职业起点。
+library;
 
 import '../data/career_data.dart';
 import '../providers/game_provider_base.dart';
 
 mixin GameCareerMixin on GameProviderBase {
   /// 处理 /职业 子命令
+  @override
   void handleCareerCommand(List<String> parts) {
     final p = player;
     if (p == null) return;
@@ -56,7 +58,7 @@ mixin GameCareerMixin on GameProviderBase {
         repValue: rep,
       );
       final gap = ok ? '' : '　— ${careerGapText(c, attributes: p.attributes, owlGrades: owl, newtGrades: newt, repValue: rep)}';
-      buf.writeln('${ok ? '✅' : '🔒'} ${c.name}${gap}');
+      buf.writeln('${ok ? '✅' : '🔒'} ${c.name}$gap');
       if (ok || c.id == 'ordinary') {
         buf.writeln('   ${c.description}');
         buf.writeln('   职级：${c.ranks.join(' → ')} ｜ 年薪 ${c.startPay}~${c.topPay} 加隆');
@@ -142,7 +144,7 @@ mixin GameCareerMixin on GameProviderBase {
     }
     buf
       ..writeln()
-      ..writeln('${c.duty}');
+      ..writeln(c.duty);
     return buf.toString();
   }
 
@@ -157,12 +159,13 @@ mixin GameCareerMixin on GameProviderBase {
     p.careerRankIndex = 0;
     p.careerYears = 0;
     p.currentJobTitle = null;
-    currentNarrative = '你辞去了${name}的职位。\n\n'
+    currentNarrative = '你辞去了$name的职位。\n\n'
         '办公室的回忆和年薪一起留在了身后——但你带走的东西（经验、人脉、名字）不会消失。'
         '想重新出发时，/职业 列表 还有别的路。';
   }
 
   /// 每年九月年结：发年薪 + 晋升判定。挂在学年推进的 graduated 分支。
+  @override
   void settleCareerYear(int yearsPassed) {
     final p = player;
     if (p == null || p.careerId == null) return;

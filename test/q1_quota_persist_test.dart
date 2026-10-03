@@ -25,7 +25,7 @@ void main() {
     await PrefsStore.instance.init(); // 预热：让后续 writeAsync 同步生效
   });
 
-  List<String> _stamps(int count, {Duration age = const Duration(hours: 1)}) {
+  List<String> stamps(int count, {Duration age = const Duration(hours: 1)}) {
     final now = DateTime.now();
     return List.generate(
       count,
@@ -33,7 +33,7 @@ void main() {
     );
   }
 
-  Future<void> _flush() => pumpEventQueue(times: 20);
+  Future<void> flush() => pumpEventQueue(times: 20);
 
   // ==================== 1. 占用即落盘 ====================
   group('Q1 配额落盘', () {
@@ -41,7 +41,7 @@ void main() {
       final m = SenseNovaQuotaManager.instance;
       await m.waitForQuota(quotaModel);
       await m.waitForQuota(quotaModel);
-      await _flush();
+      await flush();
 
       final prefs = await PrefsStore.instance.init();
       final raw = prefs.getString('$prefix$quotaModel');
@@ -63,7 +63,7 @@ void main() {
     test('恢复满配额计数：重启后 waitForQuota 立即感知配额耗尽', () async {
       // 模拟「重启前已用满 500 次」：写入 500 条 1 小时前的记录
       SharedPreferences.setMockInitialValues({
-        '$prefix$quotaModel': jsonEncode(_stamps(500)),
+        '$prefix$quotaModel': jsonEncode(stamps(500)),
       });
       PrefsStore.instance.resetForTest();
       SenseNovaQuotaManager.instance.reset();
@@ -80,7 +80,7 @@ void main() {
 
     test('恢复部分计数：满额后再占用一次即耗尽', () async {
       SharedPreferences.setMockInitialValues({
-        '$prefix$quotaModel': jsonEncode(_stamps(499)),
+        '$prefix$quotaModel': jsonEncode(stamps(499)),
       });
       PrefsStore.instance.resetForTest();
       SenseNovaQuotaManager.instance.reset();
@@ -101,8 +101,8 @@ void main() {
       // 499 条 1 小时前（窗口内）+ 100 条 6 小时前（已滑出 5h 窗口）
       SharedPreferences.setMockInitialValues({
         '$prefix$quotaModel': jsonEncode([
-          ..._stamps(499, age: const Duration(hours: 1)),
-          ..._stamps(100, age: const Duration(hours: 6)),
+          ...stamps(499, age: const Duration(hours: 1)),
+          ...stamps(100, age: const Duration(hours: 6)),
         ]),
       });
       PrefsStore.instance.resetForTest();
@@ -122,7 +122,7 @@ void main() {
 
     test('模型独立恢复：一个模型满额不影响另一个', () async {
       SharedPreferences.setMockInitialValues({
-        '$prefix$quotaModel': jsonEncode(_stamps(500)),
+        '$prefix$quotaModel': jsonEncode(stamps(500)),
       });
       PrefsStore.instance.resetForTest();
       SenseNovaQuotaManager.instance.reset();

@@ -390,15 +390,15 @@ class AiRouter {
 
     if (scene == AiScene.narrative) {
       return withGlobalTimeout('narrative',
-          '剧情生成超时（${seconds}秒，共 $keyCount 个 Key），请重试或切换提供商');
+          '剧情生成超时（$seconds秒，共 $keyCount 个 Key），请重试或切换提供商');
     }
     if (scene == AiScene.choice) {
-      return withGlobalTimeout('choice', '选项生成超时（${seconds}秒），请重试');
+      return withGlobalTimeout('choice', '选项生成超时（$seconds秒），请重试');
     }
     // summary / npcChat 之前没有超时：最坏 2 provider × N key × 3 次 × 45s，
     // UI 会长时间转圈。这里给一个整体兜底超时（同样按 Key 数算）。
     return withGlobalTimeout(
-        'summary/npcChat', '摘要/闲聊生成超时（${seconds}秒），请重试');
+        'summary/npcChat', '摘要/闲聊生成超时（$seconds秒），请重试');
   }
 
   Future<ChatResult> _callWithFallback({

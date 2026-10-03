@@ -132,7 +132,7 @@ mixin GameSystemsMixin on GameProviderBase {
     }
 
     // 孕期推进（结婚 → 备孕 → 分娩）
-    this.advancePregnancy();
+    advancePregnancy();
 
     _runConsistencyChecks();
 
@@ -200,6 +200,7 @@ mixin GameSystemsMixin on GameProviderBase {
     recordDailyActivity('rumor');
   }
 
+  @override
   void advanceTimeForAction(String action) {
     _advanceWorldClock(resolveActionCost(action));
   }
@@ -274,18 +275,22 @@ mixin GameSystemsMixin on GameProviderBase {
   };
 
   /// 今日该活动已进行的次数（跨天自动归零）。
+  @override
   int dailyCountOf(String activity) {
     _rollDailyActivityIfNeeded();
     return dailyActivityCount[activity] ?? 0;
   }
 
+  @override
   int dailyLimitOf(String activity) => kDailyActivityLimits[activity] ?? 99;
 
   /// 今日是否还能进行该活动。
+  @override
   bool canDoDaily(String activity) =>
       dailyCountOf(activity) < dailyLimitOf(activity);
 
   /// 记录一次活动。
+  @override
   void recordDailyActivity(String activity) {
     _rollDailyActivityIfNeeded();
     dailyActivityCount[activity] = (dailyActivityCount[activity] ?? 0) + 1;
@@ -417,6 +422,7 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 写了整整 10 条，却从来没有任何一处读取它——/目标 只把目标**名字**存进
   /// player.currentGoal，注入 prompt 时也只拼名字。AI 看到的是「傲罗」两个字，
   /// 看不到那条牵引。目标因此是「存了但没牵引」。
+  @override
   String goalSteeringLine(String? goalName) {
     if (goalName == null || goalName.isEmpty) return '';
     final goal = goalByName(goalName);
@@ -675,6 +681,7 @@ mixin GameSystemsMixin on GameProviderBase {
 
   /// 更新学年标签（如 1992-1993）
 
+  @override
   void updateAcademicYearLabel() {
     final t = worldState.time;
     final start = _schoolYearStartFor(t.year, t.month);
@@ -721,7 +728,7 @@ mixin GameSystemsMixin on GameProviderBase {
     if (p == null) return;
     // 学年结算：上一学年的学院杯排名揭晓（只结算有贡献的玩家）
     settleHouseCup();
-    notifications.add('🏫 新学年开始：你升入了${newGrade}年级');
+    notifications.add('🏫 新学年开始：你升入了$newGrade年级');
 
     // ====== 期末考试成绩结算（框架2 第60条：考试真实存在） ======
     // 上一学年末的期末考成绩此时揭晓。成绩由平时熟练度主导，
@@ -738,14 +745,14 @@ mixin GameSystemsMixin on GameProviderBase {
       if (milestoneText != null) {
         notifications.add('📜 $milestoneText');
         worldState.addNarrativeEvent(
-          '📜 第${newGrade}学年里程碑：$milestoneText',
+          '📜 第$newGrade学年里程碑：$milestoneText',
           turn: turnCount,
         );
       }
     }
 
     worldState.addNarrativeEvent(
-      '🏫 ${worldState.time.year}年9月，你升入${newGrade}年级',
+      '🏫 ${worldState.time.year}年9月，你升入$newGrade年级',
       turn: turnCount,
     );
     worldState.addMarker('⏳新学年');
@@ -777,7 +784,7 @@ mixin GameSystemsMixin on GameProviderBase {
       debugLog('[mixin_systems] 子目标池降级: $e');
     }
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
-    debugLog('🎓 学年推进：玩家升入${newGrade}年级');
+    debugLog('🎓 学年推进：玩家升入$newGrade年级');
   }
 
   // ==================== 考试成绩结算（框架2 第60条） ====================
@@ -866,7 +873,7 @@ mixin GameSystemsMixin on GameProviderBase {
       '${worldState.time.year} 年从霍格沃茨毕业，人生轨迹自此不再跟着既定的学年走',
       snapshot: worldSnapshot(),
     );
-    debugLog('🎓 玩家毕业（原${oldGrade}年级）');
+    debugLog('🎓 玩家毕业（原$oldGrade年级）');
     // 毕业结算：评估人生目标达成情况并生成结算报告
     _graduationSettlement();
     // 职业引导：毕业不是结局——用成绩与名声去叩开职业的大门
@@ -1024,6 +1031,7 @@ mixin GameSystemsMixin on GameProviderBase {
   ///
   /// 疤只在落下的那一瞬间弹过通知。没有这一屏的话，
   /// 玩家过两年就忘了自己身上有什么——而那些东西是永久的。
+  @override
   String formatScars() {
     final p = player;
     if (p == null) return '尚未创建角色。';
@@ -1136,6 +1144,7 @@ mixin GameSystemsMixin on GameProviderBase {
 
   /// 目标进度查询（/目标 进度）
 
+  @override
   String formatGoalProgress() {
     final p = player;
     if (p == null) return '尚未创建角色。';
@@ -1380,10 +1389,11 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 世界线变动率的文本进度条（20 格），让「0.3 黑箱」一眼可见（P1-9）。
   String _worldLineBar(double dev) {
     final filled = (dev.clamp(0.0, 1.0) * 20).round();
-    return '[' + ('█' * filled) + ('░' * (20 - filled)) + ']';
+    return '[${'█' * filled}${'░' * (20 - filled)}]';
   }
 
   /// 属性成长总账：开局定型值 vs 现在（P1-9）。
+  @override
   String formatGrowth() {
     final p = player;
     if (p == null) return '尚未创建角色。';
@@ -1412,6 +1422,7 @@ mixin GameSystemsMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   String formatWorldLine() {
     final p = player;
     if (p == null) return '尚未创建角色。';
@@ -1715,6 +1726,7 @@ mixin GameSystemsMixin on GameProviderBase {
       (worldState.time.absoluteDayIndex - child.bornAbsDay) ~/ 365;
 
   /// 够格接棒的孩子：年满入学年龄（11 岁）
+  @override
   List<ChildRecord> heirsOfAge() {
     final p = player;
     if (p == null) return const [];
@@ -1822,7 +1834,7 @@ mixin GameSystemsMixin on GameProviderBase {
       for (final c in p.children) {
         final age = childAgeOf(c);
         buf.writeln(
-          '· ${c.name}（${c.gender}）${age} 岁，'
+          '· ${c.name}（${c.gender}）$age 岁，'
           '还差 ${kHeirEntranceAge - age} 年到入学年龄',
         );
       }
@@ -2187,7 +2199,7 @@ mixin GameSystemsMixin on GameProviderBase {
     // 3) 记账：下次抽取时靠这条记录做去重与互斥判定
     worldState.monthlyEventFiredAt[selected.id] = monthIndex;
 
-    final event = '【${year}年${month}月·月度世界演化】${selected.text}';
+    final event = '【$year年$month月·月度世界演化】${selected.text}';
 
     worldState.recentEvents.insert(0, NarrativeEvent(event, turn: turnCount));
     if (worldState.recentEvents.length > 50) {
@@ -2350,6 +2362,7 @@ mixin GameSystemsMixin on GameProviderBase {
     }
   }
 
+  @override
   void fastForwardTime(int days) {
     // P0-3 收敛：统一委托 fastForwardDays（内部走 _advanceWorldClock 全量结算：
     // 游戏周/学院杯/NPC位置/学年推进/事件锚点/孕期/月度演化/传闻）。
@@ -2363,6 +2376,7 @@ mixin GameSystemsMixin on GameProviderBase {
 
   // ==================== NPC 状态更新 ====================
 
+  @override
   void updateNPCsFromAction(String action) {
     // 消耗资源 - 大幅降低消耗，让玩家有更多精力进行活动
     final p = player!;
@@ -2427,7 +2441,7 @@ mixin GameSystemsMixin on GameProviderBase {
     var dailyAffectionTouched = false;
     for (final npc in npcRegistry.values.toList()) {
       if (npc.affection > 0 && random.nextDouble() < 0.05) {
-        this.updateNpcAffection(npc.id, 1, reason: '日常相处', quiet: true);
+        updateNpcAffection(npc.id, 1, reason: '日常相处', quiet: true);
         dailyAffectionTouched = true;
       }
     }
@@ -2481,6 +2495,7 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 原先这里只有一个 `getViewableCharacter`，返回 Map 给 UI 用——但没有任何
   /// UI 消费它，于是整套「可见性判定 + 档案组装」实际上死了。改成直接产出
   /// 玩家能读的文本，并新增 `/查看` 命令作为入口。
+  @override
   String formatCharacterDossier(String idOrName) {
     final kw = idOrName.trim();
     final npc = npcRegistry[kw] ?? findNpcByKeyword(npcRegistry.values, kw);
@@ -2640,6 +2655,7 @@ mixin GameSystemsMixin on GameProviderBase {
     return false;
   }
 
+  @override
   bool isNearby(String npcId) {
     final npc = npcRegistry[npcId];
     if (npc == null || player == null) return false;
@@ -2655,6 +2671,7 @@ mixin GameSystemsMixin on GameProviderBase {
   ///      kKnownLocations 的规范主名（'霍格沃茨大礼堂'、'霍格沃茨·天文塔'），
   ///      下游凡是 loc.contains('霍格沃茨') 的判定（如学院杯日常加分）全部失效；
   ///   ② 7/31 打开地图照样能点进霍格沃茨 / 国王十字，绕过了开学前时间门。
+  @override
   void travelTo(String location) {
     final cur = worldState.currentLocation ?? '';
     // 显示名 → 规范主名（认不出就保留原样，不把现有行为改坏）。
@@ -2712,6 +2729,7 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 根据玩家行动累计影响力分数
   /// 每回合 +0.01，涉及原著NPC互动 +0.02，涉及关键剧情(恋爱/CG/成就) +0.05
 
+  @override
   void updatePlayerImpactScore(String action) {
     double delta = 0.003; // 每回合基础增长：只要玩家做出选择，世界就有极小变动
 
@@ -2775,6 +2793,7 @@ mixin GameSystemsMixin on GameProviderBase {
   /// 新 NPC 生成、毕业结算等）直接给 playerImpactScore 加一次分，
   /// 避免这些"真正改变世界"的场景因为不从 updatePlayerImpactScore(action) 走而被忽略。
 
+  @override
   void bumpImpactScore(double delta, {String? debugReason}) {
     if (worldState.playerImpactScore >= 1.0) return;
     worldState.playerImpactScore = (worldState.playerImpactScore + delta).clamp(
@@ -2790,6 +2809,7 @@ mixin GameSystemsMixin on GameProviderBase {
 
   // ==================== 好感度操作（供UI调用） ====================
 
+  @override
   void checkLocks(NPC npc) {
     if (npc.affection >= Balance.trustLockThreshold && !npc.hasLock('信任锁')) {
       npc.affectionLocks.add('信任锁');
@@ -2799,6 +2819,7 @@ mixin GameSystemsMixin on GameProviderBase {
     }
   }
 
+  @override
   Future<ChatResult> callDeepSeek(
     String prompt, {
     AiScene scene = AiScene.narrative,
@@ -2960,11 +2981,13 @@ mixin GameSystemsMixin on GameProviderBase {
     );
   }
 
+  @override
   Future<void> quickSave() async {
     await writeSave(slotId: SaveService.quickSaveSlotId, slotName: '快速存档');
   }
 
   /// 使用用户自定义名称保存存档（slotId 由名称生成，保证可读且唯一可寻址）
+  @override
   Future<void> saveGameNamed(String slotName) async {
     final safeName = slotName
         .trim()
@@ -3152,8 +3175,9 @@ mixin GameSystemsMixin on GameProviderBase {
       // 完整性兜底：只在空的时候补默认
       if (choices.isEmpty) choices = buildFallbackChoices(currentNarrative);
       if (choices.length > 4) choices = choices.sublist(0, 4);
-      if (currentNarrative.isEmpty)
+      if (currentNarrative.isEmpty) {
         currentNarrative = generateFallbackNarrative();
+      }
 
       // 任何读档之后都必须确保 isLoading=false / isInitializing=false，
       // 否则"继续游戏"后会卡住或误触发再次请求
@@ -3179,6 +3203,7 @@ mixin GameSystemsMixin on GameProviderBase {
     }
   }
 
+  @override
   Future<void> loadFromSave(String slotId) async {
     try {
       final data = await saveService.loadGame(slotId);
@@ -3258,24 +3283,29 @@ mixin GameSystemsMixin on GameProviderBase {
     }
   }
 
+  @override
   Future<List<Map<String, dynamic>>> listSaves() async {
     return saveService.listSaves();
   }
 
+  @override
   Future<bool> deleteSave(String slotId) async {
     return saveService.deleteSave(slotId);
   }
 
   /// 导出存档为 JSON 字符串（用于备份/跨设备迁移）
+  @override
   Future<String?> exportSave(String slotId) async {
     return saveService.exportSave(slotId);
   }
 
   /// 从 JSON 字符串导入存档，返回新槽 id
+  @override
   Future<String?> importSave(String jsonString) async {
     return saveService.importSave(jsonString);
   }
 
+  @override
   void resetTokenUsage() {
     totalPromptTokens = 0;
     totalCompletionTokens = 0;
@@ -3287,12 +3317,15 @@ mixin GameSystemsMixin on GameProviderBase {
   // ==================== 辅助方法 ====================
 
   /// 血统 key → 中文名。表本身在 lib/data/blood_status.dart（问卷 UI 共用）。
+  @override
   String bloodStatusLabel(String status) => bloodStatusLabelOf(status);
 
   /// 属性 key → 中文名。表本身在 lib/data/attribute_data.dart
   /// （mixin_play 那边的物品加成/宠物训练文案共用同一份）。
+  @override
   String attrLabel(String key) => attributeLabel(key);
 
+  @override
   String termLabel(String term) {
     return {
           'first': '第一学期',
@@ -3303,6 +3336,7 @@ mixin GameSystemsMixin on GameProviderBase {
         term;
   }
 
+  @override
   String flowModeLabel(String mode) {
     return {'normal': '正常', 'story': '剧情加速', 'fast': '快速'}[mode] ?? mode;
   }

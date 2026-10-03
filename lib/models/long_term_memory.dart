@@ -855,7 +855,7 @@ class LongTermMemory {
         out[k.toString()] =
             NpcRelationshipAnchor.fromJson(Map<String, dynamic>.from(v));
       } catch (err) {
-        debugLog('LongTermMemory: 跳过一条损坏的关系锚 ${k}: $err');
+        debugLog('LongTermMemory: 跳过一条损坏的关系锚 $k: $err');
       }
     });
     return out;

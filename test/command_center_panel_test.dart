@@ -1,4 +1,5 @@
 /// 指令中心面板测试：数据驱动渲染 / 搜索过滤 / 分组 / 执行与填参
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/command_registry.dart';

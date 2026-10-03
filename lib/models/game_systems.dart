@@ -1,5 +1,6 @@
 /// 核心系统模型：时间系统、好感度、声望、恋爱、收藏、成就、信件、舆论
 /// 依据设定文档第九、十一、十二、十三、十五部分。
+library;
 
 import '../data/balance_constants.dart';
 import '../data/political_stance.dart';

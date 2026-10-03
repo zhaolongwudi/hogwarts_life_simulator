@@ -116,7 +116,7 @@ class MapAreaPainter extends CustomPainter {
     }
 
     if (area == '霍格莫德村') {
-      final snowPaint = Paint()..color = const Color(0xFFFFFF).withValues(alpha: 0.2)..style = PaintingStyle.fill;
+      final snowPaint = Paint()..color = const Color(0x00ffffff).withValues(alpha: 0.2)..style = PaintingStyle.fill;
       for (int i = 0; i < 20; i++) {
         final sx = (i * 0.05 + 0.02) * size.width;
         final sy = (i * 0.047 + 0.03) * size.height;

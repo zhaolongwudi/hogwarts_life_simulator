@@ -7,6 +7,7 @@
 ///  1. splitParagraphs 拆段规则（空行拆、单换行不拆、空白过滤）
 ///  2. parseParagraph 首行缩进 + 高亮规则与 parse 一致
 ///  3. 渲染层真的接上了（_buildNarrationBody / 逐段动画）
+library;
 import 'dart:io';
 
 import 'package:flutter/material.dart';

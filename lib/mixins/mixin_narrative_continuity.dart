@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../providers/game_provider_base.dart';
 import '../data/era_data.dart';
 import '../data/locations.dart';
-import '../data/forbidden_words.dart' as dataForbidden;
+import '../data/forbidden_words.dart' as data_forbidden;
 import '../data/game_config_rules.dart';
 import '../data/narrative_forward_rules.dart';
 import '../data/narrative_time_rules.dart';
@@ -151,6 +151,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   /// 从本回合叙事正文提取 3~5 条"当前生效中"的状态断言（纯规则关键词版，稳定）。
   /// 存入 worldState.lastTurnAssertions，下回合 prompt 强制注入防止 AI 失忆打脸。
   /// 断言范围：物理状态（门锁/被封）、持有物、位置/姿态、受伤/魔法状态、正发生的关键动作。
+  @override
   List<String> extractShortAssertions(String narrative) {
     if (narrative.isEmpty) return const [];
     // 只扫末尾 500 字，避免开头过期状态被提回来
@@ -210,6 +211,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   }
 
   /// 每回合末把断言"滚动一代"：上上回合丢弃，上回合→上次，新提取→本回合。
+  @override
   void rotateTurnAssertions(List<String> newAssertions) {
     worldState.previousTurnAssertions.clear();
     worldState.previousTurnAssertions.addAll(worldState.lastTurnAssertions);
@@ -328,12 +330,11 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     worldState.continuityBridgeMisses += 1;
     final bridgeParts = <String>[];
     if (loc.isNotEmpty) bridgeParts.add('就在$loc');
-    if (sp.isNotEmpty) bridgeParts.add('${sp}的话音刚落');
+    if (sp.isNotEmpty) bridgeParts.add('$sp的话音刚落');
     if (ac.isNotEmpty) bridgeParts.add('你正$ac的那一刻');
-    final bridgeSentence = (bridgeParts.isNotEmpty
+    final bridgeSentence = '${bridgeParts.isNotEmpty
             ? '（承接：${bridgeParts.join('、')}）'
-            : '（承接上一段剧情的结尾）') +
-        '—— 紧接着，';
+            : '（承接上一段剧情的结尾）'}—— 紧接着，';
     final repaired = bridgeSentence + newNarrative;
 
     // 连续 3 次不衔接：给一条通知提醒玩家"模型可能被上下文污染，若持续可新开档"，不报警
@@ -350,6 +351,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     return repaired;
   }
   /// 组装要注入给叙事/选项 AI 的断言 Prompt 块（统一格式，避免两端不一致）
+  @override
   String buildAssertionsPromptBlock() {
     final last = worldState.lastTurnAssertions;
     final prev = worldState.previousTurnAssertions;
@@ -414,6 +416,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   /// 对 AI 刚吐出来的叙事做 6 大类硬性校验，命中严重违规时要求重试。
   /// 返回：违规列表（每个违规 {severity: critical/warn, rule: id, message: str, evidence: str}）。
   /// severity=critical → 本次响应当作废，触发重试一次；severity=warn → 记录但不打回，下一回合 prompt 软提醒。
+  @override
   List<Map<String, dynamic>> validateNarrativeConsistency(String narrative) {
     if (narrative.isEmpty) return const [];
     final p = player;
@@ -692,7 +695,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
         for (final fb in forbiddenAfterAugust) {
           if (nLower.contains(fb)) {
             addV('warn', 'R1b_school_date_misalign',
-                '时间阶段错位：当前日期是${m}月${d}日（1991年暑假中/开学准备期），却写了"$fb"这种已入学场景。9月1日之前只能写"在家准备→对角巷采购→国王十字候车→登上特快"，正式分院/上课必须到9月1日之后。',
+                '时间阶段错位：当前日期是$m月$d日（1991年暑假中/开学准备期），却写了"$fb"这种已入学场景。9月1日之前只能写"在家准备→对角巷采购→国王十字候车→登上特快"，正式分院/上课必须到9月1日之后。',
                 evidence: '$md: $fb');
             break;
           }
@@ -731,6 +734,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
   /// 记录一致性违规（保留最近 20 条，便于 UI 展示和人工调参）
   /// 自动补 turn 字段（当前回合号），供违规反馈按回合过滤时效（见
   /// narrative_forward_rules.dart 的 prevWarnFeedbackLines）。
+  @override
   void recordConsistencyViolation(Map<String, dynamic> v) {
     worldState.consistencyViolations.insert(0, {
       ...v,
@@ -762,8 +766,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'opening_hagrid_visit',
       currentLocationPattern: r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅|门厅)',
-      requireVisited: const [], // 不需要前置地点
-      requireNotVisited: const [r'(对角巷|国王十字|九又四分之三|站台|特快|列车|霍格沃茨)'],
+      requireVisited: [], // 不需要前置地点
+      requireNotVisited: [r'(对角巷|国王十字|九又四分之三|站台|特快|列车|霍格沃茨)'],
       minTurn: 2,
       maxTurn: 3,
       requireOpeningScene: 'letter',
@@ -782,8 +786,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'opening_force_diagon_alley',
       currentLocationPattern: r'(家中|家里|住宅|卧室|书房|庄园|别墅|密室|客厅|门厅)',
-      requireVisited: const [],
-      requireNotVisited: const [r'对角巷'],
+      requireVisited: [],
+      requireNotVisited: [r'对角巷'],
       minTurn: 4,
       maxTurn: 5,
       requireOpeningScene: 'letter',
@@ -800,8 +804,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'opening_diagon_to_station',
       currentLocationPattern: r'对角巷',
-      requireVisited: const [r'对角巷'],
-      requireNotVisited: const [r'(国王十字|九又四分之三|站台|特快|列车)'],
+      requireVisited: [r'对角巷'],
+      requireNotVisited: [r'(国王十字|九又四分之三|站台|特快|列车)'],
       minTurn: 6,
       maxTurn: 7,
       requireOpeningScene: 'letter',
@@ -819,8 +823,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'opening_station_to_express',
       currentLocationPattern: r'(国王十字|九又四分之三|站台)',
-      requireVisited: const [r'对角巷', r'(国王十字|九又四分之三|站台)'],
-      requireNotVisited: const [r'(特快|列车|火车)'],
+      requireVisited: [r'对角巷', r'(国王十字|九又四分之三|站台)'],
+      requireNotVisited: [r'(特快|列车|火车)'],
       minTurn: 8,
       maxTurn: 9,
       requireOpeningScene: 'letter',
@@ -832,8 +836,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'opening_express_to_sorting',
       currentLocationPattern: r'(特快|列车|火车|霍格莫德|车站)',
-      requireVisited: const [r'(特快|列车|火车)', r'(国王十字|九又四分之三|站台)'],
-      requireNotVisited: const [r'(霍格沃茨大礼堂|大礼堂|城堡内|分院)'],
+      requireVisited: [r'(特快|列车|火车)', r'(国王十字|九又四分之三|站台)'],
+      requireNotVisited: [r'(霍格沃茨大礼堂|大礼堂|城堡内|分院)'],
       requireUngraded: true, // 还没分院
       minTurn: 10,
       maxTurn: 12,
@@ -847,8 +851,8 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'hogwarts_hall_to_common_room',
       currentLocationPattern: r'(霍格沃茨大礼堂|大礼堂)',
-      requireVisited: const [r'(霍格沃茨|大礼堂|分院)'],
-      requireNotVisited: const [r'(公共休息室|宿舍|学院公共)'],
+      requireVisited: [r'(霍格沃茨|大礼堂|分院)'],
+      requireNotVisited: [r'(公共休息室|宿舍|学院公共)'],
       minTurn: 13,
       maxTurn: 14,
       transitionAnchor: '分院仪式结束，级长带着你们学院的新生穿过走廊与楼梯，说出公共休息室的入口口令（格兰芬多：胖夫人肖像；斯莱特林：石墙；拉文克劳：鹰形门环谜语；赫奇帕奇：厨房旁木桶节奏）→ 你第一次走进学院公共休息室并看到自己的 dorm 床位。',
@@ -858,7 +862,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     TransitionNode(
       id: 'first_class_next_day',
       currentLocationPattern: r'(公共休息室|宿舍|学院公共|大礼堂)',
-      requireVisited: const [r'(公共休息室|学院公共|宿舍)'],
+      requireVisited: [r'(公共休息室|学院公共|宿舍)'],
       requireGraded: true,
       minTurn: 15,
       maxTurn: 17,
@@ -970,7 +974,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
       // 改为直接用记录上的 openedTurn（旧存档为 0，按「很久以前」处理）。
       final turnsPassed = l.openedTurn > 0 ? turnCount - l.openedTurn : 15;
       if (turnsPassed >= 15 && stale.length < 2) {
-        stale.add('• ${l.description}（已悬而未决约${turnsPassed}回合，重要性${l.importance}）');
+        stale.add('• ${l.description}（已悬而未决约$turnsPassed回合，重要性${l.importance}）');
       }
     }
     if (stale.isEmpty) return '';
@@ -991,7 +995,7 @@ mixin GameNarrativeContinuityMixin on GameProviderBase {
     String? eraKey,
   }) {
     final era = eraKey ?? eraDefByEra(appProvider.era).eraKey;
-    return dataForbidden
+    return data_forbidden
         .detectForbiddenWords(text, eraKey: era)
         .map((h) => h.toMap())
         .toList();

@@ -165,7 +165,7 @@ void main() {
             end.month < 6 ||
             end.month > 8) {
           problems.add(
-            '${book.id}: 完成日 $end 不在 ${expectedYear} 年 6~8 月'
+            '${book.id}: 完成日 $end 不在 $expectedYear 年 6~8 月'
             '（剧情应覆盖一整学年，完结于学年末暑假）',
           );
         }

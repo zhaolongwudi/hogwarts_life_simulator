@@ -87,7 +87,7 @@ class _IntroScreenState extends State<IntroScreen> {
 
   // 4. 家族与血统（第75章 · 11个血统选项）
   String _bloodStatus = 'muggleborn';
-  String _familyBackground = '出生于普通麻瓜家庭';
+  final String _familyBackground = '出生于普通麻瓜家庭';
   // 血统可选项 / 标签 / 说明统一放在 lib/data/blood_status.dart —— 游戏内
   // 文案（状态栏、档案、AI prompt）读的是同一张表，问卷里再手抄一份迟早
   // 对不上（原来这里「默然者」就比游戏内多带了个「（高风险）」）。
@@ -339,19 +339,19 @@ class _IntroScreenState extends State<IntroScreen> {
       petName = kPetDefaultNames[_petId];
     }
 
-    String _openingSceneKey = 'station';
+    String openingSceneKey = 'station';
     switch (_startPoint) {
       case '收到录取通知书的那一刻':
-        _openingSceneKey = 'letter';
+        openingSceneKey = 'letter';
         break;
       case '在九又四分之三站台踏上列车':
-        _openingSceneKey = 'station';
+        openingSceneKey = 'station';
         break;
       case '第一次踏入霍格沃茨大礼堂':
-        _openingSceneKey = 'hall';
+        openingSceneKey = 'hall';
         break;
       case '分院仪式前夜':
-        _openingSceneKey = 'eve';
+        openingSceneKey = 'eve';
         break;
     }
 
@@ -375,7 +375,7 @@ class _IntroScreenState extends State<IntroScreen> {
       politicalTendency: _politicalTendency,
       simulationStyle: _simulationStyle,
       birthIdentity: _birthIdentity,
-      openingScene: _openingSceneKey,
+      openingScene: openingSceneKey,
     );
 
     if (mounted) {
@@ -720,8 +720,9 @@ class _IntroScreenState extends State<IntroScreen> {
                 onSelected: (v) {
                   setState(() {
                     if (v) {
-                      if (_selectedChildhood.length < 3)
+                      if (_selectedChildhood.length < 3) {
                         _selectedChildhood.add(c);
+                      }
                     } else {
                       _selectedChildhood.remove(c);
                     }
@@ -773,8 +774,9 @@ class _IntroScreenState extends State<IntroScreen> {
                 onSelected: (v) {
                   setState(() {
                     if (v) {
-                      if (_selectedTraits.length < 5)
+                      if (_selectedTraits.length < 5) {
                         _selectedTraits.add(trait);
+                      }
                     } else {
                       _selectedTraits.remove(trait);
                     }

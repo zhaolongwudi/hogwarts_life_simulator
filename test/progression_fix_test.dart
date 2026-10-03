@@ -559,11 +559,11 @@ void _codeHygieneGroup() {
           if (!RegExp(r'\.affection\s*(\+=|-=|=)').hasMatch(line)) continue;
           if (line.contains('==') || line.contains('!=')) continue;
           if (RegExp(r'\.affection\s*[<>]=?').hasMatch(line)) continue;
-          offenders.add(path + ':' + (i + 1).toString() + '  ' + line);
+          offenders.add('$path:${i + 1}  $line');
         }
       }
       expect(offenders, isEmpty,
-          reason: '这些地方绕过了 updateNpcAffection：\n' + offenders.join('\n'));
+          reason: '这些地方绕过了 updateNpcAffection：\n${offenders.join('\n')}');
     });
 
     test('/作弊 好感 在改数值后补了状态同步', () {
@@ -601,12 +601,10 @@ void _codeHygieneGroup() {
         final src = stripComments(entity.readAsStringSync());
         for (final m in
             RegExp(r'^(\s*)autoSave\(\);', multiLine: true).allMatches(src)) {
-          bare.add(entity.path.replaceAll(r'\', '/') +
-              ' -> ' +
-              m.group(0)!.trim());
+          bare.add('${entity.path.replaceAll(r'\', '/')} -> ${m.group(0)!.trim()}');
         }
       }
-      expect(bare, isEmpty, reason: '未标注的 autoSave()：\n' + bare.join('\n'));
+      expect(bare, isEmpty, reason: '未标注的 autoSave()：\n${bare.join('\n')}');
     });
   });
 }
@@ -838,8 +836,7 @@ void _unwiredFeatureGroup() {
         if (src.contains('nameMatchScore')) offenders.add(path);
       }
       expect(offenders, isEmpty,
-          reason: '按名查找应统一走 findNpcByKeyword。散落的实现曾让同一个名字'
-              '在不同入口命中不同的 NPC：\n' + offenders.join('\n'));
+          reason: '按名查找应统一走 findNpcByKeyword。散落的实现曾让同一个名字在不同入口命中不同的 NPC：\n${offenders.join('\n')}');
     });
 
     test('findNpcByKeyword 能靠姓氏命中', () {
@@ -880,8 +877,7 @@ void _unwiredFeatureGroup() {
         }
       }
       expect(offenders, isEmpty,
-          reason: '学院杯加分必须走 addHouseCupPoints(amount, reason)，'
-              '否则来源明细统计不到：\n' + offenders.join('\n'));
+          reason: '学院杯加分必须走 addHouseCupPoints(amount, reason)，否则来源明细统计不到：\n${offenders.join('\n')}');
     });
 
     test('addHouseCupPoints 会记录来源', () {
@@ -2386,7 +2382,9 @@ void _asyncSetStateGroup() {
       final offenders = <String>[];
       for (final path in _allLibFiles()) {
         if (!path.startsWith('lib/screens/') &&
-            !path.startsWith('lib/widgets/')) continue;
+            !path.startsWith('lib/widgets/')) {
+          continue;
+        }
         final lines = File(path).readAsStringSync().split('\n');
         for (var i = 0; i < lines.length; i++) {
           if (lines[i].trimLeft().startsWith('//')) continue;

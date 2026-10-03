@@ -7,6 +7,7 @@
 /// 会报 undefined_method。纯数据映射本来也不该挂在 mixin 上——
 /// 下沉成顶层函数后，`mixin_init`（装载预设NPC）和
 /// `mixin_relations`（生成原创NPC）都能直接调，没有循环依赖。
+library;
 
 /// 原型 → 人格关键词
 const Map<String, List<String>> kArchetypeTraits = {

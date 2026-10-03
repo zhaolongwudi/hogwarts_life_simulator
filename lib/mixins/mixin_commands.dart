@@ -258,8 +258,7 @@ mixin GameCommandsMixin on GameProviderBase {
             }
           } else {
             m.currentNarrative =
-                formatCastleOverview(houseKey: m.player?.house) +
-                '\n\n输入 /城堡 通道 或 /城堡 幽灵 看更多。';
+                '${formatCastleOverview(houseKey: m.player?.house)}\n\n输入 /城堡 通道 或 /城堡 幽灵 看更多。';
           }
           m.choices = [GameChoice(text: '返回', action: '继续')];
           return true;
@@ -625,7 +624,7 @@ mixin GameCommandsMixin on GameProviderBase {
         subs: [CommandSub('互动', '触发课堂互动')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 && ctx.arg(0) == '互动') {
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '互动') {
             m.classroomInteraction();
           } else {
             m.currentNarrative =
@@ -741,11 +740,11 @@ mixin GameCommandsMixin on GameProviderBase {
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 && ctx.arg(0) == '统计') {
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '统计') {
             m.currentNarrative = m._formatDiaryStats();
           } else if (ctx.parts.length >= 2 && ctx.arg(0) == '重播') {
             m.currentNarrative = m._replayCg(ctx.arg(1)!);
-          } else if (ctx.parts.length >= 1) {
+          } else if (ctx.parts.isNotEmpty) {
             m.currentNarrative = m._formatCgDetail(ctx.arg(0)!);
           } else {
             m.currentNarrative = m._formatDiary();
@@ -881,9 +880,9 @@ mixin GameCommandsMixin on GameProviderBase {
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 && ctx.arg(0) == '比赛') {
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '比赛') {
             m.playQuidditch();
-          } else if (ctx.parts.length >= 1 && ctx.arg(0) == '训练') {
+          } else if (ctx.parts.isNotEmpty && ctx.arg(0) == '训练') {
             m.trainQuidditch();
           } else if (ctx.parts.length >= 2 && ctx.arg(0) == '位置') {
             m.setQuidditchPosition(ctx.arg(1)!);
@@ -962,7 +961,7 @@ mixin GameCommandsMixin on GameProviderBase {
         subs: [CommandSub('探险', '进入禁林探险')],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 && ctx.arg(0) == '探险') {
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '探险') {
             m.exploreForbiddenForest();
           } else {
             m.currentNarrative =
@@ -1002,7 +1001,7 @@ mixin GameCommandsMixin on GameProviderBase {
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 && ctx.arg(0) == '刷新') {
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '刷新') {
             m.refreshQuestBoard();
           } else if (ctx.parts.length >= 2 && ctx.arg(0) == '接受') {
             m.acceptQuest((int.tryParse(ctx.arg(1)!) ?? 0) - 1);
@@ -1144,9 +1143,9 @@ mixin GameCommandsMixin on GameProviderBase {
         ],
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 && ctx.arg(0) == '聊天') {
+          if (ctx.parts.isNotEmpty && ctx.arg(0) == '聊天') {
             m.currentNarrative = m.roommateChat();
-          } else if (ctx.parts.length >= 1 && ctx.arg(0) == '早起') {
+          } else if (ctx.parts.isNotEmpty && ctx.arg(0) == '早起') {
             m.currentNarrative = m.roommateWakeUp();
           } else {
             m.currentNarrative = m.formatRoommatePanel();
@@ -1465,13 +1464,13 @@ mixin GameCommandsMixin on GameProviderBase {
         panel: true,
         handler: (ctx) {
           final m = ctx.provider as GameCommandsMixin;
-          if (ctx.parts.length >= 1 &&
+          if (ctx.parts.isNotEmpty &&
               (ctx.arg(0) == '进度' || ctx.arg(0) == 'progress')) {
             m.currentNarrative = m.formatGoalProgress();
             m.choices = [GameChoice(text: '返回', action: '继续')];
             return true;
           }
-          if (ctx.parts.length >= 1) {
+          if (ctx.parts.isNotEmpty) {
             final arg = ctx.tailFrom(0);
             LifeGoal? goal;
             final idx = int.tryParse(arg);
@@ -1599,6 +1598,7 @@ mixin GameCommandsMixin on GameProviderBase {
   /// R1：优先走 CommandRegistry（数据驱动路由，自动生成帮助），
   /// 找不到匹配时 fallback 到旧 switch-case（双活方案确保平滑迁移）。
 
+  @override
   bool handleLocalCommand(String command) {
     final p = player;
     if (p == null) return false;
@@ -2041,7 +2041,7 @@ mixin GameCommandsMixin on GameProviderBase {
 
   // ---------- 8.2 好感度与关系作弊 ----------
 
-  /// /cheat 好感 <NPC名> <数值> —— 调整好感度
+  /// `/cheat 好感 <NPC名> <数值>` —— 调整好感度
   void _cheatAffection(List<String> parts) {
     if (parts.length >= 3) {
       final npc = _cheatFindNpc(parts[1]);
@@ -2068,7 +2068,7 @@ mixin GameCommandsMixin on GameProviderBase {
     }
   }
 
-  /// /cheat 固定好感 <NPC名> —— 锁定该 NPC 好感（再输一次解锁）
+  /// `/cheat 固定好感 <NPC名>` —— 锁定该 NPC 好感（再输一次解锁）
   void _cheatLockAffection(List<String> parts) {
     if (parts.length < 2) {
       currentNarrative = '使用方式：/cheat 固定好感 <NPC名>';
@@ -2086,7 +2086,7 @@ mixin GameCommandsMixin on GameProviderBase {
         : '🔓 「${npc.name}」的好感锁定已解除。';
   }
 
-  /// /cheat 解锁CG <CG编号> —— 直接解锁指定CG
+  /// `/cheat 解锁CG <CG编号>` —— 直接解锁指定CG
   void _cheatUnlockCg(List<String> parts) {
     if (parts.length >= 2) {
       final cg = cgById(parts[1]);
@@ -2235,7 +2235,7 @@ mixin GameCommandsMixin on GameProviderBase {
           final original = p.cheatOrientationBackup.remove(npc.name);
           if (original != null) {
             npc.sexOrientation = original;
-            currentNarrative = '已恢复「${npc.name}」的默认性取向：${original}';
+            currentNarrative = '已恢复「${npc.name}」的默认性取向：$original';
           } else {
             currentNarrative = '「${npc.name}」没有被修改过性取向，无需重置。';
           }
@@ -2289,7 +2289,7 @@ mixin GameCommandsMixin on GameProviderBase {
 
   // ---------- 8.4 声望与收藏作弊 ----------
 
-  /// /cheat 声望 <数值> <维度> ｜ /cheat 声望 NPC <NPC名> <维度> <数值> ｜ /cheat 声望 NPC 重置 <NPC名>
+  /// `/cheat 声望 <数值> <维度>` ｜ `/cheat 声望 NPC <NPC名> <维度> <数值>` ｜ `/cheat 声望 NPC 重置 <NPC名>`
   void _cheatReputation(List<String> parts) {
     final p = player!;
     if (parts.length >= 2 && parts[1] == 'NPC') {
@@ -2447,7 +2447,7 @@ mixin GameCommandsMixin on GameProviderBase {
         // 作弊强制生成：先清空本学年计数绕过上限
         npcGeneratedThisSchoolYear = 0;
         generateNewNPC();
-        currentNarrative = '（作弊强制生成）${currentNarrative}';
+        currentNarrative = '（作弊强制生成）$currentNarrative';
         break;
       case '好感':
         if (parts.length >= 4) {
@@ -2848,7 +2848,7 @@ $knownRegions
     currentNarrative =
         '这一周，你的生活节奏简单而充实：上午上课，下午图书馆，晚上在公共休息室的角落里'
         '翻书写作业。蜡烛的火焰在羊皮纸上投下晃动的影子，你偶尔抬头，看见窗外禁林的轮廓在夜色里沉默。\n\n'
-        '一周下来，你明显感到自己在${gains.length == 0 ? '原地踏步——状态不太好，也许该换换节奏' : '进步'}'
+        '一周下来，你明显感到自己在${gains.isEmpty ? '原地踏步——状态不太好，也许该换换节奏' : '进步'}'
         '${gains.isEmpty ? '' : '：$line'}。\n\n'
         '（时间推进一周）';
   }
@@ -3016,11 +3016,11 @@ $knownRegions
       );
       if (emotion < 60) {
         buf.writeln(
-          '\n（情绪稳定度 ${emotion}/100——你的内心还不够平静，'
+          '\n（情绪稳定度 $emotion/100——你的内心还不够平静，'
           '建议先学会在混乱中稳住自己。）',
         );
       } else {
-        buf.writeln('\n（情绪稳定度 ${emotion}/100，可以尝试：/守护神 尝试）');
+        buf.writeln('\n（情绪稳定度 $emotion/100，可以尝试：/守护神 尝试）');
       }
     }
     return buf.toString();
@@ -3044,7 +3044,7 @@ $knownRegions
           '你努力回想快乐的记忆，但思绪总是被焦虑和杂念打断。'
           '银雾在杖尖聚了又散，始终无法成形。\n\n'
           '守护神是心灵的映照——内心不平静，它就无处可依。'
-          '（情绪稳定度 ${emotion}/100，需 ≥60）';
+          '（情绪稳定度 $emotion/100，需 ≥60）';
       p.spirit = (p.spirit - 10).clamp(0, 100);
       return;
     }
@@ -3442,7 +3442,7 @@ $knownRegions
         tag = '已庆祝';
       } else if (f.dateKey > todayKey) {
         tag = '待庆祝';
-        if (next == null) next = f;
+        next ??= f;
       } else {
         tag = '今年已过';
       }

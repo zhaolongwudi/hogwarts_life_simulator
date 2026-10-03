@@ -46,6 +46,7 @@
 /// 所以这里加一条**放行通道**：两段文本**同时命中 ≥ 2 个实体 token**
 /// （NPC 全名/别名 + 物品名），就算 bigram 分数不够，也认为是同一件事。
 /// 双命中门槛保证只靠撞一个人名（"斯内普的信" vs "斯内普的坩埚"）不会放行。
+library;
 import '../models/long_term_memory.dart';
 import 'npc_data.dart';
 import 'item_data.dart';

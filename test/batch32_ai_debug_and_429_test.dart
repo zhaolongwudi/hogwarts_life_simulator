@@ -99,7 +99,7 @@ void main() {
       await AiDebugLogger.instance.forceLogDirForTest(tmp.path);
       // 直接向主分片塞入超上限内容，模拟"当日已写满"
       final now = DateTime.now();
-      final two = (int n) => n.toString().padLeft(2, '0');
+      String two(int n) => n.toString().padLeft(2, '0');
       final base =
           '${now.year}${two(now.month)}${two(now.day)}';
       final mainFile = File('${tmp.path}/ai_log_$base.txt');

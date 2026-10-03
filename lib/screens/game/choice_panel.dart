@@ -131,7 +131,7 @@ class ChoicePanel extends StatelessWidget {
   final VoidCallback onShuffle;
   final ValueChanged<int> onPick;
 
-  const ChoicePanel({
+  const ChoicePanel({super.key, 
     required this.choices,
     required this.maxHeight,
     required this.collapsed,

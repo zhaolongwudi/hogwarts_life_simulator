@@ -27,6 +27,7 @@ import '../providers/game_provider_base.dart';
 import '../utils/debug_log.dart';
 
 mixin GameRelationsMixin on GameProviderBase {
+  @override
   void generateNewNPC() {
     final p = player;
     if (p == null) return;
@@ -187,7 +188,7 @@ mixin GameRelationsMixin on GameProviderBase {
         .join('；');
 
     /// 新 NPC 的完整档案文本（背景故事 + 日常日程 + 目标）。
-    String _buildGeneratedProfile({
+    String buildGeneratedProfile({
       required String archetype,
       required String houseLabel,
       required bool isMale,
@@ -226,7 +227,7 @@ mixin GameRelationsMixin on GameProviderBase {
       // P2#14：新 NPC 档案补全「背景故事/日常日程」——此前 generatedProfile
       // 只有一行干巴巴的标签，/查看 档案看不到任何血肉。现在把背景故事、
       // 日程、目标一起写进档案，老档（null）由展示层兜底。
-      generatedProfile: _buildGeneratedProfile(
+      generatedProfile: buildGeneratedProfile(
         archetype: archetype,
         houseLabel: houseLabel,
         isMale: isMale,
@@ -385,7 +386,7 @@ mixin GameRelationsMixin on GameProviderBase {
     final prefix = isMale ? '他' : '她';
     final flavors = <String, List<String>>{
       '勇敢型': [
-        '$prefix的父亲曾是${house}的魁地奇队长，$prefix从小就梦想着继承这份荣耀。',
+        '$prefix的父亲曾是$house的魁地奇队长，$prefix从小就梦想着继承这份荣耀。',
         '据说$prefix在二年级时就独自面对过一只博格特，展现了超乎年龄的勇气。',
         '$prefix总是第一个冲入危险的人，朋友们常常担心$prefix的安全。',
       ],
@@ -405,7 +406,7 @@ mixin GameRelationsMixin on GameProviderBase {
         '$prefix做事有条不紊，目标明确，很少有人能动摇$prefix的决心。',
       ],
       '忠诚型': [
-        '$prefix的家族代代都在${house}，家族传统让$prefix对学院有着深厚的感情。',
+        '$prefix的家族代代都在$house，家族传统让$prefix对学院有着深厚的感情。',
         '$prefix是朋友圈里最值得信赖的人，任何秘密告诉$prefix都绝对安全。',
         '$prefix喜欢在厨房帮家养小精灵的忙，认为尊重每一个生灵是最重要的品质。',
       ],
@@ -429,6 +430,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return list[random.nextInt(list.length)];
   }
 
+  @override
   int calculateAge() {
     final p = player;
     if (p == null) return 11;
@@ -446,6 +448,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return p.galleons + p.bankGalleons;
   }
 
+  @override
   bool purchaseItem(
     String itemName,
     int price, {
@@ -474,6 +477,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return true;
   }
 
+  @override
   bool sellItem(int index, int price) {
     final p = player;
     if (p == null) return false;
@@ -498,6 +502,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return true;
   }
 
+  @override
   bool depositToBank(int amount) {
     final p = player;
     if (p == null || amount <= 0) return false;
@@ -510,6 +515,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return true;
   }
 
+  @override
   bool withdrawFromBank(int amount) {
     final p = player;
     if (p == null || amount <= 0) return false;
@@ -522,6 +528,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return true;
   }
 
+  @override
   int acceptJob(String jobId) {
     final p = player;
     if (p == null) return 0;
@@ -560,7 +567,7 @@ mixin GameRelationsMixin on GameProviderBase {
         final cur = p.attributes[needAttr] ?? 0;
         if (cur < needVal) {
           notifications.add(
-            '💼 「${job.title}」需要${needVal}点${needAttr == 'social'
+            '💼 「${job.title}」需要$needVal点${needAttr == 'social'
                 ? '社交'
                 : needAttr == 'theory'
                 ? '魔法知识'
@@ -600,6 +607,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== 指令格式化 ====================
 
+  @override
   Future<void> generateEnding() async {
     final p = player;
     if (p == null) {
@@ -685,13 +693,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
     manyYearsLater.writeln('· 如果十一岁的你，能够看见这一生——你觉得他会满意吗？');
     final localFallback =
-        header +
-        (retrospective.isEmpty ? '' : '\n$retrospective\n\n') +
-        manyYearsLater.toString() +
-        '\n这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，'
-            '也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，'
-            '在无数平行世界里继续生长。\n\n'
-            '—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';
+        '$header${retrospective.isEmpty ? '' : '\n$retrospective\n\n'}$manyYearsLater\n这段魔法人生走到终点。你曾站在九又四分之三站台，见证过霍格沃茨的晨昏，也与一些人结下过或深或浅的羁绊。无论结局如何，那些选择都已化作你独有的世界线，在无数平行世界里继续生长。\n\n—— 你的故事，到此暂告一段落。\n\n（提示：配置 AI 提供商后，/结局 可生成更完整的终章评语。）';
 
     var ending = localFallback;
     try {
@@ -743,6 +745,7 @@ mixin GameRelationsMixin on GameProviderBase {
     unawaited(autoSave());
   }
 
+  @override
   String formatRelationships() {
     // 只显示本局正式见过面/有过互动的人（introduced）：
     // 注册表开局会预注册整个时代的原典角色，不过滤的话新开局
@@ -788,6 +791,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   String formatLove() {
     final love = player!.loveState;
     if (love.status == '单身') {
@@ -816,6 +820,7 @@ mixin GameRelationsMixin on GameProviderBase {
   /// formatLove 只展示当前状态；这里把 loveState.history（每个阶段的里程碑）
   /// 和 recentNarrativeEvents 里带情感标记的事件拼成一条时间线，让玩家能
   /// 回看这段关系是怎么一步步走到今天的。
+  @override
   String formatLoveHistory() {
     final love = player?.loveState;
     final buf = StringBuffer('【恋爱历史】');
@@ -866,6 +871,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== 恋爱等待状态 ====================
 
+  @override
   String formatLoveWaiting() {
     if (player == null) return '【恋爱等待】\n尚未创建角色。';
     final love = player!.loveState;
@@ -890,6 +896,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== 恋爱阶段一览 ====================
 
+  @override
   String formatLoveStages() {
     if (player == null) return '【恋爱阶段】\n尚未创建角色。';
     final love = player!.loveState;
@@ -931,6 +938,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== NPC 关系网络查询 ====================
 
+  @override
   String formatNpcRelationship(String npc1, String npc2) {
     if (player == null) return '【关系网络】\n尚未创建角色。';
     final a = findNpcByKeyword(npcRegistry.values, npc1);
@@ -975,6 +983,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== 骨科模式状态 ====================
 
+  @override
   String formatBoneMode() {
     if (player == null) return '【骨科模式】\n尚未创建角色。';
     final bloodRel = player!.bloodRelatives;
@@ -1010,6 +1019,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return '（尚未明确站位）';
   }
 
+  @override
   String formatReputation() {
     final rep = player!.playerReputation;
     final p = player!;
@@ -1029,6 +1039,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   /// 舆论/传闻系统（设定文档 7.3 / 第十三部分）
 
+  @override
   String formatRumors() {
     final rumors = player!.rumors;
     if (rumors.isEmpty) {
@@ -1045,6 +1056,7 @@ mixin GameRelationsMixin on GameProviderBase {
   /// 追加一条传闻（去重 + 保留最近 20 条，避免无限膨胀）
   /// 传闻内容支持模板变量，可自动融入 NPC 名称和地点
 
+  @override
   void addRumor(String text) {
     final p = player;
     if (p == null) return;
@@ -1057,6 +1069,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
   }
 
+  @override
   String formatCourses() {
     final era = appProvider.era;
     final buf = StringBuffer('【课程系统】\n必修课：\n');
@@ -1073,6 +1086,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   /// 课堂互动（设定 10.3，全程本地判定，零 token 消耗）
 
+  @override
   void classroomInteraction() {
     final p = player;
     if (p == null) return;
@@ -1147,7 +1161,7 @@ mixin GameRelationsMixin on GameProviderBase {
       if (alive.isNotEmpty) {
         final npc = alive[random.nextInt(alive.length)];
         final delta = 1 + random.nextInt(2); // +1 ~ +2
-        this.updateNpcAffection(npc.id, delta, reason: '课堂同桌');
+        updateNpcAffection(npc.id, delta, reason: '课堂同桌');
         result =
             '【课堂互动 · 同桌】\n'
             '趁教授转身，${npc.name}悄悄递来一张纸条，上面写着刚才没听懂的笔记要点。\n'
@@ -1177,6 +1191,7 @@ mixin GameRelationsMixin on GameProviderBase {
     choices = [GameChoice(text: '继续', action: '继续')];
   }
 
+  @override
   String formatCollection() {
     final p = player;
     if (p == null) return '你还没有开始收集。';
@@ -1218,10 +1233,11 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// [parts] 为「去掉 /信 命令本身」后的子参数列表，parts[0] 即子命令。
+  @override
   void handleLetterCommand(List<String> parts) {
-    final back = () {
+    void back() {
       choices = [GameChoice(text: '返回', action: '继续')];
-    };
+    }
 
     if (parts.isEmpty) {
       currentNarrative = _formatLetters();
@@ -1380,24 +1396,25 @@ mixin GameRelationsMixin on GameProviderBase {
       case '死敌':
       case '宿怨':
       case '反感':
-        return '（${name}读完你的信后，随手把它揉成一团扔进了壁炉。）\n你对${name}的来信，只换来了冷冰冰的沉默。';
+        return '（$name读完你的信后，随手把它揉成一团扔进了壁炉。）\n你对$name的来信，只换来了冷冰冰的沉默。';
       case '冷漠':
       case '中立':
-        return '几天后，一只猫头鹰送来${name}的回信，措辞礼貌而疏远：\n「来信收悉，谢谢。祝好。」';
+        return '几天后，一只猫头鹰送来$name的回信，措辞礼貌而疏远：\n「来信收悉，谢谢。祝好。」';
       case '好感':
       case '友好':
-        return '${name}的回信语气轻快：\n「收到你的信啦，很高兴。等我忙完这阵子，我们在礼堂一起喝杯南瓜汁吧。」';
+        return '$name的回信语气轻快：\n「收到你的信啦，很高兴。等我忙完这阵子，我们在礼堂一起喝杯南瓜汁吧。」';
       case '信任':
       case '亲密':
-        return '${name}的回信写得很长，字里行间透着真诚与信任，末了还留了一句：「有什么心事，随时告诉我。」';
+        return '$name的回信写得很长，字里行间透着真诚与信任，末了还留了一句：「有什么心事，随时告诉我。」';
       case '深爱':
       case '灵魂伴侣':
-        return '${name}的回信字迹微微颤抖，情意几乎溢出纸面：「你的信我读了一遍又一遍……等见面时，我有话想亲口对你说。」';
+        return '$name的回信字迹微微颤抖，情意几乎溢出纸面：「你的信我读了一遍又一遍……等见面时，我有话想亲口对你说。」';
       default:
-        return '几天后，${name}简短地回了信。';
+        return '几天后，$name简短地回了信。';
     }
   }
 
+  @override
   String formatBloodRelatives() {
     if (player!.bloodRelatives.isEmpty) {
       return '【血缘】\n未设定血缘亲属关系。三代内血亲不可攻略（除非开启骨科模式）。';
@@ -1407,6 +1424,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   /// 月度世界演化报告（第47章）
 
+  @override
   String formatWorldEvolution() {
     final w = worldState;
     final eraName = eraLabel(appProvider.era);
@@ -1458,6 +1476,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   String formatAffections({int maxEntries = 8}) {
     final list =
         player == null
@@ -1484,6 +1503,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   /// 恋爱链路接线：记录一次浪漫事件（表白机制要求暧昧期≥2次浪漫事件）。
   /// 只记录发生在暧昧/亲密阶段或已确定恋爱关系中的互动，纯友情不算。
+  @override
   void recordRomanticEventFor(NPC npc) {
     final p = player;
     if (p == null) return;
@@ -1502,6 +1522,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
   }
 
+  @override
   void checkNPCConfessions() {
     final p = player;
     if (p == null || p.loveState.status != '单身') return;
@@ -1528,8 +1549,9 @@ mixin GameRelationsMixin on GameProviderBase {
     final candidates = npcRegistry.values.where((n) {
       if (!n.isAlive ||
           n.affection < Balance.confessionMinAffection ||
-          n.confessed)
+          n.confessed) {
         return false;
+      }
       // 取向双向校验：NPC 喜欢玩家性别 且 玩家喜欢 NPC 性别（详见 NPC.orientationMatches）
       if (!NPC.orientationMatches(
         npcGender: n.gender,
@@ -1681,6 +1703,7 @@ mixin GameRelationsMixin on GameProviderBase {
     );
   }
 
+  @override
   void resolveConfession(bool accepted, String npcName) {
     final p = player;
     if (p == null) return;
@@ -1728,7 +1751,7 @@ mixin GameRelationsMixin on GameProviderBase {
           '他/她握住你的手，声音里带着掩饰不住的喜悦："真的吗？太好了……"\n\n'
           '你们在月色下相视而笑，霍格沃茨的钟声在远处敲响，仿佛在为这段感情祝福。';
     } else {
-      this.updateNpcAffection(npc.id, -5, reason: '婉拒表白');
+      updateNpcAffection(npc.id, -5, reason: '婉拒表白');
       unlockCG(cgById('CG-CF-002'));
       addRumor('听说${npc.name}向你表白，却被你拒绝了。');
       bumpImpactScore(
@@ -1787,6 +1810,7 @@ mixin GameRelationsMixin on GameProviderBase {
   static const int kProposeMinGrade = 5;
 
   /// 求婚。返回非空表示失败原因（调用方直接展示）。
+  @override
   String? proposeMarriage() {
     final p = player;
     if (p == null) return '还没有角色数据。';
@@ -1823,6 +1847,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// 举行婚礼。返回非空表示失败原因。
+  @override
   String? holdWedding() {
     final p = player;
     if (p == null) return '还没有角色数据。';
@@ -1852,6 +1877,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// 备孕。返回非空表示失败原因。
+  @override
   String? tryConceive() {
     final p = player;
     if (p == null) return '还没有角色数据。';
@@ -1870,6 +1896,7 @@ mixin GameRelationsMixin on GameProviderBase {
   ///
   /// 只在这里判定（而不是在 /生育 里直接生），是为了让 /快进 也能推进孕期——
   /// 否则玩家必须手动点 120 次行动才能等到孩子出生。
+  @override
   void advancePregnancy() {
     final p = player;
     if (p == null) return;
@@ -1961,6 +1988,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// 家庭面板（/家庭）
+  @override
   String formatFamily() {
     final p = player;
     final buf = StringBuffer('【家庭】\n');
@@ -2009,6 +2037,7 @@ mixin GameRelationsMixin on GameProviderBase {
   // ==================== 拉郎配（撮合 NPC） ====================
 
   /// 开始撮合一对 NPC。返回非空表示失败原因（调用方直接展示）。
+  @override
   String? startShipping(String nameA, String nameB) {
     final p = player;
     if (p == null) return '还没有角色数据。';
@@ -2029,6 +2058,7 @@ mixin GameRelationsMixin on GameProviderBase {
     return null;
   }
 
+  @override
   void stopShipping(int index) {
     final p = player;
     if (p == null || index < 0 || index >= p.shippings.length) return;
@@ -2039,6 +2069,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   /// 每回合叙事落定后推进配对羁绊：两人必须同时出现在本回合叙事中才算进展，
   /// 只提其中一个名字不加分（否则玩家挂机也能刷满）。
+  @override
   void advanceShippings(String narrative) {
     final p = player;
     if (p == null || p.shippings.isEmpty || narrative.isEmpty) return;
@@ -2082,6 +2113,7 @@ mixin GameRelationsMixin on GameProviderBase {
     unlockCG(cgById(_shipCgIds[stage - 1]));
   }
 
+  @override
   String formatShippings() {
     final p = player;
     final buf = StringBuffer('【拉郎配】\n');
@@ -2116,6 +2148,7 @@ mixin GameRelationsMixin on GameProviderBase {
 
   // ==================== CG 解锁 ====================
 
+  @override
   void unlockCG(CgDef? cg) {
     final p = player;
     if (cg == null || p == null) return;
@@ -2131,6 +2164,7 @@ mixin GameRelationsMixin on GameProviderBase {
     bumpImpactScore(0.02, debugReason: '解锁CG：${cg.id}');
   }
 
+  @override
   void unlockAchievement(String id) {
     final p = player;
     if (p == null) return;
@@ -2144,6 +2178,7 @@ mixin GameRelationsMixin on GameProviderBase {
     worldState.addNarrativeEvent('🏆 解锁成就：${ach.name}', turn: turnCount);
   }
 
+  @override
   void checkAffectionAchievements(NPC npc) {
     // 门槛问好感阶段表要，不在代码里另写一个 20——描述写的是「关系达到
     // 好感」，阶段表的区间一改，成就跟着变，不会出现文案和判定对不上。
@@ -2175,6 +2210,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
   }
 
+  @override
   void checkSkillAchievements() {
     final p = player;
     if (p == null) return;
@@ -2192,6 +2228,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
   }
 
+  @override
   void checkWorldChangerAchievement() {
     final p = player;
     if (p == null) return;
@@ -2202,6 +2239,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
   }
 
+  @override
   void checkWarHeroAchievement() {
     final p = player;
     if (p == null) return;
@@ -2300,6 +2338,7 @@ mixin GameRelationsMixin on GameProviderBase {
     if (currentYear - startYear >= 2) unlockAchievement('time_master');
   }
 
+  @override
   void checkAllAchievements() {
     checkSkillAchievements();
     checkWorldChangerAchievement();
@@ -2317,6 +2356,7 @@ mixin GameRelationsMixin on GameProviderBase {
     _checkTimeMasterAchievement();
   }
 
+  @override
   void incrementWorldLineDeviation(double delta) {
     final p = player;
     if (p == null) return;
@@ -2335,6 +2375,7 @@ mixin GameRelationsMixin on GameProviderBase {
     }
   }
 
+  @override
   void syncRelationshipLevel(NPC npc) {
     final p = player;
     if (p == null) return;
@@ -2352,6 +2393,7 @@ mixin GameRelationsMixin on GameProviderBase {
   ///
   /// giftPrefs 数据此前被生成、被存档，却从没被读过——送礼只是被动好感
   /// 推断里的一个关键词（+1~+2），送什么完全不影响结果。这里把它接上。
+  @override
   String giveGift(String npcKeyword, String itemName) {
     final p = player;
     if (p == null) return '你还没有开始游戏。';
@@ -2453,6 +2495,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// 同 dormId 的 NPC 即「室友」（不含玩家自己）。
+  @override
   List<NPC> roommates() {
     final did = playerDormId;
     if (did == null) return const [];
@@ -2464,6 +2507,7 @@ mixin GameRelationsMixin on GameProviderBase {
   /// 入舍时惰性补室友：首次进入宿舍（player.dormId 为空）时，
   /// 按玩家学院+性别生成 1~2 位同宿舍 NPC 并赋 dormId。
   /// 复用 isGenerated 现成链路（老档零迁移，进宿舍才触发）。
+  @override
   void ensureRoommateNpcs() {
     final p = player;
     if (p == null) return;
@@ -2529,6 +2573,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// /室友 列表：显示同宿舍室友 + 好感/状态。
+  @override
   String formatRoommatePanel() {
     final rm = roommates();
     if (rm.isEmpty) {
@@ -2543,6 +2588,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// /室友 聊天：随机一段深夜小剧场，好感 +1（冷却 3 回合）。
+  @override
   String roommateChat() {
     final rm = roommates();
     if (rm.isEmpty) return '你还没有室友，回宿舍先认识一下吧。';
@@ -2565,6 +2611,7 @@ mixin GameRelationsMixin on GameProviderBase {
   }
 
   /// /室友 早起：室友催起（概率性），早起 +1 精力。
+  @override
   String roommateWakeUp() {
     final rm = roommates();
     if (rm.isEmpty) return '你还没有室友，回宿舍先认识一下吧。';

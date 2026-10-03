@@ -302,26 +302,26 @@ const List<ClassAccidentDef> classAccidentPool = [
     subjectFilter: ['魔药学', '魔药课', 'potions'],
     text: '魔药课上，你的坩埚突然冒出诡异的绿烟，被魔药课教授冷冷地盯了三秒。',
   ),
-  const ClassAccidentDef(
+  ClassAccidentDef(
     subjectFilter: ['草药学', '草药课', 'herbology'],
     text: '温室里，你险些被曼德拉草的尖叫声震晕，幸好及时堵住了耳朵。',
   ),
-  const ClassAccidentDef(
+  ClassAccidentDef(
     subjectFilter: ['黑魔法防御术', 'dada', '黑魔法防御课'],
     text: '黑魔法防御课上，你被选中上台示范，紧张中竟意外地漂亮完成了动作。',
   ),
-  const ClassAccidentDef(
+  ClassAccidentDef(
     subjectFilter: ['天文学', '天文课', 'astronomy'],
     text: '天文课上，你透过望远镜瞥见了一颗罕见的流星，全班都循声凑了过来。',
   ),
   // ====== 通用（不指定科目的随机小插曲）======
-  const ClassAccidentDef(
+  ClassAccidentDef(
     text: '你的笔记本被邻桌同学失手撞掉，散落的纸片飞了一地，两人手忙脚乱地捡起来时相视一笑。',
   ),
-  const ClassAccidentDef(
+  ClassAccidentDef(
     text: '窗外突然掠过一群猫头鹰，学生们都不自觉地转头望去，教授敲了敲讲桌才拉回大家的注意力。',
   ),
-  const ClassAccidentDef(
+  ClassAccidentDef(
     text: '你答不出问题时，身后传来一张递来的小纸条——上面用歪歪扭扭的字写着答案的前半句。',
   ),
 ];

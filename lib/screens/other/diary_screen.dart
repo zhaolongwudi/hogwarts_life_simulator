@@ -186,7 +186,7 @@ class _DiaryScreenState extends State<DiaryScreen>
 class CgGalleryTab extends StatelessWidget {
   final Map<String, CgRecord> recs;
 
-  const CgGalleryTab({required this.recs});
+  const CgGalleryTab({super.key, required this.recs});
 
   @override
   Widget build(BuildContext context) {

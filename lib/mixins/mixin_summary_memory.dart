@@ -18,14 +18,12 @@ import 'package:flutter/foundation.dart';
 import '../data/canon_events.dart';
 import '../data/pet_data.dart';
 import '../data/wand_data.dart';
-import '../data/story_data.dart';
 import '../models/game_systems.dart';
 import '../models/npc.dart';
 import '../models/player.dart';
 import '../models/long_term_memory.dart';
 import '../prompts/summary_prompts.dart';
 import '../services/ai_router.dart';
-import '../services/deepseek_service.dart';
 import '../utils/debug_log.dart';
 import '../providers/game_provider_base.dart';
 import '../data/foreshadow_data.dart';
@@ -111,6 +109,7 @@ mixin GameSummaryMemoryMixin on GameProviderBase, GameNarrativeContinuityMixin {
     _summaryCooldownRemaining = 0;
   }
 
+  @override
   void accumulateForSummary(String newNarrative) {
     // BUG-I：喂 summary buffer 之前必须先清洗！
     // 旧代码直接把 AI 返回的 raw narrative 塞进去，导致：
@@ -504,6 +503,7 @@ mixin GameSummaryMemoryMixin on GameProviderBase, GameNarrativeContinuityMixin {
   ///   2. **其余层补足**：按 |affection| 降序补齐到 [kSnapshotMaxNpcs] 人。
   ///
   /// 这样既保证主干关系不缺，又给快照一个确定的上界（避免长局 prompt 无界膨胀）。
+  @override
   String buildRelationshipSnapshot() {
     final love = player?.loveState;
     final partnerId = love?.partnerId;

@@ -5,6 +5,7 @@
 ///  2. 阿尼马格斯（框架2 第67条）：形态与人格关联、成功率随投入增长；
 ///  3. 守护神（框架2 第66条）：形态与人格/学院/信念关联；
 ///  4. 新存档字段（cheat/animagus/patronus/examRecords/affectionLocked）可往返。
+library;
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';

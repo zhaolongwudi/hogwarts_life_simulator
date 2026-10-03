@@ -238,7 +238,7 @@ class _JobScreenState extends State<JobScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$location · 第${grade}年·$monthLabel',
+            '$location · 第$grade年·$monthLabel',
             style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium!.color),
           ),
           const SizedBox(height: 8),

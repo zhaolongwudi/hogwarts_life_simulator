@@ -1,5 +1,4 @@
 import 'helpers/narrative_src.dart';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/prompts/narrative_prompts.dart';

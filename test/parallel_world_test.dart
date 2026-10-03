@@ -45,7 +45,7 @@ void main() {
 
     test('通知文案也说清它不会发生', () {
       final notice = adoptedNoticeFor(_s());
-      expect(notice.contains('不会发生'), isTrue, reason: '$notice');
+      expect(notice.contains('不会发生'), isTrue, reason: notice);
     });
   });
 

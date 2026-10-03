@@ -2,6 +2,7 @@
 ///
 /// 供 job_screen.dart（岗位展示）与 mixin_relations.acceptJob（结算）共用，
 /// 避免「界面显示 pay 25-50，实际结算恒为 10」这类接口与实现脱节的问题。
+library;
 
 class JobDef {
   final String id;

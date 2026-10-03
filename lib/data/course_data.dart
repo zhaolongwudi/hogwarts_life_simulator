@@ -1,4 +1,5 @@
 /// 课程数据：依据设定文档「第十部分 · 课堂系统」
+library;
 import '../providers/app_provider.dart';
 
 class CourseData {

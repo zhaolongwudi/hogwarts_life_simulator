@@ -272,6 +272,7 @@ class _SettingsCrashSectionState extends State<SettingsCrashSection> {
                         // 同一个回调里两种口径，漏的那个会在页面已卸载时抛异常。
                         if (!mounted) return;
                         setState(() {});
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('崩溃日志已清除')),
                         );

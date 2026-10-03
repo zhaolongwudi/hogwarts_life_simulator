@@ -19,6 +19,7 @@
 ///  - [castleBriefForPrompt]：给系统提示词的精简版（控制 token，只列名字）
 ///
 /// 所有描述严格参照设定文档原文，不另行发挥。
+library;
 
 import 'house_data.dart';
 

@@ -620,7 +620,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                   style: const TextStyle(fontSize: 12, color: MiuiColors.onSurfaceSecondary),
                 ),
                 value: appProvider.storyFreeformPreference,
-                activeColor: MiuiColors.primary,
+                activeThumbColor: MiuiColors.primary,
                 onChanged: (v) async {
                   await context
                       .read<AppProvider>()
@@ -741,12 +741,13 @@ class _SettingsBodyState extends State<SettingsBody> {
                 subtitle: const Text('记录每回合 AI 的输入输出到本地文件，用于排查 bug',
                     style: TextStyle(fontSize: 12, color: MiuiColors.onSurfaceSecondary)),
                 value: appProvider.aiDebugLogEnabled,
-                activeColor: MiuiColors.warning,
+                activeThumbColor: MiuiColors.warning,
                 onChanged: (v) async {
                   AiDebugLogger.instance.setEnabled(v);
                   if (v) {
                     await AiDebugLogger.instance.initialize(enabled: true);
                   }
+                  if (!context.mounted) return;
                   await context.read<AppProvider>().setAiDebugLogEnabled(v);
                 },
               ),
@@ -758,7 +759,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                     ElevatedButton.icon(
                       onPressed: () async {
                         final files = await AiDebugLogger.instance.getLogFiles();
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         if (files.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('暂无日志文件')),
@@ -901,6 +902,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                     confirmText: '全部清除',
                   );
                   if (!ok) return;
+                  if (!context.mounted) return;
                   for (final p in AiProvider.values) {
                     context.read<AppProvider>().clearApiKeyFor(p);
                     _keyControllers[p]!.clear();

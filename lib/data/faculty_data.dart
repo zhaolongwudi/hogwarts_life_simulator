@@ -349,7 +349,7 @@ String facultyOfferLineFor({
       : '${e.allies.take(2).join('、')}等 ${e.allies.length} 位教授';
   return '$who在你离校前一天叫住了你。\n'
       '「$playerName，」他说，「「${e.subject}」这门课，'
-      '${allyText}都跟我提过你。\n'
+      '$allyText都跟我提过你。\n'
       '下学年如果还没想好去哪儿，可以留下来当${rank.title}。\n'
       '${rank.duty}\n'
       '年薪 ${rank.annualPay} 加隆。不用现在答复，'

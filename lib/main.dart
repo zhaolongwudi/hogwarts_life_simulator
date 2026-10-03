@@ -27,8 +27,7 @@ void main() async {
           details.exception,
           details.stack,
           screen: 'FlutterFrame',
-          extra: _appTag() + ' | ' +
-              (details.context?.toString() ?? details.library ?? ''),
+          extra: '${_appTag()} | ${details.context?.toString() ?? details.library ?? ''}',
         );
       };
 

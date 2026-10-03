@@ -12,20 +12,27 @@ library;
 /// 话题关键词命中判定：按优先级返回第一个命中的话题键，未命中返回 null。
 /// 顺序即优先级（越靠前越优先），避免"你好，我想聊魁地奇"这类句子被切开。
 String? detectNpcChatTopic(String message) {
-  if (_match(message, ['你好', '您好', '嗨', '早上好', '晚上好', '在吗', '嘿', 'hello', 'hi']))
+  if (_match(message, ['你好', '您好', '嗨', '早上好', '晚上好', '在吗', '嘿', 'hello', 'hi'])) {
     return 'greeting';
-  if (_match(message, ['学习', '作业', '考试', '复习', '魔咒', '咒语', '课', '图书馆', '书', '魔法课']))
+  }
+  if (_match(message, ['学习', '作业', '考试', '复习', '魔咒', '咒语', '课', '图书馆', '书', '魔法课'])) {
     return 'study';
-  if (_match(message, ['魁地奇', '扫帚', '飞贼', '追球手', '击球手', '球赛']))
+  }
+  if (_match(message, ['魁地奇', '扫帚', '飞贼', '追球手', '击球手', '球赛'])) {
     return 'quidditch';
-  if (_match(message, ['吃', '食堂', '厨房', '南瓜汁', '蜂蜜', '蛋糕', '饿', '甜点', '美味']))
+  }
+  if (_match(message, ['吃', '食堂', '厨房', '南瓜汁', '蜂蜜', '蛋糕', '饿', '甜点', '美味'])) {
     return 'food';
-  if (_match(message, ['禁林', '森林', '马人', '夜骐', '危险']))
+  }
+  if (_match(message, ['禁林', '森林', '马人', '夜骐', '危险'])) {
     return 'forest';
-  if (_match(message, ['喜欢', '心动', '恋爱', '对象', '在一起', '约会', '爱']))
+  }
+  if (_match(message, ['喜欢', '心动', '恋爱', '对象', '在一起', '约会', '爱'])) {
     return 'love';
-  if (_match(message, ['听说', '传闻', '八卦', '传言', '知道吗', '真的吗']))
+  }
+  if (_match(message, ['听说', '传闻', '八卦', '传言', '知道吗', '真的吗'])) {
     return 'gossip';
+  }
   return null;
 }
 
@@ -33,12 +40,15 @@ String? detectNpcChatTopic(String message) {
 /// 优先级：敢闯 > 好胜 > 博学，命中任意关键词即采用。
 String npcChatStanceOf(List<String> personality) {
   final joined = personality.join();
-  if (_match(joined, ['勇敢', '胆大', '无畏', '冒险', '冲动']))
+  if (_match(joined, ['勇敢', '胆大', '无畏', '冒险', '冲动'])) {
     return 'bold';
-  if (_match(joined, ['野心', '好胜', '进取', '权势', '精明', '上进']))
+  }
+  if (_match(joined, ['野心', '好胜', '进取', '权势', '精明', '上进'])) {
     return 'ambitious';
-  if (_match(joined, ['聪明', '博学', '求知', '睿智', '理性', '冷静', '好学']))
+  }
+  if (_match(joined, ['聪明', '博学', '求知', '睿智', '理性', '冷静', '好学'])) {
     return 'bookish';
+  }
   return 'generic';
 }
 

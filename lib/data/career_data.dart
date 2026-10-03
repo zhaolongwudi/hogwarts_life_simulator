@@ -255,7 +255,7 @@ String careerGapText(CareerDef c, {
   final gaps = <String>[];
   final attr = attributes[c.minAttr] ?? 0;
   if (attr < c.minAttrValue) {
-    gaps.add('${_attrName(c.minAttr)} ${attr}/${c.minAttrValue}');
+    gaps.add('${_attrName(c.minAttr)} $attr/${c.minAttrValue}');
   }
   if (repValue < c.minReputation) {
     gaps.add('${c.repDim}声望 $repValue/${c.minReputation}');

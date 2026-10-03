@@ -40,7 +40,7 @@ void main() {
     test('单参数场景：length==1 即表示「用户给了参数」（旧代码误判为无参）', () {
       final ctx = CommandContext(['探险'], _FakeProvider());
       expect(ctx.parts.length, 1);
-      expect(ctx.parts.length >= 1, isTrue, reason: '单参数必须视为有效参数');
+      expect(ctx.parts.isNotEmpty, isTrue, reason: '单参数必须视为有效参数');
       expect(ctx.arg(0), '探险');
     });
   });
@@ -151,12 +151,12 @@ void main() {
         .map((l) => l.replaceAll(RegExp(r'//.*\$'), ''))
         .join('\n');
 
-    List<String> _primaries() => RegExp(r"primary:\s*'([^']+)'")
+    List<String> primaries() => RegExp(r"primary:\s*'([^']+)'")
         .allMatches(src)
         .map((m) => m.group(1)!)
         .toList();
 
-    List<String> _aliases() {
+    List<String> aliases() {
       final out = <String>[];
       for (final m in RegExp(r'aliases:\s*\[([^\]]*)\]').allMatches(src)) {
         out.addAll(RegExp("'([^']+)'")
@@ -167,28 +167,28 @@ void main() {
     }
 
     test('没有带空格的别名', () {
-      final bad = _aliases().where((a) => a.contains(RegExp(r'\s'))).toList();
+      final bad = aliases().where((a) => a.contains(RegExp(r'\s'))).toList();
       expect(bad, isEmpty,
           reason: '调度只用第一个空格前的 token 去 find，带空格的别名匹配不上：$bad');
     });
 
     test('primary 不重复', () {
-      final ps = _primaries();
+      final ps = primaries();
       expect(ps.toSet(), hasLength(ps.length), reason: 'primary 有重复：$ps');
     });
 
     test('别名不重复，也不撞上任何命令的 primary', () {
-      final as = _aliases();
+      final as = aliases();
       expect(as.toSet(), hasLength(as.length), reason: '别名有重复：$as');
-      final clash = as.toSet().intersection(_primaries().toSet());
+      final clash = as.toSet().intersection(primaries().toSet());
       expect(clash, isEmpty,
           reason: 'find 按注册顺序返回首个命中，这些别名会让同名的命令永远按不到：$clash');
     });
 
     test('helpText 里提到的 /谣言 真的输得进去', () {
       // 曾经「谣言」只写在 helpText 里，玩家照着输得到的是「未知指令」
-      expect(_aliases(), contains('谣言'));
-      expect(_aliases(), contains('传闻'));
+      expect(aliases(), contains('谣言'));
+      expect(aliases(), contains('传闻'));
     });
   });
 

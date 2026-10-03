@@ -289,7 +289,7 @@ mixin GameResponseMixin
     player!.house = en;
     unlockAchievement('sorted');
     addCollectible('souvenir_sorting'); // 分院帽上掉下来的一小片布
-    unlockCG(this.cgById('CG-002')); // 分院帽下的对视
+    unlockCG(cgById('CG-002')); // 分院帽下的对视
     // 分院解析日志已移除
   }
 
@@ -311,6 +311,7 @@ mixin GameResponseMixin
   /// （如"走进了拉文克劳休息室"），成就锁会让错误学院永久化。
   /// 现在由调用方在**确定最终采纳的 response 之后**统一调用
   /// [_applyNarrativeSideEffects] 一次。
+  @override
   bool parseNarrativeOnly(String text, {bool applySideEffects = true}) {
     currentNarrative = '';
     choices = [];
@@ -395,14 +396,15 @@ mixin GameResponseMixin
   @override
   void applyNarrativeSideEffects(String text) {
     // R13 修复·好感度同步问题：先标记 NPC 登场，再解析好感度
-    if (markScanIfNew(currentNarrative))
+    if (markScanIfNew(currentNarrative)) {
       markIntroducedFromNarrative(currentNarrative);
+    }
     // 解析好感和声望变化（从原始文本）
     parseAffectionChanges(text);
     parseReputationChanges(text);
 
     // 拉郎配：两人同时出现在本回合叙事中才推进羁绊（挂机刷不了）
-    this.advanceShippings(currentNarrative);
+    advanceShippings(currentNarrative);
 
     // 分院结果自动提取（使用带强信号约束的新版函数）
     _tryExtractHouseFromNarrative(text);
@@ -637,6 +639,7 @@ mixin GameResponseMixin
     debugLog('🩹 落疤 ${def.key} @ turn=$turnCount');
   }
 
+  @override
   void parseResponse(String text) {
     // 注意：不再 sanitize — 保留【时间戳】【地点】等行供用户阅读
     // sanitizeNarrativeForArchive 只在 accumulateForSummary 里使用（防 summary 污染）
@@ -821,8 +824,9 @@ mixin GameResponseMixin
     //   AffectionValidator 校验直接丢弃 ≥+4 的大好感变化；
     //   markIntroducedFromNarrative 之后 NPC introduced=true，但好感已被丢）
     // 注：这个顺序必须与 parseNarrativeOnly() 保持完全一致。
-    if (markScanIfNew(currentNarrative))
+    if (markScanIfNew(currentNarrative)) {
       markIntroducedFromNarrative(currentNarrative);
+    }
 
     // Parse affection changes（总是从完整原始响应解析，而不是从裁剪后的正文中解析）
     parseAffectionChanges(text);
@@ -972,6 +976,7 @@ mixin GameResponseMixin
     }
   }
 
+  @override
   String generateFallbackNarrative() {
     final p = player;
     if (p == null) return '你站在霍格沃茨的走廊上，等待着下一段旅程。';
@@ -1167,6 +1172,7 @@ mixin GameResponseMixin
     ],
   };
 
+  @override
   List<GameChoice> generateFallbackChoices() {
     final location = worldState.currentLocation ?? '霍格沃茨';
 
@@ -1294,6 +1300,7 @@ mixin GameResponseMixin
   /// [canonTopicFromTitle]，两者实现在 GameNarrativeMixin），A/B/C/D 四档
   /// 各自会多出一个「围绕该事件」的分支，让玩家能对时代背景做出反应，
   /// 而不是只读到一行旁白、选项仍是「四处看看」。
+  @override
   List<GameChoice> buildFallbackChoices(String narrative) {
     final p = player;
     final energy = p?.energy ?? 100;
@@ -2030,6 +2037,7 @@ mixin GameResponseMixin
   }
 
   /// 独立生成选项：接收已生成的剧情文本，让 AI 专门基于此生成选项
+  @override
   Future<List<GameChoice>> generateChoicesSeparately(String narrative) async {
     if (router == null) return [];
 
@@ -2048,19 +2056,18 @@ mixin GameResponseMixin
     // 只取叙事末尾 800 字作为选项依据——重点在「结尾的即时动作/最后一位说话者/场面氛围」
     // 选项必须直接承接这一刻，不得跨越到下一节课/明天/下一个地点。
     final narrativeTail = cleanNarrativeForChoice.length > 800
-        ? '…（前略，以下为当前剧情的最末尾800字，请严格按结尾最后几行生成选项）\n' +
-              cleanNarrativeForChoice.substring(
+        ? '…（前略，以下为当前剧情的最末尾800字，请严格按结尾最后几行生成选项）\n${cleanNarrativeForChoice.substring(
                 snapCutToBoundary(
                   cleanNarrativeForChoice,
                   cleanNarrativeForChoice.length - 800,
                 ),
-              )
+              )}'
         : cleanNarrativeForChoice;
 
     // ---- 注入玩家硬状态：避免生成不可能的选项 ----
     // Player 真实字段：grade(int? 年级), house(String?), health, energy, galleons, bankGalleons
     final grade = p.grade ?? 0;
-    final yearLabel = grade > 0 && grade <= 7 ? '${grade}年级' : '新生';
+    final yearLabel = grade > 0 && grade <= 7 ? '$grade年级' : '新生';
     final houseVal = p.house;
     final houseText = (houseVal != null && houseVal.isNotEmpty)
         ? '学院：$houseVal'
@@ -2233,15 +2240,15 @@ mixin GameResponseMixin
   $healthText｜$energyText｜$galleonsText
   $spellsText
   $inventoryText
-  ${nearbyNpcs.isNotEmpty ? '附近/重要NPC：' + nearbyNpcs : ''}
+  ${nearbyNpcs.isNotEmpty ? '附近/重要NPC：$nearbyNpcs' : ''}
   【身份模式】${appProvider.identityMode == IdentityMode.transmigration ? _optionIdentityLine() : '原住民：对命运走向一无所知，只凭判断与本能行事，选项严禁出现主角不可能知道的信息'}
   【上回合玩家动作】$playerAction
   ${stagnationHint.isNotEmpty ? stagnationHint : ''}
   ${assertionsBlock.isNotEmpty ? assertionsBlock : ''}
   ${oocWarn.isNotEmpty ? oocWarn : ''}
-  ${forbiddenHint}
+  $forbiddenHint
 
-  ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n' + openLoopsBrief : ''}
+  ${openLoopsBrief.isNotEmpty ? '【当前承诺（不得违背）】\n$openLoopsBrief' : ''}
   【T0 核心事实（选项不能违背）】
   $topFactsText
 
@@ -2285,7 +2292,9 @@ $kChoicePromptSuffix''';
       final npcNameAll = <String, bool>{}; // 用于快速判断某字符串是否NPC（不管introduced）
       for (final n in npcRegistry.values) {
         npcNameAll[n.name] = true;
-        for (final alias in n.aliases) npcNameAll[alias] = true;
+        for (final alias in n.aliases) {
+          npcNameAll[alias] = true;
+        }
         if (n.introduced) {
           npcWhitelistNames.add(n.name);
           npcWhitelistNames.addAll(n.aliases);
@@ -2300,8 +2309,9 @@ $kChoicePromptSuffix''';
       for (final m in tailNameMatches) {
         final candidate = m.group(1)!;
         // 不要把"学院/车站/大厅/列车/走廊/图书馆"这些常见叙述词当成"人名临时白名单"
-        if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate))
+        if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) {
           npcWhitelistNames.add(candidate);
+        }
       }
       // "一年级/二年级/新生/学长/学姐" 这种称呼（不是具体人名）允许，
       // 但我们只在命中"像具体人名的霍尔"这种时才过滤，所以不需要额外加。
@@ -2319,8 +2329,9 @@ $kChoicePromptSuffix''';
           );
       for (final m in fullNarrativeNameMatches) {
         final candidate = m.group(1)!;
-        if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate))
+        if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) {
           npcWhitelistNames.add(candidate);
+        }
       }
 
       final beforeFilter = choices.length;
@@ -2355,8 +2366,9 @@ $kChoicePromptSuffix''';
               (c) => !GameResponseChoiceMixin.isChoiceQualityAcceptable(c.text),
             )
             .toList();
-        if (badChoices.isNotEmpty)
+        if (badChoices.isNotEmpty) {
           qualityReasons.add('${badChoices.length}条含markdown/图片/异常格式');
+        }
         debugLog('选项质量检测: ${qualityReasons.join("、")}，自动重试(带完整剧情上下文)...');
 
         // BUG-L 关键修复：重试 prompt 必须包含剧情末尾+玩家状态，不能用极简 prompt！
@@ -2413,8 +2425,9 @@ $kChoicePromptSuffix''';
         ).allMatches(narrativeTail);
         for (final m in fullRetryNarrativeNameMatches) {
           final candidate = m.group(1)!;
-          if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate))
+          if (!GameResponseChoiceMixin.looksLikeNarrationWord(candidate)) {
             npcWhitelistNames.add(candidate);
+          }
         }
         final retryBefore = retryChoices.length;
         retryChoices.removeWhere(

@@ -41,7 +41,7 @@ import '../models/long_term_memory.dart';
 // 裸导入是为了拿 CgDef 类型；别名导入是为了调到顶层 cgById()，
 // 不然会和下面的 cgById 方法名撞上。两个都需要。
 import '../data/cg_data.dart';
-import '../data/cg_data.dart' as cgData;
+import '../data/cg_data.dart' as cg_data;
 import '../utils/debug_log.dart';
 
 /// GameProvider 本体：只保留 constructor / autoSave / saveNow / onApiKeyChange
@@ -87,7 +87,7 @@ class GameProvider extends GameProviderBase
   /// （用 show-as 别名避开与自身方法名冲突）。
   /// 声明在基类上是为了让各 mixin 也能通过基类接口访问它。
   @override
-  CgDef? cgById(String id) => cgData.cgById(id);
+  CgDef? cgById(String id) => cg_data.cgById(id);
   @override
   final AppProvider appProvider;
   @override

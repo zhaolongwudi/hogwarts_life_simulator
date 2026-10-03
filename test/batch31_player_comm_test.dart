@@ -11,7 +11,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_summary_memory.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';

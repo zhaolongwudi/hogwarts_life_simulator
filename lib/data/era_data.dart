@@ -7,6 +7,7 @@
 ///   - 短描述（shortLabel）
 ///   - NPC 池 key（eraKey）
 /// 统一定义在一张表。新增时代 = 新增 1 条 EraDef。
+library;
 import '../providers/app_provider.dart';
 
 class EraDef {

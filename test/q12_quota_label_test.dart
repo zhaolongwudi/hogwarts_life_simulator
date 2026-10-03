@@ -14,7 +14,7 @@ import 'package:hogwarts_life_simulator/screens/settings/settings_provider_card.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  SettingsProviderCard _card(AiProvider p) {
+  SettingsProviderCard card(AiProvider p) {
     return SettingsProviderCard(
       provider: p,
       appProvider: AppProvider(),
@@ -24,12 +24,12 @@ void main() {
     );
   }
 
-  Future<void> _pump(WidgetTester tester, AiProvider p) async {
+  Future<void> pump(WidgetTester tester, AiProvider p) async {
     // 卡片展开态较高，放进滚动容器避免测试面（800x600）内溢出
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SingleChildScrollView(child: _card(p)),
+          body: SingleChildScrollView(child: card(p)),
         ),
       ),
     );
@@ -37,7 +37,7 @@ void main() {
   }
 
   testWidgets('SenseNova 免费模型 chip 标注 1500次/5h 与 500次/5h', (tester) async {
-    await _pump(tester, AiProvider.sensenova);
+    await pump(tester, AiProvider.sensenova);
 
     // 自研模型 1500 次/5h
     expect(
@@ -50,12 +50,12 @@ void main() {
   });
 
   testWidgets('DeepSeek 提供商不出现配额标注（按量计费无限流）', (tester) async {
-    await _pump(tester, AiProvider.deepseek);
+    await pump(tester, AiProvider.deepseek);
     expect(find.textContaining('次/5h'), findsNothing);
   });
 
   testWidgets('Agnes 提供商不出现 5h 配额标注（20 RPM 维度）', (tester) async {
-    await _pump(tester, AiProvider.agnes);
+    await pump(tester, AiProvider.agnes);
     expect(find.textContaining('次/5h'), findsNothing);
   });
 }

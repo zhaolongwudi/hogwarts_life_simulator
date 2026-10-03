@@ -117,7 +117,7 @@ void main() {
         final hit = _playThrough(era);
         for (var grade = 1; grade <= 7; grade++) {
           final inYear = hit.where((a) => a.grade == grade).length;
-          expect(inYear, greaterThan(0), reason: '$era 的 ${grade}年级整年没有专属锚点');
+          expect(inYear, greaterThan(0), reason: '$era 的 $grade年级整年没有专属锚点');
         }
       }
     });

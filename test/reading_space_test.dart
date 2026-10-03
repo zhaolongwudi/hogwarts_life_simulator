@@ -9,6 +9,7 @@
 ///  2. 场景横幅滚动自动折叠（96px 插图 → 36px 紧凑条，滞回阈值）
 ///  3. 文本颜色图例学习期后默认收起（前 3 回合强制展开）
 ///  4. 选项区限高 0.42 → 0.32（长选项内部滚动，不预支正文高度）
+library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

@@ -9,6 +9,7 @@
 /// - grade 锚点：仅对应年级触发一次
 /// - era 过滤：为空表示所有时代通用
 /// - 已触发的锚点 id 记录在存档中，不会重复触发
+library;
 
 import 'locations.dart';
 
@@ -143,7 +144,7 @@ const List<EventAnchor> eventAnchors = [
     grade: 3,
     // 尖叫棚屋是 1971 年为卢平建的（满月时关他用的），1892 年它还不存在。
     // 1971 年入学的那一届正好赶上它刚落成，传闻正是从那时候开始的。
-    excludedEras: const ['dumbledore'],
+    excludedEras: ['dumbledore'],
     title: '第一次霍格莫德之行',
     directive:
         '安排三年级生的第一次霍格莫德周末：黄油啤酒、佐科笑话店、或关于尖叫棚屋的传闻。玩家与同伴的互动应体现当前关系状态。',
@@ -363,7 +364,7 @@ const List<EventAnchor> eventAnchors = [
     title: '开学宴会',
     // 1892（dumbledore）时代邓布利多自己还是一年级新生，
     // 2020（post_war）时代他已逝世二十多年。这两个时代不能让「校长」致辞。
-    excludedEras: const ['dumbledore', 'post_war'],
+    excludedEras: ['dumbledore', 'post_war'],
     directive:
         '开学宴会氛围：分院帽之歌、校长致辞、级长巡视。可安排校长致辞中的微妙暗示（致辞者须是当代在任校长）。',
   ),
@@ -1040,7 +1041,9 @@ List<EventAnchor> anchorsFor({
     // 两头都匹配不上，锚点会静默地一次都不触发。
     if (a.requiredLocation != null &&
         currentLocation != null &&
-        !locationMatches(currentLocation, a.requiredLocation!)) continue;
+        !locationMatches(currentLocation, a.requiredLocation!)) {
+      continue;
+    }
     result.add(a);
   }
   return result;

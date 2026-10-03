@@ -106,8 +106,9 @@ mixin GamePlayMixin on GameProviderBase {
     final qs = player?.quests;
     if (qs == null) return;
     for (final q in qs) {
-      if (q.status != 'active' || q.type != type || q.target != target)
+      if (q.status != 'active' || q.type != type || q.target != target) {
         continue;
+      }
       q.progress = (q.progress + amount).clamp(0, q.targetCount);
       if (q.isDone) {
         q.status = 'completed';
@@ -118,6 +119,7 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 1. 物品使用 ====================
 
+  @override
   String formatItemUseHelp() {
     final p = player;
     final usable = usableItems();
@@ -144,6 +146,7 @@ mixin GamePlayMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   void useItem(String name) {
     final p = player;
     if (p == null) return;
@@ -359,6 +362,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 这是玩家唯一能看到「哪些咒语存在」的地方。以前没有这张表，learnedSpells
   /// 里最多躺着一条「漂浮咒」，成就「书虫」要求学会 10 个——玩家连第 2 个咒
   /// 的名字都无从得知。
+  @override
   String formatSpells() {
     final p = player;
     if (p == null) return '你还没有开始学业。';
@@ -397,7 +401,7 @@ mixin GamePlayMixin on GameProviderBase {
         final ok = attr >= s.requiredAttribute;
         buf.writeln(
           '· ${s.name}（${s.incantation}）'
-          '　${_attrLabelZh(s.attribute)} ${attr}/${s.requiredAttribute}${ok ? '' : '（不够）'}'
+          '　${_attrLabelZh(s.attribute)} $attr/${s.requiredAttribute}${ok ? '' : '（不够）'}'
           '　${s.effect}',
         );
       }
@@ -410,6 +414,7 @@ mixin GamePlayMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   String formatSpellDetail(String name) {
     final s = spellByName(name);
     if (s == null) return '没有「$name」这个咒语。输入 /咒语 看看能学什么。';
@@ -438,6 +443,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 年级与熟练度两道门槛是必要的：咒语等级会被关联属性压着，让一年级新生
   /// 直接学走杀戮咒，既不符合设定，也会让「一年级禁咒」的一致性检查失去意义
   /// （那条检查正是拿 learnedSpells 当白名单的）。
+  @override
   void learnSpell(String name) {
     final p = player;
     if (p == null) return;
@@ -513,7 +519,7 @@ mixin GamePlayMixin on GameProviderBase {
 
     final buf = StringBuffer('【学会新咒语】\n')
       ..writeln('你对着垫子念出「${def.incantation}」，杖尖终于给了回应。')
-      ..writeln('${def.effect}')
+      ..writeln(def.effect)
       ..writeln()
       ..writeln('学会：${def.name}（Lv.1，等级上限 ${def.levelCapFor(attr)}）')
       ..writeln('精力 -10');
@@ -528,6 +534,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 等级被关联熟练度封顶（SpellDef.levelCapFor），所以「反复练同一个咒」
   /// 顶不出满级；熟练度不够时得回头去上课。练习本身也有小概率推进熟练度，
   /// 让「练咒 → 变强 → 等级上限抬高」形成闭环，而不是各涨各的。
+  @override
   void practiseSpell(String name) {
     final p = player;
     if (p == null) return;
@@ -602,6 +609,7 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 2. 宠物互动 ====================
 
+  @override
   void petInteract(String action) {
     final p = player;
     if (p == null) return;
@@ -681,7 +689,7 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln(
         '\n—— 一道柔和的光晕忽然从$petName 身上漾开，它的身影在光芒中缓缓拔高，'
         '幻化作一个与你年纪相仿的少男/少女。绯色光晕笼罩周身，它/他静静看着你，轻声唤出你的名字。\n\n'
-        '【羁绊已达】${species}$petName：$hint',
+        '【羁绊已达】$species$petName：$hint',
       );
       // 修复：化形只是为宠物新增一条关系，绝不能清空玩家与所有 NPC 的既有关系
       final petRelId = p.petId ?? petName;
@@ -714,6 +722,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 之前 /宠物 在没有宠物时会说「可以去对角巷挑选一只猫头鹰、猫或蟾蜍」，
   /// 但商店里没有宠物卖——开局问卷跳过宠物的玩家会被指到一条死路上，
   /// 喂食/玩耍/训练三个子指令和宠物助战、羁绊化形全废。
+  @override
   String formatPetShop() {
     final buf = StringBuffer()
       ..writeln('【咿啦猫头鹰商店】')
@@ -729,6 +738,7 @@ mixin GamePlayMixin on GameProviderBase {
   }
 
   /// 买一只宠物。[keyword] 为空时只列出在售清单。
+  @override
   String buyPet(String keyword) {
     final p = player;
     if (p == null) return '还没开始游戏。';
@@ -770,6 +780,7 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 3. 装备穿戴 ====================
 
+  @override
   String formatEquip() {
     final p = player;
     if (p == null) return '';
@@ -811,6 +822,7 @@ mixin GamePlayMixin on GameProviderBase {
 
   String priceLabel(int p) => p >= 0 ? p.toString() : '';
 
+  @override
   void equipItem(String name) {
     final p = player;
     if (p == null) return;
@@ -854,34 +866,36 @@ mixin GamePlayMixin on GameProviderBase {
     _finishLocal(buf.toString());
   }
 
-  void unequipItem(String slotOrName) {
+  @override
+  void unequipItem(String slot) {
     final p = player;
     if (p == null) return;
-    String? slot = p.equipped.containsKey(slotOrName) ? slotOrName : null;
-    if (slot == null) {
+    String? resolved = p.equipped.containsKey(slot) ? slot : null;
+    if (resolved == null) {
       for (final s in ['robe', 'hat', 'broom', 'amulet']) {
-        if (slotLabel(s) == slotOrName || s == slotOrName) {
-          slot = s;
+        if (slotLabel(s) == slot || s == slot) {
+          resolved = s;
           break;
         }
       }
     }
-    if (slot == null) {
+    if (resolved == null) {
       _finishLocal('没有这个装备部位（袍子/帽子/扫帚/饰品）。输入 /装备 查看当前穿戴。');
       return;
     }
-    final name = p.equipped.remove(slot);
+    final name = p.equipped.remove(resolved);
     if (name == null) {
-      _finishLocal('${slotLabel(slot)}本来就空着，没有可卸下的装备。');
+      _finishLocal('${slotLabel(resolved)}本来就空着，没有可卸下的装备。');
       return;
     }
     // 装备实体回到背包（若背包里已有一件——比如旧存档——就不再重复添加）
     if (!_hasItem(name)) _addItem(name);
-    _finishLocal('【卸下 · $name】\n你卸下了${slotLabel(slot)}「$name」，它回到你的背包里。');
+    _finishLocal('【卸下 · $name】\n你卸下了${slotLabel(resolved)}「$name」，它回到你的背包里。');
   }
 
   // ==================== 4. 魁地奇 ====================
 
+  @override
   String formatQuidditch() {
     final p = player;
     if (p == null) return '';
@@ -902,6 +916,7 @@ mixin GamePlayMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   void setQuidditchPosition(String pos) {
     const positions = ['找球手', '追球手', '守门员', '击球手'];
     final p = player!;
@@ -913,6 +928,7 @@ mixin GamePlayMixin on GameProviderBase {
     _finishLocal('【位置调整】\n你在队内试训后被安排为「$pos」。训练中你不断调整握法，$pos 的职责逐渐得心应手。');
   }
 
+  @override
   void playQuidditch() {
     final p = player;
     if (p == null) return;
@@ -1053,15 +1069,16 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 5. 决斗 ====================
 
+  @override
   void duelNpc(String? name) {
     final p = player;
     if (p == null) return;
     // 每日次数上限：旧实现无冷却，一场决斗只花 10 分钟 + 10 精力，
     // 赢了给 10~25 加隆 + 6~11 战斗声望 → 十几场就能把战斗声望刷满、
     // 加隆花不完，学院杯与声望系统全部失去意义。
-    if (!this.canDoDaily('duel')) {
+    if (!canDoDaily('duel')) {
       _finishLocal(
-        '你今天已经比了 ${this.dailyLimitOf('duel')} 场决斗，手臂酸得连魔杖都快握不住了。'
+        '你今天已经比了 ${dailyLimitOf('duel')} 场决斗，手臂酸得连魔杖都快握不住了。'
         '麦格教授远远瞥了你一眼——再打下去就要被请去喝茶了。\n\n'
         '明天再来吧。',
       );
@@ -1124,7 +1141,7 @@ mixin GamePlayMixin on GameProviderBase {
 
     // 决斗按 60 分钟计（旧实现传的是'对话'，只推进 10 分钟）
     advanceTimeForAction('决斗');
-    this.recordDailyActivity('duel');
+    recordDailyActivity('duel');
     lastDuelOpponentId = opponent.id;
     p.energy = (p.energy - 10).clamp(0, 100);
     p.magic = (p.magic - 12).clamp(0, 100);
@@ -1176,7 +1193,7 @@ mixin GamePlayMixin on GameProviderBase {
       p.health = (p.health - 5 - random.nextInt(6)).clamp(1, 100);
       // 当日第 N 场递减：越往后对手越有准备、观战的人越少，收益自然下降。
       // 旧实现每场收益恒定，一天刷十几场就能吃满所有成长曲线。
-      final nth = this.dailyCountOf('duel'); // 已 recordDailyActivity，1 表示当天第一场
+      final nth = dailyCountOf('duel'); // 已 recordDailyActivity，1 表示当天第一场
       final decay = nth <= 1 ? 1.0 : (nth == 2 ? 0.6 : 0.3);
       final repGain = ((6 + random.nextInt(6)) * decay).round().clamp(1, 11);
       final reward = ((10 + random.nextInt(16)) * decay).round().clamp(1, 25);
@@ -1187,7 +1204,7 @@ mixin GamePlayMixin on GameProviderBase {
       // 打赢对方会让人更服气，但只加一次：反复刷同一个人不该刷出满好感
       if (!_duelBeatenNpcIds.contains(opponent.id)) {
         _duelBeatenNpcIds.add(opponent.id);
-        this.updateNpcAffection(opponent.id, 2, reason: '决斗获胜');
+        updateNpcAffection(opponent.id, 2, reason: '决斗获胜');
         _maybeRivalFromDuel(opponent, margin: myScore - oppScore);
       }
       buf.writeln('\\n最后一击命中！${opponent.name} 踉跄着抬起魔杖认输。');
@@ -1269,6 +1286,7 @@ mixin GamePlayMixin on GameProviderBase {
         _ => 1,
       };
   /// /决斗 赛季 面板：查看本赛季积分/胜场/档位 + 领奖。
+  @override
   void showDuelSeasonPanel() {
     final p = player;
     if (p == null) return;
@@ -1308,6 +1326,7 @@ mixin GamePlayMixin on GameProviderBase {
     _finishLocal(buf.toString());
   }
   /// /决斗 赛季 领奖：按当前积分领取最高可领档位（跳档只补差额）。
+  @override
   void claimDuelSeasonReward() {
     final p = player;
     if (p == null) return;
@@ -1369,6 +1388,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 当前限时窗口（按世界月份判定，无则 null）。
   PotionWindow? _currentPotionWindow() => potionWindowForMonth(worldState.time.month);
   /// /魔药 配方：查看当前窗口可用配方（含材料消耗）。
+  @override
   void showPotionRecipes() {
     final p = player;
     if (p == null) return;
@@ -1402,6 +1422,7 @@ mixin GamePlayMixin on GameProviderBase {
     return 60;
   }
   /// /魔药 酿造 <配方id>：消耗材料 + 10 精力 + 30 分钟，按成功率判定产出。
+  @override
   void brewPotion(String recipeId) {
     final p = player;
     if (p == null) return;
@@ -1475,6 +1496,7 @@ mixin GamePlayMixin on GameProviderBase {
     }
   }
   /// /魁地奇 训练：位置专项训练，每周上限 2 次。
+  @override
   void trainQuidditch() {
     final p = player;
     if (p == null) return;
@@ -1524,6 +1546,7 @@ mixin GamePlayMixin on GameProviderBase {
         .toList();
   }
   /// /快讯 头版：查看本学期可报道的候选素材。
+  @override
   void showHeadlineBoard() {
     final p = player;
     if (p == null) return;
@@ -1551,6 +1574,7 @@ mixin GamePlayMixin on GameProviderBase {
     _finishLocal(buf.toString());
   }
   /// /快讯 报道 <序号> <角度>：选定素材 + 角度结算效果。
+  @override
   void reportHeadline(int index, String angle) {
     final p = player;
     if (p == null) return;
@@ -1612,6 +1636,7 @@ mixin GamePlayMixin on GameProviderBase {
   }
   // ==================== 6. 禁林探险 ====================
 
+  @override
   void exploreForbiddenForest() {
     final p = player;
     if (p == null) return;
@@ -1625,15 +1650,15 @@ mixin GamePlayMixin on GameProviderBase {
     }
     // 每日次数上限：禁林是材料/生物图鉴的主要来源，不设限的话
     // 一个下午就能把图鉴刷满、材料堆成山，后期采集玩法直接失去意义。
-    if (!this.canDoDaily('forest')) {
+    if (!canDoDaily('forest')) {
       _finishLocal(
-        '海格远远朝你摆手：「今天进去 ${this.dailyLimitOf('forest')} 趟啦，林子也得喘口气。」\n\n'
+        '海格远远朝你摆手：「今天进去 ${dailyLimitOf('forest')} 趟啦，林子也得喘口气。」\n\n'
         '天色确实不早了，明天再来吧。',
       );
       return;
     }
 
-    this.recordDailyActivity('forest');
+    recordDailyActivity('forest');
     advanceTimeForAction('禁林探险');
     p.energy = (p.energy - 15).clamp(0, 100);
     p.satiety = (p.satiety - 5).clamp(0, 100);
@@ -1710,7 +1735,7 @@ mixin GamePlayMixin on GameProviderBase {
       final creature = weighted[random.nextInt(weighted.length)];
       _recordCreature(creature);
       buf.writeln('密林深处传来窸窣声。你屏住呼吸，看到了——${creature.name}。');
-      buf.writeln('${creature.desc}');
+      buf.writeln(creature.desc);
       buf.writeln(
         '\n【图鉴更新】${creature.name}（${dangerLabel(creature.danger)}）已收录',
       );
@@ -1819,6 +1844,7 @@ mixin GamePlayMixin on GameProviderBase {
 
   // ==================== 7. 魔法生物图鉴 ====================
 
+  @override
   String formatBestiary() {
     final p = player;
     final buf = StringBuffer(
@@ -1836,7 +1862,7 @@ mixin GamePlayMixin on GameProviderBase {
       if (!found) continue;
       buf.writeln('\n『${c.name}』 ${dangerLabel(c.danger)}');
       buf.writeln('栖息地：${c.habitat}');
-      buf.writeln('${c.desc}');
+      buf.writeln(c.desc);
       if (c.loot.isNotEmpty) {
         buf.writeln('可获材料：${c.loot.join('、')}');
       }
@@ -1884,6 +1910,7 @@ mixin GamePlayMixin on GameProviderBase {
     return picked;
   }
 
+  @override
   void refreshQuestBoard() {
     final board = _board(forceRefresh: true);
     final buf = StringBuffer('【委托板 · 已刷新】\n');
@@ -1907,6 +1934,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 委托类型 → 中文名。表在 lib/data/quest_data.dart（委托板 UI 共用）。
   String _questTypeLabel(String type) => questTypeLabel(type);
 
+  @override
   String formatQuests() {
     final p = player;
     final buf = StringBuffer('【支线委托】\n');
@@ -1938,6 +1966,7 @@ mixin GamePlayMixin on GameProviderBase {
     return buf.toString();
   }
 
+  @override
   void acceptQuest(int index) {
     final board = _board();
     if (index < 0 || index >= board.length) {
@@ -1948,6 +1977,7 @@ mixin GamePlayMixin on GameProviderBase {
   }
 
   /// 按模板 ID 接取委托（委托板独立页面使用，避免与随机刷板索引不一致）
+  @override
   void acceptQuestTemplate(String id) {
     final p = player;
     if (p == null) return;
@@ -1993,6 +2023,7 @@ mixin GamePlayMixin on GameProviderBase {
     );
   }
 
+  @override
   void deliverQuest(int index) {
     final p = player;
     if (p == null) return;
@@ -2060,6 +2091,7 @@ mixin GamePlayMixin on GameProviderBase {
   /// 此前 5 个加分点全都直接写 `p.houseCupPoints += n`，这个方法反而一个调用者
   /// 都没有。统一到这里之后 `reason` 会累计进来源明细，`/学院杯` 就能告诉玩家
   /// 这一年分数是从哪儿挣来的，而不是只列一份"有哪些加分途径"的静态说明。
+  @override
   void addHouseCupPoints(int amount, String reason) {
     final p = player;
     if (p == null || amount == 0) return;
@@ -2103,6 +2135,7 @@ mixin GamePlayMixin on GameProviderBase {
     return yearly;
   }
 
+  @override
   String formatHouseCup() {
     final p = player;
     if (p == null) return '';
@@ -2156,7 +2189,7 @@ mixin GamePlayMixin on GameProviderBase {
       buf.writeln('· 期末考试年级前十 +${Balance.houseCupActivityPoints['exam_top']}');
       buf.writeln(
         '· 日常：课堂上答对的问题、替同学解的围、'
-        '还有你夜游被抓时扣掉的那些分（每天最多 +${kHouseNarrativeGainDailyCap}）',
+        '还有你夜游被抓时扣掉的那些分（每天最多 +$kHouseNarrativeGainDailyCap）',
       );
     } else {
       final sources = p.houseCupSources.entries.toList()
@@ -2177,6 +2210,7 @@ mixin GamePlayMixin on GameProviderBase {
   }
 
   /// 学年结算（由 mixin_systems 学年切换时调用）
+  @override
   void settleHouseCup() {
     final p = player;
     // 未分院就不参与学院杯。注意这里不再有 `houseCupPoints == 0` 的拦截：
@@ -2202,9 +2236,9 @@ mixin GamePlayMixin on GameProviderBase {
     worldState.houseCupYearHistory[worldState.academicYear] = summary;
 
     final buf = StringBuffer('【学院杯 · 学年结算】\n');
-    ranked.forEach((e) {
+    for (var e in ranked) {
       buf.writeln('${e.key == myCn ? '★ ' : '  '}${e.key}：${e.value} 分');
-    });
+    }
     // 净分为负的时候"赢得了 -20 分"读不通，而且那本来也不是一回事：
     // 一年下来净扣分，值得单独说一句，不该混在同一句话里。
     if (p.houseCupPoints > 0) {

@@ -8,6 +8,7 @@
 ///   · /cheat 无敌 可免疫死亡（作弊项）。
 ///
 /// 死亡不是"游戏失败"——它是这段人生的句号。终章里会回望这一生。
+library;
 
 import '../models/game_systems.dart';
 import '../models/long_term_memory.dart';
@@ -17,6 +18,7 @@ import '../data/memory_importance_config.dart';
 mixin GameDeathMixin on GameProviderBase {
   /// 伤害结算后调用：health ≤ 0 且未死亡时触发死亡流程。
   /// [cause] 是叙事友好文案（如「决斗中被咒语击中」「禁林深处的怪物袭击」）。
+  @override
   void checkPlayerDeath(String cause) {
     final p = player;
     if (p == null || p.isDead) return;
@@ -83,7 +85,7 @@ mixin GameDeathMixin on GameProviderBase {
       ..writeln()
       ..writeln('$cause。')
       ..writeln()
-      ..writeln('你这一生，止步于 ${age} 岁。')
+      ..writeln('你这一生，止步于 $age 岁。')
       ..writeln()
       ..writeln('【此生的痕迹】')
       ..writeln('· 学院：${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
@@ -120,6 +122,7 @@ mixin GameDeathMixin on GameProviderBase {
   /// 判定做成确定性（条件满足即结算），不做随机——框架2 §75 强调
   /// 「明知极度危险仍故意挑战强敌，世界应该真实结算」，不能靠掷骰子
   /// 决定要不要抓你。触发点放在每回合的 _settleAfterNarrative 里。
+  @override
   void checkImprisonment() {
     final p = player;
     if (p == null || p.isDead || p.isImprisoned) return;
@@ -187,11 +190,11 @@ mixin GameDeathMixin on GameProviderBase {
       ..writeln()
       ..writeln('${worldState.time.format()}，法庭的锤声落定。')
       ..writeln()
-      ..writeln('$cause')
+      ..writeln(cause)
       ..writeln()
       ..writeln('你仍活着——这是比死亡更沉重的判决。')
       ..writeln()
-      ..writeln('你这一生，在 ${age} 岁这一年失去了自由。')
+      ..writeln('你这一生，在 $age 岁这一年失去了自由。')
       ..writeln()
       ..writeln('【此生的痕迹】')
       ..writeln('· 学院：${p.house ?? '未分院'} · ${p.grade ?? 1}年级')
@@ -225,6 +228,7 @@ mixin GameDeathMixin on GameProviderBase {
 
   /// 死亡/囚禁后拦截普通行动：只能查看终章或开启新人生。
   /// 在 processChoice 入口调用，返回 true 表示已拦截。
+  @override
   bool blockActionIfDead() {
     final p = player;
     if (p == null || (!p.isDead && !p.isImprisoned)) return false;

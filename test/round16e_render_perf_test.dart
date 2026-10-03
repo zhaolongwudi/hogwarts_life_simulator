@@ -68,7 +68,7 @@ void main() {
     });
 
     test('超长叙事 20k 字渲染 < 3s（长局文本累积场景）', () {
-      final long = (narrative + '\n\n') * 10; // ~10k 字
+      final long = ('$narrative\n\n') * 10; // ~10k 字
       final sw = Stopwatch()..start();
       final paras = StoryTextRenderer.classifyParagraphs(long);
       for (final p in paras) {

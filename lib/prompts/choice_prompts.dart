@@ -1,4 +1,5 @@
 /// 选项设计 Prompt 规则骨架（严格规则，常被读，单独拎出来便于后续独立审规则）。
+library;
 
 const String kChoicePromptPreamble =
     '''你是《哈利波特·魔法人生模拟器》的专业选项设计师。任务：只生成 4 个互斥的玩家选择。

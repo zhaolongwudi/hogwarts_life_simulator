@@ -9,6 +9,7 @@
 /// S7：魁地奇训练文档承诺 30 分钟，实际被通用 ['魁地奇','训练'] 规则命中 120
 /// 分钟。修复：新增高优先级 ['魁地奇训练','训练赛','训练'] → 30，且不误伤
 /// 「魁地奇比赛」（仍 120）。
+library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/time_cost_rules.dart';
 

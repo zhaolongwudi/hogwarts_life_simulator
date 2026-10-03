@@ -244,7 +244,7 @@ class _ShopTabState extends State<ShopTab> {
                         ),
                       ) ??
                       false;
-                  if (!context.mounted) return;
+                  if (!mounted) return;
                   final isUsable = item['usable'] == true || item['equippable'] == true;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -265,7 +265,7 @@ class _ShopTabState extends State<ShopTab> {
                   final invIndex = gp.player?.inventory.indexWhere((e) => e.name == item['name']) ?? -1;
                   if (invIndex >= 0) {
                     await _guarded(() async => gp.sellItem(invIndex, price));
-                    if (!context.mounted) return;
+                    if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('已出售 ${item['name']} (获得 $price 加隆)')),
                     );

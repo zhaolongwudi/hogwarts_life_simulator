@@ -13,6 +13,7 @@
 /// 所以注册表设计成：CommandRegistry 是一个单例，mixin 在自己初始化时
 /// 通过 registerAll(this) 传入 handler 闭包，闭包再调用 mixin 方法。
 ///   这样避免了大量 circular import，也不需要改 GameProviderBase 的继承链。
+library;
 
 import '../providers/game_provider_base.dart';
 

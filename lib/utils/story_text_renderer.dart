@@ -444,41 +444,41 @@ class StoryTextRenderer {
   /// 相比 1.8 更紧凑，让每个屏幕能多显示 2-3 行正文。
   static const double _bodyLineHeight = 1.6;
 
-  static TextStyle _narrationStyle = const TextStyle(
+  static final TextStyle _narrationStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _narrationColor,
   );
 
-  static TextStyle _dialogueStyle = const TextStyle(
+  static final TextStyle _dialogueStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _dialogueColor,
     fontWeight: FontWeight.w500,
   );
 
-  static TextStyle _dialogueSpeakerStyle = const TextStyle(
+  static final TextStyle _dialogueSpeakerStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _dialogueSpeakerColor,
     fontWeight: FontWeight.w700,
   );
 
-  static TextStyle _characterStyle = const TextStyle(
+  static final TextStyle _characterStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _characterColor,
     fontWeight: FontWeight.w600,
   );
 
-  static TextStyle _locationStyle = const TextStyle(
+  static final TextStyle _locationStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _locationColor,
     fontWeight: FontWeight.w500,
   );
 
-  static TextStyle _itemStyle = const TextStyle(
+  static final TextStyle _itemStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _itemColor,
@@ -486,13 +486,13 @@ class StoryTextRenderer {
   );
 
   static const Color _affectionColor = MiuiColors.onSurfaceVariantSummary;
-  static TextStyle _affectionStyle = const TextStyle(
+  static final TextStyle _affectionStyle = const TextStyle(
     fontSize: 12,
     height: _bodyLineHeight,
     color: _affectionColor,
     fontStyle: FontStyle.italic,
   );
-  static TextStyle _affectionCharacterStyle = const TextStyle(
+  static final TextStyle _affectionCharacterStyle = const TextStyle(
     fontSize: 12,
     height: _bodyLineHeight,
     color: _affectionColor,
@@ -696,6 +696,7 @@ class StoryTextRenderer {
   /// 回溯深度被封顶 O(80×300)）；②调用侧再加快路径预筛（见
   /// _promoteAffectionLines），绝大多数行根本不进这个正则。
   static final RegExp _lineAffection = RegExp(
+    // ignore: prefer_interpolation_to_compose_strings
     r'^(?<prefix>.{0,80}?)'
             r'(?:'
             r'(?<name>' +
@@ -1741,7 +1742,7 @@ class StoryTextRenderer {
 
   // 内心独白：比正文淡一档的紫，斜体制造"声音在脑内"的层次
   static const Color _innerVoiceColor = Color(0xFFB8A6E3);
-  static TextStyle _innerVoiceStyle = const TextStyle(
+  static final TextStyle _innerVoiceStyle = const TextStyle(
     fontSize: 15,
     height: _bodyLineHeight,
     color: _innerVoiceColor,
@@ -1750,7 +1751,7 @@ class StoryTextRenderer {
 
   // 时间戳：与金色主题同族的深金，胶囊内展示
   static const Color _timestampColor = Color(0xFFE3B341);
-  static TextStyle _timestampStyle = const TextStyle(
+  static final TextStyle _timestampStyle = const TextStyle(
     fontSize: 12.5,
     height: 1.4,
     color: _timestampColor,

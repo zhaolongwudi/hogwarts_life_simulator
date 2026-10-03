@@ -222,7 +222,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
         ? gp.worldState.recentNarrativeEvents.take(5).toList()
         : <NarrativeEvent>[];
 
-    String _buildTimeLabel(NarrativeEvent event, bool isFirst, int turnCount) {
+    String buildTimeLabel(NarrativeEvent event, bool isFirst, int turnCount) {
       if (isFirst) return '最新';
       final int? t = event.turn;
       if (t != null && turnCount > t) {
@@ -312,7 +312,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               final event = entry.value;
               return _buildEventCard(
                 event.text,
-                _buildTimeLabel(event, idx == 0, gp.turnCount),
+                buildTimeLabel(event, idx == 0, gp.turnCount),
                 isRecent: idx == 0,
               );
             }),
@@ -335,7 +335,7 @@ class _NarrativeTabState extends State<NarrativeTab> {
               final event = entry.value;
               return _buildEventCard(
                 event.text,
-                _buildTimeLabel(event, idx == 0, gp.turnCount),
+                buildTimeLabel(event, idx == 0, gp.turnCount),
                 isRecent: idx == 0,
               );
             }),

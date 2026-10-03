@@ -37,7 +37,7 @@ void main() {
       return null;
     });
   });
-  String _code(String path) => File('lib/$path').readAsStringSync();
+  String code(String path) => File('lib/$path').readAsStringSync();
 
   group('Batch 11 · 归因统计', () {
     test('只统计社团前缀的正分来源', () {
@@ -217,13 +217,13 @@ void main() {
 
   group('Batch 11 · 接线静态断言', () {
     test('mixin_play 已 import club_data（clubById 可用）', () {
-      final src = _code('mixins/mixin_play.dart');
+      final src = code('mixins/mixin_play.dart');
       expect(src, contains("import '../data/club_data.dart';"),
           reason: 'settleHouseCup 需要 clubById 查询社团名');
     });
 
     test('settleHouseCup 内含社团荣光接入点', () {
-      final src = _code('mixins/mixin_play.dart');
+      final src = code('mixins/mixin_play.dart');
       final fn = src.indexOf('void settleHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, contains('clubContributedCupPoints'),
@@ -234,7 +234,7 @@ void main() {
     });
 
     test('house_cup_data 导出 Batch 11 新符号', () {
-      final src = _code('data/house_cup_data.dart');
+      final src = code('data/house_cup_data.dart');
       expect(src, contains('int clubContributedCupPoints('));
       expect(src, contains('ClubCupBonusTier? clubCupTierFor('));
       expect(src, contains('kClubCupBonusTiers'));

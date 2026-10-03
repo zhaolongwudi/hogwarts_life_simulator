@@ -95,6 +95,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     return compressedDelta;
   }
 
+  @override
   void parseAffectionChanges(String text) {
     if (npcRegistry.isEmpty) return;
 
@@ -344,6 +345,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
     }
   }
 
+  @override
   void parseReputationChanges(String text) {
     if (player == null) return;
     // 区块拼接与逐行解析都抽到了 utils/narrative_section_parser.dart：

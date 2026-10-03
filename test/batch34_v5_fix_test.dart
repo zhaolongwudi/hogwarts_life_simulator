@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_summary_memory.dart';
 
 /// 本轮测试：v5 整体复查优化项。

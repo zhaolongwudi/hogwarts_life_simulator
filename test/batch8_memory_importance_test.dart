@@ -75,7 +75,7 @@ void main() {
           // 检查 importance: 数字
           final match = RegExp(r'importance:\s*[0-9]+').firstMatch(line);
           if (match != null) {
-            fail('硬编码 importance 值: ${file}:${i + 1}: ${match.group(0)}');
+            fail('硬编码 importance 值: $file:${i + 1}: ${match.group(0)}');
           }
         }
       }

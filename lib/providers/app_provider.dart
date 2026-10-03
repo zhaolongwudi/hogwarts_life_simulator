@@ -13,9 +13,11 @@ enum IdentityMode {
   dark,
   neutral,
   transmigration,
-  bone_mode,
+  boneMode,
 }
 
+// 这些值名是存档/数据表的时代 key 协议（world_state.era 字符串），不能改名。
+// ignore: constant_identifier_names
 enum Era { marauders, first_war, harry_same, post_war, random, dumbledore }
 
 enum AiProvider { deepseek, agnes, sensenova }
@@ -143,10 +145,10 @@ class AppProvider extends ChangeNotifier {
   IdentityMode _identityMode = IdentityMode.pure;
   Era _era = Era.harry_same;
   AiProvider _aiProvider = AiProvider.deepseek;
-  Map<String, List<String>> _apiKeys = {};
-  Map<String, String> _baseUrls = {};
-  Map<String, String> _models = {};
-  Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
+  final Map<String, List<String>> _apiKeys = {};
+  final Map<String, String> _baseUrls = {};
+  final Map<String, String> _models = {};
+  final Map<AiScene, String> _sceneRoute = Map<AiScene, String>.from(kDefaultRoute);
 
   /// 全局「托底备用模型」：当前场景主模型的所有 Key 全部失效后，切到这个
   /// 提供商的模型继续生成（若它也配了多个 Key，同样按 Key 轮换 + 熔断）。
@@ -415,8 +417,9 @@ class AppProvider extends ChangeNotifier {
     }
 
     final currentKeys = _apiKeys[_aiProvider.name];
-    if (currentKeys != null && currentKeys.isNotEmpty)
+    if (currentKeys != null && currentKeys.isNotEmpty) {
       _apiKey = currentKeys.first;
+    }
 
     // Load scene routes
     for (final scene in AiScene.values) {

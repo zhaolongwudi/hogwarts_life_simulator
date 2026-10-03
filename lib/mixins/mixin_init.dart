@@ -29,6 +29,7 @@ import 'mixin_summary_memory.dart';
 import '../data/memory_importance_config.dart';
 
 mixin GameInitMixin on GameProviderBase {
+  @override
   String buildSystemPrompt() {
     final p = player;
     final effectiveEra = worldState.era.isNotEmpty
@@ -112,7 +113,7 @@ mixin GameInitMixin on GameProviderBase {
               : '';
           final transformDesc = pd.canTransform ? '；可化人形' : '';
           characterLines.add(
-            '【宠物】$petName（${pd.species}${pd.species == pd.name ? '' : '·' + pd.name}）。${pd.description.trim()}$abilityDesc$transformDesc。当宠物出现在场景中时，必须符合这些设定，不能凭空添加/删除能力或改性格。',
+            '【宠物】$petName（${pd.species}${pd.species == pd.name ? '' : '·${pd.name}'}）。${pd.description.trim()}$abilityDesc$transformDesc。当宠物出现在场景中时，必须符合这些设定，不能凭空添加/删除能力或改性格。',
           );
         } else {
           characterLines.add('【宠物】$petName（契约伙伴，宠物出现在场景中时必须体现它的存在）');
@@ -207,6 +208,7 @@ mixin GameInitMixin on GameProviderBase {
     return buffer.toString();
   }
 
+  @override
   String eraLabel(Era era) => eraDefByEra(era).label;
 
   /// 穿越者记忆等级行（框架2 §11）：首次调用时掷档写入存档。
@@ -246,6 +248,7 @@ mixin GameInitMixin on GameProviderBase {
   /// 用于「开始新游戏」时彻底清空旧存档上下文，避免新游戏的第一回合仍被旧摘要、
   /// 旧剧情缓冲、旧回合计数器影响，导致 AI"接着之前的剧情写"。
 
+  @override
   void resetAllState() {
     // 世代号失效：在飞 AI 请求的响应必须在返回后被丢弃，不能写进新局
     invalidateSessionEpoch();
@@ -263,7 +266,7 @@ mixin GameInitMixin on GameProviderBase {
     isLoading = false;
     isInitializing = false;
     // this. 不能省：mixin 体内未限定的标识符解析不到基类声明的字段
-    this.isSummarizing = false;
+    isSummarizing = false;
     error = null;
     turnCount = 0;
     lastPlayerAction = '';
@@ -316,6 +319,7 @@ mixin GameInitMixin on GameProviderBase {
 
   // ==================== 初始化游戏 ====================
 
+  @override
   Future<void> initializeGame({
     required String name,
     required String bloodStatus,
@@ -573,7 +577,7 @@ mixin GameInitMixin on GameProviderBase {
         final factText = pd != null
             ? (cfg.bondGatedTransform
                   ? '主角的契约宠物是${pd.species}"$petName"（${pd.description.split('\n').first}），能力：${pd.abilities.join('、')}；${cfg.specialInteractionHint ?? ''}对主角完全忠诚、绝对听命。'
-                  : '主角饲养的宠物是${pd.species}"$petName"${pd.abilities.isNotEmpty ? '，擅长' + pd.abilities.take(2).join('、') : ''}，是重要的陪伴和伙伴。')
+                  : '主角饲养的宠物是${pd.species}"$petName"${pd.abilities.isNotEmpty ? '，擅长${pd.abilities.take(2).join('、')}' : ''}，是重要的陪伴和伙伴。')
             : '主角的契约伙伴：$petName。';
         memory = memory.addKeyFact(
           KeyFactRecord(
@@ -637,13 +641,11 @@ mixin GameInitMixin on GameProviderBase {
           bumpImpactScore(0.05, debugReason: '分院仪式');
           unlockAchievement('sorted');
           addCollectible('souvenir_sorting'); // 分院帽上掉下来的一小片布
-          unlockCG(this.cgById('CG-002')); // 分院帽下的对视
+          unlockCG(cgById('CG-002')); // 分院帽下的对视
           // 合并：本地分院叙事拼接在开场叙事后面
           if (sortingNarrative.trim().isNotEmpty) {
             currentNarrative =
-                (currentNarrative.trim() +
-                        '\n\n—— 分院仪式 ——\n\n' +
-                        sortingNarrative.trim())
+                ('${currentNarrative.trim()}\n\n—— 分院仪式 ——\n\n${sortingNarrative.trim()}')
                     .trim();
           }
           debugLog('⚡ 开局本地分院：${player!.house} (起点=$openingScene)');
@@ -744,6 +746,7 @@ mixin GameInitMixin on GameProviderBase {
     return roll(0, 15);
   }
 
+  @override
   int roll(int min, int max) => min + random.nextInt(max - min + 1);
 
   /// 建立玩家初始关系
@@ -784,6 +787,7 @@ mixin GameInitMixin on GameProviderBase {
     return npc.name;
   }
 
+  @override
   void markNpcIntroduced(NPC npc) {
     if (npc.introduced) return;
     npc.introduced = true;
@@ -821,7 +825,7 @@ mixin GameInitMixin on GameProviderBase {
     // 初次相遇 → CG-003（对角巷的偶然回眸）。
     // 这张 2 星卡此前没有任何解锁路径：cgUnlockConditions 里没登记，
     // 硬编码分支里也没写，玩家永远拿不到。
-    this.unlockCG(this.cgById('CG-003'));
+    unlockCG(cgById('CG-003'));
   }
 
   static const List<String> _signoffKeywords = [
@@ -966,6 +970,7 @@ mixin GameInitMixin on GameProviderBase {
 
   /// 扫描剧情文本，匹配到已知 NPC 名字时自动标记 introduced
 
+  @override
   void markIntroducedFromNarrative(String text) {
     if (text.isEmpty || npcRegistry.isEmpty) return;
 
@@ -1135,20 +1140,23 @@ mixin GameInitMixin on GameProviderBase {
     bool isBoundary(int charCode) {
       if (charCode == 0) return true;
       if ((charCode >= 0x4E00 && charCode <= 0x9FFF) ||
-          (charCode >= 0x3400 && charCode <= 0x4DBF))
+          (charCode >= 0x3400 && charCode <= 0x4DBF)) {
         return true; // CJK 对英文名字天然视作分隔
+      }
       if ((charCode >= 0x41 && charCode <= 0x5A) ||
           (charCode >= 0x61 && charCode <= 0x7A) ||
           (charCode >= 0xFF21 && charCode <= 0xFF3A) ||
           (charCode >= 0xFF41 && charCode <= 0xFF5A) ||
           (charCode >= 0x30 && charCode <= 0x39) ||
-          (charCode >= 0xFF10 && charCode <= 0xFF19))
+          (charCode >= 0xFF10 && charCode <= 0xFF19)) {
         return false;
+      }
       if (charCode == 0x00B7 ||
           charCode == 0x2022 ||
           charCode == 0x2D ||
-          charCode == 0x5F)
+          charCode == 0x5F) {
         return false;
+      }
       return true;
     }
 
@@ -1310,26 +1318,34 @@ mixin GameInitMixin on GameProviderBase {
     profile.add(
       '姓名：${p.name}｜11岁｜${bloodStatusLabel(p.bloodType)}｜${p.birthLocation}',
     );
-    if (p.personalityTraits.isNotEmpty)
+    if (p.personalityTraits.isNotEmpty) {
       profile.add('性格：${p.personalityTraits.join('、')}');
-    if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty)
+    }
+    if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) {
       profile.add('出身：${p.birthIdentity}');
-    if (p.appearance != null && p.appearance!.isNotEmpty)
+    }
+    if (p.appearance != null && p.appearance!.isNotEmpty) {
       profile.add('外貌：${p.appearance}');
-    if (p.familyBackground != null && p.familyBackground!.isNotEmpty)
+    }
+    if (p.familyBackground != null && p.familyBackground!.isNotEmpty) {
       profile.add('家族：${p.familyBackground}');
-    if (p.childhoodExperiences.isNotEmpty)
+    }
+    if (p.childhoodExperiences.isNotEmpty) {
       profile.add('童年：${p.childhoodExperiences.join('；')}');
-    if (p.beliefs != null && p.beliefs!.isNotEmpty)
+    }
+    if (p.beliefs != null && p.beliefs!.isNotEmpty) {
       profile.add('信念：${p.beliefs}');
+    }
     final resolvedAptitude = resolveMagicAptitude(p);
     if (resolvedAptitude.isNotEmpty) {
       profile.add('资质：$resolvedAptitude');
     }
-    if (p.initialTalent != null && p.initialTalent!.isNotEmpty)
+    if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
       profile.add('天赋：${p.initialTalent}');
-    if (p.housePreference != null && p.housePreference!.isNotEmpty)
+    }
+    if (p.housePreference != null && p.housePreference!.isNotEmpty) {
       profile.add('学院倾向：${p.housePreference}');
+    }
     if (p.traits.isNotEmpty) {
       final traitNames = p.traits
           .map((id) => traitById(id)?.name)
@@ -1432,6 +1448,7 @@ mixin GameInitMixin on GameProviderBase {
 
   // ==================== 处理选择 / 指令 ====================
 
+  @override
   String computeHouseLocal() {
     final traits = player!.personalityTraits.join(' ');
     final dims = player!.houseDimensions;
@@ -1492,6 +1509,7 @@ mixin GameInitMixin on GameProviderBase {
     return candidates.first.key;
   }
 
+  @override
   String generateSortingNarrative(String house) {
     final houseName = houseDisplayName(house, fallback: '格兰芬多');
 

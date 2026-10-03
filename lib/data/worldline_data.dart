@@ -37,6 +37,7 @@
 /// 决斗俱乐部那点小事只要 fraying（≥0.10）就能插手。
 /// 干预的 `deviationDelta` 也随门槛递增：改一件小事 +0.08，
 /// 把塔楼那一夜改写 +0.22。
+library;
 
 /// 世界线自动漂移：每 [kDeviationTickIntervalDays] 个游戏日结算一次。
 ///

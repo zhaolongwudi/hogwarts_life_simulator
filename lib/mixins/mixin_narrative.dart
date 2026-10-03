@@ -92,6 +92,7 @@ mixin GameNarrativeMixin
     r.cancelCurrentCall();
   }
 
+  @override
   Future<void> processChoice(GameChoice choice) async {
     if (player == null) return;
     CrashLogger.instance.logHeartbeat(
@@ -285,7 +286,7 @@ mixin GameNarrativeMixin
     loadingStage = '正在构建请求...';
     notifyListeners();
 
-    String _formatImpact(double score) {
+    String formatImpact(double score) {
       if (score >= 1.0) return '极高影响力（深度改变历史走向）';
       if (score >= 0.5) return '高影响力（知名人物/学院领袖候选）';
       if (score >= 0.2) return '中等影响力（小有名气）';
@@ -307,7 +308,7 @@ mixin GameNarrativeMixin
 
       final profileLine =
           '【档案】${p.name}·${p.house ?? '未分院'}·${p.grade}年·天赋$aptitudeForPrompt·精神${p.spirit}·精力${p.energy}';
-      final impactLine = '影响力：${_formatImpact(worldState.playerImpactScore)}';
+      final impactLine = '影响力：${formatImpact(worldState.playerImpactScore)}';
       contextBuffer.writeln('$profileLine｜$impactLine');
       contextBuffer.writeln('');
 
@@ -451,7 +452,7 @@ mixin GameNarrativeMixin
         for (var i = 0; i < memory.worldEvents.length; i++)
           memory.worldEvents[i]: i,
       };
-      int _t3Cmp(WorldEventRecord a, WorldEventRecord b) {
+      int t3Cmp(WorldEventRecord a, WorldEventRecord b) {
         final c = b.score(ts).compareTo(a.score(ts));
         if (c != 0) return c;
         // 与淘汰侧同一套次级键：自动提取的事件 importance 恒为 6，500 条
@@ -464,10 +465,10 @@ mixin GameNarrativeMixin
 
       final recentEvents = List<WorldEventRecord>.from(
         memory.worldEvents,
-      ).where((e) => ts - e.absoluteDay <= 60).toList()..sort(_t3Cmp);
+      ).where((e) => ts - e.absoluteDay <= 60).toList()..sort(t3Cmp);
       final oldEvents = List<WorldEventRecord>.from(
         memory.worldEvents,
-      ).where((e) => ts - e.absoluteDay > 60).toList()..sort(_t3Cmp);
+      ).where((e) => ts - e.absoluteDay > 60).toList()..sort(t3Cmp);
       final t3 = <WorldEventRecord>[
         // S3 减法：原先 近期 30 + 旧 10 = 40 条，每回合注入约 800~1500 token，
         // 而其中绝大多数对「本回合该怎么写」零信息量（自动提取的事件 importance
@@ -729,7 +730,7 @@ mixin GameNarrativeMixin
   $sceneInfo
   ${buildContinuityBridgePromptLine()}
   $stagnationLine$anchorLine$causalLine$directorLine$quietPeriodHint
-  ${extra.isNotEmpty ? extra + '\n' : ''}【玩家行动】
+  ${extra.isNotEmpty ? '$extra\n' : ''}【玩家行动】
   $safeAction
 
 ${buildForwardConstraintBlock()}
@@ -878,7 +879,7 @@ ${buildNarrativeRules(turn: turnCount)}
             ),
           ];
           debugLog(
-            '⚠️ 叙事 critical 级异常，准备重试（剩余${retriesLeft}次）：${msgs.take(3).join(" | ")}',
+            '⚠️ 叙事 critical 级异常，准备重试（剩余$retriesLeft次）：${msgs.take(3).join(" | ")}',
           );
           // 给新 prompt 加一段"修正要求"，明确告诉 AI 错在哪
           final correction = StringBuffer();
@@ -1307,7 +1308,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 游戏内日期触发的，下一回合叙事会自动补上，不会因玩法回合丢失。
     // 用 this. 显式从基类抽象成员解析：GamePlayMixin 覆写实现，
     // GameNarrativeMixin 自身不定义该方法，不带限定符会被分析器判为未定义。
-    if (this.tryRouteGameplayIntent(action)) {
+    if (tryRouteGameplayIntent(action)) {
       commandResult = causalResult;
       error = null;
       turnCount++;
@@ -1343,17 +1344,17 @@ ${buildNarrativeRules(turn: turnCount)}
     // 上一回合触发的奇遇，在本回合用玩家的「奇遇:<id>:<idx>」动作结算结局。
     // 结算文本作为本回合的开篇，再接常规叙事——玩家先看到"你决定怎么做
     // 之后发生了什么"，再去过普通的一天。action 不匹配时混用兜底自动收尾。
-    final hpResolution = this.tryResolveHappenstanceChoice(action);
+    final hpResolution = tryResolveHappenstanceChoice(action);
 
     // ====== P11 羁绊最终幕结算（紧随奇遇之后、叙事组装之前）======
     // 上一回合让玩家做抉择的最终幕，本回合用玩家的「羁绊:<arcId>:<idx>」
     // 动作结算这出小戏的结局；action 不匹配时混用第一结局自动收尾。
-    final companionResolution = this.tryResolveCompanionChoice(action);
+    final companionResolution = tryResolveCompanionChoice(action);
 
     // ====== P13 回信结算（紧随羁绊之后、叙事组装之前）======
     // 上一回合收到的「待回信」，本回合用玩家的「信:<id>:<idx>」动作结算回信；
     // action 不匹配时混用中性兜底（中间项）自动收尾。
-    final letterResolution = this.tryResolveLetterReplyChoice(action);
+    final letterResolution = tryResolveLetterReplyChoice(action);
 
     currentNarrative = generateFallbackNarrative();
     if (companionResolution.isNotEmpty) {
@@ -1444,7 +1445,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 应当紧接在氛围与月度事件后出现，再让原著大事续在后面。当天命中且本学年
     // 尚未庆祝过时，追加一段节庆文块并结算奖励、记档去重（详见 mixin_festival）。
     {
-      final festivalBlock = this.celebrateFestival();
+      final festivalBlock = celebrateFestival();
       if (festivalBlock.isNotEmpty) {
         currentNarrative = '$currentNarrative\n\n$festivalBlock';
       }
@@ -1490,7 +1491,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 不会被奇遇/羁绊/待回信抢跑，也不会天天刷屏。
     String? clubScene;
     if (!confessedThisTurn) {
-      clubScene = this.maybeRunClubActivity(action);
+      clubScene = maybeRunClubActivity(action);
     }
     if (clubScene != null && clubScene.isNotEmpty) {
       currentNarrative = '$currentNarrative\n\n$clubScene';
@@ -1498,7 +1499,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // P15 跨回合社团任务：行动命中干系事时推进任务进度（独立于日常积分冷却）。
     // 紧接社团活动后：任务进度提示是「你为社团出力」的延伸，自然收在同一段。
     if (!confessedThisTurn) {
-      final taskNote = this.advanceClubTaskForAction(action);
+      final taskNote = advanceClubTaskForAction(action);
       if (taskNote.isNotEmpty) {
         currentNarrative = '$currentNarrative\n\n$taskNote';
       }
@@ -1520,7 +1521,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 抢戏也不至于连续刷屏。
     String? hpScene;
     if (!confessedThisTurn) {
-      hpScene = this.triggerHappenstance();
+      hpScene = triggerHappenstance();
     }
     if (hpScene != null && hpScene.isNotEmpty) {
       currentNarrative = '$currentNarrative\n\n$hpScene';
@@ -1532,7 +1533,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 奇遇进行中不抢戏；自带冷却，不会和节庆/奇遇连续刷屏。
     String? companionScene;
     if (!confessedThisTurn) {
-      companionScene = this.maybeTriggerCompanion();
+      companionScene = maybeTriggerCompanion();
     }
     if (companionScene != null && companionScene.isNotEmpty) {
       currentNarrative = '$currentNarrative\n\n$companionScene';
@@ -1545,7 +1546,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 有待办时不抢戏；自带冷却，不会刷屏。
     String? petScene;
     if (!confessedThisTurn) {
-      petScene = this.maybeTriggerPetStory();
+      petScene = maybeTriggerPetStory();
     }
     if (petScene != null && petScene.isNotEmpty) {
       currentNarrative = '$currentNarrative\n\n$petScene';
@@ -1557,7 +1558,7 @@ ${buildNarrativeRules(turn: turnCount)}
     // 进入「待回信」，由下面的选项作主。有奇遇/羁绊/待回信时不抢戏；自带冷却。
     String? letterScene;
     if (!confessedThisTurn) {
-      letterScene = this.maybeTriggerLetter();
+      letterScene = maybeTriggerLetter();
     }
     if (letterScene != null && letterScene.isNotEmpty) {
       currentNarrative = '$currentNarrative\n\n$letterScene';
@@ -1567,16 +1568,16 @@ ${buildNarrativeRules(turn: turnCount)}
       choices = buildFallbackChoices(currentNarrative);
       // 优先让「羁绊最终幕」用它的抉择选项覆盖承接选项（它是更个人的一岀戏），
       // 其次才是奇遇的专属选项。玩家下回合据此真正"决定这场戏怎么收场"。
-      final companionChoices = this.companionChoicesForPending();
+      final companionChoices = companionChoicesForPending();
       if (companionChoices.isNotEmpty) {
         choices = companionChoices;
       } else {
-        final hpChoices = this.happenstanceChoicesForPending();
+        final hpChoices = happenstanceChoicesForPending();
         if (hpChoices.isNotEmpty) {
           choices = hpChoices;
         } else {
           // P13 回信选项优先级最低：一封待回的信，不抢奇遇/羁绊的正戏。
-          final replyChoices = this.letterReplyChoicesForPending();
+          final replyChoices = letterReplyChoicesForPending();
           if (replyChoices.isNotEmpty) {
             choices = replyChoices;
           }
@@ -1936,7 +1937,7 @@ $source
     notifications.add('📖 新篇章：《${nextBook.title}》');
     memory = memory.addWorldEvent(
       WorldEventRecord(
-        id: 'story_begin_${nextId}',
+        id: 'story_begin_$nextId',
         timestamp: worldState.time.format(),
         title: '新篇章开启',
         description: '《${nextBook.title}》的剧情开始了。',
@@ -3169,6 +3170,7 @@ $source
   /// AI 调用失败时游戏会切本地兜底剧情，玩家点「重试」即可用同一句话
   /// 重新走一遍正式流程（而不是手动把原话再敲一遍）。
   /// 失败前的兜底叙事会先撤掉，避免重试成功后新旧正文叠在一起。
+  @override
   Future<void> retryLastAction() async {
     final action = lastPlayerAction.trim();
     if (action.isEmpty) return;
@@ -3177,6 +3179,7 @@ $source
   }
 
   /// 手动关掉错误提示条（玩家点 ✕ 时用，不重跑任何逻辑）
+  @override
   void clearError() {
     error = null;
     notifyListeners();
@@ -3184,6 +3187,7 @@ $source
 
   /// 关闭指令结果面板，恢复显示当前回合剧情（不消耗回合、不调用 AI）
 
+  @override
   List<GameChoice> generateContextualFallbackChoices() {
     final currentLoc = worldState.currentLocation ?? '';
     final narrativeLower = currentNarrative.toLowerCase();
@@ -3329,6 +3333,7 @@ $source
 
   /// 把一回合剧情加入近期缓冲，裁剪到最近 N 回合
 
+  @override
   void appendRecentTurn(String narrative) {
     final trimmed = narrative.trim();
     if (trimmed.isEmpty) return;
@@ -3684,8 +3689,10 @@ $source
 
   static const StagnationDetector _stagnation = StagnationDetector.instance;
 
+  @override
   int stagnationThresholdFor(String location) =>
       _stagnation.thresholdFor(location);
+  @override
   bool narrativeHasUnresolvedHook(String narrative) =>
       _stagnation.hasUnresolvedHook(narrative);
 
@@ -3978,16 +3985,19 @@ $source
 
     String key = 'default';
     final loc = location.toLowerCase();
-    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('讲堂'))
+    if (loc.contains('教室') || loc.contains('classroom') || loc.contains('讲堂')) {
       key = 'classroom';
+    }
     if (loc.contains('大礼堂') || loc.contains('great hall')) key = 'great_hall';
     if (loc.contains('图书馆') || loc.contains('library')) key = 'library';
     if (loc.contains('走廊') || loc.contains('corridor')) key = 'corridor';
-    if (loc.contains('城堡外') || loc.contains('outside') || loc.contains('草坪'))
+    if (loc.contains('城堡外') || loc.contains('outside') || loc.contains('草坪')) {
       key = 'outside';
+    }
     if (loc.contains('公共休息室') || loc.contains('common')) key = 'common_room';
-    if (loc.contains('禁林') || loc.contains('forbidden'))
+    if (loc.contains('禁林') || loc.contains('forbidden')) {
       key = 'forbidden_forest';
+    }
     if (loc.contains('对角巷') || loc.contains('diagon')) key = 'diagon_alley';
     if (loc.contains('医疗翼') || loc.contains('hospital')) key = 'hospital';
     if (loc.contains('决斗') || loc.contains('duel')) key = 'duel_club';
@@ -4013,8 +4023,8 @@ $source
       extra.addAll(['邀请朋友一起活动', '与朋友分享最近的见闻']);
     }
     if (house.isNotEmpty) {
-      extra.add('参加${house}学院的活动');
-      extra.add('为${house}学院的荣誉加分');
+      extra.add('参加$house学院的活动');
+      extra.add('为$house学院的荣誉加分');
     }
     for (final t in personality) {
       if (t.contains('勇敢') || t.contains('勇气')) extra.add('勇敢地面对当前的挑战');

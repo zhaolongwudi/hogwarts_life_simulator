@@ -7,6 +7,7 @@
 ///  · P2#11 补的缺口子命令分支（/时间 快进、/时间 日程、/恋爱 历史、
 ///    /档案 回忆、/收藏 详情、/联动 状态）不得被后续重构删掉
 ///  · 缺口指令的格式化方法用真实 GameProvider 跑出输出（F20 行为断言）
+library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

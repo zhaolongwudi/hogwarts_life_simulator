@@ -320,8 +320,8 @@ $text
     String prompt = '''你现在扮演霍格沃茨的学生/教职工「${npc.name}」。
 
 【角色设定】
-- 学院：${houseName}
-- 性格：${personalityStr}
+- 学院：$houseName
+- 性格：$personalityStr
 - 外貌：${npc.appearance}
 - 目标：${npc.personalGoal ?? '在霍格沃茨生活'}
 - 对玩家「${player.name}」的好感度：${npc.affection}（范围-100到+100，正值为友好）

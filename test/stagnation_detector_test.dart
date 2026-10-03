@@ -56,7 +56,7 @@ void main() {
 
     test('只看末尾 200 字，开头有钩子不算', () {
       final long =
-          '他举起魔杖瞄准你……' + '你沿着走廊慢慢走着。' * 40;
+          '他举起魔杖瞄准你……${'你沿着走廊慢慢走着。' * 40}';
       expect(d.hasUnresolvedHook(long), isFalse);
     });
   });
