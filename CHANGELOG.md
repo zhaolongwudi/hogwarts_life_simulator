@@ -10,6 +10,11 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.3.0 — 2026-10-03
+
+**📋 变更说明**
+feat: 摘要场景 JSON mode 试点（response_format=json_object + 输出归一化回退，ADR-014 落地）
+
 ### v5.2.9 — 2026-10-03
 
 **📋 变更说明**
