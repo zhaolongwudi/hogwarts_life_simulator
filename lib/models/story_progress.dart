@@ -947,3 +947,70 @@ StoryStats get storyStats {
     choiceCount: choices,
   );
 }
+
+/// 一次剧情推进的结果，供叙事拼装使用。
+///
+/// 【为什么抽成结构体】叙事需要同时知道"选了什么 / 效果是什么 / 有没有过场 /
+/// 是不是走到了结局"。用一堆可空 out 参数传会变成 6 个 `String?`，
+/// 调用点读起来完全不知道哪个对应什么。
+class StoryBeat {
+  /// 本回合要展示的步（`null` = 走到了结局，或内容缺失）。
+  final StoryStepDef? step;
+
+  /// 上一步（因果层引用它来织过渡句）。
+  final StoryStepDef? prevStep;
+
+  /// 玩家所做的分支（自由行动时为 `null`）。
+  final StoryChoiceDef? choice;
+
+  /// 要写进叙事的"你做了什么"。
+  final String consequence;
+
+  /// 进入本步的过场文本。
+  final String? onEnterText;
+
+  /// 非空 = 本回合到达结局。
+  final String? endingTitle;
+  final String? endingBody;
+
+  /// 玩家原文（自由行动降级路径用）。
+  final String? freeActionText;
+
+  /// 本回合是否为"自由插话"（不推进剧情步，游标原地不动）。
+  ///
+  /// 与 [freeActionText] 的区别：[freeActionText] 只表示"这段文本来自玩家原文"，
+  /// 本字段表示**引擎语义**——剧情游标没有被移动。叙事拼装与选项构建都要
+  /// 据此走不同分支：插话回合必须复用**当前这一步**的选项，否则玩家会看到
+  /// 一个没有出口的界面。
+  final bool isFreeformInterjection;
+
+  /// AI 为这次插话续写的正文（仅 freeform 路径、且 AI 可用时非空）。
+  final String? freeformAiText;
+
+  /// 本回合生效的效果（用于生成可读的数值变动提示）。
+  final StoryEffect effect;
+
+  /// 本回合应推进的天数（章节节拍式时间）。
+  ///
+  /// 【为什么由 beat 携带而不是就地推进】时间推进必须走
+  /// `_finalizeTurn → fastForwardDays → _advanceWorldClock` 这条全量结算路径
+  /// （游戏周/学院杯/NPC位置/学年推进/事件锚点/月度演化都在里面）。
+  /// 在 `_advanceStory` 里就地 `advanceDays` 只会推时钟，漏掉全部结算，
+  /// 而且随后 `_finalizeTurn` 还会再按关键词推一次——时间被推两遍。
+  final int timeCostDays;
+
+  const StoryBeat({
+    required this.step,
+    this.prevStep,
+    required this.choice,
+    required this.consequence,
+    this.onEnterText,
+    this.endingTitle,
+    this.endingBody,
+    this.freeActionText,
+    this.isFreeformInterjection = false,
+    this.freeformAiText,
+    this.effect = StoryEffect.none,
+    this.timeCostDays = 0,
+  });
+}

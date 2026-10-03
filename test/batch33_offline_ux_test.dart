@@ -8,8 +8,8 @@
 //  - Q4:summary prompt 对超长的累积前情做分层压缩,只塞最新一段,
 //        摘要输入 token 不再随局龄线性膨胀;短局不受影响。
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hogwarts_life_simulator/mixins/mixin_story_engine.dart';
 
-import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
 import 'package:hogwarts_life_simulator/prompts/summary_prompts.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/services/npc_chat_service.dart';
@@ -49,9 +49,9 @@ void main() {
 
   group('Q13 本地兜底叙事事件种子池', () {
     test('普通时段按地点分池：禁林与图书馆返回不同池', () {
-      final forest = GameNarrativeMixin.localEventLinesFor(
+      final forest = GameStoryEngineMixin.localEventLinesFor(
           location: '禁林', hour: 14, seed: 1);
-      final library = GameNarrativeMixin.localEventLinesFor(
+      final library = GameStoryEngineMixin.localEventLinesFor(
           location: '图书馆', hour: 14, seed: 1);
       expect(forest, isNotEmpty);
       expect(library, isNotEmpty);
@@ -60,19 +60,19 @@ void main() {
     });
 
     test('深夜(hour<6 或 >=21)返回深夜专属池', () {
-      final nightLines = GameNarrativeMixin.localEventLinesFor(
+      final nightLines = GameStoryEngineMixin.localEventLinesFor(
           location: '礼堂', hour: 23, seed: 0);
       expect(nightLines, isNotEmpty);
-      final dayLines = GameNarrativeMixin.localEventLinesFor(
+      final dayLines = GameStoryEngineMixin.localEventLinesFor(
           location: '礼堂', hour: 12, seed: 0);
       // 深夜池不包含白天的礼堂句子
       expect(nightLines.contains(dayLines.first), isFalse);
     });
 
     test('无专属池地点走通用池，且随 seed 轮转不撞句', () {
-      final s0 = GameNarrativeMixin.localEventLinesFor(
+      final s0 = GameStoryEngineMixin.localEventLinesFor(
           location: '某未知角落', hour: 12, seed: 0);
-      final s10 = GameNarrativeMixin.localEventLinesFor(
+      final s10 = GameStoryEngineMixin.localEventLinesFor(
           location: '某未知角落', hour: 12, seed: 10);
       expect(s0, isNotEmpty);
       expect(s10, isNotEmpty);
@@ -82,9 +82,9 @@ void main() {
 
     test('规范名(霍格沃茨·礼堂)也能命中专属池,不再落回通用池 (P5)', () {
       // currentLocation 存的是规范名，池 key 是短名；子串匹配必须让规范名命中。
-      final canonical = GameNarrativeMixin.localEventLinesFor(
+      final canonical = GameStoryEngineMixin.localEventLinesFor(
           location: '霍格沃茨·礼堂', hour: 12, seed: 2);
-      final short = GameNarrativeMixin.localEventLinesFor(
+      final short = GameStoryEngineMixin.localEventLinesFor(
           location: '礼堂', hour: 12, seed: 2);
       expect(canonical, isNotEmpty);
       // 规范名与短名命中同一个专属池
@@ -95,7 +95,7 @@ void main() {
     test('新增地点池可用:厨房/场地/黑湖/宿舍有专属句子 (P5)', () {
       const locs = ['霍格沃茨·厨房', '霍格沃茨·场地', '黑湖', '霍格沃茨·宿舍', '霍格沃茨·温室'];
       for (final loc in locs) {
-        final lines = GameNarrativeMixin.localEventLinesFor(
+        final lines = GameStoryEngineMixin.localEventLinesFor(
             location: loc, hour: 12, seed: 0);
         expect(lines, isNotEmpty, reason: '$loc 应有专属事件池');
       }

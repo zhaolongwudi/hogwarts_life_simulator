@@ -1990,7 +1990,7 @@ void _locationResolveGroup() {
     });
 
     test('生产代码不再自己遍历地点别名', () {
-      final src = _codeOnly('lib/mixins/mixin_narrative.dart');
+      final src = _codeOnly('lib/mixins/mixin_story_engine.dart');
       expect(src.contains('resolveLocationName'), isTrue,
           reason: '地点归一化又有人手写了一遍，resolveLocationName 白测了');
       expect(
