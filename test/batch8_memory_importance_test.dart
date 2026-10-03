@@ -125,8 +125,8 @@ void main() {
       expect(content, contains('kImportanceWhatIf'));
     });
 
-    test('mixin_commands.dart 使用 kImportance* 常量', () {
-      final content = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+    test('mixin_command_cheats.dart 使用 kImportance* 常量', () {
+      final content = File('lib/mixins/mixin_command_cheats.dart').readAsStringSync();
       expect(content, contains('kImportanceCheatSecret'));
     });
 

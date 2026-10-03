@@ -16,7 +16,8 @@ import 'helpers/test_fixtures.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+  final src = File('lib/mixins/mixin_commands.dart').readAsStringSync() +
+      File('lib/mixins/mixin_command_cheats.dart').readAsStringSync();
 
   group('二级指令结构化（P2 指令面板一键执行的前提）', () {
     test('高频子命令指令都必须声明 subs', () {

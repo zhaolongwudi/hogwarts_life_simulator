@@ -543,6 +543,7 @@ void _codeHygieneGroup() {
     /// - mixin_systems.dart：一致性检查里的钳制与记恨上限修正
     const whitelist = <String>{
       'lib/mixins/mixin_commands.dart',
+      'lib/mixins/mixin_command_cheats.dart',
       'lib/mixins/mixin_systems.dart',
     };
 
@@ -568,7 +569,7 @@ void _codeHygieneGroup() {
 
     test('/作弊 好感 在改数值后补了状态同步', () {
       final src = stripComments(
-          File('lib/mixins/mixin_commands.dart').readAsStringSync());
+          File('lib/mixins/mixin_command_cheats.dart').readAsStringSync());
       final i = src.indexOf("npc.affection = (npc.affection + delta)");
       expect(i, greaterThan(-1));
       final tail = src.substring(i, i + 400);
@@ -1272,7 +1273,8 @@ void _commandReferenceGroup() {
   group('提示里提到的命令都已注册', () {
     /// 已注册的命令（primary + aliases）
     Set<String> registeredCommands() {
-      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync() +
+          File('lib/mixins/mixin_command_cheats.dart').readAsStringSync();
       final out = <String>{};
       out.addAll(RegExp(r"primary: *'([^']+)'").allMatches(src).map((m) => m.group(1)!));
       for (final m in RegExp(r'aliases: *\[(.*?)\]', dotAll: true).allMatches(src)) {

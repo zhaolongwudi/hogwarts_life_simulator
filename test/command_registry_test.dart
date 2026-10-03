@@ -57,6 +57,9 @@ void main() {
     final relationsSrc = File(
       'lib/mixins/mixin_relations.dart',
     ).readAsStringSync();
+    final cheatsSrc = File(
+      'lib/mixins/mixin_command_cheats.dart',
+    ).readAsStringSync();
 
     test('handler 内不得再出现 ctx.parts[1] 等旧下标约定', () {
       expect(
@@ -87,7 +90,7 @@ void main() {
     test('handleLetterCommand / _handleCheat 的调用点必须传子参数列表', () {
       // 注册表 handler：ctx.parts 本身就是子参数，直接透传即可
       expect(commandsSrc.contains('handleLetterCommand(ctx.parts)'), isTrue);
-      expect(commandsSrc.contains('_handleCheat(ctx.parts)'), isTrue);
+      expect(cheatsSrc.contains('handleCheat(ctx.parts)'), isTrue);
       // 旧的 fallback switch 已被删除（42 个 case 全部可由注册表命中），
       // 不得再出现「含命令名的 parts」被直接透传给子命令解析器
       expect(
