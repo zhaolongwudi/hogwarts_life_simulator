@@ -3,7 +3,7 @@
 > **给未来的 AI 助手 / 开发者的一份"维修导航"**。
 > 读完这份文档，你应当能在 5 分钟内定位任何问题的相关文件，
 > 并避开本项目最常踩的坑（源码扫描测试、mixin 组合、版本 CI 机制）。
-> 项目规模：约 9.8 万行 Dart，193 文件。当前版本 v5.3.0。
+> 项目规模：约 9.8 万行 Dart，193 文件。当前版本 v5.2.4。
 
 ---
 
@@ -63,6 +63,10 @@ lib/
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
 │   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
 │   ├── mixin_commands.dart    #   ★ 全部指令注册 + _handleXxx 实现（60+ 条）
+│   ├── mixin_command_cheats.dart #   ★ /cheat 家族（20+ 子命令，r3-2 拆出）
+│   ├── mixin_summary_memory.dart #   剧情摘要 + 结构化长期记忆管线（r3 拆出）
+│   ├── mixin_game_save.dart   #   存档读写 + 版本迁移 + 一致性自检（r4-1 拆出）
+│   ├── mixin_relation_gifts.dart # 好感调整 / 送礼 / 室友系统（r4-2 拆出）
 │   ├── mixin_response.dart    #   ★ AI 响应解析（parseNarrativeOnly/清洗链/选项校验 BUG-H）
 │   ├── mixin_response_affection.dart # 好感变化提取（正则 → 散行 → 关键词回退）
 │   ├── mixin_response_choices.dart   # 选项生成/清洗
@@ -214,6 +218,9 @@ lib/
 | `lib/mixins/mixin_commands.dart` | 60+ 指令注册与实现 |
 | `lib/mixins/mixin_response.dart` | AI 输出解析与清洗链 |
 | `lib/mixins/mixin_systems.dart` | 时间/学年/锚点/学院杯/考试/职业年结 |
+| `lib/mixins/mixin_game_save.dart` | 存档读写/快照回滚/版本迁移/读档自检 |
+| `lib/mixins/mixin_relation_gifts.dart` | 好感调整/送礼判定/室友系统 |
+| `lib/mixins/mixin_command_cheats.dart` | /cheat 家族指令 |
 | `lib/utils/story_text_renderer.dart` | 文本渲染（高亮/段落分类/清洗） |
 | `lib/utils/prompt_sanitizer.dart` | 输入注入防御 |
 | `lib/utils/ui_helpers.dart` | AppColors token / 好感色 / 确认弹窗 |

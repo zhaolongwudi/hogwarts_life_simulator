@@ -37,6 +37,11 @@ import 'mixin_game_save.dart';
 import '../data/memory_importance_config.dart';
 
 mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
+
+  /// 浪漫行动关键词（每回合 updateNPCsFromAction 热路径，预编译）。
+  static final RegExp _reRomanticAction = RegExp(
+      r'(约会|散步|独处|谈心|表白|浪漫|心仪|心动|一起去看|一起吃饭|单独)');
+
   /// 缓存：上次构建的 systemPrompt 和玩家状态哈希（用于检测是否需要重建）
   String? _lastSystemPrompt;
   String? _lastPlayerStateHash;
@@ -2302,7 +2307,7 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
     }
 
     // 恋爱链路接线：浪漫行动（约会/散步/独处等）为暧昧对象/恋人记录一次浪漫事件
-    if (RegExp(r'(约会|散步|独处|谈心|表白|浪漫|心仪|心动|一起去看|一起吃饭|单独)').hasMatch(action)) {
+    if (_reRomanticAction.hasMatch(action)) {
       final love = p.loveState;
       if (love.status == '恋爱' && love.partnerId != null) {
         final partner = npcRegistry[love.partnerId];

@@ -243,6 +243,19 @@ sequenceDiagram
   `on` 链而非 import，遵守 ADR-001），`with` 列表中 summary 在 narrative 之前。
   static 纯函数（`shouldRunPeriodicSummary` / `cooldownForFailCount` 等）随迁，
   相关测试改引新 mixin。
+- **阶段 r3-2**：作弊指令子系统从 `mixin_commands`（3609 行）拆出到
+  `lib/mixins/mixin_command_cheats.dart`（`GameCommandCheatMixin`，约 1100 行）；
+  `GameCommandsMixin` 声明 `on GameCommandCheatMixin`。
+- **阶段 r4-1**：存档读写子系统从 `mixin_systems`（3354 行）拆出到
+  `lib/mixins/mixin_game_save.dart`（`GameSaveSystemMixin`，约 570 行，含
+  读档一致性自检 `runConsistencyChecks`）；`GameSystemsMixin` 声明
+  `on GameSaveSystemMixin`。
+- **阶段 r4-2**：好感调整 / 送礼 / 室友系统从 `mixin_relations`（2635 行）
+  拆出到 `lib/mixins/mixin_relation_gifts.dart`（`GameRelationGiftsMixin`）；
+  `GameRelationsMixin` 声明 `on GameRelationGiftsMixin`。
+- **跨库私有可见性**：Dart 的 `_` 前缀成员在**库**级私有，跨 mixin 文件不可见。
+  迁出方法被原文件调用时必须改为公开名（如 `registerCheatCommands`、
+  `runConsistencyChecks`、`adjustAffection`），并在迁移时同步调用点。
 - 后续拆分沿用同一模式：**行为零变化、测试全绿后才动下一刀**。
 
 ### ADR-013：源码扫描测试统一入口 `test/helpers/narrative_src.dart`

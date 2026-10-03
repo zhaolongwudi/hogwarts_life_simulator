@@ -533,7 +533,7 @@ mixin GameNarrativeMixin
           .toSet();
 
       bool looksFake(String text) {
-        final clean = text.replaceAll(RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*'), '');
+        final clean = text.replaceAll(_reLeadingNonText, '');
         // 成就类伪造：含"成就/🏆"，但 achievement 关键词不在已解锁集合
         if (clean.contains('成就') || text.contains('🏆')) {
           final unlocked = player?.achievements ?? const <String>[];
@@ -559,10 +559,7 @@ mixin GameNarrativeMixin
           if (!(hitAch && hitUnlocked)) return true;
         }
         // 结识类伪造：含"结识/认识/见面/认识了/👤"但对应NPC没introduced
-        if (RegExp(
-              r'(结识|认识了|正式见面|成为朋友|初见了)',
-              caseSensitive: false,
-            ).hasMatch(clean) ||
+        if (_reAcquaintanceKeywords.hasMatch(clean) ||
             text.contains('👤')) {
           final hitNpc = introducedSet.any(
             (n) => n.isNotEmpty && clean.contains(n),
@@ -3353,6 +3350,15 @@ $source
   // 统一提为 static final（只编译一次），语义完全不变。
   // 参考实现见 mixin_response_affection.dart 与 mixin_response.dart 的
   // _stripPatternCache —— 本项目的既有惯例就是「热路径正则必须预编译」。
+
+  /// 选项文本去前缀非正文噪声（processChoice 每回合，预编译）。
+  static final RegExp _reLeadingNonText =
+      RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*');
+
+  /// 结识类伪造检测关键词（processChoice 每回合，预编译）。
+  static final RegExp _reAcquaintanceKeywords = RegExp(
+      r'(结识|认识了|正式见面|成为朋友|初见了)',
+      caseSensitive: false);
 
   static final RegExp _reCombatKeywords =
       RegExp(r'(战斗|决斗|攻击|防御|施展咒语|施法|黑魔法|施咒|念咒|反击)');
