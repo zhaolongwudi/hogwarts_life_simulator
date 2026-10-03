@@ -117,6 +117,7 @@ class _BlockingService extends DeepSeekService {
     int maxTokens = 4096,
     CancelToken? cancelToken,
     AiStreamCallback? onDelta,
+    bool jsonMode = false,
   }) {
     final completer = Completer<ChatResult>();
     _pendings.add(completer);

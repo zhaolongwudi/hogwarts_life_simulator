@@ -1,6 +1,8 @@
 /// 剧情摘要压缩 Prompt。
 library;
 
+import 'dart:convert';
+
 /// 前情摘要分层压缩的**尾部**配额（Q4，v5 修正为头尾双保）。
 ///
 /// `previousSummary` 是**累积拼接**的历史摘要：按周期追加一次、limit 随
@@ -86,9 +88,32 @@ String buildSummaryPrompt({
   required String newChunk,
   required String relSnapshot,
   required String coreFacts,
+  // r3-3 JSON mode 试点：true 时改用 JSON 输出契约（模型必须回一个 JSON 对象），
+  // 由调用侧 `normalizeSummaryPayload` 归一化回与自由文本等价的块格式。
+  // 默认 false → 行为与旧版字节级一致，全部既有测试不受影响。
+  bool jsonMode = false,
 }) {
   // Q4：对累积的前情做头尾双保的分层压缩。短局不触发，行为与旧版一致。
   final layeredPrevious = layerPreviousSummary(previousSummary).text;
+
+  // r3-3：JSON mode 下不再让模型逐行写【】块，而是回一个 JSON 对象。
+  // 键名与自由文本的块一一对应，`normalizeSummaryPayload` 负责还原，
+  // 于是记忆管线（_extractMemoryFromSummary）一行都不用改。
+  final jsonOutputContract = jsonMode
+      ? '''
+
+  ⚠️【输出格式：必须是 JSON】只输出一个 JSON 对象，不要 markdown 代码块、不要任何解释文字。字段定义：
+  {
+    "摘要": "精简剧情摘要正文（不超过$limit字，聚焦关系和转折，不要具体场景）",
+    "关系": ["赫敏:友好/72", "马尔福:敌对/-30"],
+    "伏笔": ["斯内普答应给主角保密身份", "主角欠邓布利多一次夜探"],
+    "核心事实": ["主角魔杖：山楂木/独角兽毛"],
+    "世界事件": ["密室传闻|学校里开始流传关于密室的传闻"],
+    "了结": ["斯内普答应给主角保密身份"]
+  }
+  规则：数组为空时给 []（不要写 "无"）；"了结" 里只放本段**真正了结**的事，没有就给 []；
+  "世界事件" 每项格式必须是 "标题|描述"；"核心事实" 必须与上方【主角既定事实】一致。'''
+      : '';
 
   return '''请将以下剧情内容压缩成摘要。重要规则：
   1. 只保留【人物关系变化】和【重要剧情转折】
@@ -118,5 +143,57 @@ String buildSummaryPrompt({
   3. 如果有伏笔/承诺/秘密/未完成任务，再单独一行【伏笔】列出（例如：斯内普答应给主角保密身份；主角欠邓布利多一次夜探；小天狼星留了一把钥匙）
   4. 单独一行【核心事实】列出本段剧情确立的、后续绝不能遗忘的纯事实（身份/血统/魔杖/宠物/特殊能力/重大秘密等，每条一行，第三人称陈述，无则写"无"）。⚠️ 必须与上方【主角既定事实】一致：魔杖材料/杖芯、宠物物种与名字、主角身份等一律以既定事实为准，禁止编造或与哈利·波特混淆
   5. 单独一行【世界事件】列出本段剧情发生的、影响后续走向的重大事件（每条格式：事件标题|事件描述，无则写"无"）
-  6. 单独一行【了结】列出本段剧情里**真正了结了的**伏笔、承诺、约定或疑问。写法要求：尽量照抄当初【伏笔】里的说法，不要改写、不要概括、不要加自己的评价——后面要靠这段话去认出是哪件事。每条一行；本段没有东西了结就整行不写，绝对不要为了凑格式而写"无"''';
+  6. 单独一行【了结】列出本段剧情里**真正了结了的**伏笔、承诺、约定或疑问。写法要求：尽量照抄当初【伏笔】里的说法，不要改写、不要概括、不要加自己的评价——后面要靠这段话去认出是哪件事。每条一行；本段没有东西了结就整行不写，绝对不要为了凑格式而写"无"$jsonOutputContract''';
+}
+
+
+/// r3-3：把 JSON mode 的摘要输出归一化成旧的【】块文本。
+///
+/// 【为什么要有它】摘要消费侧（`_extractMemoryFromSummary` /
+/// `_stripStructuredBlocks`）全部按「【块名】+ 逐行列表」的纯文本契约实现，
+/// 已在几十个测试里固化。JSON mode 只改**生产者**：这里把 JSON 对象翻译回
+/// 同一份文本，于是消费者一行不改，两种输出格式在下游完全不可区分。
+///
+/// 解析失败（模型没守 JSON 契约、或老 Key 不支持 `response_format` 而回自由
+/// 文本）时**原样返回**，走自由文本路径 —— 试点不能以「回退即丢记忆」为代价。
+String normalizeSummaryPayload(String content) {
+  final t = content.trim();
+  if (!t.startsWith('{')) return content; // 自由文本：原样放行
+  // 去掉可能的 ```json 围栏（部分服务商在 json_object 模式下仍会包一层）
+  final body = t.replaceAll(RegExp(r'^```(?:json)?\s*|\s*```\$'), '');
+  Object? decoded;
+  try {
+    decoded = jsonDecode(body);
+  } catch (_) {
+    return content; // 坏 JSON：原样放行，绝不丢内容
+  }
+  if (decoded is! Map) return content;
+
+  String listOf(Object? v) {
+    if (v == null) return '';
+    if (v is String) return v.trim();
+    if (v is List) {
+      return v
+          .map((e) => e is String ? e.trim() : e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .join('\n');
+    }
+    return '';
+  }
+
+  final summary =
+      (decoded['摘要'] ?? decoded['summary'] ?? '').toString().trim();
+  final buf = StringBuffer(summary);
+  void block(String label, Object? v) {
+    final b = listOf(v);
+    if (b.isEmpty || b == '无') return;
+    buf.write('\n【$label】\n$b');
+  }
+
+  block('关系', decoded['关系']);
+  block('伏笔', decoded['伏笔']);
+  block('核心事实', decoded['核心事实']);
+  block('世界事件', decoded['世界事件']);
+  block('了结', decoded['了结']);
+  return buf.toString().trim();
 }

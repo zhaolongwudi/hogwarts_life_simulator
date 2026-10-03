@@ -217,6 +217,7 @@ class DeepSeekService {
     int maxTokens = 4096,
     CancelToken? cancelToken,
     AiStreamCallback? onDelta,
+    bool jsonMode = false,
   }) async {
     try {
       await _acquireSlot();
@@ -245,6 +246,7 @@ class DeepSeekService {
         temperature: temperature,
         maxTokens: maxTokens,
         cancelToken: cancelToken,
+        jsonMode: jsonMode,
       );
     } on DioException catch (e) {
       _handleError(e);
@@ -273,6 +275,7 @@ class DeepSeekService {
     required double temperature,
     required int maxTokens,
     required CancelToken? cancelToken,
+    bool jsonMode = false,
   }) async {
     final response = await _dio.post(
       normalizePath(config.chatPath),
@@ -286,6 +289,11 @@ class DeepSeekService {
         'temperature': temperature,
         'max_tokens': maxTokens,
         'stream': false,
+        // r3-3 JSON mode 试点（摘要场景）：要求服务商返回合法 JSON 对象。
+        // OpenAI 兼容实现普遍支持；不认这个字段的服务商有的忽略、有的返 400
+        // ——返 400 会走「记失败 + 切 Key」链路，不会比不开更糟，
+        // 且 summary 场景已由 callDeepSeek 层做解析回退（见 mixin_summary_memory）。
+        if (jsonMode) 'response_format': {'type': 'json_object'},
       }),
       cancelToken: cancelToken,
     );

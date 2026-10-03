@@ -156,6 +156,11 @@ mixin GameSummaryMemoryMixin on GameProviderBase, GameNarrativeContinuityMixin {
       newChunk: chunk,
       relSnapshot: relationSnapshot,
       coreFacts: buildCoreFactsForSummary(),
+      // r3-3 试点：摘要是唯一「纯结构化、可校验」的场景 —— 自由文本下模型
+      // 常漏写【了结】/把【核心事实】写成散文，记忆管线据此静默丢块；
+      // JSON mode 由服务商在解码层保证合法 JSON，块缺失变成显式空数组。
+      // 调用侧 normalizeSummaryPayload 对自由文本保留完整回退。
+      jsonMode: true,
     );
 
     try {
@@ -171,7 +176,9 @@ mixin GameSummaryMemoryMixin on GameProviderBase, GameNarrativeContinuityMixin {
 
       // 硬限制摘要保存长度——如果 AI 不肯遵守字数限制，直接强截断前 limit×1.2 字
       // 防止出现 1500+ 字摘要，造成下回合 prompt 暴涨 5000 tokens
-      var rawSummary = result.content.trim();
+      // r3-3：JSON mode 返回 {"摘要":...,"关系":[...],...} →
+      // 归一化成与自由文本等价的【】块文本，下游解析/剥离/记忆提取零改动。
+      var rawSummary = normalizeSummaryPayload(result.content).trim();
       final hardLimit = (limit * 1.2).toInt();
       if (rawSummary.length > hardLimit) {
         rawSummary = '${rawSummary.substring(0, hardLimit)}…(已截短)';

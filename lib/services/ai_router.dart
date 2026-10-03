@@ -274,7 +274,13 @@ class AiRouter {
     // S1 流式输出：只有叙事路径传它。传了就代表调用方接受「内容可能分片到达」
     // ——返回值仍然是完整正文，预览只是给 UI 提前看的。
     AiStreamCallback? onDelta,
+    // r3-3 JSON mode 试点：summary 场景传 true，请求体带 response_format。
+    // 场景本身就是唯一判据 —— 由路由层从 scene 推导（而不是依赖每个调用点
+    // 记得传），这样 callDeepSeek / 直连 chatComplete 的路径行为一致；
+    // 显式传 true 仍可覆盖（测试与未来场景复用）。
+    bool jsonMode = false,
   }) async {
+    final effectiveJsonMode = jsonMode || scene == AiScene.summary;
     // F7：全库此前一处 assert 都没有。这里是最值得断言的入口 ——
     // 这几个条件被破坏时不会立刻崩，而是变成"AI 返回空/半截内容"这种极难定位
     // 的症状（排查成本以小时计）。开发期直接炸在调用点，比事后翻日志便宜得多。
@@ -317,6 +323,7 @@ class AiRouter {
         keyCount: _attemptedKeyCount(primary),
         trackCircuit: trackCircuit,
         onDelta: onDelta,
+        jsonMode: effectiveJsonMode,
       );
     } finally {
       // 调用链结束（无论成败/取消）都要摘掉活动令牌，
@@ -345,6 +352,7 @@ class AiRouter {
     required int keyCount,
     required bool trackCircuit,
     AiStreamCallback? onDelta,
+    bool jsonMode = false,
   }) async {
     final future = _callWithFallback(
       primary: primary,
@@ -359,6 +367,7 @@ class AiRouter {
       cancelBridge: bridge,
       trackCircuit: trackCircuit,
       onDelta: onDelta,
+      jsonMode: jsonMode,
     );
 
     // 全局超时按「实际会尝试的 Key 数」动态算，而不是写死一个值——
@@ -414,6 +423,7 @@ class AiRouter {
     _CancelBridge? cancelBridge,
     bool trackCircuit = true,
     AiStreamCallback? onDelta,
+    bool jsonMode = false,
   }) async {
     // 缓存键必须带上「生成者身份」（provider + model）：否则玩家在设置页把模型
     // 从 A 换成 B 之后，5 分钟 TTL 内同一 prompt 会命中 A 的输出——
@@ -528,6 +538,7 @@ class AiRouter {
                   maxTokens: maxTokens,
                   cancelToken: callToken,
                   onDelta: onDelta,
+                  jsonMode: jsonMode,
                 )
                 .timeout(
                   perCallTimeout,
