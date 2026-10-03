@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.2.7 — 2026-10-03
+
+**📋 变更说明**
+style: dart fix 全量应用(447处) + analyze 提示清零
+
+- dart fix --apply 修复 86 文件 447 处（annotate_overrides/unnecessary_const 等）
+- 剩余手修：unintended_html_in_doc_comment/library_prefixes/constant_identifier_names/
+  use_build_context_synchronously(7处mounted口径修正)/prefer_interpolation
+- Era 枚举值名保留 snake_case（是存档 era 字符串协议 key，不能改），加 ignore 注释说明
+- flutter analyze: 0 issue；flutter test: 2229 全过
+
 ### v5.2.6 — 2026-10-03
 
 **📋 变更说明**
