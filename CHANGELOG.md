@@ -10,6 +10,15 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.2.6 — 2026-10-03
+
+**📋 变更说明**
+fix: 第二轮审查——存档索引/NPC聊天AI降级路径补失败日志
+
+- save_service._readMeta / deleteSlot 失败留痕（原静默吞掉）
+- npc_chat_service AI失败降级本地回复前留痕
+- 复核 mixin_summary_memory 迁移完整性：行为零变化
+
 ### v5.2.5 — 2026-10-03
 
 **📋 变更说明**
