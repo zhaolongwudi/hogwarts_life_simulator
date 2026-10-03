@@ -6,6 +6,7 @@
 /// 测试纪律：注入与生产同侧、断言性质不锁细节。
 library;
 
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -141,7 +142,7 @@ void main() {
     });
 
     test('F1 【在场】不再输出裸好感数字（源码契约）', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       final sceneCtx = src.substring(
         src.indexOf('final npcsHere = npcsInCurrentLocation()'),
       );

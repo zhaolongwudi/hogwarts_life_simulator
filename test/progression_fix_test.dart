@@ -1,10 +1,10 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 import 'package:hogwarts_life_simulator/data/archetype_data.dart';
-import 'package:hogwarts_life_simulator/screens/world_map_screen.dart';
 import 'package:hogwarts_life_simulator/screens/world_map/marker_layout.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
@@ -771,7 +771,7 @@ void _unwiredFeatureGroup() {
 
     test('生成器是同步的，不套无意义的 isLoading', () {
       final src =
-          _stripComments(File('lib/mixins/mixin_narrative.dart').readAsStringSync());
+          narrativeSideSource(stripComments: true);
       final i = src.indexOf('void generateMoreSuggestions()');
       expect(i, greaterThan(-1),
           reason: '本地生成为同步操作，包 async+isLoading 不会渲染任何一帧');
@@ -782,7 +782,7 @@ void _unwiredFeatureGroup() {
 
     test('去重正则已提到循环外编译', () {
       final src =
-          _stripComments(File('lib/mixins/mixin_narrative.dart').readAsStringSync());
+          narrativeSideSource(stripComments: true);
       expect(src.contains('static final RegExp _collapseWs'), isTrue,
           reason: '原先 RegExp 写在 where 回调里，每个候选短语都重新编译一次正则');
       final gen = src.substring(src.indexOf('_generateLocalSuggestions() {'));

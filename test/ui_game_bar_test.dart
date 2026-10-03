@@ -80,7 +80,7 @@ String? _semLabel(WidgetTester tester, IconData icon) {
         )
         .first,
   );
-  return sem.properties?.label;
+  return sem.properties.label;
 }
 
 void main() {

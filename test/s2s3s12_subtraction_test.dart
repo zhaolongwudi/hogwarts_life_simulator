@@ -12,6 +12,7 @@
 ///  3. **数字口径锁死** —— T3 条数、锚点上限这类常量被改动时立刻可见。
 library;
 
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -76,7 +77,7 @@ void main() {
 
   group('S3 · 上下文条数下调', () {
     final src =
-        File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+        narrativeSideSource();
 
     test('T3 世界事件降到 12 + 3 = 15 条', () {
       expect(src, contains('recentEvents.take(12)'));

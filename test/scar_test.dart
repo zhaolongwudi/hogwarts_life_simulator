@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -354,7 +355,7 @@ void main() {
         File('lib/mixins/mixin_response.dart').readAsStringSync();
     final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
     final narrativeSrc =
-        File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+        narrativeSideSource();
 
     test('疤写进 Player 存档，能原样往返读回', () {
       final p = Player(
@@ -368,7 +369,7 @@ void main() {
       expect(j0['site'], 'leg');
       expect(j0['since'], '1993-04-02');
       final back = Player.fromJson(p.toJson());
-      expect(back!.scars, hasLength(1));
+      expect(back.scars, hasLength(1));
       expect(back.scars.single.site, ScarSite.leg);
     });
 
@@ -380,7 +381,7 @@ void main() {
         birthLocation: '伦敦',
       );
       final old = Map<String, dynamic>.from(p.toJson())..remove('scars');
-      expect(Player.fromJson(old)!.scars, isEmpty);
+      expect(Player.fromJson(old).scars, isEmpty);
     });
 
     test('落疤挂在每回合的叙事副作用里——不是只在开局跑一次', () {

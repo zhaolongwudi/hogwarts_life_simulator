@@ -403,7 +403,7 @@ void main() {
     final prompts =
         File('lib/prompts/summary_prompts.dart').readAsStringSync();
     final narrative =
-        File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+        File('lib/mixins/mixin_summary_memory.dart').readAsStringSync();
 
     test('摘要 prompt 让 AI 输出【了结】块', () {
       expect(prompts, contains('【了结】'));

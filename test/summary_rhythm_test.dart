@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/story_data.dart';
-import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
+import 'package:hogwarts_life_simulator/mixins/mixin_summary_memory.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 
 import 'helpers/test_fixtures.dart';
@@ -27,26 +27,26 @@ void main() {
   group('触发节奏：字数分支主导（"或"关系的真实效果）', () {
     test('字数超阈值时立即触发，即使回合数远未到 20', () {
       expect(
-        GameNarrativeMixin.shouldRunPeriodicSummary(3, 7000),
+        GameSummaryMemoryMixin.shouldRunPeriodicSummary(3, 7000),
         isTrue,
         reason: '第 3 回合但缓冲已 7000 字 → 由字数分支触发',
       );
     });
 
     test('推到第 20 回合触发（整数倍分支）', () {
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(20, 500), isTrue);
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(40, 500), isTrue);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(20, 500), isTrue);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(40, 500), isTrue);
     });
 
     test('非整数倍且字数不足 → 不触发', () {
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(19, 500), isFalse);
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(21, 500), isFalse);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(19, 500), isFalse);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(21, 500), isFalse);
     });
 
     test('缓冲为空时任何回合都不触发', () {
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(20, 0), isFalse,
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(20, 0), isFalse,
           reason: '没有待摘要内容时不该发起调用');
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(0, 0), isFalse);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(0, 0), isFalse);
     });
 
     test('真实文本量下的触发间隔约为 9~11 回合（推翻"20 回合一次"的估算）', () {
@@ -55,7 +55,7 @@ void main() {
       int? firstTrigger;
       for (var turn = 1; turn <= 30; turn++) {
         chars += 700;
-        if (GameNarrativeMixin.shouldRunPeriodicSummary(turn, chars)) {
+        if (GameSummaryMemoryMixin.shouldRunPeriodicSummary(turn, chars)) {
           firstTrigger ??= turn;
         }
       }
@@ -76,7 +76,7 @@ void main() {
         if (chars > 6800) byChars ??= turn;
       }
       expect(byChars, isNull, reason: '100 字/回合在 20 回合内达不到 6800 字');
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(20, chars), isTrue,
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(20, chars), isTrue,
           reason: '此时由回合数分支触发——这才是 20 这个数字真正起作用的场景');
     });
   });
@@ -84,7 +84,7 @@ void main() {
   group('失败退避：阻断"失败→重试→再失败"风暴', () {
     test('退避中不触发，即使字数超阈值', () {
       expect(
-        GameNarrativeMixin.shouldRunPeriodicSummary(
+        GameSummaryMemoryMixin.shouldRunPeriodicSummary(
           10,
           9000,
           consecutiveFails: 1,
@@ -97,7 +97,7 @@ void main() {
 
     test('退避归零后恢复触发', () {
       expect(
-        GameNarrativeMixin.shouldRunPeriodicSummary(
+        GameSummaryMemoryMixin.shouldRunPeriodicSummary(
           10,
           9000,
           consecutiveFails: 1,
@@ -108,48 +108,48 @@ void main() {
     });
 
     test('冷却回合数随连续失败次数线性增长', () {
-      final c1 = GameNarrativeMixin.cooldownForFailCount(1);
-      final c2 = GameNarrativeMixin.cooldownForFailCount(2);
-      final c3 = GameNarrativeMixin.cooldownForFailCount(3);
+      final c1 = GameSummaryMemoryMixin.cooldownForFailCount(1);
+      final c2 = GameSummaryMemoryMixin.cooldownForFailCount(2);
+      final c3 = GameSummaryMemoryMixin.cooldownForFailCount(3);
       expect(c1, greaterThan(0), reason: '第 1 次失败就该有冷却');
       expect(c2, c1 + 1);
       expect(c3, c2 + 1);
     });
 
     test('冷却回合数有上限（不会把摘要永久停掉）', () {
-      final huge = GameNarrativeMixin.cooldownForFailCount(999);
+      final huge = GameSummaryMemoryMixin.cooldownForFailCount(999);
       expect(huge, lessThanOrEqualTo(10),
           reason: '长时间局下摘要不能被无限期停掉，否则记忆彻底断档');
       expect(huge, greaterThan(0));
     });
 
     test('失败次数为 0 时冷却为 0', () {
-      expect(GameNarrativeMixin.cooldownForFailCount(0), 0);
-      expect(GameNarrativeMixin.cooldownForFailCount(-1), 0);
+      expect(GameSummaryMemoryMixin.cooldownForFailCount(0), 0);
+      expect(GameSummaryMemoryMixin.cooldownForFailCount(-1), 0);
     });
 
     test('退避计数器可被设定与递减', () {
-      GameNarrativeMixin.resetSummaryFailCounter();
-      expect(GameNarrativeMixin.summaryCooldownRemaining, 0);
+      GameSummaryMemoryMixin.resetSummaryFailCounter();
+      expect(GameSummaryMemoryMixin.summaryCooldownRemaining, 0);
 
-      GameNarrativeMixin.applySummaryCooldown(1);
-      final set = GameNarrativeMixin.summaryCooldownRemaining;
+      GameSummaryMemoryMixin.applySummaryCooldown(1);
+      final set = GameSummaryMemoryMixin.summaryCooldownRemaining;
       expect(set, greaterThan(0));
 
-      GameNarrativeMixin.tickSummaryCooldown();
-      expect(GameNarrativeMixin.summaryCooldownRemaining, set - 1);
+      GameSummaryMemoryMixin.tickSummaryCooldown();
+      expect(GameSummaryMemoryMixin.summaryCooldownRemaining, set - 1);
 
-      GameNarrativeMixin.resetSummaryFailCounter();
-      expect(GameNarrativeMixin.summaryCooldownRemaining, 0,
+      GameSummaryMemoryMixin.resetSummaryFailCounter();
+      expect(GameSummaryMemoryMixin.summaryCooldownRemaining, 0,
           reason: '复位必须同时清掉退避，否则读档/新开局会带着旧冷却');
     });
 
     test('退避不会减到负数', () {
-      GameNarrativeMixin.resetSummaryFailCounter();
+      GameSummaryMemoryMixin.resetSummaryFailCounter();
       for (var i = 0; i < 5; i++) {
-        GameNarrativeMixin.tickSummaryCooldown();
+        GameSummaryMemoryMixin.tickSummaryCooldown();
       }
-      expect(GameNarrativeMixin.summaryCooldownRemaining, 0);
+      expect(GameSummaryMemoryMixin.summaryCooldownRemaining, 0);
     });
   });
 
@@ -158,9 +158,9 @@ void main() {
       // 这两个值在 mixin 内是 private，这里通过行为间接断言：
       // 缓冲上限 8000、提前阈值 6800 的语义是"接近满时就压"。
       // 用 7000 字（介于 6800 与 8000 之间）验证确实会触发。
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(5, 7000), isTrue);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(5, 7000), isTrue);
       // 且 8000 也没问题
-      expect(GameNarrativeMixin.shouldRunPeriodicSummary(5, 8000), isTrue);
+      expect(GameSummaryMemoryMixin.shouldRunPeriodicSummary(5, 8000), isTrue);
     });
   });
 

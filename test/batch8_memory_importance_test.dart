@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/memory_importance_config.dart';
@@ -83,14 +84,19 @@ void main() {
 
   group('所有使用处已替换为命名常量', () {
     test('mixin_narrative.dart 使用 kImportance* 常量', () {
-      final content = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
-      expect(content, contains('kImportanceOfflineWorldEvent'));
-      expect(content, contains('kImportanceOfflineNpcRelation'));
+      final content = narrativeSideSource();
       expect(content, contains('kImportanceStoryBegin'));
       expect(content, contains('kImportanceStoryEnding'));
       expect(content, contains('kImportanceStoryEffectLoop'));
       expect(content, contains('kImportanceAiExtractedLoop'));
       expect(content, contains('kImportanceStoryStart'));
+    });
+
+    test('mixin_summary_memory.dart 使用 kImportance* 常量（阶段3拆分）', () {
+      final content =
+          File('lib/mixins/mixin_summary_memory.dart').readAsStringSync();
+      expect(content, contains('kImportanceOfflineWorldEvent'));
+      expect(content, contains('kImportanceOfflineNpcRelation'));
       expect(content, contains('kImportanceAiForeshadowLoop'));
       expect(content, contains('kImportanceAiWorldEvent'));
       expect(content, contains('kImportanceOfflineFlagLoop'));

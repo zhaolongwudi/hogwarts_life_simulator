@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -33,7 +34,7 @@ void main() {
     });
 
     test('校长表真的进了 prompt', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src, contains('headmasterLineForEra'),
           reason: 'eraHeadmaster 又变成没人读的死表了');
     });
@@ -126,7 +127,7 @@ void main() {
     });
 
     test('未开放区域会注入 prompt（否则 AI 照样写「独自深入禁林」）', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src, contains('lockedRegionsFor'),
           reason: '解锁条件又变回只打印不判定的文案了');
     });

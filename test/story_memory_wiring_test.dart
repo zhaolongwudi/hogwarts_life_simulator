@@ -30,9 +30,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/canon_events.dart';
-import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/long_term_memory.dart';
-import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
 import 'helpers/test_fixtures.dart';
 

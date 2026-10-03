@@ -21,13 +21,11 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
-import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
 import 'helpers/test_fixtures.dart';
 

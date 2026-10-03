@@ -306,7 +306,7 @@ mixin GameResponseAffectionMixin on GameProviderBase, GameResponseChoiceMixin {
       bool mentioned = false;
       for (final alias in npc.allNames) {
         if (alias.runes.length < 2) continue;
-        if (standaloneNameMentioned(narrativeText, alias)) {
+        if (standaloneNameMentionedFn(narrativeText, alias)) {
           mentioned = true;
           break;
         }

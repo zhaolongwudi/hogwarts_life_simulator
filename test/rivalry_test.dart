@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -321,7 +322,7 @@ void main() {
   // ------------------------------------------------------------ 接线检查
   group('宿敌接进了叙事与界面', () {
     test('叙事 prompt 会为在场的宿敌注入行为指令', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('【宿敌·'), isTrue);
       expect(src.contains('rivalryDirectiveFor'), isTrue);
       // 没有仇人的时候不该花这份 token
@@ -329,7 +330,7 @@ void main() {
     });
 
     test('和解过的人会有一句交代', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('【旧怨已了·'), isTrue);
     });
 
@@ -411,7 +412,7 @@ void main() {
   });
 
   group('宿敌不在场时 AI 也知道有这号人', () {
-    final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+    final src = narrativeSideSource();
 
     test('有全局宿敌名册段', () {
       // 只让 AI 看见"眼前这个人恨你"，那"他在走廊尽头堵你"这类戏永远写不出来

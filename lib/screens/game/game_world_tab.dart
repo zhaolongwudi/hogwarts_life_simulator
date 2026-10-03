@@ -408,7 +408,7 @@ class WorldTab extends StatelessWidget {
                           Icon(Icons.location_on, size: 11, color: MiuiColors.onSurfaceVariantActions),
                           const SizedBox(width: 2),
                           Text(
-                            npc.currentLocation ?? '未知',
+                            npc.currentLocation,
                             style: TextStyle(fontSize: 11, color: MiuiColors.onSurfaceVariantSummary),
                           ),
                         ],

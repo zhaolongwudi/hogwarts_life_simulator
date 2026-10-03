@@ -15,7 +15,6 @@ import '../data/wand_data.dart';
 import '../data/balance_constants.dart';
 import '../data/offline_extras_data.dart';
 import '../data/club_minigames_data.dart';
-import '../data/happenstance_data.dart';
 import '../models/player.dart';
 import '../models/npc.dart';
 import '../models/game_systems.dart';
@@ -1346,7 +1345,7 @@ mixin GamePlayMixin on GameProviderBase {
       return;
     }
     final buf = StringBuffer('【决斗社赛季 · 领奖】\n');
-    for (final (pts, label) in claimed) {
+    for (final (pts, _) in claimed) {
       final t = tiers.firstWhere((e) => e.points == pts);
       buf.writeln('你领取了「${t.label}」档位奖励！');
       buf.writeln('· 社团积分 +${t.club}（当前 ${p.clubPoints}）');

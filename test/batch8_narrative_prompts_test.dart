@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -145,12 +146,12 @@ void main() {
   // ==================== 接线检查：mixin_narrative.dart 真的用了 buildNarrativeRules ====================
   group('接线检查', () {
     test('mixin_narrative.dart 调用了 buildNarrativeRules', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('buildNarrativeRules('), isTrue);
     });
 
     test('mixin_narrative.dart 不再直接引用 kNarrativeWritingRules', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       // 旧代码是 `$kNarrativeWritingRules`，新代码应改为 buildNarrativeRules(...)
       expect(src.contains(r'$kNarrativeWritingRules'), isFalse,
           reason: 'mixin_narrative.dart 仍直接引用 kNarrativeWritingRules，'
@@ -158,7 +159,7 @@ void main() {
     });
 
     test('mixin_narrative.dart 传递 turnCount 给 buildNarrativeRules', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('turn: turnCount'), isTrue);
     });
   });

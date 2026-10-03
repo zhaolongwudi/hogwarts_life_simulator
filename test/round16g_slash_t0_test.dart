@@ -1,6 +1,7 @@
 /// 第16轮G · 修复回归：选项带 / 前缀 + T0 历史污染过滤
 library;
 
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -40,14 +41,14 @@ void main() {
 
   group('G2 T0 历史污染过滤（源码契约）', () {
     test('mixin_narrative.dart 存在 _factConflictsWithAuthority 过滤', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('_factConflictsWithAuthority'), isTrue,
           reason: 'T0 注入侧必须过滤历史错误事实（猫头鹰绯月/闪电疤）');
       expect(src.contains('第16轮G'), isTrue);
     });
 
     test('过滤逻辑含宠物猫头鹰与闪电疤两个已知模式', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       final idx = src.indexOf('bool _factConflictsWithAuthority');
       expect(idx, greaterThan(-1));
       final body = src.substring(idx, idx + 1200);

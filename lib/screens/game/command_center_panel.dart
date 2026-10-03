@@ -68,7 +68,6 @@ class _CommandCenterPanel extends StatefulWidget {
   final ValueChanged<String> onFillInput;
 
   const _CommandCenterPanel({
-    super.key,
     required this.onExecute,
     required this.onFillInput,
   });

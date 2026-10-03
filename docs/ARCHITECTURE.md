@@ -230,6 +230,41 @@ sequenceDiagram
 | F45 / F46（依赖管理） | ADR-011 | 已修复 |
 | DOC2（架构文档） | 本文 | 已修复 |
 
+## 6. 阶段重构记录（2026-10，渐进式手术）
+
+### ADR-012：mixin 拆分模式 =「逻辑迁出 + 薄委托 / 新 mixin」
+
+- **阶段2**：来信系统从 `mixin_letter` 迁出到 `lib/systems/letter_system.dart`
+  （`LetterSystem` + `LetterDeps` 依赖接口），`mixin_letter` 保留为薄委托层，
+  公开接口与测试契约零变化。
+- **阶段3**：剧情摘要/结构化记忆管线（约 800 行）从 `mixin_narrative`（5005 行）
+  拆出到 `lib/mixins/mixin_summary_memory.dart`（`GameSummaryMemoryMixin`）。
+  `GameNarrativeMixin` 声明 `on GameSummaryMemoryMixin`（跨 mixin 调用走
+  `on` 链而非 import，遵守 ADR-001），`with` 列表中 summary 在 narrative 之前。
+  static 纯函数（`shouldRunPeriodicSummary` / `cooldownForFailCount` 等）随迁，
+  相关测试改引新 mixin。
+- 后续拆分沿用同一模式：**行为零变化、测试全绿后才动下一刀**。
+
+### ADR-013：源码扫描测试统一入口 `test/helpers/narrative_src.dart`
+
+约 30 个「接线检查」测试直接扫描 mixin 源码。为防止后续拆分让锚点集体失效，
+所有对**叙事侧 mixin**（现为 mixin_narrative + mixin_summary_memory）的
+源码断言统一走 `narrativeSideSource()`；再拆文件只需在 helper 的
+`_narrativeSideFiles` 清单加一行，测试零修改。
+
+### ADR-014：AI 输出协议结构化现状与方向
+
+- **现状**：AI 结构化输出为「【区块名】+ 行式键值」文本协议，解析链分散在
+  `mixin_response*`（约 60 处预编译 RegExp）+ `narrative_section_parser.dart`
+  （纯函数，好感/声望已收敛至此）。
+- **已做**：`mixin_response_choices` 的 34 处热路径现编译 RegExp 全部预编译
+  为集中清单（顶层 final），名字边界断言加缓存；
+  `mixin_summary_memory` 剥块正则同步预编译。
+- **方向**（未实施，避免一次性改协议引入回归）：若模型端支持，优先给
+  **摘要场景**（`AiScene.summary`）开 JSON mode——它输入输出皆由系统拼装、
+  区块固定（核心事实/伏笔/了结/世界事件），是最安全的结构化试点；
+  叙事正文保持自由文本，不结构化。
+
 ---
 
 *维护：随架构决策变更追加 ADR，编号只增不改。新增 ADR 请同时更新 §5 的对应关系表。*

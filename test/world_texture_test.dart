@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -150,7 +151,7 @@ void main() {
     });
 
     test('prompt 里真的有一段【意外】', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('scheduleExceptionFor('), isTrue,
           reason: '场景上下文里没有查作息例外——'
               'AI 只会看见"斯内普在教室"，不知道他在干什么');
@@ -160,7 +161,7 @@ void main() {
     test('【意外】只在有人撞上时才会出现', () {
       // 它必须在 npcsHere 的循环里，不能无条件注入——
       // 否则每一回合都要为十几个不在场的人花 token。
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       final iBlock = src.indexOf('【意外·');
       final iHere = src.indexOf('for (final n in npcsHere)', iBlock - 400);
       expect(iHere, greaterThan(-1), reason: '【意外】段不在在场名单的循环里');
@@ -223,7 +224,7 @@ void main() {
     });
 
     test('prompt 里真的有一段【时令】', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('atmosphereForMonth('), isTrue,
           reason: '场景上下文里没有注入月度气氛');
       expect(src.contains('【时令】'), isTrue);

@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_narrative.dart';
+import 'package:hogwarts_life_simulator/mixins/mixin_summary_memory.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
 import 'package:hogwarts_life_simulator/providers/app_provider.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
@@ -90,28 +91,28 @@ void main() {
   });
 
   group('Q8 摘要连续失败阈值', () {
-    setUp(() => GameNarrativeMixin.resetSummaryFailCounter());
-    tearDown(() => GameNarrativeMixin.resetSummaryFailCounter());
+    setUp(() => GameSummaryMemoryMixin.resetSummaryFailCounter());
+    tearDown(() => GameSummaryMemoryMixin.resetSummaryFailCounter());
 
     test('连续失败未达阈值不触发通知', () {
-      expect(GameNarrativeMixin.advanceSummaryFailCounter(), isFalse);
-      expect(GameNarrativeMixin.advanceSummaryFailCounter(), isFalse);
+      expect(GameSummaryMemoryMixin.advanceSummaryFailCounter(), isFalse);
+      expect(GameSummaryMemoryMixin.advanceSummaryFailCounter(), isFalse);
     });
 
     test('恰好第 N 次失败跨过阈值触发通知', () {
-      expect(GameNarrativeMixin.summaryConsecutiveFails, 0);
-      expect(GameNarrativeMixin.advanceSummaryFailCounter(), isFalse);
-      expect(GameNarrativeMixin.advanceSummaryFailCounter(), isFalse);
+      expect(GameSummaryMemoryMixin.summaryConsecutiveFails, 0);
+      expect(GameSummaryMemoryMixin.advanceSummaryFailCounter(), isFalse);
+      expect(GameSummaryMemoryMixin.advanceSummaryFailCounter(), isFalse);
       // 第三次(达到阈值)才通知
-      expect(GameNarrativeMixin.advanceSummaryFailCounter(), isTrue);
+      expect(GameSummaryMemoryMixin.advanceSummaryFailCounter(), isTrue);
     });
 
     test('成功一次清零后重新计数', () {
-      GameNarrativeMixin.advanceSummaryFailCounter();
-      GameNarrativeMixin.advanceSummaryFailCounter();
-      GameNarrativeMixin.resetSummaryFailCounter();
+      GameSummaryMemoryMixin.advanceSummaryFailCounter();
+      GameSummaryMemoryMixin.advanceSummaryFailCounter();
+      GameSummaryMemoryMixin.resetSummaryFailCounter();
       // 清零后再失败从 1 开始,不再直接跨阈值
-      expect(GameNarrativeMixin.advanceSummaryFailCounter(), isFalse);
+      expect(GameSummaryMemoryMixin.advanceSummaryFailCounter(), isFalse);
     });
   });
 

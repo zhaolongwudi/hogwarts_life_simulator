@@ -1692,7 +1692,8 @@ mixin GameRelationsMixin on GameProviderBase {
         npc = npcRegistry.values.firstWhere(
           (n) => n.name.contains(npcName) || npcName.contains(n.name),
         );
-      } catch (_) {
+      } catch (e) {
+        debugLog('[mixin_relations] NPC 定位失败，跳过: $e');
         return;
       }
     }

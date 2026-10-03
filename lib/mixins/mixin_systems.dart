@@ -35,7 +35,7 @@ import '../models/world_state.dart';
 import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
 import '../utils/debug_log.dart';
-import 'mixin_narrative.dart';
+import 'mixin_summary_memory.dart';
 import '../data/memory_importance_config.dart';
 
 mixin GameSystemsMixin on GameProviderBase {
@@ -772,8 +772,9 @@ mixin GameSystemsMixin on GameProviderBase {
             : '$pendingAnchorDirective\n${sub.steeringHint}';
         notifications.add('🎯 本学年方向：${sub.label}');
       }
-    } catch (_) {
-      // 子目标池为空/异常时静默降级，不影响学年推进
+    } catch (e) {
+      // 子目标池为空/异常时降级，不影响学年推进，但留痕
+      debugLog('[mixin_systems] 子目标池降级: $e');
     }
     // 新学年重置原创NPC生成计数（通过清理标记实现每学年限额）
     debugLog('🎓 学年推进：玩家升入${newGrade}年级');
@@ -3039,7 +3040,7 @@ mixin GameSystemsMixin on GameProviderBase {
       lastAffectionSections.clear();
       // 摘要连续失败计数是 static（P#10）：读档不归零会让上一局/上一个档的
       // 失败计数串到新档，误触发「记忆未保存」提示。这里显式归零。
-      GameNarrativeMixin.resetSummaryFailCounter();
+      GameSummaryMemoryMixin.resetSummaryFailCounter();
 
       // 读档后按当前时钟重新安排每个人的位置。存档里 NPC 带着
       // currentLocation 字段，但老档里它恒为 '霍格沃茨'，刷新一次最稳。
@@ -3121,7 +3122,8 @@ mixin GameSystemsMixin on GameProviderBase {
         storyProgress = StoryProgress.fromJson(
           extraData['story_progress'] as Map<String, dynamic>?,
         );
-      } catch (_) {
+      } catch (e) {
+        debugLog('[mixin_systems] 剧情进度恢复失败，按未激活处理: $e');
         storyProgress = StoryProgress.inactive;
       }
 

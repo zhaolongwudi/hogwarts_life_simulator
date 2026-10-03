@@ -7,9 +7,7 @@
 //        给玩家可行动的指引,而不是一句笼统的"稍后重试"。
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'package:hogwarts_life_simulator/services/deepseek_service.dart';
 import 'package:hogwarts_life_simulator/utils/ai_debug_logger.dart';

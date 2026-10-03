@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../utils/debug_log.dart';
 
 /// 「多少分算永不遗忘」的两个阈值 —— 全项目只允许这一处定义。
@@ -498,7 +497,8 @@ int _estimateAbsoluteDay(String ts) {
     int leapsBefore(int yy) =>
         (yy - 1) ~/ 4 - (yy - 1) ~/ 100 + (yy - 1) ~/ 400;
     return (y - 1991) * 365 + (leapsBefore(y) - leapsBefore(1991)) + dayOfYear;
-  } catch (_) {
+  } catch (e) {
+    debugLog('[long_term_memory] 解析失败，按 0 处理: $e');
     return 0;
   }
 }

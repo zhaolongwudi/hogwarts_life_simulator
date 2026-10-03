@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -184,7 +185,7 @@ void main() {
     });
 
     test('prompt 里注入了【另一种可能】', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('adoptedPromptBlock('), isTrue,
           reason: '场景上下文里没有注入采纳过的脑洞');
       // 必须只收已采纳的

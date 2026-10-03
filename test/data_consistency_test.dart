@@ -491,7 +491,7 @@ void _statusOccupationGroup() {
       final gp = await makeGame();
       gp.player!.initialTalent = '档案测试天赋';
       gp.handleLocalCommand('/状态');
-      final text = gp.currentNarrative!;
+      final text = gp.currentNarrative;
       // 只取【职业】那一行，单独判断「是学生、不含天赋」。
       // 注意不能对整段 currentNarrative 判 notContains——主修天赋行本该含天赋值。
       final occLine = RegExp(r'【职业】[^\n]*').firstMatch(text)?.group(0);

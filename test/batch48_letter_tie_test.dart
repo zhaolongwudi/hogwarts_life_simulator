@@ -177,6 +177,7 @@ void main() {
       final seamus = gp.npcRegistry['seamus']!;
       expect(seamus.affection, greaterThan(25),
           reason: '入社同好注入应对社长好感 +5');
+      expect(p.pendingLetterId, isNull, reason: '回信处理后待回信应清空');
     });
   });
 

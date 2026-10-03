@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -232,7 +233,7 @@ void main() {
     });
 
     test('叙事 prompt 注入了时间预算', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('timeBudgetPromptLine'), isTrue);
       expect(src.contains('resolveActionCost'), isTrue);
     });

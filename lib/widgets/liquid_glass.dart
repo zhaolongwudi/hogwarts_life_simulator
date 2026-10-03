@@ -196,7 +196,8 @@ class _LiquidGlassState extends State<LiquidGlass> {
     try {
       _syncUniforms(shader);
       return ImageFilter.shader(shader);
-    } catch (_) {
+    } catch (e) {
+      debugLog('[liquid_glass] 着色器加载失败，降级: $e');
       _shaderUsable = false;
       return null;
     }

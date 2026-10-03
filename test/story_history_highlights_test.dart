@@ -24,7 +24,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/story_data.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_story_freeform.dart';
 import 'package:hogwarts_life_simulator/models/story_progress.dart';
-import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 
 import 'helpers/test_fixtures.dart';
 

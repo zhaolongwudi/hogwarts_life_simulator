@@ -2,10 +2,107 @@
 import '../providers/game_provider_base.dart';
 import '../models/game_systems.dart';
 
+/// 本文件热路径正则的预编译集中地。
+///
+/// 【阶段4 收敛说明】原先这些 pattern 全部内联在 `sanitizeChoiceText` /
+/// `isChoiceQualityAcceptable` / `standaloneNameMentioned` 里每次调用现编译。
+/// 它们是每回合、每选项都要跑的热路径，Dart 的 RegExp 构造包含解析+编译，
+/// 属于纯浪费；而且散落内联也让「我们到底在清洗什么」没有单一清单可查。
+/// 现在全部提为顶层 final，语义与原内联写法**逐字一致**（含 caseSensitive/
+/// unicode 标志），只是把构造从调用时挪到了加载时。
+//
+// ====== 第一遍清洗：结构化 Markdown / HTML / URL ======
+
+/// markdown 图片 ![alt](url) 或 ![alt][ref]
+final _reMdImage = RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false);
+final _reMdImageRef = RegExp(r'!\[[^\]]*\]\[[^\]]*\]', caseSensitive: false);
+
+/// markdown 链接 [text](url) → 保留文字
+final _reMdLink = RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false);
+
+/// 裸 URL
+final _reBareUrl = RegExp(r'https?://\S+', caseSensitive: false);
+
+/// base64 内嵌图片
+final _reBase64Image =
+    RegExp(r'data:image/[^;]+;base64,[^\s)]+', caseSensitive: false);
+
+/// HTML <img> / <a> / 其余所有标签 / 标签内文字
+final _reHtmlImg = RegExp(r'<img\s[^>]*>', caseSensitive: false);
+final _reHtmlAnchor = RegExp(r'<a[^>]*>([\s\S]*?)</a>', caseSensitive: false);
+final _reHtmlAnyTag = RegExp(r'<[^>]*>', caseSensitive: false);
+
+/// inline markdown：粗体 / 斜体 / 删除线 / inline 代码 / 反斜杠转义
+final _reMdBold = RegExp(r'\*\*([^*]+)\*\*');
+final _reMdItalic = RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)');
+final _reMdStrike = RegExp(r'~~([^~]+)~~');
+final _reMdCode = RegExp(r'`([^`]+)`');
+final _reMdEscape = RegExp(r'\\([\\`*_{}\[\]()#+\-.!])');
+
+// ====== 第二遍清洗：残留结构 ======
+
+/// 孤立方括号（图片删除后残留的 [alt]）
+final _reOrphanBracket = RegExp(r'\[[^\]]*\]', caseSensitive: false);
+/// 孤立星号 / 反引号 / 下划线
+final _reStrayAsterisk = RegExp(r'\*+', caseSensitive: false);
+final _reStrayBacktick = RegExp(r'`+');
+final _reStrayUnderscore = RegExp(r'_{2,}');
+
+/// 连续 2 个以上空白 → 折叠为单空格（最终清理步骤共用）。
+final _reBlankRun = RegExp(r'\s{2,}');
+
+// ====== 质量门槛（isChoiceQualityAcceptable）======
+
+final _reQMdImage = RegExp(r'!\[.*\]\(', caseSensitive: false);
+final _reQMdLink = RegExp(r'\[.*\]\(.*\)', caseSensitive: false);
+final _reQBase64 = RegExp(r'data:image/', caseSensitive: false);
+final _reQHtmlTag =
+    RegExp(r'<\s*(img|a|div|span|p|br|hr)\b', caseSensitive: false);
+final _reQBold = RegExp(r'\*\*.*\*\*');
+final _reQCode = RegExp(r'`[^`]+`');
+final _reQStrike = RegExp(r'~~.+~~');
+final _reQUrl = RegExp(r'https?://', caseSensitive: false);
+
+// ====== NPC 名字识别 ======
+
+/// 中文叙述高频字 → 含任一字即判定非人名（looksLikeNarrationWord）。
+final _reNarrationChar = RegExp(
+    r'[的地得是去来到处在把让给和与或从向对被和就都也又便很还没不知说道看听闻想走跑站坐笑哭吃打学教练写读感思起起上下出入回开关过好]');
+
+/// 纯中文候选词（2~4 字），用于人名候选切分。
+final _reHanCandidate =
+    RegExp(r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)', unicode: true);
+
+/// 「文本中是否出现汉字」的快速判断。
+final _reAnyHan = RegExp(r'\p{Script=Han}', unicode: true);
+
+/// 按名字是否有汉字选择边界断言（汉字名要求两侧非汉字，拉丁名要求两侧非字母数字）。
+/// name 是运行时给定的（NPC 名），pattern 只能按次构造——但每个名字在一次
+/// 会话里会被反复查询，这里做一层缓存避免重复编译。
+final Map<String, RegExp> _nameBoundaryCache = {};
+
+/// [text] 中是否以「独立词」形式出现了 [name]（两侧不被同类字符包夹）。
+/// 供本 mixin 与 affection 侧共用（static 跨 mixin 继承在 Dart 里不可见）。
+bool standaloneNameMentionedFn(String text, String name) {
+  if (name.isEmpty) return false;
+  final pattern = _nameBoundaryCache.putIfAbsent(name, () {
+    final escaped = RegExp.escape(name);
+    final hasHan = _reAnyHan.hasMatch(name);
+    if (hasHan) {
+      return RegExp(r'(?<![\p{Script=Han}])' + escaped + r'(?![\p{Script=Han}])',
+          unicode: true);
+    }
+    return RegExp(
+        r'(?<!\p{L})(?<!\p{N})(?<!_)' + escaped + r'(?!\p{L})(?!\p{N})(?!_)',
+        unicode: true);
+  });
+  return pattern.hasMatch(text);
+}
+
 mixin GameResponseChoiceMixin on GameProviderBase {
   /// 清洗「AI 输出的选项文本」，让它能被安全的当成一个可点击选项。
   ///
-  /// **与 [PromptSanitizer] 的分工**（两者名字相近但职责完全不同，别互相调用）：
+  /// **与 `PromptSanitizer` 的分工**（两者名字相近但职责完全不同，别互相调用）：
   ///
   /// | 维度 | 本方法 `sanitizeChoiceText` | `PromptSanitizer.sanitize` / `sanitizeAction` |
   /// | --- | --- | --- |
@@ -30,46 +127,46 @@ mixin GameResponseChoiceMixin on GameProviderBase {
 
     // === 第一遍：清除结构化 Markdown ===
     // 删markdown图片 ![alt](url) 或 ![alt][ref]
-    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
-    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\[[^\]]*\]', caseSensitive: false), '');
+    s = s.replaceAll(_reMdImage, '');
+    s = s.replaceAll(_reMdImageRef, '');
     // 删markdown链接 [text](url) → text (保留文字)
-    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(_reMdLink, (m) => m.group(1) ?? '');
     // 删裸URL
-    s = s.replaceAll(RegExp(r'https?://\S+', caseSensitive: false), '');
+    s = s.replaceAll(_reBareUrl, '');
     // 删base64图片
-    s = s.replaceAll(RegExp(r'data:image/[^;]+;base64,[^\s)]+', caseSensitive: false), '');
+    s = s.replaceAll(_reBase64Image, '');
     // 删HTML <img> 标签
-    s = s.replaceAll(RegExp(r'<img\s[^>]*>', caseSensitive: false), '');
+    s = s.replaceAll(_reHtmlImg, '');
     // 删HTML <a> 标签（保留文字）
-    s = s.replaceAllMapped(RegExp(r'<a[^>]*>([\s\S]*?)</a>', caseSensitive: false), (m) {
-      final inner = m.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').trim() ?? '';
+    s = s.replaceAllMapped(_reHtmlAnchor, (m) {
+      final inner = m.group(1)?.replaceAll(_reHtmlAnyTag, '').trim() ?? '';
       return inner;
     });
     // 删所有HTML标签
-    s = s.replaceAll(RegExp(r'</?[^>]+>', caseSensitive: false), '');
+    s = s.replaceAll(_reHtmlAnyTag, '');
     // 删inline markdown粗体/斜体/删除线
-    s = s.replaceAllMapped(RegExp(r'\*\*([^*]+)\*\*'), (m) => m.group(1) ?? '');
-    s = s.replaceAllMapped(RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)'), (m) => m.group(1) ?? '');
-    s = s.replaceAllMapped(RegExp(r'~~([^~]+)~~'), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(_reMdBold, (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(_reMdItalic, (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(_reMdStrike, (m) => m.group(1) ?? '');
     // 删inline代码
-    s = s.replaceAllMapped(RegExp(r'`([^`]+)`'), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(_reMdCode, (m) => m.group(1) ?? '');
     // 删HTML实体
     s = s.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&#39;', "'");
     // 删反斜杠转义
-    s = s.replaceAllMapped(RegExp(r'\\([\\`*_{}\[\]()#+\-.!])'), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(_reMdEscape, (m) => m.group(1) ?? '');
 
     // === 第二遍：清除第一遍可能残留的破坏结构 ===
     // 再次扫描残留的markdown图片/链接（处理嵌套情况）
-    s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)', caseSensitive: false), '');
-    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)', caseSensitive: false), (m) => m.group(1) ?? '');
+    s = s.replaceAll(_reMdImage, '');
+    s = s.replaceAllMapped(_reMdLink, (m) => m.group(1) ?? '');
     // 清除孤立的方括号（如图片删除后残留的 [alt]）
-    s = s.replaceAll(RegExp(r'\[[^\]]*\]', caseSensitive: false), '');
+    s = s.replaceAll(_reOrphanBracket, '');
     // 清除孤立的星号（如粗体删除后残留的 *）
-    s = s.replaceAll(RegExp(r'\*+', caseSensitive: false), '');
+    s = s.replaceAll(_reStrayAsterisk, '');
     // 清除反引号
-    s = s.replaceAll(RegExp(r'`+'), '');
+    s = s.replaceAll(_reStrayBacktick, '');
     // 清除孤立的下划线
-    s = s.replaceAll(RegExp(r'_{2,}'), '');
+    s = s.replaceAll(_reStrayUnderscore, '');
     // 清除Emoji和零宽字符（保留中文标点和常用符号）
     // 注意：Dart 正则不支持高位 Unicode 范围如 [\u{1F300}-\u{1F9FF}]，
     // 必须使用 runes 手动过滤，否则会抛 FormatException 导致整页崩溃
@@ -85,27 +182,28 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     s = filtered.toString();
 
     // === 最终清理 ===
-    s = s.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    s = s.replaceAll(_reBlankRun, ' ').trim();
     // 单行限制
     if (s.length > 100) s = '${s.substring(0, 97).trim()}...';
     return s;
   }
+
   static bool isChoiceQualityAcceptable(String text) {
     if (text.isEmpty || text.length < 2) return false;
-    // 检查残余markdown图片语法 ![](
-    if (RegExp(r'!\[.*\]\(', caseSensitive: false).hasMatch(text)) return false;
+    // 检查残余markdown图片语法 ![(
+    if (_reQMdImage.hasMatch(text)) return false;
     // 检查残余markdown链接 [text](url)
-    if (RegExp(r'\[.*\]\(.*\)', caseSensitive: false).hasMatch(text)) return false;
+    if (_reQMdLink.hasMatch(text)) return false;
     // 检查base64图像数据
-    if (RegExp(r'data:image/', caseSensitive: false).hasMatch(text)) return false;
+    if (_reQBase64.hasMatch(text)) return false;
     // 检查HTML标签
-    if (RegExp(r'<\s*(img|a|div|span|p|br|hr)\b', caseSensitive: false).hasMatch(text)) return false;
+    if (_reQHtmlTag.hasMatch(text)) return false;
     // 检查内联markdown标记（粗体、斜体、删除线、代码）
-    if (RegExp(r'\*\*.*\*\*').hasMatch(text)) return false;
-    if (RegExp(r'`[^`]+`').hasMatch(text)) return false;
-    if (RegExp(r'~~.+~~').hasMatch(text)) return false;
+    if (_reQBold.hasMatch(text)) return false;
+    if (_reQCode.hasMatch(text)) return false;
+    if (_reQStrike.hasMatch(text)) return false;
     // 检查裸URL
-    if (RegExp(r'https?://', caseSensitive: false).hasMatch(text)) return false;
+    if (_reQUrl.hasMatch(text)) return false;
     // 检查过长
     if (text.length > 150) return false;
     return true;
@@ -164,10 +262,8 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     Map<String, bool> npcNameAll,
   ) {
     if (text.isEmpty) return false;
-    final candidates = RegExp(
-      r'(?<!\w)([\u4e00-\u9fa5]{2,4})(?!\w)',
-      unicode: true,
-    ).allMatches(text).map((m) => m.group(1)!).toSet().toList();
+    final candidates =
+        _reHanCandidate.allMatches(text).map((m) => m.group(1)!).toSet().toList();
 
     for (final cand in candidates) {
       // (1) 白名单（已登场NPC+别名 / 玩家名 / 正文末尾出现过的路人）命中 → 放行
@@ -183,7 +279,7 @@ mixin GameResponseChoiceMixin on GameProviderBase {
   static bool looksLikeNarrationWord(String s) {
     if (s.length < 2) return true;
     // 含叙述高频字 → 判定非人名
-    if (RegExp(r'[的地得是去来到处在把让给和与或从向对被和就都也又便很还没不知说道看听闻想走跑站坐笑哭吃打学教练写读感思起起上下出入回开关过好]').hasMatch(s)) return true;
+    if (_reNarrationChar.hasMatch(s)) return true;
     // 身份/头衔/场所后缀（这类一般是"列车长/管理员/教授/新生"等，不是具体人名）
     const suffixes = ['教授', '院长', '夫人', '小姐', '先生', '同学', '新生', '学长', '学姐', '级长',
       '列车长', '管理员', '老板', '店员', '经理', '裁判', '队长', '队员', '首领', '仆人', '管家',
@@ -197,15 +293,6 @@ mixin GameResponseChoiceMixin on GameProviderBase {
     return false;
   }
 
-  bool standaloneNameMentioned(String text, String name) {
-    if (name.isEmpty) return false;
-    final escaped = RegExp.escape(name);
-    final hasHan = RegExp(r'\p{Script=Han}', unicode: true).hasMatch(name);
-    if (hasHan) {
-      final pattern = RegExp(r'(?<![\p{Script=Han}])' + escaped + r'(?![\p{Script=Han}])', unicode: true);
-      return pattern.hasMatch(text);
-    }
-    final pattern = RegExp(r'(?<!\p{L})(?<!\p{N})(?<!_)' + escaped + r'(?!\p{L})(?!\p{N})(?!_)', unicode: true);
-    return pattern.hasMatch(text);
-  }
+  static bool standaloneNameMentioned(String text, String name) =>
+      standaloneNameMentionedFn(text, name);
 }

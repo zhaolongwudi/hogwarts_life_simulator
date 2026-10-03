@@ -1,3 +1,4 @@
+import 'helpers/narrative_src.dart';
 import 'dart:io';
 import 'dart:math';
 
@@ -187,7 +188,7 @@ void main() {
   // ------------------------------------------------------------ 接线检查
   group('导演指令真的进了 prompt', () {
     test('叙事 prompt 里会注入', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       expect(src.contains('directorLineFor'), isTrue);
       expect(src.contains('directorBeatFor('), isTrue);
       expect(src.contains('turn: turnCount'), isTrue);
@@ -196,13 +197,13 @@ void main() {
     });
 
     test('复用了已经算好的钩子判定，不重复解析一遍叙事', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       // hasHook 在停滞判定那里已经算过一次（那是一次正则匹配）
       expect(src.contains('hasUnresolvedHook: hasHook'), isTrue);
     });
 
     test('节拍状态真的被追踪并回写', () {
-      final src = File('lib/mixins/mixin_narrative.dart').readAsStringSync();
+      final src = narrativeSideSource();
       // 概率化节拍依赖"距上次转折几回合"的状态，只算不回写等于没做
       expect(src.contains('turnsSinceLastTurnBeat'), isTrue);
       expect(src.contains('turnsSinceLastTurn: turnsSinceLastTurnBeat'), isTrue);
