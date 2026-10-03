@@ -84,6 +84,9 @@ class SaveService {
       final content = await file.readAsString();
       return List<Map<String, dynamic>>.from(jsonDecode(content));
     } catch (e) {
+      // 存档索引损坏不应让存档页崩溃，但要留痕——否则玩家会看到
+      // "存档列表空了"却查不到原因。
+      debugLog('存档索引读取失败，按空列表降级: $e');
       return [];
     }
   }
@@ -256,6 +259,7 @@ class SaveService {
       await _writeMeta(updated);
       return true;
     } catch (e) {
+      debugLog('删除存档槽 $slotId 失败: $e');
       return false;
     }
   }

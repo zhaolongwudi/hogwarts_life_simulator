@@ -216,6 +216,9 @@ class NpcChatService {
       // P8：AI 回复同样走回忆解锁，保证在线/离线行为一致
       return (withUnlockedMemories(npc, player, responseText), false);
     } catch (e) {
+      // AI 聊天失败降级到本地回复是正确行为，但失败原因要留痕，
+      // 否则玩家只会觉得"NPC 回复变笨了"而查不到原因。
+      debugLog('NPC 聊天 AI 调用失败，降级本地回复: $e');
       return local();
     }
   }
