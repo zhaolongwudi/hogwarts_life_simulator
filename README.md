@@ -7,7 +7,7 @@
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v5.2.8-E3B341?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.2.9-E3B341?style=flat-square" />
   <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
   <img alt="测试" src="https://img.shields.io/badge/tests-1994%2B%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
+| **v5.2.9** | feat: 摘要场景 JSON mode 试点（response_format=json_object + 输出归一化回退，ADR-0… |
 | **v5.2.8** | refactor: 拆分 mixin_commands 作弊子系统（mixin_command_cheats.dart）+ 扫描测试适配 |
 | **v5.2.7** | style: dart fix 全量应用(447处) + analyze 提示清零 |
 | **v5.2.6** | fix: 第二轮审查——存档索引/NPC聊天AI降级路径补失败日志 |
 | **v5.2.5** | refactor: 渐进式手术五阶段（质量清零/系统抽取/mixin拆分/正则收敛/扫描测试收口） |
-| **v5.2.4** | fix(batch51): playerDormId 统一小写——normalizeHouseKey 返回大写权威key导致 dorm… |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
