@@ -13,6 +13,7 @@ import '../mixins/mixin_summary_memory.dart';
 import '../mixins/mixin_narrative_continuity.dart';
 import '../mixins/mixin_command_cheats.dart';
 import '../mixins/mixin_commands.dart';
+import '../mixins/mixin_game_save.dart';
 import '../mixins/mixin_response.dart';
 import '../mixins/mixin_response_affection.dart';
 import '../mixins/mixin_response_choices.dart';
@@ -62,6 +63,7 @@ class GameProvider extends GameProviderBase
         GameResponseAffectionMixin,
         GameResponseMixin,
         GameRelationsMixin,
+        GameSaveSystemMixin,
         GameSystemsMixin,
         GamePlayMixin,
         GameAnimagusMixin,

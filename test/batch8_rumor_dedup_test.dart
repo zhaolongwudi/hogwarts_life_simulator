@@ -18,7 +18,8 @@ void main() {
 
   group('kDailyActivityLimits 数据完整性', () {
     test('含 rumor:1 条目', () {
-      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_game_save.dart').readAsStringSync();
       expect(RegExp(r"'rumor':\s*1").hasMatch(src), isTrue,
           reason: 'kDailyActivityLimits 应含 rumor:1');
     });
@@ -65,7 +66,7 @@ void main() {
     late String src;
 
     setUpAll(() {
-      src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+      src = File('lib/mixins/mixin_game_save.dart').readAsStringSync();
     });
 
     test('_saveExtraData 含 rumored_event_days 字段', () {

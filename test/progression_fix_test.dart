@@ -545,6 +545,7 @@ void _codeHygieneGroup() {
       'lib/mixins/mixin_commands.dart',
       'lib/mixins/mixin_command_cheats.dart',
       'lib/mixins/mixin_systems.dart',
+      'lib/mixins/mixin_game_save.dart',
     };
 
     test('mixins/screens 下不得绕过 updateNpcAffection', () {
@@ -1508,7 +1509,8 @@ void _equipmentAndProviderGroup() {
 
 void _saveLoadGroup() {
   group('存档读写只有一份', () {
-    final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+    final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_game_save.dart').readAsStringSync();
 
     test('extraData 的写入只在一处', () {
       // 三处存档各写一份 Map 时，漏写的字段读档时静默归零，不报错也不崩
@@ -1517,7 +1519,7 @@ void _saveLoadGroup() {
         final src = File(f).readAsStringSync();
         if (src.contains("'narrative_summary'")) hits.add(f);
       }
-      expect(hits, ['lib/mixins/mixin_systems.dart'],
+      expect(hits, ['lib/mixins/mixin_game_save.dart'],
           reason: 'extraData 又被抄了一份，应调用 writeSave()：$hits');
     });
 
@@ -1547,7 +1549,7 @@ void _saveLoadGroup() {
       expect(load, isNotNull, reason: '没找到 applySaveData，正则该更新了');
       final body = load!.group(1)!;
       expect(body, contains('_migrateSave'), reason: '读档漏了存档迁移');
-      expect(body, contains('_runConsistencyChecks'), reason: '读档漏了一致性检查');
+      expect(body, contains('runConsistencyChecks'), reason: '读档漏了一致性检查');
       expect(body, contains('lastWeekBucket'), reason: '读档漏了周桶复位');
       expect(body, contains('isInitializing = false'),
           reason: '读档后不复位 isInitializing 会让"继续游戏"卡住');
@@ -2144,7 +2146,7 @@ void _saveVersionGroup() {
     });
 
     test('读档端不再自己定义一个版本号', () {
-      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      final src = _codeOnly('lib/mixins/mixin_game_save.dart');
       expect(RegExp(r'_saveVersion\s*=').hasMatch(src), isFalse,
           reason: '版本号只能有一处定义');
       expect(src, contains('kSaveVersion'),
@@ -2164,7 +2166,7 @@ void _saveVersionGroup() {
       // 版本号 >1 就意味着 _migrateSave 里应该存在处理旧版本的分支，
       // 否则老存档读进来什么都不做，字段缺失会直接炸在 fromJson 上。
       expect(kSaveVersion, greaterThanOrEqualTo(1));
-      final src = _codeOnly('lib/mixins/mixin_systems.dart');
+      final src = _codeOnly('lib/mixins/mixin_game_save.dart');
       expect(src, contains('void _migrateSave'));
       if (kSaveVersion > 1) {
         expect(RegExp(r'if \(version < \d+\)').hasMatch(src), isTrue,
