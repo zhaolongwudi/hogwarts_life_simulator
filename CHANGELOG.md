@@ -10,6 +10,17 @@
 >   v3.5.0 一个 minor + v3.5.1~v3.5.5 五个 patch）
 > - 版本号由 `pubspec.yaml` **唯一决定**；CHANGELOG 不再手动新增版本标题，CI 会自动追加
 
+### v5.2.5 — 2026-10-03
+
+**📋 变更说明**
+refactor: 渐进式手术五阶段（质量清零/系统抽取/mixin拆分/正则收敛/扫描测试收口）
+
+阶段1: analyze warning/error 清零；静默空 catch 补 debugLog
+阶段2: 来信系统迁出为 lib/systems/letter_system.dart（LetterSystem+LetterDeps），mixin_letter 薄委托化
+阶段3: 摘要/记忆管线约800行拆出 mixin_summary_memory.dart，mixin_narrative 5005→4149行，跨mixin走on链（ADR-012）
+阶段4: mixin_response_choices 34处热路径现编译RegExp预编译集中清单+名字边界缓存；摘要剥块正则同步预编译（ADR-014）
+阶段5: 新建 test/helpers/narrative_src.dart 统一源码扫描入口，13个测试文件迁入（ADR-013）
+
 ### v5.2.4 — 2026-09-25
 
 **📋 变更说明**
