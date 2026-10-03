@@ -696,7 +696,8 @@ void _giftGivingGroup() {
       final ops = File('lib/utils/inventory_ops.dart').readAsStringSync();
       expect(ops.contains('removeOneItem'), isTrue);
       // mixin_relations 送礼时必须调用它
-      final rel = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+      final rel = File('lib/mixins/mixin_relations.dart').readAsStringSync() +
+          File('lib/mixins/mixin_relation_gifts.dart').readAsStringSync();
       expect(rel.contains('removeOneItem('), isTrue);
     });
   });
