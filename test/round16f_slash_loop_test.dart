@@ -5,6 +5,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/utils/prompt_sanitizer.dart';
+// r6-3: mixin_commands 拆分后，扫描目标 = commands + extras 两文件拼接
+String _commandsFamilyCode() {
+  final a = File('lib/mixins/' 'mixin_commands.dart').readAsStringSync();
+  final b = File('lib/mixins/' 'mixin_commands_extras.dart').readAsStringSync();
+  return [a, b].join('\n');
+}
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -45,7 +52,7 @@ void main() {
 
   group('F3 mixin_commands 未识别分支清空 lastPlayerAction（源码契约）', () {
     test('未识别指令 if 块后必须含 lastPlayerAction = ""', () {
-      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final src = _commandsFamilyCode();
       final slashCheckIdx = src.indexOf("if (cmd.startsWith('/')) {");
       expect(slashCheckIdx, greaterThan(-1),
           reason: '未识别指令分支应存在');

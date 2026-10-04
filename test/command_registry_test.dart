@@ -3,6 +3,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/command_registry.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider_base.dart';
+// r6-3: mixin_commands 拆分后，扫描目标 = commands + extras 两文件拼接
+String _commandsFamilyCode() {
+  final a = File('lib/mixins/' 'mixin_commands.dart').readAsStringSync();
+  final b = File('lib/mixins/' 'mixin_commands_extras.dart').readAsStringSync();
+  return [a, b].join('\n');
+}
+
 
 void main() {
   // ==================== CommandContext 参数语义契约 ====================
@@ -51,9 +58,7 @@ void main() {
   // （handler 依赖完整 GameProvider 状态，测试环境构造成本极高），
   // 但它在源码上有非常清晰的指纹。这里直接扫描源码，禁止旧约定写法回潮。
   group('指令 handler 取参契约（源码扫描）', () {
-    final commandsSrc = File(
-      'lib/mixins/mixin_commands.dart',
-    ).readAsStringSync();
+    final commandsSrc = _commandsFamilyCode();
     final relationsSrc = File(
       'lib/mixins/mixin_relations.dart',
     ).readAsStringSync();
@@ -112,7 +117,7 @@ void main() {
 
     test('未知指令要有候选提示，不能当成自由行动发给 AI', () {
       expect(
-        commandsSrc.contains('_formatUnknownCommand'),
+        commandsSrc.contains('formatUnknownCommand'),
         isTrue,
         reason: '以 / 开头但查不到的输入必须给出候选指令，而不是返回 false',
       );
@@ -123,7 +128,7 @@ void main() {
       // processChoice 的 isPanelOutput 判定（choices.length == 1）因此失败，
       // 错误提示被当成事件类指令永久覆写 currentNarrative，玩家输错一个指令
       // 就丢掉当前一整段剧情，且没有任何回退入口。
-      final idx = commandsSrc.indexOf('_formatUnknownCommand(slashless)');
+      final idx = commandsSrc.indexOf('formatUnknownCommand(slashless)');
       expect(idx, greaterThan(-1),
           reason: '找不到未知指令分支，handleLocalCommand 结构可能已变');
       final end = idx + 400 < commandsSrc.length ? idx + 400 : commandsSrc.length;
@@ -136,7 +141,7 @@ void main() {
             '这样 processChoice 才会把它识别为面板输出并还原原剧情',
       );
       expect(
-        tail.contains('_suggestCommands(slashless)'),
+        tail.contains('suggestCommands(slashless)'),
         isFalse,
         reason: '候选指令不得再塞进 choices —— 它会让 choices.length != 1，'
             'isPanelOutput 判定失败，剧情再次被覆盖',
@@ -148,7 +153,7 @@ void main() {
   // 的别名永远按不到；而别名撞上别的命令的 primary 时，find 先命中前者，后
   // 注册的命令也就永远按不到了。
   group('指令别名真的按得下去', () {
-    final raw = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+    final raw = _commandsFamilyCode();
     final src = raw
         .split('\n')
         .map((l) => l.replaceAll(RegExp(r'//.*\$'), ''))

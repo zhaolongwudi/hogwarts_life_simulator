@@ -7,6 +7,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response_choices.dart'
     as rc;
+// r6-3: mixin_commands 拆分后，扫描目标 = commands + extras 两文件拼接
+String _commandsFamilyCode() {
+  final a = File('lib/mixins/' 'mixin_commands.dart').readAsStringSync();
+  final b = File('lib/mixins/' 'mixin_commands_extras.dart').readAsStringSync();
+  return [a, b].join('\n');
+}
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +66,7 @@ void main() {
 
   group('G3 未识别 / 长文本降级自由行动（源码契约）', () {
     test('handleLocalCommand 长文本未识别返回 false（降级叙事）', () {
-      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final src = _commandsFamilyCode();
       final idx = src.indexOf('slashless.length >= 6');
       expect(idx, greaterThan(-1),
           reason: '长文本（自由行动）未识别时应降级走叙事路径');
