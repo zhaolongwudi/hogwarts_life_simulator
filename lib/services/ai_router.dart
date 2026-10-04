@@ -472,11 +472,19 @@ class AiRouter {
     providers: for (final provider in attempted) {
       final services = _services[provider]!;
 
-      // 轮询选择起始 key，避免每次从头开始（让多个 key 均匀分配流量）
-      _roundRobinIndex = (_roundRobinIndex + 1) % services.length;
+      // 轮询起始 key：本次调用的遍历基点固定为 startIndex（不改持久游标，
+      // 否则下面循环里的 (_roundRobinIndex + ki) 会偏移错乱）。
+      //
+      // 【r5-2 · 严格逐次轮换】持久游标 _roundRobinIndex 改为在「一次尝试
+      // 真正结束」时推进（成功 / 失败 / 熔断跳过都推进一次），因此连续两次
+      // 调用永远不会落到同一把 Key：失败（尤其 429）意味着该 Key 已触顶
+      // TPM/RPM，成功同样消耗了配额——两种情况都该让位。
+      // 旧逻辑只在调用开始时 +1，若本次调用内切过 Key，下次可能复用刚失败的
+      // 那把，白白再吃一次 429。
+      final startIndex = _roundRobinIndex % services.length;
       // 从轮询起始点开始，遍历所有 key
       for (int ki = 0; ki < services.length; ki++) {
-        final serviceIdx = (_roundRobinIndex + ki) % services.length;
+        final serviceIdx = (startIndex + ki) % services.length;
         final service = services[serviceIdx];
         // 隐私（P#4）：keyHash 只作日志/调试标签，绝不能拿 API Key 明文前缀。
         // 旧实现截前 8 位会把 Key 片段泄进 debugLog 与 AiDebugLogger；这里改
@@ -510,7 +518,10 @@ class AiRouter {
             throw AiCanceledException('请求已取消');
           }
           if (_circuitOpen(service)) {
-            // 熔断中的 Key 直接跳过，不再点卯
+            // 熔断中的 Key 直接跳过，不再点卯。
+            // 【r5-2】顺便把持久游标也让开这把——熔断中的 Key 不该在下次
+            // 调用时又成为起点。
+            _roundRobinIndex = (serviceIdx + 1) % services.length;
             debugLog('⚠️ ${provider.name}[$keyHash] 熔断中，跳过');
             break;
           }
@@ -581,6 +592,9 @@ class AiRouter {
                 model: service.config.model,
               );
             }
+            // 【r5-2】成功也立即换位：这次调用已经消耗了该 Key 的 TPM/RPM 配额，
+            // 下一次调用从下一把 Key 开始，把负载摊平（严格逐次轮换）。
+            _roundRobinIndex = (serviceIdx + 1) % services.length;
             final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
             await AiDebugLogger.instance.logComplete(
               callId: callId,
@@ -669,6 +683,9 @@ class AiRouter {
               continue;
             }
 
+            // 【r5-2】失败也立即换位：失败（尤其 429）说明该 Key 已触顶，
+            // 游标推进到这把的下一个，下一次调用从全新的 Key 起步。
+            _roundRobinIndex = (serviceIdx + 1) % services.length;
             // 当前 key 所有重试耗尽，记录日志并尝试下一个 key
             debugLog('⚠️ ${provider.name}[$keyHash] 已耗尽，尝试下一个 Key: $e');
             final sceneLabel = scene?.toString().split('.').last ?? 'unknown';
