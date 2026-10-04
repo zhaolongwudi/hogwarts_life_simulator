@@ -902,9 +902,7 @@ mixin GameResponseMixin
 
     if (turnCount > 0 &&
         (turnCount % 5 == 0 ||
-            lastPlayerAction.contains(
-              RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)'),
-            ))) {
+            lastPlayerAction.contains(_reSocialIntentCheck))) {
       checkNPCConfessions();
     }
 
@@ -1097,6 +1095,11 @@ mixin GameResponseMixin
   /// 【为什么用 Map 而不是一大堆 if】兜底叙事是"AI 不可用时的最后一道体面"，
   /// 它必须永远走得通、且不依赖任何运行时状态。Map 是常量、查不到就退到
   /// 通用池，比一串嵌套分支更容易看出缺哪个地点。
+  /// 社交意图关键词（checkNPCConfessions 周期路径，预编译；
+  /// 与 mixin_story_engine._reSocialIntent 同模式但跨文件，按仓库惯例各自声明）。
+  static final RegExp _reSocialIntentCheck =
+      RegExp(r'(与|和|跟|找|邀|问|对话|聊天|约会|见面|散步|陪|一起|独处|深入|表白|感情|心动)');
+
   static const Map<String, List<String>> _locationSeeds = {
     '霍格沃茨': [
       '走廊尽头传来一阵急促的脚步声——有同学正抱着厚厚一摞书跑向教室，其中两本摇摇欲坠。',

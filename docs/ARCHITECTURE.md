@@ -253,6 +253,16 @@ sequenceDiagram
 - **阶段 r4-2**：好感调整 / 送礼 / 室友系统从 `mixin_relations`（2635 行）
   拆出到 `lib/mixins/mixin_relation_gifts.dart`（`GameRelationGiftsMixin`）；
   `GameRelationsMixin` 声明 `on GameRelationGiftsMixin`。
+- **阶段 r5-1**：主线剧情引擎从 `mixin_narrative`（4165 行）拆出到
+  `lib/mixins/mixin_story_engine.dart`（`GameStoryEngineMixin`，约 2000 行：
+  剧情回合分发 `runStoryTurn`/章节与结局推进/原著节点注入/图鉴扫描/
+  回合收尾 `finalizeTurn`/`settleAfterNarrative`/地点同步/`appendRecentTurn`）；
+  `GameNarrativeMixin` 声明 `on GameStoryEngineMixin`（engine 又
+  `on GameSummaryMemoryMixin`，链序 ProviderBase → Continuity → Summary →
+  Engine → Narrative）。本轮是「跨库私有可见性」教训的集中体现：
+  互相调用的回合结算链方法整体公开化（`finalizeTurn`/`applyStoryEffect`/
+  `sinkCanonNodeToMemory` 等）并归入引擎侧，narrative 只留 AI 主干。
+  纯数据结构 `StoryBeat` 迁至 `lib/models/story_progress.dart`。
 - **跨库私有可见性**：Dart 的 `_` 前缀成员在**库**级私有，跨 mixin 文件不可见。
   迁出方法被原文件调用时必须改为公开名（如 `registerCheatCommands`、
   `runConsistencyChecks`、`adjustAffection`），并在迁移时同步调用点。
@@ -261,7 +271,8 @@ sequenceDiagram
 ### ADR-013：源码扫描测试统一入口 `test/helpers/narrative_src.dart`
 
 约 30 个「接线检查」测试直接扫描 mixin 源码。为防止后续拆分让锚点集体失效，
-所有对**叙事侧 mixin**（现为 mixin_narrative + mixin_summary_memory）的
+所有对**叙事侧 mixin**（现为 mixin_narrative + mixin_story_engine +
+mixin_summary_memory，r5-1 起纳入 engine）的
 源码断言统一走 `narrativeSideSource()`；再拆文件只需在 helper 的
 `_narrativeSideFiles` 清单加一行，测试零修改。
 

@@ -59,9 +59,10 @@ lib/
 │   ├── game_provider.dart     #   ★ GameProvider = GameProviderBase + 21 个 mixin
 │   ├── game_provider_base.dart#   ★ 抽象基类 + 跨 mixin 调用声明（新跨 mixin 方法在此声明）
 │   └── app_provider.dart      #   应用级状态（API Key/游戏是否开始）
-├── mixins/       (21 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
+├── mixins/       (22 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
 │   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
+│   ├── mixin_story_engine.dart #  ★ 主线剧情引擎：回合分发/章节结局/原著节点/回合结算收尾（r5-1 拆出）
 │   ├── mixin_commands.dart    #   ★ 全部指令注册 + _handleXxx 实现（60+ 条）
 │   ├── mixin_command_cheats.dart #   ★ /cheat 家族（20+ 子命令，r3-2 拆出）
 │   ├── mixin_summary_memory.dart #   剧情摘要 + 结构化长期记忆管线（r3 拆出）
@@ -87,7 +88,7 @@ lib/
 │   └── mixin_narrative_continuity.dart # 叙事连续性/承接
 ├── prompts/      (4 文件)     # Prompt 模板（narrative/choice/summary）
 ├── services/     (7 文件)     # 外部依赖
-│   ├── ai_router.dart         #   ★ AI 路由（多 key/熔断/限流/场景绑定/超时）
+│   ├── ai_router.dart         #   ★ AI 路由（多 key 严格逐次轮换/熔断/限流/场景绑定/超时）
 │   ├── deepseek_service.dart  #   AI 调用实现（Dio）
 │   ├── npc_chat_service.dart  #   NPC 聊天（历史净化/离线兜底标记）
 │   ├── rate_limiter.dart      #   限流器

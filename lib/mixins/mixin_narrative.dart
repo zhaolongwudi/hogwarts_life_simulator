@@ -195,7 +195,7 @@ mixin GameNarrativeMixin
         // 面板型、执行结果剧情被还原成上一段（玩家看不到任何结果）。
         // 改为注册时显式声明 panel，判定不再猜（BUG-FIX）。
         final slashless = action.startsWith('/') ? action.substring(1) : action;
-        final cmdHead = slashless.split(RegExp(r'\s+')).first;
+        final cmdHead = slashless.split(_reWhitespace).first;
         final def = CommandRegistry.instance.find(cmdHead);
         final isPanelOutput =
             def?.panel == true && currentNarrative != prevNarrative;
@@ -2137,6 +2137,9 @@ $source
     }
     return false;
   }
+
+  /// 命令分发切词（parseAction 每回合，预编译）。
+  static final RegExp _reWhitespace = RegExp(r'\s+');
 
   /// 选项文本去前缀非正文噪声（processChoice 每回合，预编译）。
   static final RegExp _reLeadingNonText =

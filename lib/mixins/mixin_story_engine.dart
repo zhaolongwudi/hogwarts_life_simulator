@@ -1835,10 +1835,7 @@ mixin GameStoryEngineMixin on GameProviderBase, GameSummaryMemoryMixin {
       // 如果标签没匹配到已知别名，但标签里提到了具体位置，
       // 检查是否属于"家中"大类（卧室/花园/书房/密室/起居室 都算家中）
       if (detected == null) {
-        if (RegExp(
-          r'(家中|家里|住宅|庄园|别墅|卧室|书房|花园|密室|走廊|客厅|门厅)',
-          caseSensitive: false,
-        ).hasMatch(tag)) {
+        if (_reHomePlace.hasMatch(tag)) {
           detected = '家中·卧室';
         }
       }
@@ -1911,6 +1908,11 @@ mixin GameStoryEngineMixin on GameProviderBase, GameSummaryMemoryMixin {
       turnsAtSameLocation = 0;
     }
   }
+
+  /// 「家中」大类地点（syncLocationFromNarrative 每回合，预编译）。
+  static final RegExp _reHomePlace =
+      RegExp(r'(家中|家里|住宅|庄园|别墅|卧室|书房|花园|密室|走廊|客厅|门厅)',
+          caseSensitive: false);
 
   /// 社交意图关键词（syncLocationFromNarrative 判定"是否与人互动"用）。
   static final RegExp _reSocialIntent =
