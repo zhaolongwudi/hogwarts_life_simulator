@@ -10,6 +10,11 @@ import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -163,7 +168,7 @@ void main() {
       final limits = _codeOnly('lib/mixins/mixin_systems.dart');
       final m = RegExp(r"'spell':\s*(\d+)").firstMatch(limits);
       expect(m, isNotNull);
-      final play = _codeOnly('lib/mixins/mixin_play.dart');
+      final play = _playFamilyCode();
       expect(play.contains("dailyLimitOf('spell')"), isTrue,
           reason: '一览里写的次数不是从上限表取的');
     });

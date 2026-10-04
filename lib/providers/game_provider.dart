@@ -23,6 +23,8 @@ import '../mixins/mixin_response_choices.dart';
 import '../mixins/mixin_relations.dart';
 import '../mixins/mixin_systems.dart';
 import '../mixins/mixin_play.dart';
+import '../mixins/mixin_play_arena.dart';
+import '../mixins/mixin_play_tools.dart';
 import '../mixins/mixin_animagus.dart';
 import '../mixins/mixin_death.dart';
 import '../mixins/mixin_career.dart';
@@ -71,6 +73,8 @@ class GameProvider extends GameProviderBase
         GameRelationsMixin,
         GameSaveSystemMixin,
         GameSystemsMixin,
+        GamePlayToolsMixin,
+        GamePlayArenaMixin,
         GamePlayMixin,
         GameAnimagusMixin,
         GameDeathMixin,

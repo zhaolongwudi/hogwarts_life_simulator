@@ -4,6 +4,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/rivalry_data.dart';
 import 'package:hogwarts_life_simulator/models/npc.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 /// 造一条记仇记录，与 NPC.addGrudge 写入的结构一致。
 Map<String, dynamic> _grudge(String type, int day, {String reason = '某事'}) =>
@@ -301,19 +306,19 @@ void main() {
     });
 
     test('决斗胜利后确实会走宿敌判定', () {
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final src = _playFamilyCode();
       expect(src.contains('_maybeRivalFromDuel'), isTrue);
     });
 
     test('已经有仇的对手不再叠加', () {
       // 不打这层保护，反复赢同一个人就能把他一路顶到死敌。
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final src = _playFamilyCode();
       final fn = src.substring(src.indexOf('_maybeRivalFromDuel'));
       expect(fn.contains('rivalryTier(day) != RivalryTier.none'), isTrue);
     });
 
     test('决斗结仇是概率事件，不是必然', () {
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final src = _playFamilyCode();
       final fn = src.substring(src.indexOf('_maybeRivalFromDuel'));
       expect(fn.contains('random.nextDouble()'), isTrue);
     });

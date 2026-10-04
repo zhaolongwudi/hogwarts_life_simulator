@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/house_cup_data.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 /// lib/ 下各文件的源码，给接线断言用。
 String _src(String path) => File('lib/$path').readAsStringSync();
@@ -310,7 +315,7 @@ void main() {
       // 那些负分也永远不清零，会一路滚到下一个学年，越欠越多。
       // 现在任何积分门槛都没有了——年度榜是四院全程累计的真实排名，
       // 净分为 0 或负的玩家，自己的学院照样有基准分和对手在竞争。
-      final src = _code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       final fn = src.indexOf('void settleHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, isNot(contains('houseCupPoints <= 0')));
@@ -319,7 +324,7 @@ void main() {
     });
 
     test('结算会清零，负分不会滚到下一学年', () {
-      final src = _code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       final fn = src.indexOf('void settleHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, contains('p.houseCupPoints = 0;'));
@@ -349,7 +354,7 @@ void main() {
 
     test('静态说明里提到了日常这条途径', () {
       // 不打魁地奇的玩家点开 /学院杯，看见的全是自己做不了的事。
-      final src = _code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       final fn = src.indexOf('String formatHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, contains('日常'));
@@ -373,7 +378,7 @@ void main() {
       expect(ws, isNot(contains('housePoints')));
       expect(ws, isNot(contains('house_points')));
 
-      final play = _code('mixins/mixin_play.dart');
+      final play = _playFamilyCode();
       expect(play, isNot(contains('worldState.housePoints')));
     });
 
@@ -448,7 +453,7 @@ void main() {
     });
 
     test('加分时实时同步年度榜的玩家学院行', () {
-      final src = _code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       final fn = src.indexOf('void addHouseCupPoints');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, contains('kHouseCupBaseScore + p.houseCupPoints'),
@@ -456,7 +461,7 @@ void main() {
     });
 
     test('学年结算写入历届榜并清空当前榜', () {
-      final src = _code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       final fn = src.indexOf('void settleHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, contains('houseCupYearHistory['),

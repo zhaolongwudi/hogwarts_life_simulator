@@ -7,6 +7,11 @@ import 'package:hogwarts_life_simulator/data/era_data.dart';
 import 'package:hogwarts_life_simulator/data/game_config_rules.dart';
 import 'package:hogwarts_life_simulator/data/monthly_event_data.dart';
 import 'package:hogwarts_life_simulator/data/wand_data.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 void main() {
   // ==================== 在任校长 ====================
@@ -76,7 +81,7 @@ void main() {
     });
 
     test('杖芯修正真的进了决斗公式', () {
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final src = _playFamilyCode();
       expect(src, contains('wandCoreCastBonusFor'),
           reason: '施法成功率没算杖芯，选魔杖只是选了段描述文字');
       expect(src, contains('wandCorePowerBonusFor'));

@@ -3,6 +3,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/memory_importance_config.dart';
 import 'package:hogwarts_life_simulator/models/long_term_memory.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 /// Issue #18：长期记忆 importance 按事件类型集中配置。
 ///
@@ -109,7 +114,7 @@ void main() {
     });
 
     test('mixin_play.dart 使用 kImportance* 常量', () {
-      final content = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final content = _playFamilyCode();
       expect(content, contains('kImportanceQuestOpen'));
       expect(content, contains('kImportanceQuestDone'));
       expect(content, contains('kImportanceQuestDoneEvent'));

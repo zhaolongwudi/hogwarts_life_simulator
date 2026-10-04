@@ -19,6 +19,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/house_cup_data.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider.dart';
 import 'helpers/test_fixtures.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   // 【为什么 mock path_provider】settleHouseCup → _finishLocal → autoSave
@@ -217,13 +222,13 @@ void main() {
 
   group('Batch 11 · 接线静态断言', () {
     test('mixin_play 已 import club_data（clubById 可用）', () {
-      final src = code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       expect(src, contains("import '../data/club_data.dart';"),
           reason: 'settleHouseCup 需要 clubById 查询社团名');
     });
 
     test('settleHouseCup 内含社团荣光接入点', () {
-      final src = code('mixins/mixin_play.dart');
+      final src = _playFamilyCode();
       final fn = src.indexOf('void settleHouseCup()');
       final body = src.substring(fn, src.indexOf('\n  }', fn));
       expect(body, contains('clubContributedCupPoints'),

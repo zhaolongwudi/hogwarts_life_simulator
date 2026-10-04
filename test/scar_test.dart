@@ -6,6 +6,11 @@ import 'package:hogwarts_life_simulator/data/scar_data.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -429,8 +434,8 @@ void main() {
     test('判定的那一处不再直接读 attributes', () {
       // _attr 曾经是 (player?.attributes[key]) ?? 50，
       // 那样身上有疤也当一个完好的人算
-      final playSrc = File('lib/mixins/mixin_play.dart').readAsStringSync();
-      expect(playSrc, contains('int _attr(String key) => effectiveAttr(key);'));
+      final playSrc = _playFamilyCode();
+      expect(playSrc, contains('int attr(String key) => effectiveAttr(key);'));
     });
 
     test('/伤痕 命令已注册——疤只在落下的瞬间弹过通知，得有地方回头看', () {

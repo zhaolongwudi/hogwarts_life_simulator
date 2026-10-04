@@ -29,6 +29,11 @@ import 'package:hogwarts_life_simulator/data/npc_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -749,14 +754,14 @@ void _materialLootGroup() {
     });
 
     test('禁林采集已经用上分档而不是直接摇常见池', () {
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final src = _playFamilyCode();
       expect(src.contains('rollLootMaterial('), isTrue,
           reason: '采集点还在直接摇 kCommonLootMaterials，稀有材料永远出不来');
     });
 
     test('稀有产出有区别于常见的叙事反馈', () {
       // 拿到稀有材料和拿到一撮独角兽毛，文本不该一样
-      final src = File('lib/mixins/mixin_play.dart').readAsStringSync();
+      final src = _playFamilyCode();
       final at = src.indexOf('rollLootMaterial(');
       final around = src.substring(at, at + 700);
       expect(around.contains('rare'), isTrue);

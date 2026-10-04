@@ -26,6 +26,11 @@ import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/npc_data.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
+String _playFamilyCode() =>
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+        .map((p) => File(p).readAsStringSync()).join('\n');
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -149,13 +154,13 @@ void main() {
   });
 
   group('高收益活动每日上限（源码扫描）', () {
-    final playSrc = File('lib/mixins/mixin_play.dart').readAsStringSync();
+    final playSrc = _playFamilyCode();
     final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
 
     test('决斗必须有每日次数上限（否则声望/加隆可无限刷）', () {
       final duelBody = playSrc.substring(
         playSrc.indexOf('void duelNpc('),
-        playSrc.indexOf('// ==================== 6. 禁林探险'),
+        playSrc.indexOf('// ==================== 决斗社 · 季度赛'),
       );
       expect(duelBody.contains("canDoDaily('duel')"), isTrue);
       expect(duelBody.contains("recordDailyActivity('duel')"), isTrue);
@@ -884,7 +889,7 @@ void _unwiredFeatureGroup() {
 
     test('addHouseCupPoints 会记录来源', () {
       final src =
-          _stripComments(File('lib/mixins/mixin_play.dart').readAsStringSync());
+          _stripComments(_playFamilyCode());
       final i = src.indexOf('void addHouseCupPoints(');
       final body = src.substring(i, i + 300);
       expect(body.contains('houseCupSources[reason]'), isTrue);
@@ -892,9 +897,9 @@ void _unwiredFeatureGroup() {
 
     test('学年结算会清空来源明细', () {
       final src =
-          _stripComments(File('lib/mixins/mixin_play.dart').readAsStringSync());
+          _stripComments(_playFamilyCode());
       final i = src.indexOf('void settleHouseCup()');
-      final body = src.substring(i, src.indexOf('_finishLocal', i));
+      final body = src.substring(i, src.indexOf('finishLocal', i));
       expect(body.contains('p.houseCupPoints = 0;'), isTrue);
       expect(body.contains('houseCupSources.clear()'), isTrue);
     });
