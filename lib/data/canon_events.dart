@@ -8,7 +8,7 @@
 /// | 例子 | 开学宴、万圣节、期末考、圣诞 | 密室开启、三强争霸、天文塔之夜 |
 /// | 触发键 | `月份 + 年级 + 时代` | `年份 + 月份 + 时代` |
 /// | 复现 | 每个学年可再触发一次（`@年级` 后缀） | **全域仅一次**（`canon_` 前缀） |
-/// | 消费者 | `_checkEventAnchors`（AI 与离线共用） | `_runOfflineQuickTurn`（离线叙事拼装） |
+/// | 消费者 | `checkEventAnchors`（AI 与离线共用） | `_runOfflineQuickTurn`（离线叙事拼装） |
 ///
 /// 为什么要单独建一张表而不是往 `EventAnchor` 里塞：`EventAnchor` 的
 /// `fixedOnlyOnce` 语义是「每学年一次」，而原著大事是「整个存档一次」。

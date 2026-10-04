@@ -10,7 +10,7 @@ import 'helpers/test_fixtures.dart';
 /// 旧实现把初值写成 `lastWeekBucket = 0`——0 是 1991 年第一周的**合法桶号**，
 /// 与「尚未初始化」不是一个意思。它之所以没出事，全靠
 /// `mixin_init` / `applySaveData` 后面各补了一次正确赋值；
-/// 一旦将来有人在补值之前推进时间，`_advanceWorldClock` 就会读到 0，
+/// 一旦将来有人在补值之前推进时间，`advanceWorldClock` 就会读到 0，
 /// 一次性把 gameWeek 抬到几十，整套首周/首月好感沉淀静默失效。
 ///
 /// 修复方式：改为 `int?` + 惰性建立（`weekBucketBaseline`），
@@ -78,7 +78,7 @@ void main() {
       final week0 = gp.gameWeek;
       // 直接推进 7 天，必然跨过至少一个整周边界。
       gp.worldState.time.advanceDays(7);
-      // 触发一次时间推进结算（_advanceWorldClock 在回合结束时调用）。
+      // 触发一次时间推进结算（advanceWorldClock 在回合结束时调用）。
       if (gp.choices.isNotEmpty) {
         await gp.processChoice(gp.choices.first);
       }

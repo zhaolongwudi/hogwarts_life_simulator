@@ -1661,7 +1661,7 @@ mixin GameStoryEngineMixin on GameProviderBase, GameSummaryMemoryMixin {
   /// 不做行动关键词推断。为什么剧情模式必须这样：
   ///   · `advanceTimeForAction` 按关键词猜时长（"去图书馆查资料"可能算半天），
   ///     剧情 8 章只该跨几个月，猜出来的时间会让原著节点的月份整体错位；
-  ///   · `fastForwardDays` 内部走 `_advanceWorldClock` 全量结算（游戏周/
+  ///   · `fastForwardDays` 内部走 `advanceWorldClock` 全量结算（游戏周/
   ///     学院杯/NPC 位置/学年推进/事件锚点/月度演化），语义比"猜时长"精确得多。
   /// 把一回合的剧情节拍压成一段**给关键词系统读的中文行动串**。
   ///

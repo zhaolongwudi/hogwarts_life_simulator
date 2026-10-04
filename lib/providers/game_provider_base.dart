@@ -280,7 +280,7 @@ abstract class GameProviderBase extends ChangeNotifier
   /// 大数（1991-09-01 开学时约为 `243 ~/ 7 = 34`），用 0 当占位值是**量纲错误**：
   /// 0 代表 1991 年第一周，与"尚未初始化"完全是两回事。旧写法靠
   /// `mixin_init` / `applySaveData` 后面各补一次正确赋值来兜底，一旦将来有人在
-  /// 补值之前推进时间（开局过场、旅行耗时结算），`_advanceWorldClock` 就会
+  /// 补值之前推进时间（开局过场、旅行耗时结算），`advanceWorldClock` 就会
   /// 读到 0 并一次性把 `gameWeek` 抬到几十，整套首周/首月好感沉淀静默失效。
   ///
   /// 现在改成可空 + 访问器：`null` 显式表示"还没建立基准"，由

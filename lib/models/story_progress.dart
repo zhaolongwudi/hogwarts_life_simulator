@@ -993,7 +993,7 @@ class StoryBeat {
   /// 本回合应推进的天数（章节节拍式时间）。
   ///
   /// 【为什么由 beat 携带而不是就地推进】时间推进必须走
-  /// `_finalizeTurn → fastForwardDays → _advanceWorldClock` 这条全量结算路径
+  /// `_finalizeTurn → fastForwardDays → advanceWorldClock` 这条全量结算路径
   /// （游戏周/学院杯/NPC位置/学年推进/事件锚点/月度演化都在里面）。
   /// 在 `_advanceStory` 里就地 `advanceDays` 只会推时钟，漏掉全部结算，
   /// 而且随后 `_finalizeTurn` 还会再按关键词推一次——时间被推两遍。

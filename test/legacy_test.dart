@@ -468,11 +468,8 @@ void main() {
   // 设计不变量：有些东西是刻意不传的
   // ============================================================
   group('刻意不传的东西', () {
-    final src =
-        File('lib/mixins/mixin_systems.dart').readAsStringSync();
-    final iStart = src.indexOf('// ==================== 家族传承');
-    final iEnd = src.indexOf('@override\n  String formatFaculty()');
-    final block = src.substring(iStart, iEnd > iStart ? iEnd : src.length);
+    final block =
+        File('lib/mixins/mixin_family_legacy.dart').readAsStringSync();
 
     test('不传学业属性——那是下一代自己要学的东西', () {
       expect(block, isNot(contains('attributes[')));
@@ -502,7 +499,7 @@ void main() {
 
     test('startLegacy 真的会开一局新的（走 initializeGame）', () {
       final src =
-          File('lib/mixins/mixin_systems.dart').readAsStringSync();
+          File('lib/mixins/mixin_family_legacy.dart').readAsStringSync();
       final i = src.indexOf('Future<bool> startLegacy(');
       expect(i, greaterThan(-1));
       final body = src.substring(i, i + 900);
@@ -521,7 +518,7 @@ void main() {
 
     test('世交世仇在 NPC 建好之后才落——否则名字对不上就白给', () {
       final src = File('lib/mixins/mixin_init.dart').readAsStringSync();
-      final iNpc = src.indexOf('_initializeNPCsByEra();');
+      final iNpc = src.indexOf('initializeNPCsByEra();');
       final iLegacy = src.indexOf('applyLegacyRelations(legacy);');
       expect(iNpc, greaterThan(-1));
       expect(iLegacy, greaterThan(-1));

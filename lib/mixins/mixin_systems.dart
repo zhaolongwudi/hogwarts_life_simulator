@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../models/world_state.dart';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -26,10 +27,8 @@ import '../data/rivalry_data.dart';
 import '../data/exam_data.dart';
 import '../data/wand_data.dart';
 import '../data/faculty_data.dart';
-import '../data/legacy_data.dart';
 import '../data/worldline_data.dart';
 import '../services/ai_router.dart';
-import '../models/world_state.dart';
 import '../utils/npc_lookup.dart';
 import '../providers/game_provider_base.dart';
 import '../utils/debug_log.dart';
@@ -52,7 +51,7 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
   /// [days] 不为 null 时按整天快进（/快进 指令），否则按分钟推进。
   /// [fireAnchors] 为 false 时跳过事件锚点检测——长距离跳跃只在终点触发一次，
   /// 否则一次跳跃会灌入十几个剧情节点通知。
-  void _advanceWorldClock(int minutes, {int? days, bool fireAnchors = true}) {
+  void advanceWorldClock(int minutes, {int? days, bool fireAnchors = true}) {
     final oldMonth = worldState.time.month;
     final oldYear = worldState.time.year;
     final oldHour = worldState.time.hour;
@@ -82,7 +81,7 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
       final weeksCrossed = newBucket - baseline;
       gameWeek += weeksCrossed;
       lastWeekBucket = newBucket;
-      _resetWeeklyAffectionCaps(weeksCrossed);
+      resetWeeklyAffectionCaps(weeksCrossed);
     }
 
     // 学院杯年度榜：跨过上学日时，其他三院逐日自然增长（世界不因玩家而停转）。
@@ -131,7 +130,7 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
 
     // 事件锚点检测（按月份触发手写剧情骨架）
     if (fireAnchors) {
-      _checkEventAnchors(hourFrom: hourFrom, dayDelta: dayDelta);
+      checkEventAnchors(hourFrom: hourFrom, dayDelta: dayDelta);
     }
 
     // 孕期推进（结婚 → 备孕 → 分娩）
@@ -139,7 +138,7 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
 
     runConsistencyChecks();
 
-    _checkMonthlyEvolution(oldMonth, oldYear);
+    checkMonthlyEvolution(oldMonth, oldYear);
 
     // ====== 传闻传播：从近期世界事件中自动生成传闻 ======
     if (dayDelta > 0 && player != null) {
@@ -205,12 +204,12 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
 
   @override
   void advanceTimeForAction(String action) {
-    _advanceWorldClock(resolveActionCost(action));
+    advanceWorldClock(resolveActionCost(action));
   }
 
   /// 学院杯年度榜：其他三院按上学日逐日自然增长。
   ///
-  /// 由 `_advanceWorldClock` 跨天时调用。只算上学日（周一~周五）且只在
+  /// 由 `advanceWorldClock` 跨天时调用。只算上学日（周一~周五）且只在
   /// 学期内（第一/第二学期）增长——暑假大家都回家了，没有公开加分的
   /// 校规在跑。玩家学院的行不在这里加：它 = 基准 + 玩家本学年贡献，
   /// 由 `addHouseCupPoints` 实时同步，避免这里再加一遍把玩家学院顶飞。
@@ -547,11 +546,11 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
     var guard = 0;
     while (remaining > 0 && guard++ < 200) {
       final t = worldState.time;
-      // 每次最多走到次月 1 日：保证 _checkMonthlyEvolution 每个月都能触发
+      // 每次最多走到次月 1 日：保证 checkMonthlyEvolution 每个月都能触发
       final step = min(remaining, _daysLeftInMonth(t.year, t.month, t.day) + 1);
       // 每一步都查锚点：只查末步会把跨过的整月锚点整个吞掉
       // （月份已经过去，错过即错过——但至少要触发"本月该发生的事"）。
-      _advanceWorldClock(0, days: step, fireAnchors: true);
+      advanceWorldClock(0, days: step, fireAnchors: true);
       remaining -= step;
     }
 
@@ -1177,7 +1176,7 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
 
   /// [hourFrom] / [dayDelta] 来自本次时钟推进前的时刻，用来判断时段窗口
   /// 是不是被"跨过去"了（详见 anchorsFor 的说明）。
-  void _checkEventAnchors({int? hourFrom, int dayDelta = 0}) {
+  void checkEventAnchors({int? hourFrom, int dayDelta = 0}) {
     final p = player;
     if (p == null) return;
     if (worldState.graduated) return; // 毕业后不再触发校内锚点
@@ -1721,510 +1720,6 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
       snapshot: worldSnapshot(),
     );
   }
-
-  // ==================== 家族传承 ====================
-
-  /// 某个孩子现在几岁
-  int childAgeOf(ChildRecord child) =>
-      (worldState.time.absoluteDayIndex - child.bornAbsDay) ~/ 365;
-
-  /// 够格接棒的孩子：年满入学年龄（11 岁）
-  @override
-  List<ChildRecord> heirsOfAge() {
-    final p = player;
-    if (p == null) return const [];
-    return p.children
-        .where((c) => childAgeOf(c) >= kHeirEntranceAge)
-        .toList(growable: false);
-  }
-
-  /// 配偶的血统。找不到就当混血——总比凭空冒出个纯血强。
-  String _spouseBloodTypeOf(String name) {
-    for (final n in npcRegistry.values) {
-      if (n.name == name) return n.bloodStatus;
-    }
-    return 'halfblood';
-  }
-
-  /// 为某个孩子算出一份传承清单
-  LegacyCarryover buildLegacyFor(ChildRecord child) {
-    final p = player!;
-    final rep = p.playerReputation;
-    final surname = child.name.isNotEmpty
-        ? child.name[0]
-        : (p.name.isNotEmpty ? p.name[0] : '林'); // 坏档兜底：空名不能越界
-    final spouseBlood = _spouseBloodTypeOf(child.otherParentName);
-
-    // 世交：父母处得好的人，孩子开局就认识
-    final affections = <String, int>{};
-    for (final n in npcRegistry.values) {
-      if (n.isAlive) affections[n.name] = n.affection;
-    }
-    // 世仇：宿敌（hostile 及以上）会把梁子传下去
-    final today = worldState.time.absoluteDayIndex;
-    final rivals = npcRegistry.values
-        .where(
-          (n) =>
-              n.isAlive &&
-              n.introduced &&
-              n.rivalryTier(today).index >= RivalryTier.hostile.index,
-        )
-        .map((n) => n.name)
-        .toList(growable: false);
-
-    final age = childAgeOf(child);
-    final startYear = worldState.time.year - (age - kHeirEntranceAge);
-    final inheritance = inheritedWealth(p.galleons + p.bankGalleons);
-    final summary = summarizeParent(
-      parentName: p.name,
-      academic: rep.academic,
-      combat: rep.combat,
-      moral: rep.moral,
-      dark: rep.dark,
-      leadership: rep.leadership,
-      wasFaculty: p.facultyRankId != null,
-      worldLinePercent: (p.worldLineDeviation * 100).round(),
-    );
-
-    return LegacyCarryover(
-      heirName: child.name,
-      heirGender: child.gender,
-      surname: surname,
-      bloodType: mixBloodType(p.bloodType, spouseBlood, random.nextInt(100)),
-      familyBackground: buildFamilyBackground(
-        surname: surname,
-        parentName: p.name,
-        parentSummary: summary,
-        rivals: rivals,
-        inheritance: inheritance,
-      ),
-      reputation: inheritedReputation(
-        academic: rep.academic,
-        social: rep.social,
-        combat: rep.combat,
-        moral: rep.moral,
-        leadership: rep.leadership,
-        dark: rep.dark,
-      ),
-      allies: inheritedAllies(affections),
-      rivals: rivals,
-      inheritance: inheritance,
-      parentName: p.name,
-      startYear: startYear,
-      parentSummary: summary,
-    );
-  }
-
-  @override
-  String formatLegacy() {
-    final p = player;
-    if (p == null) return '尚未创建角色。';
-
-    // 传承闭环：显示家族代数（第 1 代不标注，传承局从第 2 代起）
-    final genTag = p.generation > 1 ? '　第 ${p.generation} 代' : '';
-
-    if (p.children.isEmpty) {
-      return '【传承】$genTag\n你还没有孩子。\n'
-          '结婚之后可以备孕，等孩子长到 $kHeirEntranceAge 岁，'
-          '就能把这一生交给他。';
-    }
-
-    final heirs = heirsOfAge();
-    if (heirs.isEmpty) {
-      final buf = StringBuffer()
-        ..writeln('【传承】还没有人够年纪接棒')
-        ..writeln();
-      for (final c in p.children) {
-        final age = childAgeOf(c);
-        buf.writeln(
-          '· ${c.name}（${c.gender}）$age 岁，'
-          '还差 ${kHeirEntranceAge - age} 年到入学年龄',
-        );
-      }
-      buf
-        ..writeln()
-        ..writeln('用 /快进 把时间推到他收到录取通知书那年。');
-      return buf.toString();
-    }
-
-    final buf = StringBuffer()
-      ..writeln('【传承】')
-      ..writeln();
-    for (final c in heirs) {
-      final legacy = buildLegacyFor(c);
-      buf
-        ..writeln(
-          '· ${c.name}（${c.gender}，${childAgeOf(c)} 岁）'
-          '　${bloodStatusLabel(legacy.bloodType)}',
-        )
-        ..writeln('  带走：${legacy.inheritance} 加隆')
-        ..writeln(
-          '  声望：学术${legacy.reputation['academic']}'
-          '｜社交${legacy.reputation['social']}'
-          '｜战斗${legacy.reputation['combat']}'
-          '｜道德${legacy.reputation['moral']}'
-          '｜领导${legacy.reputation['leadership']}',
-        );
-      if (legacy.hasAllies) {
-        buf.writeln(
-          '  世交 ${legacy.allies.length} 人：'
-          '${legacy.allies.keys.take(3).join('、')}'
-          '${legacy.allies.length > 3 ? '等' : ''}',
-        );
-      }
-      if (legacy.hasRivals) {
-        // 这一栏要单独成行并且放在最后——它是整份清单里最该被看见的东西
-        buf.writeln(
-          '  ⚠ 世仇 ${legacy.rivals.length} 人：'
-          '${legacy.rivals.take(3).join('、')}'
-          '${legacy.rivals.length > 3 ? '等' : ''}'
-          '——你结下的梁子会跟着这个姓传下去',
-        );
-      }
-      buf.writeln();
-    }
-    buf
-      ..writeln('输入 /传承 名字 把这一生交给他。')
-      ..writeln(
-        '这会开一局新的：剧情从头开始，'
-        '但你的姓、你的血统、你结下的梁子会跟着走。',
-      );
-    return buf.toString();
-  }
-
-  /// 把传承来的世交与世仇落到 NPC 身上。
-  ///
-  /// 必须在 `_initializeNPCsByEra()` 之后调——名字对不上的话，
-  /// 这两栏会静默地什么都不生效，玩家永远不会知道自己继承了什么。
-  ///
-  /// 这里**刻意不走** `updateNpcAffection`：那是一条「一次好感变化」的管线，
-  /// 会记本周增量、撞周上限（30）、记事件、发通知、甚至触发成就。
-  /// 而传承写的是**开局初始值**——它不占本周额度，也不该在开始界面
-  /// 弹出一串「本周好感已达上限」。继承上限 35 比周上限 30 还高，
-  /// 走统一入口会先被砍一刀，那传承就名不副实了。
-  @override
-  void applyLegacyRelations(LegacyCarryover legacy) {
-    final day = worldState.time.absoluteDayIndex;
-    for (final npc in npcRegistry.values) {
-      final inherited = legacy.allies[npc.name];
-      if (inherited != null) {
-        npc.affection = inherited;
-        npc.maxAffectionReached = inherited;
-        npc.introduced = true; // 你从小就认识他
-        continue;
-      }
-      if (legacy.rivals.contains(npc.name)) {
-        // 宿敌分靠 grudges 推，一次「积怨」是 18 分（grudge 档门槛 15）。
-        // 七成的梁子传下来，正好够让孩子一进校门就被人另眼相看——
-        // 但还不至于开局就有人要他的命，那是上一代自己的分量。
-        npc.affection = -20;
-        npc.introduced = true;
-        npc.addGrudge('accumulated', '父辈的旧账', day);
-      }
-    }
-  }
-
-  @override
-  Future<bool> startLegacy(String childName) async {
-    final p = player;
-    if (p == null) return false;
-    ChildRecord? heir;
-    for (final c in heirsOfAge()) {
-      if (c.name == childName) heir = c;
-    }
-    if (heir == null) return false;
-
-    final legacy = buildLegacyFor(heir);
-    // 传承闭环：家族代数 +1——孩子是"第 N+1 代"，多周目有了刻度。
-    // initializeGame 重建 player 后赋值（父辈代数在重建前先取出）。
-    final parentGeneration = p.generation;
-    await initializeGame(
-      name: legacy.heirName,
-      bloodStatus: legacy.bloodType,
-      birthLocation: p.birthLocation,
-      personalityTraits: heir.traits.take(3).toList(),
-      gender: legacy.heirGender,
-      familyBackground: legacy.familyBackground,
-      legacy: legacy,
-    );
-    player!.generation = parentGeneration + 1;
-    return true;
-  }
-
-  @override
-  String formatFaculty() {
-    final p = player;
-    if (p == null) return '尚未创建角色。';
-    final rankId = p.facultyRankId;
-
-    if (rankId == null) {
-      final e = evaluateFacultyOffer();
-      final buf = StringBuffer()..writeln('【教职】尚未任教');
-      if (p.facultyOfferDeclined) {
-        buf
-          ..writeln()
-          ..writeln('你婉拒过霍格沃茨的留校邀请。那扇门不会再开第二次。');
-        return buf.toString();
-      }
-      if (!worldState.graduated) {
-        buf
-          ..writeln()
-          ..writeln('毕业时若够格，会收到留校邀请。目前差在：');
-      } else {
-        buf
-          ..writeln()
-          ..writeln('你没能拿到那封邀请信。差在：');
-      }
-      for (final (label, ok) in e.checks) {
-        buf.writeln('${ok ? '✅' : '⬜'} $label');
-      }
-      buf
-        ..writeln()
-        ..writeln(
-          '你最拿得出手的一门课是「${e.subject}」。'
-          '它就是你将来会被问到的那门课。',
-        );
-      if (e.allies.isNotEmpty) {
-        buf.writeln('愿意替你说话的教授：${e.allies.join('、')}。');
-      }
-      return buf.toString();
-    }
-
-    final def = rankDefById(rankId);
-    if (def == null) return '教职数据缺失（职级已下线），请联系开发者。';
-    final buf = StringBuffer()
-      ..writeln('【教职】${p.facultySubject ?? ''}·${def.title}')
-      ..writeln('任教年限：${p.facultyServiceYears} 年　年薪：${def.annualPay} 加隆')
-      ..writeln()
-      ..writeln(def.duty)
-      ..writeln()
-      ..writeln('【晋升】')
-      ..writeln(
-        promotionHintFor(
-          current: def.rank,
-          serviceYears: p.facultyServiceYears,
-          academic: p.playerReputation.academic,
-          leadership: p.playerReputation.leadership,
-        ),
-      );
-    return buf.toString();
-  }
-
-  void _resetWeeklyAffectionCaps([int weeksCrossed = 1]) {
-    for (final npc in npcRegistry.values) {
-      npc.affectionGainedThisWeek = 0;
-    }
-    debugLog('📊 新的一周开始：好感周增量已重置');
-    _applyAffectionDrift(weeksCrossed);
-  }
-
-  /// 好感维系衰减：关系不经营是会淡的。
-  ///
-  /// 第九次审查前，好感只有「沉淀」（涨得慢）没有「维系」（不联系会回落），
-  /// 玩家可以把一排 NPC 刷到 85+ 然后放着不管——集邮式社交，
-  /// 关系网后期失真，也跟「NPC 有自己的生活」的设定矛盾。
-  ///
-  /// 规则（常量在 Balance）：
-  ///  - 连续 [Balance.affectionDriftIdleDays] 天没有任何好感互动后，
-  ///    每个游戏周自然转淡 1~2 点；
-  ///  - 只淡正好感，且在 [Balance.affectionDriftFloor]（「好感」段下沿）停住：
-  ///    会变生分，不会淡回素不相识；
-  ///  - 豁免：持有「信任锁」的（老朋友不联系也不会变陌生）、
-  ///    当前恋人、未登场的、已去世的、负好感（记恨不随时间消，那是宿敌系统的事）；
-  ///  - 快进跨多周时按实际跨过的周数结算，但每人每次最多补 4 周，
-  ///    防止一次长跳过把一段关系直接跳没。
-  void _applyAffectionDrift(int weeksCrossed) {
-    if (weeksCrossed <= 0) return;
-    final p = player;
-    final today = worldState.time.absoluteDayIndex;
-    final decayWeeksCap = weeksCrossed.clamp(1, 4);
-    final drifted = <String>[];
-
-    for (final npc in npcRegistry.values) {
-      if (!npc.isAlive || !npc.introduced) continue;
-      if (npc.affection <= Balance.affectionDriftFloor) continue;
-      if (npc.hasLock('信任锁')) continue;
-      if (p != null && p.loveState.partnerId == npc.id) continue;
-      // -1 = 老存档/从未互动：按刚刚互动过处理，豁免（见 NPC 字段注释）
-      if (npc.lastAffectionTouchDay < 0) continue;
-
-      final idleDays = today - npc.lastAffectionTouchDay;
-      if (idleDays < Balance.affectionDriftIdleDays) continue;
-
-      // idle 超过宽限期后，每多一周淡一次；本次跨了几周就最多补几周
-      final overdueWeeks = (idleDays - Balance.affectionDriftIdleDays) ~/ 7 + 1;
-      final weeks = overdueWeeks < decayWeeksCap ? overdueWeeks : decayWeeksCap;
-
-      var total = 0;
-      for (var i = 0; i < weeks; i++) {
-        total +=
-            Balance.affectionDriftPerWeekMin +
-            random.nextInt(
-              Balance.affectionDriftPerWeekMax -
-                  Balance.affectionDriftPerWeekMin +
-                  1,
-            );
-      }
-      final before = npc.affection;
-      npc.affection = (npc.affection - total).clamp(
-        Balance.affectionDriftFloor,
-        100,
-      );
-      if (npc.affection != before) {
-        syncRelationshipLevel(npc);
-        drifted.add(npc.name);
-        // P1-10 观测日志：衰减体感/好感通胀速度留待真实数据调参，
-        // 记录每次衰减的 NPC/天数/幅度，供后续根据实际档位校准
-        // affectionDriftPerWeekMin/Max。
-        if (kDebugMode) {
-          debugLog(
-            '[好感衰减] ${npc.name}: $before → ${npc.affection}'
-            '（闲置 $idleDays 天，结算 $weeks 周，合计 -$total）',
-          );
-        }
-      }
-    }
-
-    if (drifted.isNotEmpty) {
-      // 聚合播报：一次跨多周时逐个刷通知是惩罚玩家，一句话说清即可
-      final shown = drifted.take(3).join('、');
-      final more = drifted.length > 3 ? ' 等 ${drifted.length} 人' : '';
-      final text = '💨 有些日子没和 $shown$more 联系了，彼此似乎都生分了一点';
-      notifications.add(text);
-      worldState.addNarrativeEvent(text, turn: turnCount);
-    }
-
-    // 传闻时间衰减：超过 30 天的旧闻自动淡出（舆论不是永久档案）
-    _decayRumors();
-  }
-
-  /// 传闻衰减：旧闻（超过 30 个游戏日）从传闻列表里淡出。
-  void _decayRumors() {
-    final p = player;
-    if (p == null || p.rumors.isEmpty) return;
-    final today = worldState.time.absoluteDayIndex;
-    final before = p.rumors.length;
-    p.rumors.removeWhere((r) {
-      final d = p.rumorDates[r];
-      if (d == null) return false; // 老存档无日期：保留
-      return today - d > 30;
-    });
-    if (p.rumors.length != before) {
-      p.rumorDates.removeWhere((k, _) => !p.rumors.contains(k));
-      debugLog('📰 传闻衰减：${before - p.rumors.length} 条旧闻淡出');
-    }
-  }
-
-  void _checkMonthlyEvolution(int oldMonth, int oldYear) {
-    final newMonth = worldState.time.month;
-    final newYear = worldState.time.year;
-    if (newMonth != oldMonth || newYear != oldYear) {
-      _generateMonthlyEvent(newMonth, newYear);
-    }
-  }
-
-  /// [e] 的互斥伙伴里，有没有谁是在 [kMutuallyExclusiveMonths] 个月内刚播过的。
-  bool _monthlyEventBlockedByExclusive(MonthlyEventDef e, int monthIndex) {
-    for (final otherId in e.mutuallyExclusiveIds) {
-      final lastAt = worldState.monthlyEventFiredAt[otherId];
-      if (lastAt == null) continue;
-      if (monthIndex - lastAt < kMutuallyExclusiveMonths) return true;
-    }
-    return false;
-  }
-
-  /// [e] 本次是否不该参与抽取（自身重复冷却 + 互斥窗口）。
-  bool _monthlyEventOnCooldown(MonthlyEventDef e, int monthIndex) {
-    final lastAt = worldState.monthlyEventFiredAt[e.id];
-    if (lastAt != null &&
-        monthIndex - lastAt < MonthlyEventDef.repeatCooldownMonths) {
-      return true;
-    }
-    return _monthlyEventBlockedByExclusive(e, monthIndex);
-  }
-
-  void _generateMonthlyEvent(int month, int year) {
-    // R6：月度事件池数据化（带权重、季节筛选、基础概率）
-    final seasonTags = seasonTagsForMonth(month);
-    // 月份序号，用来算"这条多久之前播过"
-    final monthIndex = year * 12 + month;
-
-    // 1) 季节匹配 + 基础概率过滤 + 去重/互斥过滤
-    //
-    // 以前这里每次跨月都从整池重抽：上个月刚播过「魔法部宣布新一轮教育
-    // 改革」，这个月原样再来一遍，玩家一眼就能看出世界是假的。
-    // 现在按两项规则剔除：
-    //   a) 同一条事件 [MonthlyEventDef.repeatCooldownMonths] 个月内不重复；
-    //   b) mutuallyExclusiveIds 里写的事件，在 [kMutuallyExclusiveMonths]
-    //      个月内被抽中过的话，本条本次不参与。
-    final candidates = <MonthlyEventDef>[];
-    final rand = random;
-    for (final e in monthlyEventPool) {
-      final seasonMatch =
-          e.seasonTags.isEmpty ||
-          e.seasonTags.any((s) => seasonTags.contains(s));
-      if (!seasonMatch) continue;
-      if (e.baseChance < 1.0 && rand.nextDouble() > e.baseChance) continue;
-      if (_monthlyEventOnCooldown(e, monthIndex)) continue;
-      candidates.add(e);
-    }
-    // 全被冷却挡掉了（长局后期常见）：放宽到只保留互斥，忽略重复冷却，
-    // 保证每个月总有一条世界新闻，而不是静悄悄地什么都不发生。
-    if (candidates.isEmpty) {
-      for (final e in monthlyEventPool) {
-        final seasonMatch =
-            e.seasonTags.isEmpty ||
-            e.seasonTags.any((s) => seasonTags.contains(s));
-        if (!seasonMatch) continue;
-        if (_monthlyEventBlockedByExclusive(e, monthIndex)) continue;
-        candidates.add(e);
-      }
-    }
-    if (candidates.isEmpty) return;
-
-    // 2) 权重抽取
-    int totalWeight = 0;
-    for (final e in candidates) {
-      totalWeight += e.weight > 0 ? e.weight : 1;
-    }
-    int pick = rand.nextInt(totalWeight);
-    MonthlyEventDef? selected;
-    for (final e in candidates) {
-      final w = e.weight > 0 ? e.weight : 1;
-      if (pick < w) {
-        selected = e;
-        break;
-      }
-      pick -= w;
-    }
-    selected ??= candidates.last;
-
-    // 3) 记账：下次抽取时靠这条记录做去重与互斥判定
-    worldState.monthlyEventFiredAt[selected.id] = monthIndex;
-
-    final event = '【$year年$month月·月度世界演化】${selected.text}';
-
-    worldState.recentEvents.insert(0, NarrativeEvent(event, turn: turnCount));
-    if (worldState.recentEvents.length > 50) {
-      worldState.recentEvents.removeLast();
-    }
-
-    notifications.add('🌍 $event');
-    worldState.addNarrativeEvent('🌍 $event', turn: turnCount);
-  }
-
-  @override
-  void fastForwardTime(int days) {
-    // P0-3 收敛：统一委托 fastForwardDays（内部走 _advanceWorldClock 全量结算：
-    // 游戏周/学院杯/NPC位置/学年推进/事件锚点/孕期/月度演化/传闻）。
-    // 旧的独立实现按天循环，漏了 NPC 位置刷新、孕期推进、学院杯对手分、
-    // 传闻生成，且 _checkEventAnchors() 用默认 hourFrom/dayDelta 匹配，
-    // 快进跨过的事件窗口会整体错位——两套实现因此不等价。
-    // 注意：fastForwardDays 对超大天数有 guard 上限（200 步内每月推进），
-    // 因此这里的超大值（如 /cheat 时间 999999）不会冻结主线程。
-    fastForwardDays(days);
-  }
-
   // ==================== NPC 状态更新 ====================
 
   @override
@@ -2810,4 +2305,197 @@ mixin GameSystemsMixin on GameProviderBase, GameSaveSystemMixin {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
+  void resetWeeklyAffectionCaps([int weeksCrossed = 1]) {
+    for (final npc in npcRegistry.values) {
+      npc.affectionGainedThisWeek = 0;
+    }
+    debugLog('📊 新的一周开始：好感周增量已重置');
+    _applyAffectionDrift(weeksCrossed);
+  }
+  void checkMonthlyEvolution(int oldMonth, int oldYear) {
+    final newMonth = worldState.time.month;
+    final newYear = worldState.time.year;
+    if (newMonth != oldMonth || newYear != oldYear) {
+      _generateMonthlyEvent(newMonth, newYear);
+    }
+  }
+  void _applyAffectionDrift(int weeksCrossed) {
+    if (weeksCrossed <= 0) return;
+    final p = player;
+    final today = worldState.time.absoluteDayIndex;
+    final decayWeeksCap = weeksCrossed.clamp(1, 4);
+    final drifted = <String>[];
+
+    for (final npc in npcRegistry.values) {
+      if (!npc.isAlive || !npc.introduced) continue;
+      if (npc.affection <= Balance.affectionDriftFloor) continue;
+      if (npc.hasLock('信任锁')) continue;
+      if (p != null && p.loveState.partnerId == npc.id) continue;
+      // -1 = 老存档/从未互动：按刚刚互动过处理，豁免（见 NPC 字段注释）
+      if (npc.lastAffectionTouchDay < 0) continue;
+
+      final idleDays = today - npc.lastAffectionTouchDay;
+      if (idleDays < Balance.affectionDriftIdleDays) continue;
+
+      // idle 超过宽限期后，每多一周淡一次；本次跨了几周就最多补几周
+      final overdueWeeks = (idleDays - Balance.affectionDriftIdleDays) ~/ 7 + 1;
+      final weeks = overdueWeeks < decayWeeksCap ? overdueWeeks : decayWeeksCap;
+
+      var total = 0;
+      for (var i = 0; i < weeks; i++) {
+        total +=
+            Balance.affectionDriftPerWeekMin +
+            random.nextInt(
+              Balance.affectionDriftPerWeekMax -
+                  Balance.affectionDriftPerWeekMin +
+                  1,
+            );
+      }
+      final before = npc.affection;
+      npc.affection = (npc.affection - total).clamp(
+        Balance.affectionDriftFloor,
+        100,
+      );
+      if (npc.affection != before) {
+        syncRelationshipLevel(npc);
+        drifted.add(npc.name);
+        // P1-10 观测日志：衰减体感/好感通胀速度留待真实数据调参，
+        // 记录每次衰减的 NPC/天数/幅度，供后续根据实际档位校准
+        // affectionDriftPerWeekMin/Max。
+        if (kDebugMode) {
+          debugLog(
+            '[好感衰减] ${npc.name}: $before → ${npc.affection}'
+            '（闲置 $idleDays 天，结算 $weeks 周，合计 -$total）',
+          );
+        }
+      }
+    }
+
+    if (drifted.isNotEmpty) {
+      // 聚合播报：一次跨多周时逐个刷通知是惩罚玩家，一句话说清即可
+      final shown = drifted.take(3).join('、');
+      final more = drifted.length > 3 ? ' 等 ${drifted.length} 人' : '';
+      final text = '💨 有些日子没和 $shown$more 联系了，彼此似乎都生分了一点';
+      notifications.add(text);
+      worldState.addNarrativeEvent(text, turn: turnCount);
+    }
+
+    // 传闻时间衰减：超过 30 天的旧闻自动淡出（舆论不是永久档案）
+    _decayRumors();
+  }
+  void _decayRumors() {
+    final p = player;
+    if (p == null || p.rumors.isEmpty) return;
+    final today = worldState.time.absoluteDayIndex;
+    final before = p.rumors.length;
+    p.rumors.removeWhere((r) {
+      final d = p.rumorDates[r];
+      if (d == null) return false; // 老存档无日期：保留
+      return today - d > 30;
+    });
+    if (p.rumors.length != before) {
+      p.rumorDates.removeWhere((k, _) => !p.rumors.contains(k));
+      debugLog('📰 传闻衰减：${before - p.rumors.length} 条旧闻淡出');
+    }
+  }
+  void _generateMonthlyEvent(int month, int year) {
+    // R6：月度事件池数据化（带权重、季节筛选、基础概率）
+    final seasonTags = seasonTagsForMonth(month);
+    // 月份序号，用来算"这条多久之前播过"
+    final monthIndex = year * 12 + month;
+
+    // 1) 季节匹配 + 基础概率过滤 + 去重/互斥过滤
+    //
+    // 以前这里每次跨月都从整池重抽：上个月刚播过「魔法部宣布新一轮教育
+    // 改革」，这个月原样再来一遍，玩家一眼就能看出世界是假的。
+    // 现在按两项规则剔除：
+    //   a) 同一条事件 [MonthlyEventDef.repeatCooldownMonths] 个月内不重复；
+    //   b) mutuallyExclusiveIds 里写的事件，在 [kMutuallyExclusiveMonths]
+    //      个月内被抽中过的话，本条本次不参与。
+    final candidates = <MonthlyEventDef>[];
+    final rand = random;
+    for (final e in monthlyEventPool) {
+      final seasonMatch =
+          e.seasonTags.isEmpty ||
+          e.seasonTags.any((s) => seasonTags.contains(s));
+      if (!seasonMatch) continue;
+      if (e.baseChance < 1.0 && rand.nextDouble() > e.baseChance) continue;
+      if (_monthlyEventOnCooldown(e, monthIndex)) continue;
+      candidates.add(e);
+    }
+    // 全被冷却挡掉了（长局后期常见）：放宽到只保留互斥，忽略重复冷却，
+    // 保证每个月总有一条世界新闻，而不是静悄悄地什么都不发生。
+    if (candidates.isEmpty) {
+      for (final e in monthlyEventPool) {
+        final seasonMatch =
+            e.seasonTags.isEmpty ||
+            e.seasonTags.any((s) => seasonTags.contains(s));
+        if (!seasonMatch) continue;
+        if (_monthlyEventBlockedByExclusive(e, monthIndex)) continue;
+        candidates.add(e);
+      }
+    }
+    if (candidates.isEmpty) return;
+
+    // 2) 权重抽取
+    int totalWeight = 0;
+    for (final e in candidates) {
+      totalWeight += e.weight > 0 ? e.weight : 1;
+    }
+    int pick = rand.nextInt(totalWeight);
+    MonthlyEventDef? selected;
+    for (final e in candidates) {
+      final w = e.weight > 0 ? e.weight : 1;
+      if (pick < w) {
+        selected = e;
+        break;
+      }
+      pick -= w;
+    }
+    selected ??= candidates.last;
+
+    // 3) 记账：下次抽取时靠这条记录做去重与互斥判定
+    worldState.monthlyEventFiredAt[selected.id] = monthIndex;
+
+    final event = '【$year年$month月·月度世界演化】${selected.text}';
+
+    worldState.recentEvents.insert(0, NarrativeEvent(event, turn: turnCount));
+    if (worldState.recentEvents.length > 50) {
+      worldState.recentEvents.removeLast();
+    }
+
+    notifications.add('🌍 $event');
+    worldState.addNarrativeEvent('🌍 $event', turn: turnCount);
+  }
+
+  @override
+  void fastForwardTime(int days) {
+    // P0-3 收敛：统一委托 fastForwardDays（内部走 advanceWorldClock 全量结算：
+    // 游戏周/学院杯/NPC位置/学年推进/事件锚点/孕期/月度演化/传闻）。
+    // 旧的独立实现按天循环，漏了 NPC 位置刷新、孕期推进、学院杯对手分、
+    // 传闻生成，且 checkEventAnchors() 用默认 hourFrom/dayDelta 匹配，
+    // 快进跨过的事件窗口会整体错位——两套实现因此不等价。
+    // 注意：fastForwardDays 对超大天数有 guard 上限（200 步内每月推进），
+    // 因此这里的超大值（如 /cheat 时间 999999）不会冻结主线程。
+    fastForwardDays(days);
+  }
+
+  bool _monthlyEventOnCooldown(MonthlyEventDef e, int monthIndex) {
+    final lastAt = worldState.monthlyEventFiredAt[e.id];
+    if (lastAt != null &&
+        monthIndex - lastAt < MonthlyEventDef.repeatCooldownMonths) {
+      return true;
+    }
+    return _monthlyEventBlockedByExclusive(e, monthIndex);
+  }
+
+  bool _monthlyEventBlockedByExclusive(MonthlyEventDef e, int monthIndex) {
+    for (final otherId in e.mutuallyExclusiveIds) {
+      final lastAt = worldState.monthlyEventFiredAt[otherId];
+      if (lastAt == null) continue;
+      if (monthIndex - lastAt < kMutuallyExclusiveMonths) return true;
+    }
+    return false;
+  }
+
 }

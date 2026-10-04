@@ -557,6 +557,8 @@ void _codeHygieneGroup() {
       'lib/mixins/mixin_command_cheats.dart',
       'lib/mixins/mixin_systems.dart',
       'lib/mixins/mixin_game_save.dart',
+      // r6-5: 家族传承写的是开局初始值，不占周好感额度（刻意绕过，见方法注释）
+      'lib/mixins/mixin_family_legacy.dart',
     };
 
     test('mixins/screens 下不得绕过 updateNpcAffection', () {

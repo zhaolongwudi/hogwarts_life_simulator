@@ -412,10 +412,10 @@ void main() {
 
     test('其它三院逐日增长挂在跨天逻辑里', () {
       final src = _code('mixins/mixin_systems.dart');
-      final fn = src.indexOf('void _advanceWorldClock');
+      final fn = src.indexOf('void advanceWorldClock');
       expect(fn, greaterThan(-1));
       expect(src.indexOf('_accumulateHouseCupRivals(dayDelta)', fn), greaterThan(fn),
-          reason: '_accumulateHouseCupRivals 没在 _advanceWorldClock 里调用');
+          reason: '_accumulateHouseCupRivals 没在 advanceWorldClock 里调用');
       expect(src.indexOf('void _accumulateHouseCupRivals', fn), greaterThan(-1),
           reason: '_accumulateHouseCupRivals 没有定义');
     });

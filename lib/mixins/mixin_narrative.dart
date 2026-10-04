@@ -1250,8 +1250,8 @@ ${buildNarrativeRules(turn: turnCount)}
     finalizeTurn(currentNarrative, action);
 
     // ====== 离线模式补齐关键事件：将月度/学年事件融入叙事 ======
-    // finalizeTurn → advanceTimeForAction → _advanceWorldClock 已在上面触发
-    // 了 _checkMonthlyEvolution / _checkEventAnchors 等事件检测，
+    // finalizeTurn → advanceTimeForAction → advanceWorldClock 已在上面触发
+    // 了 checkMonthlyEvolution / checkEventAnchors 等事件检测，
     // 但事件文本只进了 notifications 列表，没有写进 currentNarrative。
     // 这里将最新的一条世界事件追加到叙事末尾，让离线模式也有"世界在动"的感觉。
     {
@@ -1297,7 +1297,7 @@ ${buildNarrativeRules(turn: turnCount)}
     //      混用会让 1991 年发生过的密室在 1992 年又冒出来。
     //   2. 与 EventAnchor **共用** firedAnchorIds 做去重（id 带 `canon_` 前缀），
     //      避免两个系统各记一份、存档里出现同义的两套已触发集合。
-    //   3. 每回合最多注入一条，与 _checkEventAnchors 的节流口径一致。
+    //   3. 每回合最多注入一条，与 checkEventAnchors 的节流口径一致。
     _injectCanonEventIntoOfflineNarrative();
 
     // ====== P6 本地行动后果引擎 ======
