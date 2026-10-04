@@ -17,6 +17,7 @@ import '../mixins/mixin_story_engine.dart';
 import '../mixins/mixin_relation_gifts.dart';
 import '../mixins/mixin_game_save.dart';
 import '../mixins/mixin_response.dart';
+import '../mixins/mixin_response_fallback.dart';
 import '../mixins/mixin_response_affection.dart';
 import '../mixins/mixin_response_choices.dart';
 import '../mixins/mixin_relations.dart';
@@ -64,6 +65,7 @@ class GameProvider extends GameProviderBase
         GameCommandsMixin,
         GameResponseChoiceMixin,
         GameResponseAffectionMixin,
+        GameResponseFallbackMixin,
         GameResponseMixin,
         GameRelationGiftsMixin,
         GameRelationsMixin,
