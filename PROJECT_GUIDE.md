@@ -56,13 +56,19 @@ lib/
 │   ├── game_systems.dart      #   系统结构（GameChoice 等）
 │   └── long_term_memory.dart  #   ★ 长期记忆（KeyFactRecord，T0 永不遗忘层）
 ├── providers/    (3 文件)     # 状态管理与游戏主逻辑组装
-│   ├── game_provider.dart     #   ★ GameProvider = GameProviderBase + 21 个 mixin
+│   ├── game_provider.dart     #   ★ GameProvider = GameProviderBase + 27 个 mixin（with 链按依赖排序，遵守 ADR-001 on 链单向）
 │   ├── game_provider_base.dart#   ★ 抽象基类 + 跨 mixin 调用声明（新跨 mixin 方法在此声明）
 │   └── app_provider.dart      #   应用级状态（API Key/游戏是否开始）
-├── mixins/       (22 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
+├── mixins/       (32 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
 │   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
 │   ├── mixin_story_engine.dart #  ★ 主线剧情引擎：回合分发/章节结局/原著节点/回合结算收尾（r5-1 拆出）
+│   ├── mixin_response_fallback.dart #  降级叙事与备选选项生成（零 AI，r6-1 拆出）
+│   ├── mixin_play_tools.dart   #  玩法通用结算工具（finishLocal/物品/属性，r6-2 拆出）
+│   ├── mixin_play_arena.dart   #  竞技玩法：魁地奇/决斗/魔药部/快讯社（r6-2 拆出）
+│   ├── mixin_commands_extras.dart # 命令扩展：周计划/守护神/声望/目标/终章/信件（r6-3 拆出）
+│   ├── mixin_relations_intimate.dart # 亲密关系：骨科模式 + NPC 主动表白（r6-4 拆出）
+│   ├── mixin_family_legacy.dart #  家族传承：结婚/子嗣/世代遗产（r6-5 拆出）
 │   ├── mixin_commands.dart    #   ★ 全部指令注册 + _handleXxx 实现（60+ 条）
 │   ├── mixin_command_cheats.dart #   ★ /cheat 家族（20+ 子命令，r3-2 拆出）
 │   ├── mixin_summary_memory.dart #   剧情摘要 + 结构化长期记忆管线（r3 拆出）

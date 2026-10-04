@@ -268,6 +268,26 @@ sequenceDiagram
   `runConsistencyChecks`、`adjustAffection`），并在迁移时同步调用点。
 - 后续拆分沿用同一模式：**行为零变化、测试全绿后才动下一刀**。
 
+**r6（2026-10）第六轮 · 五连拆**：
+- r6-1 `mixin_response` 2552→1481，降级叙事/备选选项迁出（`mixin_response_fallback`，
+  1083 行，零 AI 调用；`GameResponseFallbackMixin on GameResponseChoiceMixin`）。
+- r6-2 `mixin_play` 2414→1577：通用结算工具提为 `mixin_play_tools`（111 行），
+  竞技玩法（魁地奇/决斗/魔药部/快讯社）迁出 `mixin_play_arena`（760 行，
+  `on GamePlayToolsMixin`）。
+- r6-3 `mixin_commands` 2640→1687：命令扩展（周计划/守护神/声望/目标/终章/信件）
+  迁出 `mixin_commands_extras`（969 行，`on GameCommandsMixin`）；被注册表 handler
+  调用的私有方法公开化（`formatUnknownCommand`/`suggestCommands` 等）。
+- r6-4 `mixin_relations` 2367→1576：骨科模式 + NPC 主动表白迁出
+  `mixin_relations_intimate`（806 行，`on GameRelationsMixin`；骨科序列化协议
+  achievement id 'bone_mode' 保持原名）。
+- r6-5 `mixin_systems` 2814→2501：家族传承迁出 `mixin_family_legacy`（332 行，
+  与 systems 平级挂 with 链）；时间推进/月度世界演化结算归属回正 systems
+  （`fastForwardTime`→`fastForwardDays` 委托链保持单一入口）。
+- 教训：**迁移方向要顺着依赖**——被拆块调用的块外私有（时间/NPC 工具）留在原处即可；
+  块内定义但被块外月/周结算调用的方法（`checkMonthlyEvolution` 等）归属原处，
+  硬拆会拖出整条依赖链。
+
+
 ### ADR-013：源码扫描测试统一入口 `test/helpers/narrative_src.dart`
 
 约 30 个「接线检查」测试直接扫描 mixin 源码。为防止后续拆分让锚点集体失效，
@@ -275,6 +295,13 @@ sequenceDiagram
 mixin_summary_memory，r5-1 起纳入 engine）的
 源码断言统一走 `narrativeSideSource()`；再拆文件只需在 helper 的
 `_narrativeSideFiles` 清单加一行，测试零修改。
+
+r6 起扫描目标扩展为「家族拼接」模式：拆分涉及文件改由测试内本地 helper 拼接读取
+（`_playFamilyCode` = play+tools+arena、`_commandsFamilyCode` = commands+extras、
+`_relationsFamilyCode` = relations+intimate、progression_fix 的 `_playFamilyCode`）。
+新拆文件时：若既有扫描测试锚点落在被迁块内，把测试的 `File('lib/mixins/x.dart')`
+替换为对应 family helper 即可（或像 r6-5 给白名单/扫描路径加一行）。
+
 
 ### ADR-014：AI 输出协议结构化现状与方向
 
