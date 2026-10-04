@@ -26,6 +26,12 @@ import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/npc_data.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-4: mixin_relations 拆分后，扫描目标 = relations + intimate 两文件拼接
+String _relationsFamilyCode() => [
+      'lib/mixins/' 'mixin_relations.dart',
+      'lib/mixins/' 'mixin_relations_intimate.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 // r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
 String _playFamilyCode() =>
     ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
@@ -265,7 +271,7 @@ void _contentGroup() {
     }
 
     test('6 张拉郎配 CG 全部登记在 _shipCgIds', () {
-      final relSrc = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+      final relSrc = _relationsFamilyCode();
       final start = relSrc.indexOf('_shipCgIds = [');
       final end = relSrc.indexOf('];', start);
       final block = relSrc.substring(start, end);
@@ -276,7 +282,7 @@ void _contentGroup() {
   });
 
   group('拉郎配推进规则', () {
-    final relSrc = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+    final relSrc = _relationsFamilyCode();
 
     test('必须两人同时出现才加羁绊（防止挂机刷满）', () {
       final start = relSrc.indexOf('void advanceShippings(');
@@ -297,7 +303,7 @@ void _contentGroup() {
   });
 
   group('婚姻 / 生育链路', () {
-    final relSrc = File('lib/mixins/mixin_relations.dart').readAsStringSync();
+    final relSrc = _relationsFamilyCode();
     final sysSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
     final cmdSrc = File('lib/mixins/mixin_commands.dart').readAsStringSync();
 
@@ -2312,7 +2318,7 @@ void _loveReputationGroup() {
     });
 
     test('接受表白时会结算恋爱声望', () {
-      final src = _codeOnly('lib/mixins/mixin_relations.dart');
+      final src = _relationsFamilyCode();
       expect(src, contains('_applyLoveReputation'));
       expect(src, contains('loveEffectApplies'));
       // 只在关系确立那一次结算，订婚/结婚不重复计
@@ -2353,7 +2359,7 @@ void _worldlineGroup() {
       expect(_codeOnly('lib/mixins/mixin_systems.dart'),
           contains('addTimelineBranch'),
           reason: '毕业是不可逆节点，该记一笔');
-      expect(_codeOnly('lib/mixins/mixin_relations.dart'),
+      expect(_relationsFamilyCode(),
           contains('addTimelineBranch'),
           reason: '成婚是不可逆节点，该记一笔');
     });
@@ -2376,7 +2382,7 @@ void _worldlineGroup() {
       // 真正生效的那张表还在
       expect(_codeOnly('lib/data/game_config_rules.dart'),
           contains('classAccidentPool'));
-      expect(_codeOnly('lib/mixins/mixin_relations.dart'),
+      expect(_relationsFamilyCode(),
           contains('classAccidentPool'));
     });
   });
