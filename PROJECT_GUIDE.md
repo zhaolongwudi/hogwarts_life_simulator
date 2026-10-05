@@ -61,8 +61,10 @@ lib/
 │   └── app_provider.dart      #   应用级状态（API Key/游戏是否开始）
 ├── mixins/       (32 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
+│   ├── mixin_narrative_canon.dart # 正典注入与叙事净化：原著节点本地注入/事实冲突过滤（r8-1 拆出）
 │   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
 │   ├── mixin_story_wiring.dart   # 剧情效果接线：StoryEffect 应用/世界路由/正典记忆下沉（r7-3 拆出）
+│   ├── mixin_story_round_wrap.dart # 地点与回合收尾：停滞计数/收藏扫描/表白/世界线偏移（r8-3 拆出）
 │   ├── mixin_story_engine.dart #  ★ 主线剧情引擎：回合分发/章节结局/原著节点/回合结算收尾（r5-1 拆出）
 │   ├── mixin_response_fallback.dart #  降级叙事与备选选项生成（零 AI，r6-1 拆出）
 │   ├── mixin_play_tools.dart   #  玩法通用结算工具（finishLocal/物品/属性，r6-2 拆出）

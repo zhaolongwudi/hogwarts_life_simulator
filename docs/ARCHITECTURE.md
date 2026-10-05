@@ -335,3 +335,17 @@ r6 起扫描目标扩展为「家族拼接」模式：拆分涉及文件改由�
   16 个成就检查入口 + 总调度 + totalWealth；unlockAchievement 随迁（base 有抽象
   声明，调用方经 with 链静态可见）。
 - 全程 analyze 0、测试 2238 全绿。
+
+### ADR-012 补遗：第八轮拆分记录（r8）
+
+- **r8-1** mixin_narrative_canon（narrative 2178→2085 + canon 116）：正典事件
+  本地注入（零 token）、上下文截断、事实权威冲突过滤与两条预编译正则；
+  跨库私有 → 公开化（injectCanonEventLocally/truncateNarrativeContext/
+  factConflictsWithAuthority），narrative on NarrativeCanonMixin。
+- **r8-2 尝试拆 story_engine 氛围句池：止损回滚**。static 池 + @visibleForTesting
+  静态调用测试（GameStoryEngineMixin.localEventLinesFor）与 on 链环纠缠，
+  切块脚本边界错误损坏文件；static 成员无法迁 mixin 是根本约束。
+- **r8-3** mixin_story_round_wrap（story_engine 1680→1471 + wrap 224）：
+  地点停滞计数、回合尾追加、收藏扫描、表白触发、世界线偏移、叙事反推地点；
+  engine on StoryRoundWrapMixin。
+- 全程 analyze 0、测试 2238 全绿。
