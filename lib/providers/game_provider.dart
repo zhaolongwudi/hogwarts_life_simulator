@@ -8,6 +8,7 @@ import 'game_provider_base.dart';
 // 因为 GameProvider 又 `with` 这些 Mixin，后者会形成 recursive_interface_inheritance
 // 继承环（Dart 3.x 报错）。
 import '../mixins/mixin_init.dart';
+import '../mixins/mixin_narrative_canon.dart';
 import '../mixins/mixin_narrative.dart';
 import '../mixins/mixin_summary_memory.dart';
 import '../mixins/mixin_narrative_continuity.dart';
@@ -73,6 +74,7 @@ class GameProvider extends GameProviderBase
         GameSummaryMemoryMixin,
         GameStoryWiringMixin,
         GameStoryEngineMixin,
+        GameNarrativeCanonMixin,
         GameNarrativeMixin,
         GameCommandCheatMixin,
         GameCommandsRegistryMixin,

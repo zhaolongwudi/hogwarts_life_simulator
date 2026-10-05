@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'mixin_narrative_canon.dart';
 import 'dart:math';
 import '../data/command_registry.dart';
 // 只取 kDebugMode：给 _closeLoopIfMatched 的热路径日志加 `if (kDebugMode)`
@@ -25,13 +26,11 @@ import '../data/scar_data.dart';
 import '../data/era_data.dart';
 import '../data/faculty_data.dart';
 import '../data/game_config_rules.dart';
-import '../data/canon_events.dart';
 import '../models/story_progress.dart';
 import '../data/narrative_time_rules.dart';
 import '../data/rivalry_data.dart';
 import '../data/time_cost_rules.dart';
 import '../data/wand_data.dart';
-import '../data/pet_data.dart';
 import '../data/worldline_data.dart';
 import '../data/monthly_event_data.dart';
 import '../data/npc_schedule_rules.dart';
@@ -48,9 +47,17 @@ import '../utils/debug_log.dart';
 mixin GameNarrativeMixin
     on
         GameProviderBase,
+        GameNarrativeCanonMixin,
         GameNarrativeContinuityMixin,
         GameSummaryMemoryMixin,
         GameStoryEngineMixin {
+  /// 命令分发切词（parseAction 每回合，预编译）。
+  static final RegExp reWhitespaceNarrative = RegExp(r'\s+');
+
+  /// 选项文本去前缀非正文噪声（processChoice 每回合，预编译）。
+  static final RegExp reLeadingNonTextNarrative =
+      RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*');
+
   /// 上一回合的叙事信息密度（0.0 ~ 1.0），用于调试与调优
   double _lastNarrativeDensity = 0.0;
 
@@ -195,7 +202,7 @@ mixin GameNarrativeMixin
         // 面板型、执行结果剧情被还原成上一段（玩家看不到任何结果）。
         // 改为注册时显式声明 panel，判定不再猜（BUG-FIX）。
         final slashless = action.startsWith('/') ? action.substring(1) : action;
-        final cmdHead = slashless.split(_reWhitespace).first;
+        final cmdHead = slashless.split(reWhitespaceNarrative).first;
         final def = CommandRegistry.instance.find(cmdHead);
         final isPanelOutput =
             def?.panel == true && currentNarrative != prevNarrative;
@@ -367,7 +374,7 @@ mixin GameNarrativeMixin
       // P0-1 修复后新摘要不会写错，但更早版本的错误摘要已写进 keyFacts
       // （如"宠物猫头鹰绯月"——绯月是九尾灵狐；"闪电形伤疤"——主角非哈利）。
       // 这里在注入侧拦截，不改存档数据，AI 不再读到冲突事实。
-      t0.removeWhere((f) => _factConflictsWithAuthority(f.fact));
+      t0.removeWhere((f) => factConflictsWithAuthority(f.fact));
       if (t0.isNotEmpty) {
         // 配额由纯函数算，便于单测（test/t0_injection_quota_test.dart）。
         final quota = computeT0InjectionQuota(
@@ -528,7 +535,7 @@ mixin GameNarrativeMixin
           .toSet();
 
       bool looksFake(String text) {
-        final clean = text.replaceAll(_reLeadingNonText, '');
+        final clean = text.replaceAll(reLeadingNonTextNarrative, '');
         // 成就类伪造：含"成就/🏆"，但 achievement 关键词不在已解锁集合
         if (clean.contains('成就') || text.contains('🏆')) {
           final unlocked = player?.achievements ?? const <String>[];
@@ -626,7 +633,7 @@ mixin GameNarrativeMixin
           : currentNarrative;
       // 截断到 800 字（而非1600），只保留末尾用于理解当前处境
       // 过多的前情文本会让AI认为场景还应该在前一个地点继续
-      final recent = _truncateNarrativeContext(recentBuffer, 800);
+      final recent = truncateNarrativeContext(recentBuffer, 800);
       // 关键改进：明确标注为"已生成的前情"，禁止 AI 重复或改写
       contextBuffer.write('【前情回顾（已生成内容，严禁重复或改写其中任何段落，仅用于理解当前处境）】\n$recent');
 
@@ -1298,7 +1305,7 @@ ${buildNarrativeRules(turn: turnCount)}
     //   2. 与 EventAnchor **共用** firedAnchorIds 做去重（id 带 `canon_` 前缀），
     //      避免两个系统各记一份、存档里出现同义的两套已触发集合。
     //   3. 每回合最多注入一条，与 checkEventAnchors 的节流口径一致。
-    _injectCanonEventIntoOfflineNarrative();
+    injectCanonEventLocally();
 
     // ====== P6 本地行动后果引擎 ======
     // 在叙事全部成型后结算玩家本回合行动的可见后果（学习/练咒/运动/打工/
@@ -2044,106 +2051,7 @@ $source
     return result;
   }
 
-  // ==================== 分院仪式（本地逻辑，不消耗 token） ====================
-  void _injectCanonEventIntoOfflineNarrative() {
-    final p = player;
-    if (p == null) return;
 
-    final t = worldState.time;
-    final due = dueCanonEvents(
-      year: t.year,
-      month: t.month,
-      grade: p.grade ?? 1,
-      era: worldState.era,
-      firedIds: worldState.firedAnchorIds,
-      limit: 1,
-    );
-    if (due.isEmpty) return;
-
-    final event = due.first;
-
-    // 【剧情模式白名单抑制（批次 5）】
-    // 若当前剧情步的 canonRefId 正好声明讲述这条节点，就不再贴 📖 旁白块
-    // ——那段原著由剧情文本讲述（有情境、分支与后果），重复贴块玩家会
-    // 把同一件事读到两遍。`firedAnchorIds` 照写：节点视为已消费，
-    // 之后任何路径都不会再对它注入。
-    //
-    // 【为什么是防御层】当前分发下，剧情模式的全部回合（含自由行动降级
-    // 与结局后行动）都走 `_runStoryTurn`，本函数只被**沙盒模式**的离线
-    // 回合调用，这段分支平时不会执行。它是给未来改动的保险：若有人把
-    // 剧情回合重新接回普通离线回合，这里保证「已由剧情讲述」优先于
-    // 「旁白注入」。防回归由 test/canon_story_dedup_test.dart 钉死。
-    if (storyProgress.active) {
-      final step = findStoryStep(
-        storyProgress.bookId,
-        storyProgress.chapterId,
-        storyProgress.stepId,
-      );
-      if (step != null && step.canonRefId == event.id) {
-        worldState.firedAnchorIds.add(event.id);
-        lastCanonEventTitle = null;
-        lastCanonEventDirective = null;
-        debugLog(
-          '📖 原著节点 ${event.id} 由剧情步 ${step.id} 讲述，跳过旁白注入',
-        );
-        return;
-      }
-    }
-
-    worldState.firedAnchorIds.add(event.id);
-
-    final block = '📖 ${event.title}\n${event.directive}';
-    if (!currentNarrative.contains(event.title)) {
-      currentNarrative = '$currentNarrative\n\n$block';
-    }
-    notifications.add('📖 ${event.title}');
-    worldState.addNarrativeEvent('📖 ${event.title}', turn: turnCount);
-
-    // 把刚触发的节点名记下来，供 buildFallbackChoices 生成「有针对性的选项」。
-    // 为什么不在选项侧重新过滤一遍：buildFallbackChoices 拿不到「本回合
-    // 触发的是哪条」，再跑一次 dueCanonEvents 会因为 id 已被写进
-    // firedAnchorIds 而返回空。所以由触发方单向告知。
-    lastCanonEventTitle = event.title;
-    lastCanonEventDirective = event.directive;
-
-    debugLog('📖 原著节点注入: ${event.id}（${event.bookRef}）');
-  }
-
-  String _truncateNarrativeContext(String narrative, int maxChars) {
-    if (narrative.length <= maxChars) return narrative;
-    final cut = snapCutToBoundary(narrative, narrative.length - maxChars);
-    return '…（前情略）${narrative.substring(cut)}';
-  }
-
-  /// 第16轮G：T0 核心事实与 Player 权威设定冲突检测（过滤历史错误摘要污染）。
-  /// 保守匹配，只拦已知的硬冲突，避免误伤其他事实：
-  ///  - 宠物物种错：玩家契约宠物是九尾灵狐，事实却写"猫头鹰绯月"
-  ///  - 哈利特征张冠李戴：主角非哈利，事实却写"闪电形伤疤"
-  bool _factConflictsWithAuthority(String fact) {
-    final p = player;
-    if (p == null || fact.isEmpty) return false;
-    final isHarry = p.name.toLowerCase() == '哈利' || p.name.contains('波特');
-    // 宠物冲突：权威宠物是狐类，事实却写猫头鹰（绯月不是猫头鹰）
-    if (p.petId != null && p.petId!.isNotEmpty) {
-      final pd = petById(p.petId!);
-      final species = pd?.species ?? '';
-      if (species.contains('狐') && fact.contains('猫头鹰')) {
-        return true;
-      }
-    }
-    // 闪电形伤疤：哈利专属（主角的疤不是闪电形，家庭设定红线）
-    if (!isHarry && fact.contains('闪电形') && fact.contains('伤疤')) {
-      return true;
-    }
-    return false;
-  }
-
-  /// 命令分发切词（parseAction 每回合，预编译）。
-  static final RegExp _reWhitespace = RegExp(r'\s+');
-
-  /// 选项文本去前缀非正文噪声（processChoice 每回合，预编译）。
-  static final RegExp _reLeadingNonText =
-      RegExp(r'^[^\u4e00-\u9fa5A-Za-z]*');
 
 }
 

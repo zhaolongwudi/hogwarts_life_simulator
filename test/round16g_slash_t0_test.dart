@@ -48,16 +48,16 @@ void main() {
   });
 
   group('G2 T0 历史污染过滤（源码契约）', () {
-    test('mixin_narrative.dart 存在 _factConflictsWithAuthority 过滤', () {
+    test('mixin_narrative.dart 存在 factConflictsWithAuthority 过滤', () {
       final src = narrativeSideSource();
-      expect(src.contains('_factConflictsWithAuthority'), isTrue,
+      expect(src.contains('factConflictsWithAuthority'), isTrue,
           reason: 'T0 注入侧必须过滤历史错误事实（猫头鹰绯月/闪电疤）');
       expect(src.contains('第16轮G'), isTrue);
     });
 
     test('过滤逻辑含宠物猫头鹰与闪电疤两个已知模式', () {
       final src = narrativeSideSource();
-      final idx = src.indexOf('bool _factConflictsWithAuthority');
+      final idx = src.indexOf('bool factConflictsWithAuthority');
       expect(idx, greaterThan(-1));
       final body = src.substring(idx, idx + 1200);
       expect(body.contains('猫头鹰'), isTrue);
