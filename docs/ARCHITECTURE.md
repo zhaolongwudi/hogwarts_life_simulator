@@ -319,3 +319,19 @@ r6 起扫描目标扩展为「家族拼接」模式：拆分涉及文件改由�
 ---
 
 *维护：随架构决策变更追加 ADR，编号只增不改。新增 ADR 请同时更新 §5 的对应关系表。*
+
+### ADR-012 补遗：第七轮拆分记录（r7）
+
+- **r7-1 结论**：mixin_narrative 的「场景上下文与建议生成」与主干 processChoice
+  逐回合直调，拆出后依赖链爆炸，回迁（同 r6-7 教训：切块前先验证语义边界）。
+- **r7-2** mixin_commands_registry（commands 1688→473 + registry 1231）：
+  五大组 CommandDef 注册函数迁出；on 链 Registry(on ProviderBase)→Commands(on
+  Registry)→Extras(on Commands)，ensureCommandsRegistered 留在 Commands。
+- **r7-3** mixin_story_wiring（story_engine 2018→1679 + wiring 358）：
+  StoryEffect 应用/世界路由/正典记忆下沉；on 链 Wiring(on SummaryMemory)←Engine。
+- **r7-4** mixin_academic_year（systems 2250→1677 + academic 604）：
+  学年/考试/毕业/教职线；on 链 AcademicYear←Systems。
+- **r7-5** mixin_achievements（relations 1224→1026 + achievements 216）：
+  16 个成就检查入口 + 总调度 + totalWealth；unlockAchievement 随迁（base 有抽象
+  声明，调用方经 with 链静态可见）。
+- 全程 analyze 0、测试 2238 全绿。

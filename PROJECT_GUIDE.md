@@ -62,12 +62,15 @@ lib/
 ├── mixins/       (32 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
 │   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
+│   ├── mixin_story_wiring.dart   # 剧情效果接线：StoryEffect 应用/世界路由/正典记忆下沉（r7-3 拆出）
 │   ├── mixin_story_engine.dart #  ★ 主线剧情引擎：回合分发/章节结局/原著节点/回合结算收尾（r5-1 拆出）
 │   ├── mixin_response_fallback.dart #  降级叙事与备选选项生成（零 AI，r6-1 拆出）
 │   ├── mixin_play_tools.dart   #  玩法通用结算工具（finishLocal/物品/属性，r6-2 拆出）
 │   ├── mixin_play_arena.dart   #  竞技玩法：魁地奇/决斗/魔药部/快讯社（r6-2 拆出）
+│   ├── mixin_commands_registry.dart # 指令注册表数据段：五大组 CommandDef 注册函数（r7-2 拆出）
 │   ├── mixin_commands_extras.dart # 命令扩展：周计划/守护神/声望/目标/终章/信件（r6-3 拆出）
 │   ├── mixin_relations_intimate.dart # 亲密关系：骨科模式 + NPC 主动表白（r6-4 拆出）
+│   ├── mixin_academic_year.dart  # 学年主线：升年级/考试/毕业结算/教职线（r7-4 拆出）
 │   ├── mixin_family_legacy.dart #  家族传承：结婚/子嗣/世代遗产（r6-5 拆出）
 │   ├── mixin_commands.dart    #   ★ 全部指令注册 + _handleXxx 实现（60+ 条）
 │   ├── mixin_command_cheats.dart #   ★ /cheat 家族（20+ 子命令，r3-2 拆出）
