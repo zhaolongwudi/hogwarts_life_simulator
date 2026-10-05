@@ -10,6 +10,13 @@ import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 
 import 'helpers/test_fixtures.dart';
+// r6-9: mixin_relations 拆分后，扫描目标 = relations + intimate + family 三文件拼接
+String _relationsFamilyCode() => [
+      'lib/mixins/' 'mixin_relations.dart',
+      'lib/mixins/' 'mixin_relations_intimate.dart',
+      'lib/mixins/' 'mixin_relations_family.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 // r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
 String _playFamilyCode() =>
     ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
@@ -271,7 +278,7 @@ void main() {
       expect(stage, isNotNull, reason: '判定里找不到 stage >= N：\n$body');
       // 羁绊 → 阶段的映射在 mixin_relations._shipStageFor，这里直接从源码
       // 读出「阶段 N 的门槛」，确认描述写的羁绊值落在这一档上。
-      final src = _codeOnly('lib/mixins/mixin_relations.dart');
+      final src = _relationsFamilyCode();
       final need = int.parse(stage!.group(1)!);
       final thresholds =
           RegExp(r'if \(bond >= (\d+)\) return (\d+);').allMatches(src).map((m) {

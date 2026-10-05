@@ -30,6 +30,7 @@ import 'helpers/test_fixtures.dart';
 String _relationsFamilyCode() => [
       'lib/mixins/' 'mixin_relations.dart',
       'lib/mixins/' 'mixin_relations_intimate.dart',
+      'lib/mixins/' 'mixin_relations_family.dart',
     ].map((p) => File(p).readAsStringSync()).join('\n');
 
 // r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接

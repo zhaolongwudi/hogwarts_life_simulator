@@ -4,7 +4,7 @@ import '../models/npc.dart';
 ///
 /// 项目里原本散着 4 份各写各的实现，语义还不一致：
 ///
-/// * `mixin_relations._findNpcByName` —— 只比 `name` 的精确/包含，
+/// * `mixin_relations.findNpcByName` —— 只比 `name` 的精确/包含，
 ///   **完全忽略 aliases**，玩家输别名或姓氏经常查不到人；
 /// * `mixin_relations` 里的局部 `findNpc` —— 双向 contains，
 ///   查不到时造一个 `id` 为空的假 NPC 让调用方去判；

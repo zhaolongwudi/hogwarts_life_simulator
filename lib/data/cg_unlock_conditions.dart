@@ -1,6 +1,6 @@
 /// R5：CG 解锁条件数据化。
 ///
-/// 旧实现：mixin_relations.dart _checkCGUnlockByAffection 里 20+ 条 if 硬编码。
+/// 旧实现：mixin_relations.dart checkCGUnlockByAffection 里 20+ 条 if 硬编码。
 /// 新实现：每条 CG 把它的解锁条件声明在 `unlockConditions` 里，
 ///         由统一的 `CgUnlockEvaluator` 判定是否满足。
 ///
