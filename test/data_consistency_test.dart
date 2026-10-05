@@ -31,7 +31,7 @@ import 'package:hogwarts_life_simulator/data/quest_data.dart';
 import 'helpers/test_fixtures.dart';
 // r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
 String _playFamilyCode() =>
-    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart']
+    ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart','lib/mixins/mixin_play_exploration.dart']
         .map((p) => File(p).readAsStringSync()).join('\n');
 
 
