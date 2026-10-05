@@ -374,7 +374,7 @@ class NpcRelationshipAnchor {
 
   factory NpcRelationshipAnchor.fromJson(Map<String, dynamic> json) =>
       NpcRelationshipAnchor(
-        npcId: json['npc_id'] as String,
+        npcId: json['npc_id'] as String? ?? '',
         firstMeeting: json['first_meeting'] as String? ?? '',
         keyMoments: (json['key_moments'] as List<dynamic>?)
                 ?.map((e) => e.toString())

@@ -742,7 +742,7 @@ class GameChoice {
       };
 
   factory GameChoice.fromJson(Map<String, dynamic> json) => GameChoice(
-        text: json['text'] as String,
-        action: json['action'] as String,
+        text: json['text'] as String? ?? '',
+        action: json['action'] as String? ?? '',
       );
 }
