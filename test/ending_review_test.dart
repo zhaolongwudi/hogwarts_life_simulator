@@ -339,7 +339,8 @@ void main() {
   // 接线
   // ============================================================
   group('真的接进了毕业结算', () {
-    final src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+    final src = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_academic_year.dart').readAsStringSync();
 
     test('毕业结算里会渲染这篇回望', () {
       final i = src.indexOf('void _graduationSettlement()');

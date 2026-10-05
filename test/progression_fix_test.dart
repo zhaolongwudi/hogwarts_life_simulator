@@ -1531,6 +1531,7 @@ void _equipmentAndProviderGroup() {
 void _saveLoadGroup() {
   group('存档读写只有一份', () {
     final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_academic_year.dart').readAsStringSync() +
         File('lib/mixins/mixin_game_save.dart').readAsStringSync();
 
     test('extraData 的写入只在一处', () {
@@ -2366,7 +2367,7 @@ void _worldlineGroup() {
     });
 
     test('毕业和成婚各记一笔', () {
-      expect(_codeOnly('lib/mixins/mixin_systems.dart'),
+      expect(_codeOnly('lib/mixins/mixin_academic_year.dart'),
           contains('addTimelineBranch'),
           reason: '毕业是不可逆节点，该记一笔');
       expect(_relationsFamilyCode(),
