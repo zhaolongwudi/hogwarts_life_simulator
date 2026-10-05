@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/data/command_registry.dart';
 import 'package:hogwarts_life_simulator/providers/game_provider_base.dart';
+
 // r6-3: mixin_commands 拆分后，扫描目标 = commands + extras 两文件拼接
 String _commandsFamilyCode() {
+  final r = File('lib/mixins/' 'mixin_commands_registry.dart').readAsStringSync();
   final a = File('lib/mixins/' 'mixin_commands.dart').readAsStringSync();
   final b = File('lib/mixins/' 'mixin_commands_extras.dart').readAsStringSync();
-  return [a, b].join('\n');
+  return [r, a, b].join('\n');
 }
 
 

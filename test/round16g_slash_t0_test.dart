@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hogwarts_life_simulator/mixins/mixin_response_choices.dart'
     as rc;
+
 // r6-3: mixin_commands 拆分后，扫描目标 = commands + extras 两文件拼接
 String _commandsFamilyCode() {
   final a = File('lib/mixins/' 'mixin_commands.dart').readAsStringSync();

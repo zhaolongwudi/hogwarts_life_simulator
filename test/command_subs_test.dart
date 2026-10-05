@@ -13,10 +13,17 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/test_fixtures.dart';
+// r7-2: mixin_commands 拆分后，扫描目标 = registry + commands + extras 拼接
+String _commandsAllCode() => [
+      'lib/mixins/' 'mixin_commands_registry.dart',
+      'lib/mixins/' 'mixin_commands.dart',
+      'lib/mixins/' 'mixin_commands_extras.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final src = File('lib/mixins/mixin_commands.dart').readAsStringSync() +
+  final src = _commandsAllCode() +
       File('lib/mixins/mixin_command_cheats.dart').readAsStringSync();
 
   group('二级指令结构化（P2 指令面板一键执行的前提）', () {

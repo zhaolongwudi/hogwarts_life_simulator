@@ -10,6 +10,13 @@ import 'package:hogwarts_life_simulator/models/game_systems.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 
 import 'helpers/test_fixtures.dart';
+// r7-2: mixin_commands 拆分后，扫描目标 = registry + commands + extras 拼接
+String _commandsAllCode() => [
+      'lib/mixins/' 'mixin_commands_registry.dart',
+      'lib/mixins/' 'mixin_commands.dart',
+      'lib/mixins/' 'mixin_commands_extras.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 // r6-9: mixin_relations 拆分后，扫描目标 = relations + intimate + family 三文件拼接
 String _relationsFamilyCode() => [
       'lib/mixins/' 'mixin_relations.dart',
@@ -147,7 +154,7 @@ void main() {
     });
 
     test('/咒语 命令的三个子命令都真实存在', () {
-      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      final src = _commandsAllCode();
       expect(src.contains("primary: '咒语'"), isTrue);
       for (final call in ['m.learnSpell(', 'm.practiseSpell(', 'm.formatSpells()']) {
         expect(src.contains(call), isTrue, reason: '/咒语 没有接到 $call');

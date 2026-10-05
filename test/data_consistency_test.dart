@@ -29,6 +29,13 @@ import 'package:hogwarts_life_simulator/data/npc_data.dart';
 import 'package:hogwarts_life_simulator/data/quest_data.dart';
 
 import 'helpers/test_fixtures.dart';
+// r7-2: mixin_commands 拆分后，扫描目标 = registry + commands + extras 拼接
+String _commandsAllCode() => [
+      'lib/mixins/' 'mixin_commands_registry.dart',
+      'lib/mixins/' 'mixin_commands.dart',
+      'lib/mixins/' 'mixin_commands_extras.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 // r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
 String _playFamilyCode() =>
     ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart','lib/mixins/mixin_play_exploration.dart']
@@ -510,7 +517,7 @@ void _statusOccupationGroup() {
     });
 
     test('毕业后会显示最近岗位，没打过工显示待业', () {
-      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      final src = _commandsAllCode();
       expect(src, contains('worldState.graduated'), reason: '职业要按是否毕业分流');
       expect(src, contains('currentJobTitle'), reason: '毕业后要用最近岗位');
       expect(src, contains('待业'));
@@ -686,7 +693,7 @@ void _giftGivingGroup() {
 
   group('送礼命令已接线', () {
     test('命令表里注册了送礼', () {
-      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final src = _commandsAllCode();
       expect(src.contains("primary: '送礼'"), isTrue);
       expect(src.contains('giveGift'), isTrue);
     });

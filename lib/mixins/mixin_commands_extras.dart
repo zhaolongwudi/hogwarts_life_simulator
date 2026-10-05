@@ -869,7 +869,6 @@ mixin GameCommandsExtrasMixin on GameCommandsMixin {
     final p = player;
     if (p == null) return false;
     ensureCommandsRegistered();
-
     final parts = command.split(RegExp(r'\s+'));
     final cmd = parts[0];
 

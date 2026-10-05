@@ -6,6 +6,13 @@ import 'package:hogwarts_life_simulator/data/scar_data.dart';
 import 'package:hogwarts_life_simulator/models/player.dart';
 
 import 'helpers/test_fixtures.dart';
+// r7-2: mixin_commands 拆分后，扫描目标 = registry + commands + extras 拼接
+String _commandsAllCode() => [
+      'lib/mixins/' 'mixin_commands_registry.dart',
+      'lib/mixins/' 'mixin_commands.dart',
+      'lib/mixins/' 'mixin_commands_extras.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 // r6-2: mixin_play 拆分后，扫描目标 = play + tools + arena 三文件拼接
 String _playFamilyCode() =>
     ['lib/mixins/mixin_play.dart','lib/mixins/mixin_play_tools.dart','lib/mixins/mixin_play_arena.dart','lib/mixins/mixin_play_exploration.dart']
@@ -439,7 +446,7 @@ void main() {
     });
 
     test('/伤痕 命令已注册——疤只在落下的瞬间弹过通知，得有地方回头看', () {
-      final cmdSrc = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final cmdSrc = _commandsAllCode();
       expect(cmdSrc, contains("primary: '伤痕'"));
       expect(cmdSrc, contains('formatScars()'));
     });

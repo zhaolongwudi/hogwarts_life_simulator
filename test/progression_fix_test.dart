@@ -26,6 +26,13 @@ import 'package:hogwarts_life_simulator/data/event_anchors.dart';
 import 'package:hogwarts_life_simulator/data/npc_data.dart';
 
 import 'helpers/test_fixtures.dart';
+// r7-2: mixin_commands 拆分后，扫描目标 = registry + commands + extras 拼接
+String _commandsAllCode() => [
+      'lib/mixins/' 'mixin_commands_registry.dart',
+      'lib/mixins/' 'mixin_commands.dart',
+      'lib/mixins/' 'mixin_commands_extras.dart',
+    ].map((p) => File(p).readAsStringSync()).join('\n');
+
 // r6-4: mixin_relations 拆分后，扫描目标 = relations + intimate 两文件拼接
 String _relationsFamilyCode() => [
       'lib/mixins/' 'mixin_relations.dart',
@@ -306,7 +313,7 @@ void _contentGroup() {
   group('婚姻 / 生育链路', () {
     final relSrc = _relationsFamilyCode();
     final sysSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
-    final cmdSrc = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+    final cmdSrc = _commandsAllCode();
 
     test('求婚 / 结婚 / 生育 / 家庭 四个指令都已注册', () {
       for (final c in ['求婚', '结婚', '生育', '家庭', '拉郎配']) {
@@ -806,7 +813,7 @@ void _unwiredFeatureGroup() {
 
   group('/查看 NPC 档案', () {
     final cmdSrc = _stripComments(
-        File('lib/mixins/mixin_commands.dart').readAsStringSync());
+        _commandsAllCode());
     final sysSrc =
         _stripComments(File('lib/mixins/mixin_systems.dart').readAsStringSync());
 
@@ -1288,7 +1295,7 @@ void _commandReferenceGroup() {
   group('提示里提到的命令都已注册', () {
     /// 已注册的命令（primary + aliases）
     Set<String> registeredCommands() {
-      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync() +
+      final src = _commandsAllCode() +
           File('lib/mixins/mixin_command_cheats.dart').readAsStringSync();
       final out = <String>{};
       out.addAll(RegExp(r"primary: *'([^']+)'").allMatches(src).map((m) => m.group(1)!));
@@ -1333,7 +1340,7 @@ void _commandReferenceGroup() {
     });
 
     test('每个已注册命令都写了帮助文案', () {
-      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      final src = _commandsAllCode();
       final blocks = RegExp(
         r"CommandDef\((.*?)\n      \),",
         dotAll: true,
@@ -1413,7 +1420,7 @@ void _petReachabilityGroup() {
     });
 
     test('购买指令已注册且能走到实现', () {
-      final src = File('lib/mixins/mixin_commands.dart').readAsStringSync();
+      final src = _commandsAllCode();
       expect(src.contains("primary: '宠物'"), isTrue);
       expect(src.contains("'购买'"), isTrue, reason: '/宠物 购买 没有接上');
       expect(src.contains('buyPet'), isTrue);
@@ -2368,7 +2375,7 @@ void _worldlineGroup() {
     });
 
     test('/联动 不再许诺不存在的内容', () {
-      final src = _codeOnly('lib/mixins/mixin_commands.dart');
+      final src = _commandsAllCode();
       expect(src, isNot(contains('与其他时代剧情产生关联')),
           reason: '那套跨时代联动内容并不存在，别再写在给玩家看的文案里');
       expect(src, contains('timelineChanges'),
