@@ -62,6 +62,8 @@ lib/
 ├── mixins/       (32 文件)    # ★ 游戏逻辑按领域拆分（全部 mixin 组合进 GameProvider）
 │   ├── mixin_init.dart        #   开局初始化 + 系统提示词组装（characterLines）
 │   ├── mixin_narrative_canon.dart # 正典注入与叙事净化：原著节点本地注入/事实冲突过滤（r8-1 拆出）
+│   ├── mixin_narrative_offline.dart  # 离线回合管线：runOfflineQuickTurn 全回合结算/触发器 + AI 润色（r9-1 拆出）
+│   ├── mixin_narrative_prompt.dart   # 提示词组装器：buildPrompt T0-T4 记忆注入 + 关键上下文族（r9-2 拆出）
 │   ├── mixin_narrative.dart   #   ★ 主叙事循环 processChoice + 离线「世界在动」管线拼接
 │   ├── mixin_story_wiring.dart   # 剧情效果接线：StoryEffect 应用/世界路由/正典记忆下沉（r7-3 拆出）
 │   ├── mixin_story_round_wrap.dart # 地点与回合收尾：停滞计数/收藏扫描/表白/世界线偏移（r8-3 拆出）
@@ -73,6 +75,7 @@ lib/
 │   ├── mixin_commands_extras.dart # 命令扩展：周计划/守护神/声望/目标/终章/信件（r6-3 拆出）
 │   ├── mixin_relations_intimate.dart # 亲密关系：骨科模式 + NPC 主动表白（r6-4 拆出）
 │   ├── mixin_academic_year.dart  # 学年主线：升年级/考试/毕业结算/教职线（r7-4 拆出）
+│   ├── mixin_systems_calendar.dart  # 日历与月度演化：时间快进/月度事件/好感漂移/传闻衰减（r9-3 拆出）
 │   ├── mixin_family_legacy.dart #  家族传承：结婚/子嗣/世代遗产（r6-5 拆出）
 │   ├── mixin_commands.dart    #   ★ 全部指令注册 + _handleXxx 实现（60+ 条）
 │   ├── mixin_command_cheats.dart #   ★ /cheat 家族（20+ 子命令，r3-2 拆出）

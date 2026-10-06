@@ -349,3 +349,22 @@ r6 起扫描目标扩展为「家族拼接」模式：拆分涉及文件改由�
   地点停滞计数、回合尾追加、收藏扫描、表白触发、世界线偏移、叙事反推地点；
   engine on StoryRoundWrapMixin。
 - 全程 analyze 0、测试 2238 全绿。
+
+### ADR-012 补遗：第九轮拆分记录（r9）
+
+- **r9-1** mixin_narrative_offline（narrative 2085→1677 + offline 412）：无 AI
+  快速模式整回合管线（runOfflineQuickTurn：奇遇/羁绊/回信结算→世界事件补齐→
+  节庆→原著节点→行动后果→社团→各触发器→兜底选项）与可选 AI 润色
+  （maybePolishLocalNarrative）；密度字段（lastNarrativeDensity/
+  narrativeDensityHistory/lastPolishTurn）随迁公开化；on 链 Offline(on Canon,
+  Engine, RoundWrap, Continuity, SummaryMemory)←Narrative。
+- **r9-2** mixin_narrative_prompt（narrative 1677→896 + prompt 826）：AI 提示词
+  主线 buildPrompt（T0-T4 记忆注入/硬设定/连续性桥接/写作要求）+ 关键上下文族
+  （buildCriticalContext/buildSceneContext/buildQuietPeriodHint）+ 意图关键词
+  正则族；嵌套局部函数 buildPrompt 提升为 mixin 方法并显式接收 safeAction；
+  on 链 Prompt(on Continuity, Canon, SummaryMemory)←Narrative（在 Offline 之后）。
+- **r9-3** mixin_systems_calendar（systems 1678→1376 + calendar 324）：时间快进
+  族（fastForwardDays/resolveFastForwardDays）与月度演化族（checkMonthlyEvolution/
+  _generateMonthlyEvent/好感漂移/传闻衰减/互斥冷却）；advanceWorldClock 跨库
+  显式转型调用（story_engine 先例）；on 链 Calendar←Systems。
+- 全程 analyze 0、测试 2238 全绿。narrative 累计 4165→896（-78%）。
