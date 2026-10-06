@@ -33,6 +33,7 @@ import '../mixins/mixin_relations_family.dart';
 import '../mixins/mixin_relations_intimate.dart';
 import '../mixins/mixin_academic_year.dart';
 import '../mixins/mixin_systems.dart';
+import '../mixins/mixin_systems_calendar.dart';
 import '../mixins/mixin_worldline_anchor.dart';
 import '../mixins/mixin_family_legacy.dart';
 import '../mixins/mixin_play.dart';
@@ -97,6 +98,7 @@ class GameProvider extends GameProviderBase
         GameRelationsIntimateMixin,
         GameSaveSystemMixin,
         GameAcademicYearMixin,
+        GameSystemsCalendarMixin,
         GameSystemsMixin,
         GameWorldlineAnchorMixin,
         GameFamilyLegacyMixin,

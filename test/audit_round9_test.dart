@@ -96,13 +96,15 @@ void main() {
     });
 
     test('衰减挂在周结算上，且快进时按跨过的周数结算', () {
-      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_systems_calendar.dart').readAsStringSync();
       expect(src.contains('_applyAffectionDrift('), isTrue);
       expect(src.contains('weeksCrossed'), isTrue);
     });
 
     test('豁免清单齐全：信任锁、恋人、未登场、逝者、老存档', () {
-      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_systems_calendar.dart').readAsStringSync();
       expect(src.contains("npc.hasLock('信任锁')"), isTrue);
       expect(src.contains('loveState.partnerId'), isTrue);
       expect(src.contains('!npc.isAlive || !npc.introduced'), isTrue);

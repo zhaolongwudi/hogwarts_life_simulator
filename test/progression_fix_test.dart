@@ -169,7 +169,8 @@ void main() {
 
   group('高收益活动每日上限（源码扫描）', () {
     final playSrc = _playFamilyCode();
-    final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+    final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_systems_calendar.dart').readAsStringSync();
 
     test('决斗必须有每日次数上限（否则声望/加隆可无限刷）', () {
       final duelBody = playSrc.substring(
@@ -312,7 +313,8 @@ void _contentGroup() {
 
   group('婚姻 / 生育链路', () {
     final relSrc = _relationsFamilyCode();
-    final sysSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+    final sysSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_systems_calendar.dart').readAsStringSync();
     final cmdSrc = _commandsAllCode();
 
     test('求婚 / 结婚 / 生育 / 家庭 四个指令都已注册', () {
@@ -564,6 +566,8 @@ void _codeHygieneGroup() {
       'lib/mixins/mixin_commands.dart',
       'lib/mixins/mixin_command_cheats.dart',
       'lib/mixins/mixin_systems.dart',
+      // r9-3: 好感漂移随月度演化族迁 mixin_systems_calendar（与 systems 同源，刻意直写）
+      'lib/mixins/mixin_systems_calendar.dart',
       'lib/mixins/mixin_game_save.dart',
       // r6-5: 家族传承写的是开局初始值，不占周好感额度（刻意绕过，见方法注释）
       'lib/mixins/mixin_family_legacy.dart',
@@ -815,7 +819,8 @@ void _unwiredFeatureGroup() {
     final cmdSrc = _stripComments(
         _commandsAllCode());
     final sysSrc =
-        _stripComments(File('lib/mixins/mixin_systems.dart').readAsStringSync());
+        _stripComments(File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_systems_calendar.dart').readAsStringSync());
 
     test('命令已注册且带别名', () {
       expect(cmdSrc.contains("primary: '查看'"), isTrue);

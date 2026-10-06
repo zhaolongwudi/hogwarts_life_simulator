@@ -179,7 +179,8 @@ void main() {
     });
 
     test('抽取时真的会按互斥/冷却剔除候选', () {
-      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync();
+      final src = File('lib/mixins/mixin_systems.dart').readAsStringSync() +
+        File('lib/mixins/mixin_systems_calendar.dart').readAsStringSync();
       final body = src.substring(src.indexOf('_generateMonthlyEvent'));
       expect(body, contains('mutuallyExclusiveIds'),
           reason: '抽取逻辑没读过 mutuallyExclusiveIds');
