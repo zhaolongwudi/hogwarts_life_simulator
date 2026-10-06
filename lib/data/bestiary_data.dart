@@ -132,6 +132,40 @@ const List<CreatureDef> kCreatureCatalog = [
     desc: '披着破斗篷的可怕存在，吸走快乐与希望，被守护神咒克制。',
     bond: 2,
   ),
+  // ====== 内容扩容（r10）：+4 生物 ======
+  CreatureDef(
+    id: 'bowtruckle_grove',
+    name: '护树罗锅群',
+    danger: 1,
+    habitat: '禁林 · 老刺槐林',
+    desc: '一小群护树罗锅聚居的树丛，它们会互相交换木虱当点心。',
+    bond: 2,
+  ),
+  CreatureDef(
+    id: 'horklump',
+    name: '霍克尔朋克',
+    danger: 1,
+    habitat: '禁林 · 潮湿苔地',
+    desc: '蘑菇状的小生物，成群蔓延，对草药园是灾难，对猪是美味。',
+    bond: 1,
+  ),
+  CreatureDef(
+    id: 'thestral',
+    name: '夜骐',
+    danger: 2,
+    habitat: '禁林边缘 / 霍格沃茨马厩',
+    desc: '只有目睹过死亡的人才看得见的瘦马，方向感极好，性格温顺。',
+    loot: ['独角兽毛'],
+    bond: 3,
+  ),
+  CreatureDef(
+    id: 'grindylow',
+    name: '格林迪洛',
+    danger: 3,
+    habitat: '黑湖水下',
+    desc: '苍绿色的水妖，长着长长的抓握手指，黑魔法防御课的常客。',
+    bond: 2,
+  ),
 ];
 
 // 注：creatureById 已删——图鉴只按 id 记录发现进度
