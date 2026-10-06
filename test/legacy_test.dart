@@ -6,6 +6,7 @@ import 'package:hogwarts_life_simulator/data/legacy_data.dart';
 String _commandsAllCode() => [
       'lib/mixins/' 'mixin_commands_registry.dart',
       'lib/mixins/' 'mixin_commands_registry_world.dart',
+      'lib/mixins/' 'mixin_commands_registry_activity.dart',
       'lib/mixins/' 'mixin_commands.dart',
       'lib/mixins/' 'mixin_commands_extras.dart',
     ].map((p) => File(p).readAsStringSync()).join('\n');

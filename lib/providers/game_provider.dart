@@ -18,6 +18,7 @@ import '../mixins/mixin_command_cheats.dart';
 import '../mixins/mixin_commands.dart';
 import '../mixins/mixin_commands_registry.dart';
 import '../mixins/mixin_commands_registry_world.dart';
+import '../mixins/mixin_commands_registry_activity.dart';
 import '../mixins/mixin_commands_extras.dart';
 import '../mixins/mixin_story_engine.dart';
 import '../mixins/mixin_story_round_wrap.dart';
@@ -87,6 +88,7 @@ class GameProvider extends GameProviderBase
         GameNarrativeMixin,
         GameCommandCheatMixin,
         GameCommandsRegistryWorldMixin,
+        GameCommandsRegistryActivityMixin,
         GameCommandsRegistryMixin,
         GameCommandsMixin,
         GameCommandsExtrasMixin,
