@@ -22,6 +22,8 @@ import '../mixins/mixin_commands_registry_activity.dart';
 import '../mixins/mixin_commands_registry_study.dart';
 import '../mixins/mixin_commands_registry_item.dart';
 import '../mixins/mixin_commands_extras.dart';
+import '../mixins/mixin_commands_extras_memory.dart';
+import '../mixins/mixin_commands_extras_reputation.dart';
 import '../mixins/mixin_story_engine.dart';
 import '../mixins/mixin_story_round_wrap.dart';
 import '../mixins/mixin_story_wiring.dart';
@@ -95,6 +97,8 @@ class GameProvider extends GameProviderBase
         GameCommandsRegistryItemMixin,
         GameCommandsRegistryMixin,
         GameCommandsMixin,
+        GameCommandsExtrasMemoryMixin,
+        GameCommandsExtrasReputationMixin,
         GameCommandsExtrasMixin,
         GameResponseChoiceMixin,
         GameResponseAffectionMixin,
