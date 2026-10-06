@@ -9,6 +9,7 @@ import 'game_provider_base.dart';
 // 继承环（Dart 3.x 报错）。
 import '../mixins/mixin_init.dart';
 import '../mixins/mixin_narrative_canon.dart';
+import '../mixins/mixin_narrative_offline.dart';
 import '../mixins/mixin_narrative.dart';
 import '../mixins/mixin_summary_memory.dart';
 import '../mixins/mixin_narrative_continuity.dart';
@@ -77,6 +78,7 @@ class GameProvider extends GameProviderBase
         GameStoryRoundWrapMixin,
         GameStoryEngineMixin,
         GameNarrativeCanonMixin,
+        GameNarrativeOfflineMixin,
         GameNarrativeMixin,
         GameCommandCheatMixin,
         GameCommandsRegistryMixin,
