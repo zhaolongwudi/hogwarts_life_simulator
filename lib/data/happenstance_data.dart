@@ -378,4 +378,206 @@ const List<HappenstanceDef> kHappenstances = [
       ),
     ],
   ),
+  // ====== 内容扩容（r10）：四季与地点补全 ======
+  HappenstanceDef(
+    id: 'greenhouse_whisper',
+    title: '温室里的低语',
+    scene:
+        '傍晚路过温室，你听见里面的魔药植物在窸窸窣窣地"说话"。'
+        '凑近一听，那株猴尾草正对着月亮伸懒腰，叶子沙沙响得像哼歌。',
+    seasonTags: ['spring', 'summer'],
+    locationKeys: ['温室', '庭院'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '蹲下来听它"唱"完',
+        text:
+            '你蹲在花盆边听完了整段"植物小夜曲"。第二天斯普劳特教授听说后'
+            '笑得前仰后合，多给了你两片虎耳草叶——"听得懂植物的孩子不多。"',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 2),
+      ),
+      HappenstanceOutcomeDef(
+        title: '害怕地跑开',
+        text:
+            '你落荒而逃，一路跑到城堡才停下。事后想想有点后悔——'
+            '也许它只是想找人聊聊天。不过那晚你睡得特别香。',
+        effect: HappenstanceEffectDef(energy: 2),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'library_locked_shelf',
+    title: '上锁的书架',
+    scene:
+        '图书馆最深处的书架挂着一口小铜锁。你数了数，整排书脊上'
+        '都落着薄灰，唯独有一本的灰被手指抹开过——很新的痕迹。',
+    locationKeys: ['图书馆'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '记住书名，回头问平斯夫人',
+        text:
+            '你把书名记在小本子上，规规矩矩去问了平斯夫人。她眯眼看了你半天，'
+            '最后说"孺子可教"，破例让你在阅览室读了一下午——那是一本讲'
+            '城堡秘道的旧册子。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '贴着锁孔往里看',
+        text:
+            '你贴上锁孔，只看见一片黑暗。忽然书架后面传来一声咳嗽——'
+            '是平斯夫人。你道了歉逃也似地走了，心脏砰砰跳了整整一晚。',
+        effect: HappenstanceEffectDef(),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'autumn_leaf_owl',
+    title: '落叶上的猫头鹰',
+    scene:
+        '一只年迈的谷仓猫头鹰落在庭院的落叶堆里，爪子上绑着一封'
+        '被雨水洇湿大半的信。它歪着头看你，眼睛里有种老人才有的平静。',
+    seasonTags: ['autumn'],
+    locationKeys: ['庭院', '猫头鹰棚屋'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '帮它把信送到',
+        text:
+            '你认出收件地址是校医院，就顺路把信送了过去。庞弗雷夫人'
+            '听说这只老信使还在送信，摸出猫头鹰饼干喂了它一大把。'
+            '回宿舍的路上你觉得心里暖暖的。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'moral', reputationValue: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '给它喂点水',
+        text:
+            '你没有碰那封信，只是用瓶盖喂了它几口水。老猫头鹰喝完，'
+            '自己抖抖翅膀飞走了。你目送它变成一个小黑点——'
+            '有些旅程不需要别人代劳。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'moral', reputationValue: 2),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'winter_hot_cocoa',
+    title: '多出来的一杯热可可',
+    scene:
+        '大雪天你在休息室的壁炉边烤火，桌角不知谁多放了一杯热可可，'
+        '还冒着热气。杯垫上压着一张字条："给还没走的人。"',
+    seasonTags: ['winter'],
+    locationKeys: ['公共休息室', '大礼堂'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '喝掉，然后也给别人留一杯',
+        text:
+            '热可可甜得恰到好处。你喝完后照着字条的样子也留了一杯，'
+            '压上一张新字条。这个冬天，休息室里一直流传着一个'
+            '"热可可接力"的秘密。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'social', reputationValue: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '守着杯子等失主',
+        text:
+            '你守了一个多小时，可可凉透了也没人来。最后你把它放在'
+            'house精灵的小桌上，附了张"请加热"的便签。第二天杯子'
+            '洗干净回到了原位，旁边多了一小碟黄油啤酒软糖。',
+        effect: HappenstanceEffectDef(galleons: 2),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'tower_star_chart',
+    title: '天文塔上的星图残页',
+    scene:
+        '天文塔的台阶上散落着几张手绘星图，画得很认真，'
+        '但有几处星座明显连错了。页脚写着："今晚十二点，等我。"',
+    locationKeys: ['天文塔', '塔楼'],
+    minGrade: 3,
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '帮TA把错误改出来',
+        text:
+            '你掏出羽毛笔，把连错的星座一一圈出来，在旁边画上正确的连线，'
+            '然后原样留在台阶上。三天后你在课本里发现一张新的星图——'
+            '这次全对，页脚画了个小小的笑脸。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '好奇赴约',
+        text:
+            '你半夜摸上天文塔，等来的却是一位高年级学生的灵魂出窍式道歉——'
+            '原来是天文课小抄弄丢了。两人蹲在塔顶对了一晚上星星，'
+            '你困得眼冒金星但确实学到了东西。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 2),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'kitchen_house_elf',
+    title: '帮厨的小精灵',
+    scene:
+        '你误打误撞闯进了厨房后巷，一位小精灵正踮着脚够架子上的'
+        '大汤锅，够了好几次都差一点。',
+    locationKeys: ['厨房', '走廊'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '帮它把汤锅取下来',
+        text:
+            '你轻松取下汤锅递过去。小精灵感动得眼泪汪汪，硬塞给你'
+            '一块刚出炉的奶油面包——"好吃的东西要分给好心的孩子！"',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'moral', reputationValue: 2),
+      ),
+      HappenstanceOutcomeDef(
+        title: '学着它的样子施个浮空咒',
+        text:
+            '你抽出魔杖试着施了个浮空咒，汤锅稳稳飘了上去。小精灵'
+            '拍着手转圈圈，当场决定教给你三招煎蛋饼的独家秘诀。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 2),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'lake_giant_squid_wave',
+    title: '湖里的大乌贼打招呼',
+    scene:
+        '夏日午后你坐在湖边，湖面忽然涌起一道温顺的浪——'
+        '那只著名的大乌贼把一根触手探出水面，冲你晃了晃，'
+        '像是在打招呼。',
+    seasonTags: ['summer', 'spring'],
+    locationKeys: ['湖边'],
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '也挥挥手',
+        text:
+            '你郑重其事地挥了挥手。大乌贼似乎很满意，触手卷起一小片'
+            '水花洒在你脚边，然后沉回湖里。你决定把这件事讲给'
+            '每一个不信的人听。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'social', reputationValue: 2),
+      ),
+      HappenstanceOutcomeDef(
+        title: '脱了鞋泡泡脚',
+        text:
+            '你索性坐在湖边把脚伸进水里，凉凉的湖水漫过脚踝。'
+            '大乌贼的触手在你脚边轻轻托了一下，像是怕你滑下去。'
+            '整个夏天你都记得那份来自湖底的温柔。',
+        effect: HappenstanceEffectDef(energy: 3),
+      ),
+    ],
+  ),
+
 ];

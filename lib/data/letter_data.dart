@@ -683,4 +683,155 @@ const List<LetterDef> kLetters = [
       ),
     ],
   ),
+  // ====== 内容扩容（r10）：新来信条目 ======
+  // 神秘信件 +2（低概率彩蛋，onceOnly）
+  LetterDef(
+    id: 'letter_mystery_mirror',
+    kind: LetterKind.mystery,
+    senderLabel: '匿名的寄信人',
+    onceOnly: true,
+    scene:
+        '一只没有标记的深灰色猫头鹰在深夜落在窗台，信纸的边缘'
+        '微微发着珍珠般的光：\n'
+        '「镜子里的那个你，今天有没有做过一件让 TA 骄傲的事？'
+        '如果一时想不起来——明天还来得及。』',
+    effect: LetterEffect(reputationDim: 'moral', reputationValue: 1),
+    replies: [
+      LetterReply(
+        title: '在回信里写下一件小事',
+        text:
+            '你鬼使神差地回了信，写了一件白天的小事。信送出去的瞬间'
+            '化成了点点银光。当晚镜子里的你，看起来精神了很多。',
+        effect: LetterEffect(reputationDim: 'moral', reputationValue: 2),
+      ),
+      LetterReply(
+        title: '把信锁进抽屉',
+        text:
+            '你把信收进抽屉最深处。之后每次拉开抽屉，那行字都还在——'
+            '不催促，也不消失。直到某天你终于想起来了，信才安静地淡去。',
+        effect: LetterEffect(),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_mystery_map_corner',
+    kind: LetterKind.mystery,
+    senderLabel: '匿名的寄信人',
+    onceOnly: true,
+    scene:
+        '一封信从《霍格沃茨一段校史》的书页间滑落。信纸上只画了'
+        '一幅手绘小地图：从你的学院公共休息室出发，七个转弯，'
+        '一扇挂着一个坏掉的门环的门。地图背面写着：'
+        '「门后没有宝物，只有一段安静的时光。」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '按图索骥走一趟',
+        text:
+            '七个转弯之后，那扇门真的在。门后是一间堆满旧坐垫的小阳台，'
+            '正对着黑湖。你在那里坐了一个下午，什么都没做，'
+            '却觉得比整个学期都放松。',
+        effect: LetterEffect(),
+      ),
+      LetterReply(
+        title: '把地图夹回书里',
+        text:
+            '有些秘密就该留在原地。你把地图夹回原来的书页。'
+            '很多年后重读这本书时，地图还在——像一句等了很久的问候。',
+        effect: LetterEffect(reputationDim: 'dark', reputationValue: 1),
+      ),
+    ],
+  ),
+  // 魔法部公函 +1（学期节点）
+  LetterDef(
+    id: 'letter_ministry_apparition',
+    kind: LetterKind.ministry,
+    senderLabel: '魔法部·交通管理局',
+    month: 10,
+    onceOnly: true,
+    scene:
+        '一封印着金色门钥纹章的公函扑棱棱落在早餐桌上：\n'
+        '「\$player：年满十七岁的巫师可报名幻影显形训练课程。'
+        '虽然你现在可能还够年纪——但提前了解 split（分裂）的风险，'
+        '总比在关键时刻依赖门钥要好。课程简章见附件。'
+        '——魔法部·交通管理局」',
+    effect: LetterEffect(housePoints: 2),
+    replies: [
+      LetterReply(
+        title: '认真读完简章并收好',
+        text:
+            '你逐行读完了幻影显形的三大注意事项，把简章夹进笔记本。'
+            '「目的地，决心，从容」——这三个词你记了很久。',
+        effect: LetterEffect(reputationDim: 'academic', reputationValue: 2),
+      ),
+      LetterReply(
+        title: '叠成纸飞机扔给同学',
+        text:
+            '公函在空中划出一道弧线，精准命中邻座的后脑勺。'
+            '全班哄笑，教授没收了纸飞机——但考试周前，'
+            '它被原样还给了你，附一句「学好再扔」。',
+        effect: LetterEffect(reputationDim: 'social', reputationValue: 1),
+      ),
+    ],
+  ),
+  // 友情来信 +1
+  LetterDef(
+    id: 'letter_friend_rain_day',
+    kind: LetterKind.friendship,
+    minAffection: 25,
+    scene:
+        '下雨的傍晚，一只湿漉漉的小猫头鹰顶着一层雨水冲进窗，'
+        '信纸用防水墨水写的：\n'
+        '「\$player：这种天气最适合缩在休息室烤火。'
+        '你要是在打瞌睡，那这封信就当替你赶走梦里的克鲁克山。'
+        '——\$sender」',
+    effect: LetterEffect(senderAffection: 1),
+    replies: [
+      LetterReply(
+        title: '回信邀请TA来烤火',
+        text:
+            '半小时后，\$sender 真的出现在休息室门口，抖了抖'
+            '斗篷上的雨珠。两人就着炉火聊到晚钟响，'
+            '雨天忽然变得很短。',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+      LetterReply(
+        title: '回信抄一句打油诗',
+        text:
+            '你的打油诗把 \$sender 逗得不行，回信只有一行：'
+            '「建议投稿《唱唱反调》，署名我认识的那位诗人。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  // 敌对来信 +1（挖苦向，可缓和）
+  LetterDef(
+    id: 'letter_rival_quidditch_loss',
+    kind: LetterKind.rivalry,
+    minAffection: 0,
+    maxAffection: 0,
+    scene:
+        '一只傲慢的 鹰头马身有翼兽 羽信使把信丢在你脚边就飞走了。'
+        '字迹尖刻：\n'
+        '「\$player：听说你们学院上周的训练赛输得很彻底。'
+        '我不意外，只是想确认一下——你还会出现在下一场吗？'
+        '——一个你熟悉的对手」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '回信：「会，而且会赢」',
+        text:
+            '对方没再回信。但下一次训练赛你在场上看到了那张熟悉的脸——'
+            '它只是来看你比赛的。这大概是对手能给出的最高尊重。',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+      LetterReply(
+        title: '回信：「你这么关心我？」',
+        text:
+            '回信只有三个字：「少自恋。」——但字迹比平时潦草，'
+            '像是写得太快。怨气的坚冰上，裂开了一条小小的缝。',
+        effect: LetterEffect(senderAffection: 3),
+      ),
+    ],
+  ),
 ];
