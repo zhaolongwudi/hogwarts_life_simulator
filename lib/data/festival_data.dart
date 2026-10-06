@@ -293,6 +293,94 @@ const List<FestivalDef> kFestivals = [
       ),
     ],
   ),
+  // ====== 内容扩容（r10）：+4 节日 ======
+  FestivalDef(
+    id: 'back_to_school',
+    name: '开学宴',
+    dateLabel: '9月1日',
+    month: 9,
+    day: 1,
+    intro:
+        '四张长桌铺满了烤鸡、约克郡布丁和堆成小山的土豆。'
+        r'分院帽刚唱完歌，邓布利多式的微笑在大礼堂上空荡开——'
+        '新的学年，从今晚的开学宴正式开始。',
+    outcomes: [
+      FestivalOutcomeDef(
+        title: '给新生指路',
+        text:
+            '你看见隔壁桌一个新生正对着满桌餐具手足无措。'
+            '你教他哪把叉子先动、南瓜汁怎么倒才不洒。'
+            '他感激的眼神让你一整个学年都记得今晚。',
+        effect: FestivalEffectDef(
+            reputationDim: 'social', reputationValue: 3, housePoints: 4),
+      ),
+      FestivalOutcomeDef(
+        title: '大吃一顿补充精力',
+        text:
+            '你决定不辜负这顿盛宴：两份烤鸡、三块布丁、'
+            '还偷藏了两块太妃糖。撑得扶墙出门——但值。',
+        effect: FestivalEffectDef(energy: 8),
+      ),
+    ],
+  ),
+  FestivalDef(
+    id: 'april_fools',
+    name: '愚人节',
+    dateLabel: '4月1日',
+    month: 4,
+    day: 1,
+    intro:
+        '一大早走廊里的水桶位置就透着不对劲，皮皮鬼的笑声'
+        '从盔甲后面隐约传出。今天的霍格沃茨，每一脚都要踩得小心。',
+    outcomes: [
+      FestivalOutcomeDef(
+        title: '加入整蛊行列',
+        text:
+            '你与皮皮鬼达成了一次短暂的停战协议，联手给教授的讲台'
+            '下了个粘性咒。弗雷德和乔治若在场，也会为这个创意脱帽致敬。'
+            '——当然，被罚抄写了三页。',
+        effect: FestivalEffectDef(reputationDim: 'dark', reputationValue: 2),
+      ),
+      FestivalOutcomeDef(
+        title: '反套路平安过关',
+        text:
+            '你凭直觉避开了全部三个陷阱，还顺手救起一个掉进水桶阵的'
+            '一年级。在愚人节保持清醒是种稀缺天赋。',
+        effect: FestivalEffectDef(
+            reputationDim: 'moral', reputationValue: 2, housePoints: 3),
+      ),
+    ],
+  ),
+  FestivalDef(
+    id: 'year_end_banquet',
+    name: '学年闭幕宴',
+    dateLabel: '6月30日',
+    month: 6,
+    day: 30,
+    intro:
+        '礼堂的横幅换成了各学院的颜色，学院杯的归属即将揭晓。'
+        r'这一年的欢笑、冒险、熬夜与成长，都在今晚的 $house 桌上'
+        '化作碰杯的声音。',
+    outcomes: [
+      FestivalOutcomeDef(
+        title: '和同窗畅谈这一年',
+        text:
+            '你和同桌的朋友把这一年的大事从头数了一遍：第一次决斗、'
+            '第一次禁林、第一次考场上的冷汗。说着说着都笑了。'
+            '原来不知不觉间，你们都长大了不少。',
+        effect: FestivalEffectDef(
+            reputationDim: 'social', reputationValue: 4, energy: 4),
+      ),
+      FestivalOutcomeDef(
+        title: '默默写下新学年目标',
+        text:
+            '喧闹声中你摊开笔记本，写下三条新学年的目标。'
+            '笔尖落定的一刻，你对未来比任何时候都笃定。',
+        effect: FestivalEffectDef(
+            reputationDim: 'academic', reputationValue: 3, housePoints: 4),
+      ),
+    ],
+  ),
 ];
 
 /// 某月某日命中哪个节日（无则 null）。日期键对齐 [FestivalDef.dateKey]。
