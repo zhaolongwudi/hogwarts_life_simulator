@@ -241,6 +241,35 @@ const List<CollectibleDef> kCollectibleCatalog = [
     rarity: 1,
     desc: '三把扫帚的瓶盖，凑齐十个可以找罗斯默塔夫人换一杯免费的。',
   ),
+  // ====== 内容扩容（r11）：新系列「神奇动物印记」+4 ======
+  CollectibleDef(
+    id: 'stamp_niffler',
+    name: '嗅嗅徽记',
+    series: '神奇动物印记',
+    rarity: 2,
+    desc: '铜制的小徽章，嗅嗅抱着金币的憨态被铸得活灵活现。',
+  ),
+  CollectibleDef(
+    id: 'stamp_unicorn',
+    name: '独角兽银印',
+    series: '神奇动物印记',
+    rarity: 4,
+    desc: '月光下打磨的银印，据说持有者在禁林里更容易被独角兽信任。',
+  ),
+  CollectibleDef(
+    id: 'stamp_thunderbird',
+    name: '雷鸟图腾',
+    series: '神奇动物印记',
+    rarity: 5,
+    desc: '来自异大陆的图腾木刻，雷暴天握着它，掌心会微微发麻。',
+  ),
+  CollectibleDef(
+    id: 'stamp_pixie',
+    name: '小精灵翅膀标本',
+    series: '神奇动物印记',
+    rarity: 1,
+    desc: '康沃尔小精灵的翅膀，亮蓝色，被装在摄魂瓶里当书签。',
+  ),
 ];
 
 /// 按 id 查收藏品。

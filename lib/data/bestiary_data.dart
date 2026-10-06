@@ -166,6 +166,22 @@ const List<CreatureDef> kCreatureCatalog = [
     desc: '苍绿色的水妖，长着长长的抓握手指，黑魔法防御课的常客。',
     bond: 2,
   ),
+  CreatureDef(
+    id: 'flobberworm',
+    name: '弗洛伯毛虫',
+    danger: 1,
+    habitat: '菜地 / 潮湿沟渠',
+    desc: '十英寸长的灰色蠕虫，唯一的爱好是吃莴苣，保护等级极低。',
+    bond: 1,
+  ),
+  CreatureDef(
+    id: 'kappa',
+    name: '卡巴',
+    danger: 3,
+    habitat: '黑湖浅滩',
+    desc: '长着猴脸鳞身的水中妖怪，头顶的水洼是它的命门，鞠躬可拖延它。',
+    bond: 2,
+  ),
 ];
 
 // 注：creatureById 已删——图鉴只按 id 记录发现进度

@@ -580,4 +580,148 @@ const List<HappenstanceDef> kHappenstances = [
     ],
   ),
 
+  // ====== 内容扩容（r11）：+5 奇遇 ======
+  HappenstanceDef(
+    id: 'midnight_kitchen_run',
+    title: '半夜的厨房远征',
+    scene:
+        '你饿得睡不着。梨子画像在那头轻声说厨房里今天剩了'
+        '一整盘太妃糖布丁——多布斯们正愁没人吃。',
+    locationKeys: ['走廊', '城堡'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '去厨房搬救兵',
+        text:
+            '你挠了挠梨子，画像荡开一道门。小精灵们热情得吓人：'
+            '布丁、馅饼、热可可流水一样端上来。你打着饱嗝回塔，'
+            '顺手给守夜的老师也捎了一块派——第二天他没提这事，但查勤明显松了。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'social', reputationValue: 2, energy: 8),
+      ),
+      HappenstanceOutcomeDef(
+        title: '忍住，早点睡',
+        text:
+            '你数了三遍羊，把口水咽了回去。早睡的奖励是第二天'
+            '早课罕见的清醒，连赫奇帕奇院长都夸你精神。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 2, energy: 4),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'library_lost_book',
+    title: '还错的书',
+    scene:
+        '你在图书馆还书时发现手里多了一本不属于你的'
+        '《中世纪巫术简史》，借书卡上最后一行是个陌生的名字。',
+    locationKeys: ['图书馆', '城堡'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '按借书卡找到失主',
+        text:
+            '你顺着名字找到了低年级的失主。他正为丢了书急得团团转——'
+            '那是他哥哥的旧书。他执意把珍藏的巧克力蛙画片分了你一张，'
+            '还把这本书的批注心得讲给你听，比平斯夫人那句「安静」有价值多了。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'moral', reputationValue: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '先读为敬再归还',
+        text:
+            '还书之前你把中世纪那几章翻完了——里面关于「漂浮咒的'
+            '礼仪起源」的段落恰好是下月小论文的素材。平斯夫人'
+            '收书时狐疑地看了你一眼，但书完好无损，她挑不出错。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 3),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'owl_post_storm',
+    title: '猫头鹰暴风雨',
+    scene:
+        '清晨上空突然被几百只猫头鹰占领——某个邮购促销'
+        '把全校的订单一齐砸了下来，礼堂上空的「雪」全是羽毛。',
+    locationKeys: ['礼堂', '城堡'],
+    seasonTags: ['autumn', 'winter'],
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '帮忙接住乱套的包裹',
+        text:
+            '你顺手接住三个差点砸进南瓜汁的包裹，替乱成一团的'
+            '一年级们分拣了信件。早餐吃了一嘴羽毛，但整张桌子都在喊你英雄。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'social', reputationValue: 3, housePoints: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '举盘护住自己的信',
+        text:
+            '你早有预感地把早晨的信件护在了餐盘下面。'
+            '羽毛落定后，你的信完好无损——里面还夹着家里'
+            '寄来的五加隆零花钱。',
+        effect: HappenstanceEffectDef(galleons: 5),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'peaves_mood',
+    title: '皮皮鬼今天心情好',
+    scene:
+        '皮皮鬼拎着一篮子粉笔头从走廊掠过，难得没有砸人，'
+        '反而冲你挤了挤眼睛——他一定在憋什么「大好事」。',
+    locationKeys: ['走廊', '城堡'],
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '跟他做笔交易',
+        text:
+            '你用半包椒盐脆饼换来了皮皮鬼的「友好通道」一整天——'
+            '他不仅没整你，还替你把三个想找茬的人引去了别的走廊。'
+            '这笔投资物超所值。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'dark', reputationValue: 2, energy: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '敬而远之',
+        text:
+            '你贴着墙根绕开了他。虽然错过了他篮子里的糖果雨，'
+            '但也躲开了紧跟其后的粉笔头轰炸——稳健就是胜利。',
+        effect: HappenstanceEffectDef(energy: 2),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'greenhouse_night_bloom',
+    title: '夜开的花',
+    scene:
+        '曼德拉草温室的窗缝里透出幽幽的银光——斯普劳特教授'
+        '培育的月光花提前开了，香气顺着窗缝往外飘。',
+    locationKeys: ['温室', '场地'],
+    seasonTags: ['spring', 'summer'],
+    minGrade: 2,
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '静静看它开完',
+        text:
+            '你在窗外站了半小时，看银色的花瓣一层层舒展开。'
+            '第二天草药课上你随口说出的观察，让斯普劳特教授'
+            '当场给你加了学院分——「会看花的眼睛比会背书的脑子稀有」。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 3, housePoints: 5),
+      ),
+      HappenstanceOutcomeDef(
+        title: '摘一小瓣做书签',
+        text:
+            '你摘了一片快脱落的银瓣夹进草药课本。它干了之后'
+            '还留着淡淡的光，晚上翻书时不用点灯——'
+            '代价是第二天鼻尖沾了一天的花粉。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'dark', reputationValue: 1),
+      ),
+    ],
+  ),
 ];
