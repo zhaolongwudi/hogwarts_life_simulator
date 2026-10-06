@@ -364,7 +364,8 @@ void main() {
   // ============================================================
   group('真的接进了游戏', () {
     final responseSrc =
-        File('lib/mixins/mixin_response.dart').readAsStringSync();
+        File('lib/mixins/mixin_response.dart').readAsStringSync() +
+        File('lib/mixins/mixin_response_death.dart').readAsStringSync();
     final systemsSrc = File('lib/mixins/mixin_systems.dart').readAsStringSync();
     final narrativeSrc =
         narrativeSideSource();
@@ -406,13 +407,13 @@ void main() {
     test('同一个部位不会重复落疤——它已经在那儿了', () {
       final i = responseSrc.indexOf('void tryScarFromNarrative(');
       expect(i, greaterThan(-1));
-      final body = responseSrc.substring(i, i + 1200);
+      final body = responseSrc.substring(i, i + 1200 > responseSrc.length ? responseSrc.length : i + 1200);
       expect(body, contains('p.scars.any((s) => s.site == def.site)) return;'));
     });
 
     test('落疤时记了长期记忆、弹了通知', () {
       final i = responseSrc.indexOf('void tryScarFromNarrative(');
-      final body = responseSrc.substring(i, i + 1400);
+      final body = responseSrc.substring(i, i + 1400 > responseSrc.length ? responseSrc.length : i + 1400);
       expect(body, contains('addKeyFact'), reason: '没有写长期记忆');
       expect(body, contains('notifications.add'), reason: '没有弹通知');
     });

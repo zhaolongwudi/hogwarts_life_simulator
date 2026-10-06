@@ -136,7 +136,8 @@ void main() {
     });
 
     test('mixin_response.dart 使用 kImportance* 常量', () {
-      final content = File('lib/mixins/mixin_response.dart').readAsStringSync();
+      final content = File('lib/mixins/mixin_response.dart').readAsStringSync() +
+          File('lib/mixins/mixin_response_death.dart').readAsStringSync();
       expect(content, contains('kImportanceRivalEnded'));
     });
   });
