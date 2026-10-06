@@ -198,6 +198,49 @@ const List<CollectibleDef> kCollectibleCatalog = [
     rarity: 4,
     desc: '泛着淡淡银光。海格说这说明它主人曾在附近走过。',
   ),
+  // ====== 内容扩容（r10）：+6 收藏品 ======
+  CollectibleDef(
+    id: 'card_hagrid',
+    name: '鲁伯·海格',
+    series: '巧克力蛙画片',
+    rarity: 3,
+    desc: '半巨人猎场看守，卡片上的岩皮饼大得能把画框压弯。',
+  ),
+  CollectibleDef(
+    id: 'card_mcgonagall',
+    name: '米勒娃·麦格',
+    series: '巧克力蛙画片',
+    rarity: 4,
+    desc: '变形课教授在卡片里端坐着，据说她在画框外也能看见你走神。',
+  ),
+  CollectibleDef(
+    id: 'token_quidditch',
+    name: '魁地奇世界杯票根',
+    series: '体育纪念品',
+    rarity: 3,
+    desc: '边角磨得起毛的票根，爱尔兰吉祥物妖精的彩带痕迹还留在上面。',
+  ),
+  CollectibleDef(
+    id: 'token_snowball',
+    name: '永远不化的雪球',
+    series: '体育纪念品',
+    rarity: 2,
+    desc: '施了冰冻咒的雪球，据说砸向过某位教授的后脑勺。',
+  ),
+  CollectibleDef(
+    id: 'bottle_felix',
+    name: '福灵剂空瓶',
+    series: '魔法纪念品',
+    rarity: 5,
+    desc: '残留的珍珠色液滴闪着微光，瓶子本身已是稀罕物。',
+  ),
+  CollectibleDef(
+    id: 'bottle_butterbeer_cap',
+    name: '黄油啤酒瓶盖',
+    series: '魔法纪念品',
+    rarity: 1,
+    desc: '三把扫帚的瓶盖，凑齐十个可以找罗斯默塔夫人换一杯免费的。',
+  ),
 ];
 
 /// 按 id 查收藏品。
