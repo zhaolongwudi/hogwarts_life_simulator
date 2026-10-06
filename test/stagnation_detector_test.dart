@@ -116,7 +116,7 @@ void main() {
     test('mixin 里不再各自内联阈值比较', () {
       final offenders = <String>[];
       for (final path in [
-        'lib/mixins/mixin_narrative.dart',
+        'lib/mixins/mixin_narrative_prompt.dart',
         'lib/mixins/mixin_response.dart',
       ]) {
         final src = File(path).readAsStringSync();
@@ -135,7 +135,7 @@ void main() {
 
     test('两端都引用了同一个枚举', () {
       for (final path in [
-        'lib/mixins/mixin_narrative.dart',
+        'lib/mixins/mixin_narrative_prompt.dart',
         'lib/mixins/mixin_response.dart',
       ]) {
         final src = File(path).readAsStringSync();

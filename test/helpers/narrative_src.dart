@@ -18,6 +18,8 @@ import 'dart:io';
 final List<String> _narrativeSideFiles = [
   'lib/mixins/mixin_narrative.dart',
   'lib/mixins/mixin_narrative_canon.dart',
+  'lib/mixins/mixin_narrative_offline.dart',
+  'lib/mixins/mixin_narrative_prompt.dart',
   'lib/mixins/mixin_story_wiring.dart',
   'lib/mixins/mixin_story_engine.dart',
   'lib/mixins/mixin_summary_memory.dart',

@@ -17,7 +17,7 @@ String _src(String path) => File(path).readAsStringSync();
 void main() {
   // ------------------------------------------- R14：政治立场不要中途漂移
   group('R14 政治立场每回合重述', () {
-    final src = _src('lib/mixins/mixin_narrative.dart');
+    final src = _src('lib/mixins/mixin_narrative_prompt.dart');
 
     test('叙事 prompt 里注入了政治立场', () {
       expect(src.contains('p.politicalTendency'), isTrue);

@@ -10,6 +10,7 @@ import 'game_provider_base.dart';
 import '../mixins/mixin_init.dart';
 import '../mixins/mixin_narrative_canon.dart';
 import '../mixins/mixin_narrative_offline.dart';
+import '../mixins/mixin_narrative_prompt.dart';
 import '../mixins/mixin_narrative.dart';
 import '../mixins/mixin_summary_memory.dart';
 import '../mixins/mixin_narrative_continuity.dart';
@@ -79,6 +80,7 @@ class GameProvider extends GameProviderBase
         GameStoryEngineMixin,
         GameNarrativeCanonMixin,
         GameNarrativeOfflineMixin,
+        GameNarrativePromptMixin,
         GameNarrativeMixin,
         GameCommandCheatMixin,
         GameCommandsRegistryMixin,
