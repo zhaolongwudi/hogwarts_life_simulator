@@ -7,7 +7,9 @@ import 'package:hogwarts_life_simulator/providers/game_provider_base.dart';
 // r6-3: mixin_commands 拆分后，扫描目标 = commands + extras 两文件拼接
 String _commandsFamilyCode() {
   final r = File('lib/mixins/' 'mixin_commands_registry.dart').readAsStringSync() + File('lib/mixins/' 'mixin_commands_registry_world.dart').readAsStringSync() +
-        File('lib/mixins/' 'mixin_commands_registry_activity.dart').readAsStringSync();
+        File('lib/mixins/' 'mixin_commands_registry_activity.dart').readAsStringSync() +
+        File('lib/mixins/' 'mixin_commands_registry_study.dart').readAsStringSync() +
+        File('lib/mixins/' 'mixin_commands_registry_item.dart').readAsStringSync();
   final a = File('lib/mixins/' 'mixin_commands.dart').readAsStringSync();
   final b = File('lib/mixins/' 'mixin_commands_extras.dart').readAsStringSync();
   return [r, a, b].join('\n');
