@@ -182,6 +182,25 @@ const List<CreatureDef> kCreatureCatalog = [
     desc: '长着猴脸鳞身的水中妖怪，头顶的水洼是它的命门，鞠躬可拖延它。',
     bond: 2,
   ),
+  CreatureDef(
+    id: 'doxy',
+    name: '狐媚子',
+    danger: 2,
+    habitat: '旧宅阁楼 / 城堡帷幔后',
+    desc: '长得像长了翅膀的黑亮大仙，成群出没，咬一口有剧毒，要用多克斯药水解。',
+    loot: ['多克斯毒囊'],
+    bond: 2,
+  ),
+  CreatureDef(
+    id: 'red_cap',
+    name: '红帽子',
+    danger: 3,
+    habitat: '旧地牢 / 战场遗迹',
+    desc: '矮小的恶性生物，头上帽子浸满血色，爱在黑暗处袭击落单的人。',
+    loot: ['红帽子帽屑'],
+    bond: 2,
+  ),
+
 ];
 
 // 注：creatureById 已删——图鉴只按 id 记录发现进度
