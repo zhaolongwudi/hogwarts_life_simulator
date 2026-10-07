@@ -121,7 +121,8 @@ void main() {
     });
 
     test('mixin_init.dart 使用 kImportance* 常量', () {
-      final content = File('lib/mixins/mixin_init.dart').readAsStringSync();
+      final content = File('lib/mixins/mixin_init.dart').readAsStringSync() +
+          File('lib/mixins/mixin_init_npc_intro.dart').readAsStringSync();
       expect(content, contains('kImportanceMeetNpc'));
     });
 
