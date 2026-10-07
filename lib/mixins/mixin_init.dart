@@ -13,7 +13,6 @@ import '../models/npc.dart';
 import '../models/game_systems.dart';
 import '../data/world_rules.dart';
 import '../models/player.dart';
-import '../data/trait_data.dart';
 import '../data/npc_data.dart';
 import '../data/archetype_data.dart';
 import '../data/wand_data.dart';
@@ -22,13 +21,13 @@ import '../models/world_state.dart';
 import '../models/long_term_memory.dart';
 import '../utils/crash_logger.dart';
 import '../providers/game_provider_base.dart';
-import '../prompts/narrative_prompts.dart';
 import '../data/npc_schedule_rules.dart';
 import '../utils/debug_log.dart';
 import 'mixin_summary_memory.dart';
+import 'mixin_init_character.dart';
 import '../data/memory_importance_config.dart';
 
-mixin GameInitMixin on GameProviderBase {
+mixin GameInitMixin on GameProviderBase, GameInitCharacterMixin {
   @override
   String buildSystemPrompt() {
     final p = player;
@@ -199,7 +198,7 @@ mixin GameInitMixin on GameProviderBase {
         ..write('\n')
         ..write(goalLine);
     }
-    final traitLine = _traitNarrativeHints();
+    final traitLine = traitNarrativeHints();
     if (traitLine.isNotEmpty) {
       buffer
         ..write('\n')
@@ -377,9 +376,9 @@ mixin GameInitMixin on GameProviderBase {
     notifyListeners();
 
     try {
-      final birthYear = _calculateBirthYear();
+      final birthYear = calculateBirthYear();
       // 传承局：孩子在他自己那一年的九月入学，不是上一代那一年的九月
-      final startYear = legacy?.startYear ?? _startYearForEra(appProvider.era);
+      final startYear = legacy?.startYear ?? startYearForEra(appProvider.era);
       // letter 起点（收到录取通知书）按原著为 7 月 31 日前后；其他 3 个起点才是 9 月 1 日特快出发日
       // 防止 letter 开局刚收到信，下一回合场景直接跳到 9 月 1 日已在站台导致整个暑假剧情丢失。
       // R2：开场场景配置数据化（1 处查表替代 3 处 switch）
@@ -446,9 +445,9 @@ mixin GameInitMixin on GameProviderBase {
       );
 
       // 开局特质抽取（3个，软保底稀有度）
-      final rolledTraits = _rollStartingTraits();
+      final rolledTraits = rollStartingTraits();
       player!.traits.addAll(rolledTraits.map((t) => t.id));
-      _applyTraitBonuses(rolledTraits);
+      applyTraitBonuses(rolledTraits);
       // P1-9 成长总账：记录天赋加成后的「开局定型值」作为成长基线
       player!.initialAttributes = Map<String, int>.from(player!.attributes);
 
@@ -506,7 +505,7 @@ mixin GameInitMixin on GameProviderBase {
       // 这些是「身份级」事实，即使 AI 摘要压缩也不会丢；永不遗忘层永远保留。
       // 阈值引用常量：以前这里写死 9、淘汰侧写 10，两边对不上，
       // 开局身份事实在长线存档里一样会被日常琐事挤掉。
-      // 写入顺序要在 _generateOpeningScene 之前，确保第一回合 prompt 已经含有这些纯事实。
+      // 写入顺序要在 generateOpeningScene 之前，确保第一回合 prompt 已经含有这些纯事实。
       final ts0 = worldState.time.format();
       void addT0(
         String id,
@@ -616,11 +615,11 @@ mixin GameInitMixin on GameProviderBase {
       }
 
       this.openingScene = openingScene;
-      await _generateOpeningScene();
+      await generateOpeningScene();
 
       // 主线剧情模式：用第 1 章第 1 步的内容**替换**沙盒开场叙事，
       // 让玩家一进来就在剧情里（而不是先看到一段自由沙盒的开场白）。
-      // 【为什么放在 _generateOpeningScene 之后而不是替代它】
+      // 【为什么放在 generateOpeningScene 之后而不是替代它】
       // 沙盒开场顺带做了初始化（recentTurns / 摘要缓冲 / 本地分院等），
       // 全部走完再覆盖叙事与选项，其余初始化成果都保留。
       if (appProvider.storyMode) {
@@ -1173,278 +1172,6 @@ mixin GameInitMixin on GameProviderBase {
     }
   }
 
-  String _calculateBirthYear() {
-    // 入学时11岁：出生年份 = 时代入学年份 - 11
-    return (_startYearForEra(appProvider.era) - 11).toString();
-  }
-
-  /// 时代对应的入学年份（游戏开始年份）
-
-  int _startYearForEra(Era era) => eraDefByEra(era).startYear;
-
-  // ==================== 开局特质抽取（软保底） ====================
-
-  /// 抽取 3 个开局特质，稀有度软保底
-
-  List<TraitDef> _rollStartingTraits() {
-    final byRarity = traitsByRarity();
-    final commons = byRarity['common'] ?? [];
-    final rares = byRarity['rare'] ?? [];
-    final legendaries = byRarity['legendary'] ?? [];
-
-    final picked = <TraitDef>[];
-    final usedIds = <String>{};
-    int pity = 0; // 连续未出稀有/传说的次数
-
-    while (picked.length < 3) {
-      // 软保底：连续未出高稀有度时提升概率
-      final pityBoost =
-          (pity ~/ TraitRarityWeights.pityThreshold) *
-          TraitRarityWeights.pityBonus;
-      final legendaryP = TraitRarityWeights.legendaryBase + pityBoost * 0.5;
-      final rareP = TraitRarityWeights.rareBase + pityBoost;
-
-      final roll = random.nextDouble();
-      String rarity;
-      if (roll < legendaryP && legendaries.isNotEmpty) {
-        rarity = 'legendary';
-      } else if (roll < legendaryP + rareP && rares.isNotEmpty) {
-        rarity = 'rare';
-      } else {
-        rarity = 'common';
-      }
-
-      final pool = switch (rarity) {
-        'legendary' => legendaries,
-        'rare' => rares,
-        _ => commons,
-      };
-      final available = pool.where((t) => !usedIds.contains(t.id)).toList();
-      if (available.isEmpty) {
-        // 该稀有度已抽完，回退到普通
-        final fallback = commons.where((t) => !usedIds.contains(t.id)).toList();
-        if (fallback.isEmpty) break;
-        final t = fallback[random.nextInt(fallback.length)];
-        picked.add(t);
-        usedIds.add(t.id);
-        continue;
-      }
-
-      final trait = available[random.nextInt(available.length)];
-      picked.add(trait);
-      usedIds.add(trait.id);
-      if (rarity == 'common') {
-        pity++;
-      } else {
-        pity = 0;
-      }
-    }
-    return picked;
-  }
-
-  /// 应用特质属性加成
-
-  void _applyTraitBonuses(List<TraitDef> traits) {
-    final p = player;
-    if (p == null) return;
-    for (final t in traits) {
-      t.attributeBonus.forEach((key, bonus) {
-        // energy/health 等是顶层字段，attributes 是技能属性
-        switch (key) {
-          case 'energy':
-            p.energy = (p.energy + bonus).clamp(0, 100);
-            break;
-          case 'health':
-            p.health = (p.health + bonus).clamp(0, 100);
-            break;
-          case 'moral':
-            p.playerReputation.add('moral', bonus);
-            break;
-          case 'spirit':
-            p.spirit = (p.spirit + bonus).clamp(0, 100);
-            break;
-          case 'social':
-            // social 既是属性也是声望，这里加到属性
-            p.attributes['social'] = ((p.attributes['social'] ?? 50) + bonus)
-                .clamp(0, 100);
-            break;
-          default:
-            p.attributes[key] = ((p.attributes[key] ?? 50) + bonus).clamp(
-              0,
-              100,
-            );
-        }
-      });
-      // 节俭特质：初始加隆略多
-      if (t.id == 'thrifty') {
-        p.galleons += 100;
-      }
-    }
-    if (traits.isNotEmpty) {
-      notifications.add('✨ 你获得了特质：${traits.map((t) => t.name).join('、')}');
-    }
-  }
-
-  /// 特质叙事提示（注入系统提示词）
-
-  String _traitNarrativeHints() {
-    final p = player;
-    if (p == null || p.traits.isEmpty) return '';
-    final hints = p.traits
-        .map((id) => traitById(id))
-        .where((t) => t != null && t.narrativeHint.isNotEmpty)
-        .map((t) => t!.narrativeHint)
-        .toList();
-    if (hints.isEmpty) return '';
-    return '【出身特质】${hints.join('；')}';
-  }
-
-  // ==================== 生成开场场景 ====================
-
-  Future<void> _generateOpeningScene() async {
-    if (player == null) return;
-
-    final p = player!;
-    final wandData = p.wandId != null ? wandById(p.wandId!) : null;
-    final wandInfo = wandData != null
-        ? '${wandData.name}（${wandData.wood}·${wandData.core}·${wandData.length}）'
-        : '尚未选择的魔杖';
-
-    final petInfo = _buildPetDescriptionShort(p);
-    final startPoint = _buildStartPointNarrative();
-
-    // 只收集已设定字段，减少 token 噪声
-    final profile = <String>[];
-    profile.add(
-      '姓名：${p.name}｜11岁｜${bloodStatusLabel(p.bloodType)}｜${p.birthLocation}',
-    );
-    if (p.personalityTraits.isNotEmpty) {
-      profile.add('性格：${p.personalityTraits.join('、')}');
-    }
-    if (p.birthIdentity != null && p.birthIdentity!.isNotEmpty) {
-      profile.add('出身：${p.birthIdentity}');
-    }
-    if (p.appearance != null && p.appearance!.isNotEmpty) {
-      profile.add('外貌：${p.appearance}');
-    }
-    if (p.familyBackground != null && p.familyBackground!.isNotEmpty) {
-      profile.add('家族：${p.familyBackground}');
-    }
-    if (p.childhoodExperiences.isNotEmpty) {
-      profile.add('童年：${p.childhoodExperiences.join('；')}');
-    }
-    if (p.beliefs != null && p.beliefs!.isNotEmpty) {
-      profile.add('信念：${p.beliefs}');
-    }
-    final resolvedAptitude = resolveMagicAptitude(p);
-    if (resolvedAptitude.isNotEmpty) {
-      profile.add('资质：$resolvedAptitude');
-    }
-    if (p.initialTalent != null && p.initialTalent!.isNotEmpty) {
-      profile.add('天赋：${p.initialTalent}');
-    }
-    if (p.housePreference != null && p.housePreference!.isNotEmpty) {
-      profile.add('学院倾向：${p.housePreference}');
-    }
-    if (p.traits.isNotEmpty) {
-      final traitNames = p.traits
-          .map((id) => traitById(id)?.name)
-          .where((n) => n != null)
-          .join('、');
-      if (traitNames.isNotEmpty) profile.add('出身特质：$traitNames');
-    }
-    profile.add('时代：${_eraLabelShort(appProvider.era)}');
-    profile.add('魔杖：$wandInfo');
-    profile.add('宠物：$petInfo');
-
-    final wandSourceLine =
-        wandSources[kDefaultWandSourceId]?.narrativeLine ??
-        '玩家的魔杖是奥利凡德先生在对角巷亲手选中的（魔杖选择巫师），绝不是捡来的木棍、祖传物品、或自己制作。';
-    final wandDetail = wandData != null
-        ? '${wandData.wood}木·${wandData.core}·${wandData.length}'
-        : '指定魔杖';
-    final prompt = buildOpeningNarrativePrompt(
-      profileLine: profile.join('｜'),
-      startPoint: startPoint,
-      wandDetail: wandDetail,
-      wandSourceLine: wandSourceLine,
-    );
-
-    if (router == null || !router!.hasNarrativeService) {
-      currentNarrative =
-          '${p.name}，你在${p.birthLocation}长大，等待来自霍格沃茨的信已经等了很久。\n\n📅 ${worldState.timestamp}\n\n魔法世界的大门即将为你打开。';
-      choices = [
-        GameChoice(text: '等待猫头鹰送来的信', action: '等待猫头鹰送来的信'),
-        GameChoice(text: '收拾行李，准备出发', action: '收拾行李，准备出发'),
-        GameChoice(text: '再检查一遍霍格沃茨的入学清单', action: '再检查一遍霍格沃茨的入学清单'),
-      ];
-      appendRecentTurn(currentNarrative);
-      return;
-    }
-
-    try {
-      final response = await callDeepSeek(prompt);
-      parseResponse(response.content);
-      // 开场的选项也走独立生成：system prompt 与开场 prompt 现在都明令
-      // 「本轮不输出选项」，两边口径一致才不会让模型随机决定写不写
-      // （以前是 system 要选项、user 说别写，于是 BUG-H 时有时无）。
-      // 独立生成失败时保留 parseResponse 兜底出来的那几个。
-      try {
-        final openingChoices = await generateChoicesSeparately(
-          currentNarrative,
-        );
-        if (openingChoices.isNotEmpty) choices = openingChoices;
-      } catch (e) {
-        debugLog('⚠️ 开场选项独立生成失败，沿用解析/兜底选项: $e');
-      }
-      accumulateForSummary(currentNarrative);
-      appendRecentTurn(currentNarrative);
-      notifyListeners();
-      unawaited(autoSave());
-    } catch (e) {
-      error = e.toString();
-      currentNarrative = '${p.name}，故事即将开始。请稍候，魔法正在酝酿。';
-      choices = [GameChoice(text: '继续', action: '继续')];
-      appendRecentTurn(currentNarrative);
-      notifyListeners();
-      unawaited(autoSave());
-      unawaited(
-        CrashLogger.instance.record(
-          e,
-          StackTrace.current,
-          screen: 'generateOpeningScene',
-          extra: 'player=${p.name}, era=${appProvider.era.name}',
-        ),
-      );
-    }
-  }
-
-  // ==================== 开场辅助：宠物描述（短版，省token） ====================
-
-  String _buildPetDescriptionShort(Player p) {
-    final petId = p.petId;
-    final petName = p.petName ?? '';
-    if (petId == null) return '未饲养';
-    // R8：优先使用 PetDef 数据层 + PetNarrativeConfig（去掉多处 switch/kyuubi 特判）
-    final def = petById(petId);
-    final cfg = petNarrativeConfig(petId);
-    if (def != null) {
-      final ab = def.abilities.take(3).join('·');
-      final tf = cfg.bondGatedTransform
-          ? '·可化人形（羁绊≥${cfg.specialInteractionBondThreshold}触发）'
-          : (def.canTransform ? '·可化人形' : '');
-      final nm = petName.isNotEmpty ? petName : def.name;
-      return '$nm（${def.species}$tf，能力：$ab）';
-    }
-    return petName.isEmpty ? '$petName（特殊伙伴）' : '特殊伙伴';
-  }
-
-  // ==================== 开场辅助：开场剧情起点文案 ====================
-
-  String _buildStartPointNarrative() {
-    // R2：查表，替代 5-case switch
-    return openingSceneById(openingScene).startNarrative;
-  }
 
   // ==================== 处理选择 / 指令 ====================
 

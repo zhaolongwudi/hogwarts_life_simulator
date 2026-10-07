@@ -139,8 +139,9 @@ void main() {
     });
 
     test('开场叙事会补一次独立选项生成', () {
-      final src = File('lib/mixins/mixin_init.dart').readAsStringSync();
-      final body = src.substring(src.indexOf('_generateOpeningScene'));
+      final src = File('lib/mixins/mixin_init.dart').readAsStringSync() +
+          File('lib/mixins/mixin_init_character.dart').readAsStringSync();
+      final body = src.substring(src.indexOf('generateOpeningScene('));
       expect(body, contains('generateChoicesSeparately'),
           reason: '开场 prompt 已经不要求选项了，这里必须补一次独立生成，'
               '否则开局只剩本地兜底选项');
