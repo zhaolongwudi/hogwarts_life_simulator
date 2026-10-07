@@ -724,4 +724,144 @@ const List<HappenstanceDef> kHappenstances = [
       ),
     ],
   ),
+  // ====== 内容扩容第三批（+5）======
+  HappenstanceDef(
+    id: 'clock_tower_stuck_gear',
+    title: '钟楼里卡住的齿轮',
+    scene:
+        '路过的钟楼里传来"咔、咔"的怪声，顶层的齿轮好像被什么东西卡住了。'
+        '再这样下去，整点报时肯定要出洋相。',
+    locationKeys: ['钟楼', '城堡'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '爬上去想办法修',
+        text:
+            '你钻进齿轮架后面，掏出半截魔杖尖小心翼翼地拨——原来是一只鸟骨卡在了齿缝里。'
+            '钟声准点响起时，楼下传来一片掌声。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'leadership', reputationValue: 2, housePoints: 4),
+      ),
+      HappenstanceOutcomeDef(
+        title: '去叫管钟楼的校工',
+        text:
+            '校工费尔奇嘟囔着"早该有人来报信了"，速度却快得惊人。'
+            '他难得地没有瞪你，走时扔下一句"还行，算你机灵"。',
+        effect: HappenstanceEffectDef(reputationDim: 'social', reputationValue: 1),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'dungeon_echo_potion',
+    title: '地牢里无人认领的药剂',
+    scene:
+        '魔药课教室外的窗台上放着一瓶冒着淡蓝雾气的药剂，标签被水汽洇得看不清。'
+        '没有人来认领，而下一节课的人马上就要到了。',
+    locationKeys: ['地牢', '魔药教室'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '送去给教授辨认',
+        text:
+            '斯内普教授（或当值的魔药教授）盯着那瓶药看了半晌，冷冷道：'
+            '"有人把缩小药剂忘在窗台上，还差点被你当礼物喝了。算你走运。"'
+            '不过你注意到，他在名册上给你画了个小小的正字。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 2),
+      ),
+      HappenstanceOutcomeDef(
+        title: '贴张「失物招领」字条',
+        text:
+            '你写了张字条贴在旁边。第二天地牢窗台多了一排小瓶子，'
+            '每瓶都贴着"谢谢"——原来是有人在做课外的自助补给站。',
+        effect: HappenstanceEffectDef(reputationDim: 'moral', reputationValue: 1),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'great_hall_floating_candles',
+    title: '礼堂里打瞌睡的浮烛',
+    scene:
+        '晚宴过半，头顶漂浮的蜡烛里有一支明显"困了"——火苗一跳一跳，'
+        '蜡油眼看就要滴到下面的长桌上，而那桌正坐着一年级新生。',
+    locationKeys: ['礼堂', '城堡'],
+    weight: 3,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '用悬浮咒扶稳它',
+        text:
+            '你念咒的手势又快又稳，蜡烛乖乖归位。低年级的孩子们看呆了，'
+            '你匿名充当了一回"高年级的传说"。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 1, housePoints: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '提醒旁边的高年级学长',
+        text:
+            '学长一个响指把蜡烛稳住，回头冲你一笑："反应不错。'
+            '下次可以直接找我，我们级里正缺个帮手。"',
+        effect: HappenstanceEffectDef(reputationDim: 'social', reputationValue: 1),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'greenhouse_snargaluff_pod',
+    title: '温室里偷偷鼓胀的斯纳加夫荚果',
+    scene:
+        '温室角落里，一株斯纳加夫树藤的荚果比平时鼓了一倍，'
+        '表皮绷得发亮——这东西随时会弹起来咬人，而温室今晚锁门。',
+    locationKeys: ['温室', '城堡'],
+    seasonTags: ['spring', 'summer'],
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '戴上防护手套摘下它',
+        text:
+            '你跟荚果周旋了整整一刻钟，手臂上多了两道红痕，'
+            '但筐里躺着一颗完整的斯纳加夫荚果——魔药课的稀有材料，'
+            '教授见了都挑眉。手上的伤倒是不轻。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'combat', reputationValue: 2,
+            itemName: '斯纳加夫荚果', energy: 2),
+      ),
+      HappenstanceOutcomeDef(
+        title: '在门上留警示字条',
+        text:
+            '你写字条钉在温室门上："今晚别进温室，斯纳加夫要爆了。"'
+            '第二天，草药学教授在课上点名表扬了"某位观察敏锐的同学"。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'academic', reputationValue: 1),
+      ),
+    ],
+  ),
+  HappenstanceDef(
+    id: 'winter_moving_staircase_gap',
+    title: '移动楼梯的瞬间断层',
+    scene:
+        '冬天的清晨，移动楼梯在你脚下开始转向，前方豁开一道断层——'
+        '楼梯那头还站着个抱着一摞羊皮纸的一年级新生，脸都吓白了。',
+    locationKeys: ['城堡', '楼梯'],
+    seasonTags: ['winter'],
+    weight: 2,
+    outcomes: [
+      HappenstanceOutcomeDef(
+        title: '伸手把人拉过来',
+        text:
+            '你一把拽住新生的胳膊拖回安全的一侧，羊皮纸撒了一地。'
+            '两人蹲在地上捡纸的时候，那位新生红着脸说了十几次谢谢，'
+            '后来在\$house公共休息室里，这事被讲成了"英雄传说"。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'moral', reputationValue: 2, housePoints: 3),
+      ),
+      HappenstanceOutcomeDef(
+        title: '大声指挥两边都别动',
+        text:
+            '你扯着嗓子让两边的人原地不动，等楼梯转完。'
+            '虽然只是虚惊一场，但"楼梯惊魂"里那个冷静指挥的身影'
+            '被大家记住了。',
+        effect: HappenstanceEffectDef(
+            reputationDim: 'leadership', reputationValue: 1),
+      ),
+    ],
+  ),
 ];
