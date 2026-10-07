@@ -128,7 +128,13 @@ void main() {
       expect(gp.maybeTriggerLetter(), '');
       gp.appProvider.letterEnabled = true;
       gp.npcRegistry.clear();
-      expect(gp.maybeTriggerLetter(), '');
+      // 无 NPC 时 NPC 通道信不寄；但机构/匿名（senderLabel）信不走 NPC pool，仍可投递
+      final s0 = gp.maybeTriggerLetter();
+      if (s0.isNotEmpty) {
+        expect(s0, contains('🦉'));
+        // senderLabel 落款（非 NPC 名）
+        expect(s0.contains('赫敏') || s0.contains('德拉科'), isFalse);
+      }
     });
 
     test('冷却内不触发', () async {

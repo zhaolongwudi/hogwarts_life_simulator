@@ -834,4 +834,165 @@ const List<LetterDef> kLetters = [
       ),
     ],
   ),
+  // ====== 内容扩容第三批（+6）======
+  LetterDef(
+    id: 'letter_mystery_sweets_note',
+    kind: LetterKind.mystery,
+    senderLabel: '匿名的祝福者',
+    onceOnly: true,
+    scene:
+        '清晨醒来，枕边多了一小袋巧克力蛙和一张没有署名的字条，'
+        '字迹清秀得刻意：「收藏巧克力蛙画片的人，运气不会太差。'
+        '下次画片重复的时候，试试看把它送给需要它的人。」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '把字条收进抽屉最里层',
+        text:
+            '你把字条折好收进抽屉。奇怪的是，那之后的画片，'
+            '张张都是你没见过的新款——像是有什么人在暗处悄悄替你排好了一切。',
+        effect: LetterEffect(senderAffection: 1),
+      ),
+      LetterReply(
+        title: '在公共休息室大声念出字条',
+        text:
+            '没人承认是自己写的。但当晚你听见有人在小声笑，'
+            '而第二天，你的糖罐满了——有人说「神秘人」的品味一向不差。',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_mystery_library_book',
+    kind: LetterKind.mystery,
+    senderLabel: '五十年前的借书人',
+    onceOnly: true,
+    scene:
+        '你借的那本《高阶魔药解析》里，夹着一张泛黄的借书卡，'
+        '最早一栏的日期是五十年前，借阅人签名被墨水晕开，隐约是个名字的开头。'
+        '卡片背面用铅笔写着一行小字：「第七章的配方是错的，别照着做。」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '翻到第七章仔细核对',
+        text:
+            '果然——第七章的月相表少印了一行。你用铅笔补上，'
+            '又在卡片背面添了一句「已修正，谢谢五十年前的你」，把书放回书架。',
+        effect: LetterEffect(senderAffection: 1),
+      ),
+      LetterReply(
+        title: '把借书卡交给平斯夫人',
+        text:
+            '平斯夫人眯着眼看了很久，忽然说：「这孩子的重孙现在就在楼上学业办公室。'
+            '要替你传个话吗？」一周后，一张崭新的手抄正确配方出现在你的床头上。',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_friend_shared_scarf',
+    kind: LetterKind.friendship,
+    minAffection: 40,
+    scene:
+        '\$sender 来信，信纸上有淡淡的花香：「降温了，听说你总是忘带围巾。'
+        '我多织了一条——别嫌弃针脚歪，第一次织。黑色和你的校袍最配。'
+        '系上的时候想想：有人在惦记你暖不暖。」',
+    effect: LetterEffect(senderAffection: 2),
+    replies: [
+      LetterReply(
+        title: '立刻围上新围巾回信道谢',
+        text:
+            '你把围巾裹得严严实实去上课。回信写：「针脚一点都不歪，'
+            '歪的是我——看完信差点把眼泪掉在羊皮纸上。谢谢。」',
+        effect: LetterEffect(senderAffection: 3),
+      ),
+      LetterReply(
+        title: '回赠一罐蜂蜜公爵的太妃糖',
+        text:
+            '随包裹寄去的字条只有一句：「织围巾的手，值得吃点甜的。」'
+            '后来你发现她把糖纸都细心抚平了，夹在课本里当书签。',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_reunion_old_professor',
+    kind: LetterKind.reunion,
+    scene:
+        '一封用蜡封口的信送到你手上，落款是你一年级时的某位任课教授：'
+        '「整理旧物时翻到你的课堂笔记——写得潦草，却全是好问题。'
+        '教书这些年，好问题比好答案稀有得多。若你在城堡里遇到难解之事，'
+        '我的办公室的门仍未上锁。」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '登门拜访，带上那本旧笔记',
+        text:
+            '教授翻着笔记笑出了声：「这一页你把我的板书抄错了，我居然现在才看出来。」'
+            '那天下午你听了很多课堂之外的事，离开时办公室的门在你身后虚掩着——确实没锁。',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+      LetterReply(
+        title: '回信致谢，暂不多扰',
+        text:
+            '回信只有短短几行：「等我遇到配得上那扇门的问题，一定来。」'
+            '回信来得很快，只有四个字：「一言为定。」',
+        effect: LetterEffect(senderAffection: 1),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_rival_lost_badge',
+    kind: LetterKind.rivalry,
+    maxAffection: 0,
+    scene:
+        '字条是从你的书上滑落的，字迹凌厉：「你的学院徽章掉在魔药课教室了。'
+        '在我手里。别指望我白还——下个月的对决练习，敢不敢来？'
+        '赢了，徽章还你；输了，就承认我是第一。」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '回信应战：「到时候见」',
+        text:
+            '对决练习那天，徽章被打磨得锃亮，摆在场地中央。'
+            '你赢了。对方把徽章抛给你时说：「下个月再来。别让我等太久。」',
+        effect: LetterEffect(senderAffection: 3),
+      ),
+      LetterReply(
+        title: '回信：「徽章送你了，胸口的位子有限」',
+        text:
+            '对方的回信只有一行字，却写了又划、划了又写：「……那这个我收着。'
+            '等哪天你想要回去，就凭本事来拿。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
+  LetterDef(
+    id: 'letter_ministry_license',
+    kind: LetterKind.ministry,
+    senderLabel: '魔法部魔法执行司',
+    month: 3,
+    onceOnly: true,
+    scene:
+        '魔法部的牛皮信封里是一份表格：《未成年人魔杖使用许可·年度复核》。'
+        '末尾附了一页手写的补充说明：「复核通过。另：你的年度魔杖保养记录'
+        '填写得比大多数成年巫师都认真。保持下去，孩子。」',
+    effect: LetterEffect(),
+    replies: [
+      LetterReply(
+        title: '把补充说明小心收好',
+        text:
+            '官方文件被你贴身收着。那行字你读了好几遍——在魔法部，'
+            '被记住名字的感觉，比盖章本身更难得。',
+        effect: LetterEffect(senderAffection: 1),
+      ),
+      LetterReply(
+        title: '回函申请一份保养手册副本',
+        text:
+            '你在回函里附了一句「想把手册也借给同寝室的人看」。'
+            '批复下来时寄了两份，附言：「好东西就该多传几双手。」',
+        effect: LetterEffect(senderAffection: 2),
+      ),
+    ],
+  ),
 ];
