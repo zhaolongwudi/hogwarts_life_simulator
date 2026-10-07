@@ -111,6 +111,19 @@ final Map<String, List<CgUnlockCondition>> cgUnlockConditions = {
     CgUnlockCondition(CgConditionType.relationIsPartner),
     CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 95),
   ],
+  // ===== 扩容批次（内容扩容第二轮）=====
+  'CG-022': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 30)],
+  'CG-023': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 38)],
+  'CG-024': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 45)],
+  'CG-025': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 62)],
+  'CG-026': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 68)],
+  'CG-027': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 72)],
+  'CG-028': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 91)],
+  'CG-029': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 94)],
+  'CG-030': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 99)],
+  'CG-CF-004': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 55)],
+  'CG-LP-007': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 72)],
+  'CG-LP-008': const [CgUnlockCondition(CgConditionType.affectionAtLeast, intValue: 78)],
 };
 
 /// 把一份条件表翻译成给玩家看的文案。

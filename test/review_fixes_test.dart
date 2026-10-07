@@ -242,9 +242,9 @@ void main() {
 
   // ==================== P2 数据账目：README 数字 ====================
   group('README 宣称数字与实际数据对账（P2-4.1）', () {
-    test('CG 总数与 README 一致（33）', () {
-      expect(allCgs().length, 33,
-          reason: 'README 写 33 张 CG，实际应为 33（6+6+6+3+3+6+3）');
+    test('CG 总数与 README 一致（45）', () {
+      expect(allCgs().length, 45,
+          reason: 'README 写 45 张 CG，实际应为 45（8+9+8+4+4+8+4，内容扩容第二轮）');
     });
 
     test('成就总数与 README 一致（35）', () {
@@ -263,9 +263,9 @@ void main() {
 
     test('README 文本里写的数字与数据表一致', () {
       final readme = File('README.md').readAsStringSync();
-      // 成就 35（批次C 增训练大师/快讯记者）、CG 仍 33，岗位文案用「神奇动物照看员」
+      // 成就 35（批次C 增训练大师/快讯记者）、CG 45（内容扩容第二轮），岗位文案用「神奇动物照看员」
       expect(readme, contains('35 项成就'));
-      expect(readme, contains('33 张 CG'));
+      expect(readme, contains('45 张 CG'));
       expect(readme, contains('神奇动物照看员'));
       expect(readme, isNot(contains('28 项成就')));
       expect(readme, isNot(contains('36 张 CG')));

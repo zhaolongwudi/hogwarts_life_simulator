@@ -41,6 +41,9 @@ const List<CgDef> cgMeet = [
   CgDef(id: 'CG-004', name: '走廊里的第一百次对视', stars: 2, chapter: '相遇与暗恋', condition: '好感≥35'),
   CgDef(id: 'CG-005', name: '图书馆的偷看笔记', stars: 2, chapter: '相遇与暗恋', condition: '好感≥40'),
   CgDef(id: 'CG-006', name: '魁地奇练习场的独行身影', stars: 2, chapter: '相遇与暗恋', condition: '好感≥40'),
+  CgDef(id: 'CG-022', name: '猫头鹰落错的肩头', stars: 2, chapter: '相遇与暗恋', condition: '好感≥30'),
+  CgDef(id: 'CG-023', name: '温室里递来的半块饼干', stars: 2, chapter: '相遇与暗恋', condition: '好感≥38'),
+  CgDef(id: 'CG-024', name: '傍晚走廊并肩走的那段路', stars: 2, chapter: '相遇与暗恋', condition: '好感≥45'),
 ];
 
 /// 暧昧与恋爱之章
@@ -51,6 +54,9 @@ const List<CgDef> cgLove = [
   CgDef(id: 'CG-010', name: '天文塔的告白', stars: 3, chapter: '暧昧与恋爱', condition: 'NPC表白'),
   CgDef(id: 'CG-011', name: '圣诞舞会的旋转瞬间', stars: 3, chapter: '暧昧与恋爱', condition: '好感≥80'),
   CgDef(id: 'CG-012', name: '湖畔的初吻', stars: 3, chapter: '暧昧与恋爱', condition: '恋爱后'),
+  CgDef(id: 'CG-025', name: '禁林边缘的十指相扣', stars: 3, chapter: '暧昧与恋爱', condition: '好感≥62'),
+  CgDef(id: 'CG-026', name: '厨房深夜的一碗热汤', stars: 3, chapter: '暧昧与恋爱', condition: '好感≥68'),
+  CgDef(id: 'CG-027', name: '烟花下的并肩而立', stars: 3, chapter: '暧昧与恋爱', condition: '好感≥72'),
 ];
 
 /// 深情与宿命之章
@@ -61,6 +67,8 @@ const List<CgDef> cgDeep = [
   CgDef(id: 'CG-016', name: '生死之间的抉择', stars: 4, chapter: '深情与宿命', condition: '好感≥90'),
   CgDef(id: 'CG-017', name: '时间转换器的逆光', stars: 4, chapter: '深情与宿命', condition: '好感≥95'),
   CgDef(id: 'CG-018', name: '挽留的那一刻', stars: 4, chapter: '深情与宿命', condition: '好感≥93'),
+  CgDef(id: 'CG-028', name: '暴风雨里共撑的一把伞', stars: 4, chapter: '深情与宿命', condition: '好感≥91'),
+  CgDef(id: 'CG-029', name: '住院部窗台的晨光', stars: 4, chapter: '深情与宿命', condition: '好感≥94'),
 ];
 
 /// 珍贵之章
@@ -68,6 +76,7 @@ const List<CgDef> cgPrecious = [
   CgDef(id: 'CG-019', name: '私奔的月光', stars: 5, chapter: '珍贵之章', condition: '好感≥96'),
   CgDef(id: 'CG-020', name: '霍格沃茨的婚礼', stars: 5, chapter: '珍贵之章', condition: '好感≥98'),
   CgDef(id: 'CG-021', name: '第一个孩子的啼哭', stars: 5, chapter: '珍贵之章', condition: '婚后生育'),
+  CgDef(id: 'CG-030', name: '银白相框里的全家福', stars: 5, chapter: '珍贵之章', condition: '好感≥99'),
 ];
 
 /// 表白与心碎之章
@@ -75,6 +84,7 @@ const List<CgDef> cgConfess = [
   CgDef(id: 'CG-CF-001', name: '月光下的告白', stars: 4, chapter: '表白与心碎', condition: 'NPC主动表白'),
   CgDef(id: 'CG-CF-002', name: '心碎的转身', stars: 3, chapter: '表白与心碎', condition: '拒绝表白'),
   CgDef(id: 'CG-CF-003', name: '沉默的等待', stars: 4, chapter: '表白与心碎', condition: '需要时间思考'),
+  CgDef(id: 'CG-CF-004', name: '借出去没还的羽毛笔', stars: 3, chapter: '表白与心碎', condition: '好感≥55'),
 ];
 
 /// 拉郎配特殊CG
@@ -85,6 +95,8 @@ const List<CgDef> cgPair = [
   CgDef(id: 'CG-LP-004', name: '月下的坦白', stars: 4, chapter: '拉郎配', condition: '配对好感≥75'),
   CgDef(id: 'CG-LP-005', name: '不曾说出口的承认', stars: 4, chapter: '拉郎配', condition: '配对关系恋爱'),
   CgDef(id: 'CG-LP-006', name: '世界的偏袒', stars: 5, chapter: '拉郎配', condition: '配对关系深爱'),
+  CgDef(id: 'CG-LP-007', name: '走廊里替你挡下的那一记恶咒', stars: 3, chapter: '拉郎配', condition: '配对好感≥72'),
+  CgDef(id: 'CG-LP-008', name: '藏在课桌里的字条', stars: 4, chapter: '拉郎配', condition: '配对好感≥78'),
 ];
 
 /// 骨科特殊CG

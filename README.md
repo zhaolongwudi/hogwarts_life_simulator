@@ -7,7 +7,7 @@
 <p align="center">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square&logo=flutter&logoColor=white" />
   <img alt="Dart" src="https://img.shields.io/badge/Dart-3.12%2B-0175C2?style=flat-square&logo=dart&logoColor=white" />
-  <img alt="版本" src="https://img.shields.io/badge/version-v5.3.5-E3B341?style=flat-square" />
+  <img alt="版本" src="https://img.shields.io/badge/version-v5.3.1-E3B341?style=flat-square" />
   <img alt="构建" src="https://img.shields.io/github/actions/workflow/status/zhaolongwudi/hogwarts_life_simulator/android-build.yml?style=flat-square&logo=github&label=CI" />
   <img alt="测试" src="https://img.shields.io/badge/tests-2238%20passed-10B981?style=flat-square" />
   <img alt="AI" src="https://img.shields.io/badge/AI%20Driven-Atria%20%7C%20DeepSeek%20%7C%20GLM%20%7C%20Agnes%20%7C%20SenseNova-79C0FF?style=flat-square" />
@@ -73,7 +73,7 @@
 | ✨ **守护神** | 10 种形态与人格/学院/信念关联，情绪稳定是召唤关键 |
 | 📝 **考试结算** | 8 门必修 O/E/A/P/D/T 六级，期末 + 五年级 O.W.L + 七年级 N.E.W.T 真实结算 |
 | 📅 **周计划** | `/计划 学习/社交/魁地奇/调查/放松/打工`，批量推进一周 |
-| 🗂️ **收藏与图鉴** | **33 张 CG** 收集与 **35 项成就** 解锁，解锁路径可追溯；图鉴里的角色档案随羁绊与来信不断丰富 |
+| 🗂️ **收藏与图鉴** | **45 张 CG** 收集与 **35 项成就** 解锁，解锁路径可追溯；图鉴里的角色档案随羁绊与来信不断丰富 |
 
 ### 🧪 扩展玩法
 
@@ -166,11 +166,11 @@ flutter build apk --release
 
 | 版本 | 概要 |
 |------|------|
-| **v5.3.5** | 本轮「1+2+3」打包：内容大扩容 + 第九轮 mixin 拆分 + 老档兼容加固 |
-| **v5.3.4** | 本轮「1+2+3」打包：内容大扩容 + 第九轮 mixin 拆分 + 老档兼容加固 |
-| **v5.3.3** | 本轮「1+2+3」打包：内容大扩容 + 第九轮 mixin 拆分 + 老档兼容加固 |
-| **v5.3.2** | 本轮「1+2+3」打包：内容大扩容 + 第九轮 mixin 拆分 + 老档兼容加固 |
 | **v5.3.1** | 本轮「1+2+3」打包：内容大扩容 + 第九轮 mixin 拆分 + 老档兼容加固 |
+| **v5.3.0** | feat: 摘要场景 JSON mode 试点（response_format=json_object + 输出归一化回退，ADR-0… |
+| **v5.2.9** | feat: 摘要场景 JSON mode 试点（response_format=json_object + 输出归一化回退，ADR-0… |
+| **v5.2.8** | refactor: 拆分 mixin_commands 作弊子系统（mixin_command_cheats.dart）+ 扫描测试适配 |
+| **v5.2.7** | style: dart fix 全量应用(447处) + analyze 提示清零 |
 
 > 版本策略：minor 仅限跨领域大版本，日常迭代走 patch，一天内同主题多轮合并计数。
 
