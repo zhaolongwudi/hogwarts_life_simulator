@@ -30,6 +30,7 @@ import '../mixins/mixin_story_engine.dart';
 import '../mixins/mixin_story_round_wrap.dart';
 import '../mixins/mixin_story_wiring.dart';
 import '../mixins/mixin_story_fallback.dart';
+import '../mixins/mixin_story_compose.dart';
 import '../mixins/mixin_relation_gifts.dart';
 import '../mixins/mixin_game_save.dart';
 import '../mixins/mixin_response.dart';
@@ -90,6 +91,7 @@ class GameProvider extends GameProviderBase
         GameSummaryMemoryMixin,
         GameStoryWiringMixin,
         GameStoryRoundWrapMixin,
+        GameStoryComposeMixin,
         GameStoryFallbackMixin,
         GameStoryEngineMixin,
         GameNarrativeCanonMixin,
